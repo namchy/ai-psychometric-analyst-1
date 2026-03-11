@@ -2,7 +2,7 @@ import type { AnswerOption, Question, Test } from "@/lib/assessment/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ActiveTest = Pick<Test, "id" | "slug" | "name" | "description">;
-export type TestQuestion = Pick<Question, "id" | "code" | "text" | "question_order">;
+export type TestQuestion = Pick<Question, "id" | "code" | "text" | "question_order" | "question_type">;
 export type TestAnswerOption = Pick<AnswerOption, "id" | "question_id" | "label" | "option_order">;
 
 export async function getActiveTest(): Promise<ActiveTest | null> {
@@ -25,7 +25,7 @@ export async function getQuestionsForTest(testId: string): Promise<TestQuestion[
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("questions")
-    .select("id, code, text, question_order")
+    .select("id, code, text, question_order, question_type")
     .eq("test_id", testId)
     .order("question_order", { ascending: true });
 

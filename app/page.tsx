@@ -1,3 +1,4 @@
+import { AssessmentForm } from "@/components/assessment/assessment-form";
 import {
   getActiveTest,
   getAnswerOptionsForQuestions,
@@ -49,26 +50,10 @@ export default async function HomePage() {
         </section>
 
         <section className="card">
-          <ol>
-            {questions.map((question) => {
-              const options = answerOptionsByQuestionId[question.id] ?? [];
-
-              return (
-                <li key={question.id}>
-                  <p>{question.text}</p>
-                  {options.length > 0 ? (
-                    <ol>
-                      {options.map((option) => (
-                        <li key={option.id}>{option.label}</li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p>No answer options available for this question.</p>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
+          <AssessmentForm
+            questions={questions}
+            answerOptionsByQuestionId={answerOptionsByQuestionId}
+          />
         </section>
       </main>
     );
