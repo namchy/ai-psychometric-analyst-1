@@ -51,6 +51,7 @@ export default async function HomePage() {
 
         <section className="card">
           <AssessmentForm
+            testId={test.id}
             questions={questions}
             answerOptionsByQuestionId={answerOptionsByQuestionId}
           />

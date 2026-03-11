@@ -66,9 +66,20 @@ export type Response = {
   id: string;
   attempt_id: string;
   question_id: string;
+  response_kind: QuestionType;
   answer_option_id: string | null;
   raw_value: number | null;
   scored_value: number | null;
   text_value: string | null;
   answered_at: string;
 };
+
+export type ResponseSelection = {
+  response_id: string;
+  question_id: string;
+  answer_option_id: string;
+  created_at: string;
+};
+
+export type AssessmentSelectionValue = string | string[];
+export type AssessmentSelectionsInput = Record<string, AssessmentSelectionValue>;

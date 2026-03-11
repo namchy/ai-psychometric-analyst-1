@@ -1,12 +1,16 @@
 "use server";
 
-import type { QuestionType } from "@/lib/assessment/types";
+import type {
+  AssessmentSelectionsInput,
+  AssessmentSelectionValue,
+  QuestionType,
+} from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SaveAssessmentSelectionsInput = {
   attemptId: string | null;
   testId: string;
-  selections: Record<string, string>;
+  selections: AssessmentSelectionsInput;
 };
 
 type SaveAssessmentSelectionsResult =
@@ -37,18 +41,62 @@ type AttemptRecord = {
 type ResponseInsert = {
   attempt_id: string;
   question_id: string;
+  response_kind: QuestionType;
   answer_option_id?: string | null;
   text_value?: string | null;
 };
 
+type InsertedResponseRecord = {
+  id: string;
+  question_id: string;
+  response_kind: QuestionType;
+};
+
+type ResponseSelectionInsert = {
+  response_id: string;
+  question_id: string;
+  answer_option_id: string;
+};
+
+function isStringArray(value: AssessmentSelectionValue): value is string[] {
+  return Array.isArray(value);
+}
+
+function isSelectionValue(value: unknown): value is AssessmentSelectionValue {
+  if (typeof value === "string") {
+    return true;
+  }
+
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
 function isSelectionMap(value: SaveAssessmentSelectionsInput["selections"]): boolean {
   return Object.entries(value).every(
-    ([questionId, selection]) => !!questionId && typeof selection === "string",
+    ([questionId, selection]) => !!questionId && isSelectionValue(selection),
   );
 }
 
+function getDistinctOptionIds(optionIds: string[]): string[] {
+  return [...new Set(optionIds.filter((optionId) => optionId.length > 0))];
+}
+
 function isSupportedQuestionType(questionType: QuestionType): boolean {
-  return questionType === "single_choice" || questionType === "text";
+  return (
+    questionType === "single_choice" ||
+    questionType === "multiple_choice" ||
+    questionType === "text"
+  );
+}
+
+function getSaveFailureMessage(error: unknown): string {
+  if (
+    error instanceof Error &&
+    error.message === "Missing required env var: SUPABASE_SERVICE_ROLE_KEY"
+  ) {
+    return "Saving is not configured on the server.";
+  }
+
+  return "Unable to save progress right now. Please try again.";
 }
 
 export async function saveAssessmentProgress(
@@ -95,9 +143,7 @@ export async function saveAssessmentProgress(
       }
 
       const questions = (questionsData ?? []) as QuestionRecord[];
-      questionsById = new Map(
-        questions.map((question) => [question.id, question]),
-      );
+      questionsById = new Map(questions.map((question) => [question.id, question]));
 
       if (questionIds.some((questionId) => !questionsById.has(questionId))) {
         return {
@@ -120,32 +166,36 @@ export async function saveAssessmentProgress(
       };
     }
 
-    const singleChoiceOptionIds = selectionEntries.flatMap(([questionId, value]) => {
-      const question = questionsById.get(questionId);
+    const optionIdsToValidate = getDistinctOptionIds(
+      selectionEntries.flatMap(([questionId, value]) => {
+        const question = questionsById.get(questionId);
 
-      if (!question || question.question_type !== "single_choice" || !value) {
-        return [];
-      }
+        if (!question || question.question_type === "text") {
+          return [];
+        }
 
-      return [value];
-    });
+        if (question.question_type === "single_choice") {
+          return typeof value === "string" ? [value] : [];
+        }
+
+        return isStringArray(value) ? value : [];
+      }),
+    );
 
     let answerOptionsById = new Map<string, AnswerOptionRecord>();
 
-    if (singleChoiceOptionIds.length > 0) {
+    if (optionIdsToValidate.length > 0) {
       const { data: answerOptionsData, error: answerOptionsError } = await supabase
         .from("answer_options")
         .select("id, question_id")
-        .in("id", singleChoiceOptionIds);
+        .in("id", optionIdsToValidate);
 
       if (answerOptionsError) {
         return { ok: false, message: "Unable to validate answer options." };
       }
 
       const answerOptions = (answerOptionsData ?? []) as AnswerOptionRecord[];
-      answerOptionsById = new Map(
-        answerOptions.map((option) => [option.id, option]),
-      );
+      answerOptionsById = new Map(answerOptions.map((option) => [option.id, option]));
     }
 
     for (const [questionId, value] of selectionEntries) {
@@ -156,17 +206,47 @@ export async function saveAssessmentProgress(
       }
 
       if (question.question_type === "text") {
+        if (typeof value !== "string") {
+          return { ok: false, message: "Text responses must be saved as text." };
+        }
+
         continue;
       }
 
-      if (!value) {
+      if (question.question_type === "single_choice") {
+        if (typeof value !== "string") {
+          return {
+            ok: false,
+            message: "Single choice responses must contain exactly one option.",
+          };
+        }
+
+        if (!value) {
+          continue;
+        }
+
+        const option = answerOptionsById.get(value);
+
+        if (!option || option.question_id !== questionId) {
+          return { ok: false, message: "One or more answer options are invalid." };
+        }
+
         continue;
       }
 
-      const option = answerOptionsById.get(value);
+      if (!isStringArray(value)) {
+        return {
+          ok: false,
+          message: "Multiple choice responses must be saved as an option list.",
+        };
+      }
 
-      if (!option || option.question_id !== questionId) {
-        return { ok: false, message: "One or more answer options are invalid." };
+      for (const optionId of getDistinctOptionIds(value)) {
+        const option = answerOptionsById.get(optionId);
+
+        if (!option || option.question_id !== questionId) {
+          return { ok: false, message: "One or more answer options are invalid." };
+        }
       }
     }
 
@@ -220,37 +300,97 @@ export async function saveAssessmentProgress(
     }
 
     const responseRows: ResponseInsert[] = [];
+    const multipleChoiceSelectionsByQuestionId = new Map<string, string[]>();
 
     for (const [questionId, value] of selectionEntries) {
       const question = questionsById.get(questionId);
 
-      if (!question || value.length === 0) {
+      if (!question) {
         continue;
       }
 
       if (question.question_type === "text") {
+        if (typeof value !== "string" || value.length === 0) {
+          continue;
+        }
+
         responseRows.push({
           attempt_id: nextAttemptId,
           question_id: questionId,
+          response_kind: "text",
           text_value: value,
         });
+        continue;
+      }
+
+      if (question.question_type === "single_choice") {
+        if (typeof value !== "string" || value.length === 0) {
+          continue;
+        }
+
+        responseRows.push({
+          attempt_id: nextAttemptId,
+          question_id: questionId,
+          response_kind: "single_choice",
+          answer_option_id: value,
+        });
+        continue;
+      }
+
+      if (!isStringArray(value)) {
+        continue;
+      }
+
+      const selectedOptionIds = getDistinctOptionIds(value);
+
+      if (selectedOptionIds.length === 0) {
         continue;
       }
 
       responseRows.push({
         attempt_id: nextAttemptId,
         question_id: questionId,
-        answer_option_id: value,
+        response_kind: "multiple_choice",
       });
+      multipleChoiceSelectionsByQuestionId.set(questionId, selectedOptionIds);
     }
 
     if (responseRows.length > 0) {
-      const { error: insertResponsesError } = await supabase
+      const { data: insertedResponsesData, error: insertResponsesError } = await supabase
         .from("responses")
-        .insert(responseRows);
+        .insert(responseRows)
+        .select("id, question_id, response_kind");
 
       if (insertResponsesError) {
         return { ok: false, message: "Unable to save responses." };
+      }
+
+      const insertedResponses = (insertedResponsesData ?? []) as InsertedResponseRecord[];
+      const responseSelections: ResponseSelectionInsert[] = insertedResponses.flatMap(
+        (response) => {
+          if (response.response_kind !== "multiple_choice") {
+            return [];
+          }
+
+          const selectedOptionIds =
+            multipleChoiceSelectionsByQuestionId.get(response.question_id) ?? [];
+
+          return selectedOptionIds.map((answerOptionId) => ({
+            response_id: response.id,
+            question_id: response.question_id,
+            answer_option_id: answerOptionId,
+          }));
+        },
+      );
+
+      if (responseSelections.length > 0) {
+        const { error: insertSelectionsError } = await supabase
+          .from("response_selections")
+          .insert(responseSelections);
+
+        if (insertSelectionsError) {
+          return { ok: false, message: "Unable to save multiple choice selections." };
+        }
       }
     }
 
@@ -259,10 +399,12 @@ export async function saveAssessmentProgress(
       attemptId: nextAttemptId,
       message: "Progress saved.",
     };
-  } catch {
+  } catch (error) {
+    console.error("saveAssessmentProgress failed", error);
+
     return {
       ok: false,
-      message: "Unable to save progress right now. Please try again.",
+      message: getSaveFailureMessage(error),
     };
   }
 }

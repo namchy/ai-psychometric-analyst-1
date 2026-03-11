@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveAssessmentProgress } from "@/app/actions/assessment";
+import type { AssessmentSelectionValue } from "@/lib/assessment/types";
 import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
 
 type AssessmentFormProps = {
@@ -10,14 +11,14 @@ type AssessmentFormProps = {
   answerOptionsByQuestionId: Record<string, TestAnswerOption[]>;
 };
 
-type SelectionState = Record<string, string | undefined>;
+type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 function getSerializableSelections(
   selections: SelectionState,
-): Record<string, string> {
+): Record<string, AssessmentSelectionValue> {
   const entries = Object.entries(selections).filter(
-    (entry): entry is [string, string] => entry[1] !== undefined,
+    (entry): entry is [string, AssessmentSelectionValue] => entry[1] !== undefined,
   );
 
   return Object.fromEntries(entries);
@@ -85,7 +86,7 @@ export function AssessmentForm({
 
                 {question.question_type === "text" ? (
                   <textarea
-                    value={selection ?? ""}
+                    value={typeof selection === "string" ? selection : ""}
                     onChange={(event) => {
                       const nextValue = event.target.value;
                       setSelections((currentSelections) => ({
@@ -96,15 +97,47 @@ export function AssessmentForm({
                     }}
                     rows={3}
                   />
-                ) : question.question_type === "multiple_choice" ? (
-                  <p>
-                    Multiple choice questions are visible, but saving them is not
-                    supported by the current assessment schema yet.
-                  </p>
                 ) : options.length > 0 ? (
                   <ol>
                     {options.map((option) => {
                       const inputId = `${question.id}-${option.id}`;
+
+                      if (question.question_type === "multiple_choice") {
+                        const selectedOptionIds = Array.isArray(selection) ? selection : [];
+
+                        return (
+                          <li key={option.id}>
+                            <label htmlFor={inputId}>
+                              <input
+                                id={inputId}
+                                type="checkbox"
+                                checked={selectedOptionIds.includes(option.id)}
+                                onChange={(event) => {
+                                  const isChecked = event.target.checked;
+                                  setSelections((currentSelections) => {
+                                    const currentValue = currentSelections[question.id];
+                                    const currentOptionIds = Array.isArray(currentValue)
+                                      ? currentValue
+                                      : [];
+                                    const nextOptionIds = isChecked
+                                      ? [...currentOptionIds, option.id]
+                                      : currentOptionIds.filter(
+                                          (optionId) => optionId !== option.id,
+                                        );
+
+                                    return {
+                                      ...currentSelections,
+                                      [question.id]: nextOptionIds,
+                                    };
+                                  });
+                                  resetSaveFeedback(setSaveStatus, setSaveMessage);
+                                }}
+                              />
+                              {option.label}
+                            </label>
+                          </li>
+                        );
+                      }
 
                       return (
                         <li key={option.id}>
