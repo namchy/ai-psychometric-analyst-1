@@ -1,4 +1,8 @@
-import { getActiveTest, getQuestionsForTest } from "@/lib/assessment/tests";
+import {
+  getActiveTest,
+  getAnswerOptionsForQuestions,
+  getQuestionsForTest,
+} from "@/lib/assessment/tests";
 
 export default async function HomePage() {
   try {
@@ -17,6 +21,26 @@ export default async function HomePage() {
 
     const questions = await getQuestionsForTest(test.id);
 
+    if (questions.length === 0) {
+      return (
+        <main>
+          <section className="card">
+            <h1>{test.name}</h1>
+            <p>{test.description ?? "Opis testa trenutno nije dostupan."}</p>
+          </section>
+
+          <section className="card">
+            <h2>No questions available</h2>
+            <p>This test does not have any questions yet.</p>
+          </section>
+        </main>
+      );
+    }
+
+    const answerOptionsByQuestionId = await getAnswerOptionsForQuestions(
+      questions.map((question) => question.id),
+    );
+
     return (
       <main>
         <section className="card">
@@ -25,18 +49,26 @@ export default async function HomePage() {
         </section>
 
         <section className="card">
-          {questions.length > 0 ? (
-            <ol>
-              {questions.map((question) => (
-                <li key={question.id}>{question.text}</li>
-              ))}
-            </ol>
-          ) : (
-            <>
-              <h2>No questions available</h2>
-              <p>This test does not have any questions yet.</p>
-            </>
-          )}
+          <ol>
+            {questions.map((question) => {
+              const options = answerOptionsByQuestionId[question.id] ?? [];
+
+              return (
+                <li key={question.id}>
+                  <p>{question.text}</p>
+                  {options.length > 0 ? (
+                    <ol>
+                      {options.map((option) => (
+                        <li key={option.id}>{option.label}</li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p>No answer options available for this question.</p>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         </section>
       </main>
     );
