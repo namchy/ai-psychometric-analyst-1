@@ -1,18 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { saveAssessmentProgress } from "@/app/actions/assessment";
-import type { AssessmentSelectionValue } from "@/lib/assessment/types";
+import {
+  completeAssessmentAttempt,
+  saveAssessmentProgress,
+} from "@/app/actions/assessment";
+import type {
+  AssessmentSelectionsInput,
+  AssessmentSelectionValue,
+  AttemptStatus,
+} from "@/lib/assessment/types";
 import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
 
 type AssessmentFormProps = {
   testId: string;
   questions: TestQuestion[];
   answerOptionsByQuestionId: Record<string, TestAnswerOption[]>;
+  initialSelections: AssessmentSelectionsInput;
+  initialAttemptId: string | null;
+  initialAttemptStatus: AttemptStatus | null;
+  initialCompletedAt: string | null;
 };
 
 type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
-type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SaveStatus = "idle" | "saving" | "saved" | "completing" | "completed" | "error";
 
 function getSerializableSelections(
   selections: SelectionState,
@@ -36,13 +47,32 @@ export function AssessmentForm({
   testId,
   questions,
   answerOptionsByQuestionId,
+  initialSelections,
+  initialAttemptId,
+  initialAttemptStatus,
+  initialCompletedAt,
 }: AssessmentFormProps) {
-  const [selections, setSelections] = useState<SelectionState>({});
-  const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [selections, setSelections] = useState<SelectionState>(initialSelections);
+  const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
+  const [attemptStatus, setAttemptStatus] = useState<AttemptStatus | null>(initialAttemptStatus);
+  const [completedAt, setCompletedAt] = useState<string | null>(initialCompletedAt);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(
+    initialAttemptStatus === "completed" ? "completed" : "idle",
+  );
+  const [saveMessage, setSaveMessage] = useState<string | null>(
+    initialAttemptStatus === "completed"
+      ? "Assessment completed. Your answers are locked."
+      : null,
+  );
+
+  const isCompleted = attemptStatus === "completed";
+  const isBusy = saveStatus === "saving" || saveStatus === "completing";
 
   async function handleSave() {
+    if (isCompleted) {
+      return;
+    }
+
     setSaveStatus("saving");
     setSaveMessage(null);
 
@@ -60,11 +90,45 @@ export function AssessmentForm({
       }
 
       setAttemptId(result.attemptId);
+      setAttemptStatus("in_progress");
+      setCompletedAt(null);
       setSaveStatus("saved");
       setSaveMessage(result.message);
     } catch {
       setSaveStatus("error");
       setSaveMessage("Unable to save progress right now. Please try again.");
+    }
+  }
+
+  async function handleComplete() {
+    if (isCompleted) {
+      return;
+    }
+
+    setSaveStatus("completing");
+    setSaveMessage(null);
+
+    try {
+      const result = await completeAssessmentAttempt({
+        attemptId,
+        testId,
+        selections: getSerializableSelections(selections),
+      });
+
+      if (!result.ok) {
+        setSaveStatus("error");
+        setSaveMessage(result.message);
+        return;
+      }
+
+      setAttemptId(result.attemptId);
+      setAttemptStatus("completed");
+      setCompletedAt(result.completedAt);
+      setSaveStatus("completed");
+      setSaveMessage(result.message);
+    } catch {
+      setSaveStatus("error");
+      setSaveMessage("Unable to complete the assessment right now. Please try again.");
     }
   }
 
@@ -74,6 +138,14 @@ export function AssessmentForm({
 
   return (
     <>
+      {isCompleted ? (
+        <p>
+          Assessment completed.
+          {completedAt ? ` Completed at ${new Date(completedAt).toLocaleString()}.` : ""} Your
+          answers are now read-only.
+        </p>
+      ) : null}
+
       <ol>
         {questions.map((question) => {
           const options = answerOptionsByQuestionId[question.id] ?? [];
@@ -81,7 +153,7 @@ export function AssessmentForm({
 
           return (
             <li key={question.id}>
-              <fieldset>
+              <fieldset disabled={isCompleted}>
                 <legend>{question.text}</legend>
 
                 {question.question_type === "text" ? (
@@ -170,9 +242,17 @@ export function AssessmentForm({
         })}
       </ol>
 
-      <button type="button" onClick={handleSave} disabled={saveStatus === "saving"}>
-        {saveStatus === "saving" ? "Saving..." : "Save progress"}
-      </button>
+      {!isCompleted ? (
+        <>
+          <button type="button" onClick={handleSave} disabled={isBusy}>
+            {saveStatus === "saving" ? "Saving..." : "Save progress"}
+          </button>
+
+          <button type="button" onClick={handleComplete} disabled={isBusy}>
+            {saveStatus === "completing" ? "Completing..." : "Complete assessment"}
+          </button>
+        </>
+      ) : null}
 
       {saveMessage ? <p>{saveMessage}</p> : null}
     </>

@@ -1,9 +1,14 @@
+import { cookies } from "next/headers";
 import { AssessmentForm } from "@/components/assessment/assessment-form";
 import {
+  ASSESSMENT_ATTEMPT_COOKIE_NAME,
   getActiveTest,
   getAnswerOptionsForQuestions,
+  getAssessmentResumeState,
   getQuestionsForTest,
 } from "@/lib/assessment/tests";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   try {
@@ -41,6 +46,10 @@ export default async function HomePage() {
     const answerOptionsByQuestionId = await getAnswerOptionsForQuestions(
       questions.map((question) => question.id),
     );
+    const resumeState = await getAssessmentResumeState(
+      test.id,
+      cookies().get(ASSESSMENT_ATTEMPT_COOKIE_NAME)?.value,
+    );
 
     return (
       <main>
@@ -54,6 +63,10 @@ export default async function HomePage() {
             testId={test.id}
             questions={questions}
             answerOptionsByQuestionId={answerOptionsByQuestionId}
+            initialAttemptId={resumeState.attemptId}
+            initialAttemptStatus={resumeState.attemptStatus}
+            initialCompletedAt={resumeState.completedAt}
+            initialSelections={resumeState.selections}
           />
         </section>
       </main>
