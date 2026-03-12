@@ -2,8 +2,9 @@ import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
 
-const APP_URL = "http://127.0.0.1:3100";
+const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
 const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
+const HEALTH_URL = `${APP_URL}/api/health`;
 const ACTIVE_TEST_SLUG = "big5-mini";
 
 function fail(message) {
@@ -47,21 +48,25 @@ async function fetchAssessmentPage(attemptId) {
 }
 
 async function waitForServer() {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  let lastDetail = `No response from ${HEALTH_URL}.`;
+
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     try {
-      const response = await fetch(APP_URL);
+      const response = await fetch(HEALTH_URL);
 
       if (response.ok) {
         return;
       }
-    } catch {
-      // Server is still starting.
+
+      lastDetail = `HTTP ${response.status} from ${HEALTH_URL}.`;
+    } catch (error) {
+      lastDetail = error instanceof Error ? error.message : String(error);
     }
 
     await delay(1000);
   }
 
-  fail("Next.js server did not become ready in time.");
+  fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
 }
 
 async function main() {
@@ -258,3 +263,5 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
+
+

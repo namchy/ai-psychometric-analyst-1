@@ -6,6 +6,11 @@ import type {
   QuestionType,
   Test,
 } from "@/lib/assessment/types";
+import {
+  calculateCompletedAssessmentResults,
+  persistCompletedAssessmentResults,
+  type CompletedAssessmentResults,
+} from "@/lib/assessment/scoring";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -185,4 +190,39 @@ export async function getAssessmentResumeState(
     completedAt: resumeAttempt.completed_at,
     selections,
   };
+}
+
+export async function getCompletedAssessmentResults(
+  testId: string,
+  attemptId: string | null,
+): Promise<CompletedAssessmentResults | null> {
+  if (!attemptId) {
+    return null;
+  }
+
+  const results = await calculateCompletedAssessmentResults(testId, attemptId);
+
+  if (!results) {
+    return null;
+  }
+
+  if (results.dimensions.length === 0) {
+    return results;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { count, error } = await supabase
+    .from("dimension_scores")
+    .select("id", { count: "exact", head: true })
+    .eq("attempt_id", attemptId);
+
+  if (error) {
+    throw new Error(`Failed to load persisted results: ${error.message}`);
+  }
+
+  if ((count ?? 0) === 0) {
+    return persistCompletedAssessmentResults(testId, attemptId);
+  }
+
+  return results;
 }

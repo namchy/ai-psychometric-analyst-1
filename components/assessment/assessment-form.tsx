@@ -5,6 +5,7 @@ import {
   completeAssessmentAttempt,
   saveAssessmentProgress,
 } from "@/app/actions/assessment";
+import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type {
   AssessmentSelectionsInput,
   AssessmentSelectionValue,
@@ -20,6 +21,7 @@ type AssessmentFormProps = {
   initialAttemptId: string | null;
   initialAttemptStatus: AttemptStatus | null;
   initialCompletedAt: string | null;
+  initialResults: CompletedAssessmentResults | null;
 };
 
 type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
@@ -43,6 +45,21 @@ function resetSaveFeedback(
   setSaveMessage(null);
 }
 
+function formatDimensionLabel(dimension: string): string {
+  return dimension
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatUnscoredReason(reason: CompletedAssessmentResults["unscoredResponses"][number]["reason"]): string {
+  if (reason === "question_type_not_scoreable") {
+    return "Recorded but not scored in the current MVP model.";
+  }
+
+  return "Recorded without numeric scoring values in the current seed data.";
+}
+
 export function AssessmentForm({
   testId,
   questions,
@@ -51,11 +68,13 @@ export function AssessmentForm({
   initialAttemptId,
   initialAttemptStatus,
   initialCompletedAt,
+  initialResults,
 }: AssessmentFormProps) {
   const [selections, setSelections] = useState<SelectionState>(initialSelections);
   const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<AttemptStatus | null>(initialAttemptStatus);
   const [completedAt, setCompletedAt] = useState<string | null>(initialCompletedAt);
+  const [results, setResults] = useState<CompletedAssessmentResults | null>(initialResults);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(
     initialAttemptStatus === "completed" ? "completed" : "idle",
   );
@@ -92,6 +111,7 @@ export function AssessmentForm({
       setAttemptId(result.attemptId);
       setAttemptStatus("in_progress");
       setCompletedAt(null);
+      setResults(null);
       setSaveStatus("saved");
       setSaveMessage(result.message);
     } catch {
@@ -124,6 +144,7 @@ export function AssessmentForm({
       setAttemptId(result.attemptId);
       setAttemptStatus("completed");
       setCompletedAt(result.completedAt);
+      setResults(result.results);
       setSaveStatus("completed");
       setSaveMessage(result.message);
     } catch {
@@ -172,7 +193,7 @@ export function AssessmentForm({
                 ) : options.length > 0 ? (
                   <ol>
                     {options.map((option) => {
-                      const inputId = `${question.id}-${option.id}`;
+                      const inputId = `${question.id}-${option.option_order}`;
 
                       if (question.question_type === "multiple_choice") {
                         const selectedOptionIds = Array.isArray(selection) ? selection : [];
@@ -252,6 +273,41 @@ export function AssessmentForm({
             {saveStatus === "completing" ? "Completing..." : "Complete assessment"}
           </button>
         </>
+      ) : null}
+
+      {results ? (
+        <section>
+          <h2>Results</h2>
+          <p>
+            Scoring method: {results.scoringMethod}. Scored responses: {results.scoredResponseCount}.
+          </p>
+
+          {results.dimensions.length > 0 ? (
+            <ol>
+              {results.dimensions.map((dimension) => (
+                <li key={dimension.dimension}>
+                  <strong>{formatDimensionLabel(dimension.dimension)}</strong>: raw score {dimension.rawScore}
+                  {` `}from {dimension.scoredQuestionCount} scored question(s).
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>No scoreable responses are available for this completed attempt.</p>
+          )}
+
+          {results.unscoredResponses.length > 0 ? (
+            <>
+              <h3>Recorded but unscored responses</h3>
+              <ol>
+                {results.unscoredResponses.map((response) => (
+                  <li key={response.questionId}>
+                    <strong>{response.questionCode}</strong>: {formatUnscoredReason(response.reason)}
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : null}
+        </section>
       ) : null}
 
       {saveMessage ? <p>{saveMessage}</p> : null}
