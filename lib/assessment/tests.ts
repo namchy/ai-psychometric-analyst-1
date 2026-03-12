@@ -54,7 +54,6 @@ export async function getActiveTest(): Promise<ActiveTest | null> {
     .from("tests")
     .select("id, slug, name, description")
     .eq("is_active", true)
-    .limit(1)
     .maybeSingle();
 
   if (error) {
@@ -70,6 +69,7 @@ export async function getQuestionsForTest(testId: string): Promise<TestQuestion[
     .from("questions")
     .select("id, code, text, question_order, question_type")
     .eq("test_id", testId)
+    .eq("is_active", true)
     .order("question_order", { ascending: true });
 
   if (error) {

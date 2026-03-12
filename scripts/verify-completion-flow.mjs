@@ -1,24 +1,15 @@
-import process from "node:process";
+﻿import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
 const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 const HEALTH_URL = `${APP_URL}/api/health`;
-const ACTIVE_TEST_SLUG = "big5-mini";
+const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const COMPLETION_CODE = "E01";
 
 function fail(message) {
   throw new Error(message);
-}
-
-function getRequiredEnvVar(name) {
-  const value = process.env[name];
-
-  if (!value) {
-    fail(`Missing required env var: ${name}`);
-  }
-
-  return value;
 }
 
 function assertIncludes(haystack, needle, message) {
@@ -70,8 +61,13 @@ async function waitForServer() {
 }
 
 async function main() {
-  const supabaseUrl = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
-  const serviceRoleKey = getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    fail("Missing required Supabase env vars.");
+  }
+
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -83,47 +79,42 @@ async function main() {
 
   const { data: activeTest, error: activeTestError } = await supabase
     .from("tests")
-    .select("id")
-    .eq("slug", ACTIVE_TEST_SLUG)
-    .single();
+    .select("id, slug")
+    .eq("is_active", true)
+    .maybeSingle();
 
   if (activeTestError || !activeTest) {
     fail(`Unable to load active test: ${activeTestError?.message ?? "Unknown error"}`);
   }
 
-  const { data: questions, error: questionsError } = await supabase
-    .from("questions")
-    .select("id, code")
-    .eq("test_id", activeTest.id)
-    .order("question_order", { ascending: true });
-
-  if (questionsError || !questions) {
-    fail(`Unable to load questions: ${questionsError?.message ?? "Unknown error"}`);
+  if (activeTest.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
+    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
   }
 
-  const singleQuestion = questions.find((question) => question.code === "E1");
-  const multiQuestion = questions.find((question) => question.code === "A1");
-  const textQuestion = questions.find((question) => question.code === "O1");
+  const { data: question, error: questionError } = await supabase
+    .from("questions")
+    .select("id, code, dimension, question_type")
+    .eq("test_id", activeTest.id)
+    .eq("is_active", true)
+    .eq("code", COMPLETION_CODE)
+    .maybeSingle();
 
-  if (!singleQuestion || !multiQuestion || !textQuestion) {
-    fail("Expected seeded questions E1, A1, and O1 were not found.");
+  if (questionError || !question) {
+    fail(`Unable to load completion verification question: ${questionError?.message ?? "Unknown error"}`);
+  }
+
+  if (question.question_type !== "single_choice") {
+    fail(`Expected ${COMPLETION_CODE} to be single_choice.`);
   }
 
   const { data: answerOptions, error: answerOptionsError } = await supabase
     .from("answer_options")
-    .select("id, question_id")
-    .in("question_id", [singleQuestion.id, multiQuestion.id])
+    .select("id")
+    .eq("question_id", question.id)
     .order("option_order", { ascending: true });
 
-  if (answerOptionsError || !answerOptions) {
-    fail(`Unable to load answer options: ${answerOptionsError?.message ?? "Unknown error"}`);
-  }
-
-  const singleOption = answerOptions.find((option) => option.question_id === singleQuestion.id);
-  const multiOptions = answerOptions.filter((option) => option.question_id === multiQuestion.id);
-
-  if (!singleOption || multiOptions.length < 2) {
-    fail("Expected seeded answer options were not found.");
+  if (answerOptionsError || !answerOptions || answerOptions.length !== 5) {
+    fail(`Unable to load answer options for ${COMPLETION_CODE}.`);
   }
 
   const { data: attemptData, error: attemptError } = await supabase
@@ -138,58 +129,17 @@ async function main() {
 
   const attemptId = attemptData.id;
 
-  const { data: responseData, error: responseError } = await supabase
+  const { error: responseError } = await supabase
     .from("responses")
-    .insert([
-      {
-        attempt_id: attemptId,
-        question_id: singleQuestion.id,
-        response_kind: "single_choice",
-        answer_option_id: singleOption.id,
-      },
-      {
-        attempt_id: attemptId,
-        question_id: multiQuestion.id,
-        response_kind: "multiple_choice",
-      },
-      {
-        attempt_id: attemptId,
-        question_id: textQuestion.id,
-        response_kind: "text",
-        text_value: "Completion verification text.",
-      },
-    ])
-    .select("id, question_id, response_kind");
+    .insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "single_choice",
+      answer_option_id: answerOptions[3].id,
+    });
 
-  if (responseError || !responseData) {
-    fail(`Unable to create responses: ${responseError?.message ?? "Unknown error"}`);
-  }
-
-  const multipleChoiceParent = responseData.find(
-    (response) => response.question_id === multiQuestion.id && response.response_kind === "multiple_choice",
-  );
-
-  if (!multipleChoiceParent) {
-    fail("Multiple choice parent response was not created.");
-  }
-
-  const { error: selectionError } = await supabase
-    .from("response_selections")
-    .insert([
-      {
-        response_id: multipleChoiceParent.id,
-        question_id: multiQuestion.id,
-        answer_option_id: multiOptions[0].id,
-      },
-      {
-        response_id: multipleChoiceParent.id,
-        question_id: multiQuestion.id,
-        answer_option_id: multiOptions[1].id,
-      },
-    ]);
-
-  if (selectionError) {
-    fail(`Unable to create response selections: ${selectionError.message}`);
+  if (responseError) {
+    fail(`Unable to create response: ${responseError.message}`);
   }
 
   const completedAt = new Date().toISOString();
@@ -220,48 +170,23 @@ async function main() {
   }
 
   const html = await fetchAssessmentPage(attemptId);
-  assertIncludes(
-    html,
-    "Assessment completed.",
-    "Expected completed state message to render.",
-  );
-  assertIncludes(
-    html,
-    "Your answers are now read-only.",
-    "Expected read-only completed messaging to render.",
-  );
-  assertIncludes(
-    html,
-    "Completion verification text.",
-    "Expected completed page to render the saved text response.",
-  );
-  assertIncludes(
-    html,
-    "fieldset disabled",
-    "Expected completed page fieldsets to be disabled.",
-  );
-  assertNotIncludes(
-    html,
-    "Complete assessment",
-    "Completed attempt should not render the completion button.",
-  );
-  assertNotIncludes(
-    html,
-    "Save progress",
-    "Completed attempt should not render the save button.",
-  );
+  assertIncludes(html, "Assessment completed.", "Expected completed state message to render.");
+  assertIncludes(html, "Your answers are now read-only.", "Expected read-only completed messaging to render.");
+  assertIncludes(html, "fieldset disabled", "Expected completed page fieldsets to be disabled.");
+  assertIncludes(html, "Results", "Expected results section to render for a completed attempt.");
+  assertIncludes(html, "Extraversion", "Expected the completed result dimension to render.");
+  assertNotIncludes(html, "Complete assessment", "Completed attempt should not render the completion button.");
+  assertNotIncludes(html, "Save progress", "Completed attempt should not render the save button.");
 
   console.log("Completion flow verification passed.");
   console.log(`Verified attempt id: ${attemptId}`);
   console.log("Verified behaviors:");
   console.log("- attempt completion is persisted in attempts.status and attempts.completed_at");
   console.log("- completed attempts reload as completed, not editable in-progress");
-  console.log("- completed UI renders as read-only and hides save/complete actions");
+  console.log("- completed UI renders as read-only, hides save/complete actions, and shows results");
 }
 
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
-
-

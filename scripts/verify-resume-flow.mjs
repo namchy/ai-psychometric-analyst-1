@@ -1,25 +1,16 @@
-import process from "node:process";
+﻿import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
 const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 const HEALTH_URL = `${APP_URL}/api/health`;
-const ACTIVE_TEST_SLUG = "big5-mini";
+const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
 const TEMP_TEST_ID = "39999999-1111-1111-1111-111111111111";
+const REQUIRED_CODES = ["E01", "A01", "O01"];
 
 function fail(message) {
   throw new Error(message);
-}
-
-function getRequiredEnvVar(name) {
-  const value = process.env[name];
-
-  if (!value) {
-    fail(`Missing required env var: ${name}`);
-  }
-
-  return value;
 }
 
 function assertIncludes(haystack, needle, message) {
@@ -42,21 +33,11 @@ function assertResumeAttemptId(html, attemptId) {
   assertIncludes(html, expectedSnippet, `Expected resume payload to contain ${expectedSnippet}.`);
 }
 
-function assertSerializedSelection(html, questionId, expectedValue) {
-  if (typeof expectedValue === "string") {
-    assertIncludes(
-      html,
-      `\\"${questionId}\\":\\"${expectedValue}\\"`,
-      `Expected resume payload to contain selection ${expectedValue} for ${questionId}.`,
-    );
-    return;
-  }
-
-  const serializedArray = expectedValue.map((value) => `\\"${value}\\"`).join(",");
+function assertSerializedSelection(html, questionId, answerOptionId) {
   assertIncludes(
     html,
-    `\\"${questionId}\\":[${serializedArray}]`,
-    `Expected resume payload to contain selection list for ${questionId}.`,
+    `\\"${questionId}\\":\\"${answerOptionId}\\"`,
+    `Expected resume payload to contain selection ${answerOptionId} for ${questionId}.`,
   );
 }
 
@@ -104,7 +85,7 @@ async function waitForServer() {
   fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
 }
 
-async function saveSelections(supabase, testId, attemptId, selectionsByQuestionId, questionTypeById) {
+async function saveSelections(supabase, testId, attemptId, selectionsByQuestionId) {
   let nextAttemptId = attemptId;
 
   if (!nextAttemptId) {
@@ -132,85 +113,21 @@ async function saveSelections(supabase, testId, attemptId, selectionsByQuestionI
     fail(`Unable to replace responses: ${deleteResponsesError.message}`);
   }
 
-  const responseRows = [];
-  const multipleChoiceSelectionsByQuestionId = new Map();
-
-  for (const [questionId, selection] of Object.entries(selectionsByQuestionId)) {
-    const questionType = questionTypeById.get(questionId);
-
-    if (questionType === "text") {
-      if (!selection) {
-        continue;
-      }
-
-      responseRows.push({
-        attempt_id: nextAttemptId,
-        question_id: questionId,
-        response_kind: "text",
-        text_value: selection,
-      });
-      continue;
-    }
-
-    if (questionType === "single_choice") {
-      if (!selection) {
-        continue;
-      }
-
-      responseRows.push({
-        attempt_id: nextAttemptId,
-        question_id: questionId,
-        response_kind: "single_choice",
-        answer_option_id: selection,
-      });
-      continue;
-    }
-
-    const optionIds = [...new Set(selection)].filter(Boolean);
-
-    if (optionIds.length === 0) {
-      continue;
-    }
-
-    responseRows.push({
+  const responseRows = Object.entries(selectionsByQuestionId)
+    .filter(([, answerOptionId]) => Boolean(answerOptionId))
+    .map(([questionId, answerOptionId]) => ({
       attempt_id: nextAttemptId,
       question_id: questionId,
-      response_kind: "multiple_choice",
-    });
-    multipleChoiceSelectionsByQuestionId.set(questionId, optionIds);
-  }
+      response_kind: "single_choice",
+      answer_option_id: answerOptionId,
+    }));
 
-  const { data: insertedResponses, error: insertResponsesError } = await supabase
+  const { error: insertResponsesError } = await supabase
     .from("responses")
-    .insert(responseRows)
-    .select("id, question_id, response_kind");
+    .insert(responseRows);
 
-  if (insertResponsesError || !insertedResponses) {
-    fail(`Unable to insert responses: ${insertResponsesError?.message ?? "Unknown error"}`);
-  }
-
-  const selectionRows = insertedResponses.flatMap((response) => {
-    if (response.response_kind !== "multiple_choice") {
-      return [];
-    }
-
-    return (multipleChoiceSelectionsByQuestionId.get(response.question_id) ?? []).map(
-      (answerOptionId) => ({
-        response_id: response.id,
-        question_id: response.question_id,
-        answer_option_id: answerOptionId,
-      }),
-    );
-  });
-
-  if (selectionRows.length > 0) {
-    const { error: insertSelectionsError } = await supabase
-      .from("response_selections")
-      .insert(selectionRows);
-
-    if (insertSelectionsError) {
-      fail(`Unable to insert response selections: ${insertSelectionsError.message}`);
-    }
+  if (insertResponsesError) {
+    fail(`Unable to insert responses: ${insertResponsesError.message}`);
   }
 
   return nextAttemptId;
@@ -219,7 +136,7 @@ async function saveSelections(supabase, testId, attemptId, selectionsByQuestionI
 async function getResponseSnapshot(supabase, attemptId) {
   const { data, error } = await supabase
     .from("responses")
-    .select("id, question_id, response_kind, answer_option_id, text_value, response_selections(answer_option_id)")
+    .select("id, question_id, response_kind, answer_option_id")
     .eq("attempt_id", attemptId)
     .order("question_id", { ascending: true });
 
@@ -249,8 +166,13 @@ async function ensureTempOtherTest(supabase) {
 }
 
 async function main() {
-  const supabaseUrl = getRequiredEnvVar("NEXT_PUBLIC_SUPABASE_URL");
-  const serviceRoleKey = getRequiredEnvVar("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    fail("Missing required Supabase env vars.");
+  }
+
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -263,162 +185,135 @@ async function main() {
   const { data: activeTest, error: activeTestError } = await supabase
     .from("tests")
     .select("id, slug")
-    .eq("slug", ACTIVE_TEST_SLUG)
-    .single();
+    .eq("is_active", true)
+    .maybeSingle();
 
   if (activeTestError || !activeTest) {
     fail(`Unable to load active test: ${activeTestError?.message ?? "Unknown error"}`);
   }
 
+  if (activeTest.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
+    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
+  }
+
   const { data: questions, error: questionsError } = await supabase
     .from("questions")
     .select("id, code, question_type")
-    .eq("test_id", activeTest.id);
+    .eq("test_id", activeTest.id)
+    .eq("is_active", true)
+    .order("question_order", { ascending: true });
 
   if (questionsError || !questions) {
     fail(`Unable to load questions: ${questionsError?.message ?? "Unknown error"}`);
   }
 
-  const questionByCode = new Map(questions.map((question) => [question.code, question]));
-  const questionTypeById = new Map(questions.map((question) => [question.id, question.question_type]));
-  const singleQuestion = questionByCode.get("E1");
-  const multiQuestion = questionByCode.get("A1");
-  const textQuestion = questionByCode.get("O1");
-
-  if (!singleQuestion || !multiQuestion || !textQuestion) {
-    fail("Expected seeded questions E1, A1, and O1 were not found.");
+  if (!questions.every((question) => question.question_type === "single_choice")) {
+    fail("Resume verification expects the active test to contain only single_choice questions.");
   }
 
+  const questionByCode = new Map(questions.map((question) => [question.code, question]));
+
+  for (const code of REQUIRED_CODES) {
+    if (!questionByCode.has(code)) {
+      fail(`Expected seeded question ${code} was not found.`);
+    }
+  }
+
+  const targetQuestions = REQUIRED_CODES.map((code) => questionByCode.get(code));
   const { data: answerOptions, error: answerOptionsError } = await supabase
     .from("answer_options")
     .select("id, question_id, option_order")
-    .in("question_id", [singleQuestion.id, multiQuestion.id])
+    .in("question_id", targetQuestions.map((question) => question.id))
+    .order("question_id", { ascending: true })
     .order("option_order", { ascending: true });
 
   if (answerOptionsError || !answerOptions) {
     fail(`Unable to load answer options: ${answerOptionsError?.message ?? "Unknown error"}`);
   }
 
-  const answerOptionsByQuestionId = answerOptions.reduce((grouped, option) => {
-    const questionOptions = grouped.get(option.question_id) ?? [];
+  const answerOptionsByQuestionId = answerOptions.reduce((groupedOptions, option) => {
+    const questionOptions = groupedOptions.get(option.question_id) ?? [];
     questionOptions.push(option);
-    grouped.set(option.question_id, questionOptions);
-    return grouped;
+    groupedOptions.set(option.question_id, questionOptions);
+    return groupedOptions;
   }, new Map());
 
-  const singleOptions = answerOptionsByQuestionId.get(singleQuestion.id) ?? [];
-  const multipleOptions = answerOptionsByQuestionId.get(multiQuestion.id) ?? [];
+  for (const question of targetQuestions) {
+    const options = answerOptionsByQuestionId.get(question.id) ?? [];
 
-  if (singleOptions.length < 4 || multipleOptions.length < 4) {
-    fail("Expected seeded answer options were not found.");
+    if (options.length !== 5) {
+      fail(`Expected 5 answer options for ${question.code}, received ${options.length}.`);
+    }
   }
 
   const initialSelections = {
-    [singleQuestion.id]: singleOptions[1].id,
-    [multiQuestion.id]: [multipleOptions[0].id, multipleOptions[1].id],
-    [textQuestion.id]: "Initial resume verification text.",
+    [targetQuestions[0].id]: answerOptionsByQuestionId.get(targetQuestions[0].id)[1].id,
+    [targetQuestions[1].id]: answerOptionsByQuestionId.get(targetQuestions[1].id)[2].id,
+    [targetQuestions[2].id]: answerOptionsByQuestionId.get(targetQuestions[2].id)[3].id,
   };
   const updatedSelections = {
-    [singleQuestion.id]: singleOptions[3].id,
-    [multiQuestion.id]: [multipleOptions[2].id, multipleOptions[3].id],
-    [textQuestion.id]: "Updated resume verification text.",
+    [targetQuestions[0].id]: answerOptionsByQuestionId.get(targetQuestions[0].id)[4].id,
+    [targetQuestions[1].id]: answerOptionsByQuestionId.get(targetQuestions[1].id)[0].id,
+    [targetQuestions[2].id]: answerOptionsByQuestionId.get(targetQuestions[2].id)[1].id,
   };
 
-  const attemptId = await saveSelections(
-    supabase,
-    activeTest.id,
-    null,
-    initialSelections,
-    questionTypeById,
-  );
+  const attemptId = await saveSelections(supabase, activeTest.id, null, initialSelections);
 
   const initialSnapshot = await getResponseSnapshot(supabase, attemptId);
-  const initialMultiResponse = initialSnapshot.find(
-    (response) => response.question_id === multiQuestion.id,
-  );
-
-  if (!initialMultiResponse) {
-    fail("Initial multiple choice response row was not created.");
+  if (initialSnapshot.length !== REQUIRED_CODES.length) {
+    fail(`Expected ${REQUIRED_CODES.length} saved responses, received ${initialSnapshot.length}.`);
   }
+
+  if (!initialSnapshot.every((response) => response.response_kind === "single_choice")) {
+    fail("Initial save did not persist only single_choice response rows.");
+  }
+
+  const initialResponseIdByQuestionId = new Map(
+    initialSnapshot.map((response) => [response.question_id, response.id]),
+  );
 
   const initialHtml = await fetchAssessmentPage(attemptId);
   assertResumeAttemptId(initialHtml, attemptId);
-  assertSerializedSelection(initialHtml, singleQuestion.id, singleOptions[1].id);
-  assertSerializedSelection(initialHtml, multiQuestion.id, [multipleOptions[0].id, multipleOptions[1].id]);
-  assertSerializedSelection(initialHtml, textQuestion.id, "Initial resume verification text.");
-  assertNotIncludes(
-    initialHtml,
-    `\\"${singleQuestion.id}\\":\\"${singleOptions[3].id}\\"`,
-    "Initial resume payload still contained the edited single-choice option.",
-  );
+  for (const [questionId, answerOptionId] of Object.entries(initialSelections)) {
+    assertSerializedSelection(initialHtml, questionId, answerOptionId);
+  }
+  for (const [questionId, answerOptionId] of Object.entries(updatedSelections)) {
+    assertNotIncludes(
+      initialHtml,
+      `\\"${questionId}\\":\\"${answerOptionId}\\"`,
+      `Initial resume payload still contained the edited option ${answerOptionId}.`,
+    );
+  }
 
-  await saveSelections(
-    supabase,
-    activeTest.id,
-    attemptId,
-    updatedSelections,
-    questionTypeById,
-  );
+  await saveSelections(supabase, activeTest.id, attemptId, updatedSelections);
 
   const updatedSnapshot = await getResponseSnapshot(supabase, attemptId);
-  const singleResponse = updatedSnapshot.find(
-    (response) => response.question_id === singleQuestion.id,
-  );
-  const updatedMultiResponse = updatedSnapshot.find(
-    (response) => response.question_id === multiQuestion.id,
-  );
-  const textResponse = updatedSnapshot.find(
-    (response) => response.question_id === textQuestion.id,
-  );
-
-  if (!singleResponse || !updatedMultiResponse || !textResponse) {
-    fail("Updated response snapshot is missing expected questions.");
+  if (updatedSnapshot.length !== REQUIRED_CODES.length) {
+    fail(`Expected ${REQUIRED_CODES.length} updated responses, received ${updatedSnapshot.length}.`);
   }
 
-  if (singleResponse.answer_option_id !== singleOptions[3].id) {
-    fail("Single choice response did not update to the new option.");
-  }
+  for (const response of updatedSnapshot) {
+    if (response.answer_option_id !== updatedSelections[response.question_id]) {
+      fail(`Updated response for ${response.question_id} did not persist the expected option id.`);
+    }
 
-  if (textResponse.text_value !== "Updated resume verification text.") {
-    fail("Text response did not update to the new value.");
-  }
-
-  const updatedSelectionIds = (updatedMultiResponse.response_selections ?? [])
-    .map((selection) => selection.answer_option_id)
-    .sort();
-  const expectedUpdatedSelectionIds = [multipleOptions[2].id, multipleOptions[3].id].sort();
-
-  if (updatedMultiResponse.answer_option_id !== null || updatedMultiResponse.text_value !== null) {
-    fail("Multiple choice parent response shape is invalid after re-save.");
-  }
-
-  if (updatedSelectionIds.join(",") !== expectedUpdatedSelectionIds.join(",")) {
-    fail("Multiple choice selections did not update to the expected option set.");
-  }
-
-  if (updatedSelectionIds.includes(multipleOptions[0].id) || updatedSelectionIds.includes(multipleOptions[1].id)) {
-    fail("Stale multiple choice child rows remained after re-save.");
-  }
-
-  if (updatedMultiResponse.id === initialMultiResponse.id) {
-    fail("Expected multiple choice parent response row to be replaced on re-save.");
+    if (response.id === initialResponseIdByQuestionId.get(response.question_id)) {
+      fail(`Expected response row for ${response.question_id} to be replaced on re-save.`);
+    }
   }
 
   const updatedHtml = await fetchAssessmentPage(attemptId);
   assertResumeAttemptId(updatedHtml, attemptId);
-  assertSerializedSelection(updatedHtml, singleQuestion.id, singleOptions[3].id);
-  assertSerializedSelection(updatedHtml, multiQuestion.id, [multipleOptions[2].id, multipleOptions[3].id]);
-  assertSerializedSelection(updatedHtml, textQuestion.id, "Updated resume verification text.");
-  assertNotIncludes(
-    updatedHtml,
-    `\\"${singleQuestion.id}\\":\\"${singleOptions[1].id}\\"`,
-    "Updated resume payload still contained the stale single-choice option.",
-  );
-  assertNotIncludes(
-    updatedHtml,
-    `\\"${multiQuestion.id}\\":[\\"${multipleOptions[0].id}\\",\\"${multipleOptions[1].id}\\"]`,
-    "Updated resume payload still contained the stale multiple-choice selection array.",
-  );
+  for (const [questionId, answerOptionId] of Object.entries(updatedSelections)) {
+    assertSerializedSelection(updatedHtml, questionId, answerOptionId);
+  }
+  for (const [questionId, answerOptionId] of Object.entries(initialSelections)) {
+    assertNotIncludes(
+      updatedHtml,
+      `\\"${questionId}\\":\\"${answerOptionId}\\"`,
+      `Updated resume payload still contained the stale option ${answerOptionId}.`,
+    );
+  }
 
   const { error: deleteAttemptError } = await supabase
     .from("attempts")
@@ -452,10 +347,9 @@ async function main() {
   console.log("Resume flow verification passed.");
   console.log(`Verified attempt id: ${attemptId}`);
   console.log("Verified behaviors:");
-  console.log("- initial save DB truth for single_choice, multiple_choice, and text");
+  console.log("- initial save DB truth for single_choice responses only");
   console.log("- reload response payload carried the saved resume state into the client form");
-  console.log("- edit + re-save replaced DB truth correctly");
-  console.log("- multiple_choice stale child rows were removed");
+  console.log("- edit + re-save replaced DB truth correctly for the same question ids");
   console.log("- deleted-attempt and wrong-test cookies fall back to empty resume state");
 }
 
@@ -463,5 +357,3 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
-
-
