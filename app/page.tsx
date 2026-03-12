@@ -5,6 +5,7 @@ import {
   getActiveTest,
   getAnswerOptionsForQuestions,
   getAssessmentResumeState,
+  getCompletedAssessmentResults,
   getQuestionsForTest,
 } from "@/lib/assessment/tests";
 
@@ -43,13 +44,12 @@ export default async function HomePage() {
       );
     }
 
+    const attemptId = cookies().get(ASSESSMENT_ATTEMPT_COOKIE_NAME)?.value;
     const answerOptionsByQuestionId = await getAnswerOptionsForQuestions(
       questions.map((question) => question.id),
     );
-    const resumeState = await getAssessmentResumeState(
-      test.id,
-      cookies().get(ASSESSMENT_ATTEMPT_COOKIE_NAME)?.value,
-    );
+    const resumeState = await getAssessmentResumeState(test.id, attemptId);
+    const results = await getCompletedAssessmentResults(test.id, resumeState.attemptId);
 
     return (
       <main>
@@ -67,6 +67,7 @@ export default async function HomePage() {
             initialAttemptStatus={resumeState.attemptStatus}
             initialCompletedAt={resumeState.completedAt}
             initialSelections={resumeState.selections}
+            initialResults={results}
           />
         </section>
       </main>

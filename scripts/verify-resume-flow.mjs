@@ -2,8 +2,9 @@ import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
 
-const APP_URL = "http://127.0.0.1:3100";
+const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
 const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
+const HEALTH_URL = `${APP_URL}/api/health`;
 const ACTIVE_TEST_SLUG = "big5-mini";
 const TEMP_TEST_ID = "39999999-1111-1111-1111-111111111111";
 
@@ -41,10 +42,7 @@ function assertResumeAttemptId(html, attemptId) {
   assertIncludes(html, expectedSnippet, `Expected resume payload to contain ${expectedSnippet}.`);
 }
 
-function assertSelectionPresent(html, questionId, expectedValue) {
-  const questionSnippet = `\\"${questionId}\\":`;
-  assertIncludes(html, questionSnippet, `Expected resume payload to contain question ${questionId}.`);
-
+function assertSerializedSelection(html, questionId, expectedValue) {
   if (typeof expectedValue === "string") {
     assertIncludes(
       html,
@@ -54,13 +52,12 @@ function assertSelectionPresent(html, questionId, expectedValue) {
     return;
   }
 
-  for (const optionId of expectedValue) {
-    assertIncludes(
-      html,
-      optionId,
-      `Expected resume payload to contain option ${optionId} for ${questionId}.`,
-    );
-  }
+  const serializedArray = expectedValue.map((value) => `\\"${value}\\"`).join(",");
+  assertIncludes(
+    html,
+    `\\"${questionId}\\":[${serializedArray}]`,
+    `Expected resume payload to contain selection list for ${questionId}.`,
+  );
 }
 
 function assertSelectionsEmpty(html) {
@@ -86,21 +83,25 @@ async function fetchAssessmentPage(attemptId) {
 }
 
 async function waitForServer() {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  let lastDetail = `No response from ${HEALTH_URL}.`;
+
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     try {
-      const response = await fetch(APP_URL);
+      const response = await fetch(HEALTH_URL);
 
       if (response.ok) {
         return;
       }
-    } catch {
-      // Server is still starting.
+
+      lastDetail = `HTTP ${response.status} from ${HEALTH_URL}.`;
+    } catch (error) {
+      lastDetail = error instanceof Error ? error.message : String(error);
     }
 
     await delay(1000);
   }
 
-  fail("Next.js server did not become ready in time.");
+  fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
 }
 
 async function saveSelections(supabase, testId, attemptId, selectionsByQuestionId, questionTypeById) {
@@ -342,9 +343,9 @@ async function main() {
 
   const initialHtml = await fetchAssessmentPage(attemptId);
   assertResumeAttemptId(initialHtml, attemptId);
-  assertSelectionPresent(initialHtml, singleQuestion.id, singleOptions[1].id);
-  assertSelectionPresent(initialHtml, multiQuestion.id, [multipleOptions[0].id, multipleOptions[1].id]);
-  assertSelectionPresent(initialHtml, textQuestion.id, "Initial resume verification text.");
+  assertSerializedSelection(initialHtml, singleQuestion.id, singleOptions[1].id);
+  assertSerializedSelection(initialHtml, multiQuestion.id, [multipleOptions[0].id, multipleOptions[1].id]);
+  assertSerializedSelection(initialHtml, textQuestion.id, "Initial resume verification text.");
   assertNotIncludes(
     initialHtml,
     `\\"${singleQuestion.id}\\":\\"${singleOptions[3].id}\\"`,
@@ -405,9 +406,9 @@ async function main() {
 
   const updatedHtml = await fetchAssessmentPage(attemptId);
   assertResumeAttemptId(updatedHtml, attemptId);
-  assertSelectionPresent(updatedHtml, singleQuestion.id, singleOptions[3].id);
-  assertSelectionPresent(updatedHtml, multiQuestion.id, [multipleOptions[2].id, multipleOptions[3].id]);
-  assertSelectionPresent(updatedHtml, textQuestion.id, "Updated resume verification text.");
+  assertSerializedSelection(updatedHtml, singleQuestion.id, singleOptions[3].id);
+  assertSerializedSelection(updatedHtml, multiQuestion.id, [multipleOptions[2].id, multipleOptions[3].id]);
+  assertSerializedSelection(updatedHtml, textQuestion.id, "Updated resume verification text.");
   assertNotIncludes(
     updatedHtml,
     `\\"${singleQuestion.id}\\":\\"${singleOptions[1].id}\\"`,
@@ -415,8 +416,8 @@ async function main() {
   );
   assertNotIncludes(
     updatedHtml,
-    multipleOptions[0].id,
-    "Updated resume payload still contained a stale multiple-choice option.",
+    `\\"${multiQuestion.id}\\":[\\"${multipleOptions[0].id}\\",\\"${multipleOptions[1].id}\\"]`,
+    "Updated resume payload still contained the stale multiple-choice selection array.",
   );
 
   const { error: deleteAttemptError } = await supabase

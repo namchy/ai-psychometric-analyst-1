@@ -7,6 +7,10 @@ import type {
   AttemptStatus,
   QuestionType,
 } from "@/lib/assessment/types";
+import {
+  persistCompletedAssessmentResults,
+  type CompletedAssessmentResults,
+} from "@/lib/assessment/scoring";
 import { ASSESSMENT_ATTEMPT_COOKIE_NAME } from "@/lib/assessment/tests";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -33,6 +37,7 @@ type CompleteAssessmentAttemptResult =
       attemptId: string;
       completedAt: string;
       message: string;
+      results: CompletedAssessmentResults | null;
     }
   | {
       ok: false;
@@ -512,7 +517,9 @@ export async function completeAssessmentAttempt(
       return { ok: false, message: "Unable to complete attempt." };
     }
 
-    if (!completedAttemptData) {
+    let completedAttempt: AttemptRecord | null = completedAttemptData as AttemptRecord | null;
+
+    if (!completedAttempt) {
       const { data: existingAttemptData, error: existingAttemptError } = await supabase
         .from("attempts")
         .select("id, status, completed_at")
@@ -524,21 +531,15 @@ export async function completeAssessmentAttempt(
         return { ok: false, message: "Unable to confirm attempt completion." };
       }
 
-      if ((existingAttemptData as AttemptRecord | null)?.status === "completed") {
-        const attempt = existingAttemptData as AttemptRecord;
-
-        return {
-          ok: true,
-          attemptId: attempt.id,
-          completedAt: attempt.completed_at ?? completedAt,
-          message: "Assessment completed. Your answers are locked.",
-        };
+      if ((existingAttemptData as AttemptRecord | null)?.status !== "completed") {
+        return { ok: false, message: "Unable to complete attempt." };
       }
 
-      return { ok: false, message: "Unable to complete attempt." };
+      completedAttempt = existingAttemptData as AttemptRecord;
     }
 
-    const completedAttempt = completedAttemptData as AttemptRecord;
+    const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
+
     cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, persistResult.attemptId, {
       httpOnly: true,
       sameSite: "lax",
@@ -550,6 +551,7 @@ export async function completeAssessmentAttempt(
       attemptId: persistResult.attemptId,
       completedAt: completedAttempt.completed_at ?? completedAt,
       message: "Assessment completed. Your answers are locked.",
+      results,
     };
   } catch (error) {
     console.error("completeAssessmentAttempt failed", error);
