@@ -6,6 +6,8 @@ const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
 const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 const HEALTH_URL = `${APP_URL}/api/health`;
 const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const EXPECTED_REPORT_BEHAVIOR = process.env.VERIFY_REPORT_EXPECTED_BEHAVIOR ?? "snapshot";
+const EXPECTED_REPORT_GENERATOR = process.env.VERIFY_REPORT_EXPECTED_GENERATOR ?? "mock";
 const REPORT_CASES = [
   { code: "E01", optionIndex: 4 },
   { code: "A01", optionIndex: 3 },
@@ -183,6 +185,83 @@ async function createAttempt(supabase, testId, status) {
   return data.id;
 }
 
+async function assertSnapshotBehavior(supabase, validAttemptId) {
+  const firstHtml = await fetchAssessmentPage(validAttemptId);
+  assertIncludes(firstHtml, "Assessment report", "Expected assessment report section to render.");
+  assertIncludes(firstHtml, "Generator:", "Expected generator label to render.");
+  assertIncludes(firstHtml, "Snapshot generated at", "Expected report timestamp label to render.");
+  assertIncludes(firstHtml, "Strengths", "Expected strengths section to render.");
+  assertIncludes(firstHtml, "Blind spots", "Expected blind spots section to render.");
+  assertIncludes(
+    firstHtml,
+    "Development recommendations",
+    "Expected recommendations section to render.",
+  );
+
+  const { data: firstReportRow, error: firstReportError } = await supabase
+    .from("attempt_reports")
+    .select("generated_at, generator_type, report_snapshot")
+    .eq("attempt_id", validAttemptId)
+    .single();
+
+  if (firstReportError || !firstReportRow) {
+    fail(
+      `Unable to load persisted report snapshot: ${firstReportError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  if (firstReportRow.generator_type !== EXPECTED_REPORT_GENERATOR) {
+    fail(`Expected persisted generator_type ${EXPECTED_REPORT_GENERATOR}, received ${firstReportRow.generator_type}.`);
+  }
+
+  if (firstReportRow.report_snapshot?.generator_type !== EXPECTED_REPORT_GENERATOR) {
+    fail(`Expected persisted report snapshot to include generator_type ${EXPECTED_REPORT_GENERATOR}.`);
+  }
+
+  const firstGeneratedAt = firstReportRow.generated_at;
+  const secondHtml = await fetchAssessmentPage(validAttemptId);
+  assertIncludes(secondHtml, "Assessment report", "Expected assessment report section to remain on reload.");
+  assertIncludes(secondHtml, "Generator:", "Expected generator label to remain on reload.");
+
+  const { data: secondReportRow, error: secondReportError } = await supabase
+    .from("attempt_reports")
+    .select("generated_at")
+    .eq("attempt_id", validAttemptId)
+    .single();
+
+  if (secondReportError || !secondReportRow) {
+    fail(
+      `Unable to reload persisted report snapshot: ${secondReportError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  if (secondReportRow.generated_at !== firstGeneratedAt) {
+    fail("Expected report snapshot to stay stable on reload without regeneration.");
+  }
+}
+
+async function assertUnavailableBehavior(supabase, validAttemptId) {
+  const firstHtml = await fetchAssessmentPage(validAttemptId);
+  assertNotIncludes(firstHtml, "Assessment report", "Unavailable report should not render a report section.");
+
+  const { data: firstReportRow, error: firstReportError } = await supabase
+    .from("attempt_reports")
+    .select("attempt_id")
+    .eq("attempt_id", validAttemptId)
+    .maybeSingle();
+
+  if (firstReportError) {
+    fail(`Unable to inspect unavailable report state: ${firstReportError.message}`);
+  }
+
+  if (firstReportRow) {
+    fail("Unavailable report scenario should not persist a report snapshot.");
+  }
+
+  const secondHtml = await fetchAssessmentPage(validAttemptId);
+  assertNotIncludes(secondHtml, "Assessment report", "Unavailable report should stay absent on reload.");
+}
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -238,7 +317,7 @@ async function main() {
   const incompleteHtml = await fetchAssessmentPage(incompleteAttemptId);
   assertNotIncludes(
     incompleteHtml,
-    "Mock report",
+    "Assessment report",
     "Incomplete completed attempt should not render a report.",
   );
 
@@ -268,57 +347,10 @@ async function main() {
     );
   }
 
-  const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(firstHtml, "Mock report", "Expected mock report section to render.");
-  assertIncludes(firstHtml, "Generator:", "Expected mock generator label to render.");
-  assertIncludes(firstHtml, "Snapshot generated at", "Expected report timestamp label to render.");
-  assertIncludes(firstHtml, "Strengths", "Expected strengths section to render.");
-  assertIncludes(firstHtml, "Blind spots", "Expected blind spots section to render.");
-  assertIncludes(
-    firstHtml,
-    "Development recommendations",
-    "Expected recommendations section to render.",
-  );
-
-  const { data: firstReportRow, error: firstReportError } = await supabase
-    .from("attempt_reports")
-    .select("generated_at, generator_type, report_snapshot")
-    .eq("attempt_id", validAttemptId)
-    .single();
-
-  if (firstReportError || !firstReportRow) {
-    fail(
-      `Unable to load persisted report snapshot: ${firstReportError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  if (firstReportRow.generator_type !== "mock") {
-    fail(`Expected persisted generator_type mock, received ${firstReportRow.generator_type}.`);
-  }
-
-  if (firstReportRow.report_snapshot?.generator_type !== "mock") {
-    fail("Expected persisted report snapshot to include generator_type mock.");
-  }
-
-  const firstGeneratedAt = firstReportRow.generated_at;
-  const secondHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(secondHtml, "Mock report", "Expected mock report section to remain on reload.");
-  assertIncludes(secondHtml, "Generator:", "Expected generator label to remain on reload.");
-
-  const { data: secondReportRow, error: secondReportError } = await supabase
-    .from("attempt_reports")
-    .select("generated_at")
-    .eq("attempt_id", validAttemptId)
-    .single();
-
-  if (secondReportError || !secondReportRow) {
-    fail(
-      `Unable to reload persisted report snapshot: ${secondReportError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  if (secondReportRow.generated_at !== firstGeneratedAt) {
-    fail("Expected report snapshot to stay stable on reload without regeneration.");
+  if (EXPECTED_REPORT_BEHAVIOR === "unavailable") {
+    await assertUnavailableBehavior(supabase, validAttemptId);
+  } else {
+    await assertSnapshotBehavior(supabase, validAttemptId);
   }
 
   console.log("Report flow verification passed.");
@@ -326,8 +358,13 @@ async function main() {
   console.log(`Verified valid completed attempt id: ${validAttemptId}`);
   console.log("Verified behaviors:");
   console.log("- incomplete completed attempt does not generate or render a report");
-  console.log("- fully answered completed attempt generates a persisted mock report snapshot on first render");
-  console.log("- reload reuses the same generated_at timestamp instead of regenerating a new report");
+
+  if (EXPECTED_REPORT_BEHAVIOR === "unavailable") {
+    console.log("- fully answered completed attempt stays stable when report generation is unavailable");
+  } else {
+    console.log(`- fully answered completed attempt generates a persisted ${EXPECTED_REPORT_GENERATOR} report snapshot on first render`);
+    console.log("- reload reuses the same generated_at timestamp instead of regenerating a new report");
+  }
 }
 
 main().catch((error) => {

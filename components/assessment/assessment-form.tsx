@@ -346,7 +346,7 @@ export function AssessmentForm({
 
       {isCompleted && report ? (
         <section>
-          <h2>Mock report</h2>
+          <h2>Assessment report</h2>
           <p>
             Generator: {report.generator_type}. Snapshot generated at {new Date(report.generated_at).toLocaleString()}.
           </p>
