@@ -1,8 +1,9 @@
-﻿import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
 const EXPECTED_QUESTION_COUNT = 50;
 const EXPECTED_OPTION_VALUES = [1, 2, 3, 4, 5];
+const SUPPORTED_SCORING_METHODS = new Set(["likert_sum"]);
 
 function fail(message) {
   throw new Error(message);
@@ -24,23 +25,30 @@ try {
   }
 
   const supabase = createClient(url, publishableKey);
-  const { data: activeTest, error: activeTestError } = await supabase
+  const { data: activeTests, error: activeTestError } = await supabase
     .from("tests")
-    .select("id, slug, name")
-    .eq("is_active", true)
-    .maybeSingle();
+    .select("id, slug, name, scoring_method")
+    .eq("is_active", true);
 
   if (activeTestError) {
     fail(`Supabase query failed: ${activeTestError.message}`);
   }
 
-  if (!activeTest) {
-    fail("No active test found.");
-  }
+  assert(
+    (activeTests?.length ?? 0) === 1,
+    `Expected exactly 1 active test, received ${activeTests?.length ?? 0}.`,
+  );
 
+  const [activeTest] = activeTests ?? [];
+
+  assert(Boolean(activeTest), "No active test found.");
   assert(
     activeTest.slug === EXPECTED_ACTIVE_TEST_SLUG,
     `Expected active test slug ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`,
+  );
+  assert(
+    SUPPORTED_SCORING_METHODS.has(activeTest.scoring_method),
+    `Unsupported active test scoring method: ${activeTest.scoring_method}.`,
   );
 
   const { data: questions, error: questionsError } = await supabase
@@ -54,6 +62,7 @@ try {
     fail(`Question verification failed: ${questionsError.message}`);
   }
 
+  assert((questions?.length ?? 0) > 0, "Active test has no active questions.");
   assert(
     (questions?.length ?? 0) === EXPECTED_QUESTION_COUNT,
     `Expected ${EXPECTED_QUESTION_COUNT} active questions, received ${questions?.length ?? 0}.`,
@@ -74,6 +83,8 @@ try {
   if (answerOptionsError) {
     fail(`Answer option verification failed: ${answerOptionsError.message}`);
   }
+
+  assert((answerOptions?.length ?? 0) > 0, "Active test has no answer options.");
 
   const optionsByQuestionId = (answerOptions ?? []).reduce((groupedOptions, option) => {
     const questionOptions = groupedOptions.get(option.question_id) ?? [];
@@ -98,6 +109,7 @@ try {
 
   console.log("Supabase read checks passed.");
   console.log("Active test:", activeTest.slug);
+  console.log("Active test scoring method:", activeTest.scoring_method);
   console.log("Verified question count:", questions.length);
 
   if (!serviceRoleKey) {

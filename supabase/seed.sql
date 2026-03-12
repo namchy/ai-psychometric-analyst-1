@@ -1,6 +1,6 @@
 insert into public.tests (id, slug, name, category, description, status, scoring_method, duration_minutes, is_active)
 values
-  ('5c0bbefb-0a61-47d8-8973-2e0e4817720c', 'ipip50-hr-v1', 'IPIP-50 Hrvatski v1', 'personality', '50-Item Lexical Big-Five Factor Markers for Self-Report, hrvatski prijevod Boris Mlačić. Namjena: samorefleksija i razvoj, ne dijagnostika.', 'draft', 'likert_sum', null, true);
+  ('5c0bbefb-0a61-47d8-8973-2e0e4817720c', 'ipip50-hr-v1', 'IPIP-50 Hrvatski v1', 'personality', '50-Item Lexical Big-Five Factor Markers for Self-Report, hrvatski prijevod Boris Mlačić. Namjena: samorefleksija i razvoj, ne dijagnostika.', 'active', 'likert_sum', null, true);
 
 insert into public.questions (id, test_id, code, text, dimension, question_type, question_order, reverse_scored, weight, is_active)
 values
