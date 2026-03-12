@@ -5,6 +5,8 @@ import {
   completeAssessmentAttempt,
   saveAssessmentProgress,
 } from "@/app/actions/assessment";
+import type { AssessmentCompletionState } from "@/lib/assessment/completion";
+import { getAssessmentCompletionState } from "@/lib/assessment/completion";
 import type { CompletedAssessmentReport } from "@/lib/assessment/reports";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type {
@@ -64,6 +66,20 @@ function formatUnscoredReason(
   return "Recorded without numeric scoring values in the current seed data.";
 }
 
+function getIncompleteRequiredAnswersMessage(completionState: AssessmentCompletionState): string {
+  const missingCount = completionState.missingRequiredQuestionIds.length;
+
+  if (missingCount === 0) {
+    return "";
+  }
+
+  if (missingCount === 1) {
+    return "Answer the remaining required question to enable completion.";
+  }
+
+  return `Answer the remaining ${missingCount} required questions to enable completion.`;
+}
+
 export function AssessmentForm({
   testId,
   questions,
@@ -92,6 +108,14 @@ export function AssessmentForm({
 
   const isCompleted = attemptStatus === "completed";
   const isBusy = saveStatus === "saving" || saveStatus === "completing";
+  const completionState = getAssessmentCompletionState(
+    questions,
+    getSerializableSelections(selections),
+  );
+  const canComplete = completionState.isComplete;
+  const incompleteRequiredAnswersMessage = isCompleted
+    ? null
+    : getIncompleteRequiredAnswersMessage(completionState);
 
   async function handleSave() {
     if (isCompleted) {
@@ -128,7 +152,7 @@ export function AssessmentForm({
   }
 
   async function handleComplete() {
-    if (isCompleted) {
+    if (isCompleted || !canComplete) {
       return;
     }
 
@@ -277,9 +301,11 @@ export function AssessmentForm({
             {saveStatus === "saving" ? "Saving..." : "Save progress"}
           </button>
 
-          <button type="button" onClick={handleComplete} disabled={isBusy}>
+          <button type="button" onClick={handleComplete} disabled={isBusy || !canComplete}>
             {saveStatus === "completing" ? "Completing..." : "Complete assessment"}
           </button>
+
+          {incompleteRequiredAnswersMessage ? <p>{incompleteRequiredAnswersMessage}</p> : null}
         </>
       ) : null}
 
@@ -294,8 +320,8 @@ export function AssessmentForm({
             <ol>
               {results.dimensions.map((dimension) => (
                 <li key={dimension.dimension}>
-                  <strong>{formatDimensionLabel(dimension.dimension)}</strong>: raw score {dimension.rawScore}
-                  {" "}from {dimension.scoredQuestionCount} scored question(s).
+                  <strong>{formatDimensionLabel(dimension.dimension)}</strong>: raw score {dimension.rawScore}{" "}
+                  from {dimension.scoredQuestionCount} scored question(s).
                 </li>
               ))}
             </ol>

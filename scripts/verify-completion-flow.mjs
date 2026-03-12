@@ -1,4 +1,4 @@
-﻿import process from "node:process";
+import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
 
@@ -60,6 +60,121 @@ async function waitForServer() {
   fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
 }
 
+async function loadRequiredQuestionsWithOptions(supabase, testId) {
+  const { data: questions, error: questionsError } = await supabase
+    .from("questions")
+    .select("id, code, question_type, is_required")
+    .eq("test_id", testId)
+    .eq("is_active", true)
+    .order("question_order", { ascending: true });
+
+  if (questionsError || !questions) {
+    fail(`Unable to load active questions: ${questionsError?.message ?? "Unknown error"}`);
+  }
+
+  const requiredQuestions = questions.filter((question) => question.is_required);
+  const nonTextQuestionIds = requiredQuestions
+    .filter((question) => question.question_type !== "text")
+    .map((question) => question.id);
+
+  const { data: answerOptions, error: answerOptionsError } = await supabase
+    .from("answer_options")
+    .select("id, question_id, option_order")
+    .in("question_id", nonTextQuestionIds)
+    .order("question_id", { ascending: true })
+    .order("option_order", { ascending: true });
+
+  if (answerOptionsError) {
+    fail(`Unable to load answer options: ${answerOptionsError.message}`);
+  }
+
+  const answerOptionsByQuestionId = (answerOptions ?? []).reduce((grouped, option) => {
+    const questionOptions = grouped.get(option.question_id) ?? [];
+    questionOptions.push(option);
+    grouped.set(option.question_id, questionOptions);
+    return grouped;
+  }, new Map());
+
+  return { requiredQuestions, answerOptionsByQuestionId };
+}
+
+async function insertAnswerForQuestion(supabase, attemptId, question, answerOptionsByQuestionId, optionIndex = 0) {
+  if (question.question_type === "text") {
+    const { error } = await supabase.from("responses").insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "text",
+      text_value: `Verification response for ${question.code}`,
+    });
+
+    if (error) {
+      fail(`Unable to create text response for ${question.code}: ${error.message}`);
+    }
+
+    return;
+  }
+
+  const options = answerOptionsByQuestionId.get(question.id) ?? [];
+  const selectedOption = options[optionIndex] ?? options[0];
+
+  if (!selectedOption) {
+    fail(`Unable to find answer option for ${question.code}.`);
+  }
+
+  if (question.question_type === "single_choice") {
+    const { error } = await supabase.from("responses").insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "single_choice",
+      answer_option_id: selectedOption.id,
+    });
+
+    if (error) {
+      fail(`Unable to create single choice response for ${question.code}: ${error.message}`);
+    }
+
+    return;
+  }
+
+  const { data: responseRow, error: responseError } = await supabase
+    .from("responses")
+    .insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "multiple_choice",
+    })
+    .select("id")
+    .single();
+
+  if (responseError || !responseRow) {
+    fail(`Unable to create multiple choice response for ${question.code}: ${responseError?.message ?? "Unknown error"}`);
+  }
+
+  const { error: selectionError } = await supabase.from("response_selections").insert({
+    response_id: responseRow.id,
+    question_id: question.id,
+    answer_option_id: selectedOption.id,
+  });
+
+  if (selectionError) {
+    fail(`Unable to create multiple choice selection for ${question.code}: ${selectionError.message}`);
+  }
+}
+
+async function createAttempt(supabase, testId, status = "in_progress") {
+  const insert = status === "completed"
+    ? { test_id: testId, status: "completed", completed_at: new Date().toISOString() }
+    : { test_id: testId };
+
+  const { data, error } = await supabase.from("attempts").insert(insert).select("id").single();
+
+  if (error || !data) {
+    fail(`Unable to create attempt: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.id;
+}
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -91,99 +206,80 @@ async function main() {
     fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
   }
 
-  const { data: question, error: questionError } = await supabase
-    .from("questions")
-    .select("id, code, dimension, question_type")
-    .eq("test_id", activeTest.id)
-    .eq("is_active", true)
-    .eq("code", COMPLETION_CODE)
-    .maybeSingle();
+  const { requiredQuestions, answerOptionsByQuestionId } = await loadRequiredQuestionsWithOptions(
+    supabase,
+    activeTest.id,
+  );
 
-  if (questionError || !question) {
-    fail(`Unable to load completion verification question: ${questionError?.message ?? "Unknown error"}`);
+  const completionQuestion = requiredQuestions.find((question) => question.code === COMPLETION_CODE);
+
+  if (!completionQuestion) {
+    fail(`Expected required question ${COMPLETION_CODE} was not found.`);
   }
 
-  if (question.question_type !== "single_choice") {
-    fail(`Expected ${COMPLETION_CODE} to be single_choice.`);
+  const inProgressAttemptId = await createAttempt(supabase, activeTest.id);
+  await insertAnswerForQuestion(
+    supabase,
+    inProgressAttemptId,
+    completionQuestion,
+    answerOptionsByQuestionId,
+    3,
+  );
+
+  const inProgressHtml = await fetchAssessmentPage(inProgressAttemptId);
+  assertIncludes(
+    inProgressHtml,
+    "Answer the remaining",
+    "Expected incomplete completion guidance to render for an in-progress attempt.",
+  );
+  assertIncludes(
+    inProgressHtml,
+    "Complete assessment",
+    "Expected completion button to remain visible before completion.",
+  );
+  assertNotIncludes(
+    inProgressHtml,
+    "Assessment completed.",
+    "Incomplete in-progress attempt should not render completed messaging.",
+  );
+
+  const completedAttemptId = await createAttempt(supabase, activeTest.id, "completed");
+
+  for (const question of requiredQuestions) {
+    const optionIndex = question.code === COMPLETION_CODE ? 3 : 0;
+    await insertAnswerForQuestion(
+      supabase,
+      completedAttemptId,
+      question,
+      answerOptionsByQuestionId,
+      optionIndex,
+    );
   }
 
-  const { data: answerOptions, error: answerOptionsError } = await supabase
-    .from("answer_options")
-    .select("id")
-    .eq("question_id", question.id)
-    .order("option_order", { ascending: true });
-
-  if (answerOptionsError || !answerOptions || answerOptions.length !== 5) {
-    fail(`Unable to load answer options for ${COMPLETION_CODE}.`);
-  }
-
-  const { data: attemptData, error: attemptError } = await supabase
-    .from("attempts")
-    .insert({ test_id: activeTest.id })
-    .select("id")
-    .single();
-
-  if (attemptError || !attemptData) {
-    fail(`Unable to create attempt: ${attemptError?.message ?? "Unknown error"}`);
-  }
-
-  const attemptId = attemptData.id;
-
-  const { error: responseError } = await supabase
-    .from("responses")
-    .insert({
-      attempt_id: attemptId,
-      question_id: question.id,
-      response_kind: "single_choice",
-      answer_option_id: answerOptions[3].id,
-    });
-
-  if (responseError) {
-    fail(`Unable to create response: ${responseError.message}`);
-  }
-
-  const completedAt = new Date().toISOString();
-  const { error: completeError } = await supabase
-    .from("attempts")
-    .update({
-      status: "completed",
-      completed_at: completedAt,
-    })
-    .eq("id", attemptId);
-
-  if (completeError) {
-    fail(`Unable to complete attempt: ${completeError.message}`);
-  }
-
-  const { data: completedAttempt, error: completedAttemptError } = await supabase
-    .from("attempts")
-    .select("status, completed_at")
-    .eq("id", attemptId)
-    .single();
-
-  if (completedAttemptError || !completedAttempt) {
-    fail(`Unable to reload completed attempt: ${completedAttemptError?.message ?? "Unknown error"}`);
-  }
-
-  if (completedAttempt.status !== "completed" || !completedAttempt.completed_at) {
-    fail("Attempt was not persisted as completed.");
-  }
-
-  const html = await fetchAssessmentPage(attemptId);
+  const html = await fetchAssessmentPage(completedAttemptId);
   assertIncludes(html, "Assessment completed.", "Expected completed state message to render.");
-  assertIncludes(html, "Your answers are now read-only.", "Expected read-only completed messaging to render.");
+  assertIncludes(
+    html,
+    "Your answers are now read-only.",
+    "Expected read-only completed messaging to render.",
+  );
   assertIncludes(html, "fieldset disabled", "Expected completed page fieldsets to be disabled.");
   assertIncludes(html, "Results", "Expected results section to render for a completed attempt.");
   assertIncludes(html, "Extraversion", "Expected the completed result dimension to render.");
-  assertNotIncludes(html, "Complete assessment", "Completed attempt should not render the completion button.");
+  assertNotIncludes(
+    html,
+    "Answer the remaining",
+    "Completed attempt should not render incomplete completion messaging.",
+  );
   assertNotIncludes(html, "Save progress", "Completed attempt should not render the save button.");
 
   console.log("Completion flow verification passed.");
-  console.log(`Verified attempt id: ${attemptId}`);
+  console.log(`Verified in-progress attempt id: ${inProgressAttemptId}`);
+  console.log(`Verified completed attempt id: ${completedAttemptId}`);
   console.log("Verified behaviors:");
-  console.log("- attempt completion is persisted in attempts.status and attempts.completed_at");
-  console.log("- completed attempts reload as completed, not editable in-progress");
-  console.log("- completed UI renders as read-only, hides save/complete actions, and shows results");
+  console.log("- incomplete in-progress attempt keeps save/resume state and shows completion guidance");
+  console.log("- fully answered required-question attempt reloads as completed and read-only");
+  console.log("- completed attempt renders results and hides save actions");
 }
 
 main().catch((error) => {

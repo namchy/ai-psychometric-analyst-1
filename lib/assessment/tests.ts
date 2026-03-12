@@ -7,6 +7,10 @@ import type {
   Test,
 } from "@/lib/assessment/types";
 import {
+  buildSelectionsFromResponses,
+  type AssessmentCompletionState,
+} from "@/lib/assessment/completion";
+import {
   calculateCompletedAssessmentResults,
   persistCompletedAssessmentResults,
   type CompletedAssessmentResults,
@@ -21,7 +25,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export type ActiveTest = Pick<Test, "id" | "slug" | "name" | "description">;
 export type TestQuestion = Pick<
   Question,
-  "id" | "code" | "text" | "question_order" | "question_type"
+  "id" | "code" | "text" | "question_order" | "question_type" | "is_required"
 >;
 export type TestAnswerOption = Pick<
   AnswerOption,
@@ -71,7 +75,7 @@ export async function getQuestionsForTest(testId: string): Promise<TestQuestion[
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("questions")
-    .select("id, code, text, question_order, question_type")
+    .select("id, code, text, question_order, question_type, is_required")
     .eq("test_id", testId)
     .eq("is_active", true)
     .order("question_order", { ascending: true });
@@ -157,42 +161,13 @@ export async function getAssessmentResumeState(
     throw new Error(`Failed to load responses: ${responsesError.message}`);
   }
 
-  const responses = (responsesData ?? []) as ResumeResponseRecord[];
-  const selections = responses.reduce<AssessmentSelectionsInput>((state, response) => {
-    if (response.response_kind === "text") {
-      if (response.text_value) {
-        state[response.question_id] = response.text_value;
-      }
-
-      return state;
-    }
-
-    if (response.response_kind === "single_choice") {
-      if (response.answer_option_id) {
-        state[response.question_id] = response.answer_option_id;
-      }
-
-      return state;
-    }
-
-    const selectedOptionIds = (response.response_selections ?? []).map(
-      (selection) => selection.answer_option_id,
-    );
-
-    if (selectedOptionIds.length > 0) {
-      state[response.question_id] = selectedOptionIds;
-    }
-
-    return state;
-  }, {});
-
   const resumeAttempt = attempt as ResumeAttemptRecord;
 
   return {
     attemptId: resumeAttempt.id,
     attemptStatus: resumeAttempt.status,
     completedAt: resumeAttempt.completed_at,
-    selections,
+    selections: buildSelectionsFromResponses((responsesData ?? []) as ResumeResponseRecord[]),
   };
 }
 

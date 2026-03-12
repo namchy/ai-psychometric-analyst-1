@@ -1,5 +1,8 @@
 import "server-only";
 
+import {
+  loadAssessmentCompletionState,
+} from "@/lib/assessment/completion-server";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import { calculateCompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ScoringMethod } from "@/lib/assessment/types";
@@ -244,6 +247,12 @@ async function loadReportContext(testId: string, attemptId: string) {
     return null;
   }
 
+  const completionState = await loadAssessmentCompletionState(testId, attemptId);
+
+  if (!completionState.isComplete) {
+    return null;
+  }
+
   const { data: testData, error: testError } = await supabase
     .from("tests")
     .select("id, slug, scoring_method")
@@ -277,8 +286,13 @@ export async function getCompletedAssessmentReport(
     return null;
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  const context = await loadReportContext(testId, attemptId);
+
+  if (!context) {
+    return null;
+  }
+
+  const { data, error } = await context.supabase
     .from("attempt_reports")
     .select("attempt_id, test_slug, generator_type, generated_at, report_snapshot")
     .eq("attempt_id", attemptId)
@@ -333,3 +347,4 @@ export async function persistCompletedAssessmentReport(
 
   return report;
 }
+

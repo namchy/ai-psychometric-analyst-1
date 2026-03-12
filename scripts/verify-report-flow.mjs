@@ -24,6 +24,12 @@ function assertIncludes(haystack, needle, message) {
   }
 }
 
+function assertNotIncludes(haystack, needle, message) {
+  if (haystack.includes(needle)) {
+    fail(message);
+  }
+}
+
 async function fetchAssessmentPage(attemptId) {
   const response = await fetch(APP_URL, {
     headers: {
@@ -60,6 +66,123 @@ async function waitForServer() {
   fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
 }
 
+async function loadRequiredQuestionsWithOptions(supabase, testId) {
+  const { data: questions, error: questionsError } = await supabase
+    .from("questions")
+    .select("id, code, question_type, is_required")
+    .eq("test_id", testId)
+    .eq("is_active", true)
+    .order("question_order", { ascending: true });
+
+  if (questionsError || !questions) {
+    fail(`Unable to load report verification questions: ${questionsError?.message ?? "Unknown error"}`);
+  }
+
+  const requiredQuestions = questions.filter((question) => question.is_required);
+  const nonTextQuestionIds = requiredQuestions
+    .filter((question) => question.question_type !== "text")
+    .map((question) => question.id);
+
+  const { data: answerOptions, error: answerOptionsError } = await supabase
+    .from("answer_options")
+    .select("id, question_id, option_order")
+    .in("question_id", nonTextQuestionIds)
+    .order("question_id", { ascending: true })
+    .order("option_order", { ascending: true });
+
+  if (answerOptionsError || !answerOptions) {
+    fail(
+      `Unable to load report verification options: ${answerOptionsError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  const answerOptionsByQuestionId = answerOptions.reduce((groupedOptions, option) => {
+    const questionOptions = groupedOptions.get(option.question_id) ?? [];
+    questionOptions.push(option);
+    groupedOptions.set(option.question_id, questionOptions);
+    return groupedOptions;
+  }, new Map());
+
+  return { requiredQuestions, answerOptionsByQuestionId };
+}
+
+async function insertAnswerForQuestion(supabase, attemptId, question, answerOptionsByQuestionId, optionIndex = 0) {
+  if (question.question_type === "text") {
+    const { error } = await supabase.from("responses").insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "text",
+      text_value: `Verification response for ${question.code}`,
+    });
+
+    if (error) {
+      fail(`Unable to create text response for ${question.code}: ${error.message}`);
+    }
+
+    return;
+  }
+
+  const options = answerOptionsByQuestionId.get(question.id) ?? [];
+  const selectedOption = options[optionIndex] ?? options[0];
+
+  if (!selectedOption) {
+    fail(`Expected option index ${optionIndex} for ${question.code}.`);
+  }
+
+  if (question.question_type === "single_choice") {
+    const { error } = await supabase.from("responses").insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "single_choice",
+      answer_option_id: selectedOption.id,
+    });
+
+    if (error) {
+      fail(`Unable to create single choice response for ${question.code}: ${error.message}`);
+    }
+
+    return;
+  }
+
+  const { data: responseRow, error: responseError } = await supabase
+    .from("responses")
+    .insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "multiple_choice",
+    })
+    .select("id")
+    .single();
+
+  if (responseError || !responseRow) {
+    fail(`Unable to create multiple choice response for ${question.code}: ${responseError?.message ?? "Unknown error"}`);
+  }
+
+  const { error: selectionError } = await supabase.from("response_selections").insert({
+    response_id: responseRow.id,
+    question_id: question.id,
+    answer_option_id: selectedOption.id,
+  });
+
+  if (selectionError) {
+    fail(`Unable to create multiple choice selection for ${question.code}: ${selectionError.message}`);
+  }
+}
+
+async function createAttempt(supabase, testId, status) {
+  const insert = status === "completed"
+    ? { test_id: testId, status: "completed", completed_at: new Date().toISOString() }
+    : { test_id: testId };
+
+  const { data, error } = await supabase.from("attempts").insert(insert).select("id").single();
+
+  if (error || !data) {
+    fail(`Unable to create ${status} attempt: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.id;
+}
+
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -91,80 +214,61 @@ async function main() {
     fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
   }
 
-  const { data: questions, error: questionsError } = await supabase
-    .from("questions")
-    .select("id, code")
-    .eq("test_id", activeTest.id)
-    .in("code", REPORT_CASES.map((reportCase) => reportCase.code));
+  const { requiredQuestions, answerOptionsByQuestionId } = await loadRequiredQuestionsWithOptions(
+    supabase,
+    activeTest.id,
+  );
+  const reportOverrides = new Map(REPORT_CASES.map((reportCase) => [reportCase.code, reportCase.optionIndex]));
 
-  if (questionsError || !questions) {
-    fail(
-      `Unable to load report verification questions: ${questionsError?.message ?? "Unknown error"}`,
+  const incompleteAttemptId = await createAttempt(supabase, activeTest.id, "completed");
+  const partialQuestion = requiredQuestions.find((question) => question.code === REPORT_CASES[0].code);
+
+  if (!partialQuestion) {
+    fail(`Expected seeded question ${REPORT_CASES[0].code} was not found.`);
+  }
+
+  await insertAnswerForQuestion(
+    supabase,
+    incompleteAttemptId,
+    partialQuestion,
+    answerOptionsByQuestionId,
+    REPORT_CASES[0].optionIndex,
+  );
+
+  const incompleteHtml = await fetchAssessmentPage(incompleteAttemptId);
+  assertNotIncludes(
+    incompleteHtml,
+    "Mock report",
+    "Incomplete completed attempt should not render a report.",
+  );
+
+  const { data: incompleteReportRow, error: incompleteReportError } = await supabase
+    .from("attempt_reports")
+    .select("attempt_id")
+    .eq("attempt_id", incompleteAttemptId)
+    .maybeSingle();
+
+  if (incompleteReportError) {
+    fail(`Unable to inspect incomplete attempt report state: ${incompleteReportError.message}`);
+  }
+
+  if (incompleteReportRow) {
+    fail("Incomplete completed attempt should not persist a report snapshot.");
+  }
+
+  const validAttemptId = await createAttempt(supabase, activeTest.id, "completed");
+
+  for (const question of requiredQuestions) {
+    await insertAnswerForQuestion(
+      supabase,
+      validAttemptId,
+      question,
+      answerOptionsByQuestionId,
+      reportOverrides.get(question.code) ?? 0,
     );
   }
 
-  const questionByCode = new Map(questions.map((question) => [question.code, question]));
-
-  const { data: answerOptions, error: answerOptionsError } = await supabase
-    .from("answer_options")
-    .select("id, question_id, option_order")
-    .in("question_id", questions.map((question) => question.id))
-    .order("question_id", { ascending: true })
-    .order("option_order", { ascending: true });
-
-  if (answerOptionsError || !answerOptions) {
-    fail(
-      `Unable to load report verification options: ${answerOptionsError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  const answerOptionsByQuestionId = answerOptions.reduce((groupedOptions, option) => {
-    const questionOptions = groupedOptions.get(option.question_id) ?? [];
-    questionOptions.push(option);
-    groupedOptions.set(option.question_id, questionOptions);
-    return groupedOptions;
-  }, new Map());
-
-  const { data: attemptData, error: attemptError } = await supabase
-    .from("attempts")
-    .insert({ test_id: activeTest.id, status: "completed", completed_at: new Date().toISOString() })
-    .select("id")
-    .single();
-
-  if (attemptError || !attemptData) {
-    fail(`Unable to create completed attempt: ${attemptError?.message ?? "Unknown error"}`);
-  }
-
-  const attemptId = attemptData.id;
-  const responseRows = REPORT_CASES.map((reportCase) => {
-    const question = questionByCode.get(reportCase.code);
-
-    if (!question) {
-      fail(`Expected seeded question ${reportCase.code} was not found.`);
-    }
-
-    const options = answerOptionsByQuestionId.get(question.id) ?? [];
-    const selectedOption = options[reportCase.optionIndex];
-
-    if (!selectedOption) {
-      fail(`Expected option index ${reportCase.optionIndex} for ${reportCase.code}.`);
-    }
-
-    return {
-      attempt_id: attemptId,
-      question_id: question.id,
-      response_kind: "single_choice",
-      answer_option_id: selectedOption.id,
-    };
-  });
-
-  const { error: responseError } = await supabase.from("responses").insert(responseRows);
-
-  if (responseError) {
-    fail(`Unable to create report verification responses: ${responseError.message}`);
-  }
-
-  const firstHtml = await fetchAssessmentPage(attemptId);
+  const firstHtml = await fetchAssessmentPage(validAttemptId);
   assertIncludes(firstHtml, "Mock report", "Expected mock report section to render.");
   assertIncludes(firstHtml, "Generator:", "Expected mock generator label to render.");
   assertIncludes(firstHtml, "Snapshot generated at", "Expected report timestamp label to render.");
@@ -179,7 +283,7 @@ async function main() {
   const { data: firstReportRow, error: firstReportError } = await supabase
     .from("attempt_reports")
     .select("generated_at, generator_type, report_snapshot")
-    .eq("attempt_id", attemptId)
+    .eq("attempt_id", validAttemptId)
     .single();
 
   if (firstReportError || !firstReportRow) {
@@ -197,14 +301,14 @@ async function main() {
   }
 
   const firstGeneratedAt = firstReportRow.generated_at;
-  const secondHtml = await fetchAssessmentPage(attemptId);
+  const secondHtml = await fetchAssessmentPage(validAttemptId);
   assertIncludes(secondHtml, "Mock report", "Expected mock report section to remain on reload.");
   assertIncludes(secondHtml, "Generator:", "Expected generator label to remain on reload.");
 
   const { data: secondReportRow, error: secondReportError } = await supabase
     .from("attempt_reports")
     .select("generated_at")
-    .eq("attempt_id", attemptId)
+    .eq("attempt_id", validAttemptId)
     .single();
 
   if (secondReportError || !secondReportRow) {
@@ -218,10 +322,11 @@ async function main() {
   }
 
   console.log("Report flow verification passed.");
-  console.log(`Verified attempt id: ${attemptId}`);
+  console.log(`Verified incomplete attempt id: ${incompleteAttemptId}`);
+  console.log(`Verified valid completed attempt id: ${validAttemptId}`);
   console.log("Verified behaviors:");
-  console.log("- completed attempt generates a persisted mock report snapshot on first render");
-  console.log("- report snapshot is stored in attempt_reports with generator_type mock");
+  console.log("- incomplete completed attempt does not generate or render a report");
+  console.log("- fully answered completed attempt generates a persisted mock report snapshot on first render");
   console.log("- reload reuses the same generated_at timestamp instead of regenerating a new report");
 }
 

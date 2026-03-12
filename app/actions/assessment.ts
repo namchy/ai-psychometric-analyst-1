@@ -2,6 +2,9 @@
 
 import { cookies } from "next/headers";
 import {
+  loadAssessmentCompletionState,
+} from "@/lib/assessment/completion-server";
+import {
   persistCompletedAssessmentReport,
   type CompletedAssessmentReport,
 } from "@/lib/assessment/reports";
@@ -145,6 +148,12 @@ function getCompletionFailureMessage(error: unknown): string {
   }
 
   return "Unable to complete the assessment right now. Please try again.";
+}
+
+function getIncompleteRequiredAnswersMessage(missingRequiredQuestionCount: number): string {
+  return missingRequiredQuestionCount === 1
+    ? "Answer the remaining required question before completing the assessment."
+    : `Answer all required questions before completing the assessment. ${missingRequiredQuestionCount} required questions are still unanswered.`;
 }
 
 async function persistAssessmentSelections(
@@ -501,6 +510,17 @@ export async function completeAssessmentAttempt(
       return persistResult;
     }
 
+    const completionState = await loadAssessmentCompletionState(input.testId, persistResult.attemptId);
+
+    if (!completionState.isComplete) {
+      return {
+        ok: false,
+        message: getIncompleteRequiredAnswersMessage(
+          completionState.missingRequiredQuestionIds.length,
+        ),
+      };
+    }
+
     const supabase = createSupabaseAdminClient();
     const completedAt = new Date().toISOString();
     const { data: completedAttemptData, error: completeAttemptError } = await supabase
@@ -566,3 +586,4 @@ export async function completeAssessmentAttempt(
     };
   }
 }
+
