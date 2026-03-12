@@ -5,6 +5,7 @@ import {
   getActiveTest,
   getAnswerOptionsForQuestions,
   getAssessmentResumeState,
+  getCompletedAssessmentReportSnapshot,
   getCompletedAssessmentResults,
   getQuestionsForTest,
 } from "@/lib/assessment/tests";
@@ -50,6 +51,7 @@ export default async function HomePage() {
     );
     const resumeState = await getAssessmentResumeState(test.id, attemptId);
     const results = await getCompletedAssessmentResults(test.id, resumeState.attemptId);
+    const report = await getCompletedAssessmentReportSnapshot(test.id, resumeState.attemptId);
 
     return (
       <main>
@@ -68,6 +70,7 @@ export default async function HomePage() {
             initialCompletedAt={resumeState.completedAt}
             initialSelections={resumeState.selections}
             initialResults={results}
+            initialReport={report}
           />
         </section>
       </main>

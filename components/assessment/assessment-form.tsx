@@ -5,6 +5,7 @@ import {
   completeAssessmentAttempt,
   saveAssessmentProgress,
 } from "@/app/actions/assessment";
+import type { CompletedAssessmentReport } from "@/lib/assessment/reports";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type {
   AssessmentSelectionsInput,
@@ -22,6 +23,7 @@ type AssessmentFormProps = {
   initialAttemptStatus: AttemptStatus | null;
   initialCompletedAt: string | null;
   initialResults: CompletedAssessmentResults | null;
+  initialReport: CompletedAssessmentReport | null;
 };
 
 type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
@@ -52,7 +54,9 @@ function formatDimensionLabel(dimension: string): string {
     .join(" ");
 }
 
-function formatUnscoredReason(reason: CompletedAssessmentResults["unscoredResponses"][number]["reason"]): string {
+function formatUnscoredReason(
+  reason: CompletedAssessmentResults["unscoredResponses"][number]["reason"],
+): string {
   if (reason === "question_type_not_scoreable") {
     return "Recorded but not scored in the current MVP model.";
   }
@@ -69,12 +73,14 @@ export function AssessmentForm({
   initialAttemptStatus,
   initialCompletedAt,
   initialResults,
+  initialReport,
 }: AssessmentFormProps) {
   const [selections, setSelections] = useState<SelectionState>(initialSelections);
   const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<AttemptStatus | null>(initialAttemptStatus);
   const [completedAt, setCompletedAt] = useState<string | null>(initialCompletedAt);
   const [results, setResults] = useState<CompletedAssessmentResults | null>(initialResults);
+  const [report, setReport] = useState<CompletedAssessmentReport | null>(initialReport);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(
     initialAttemptStatus === "completed" ? "completed" : "idle",
   );
@@ -112,6 +118,7 @@ export function AssessmentForm({
       setAttemptStatus("in_progress");
       setCompletedAt(null);
       setResults(null);
+      setReport(null);
       setSaveStatus("saved");
       setSaveMessage(result.message);
     } catch {
@@ -145,6 +152,7 @@ export function AssessmentForm({
       setAttemptStatus("completed");
       setCompletedAt(result.completedAt);
       setResults(result.results);
+      setReport(result.report);
       setSaveStatus("completed");
       setSaveMessage(result.message);
     } catch {
@@ -287,7 +295,7 @@ export function AssessmentForm({
               {results.dimensions.map((dimension) => (
                 <li key={dimension.dimension}>
                   <strong>{formatDimensionLabel(dimension.dimension)}</strong>: raw score {dimension.rawScore}
-                  {` `}from {dimension.scoredQuestionCount} scored question(s).
+                  {" "}from {dimension.scoredQuestionCount} scored question(s).
                 </li>
               ))}
             </ol>
@@ -307,6 +315,55 @@ export function AssessmentForm({
               </ol>
             </>
           ) : null}
+        </section>
+      ) : null}
+
+      {isCompleted && report ? (
+        <section>
+          <h2>Mock report</h2>
+          <p>
+            Generator: {report.generator_type}. Snapshot generated at {new Date(report.generated_at).toLocaleString()}.
+          </p>
+          <p>{report.summary}</p>
+
+          <h3>Dimensions</h3>
+          <ol>
+            {report.dimensions.map((dimension) => (
+              <li key={dimension.dimension_key}>
+                <strong>{formatDimensionLabel(dimension.dimension_key)}</strong>: score {dimension.score}. {dimension.short_interpretation}
+              </li>
+            ))}
+          </ol>
+
+          <h3>Strengths</h3>
+          <ul>
+            {report.strengths.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+
+          <h3>Blind spots</h3>
+          <ul>
+            {report.blind_spots.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+
+          <h3>Work style</h3>
+          <ul>
+            {report.work_style.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+
+          <h3>Development recommendations</h3>
+          <ul>
+            {report.development_recommendations.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+
+          <p>{report.disclaimer}</p>
         </section>
       ) : null}
 

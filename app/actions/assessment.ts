@@ -1,17 +1,21 @@
 "use server";
 
 import { cookies } from "next/headers";
+import {
+  persistCompletedAssessmentReport,
+  type CompletedAssessmentReport,
+} from "@/lib/assessment/reports";
+import {
+  persistCompletedAssessmentResults,
+  type CompletedAssessmentResults,
+} from "@/lib/assessment/scoring";
+import { ASSESSMENT_ATTEMPT_COOKIE_NAME } from "@/lib/assessment/tests";
 import type {
   AssessmentSelectionsInput,
   AssessmentSelectionValue,
   AttemptStatus,
   QuestionType,
 } from "@/lib/assessment/types";
-import {
-  persistCompletedAssessmentResults,
-  type CompletedAssessmentResults,
-} from "@/lib/assessment/scoring";
-import { ASSESSMENT_ATTEMPT_COOKIE_NAME } from "@/lib/assessment/tests";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SaveAssessmentSelectionsInput = {
@@ -38,6 +42,7 @@ type CompleteAssessmentAttemptResult =
       completedAt: string;
       message: string;
       results: CompletedAssessmentResults | null;
+      report: CompletedAssessmentReport | null;
     }
   | {
       ok: false;
@@ -424,22 +429,19 @@ async function persistAssessmentSelections(
     }
 
     const insertedResponses = (insertedResponsesData ?? []) as InsertedResponseRecord[];
-    const responseSelections: ResponseSelectionInsert[] = insertedResponses.flatMap(
-      (response) => {
-        if (response.response_kind !== "multiple_choice") {
-          return [];
-        }
+    const responseSelections: ResponseSelectionInsert[] = insertedResponses.flatMap((response) => {
+      if (response.response_kind !== "multiple_choice") {
+        return [];
+      }
 
-        const selectedOptionIds =
-          multipleChoiceSelectionsByQuestionId.get(response.question_id) ?? [];
+      const selectedOptionIds = multipleChoiceSelectionsByQuestionId.get(response.question_id) ?? [];
 
-        return selectedOptionIds.map((answerOptionId) => ({
-          response_id: response.id,
-          question_id: response.question_id,
-          answer_option_id: answerOptionId,
-        }));
-      },
-    );
+      return selectedOptionIds.map((answerOptionId) => ({
+        response_id: response.id,
+        question_id: response.question_id,
+        answer_option_id: answerOptionId,
+      }));
+    });
 
     if (responseSelections.length > 0) {
       const { error: insertSelectionsError } = await supabase
@@ -539,6 +541,7 @@ export async function completeAssessmentAttempt(
     }
 
     const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
+    const report = await persistCompletedAssessmentReport(input.testId, persistResult.attemptId);
 
     cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, persistResult.attemptId, {
       httpOnly: true,
@@ -552,6 +555,7 @@ export async function completeAssessmentAttempt(
       completedAt: completedAttempt.completed_at ?? completedAt,
       message: "Assessment completed. Your answers are locked.",
       results,
+      report,
     };
   } catch (error) {
     console.error("completeAssessmentAttempt failed", error);

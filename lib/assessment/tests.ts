@@ -11,6 +11,10 @@ import {
   persistCompletedAssessmentResults,
   type CompletedAssessmentResults,
 } from "@/lib/assessment/scoring";
+import {
+  getCompletedAssessmentReport,
+  type CompletedAssessmentReport,
+} from "@/lib/assessment/reports";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -225,4 +229,11 @@ export async function getCompletedAssessmentResults(
   }
 
   return results;
+}
+
+export async function getCompletedAssessmentReportSnapshot(
+  testId: string,
+  attemptId: string | null,
+): Promise<CompletedAssessmentReport | null> {
+  return getCompletedAssessmentReport(testId, attemptId);
 }
