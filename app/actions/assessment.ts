@@ -1,9 +1,14 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import {
   loadAssessmentCompletionState,
 } from "@/lib/assessment/completion-server";
+import {
+  getActiveOrganizationForUser,
+  getParticipantForOrganization,
+} from "@/lib/b2b/organizations";
 import {
   persistCompletedAssessmentReport,
   type CompletedAssessmentReportState,
@@ -20,6 +25,7 @@ import type {
   AttemptStatus,
   QuestionType,
 } from "@/lib/assessment/types";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SaveAssessmentSelectionsInput = {
@@ -99,6 +105,8 @@ type PersistSelectionsResult =
       ok: false;
       message: string;
     };
+
+const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
 
 function isStringArray(value: AssessmentSelectionValue): value is string[] {
   return Array.isArray(value);
@@ -482,6 +490,21 @@ async function persistAssessmentSelections(
   };
 }
 
+async function getTestIdBySlug(testSlug: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("tests")
+    .select("id")
+    .eq("slug", testSlug)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to resolve test: ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
 export async function saveAssessmentProgress(
   input: SaveAssessmentSelectionsInput,
 ): Promise<SaveAssessmentSelectionsResult> {
@@ -505,6 +528,53 @@ export async function saveAssessmentProgress(
       message: getSaveFailureMessage(error),
     };
   }
+}
+
+export async function createB2BAttempt(formData: FormData) {
+  const participantId = String(formData.get("participantId") ?? "").trim();
+  const testSlug = String(formData.get("testSlug") ?? DEFAULT_B2B_TEST_SLUG).trim();
+  const user = await requireAuthenticatedUser();
+
+  if (!participantId) {
+    redirect("/dashboard?error=missing-participant");
+  }
+
+  const organization = await getActiveOrganizationForUser(user.id);
+
+  if (!organization) {
+    redirect("/dashboard?error=no-active-organization");
+  }
+
+  const participant = await getParticipantForOrganization(organization.id, participantId);
+
+  if (!participant) {
+    redirect("/dashboard?error=participant-not-found");
+  }
+
+  const testId = await getTestIdBySlug(testSlug);
+
+  if (!testId) {
+    redirect("/dashboard?error=test-not-found");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempts")
+    .insert({
+      test_id: testId,
+      user_id: user.id,
+      organization_id: organization.id,
+      participant_id: participant.id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    console.error("createB2BAttempt failed", error);
+    redirect("/dashboard?error=create-attempt-failed");
+  }
+
+  redirect(`/dashboard/attempts/${data.id}`);
 }
 
 export async function completeAssessmentAttempt(
@@ -593,6 +663,5 @@ export async function completeAssessmentAttempt(
     };
   }
 }
-
 
 
