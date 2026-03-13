@@ -8,6 +8,7 @@ export type AiReportConfig = {
   promptVersion: string;
   fallbackToMock: boolean;
   openAiApiKey: string | null;
+  openAiTimeoutMs: number;
 };
 
 function normalizeBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
@@ -16,6 +17,20 @@ function normalizeBooleanEnv(value: string | undefined, defaultValue: boolean): 
   }
 
   return value.toLowerCase() === "true";
+}
+
+function normalizeTimeoutEnv(value: string | undefined, defaultValue: number): number {
+  if (!value) {
+    return defaultValue;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return defaultValue;
+  }
+
+  return parsed;
 }
 
 export function getAiReportConfig(): AiReportConfig {
@@ -27,5 +42,6 @@ export function getAiReportConfig(): AiReportConfig {
     promptVersion: process.env.AI_REPORT_PROMPT_VERSION ?? "v1",
     fallbackToMock: normalizeBooleanEnv(process.env.AI_REPORT_FALLBACK_TO_MOCK, true),
     openAiApiKey: process.env.OPENAI_API_KEY ?? null,
+    openAiTimeoutMs: normalizeTimeoutEnv(process.env.AI_REPORT_OPENAI_TIMEOUT_MS, 120000),
   };
 }

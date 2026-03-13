@@ -24,6 +24,10 @@ type OpenAiStructuredReport = {
   disclaimer: string;
 };
 
+type ErrorWithCause = Error & {
+  cause?: unknown;
+};
+
 const OPENAI_REPORT_SCHEMA = {
   name: "assessment_report_v1",
   strict: true,
@@ -177,8 +181,17 @@ async function requestOpenAiReport(
     throw new Error("Missing required env var: AI_REPORT_MODEL");
   }
 
+  const timeoutMs = options.timeoutMs ?? 120000;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 15000);
+  const timeout = setTimeout(() => controller.abort(new Error(`OpenAI report generation timed out after ${timeoutMs}ms.`)), timeoutMs);
+
+  console.info("OpenAI report generation started", {
+    attemptId: input.attemptId,
+    testSlug: input.testSlug,
+    model: options.model,
+    promptVersion: input.promptVersion,
+    timeoutMs,
+  });
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -234,7 +247,33 @@ async function requestOpenAiReport(
       throw new Error("OpenAI response JSON did not match the expected report contract.");
     }
 
-    return normalizeStructuredReport(input, parsed);
+    const report = normalizeStructuredReport(input, parsed);
+
+    console.info("OpenAI report generation succeeded", {
+      attemptId: input.attemptId,
+      testSlug: input.testSlug,
+      model: options.model,
+      timeoutMs,
+      dimensionCount: report.dimensions.length,
+    });
+
+    return report;
+  } catch (error) {
+    const normalizedError = error instanceof Error ? (error as ErrorWithCause) : null;
+
+    console.error("OpenAI report generation failed", {
+      attemptId: input.attemptId,
+      testSlug: input.testSlug,
+      model: options.model,
+      timeoutMs,
+      signalAborted: controller.signal.aborted,
+      errorName: normalizedError?.name ?? typeof error,
+      errorMessage: normalizedError?.message ?? String(error),
+      errorStack: normalizedError?.stack ?? null,
+      errorCause: normalizedError?.cause ?? null,
+    });
+
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

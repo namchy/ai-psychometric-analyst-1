@@ -88,7 +88,13 @@ async function generateReportWithFallback(
     };
   }
 
-  console.error(`Report generation failed for provider ${selectedProvider.type}: ${primaryResult.reason}`);
+  console.error("Report generation failed for primary provider", {
+    provider: selectedProvider.type,
+    attemptId: input.attemptId,
+    testSlug: input.testSlug,
+    reason: primaryResult.reason,
+    fallbackToMockEnabled: config.fallbackToMock,
+  });
 
   if (selectedProvider.type !== "mock" && config.fallbackToMock) {
     const fallbackResult = await mockReportProvider.generateReport(preparedInput);
@@ -100,7 +106,12 @@ async function generateReportWithFallback(
       };
     }
 
-    console.error(`Mock report fallback failed: ${fallbackResult.reason}`);
+    console.error("Report generation fallback failed", {
+      provider: mockReportProvider.type,
+      attemptId: input.attemptId,
+      testSlug: input.testSlug,
+      reason: fallbackResult.reason,
+    });
 
     return {
       status: "unavailable",

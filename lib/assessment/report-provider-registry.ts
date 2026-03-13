@@ -12,6 +12,7 @@ export function createSelectedReportProvider(): ReportProvider {
     return createOpenAiReportProvider({
       apiKey: config.openAiApiKey,
       model: config.model,
+      timeoutMs: config.openAiTimeoutMs,
     });
   }
 
