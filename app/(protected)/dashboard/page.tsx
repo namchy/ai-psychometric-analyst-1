@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { createB2BAttempt } from "@/app/actions/assessment";
 import { logout } from "@/app/actions/auth";
 import {
   getActiveOrganizationForUser,
+  getAttemptsForOrganization,
   getMembershipsForUser,
   getParticipantsForOrganization,
   type MembershipSummary,
@@ -37,6 +39,18 @@ function getDashboardMessage(rawError: string | string[] | undefined): string | 
   }
 }
 
+function formatTimestamp(value: string | null): string {
+  if (!value) {
+    return "N/A";
+  }
+
+  return new Date(value).toLocaleString();
+}
+
+function getAttemptLabel(attemptId: string): string {
+  return attemptId.length > 8 ? `${attemptId.slice(0, 8)}...` : attemptId;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -45,9 +59,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getMembershipsForUser(user.id),
     getActiveOrganizationForUser(user.id),
   ]);
-  const participants = activeOrganization
-    ? await getParticipantsForOrganization(activeOrganization.id)
-    : [];
+  const [participants, attempts] = activeOrganization
+    ? await Promise.all([
+        getParticipantsForOrganization(activeOrganization.id),
+        getAttemptsForOrganization(activeOrganization.id),
+      ])
+    : [[], []];
   const message = getDashboardMessage(searchParams?.error);
 
   return (
@@ -117,6 +134,57 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </div>
               </li>
             ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card stack-sm">
+        <h2>Attempts</h2>
+
+        {!activeOrganization ? (
+          <p>This user does not have an active organization yet, so no organization-scoped attempts are available.</p>
+        ) : attempts.length === 0 ? (
+          <div className="stack-xs">
+            <p>No attempts exist for {activeOrganization.name} yet.</p>
+            <p>Create the first attempt for a participant above to start the protected assessment flow.</p>
+          </div>
+        ) : (
+          <ul>
+            {attempts.map((attempt) => {
+              const detailHref = `/dashboard/attempts/${attempt.id}`;
+              const continueHref = `${detailHref}/run`;
+              const participantName = attempt.participants?.full_name ?? attempt.participant_id ?? "Unknown participant";
+              const participantEmail = attempt.participants?.email ?? "N/A";
+              const testLabel = attempt.tests?.name ?? attempt.tests?.slug ?? "Unknown test";
+              const activityLabel =
+                attempt.status === "completed"
+                  ? `Completed ${formatTimestamp(attempt.completed_at)}`
+                  : `Started ${formatTimestamp(attempt.started_at)}`;
+
+              return (
+                <li key={attempt.id}>
+                  <div className="stack-xs">
+                    <p>
+                      <strong>{participantName}</strong> ({participantEmail})
+                    </p>
+                    <p>
+                      Attempt {getAttemptLabel(attempt.id)} · {testLabel} · {attempt.status}
+                    </p>
+                    <p>{activityLabel}</p>
+                    {attempt.user_id ? <p>Owner: {attempt.user_id}</p> : null}
+                    <p>
+                      <Link href={detailHref}>Open attempt</Link>
+                      {" · "}
+                      {attempt.status === "completed" ? (
+                        <Link href={detailHref}>View results</Link>
+                      ) : (
+                        <Link href={continueHref}>Continue assessment</Link>
+                      )}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

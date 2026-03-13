@@ -28,6 +28,33 @@ export type ParticipantSummary = {
   created_at: string;
 };
 
+export type OrganizationScopedAttemptSummary = {
+  id: string;
+  test_id: string;
+  user_id: string | null;
+  organization_id: string | null;
+  participant_id: string | null;
+  status: "in_progress" | "completed" | "abandoned";
+  started_at: string;
+  completed_at: string | null;
+  tests: {
+    slug: string;
+    name: string;
+  } | null;
+  participants: {
+    id: string;
+    organization_id: string;
+    full_name: string;
+    email: string;
+  } | null;
+  organizations: {
+    name: string;
+    slug: string;
+  } | null;
+};
+
+type AttemptRelation<T> = T | T[] | null;
+
 type MembershipRow = {
   id: string;
   role: MembershipSummary["role"];
@@ -39,9 +66,35 @@ type MembershipRow = {
     | null;
 };
 
+type AttemptRow = {
+  id: string;
+  test_id: string;
+  user_id: string | null;
+  organization_id: string | null;
+  participant_id: string | null;
+  status: OrganizationScopedAttemptSummary["status"];
+  started_at: string;
+  completed_at: string | null;
+  tests: AttemptRelation<OrganizationScopedAttemptSummary["tests"] extends infer T ? NonNullable<T> : never>;
+  participants: AttemptRelation<
+    OrganizationScopedAttemptSummary["participants"] extends infer T ? NonNullable<T> : never
+  >;
+  organizations: AttemptRelation<
+    OrganizationScopedAttemptSummary["organizations"] extends infer T ? NonNullable<T> : never
+  >;
+};
+
 function normalizeOrganization(
   value: MembershipRow["organizations"],
 ): OrganizationSummary | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function normalizeAttemptRelation<T>(value: AttemptRelation<T>): T | null {
   if (!value) {
     return null;
   }
@@ -121,4 +174,85 @@ export async function getParticipantForOrganization(
   }
 
   return (data as ParticipantSummary | null) ?? null;
+}
+
+export async function getAttemptForOrganization(
+  organizationId: string,
+  attemptId: string,
+): Promise<OrganizationScopedAttemptSummary | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempts")
+    .select(
+      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+    )
+    .eq("id", attemptId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load organization attempt: ${error.message}`);
+  }
+
+  const attemptRow = (data as AttemptRow | null) ?? null;
+
+  if (!attemptRow) {
+    return null;
+  }
+
+  const attempt: OrganizationScopedAttemptSummary = {
+    ...attemptRow,
+    tests: normalizeAttemptRelation(attemptRow.tests),
+    participants: normalizeAttemptRelation(attemptRow.participants),
+    organizations: normalizeAttemptRelation(attemptRow.organizations),
+  };
+
+  if (
+    attempt.participants &&
+    attempt.participants.organization_id !== organizationId
+  ) {
+    return null;
+  }
+
+  return attempt;
+}
+
+export async function getAttemptsForOrganization(
+  organizationId: string,
+): Promise<OrganizationScopedAttemptSummary[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempts")
+    .select(
+      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+    )
+    .eq("organization_id", organizationId)
+    .order("started_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load organization attempts: ${error.message}`);
+  }
+
+  return ((data ?? []) as AttemptRow[])
+    .map((attempt) => ({
+      ...attempt,
+      tests: normalizeAttemptRelation(attempt.tests),
+      participants: normalizeAttemptRelation(attempt.participants),
+      organizations: normalizeAttemptRelation(attempt.organizations),
+    }))
+    .filter(
+      (attempt) =>
+        !attempt.participants || attempt.participants.organization_id === organizationId,
+    )
+    .sort((left, right) => {
+      const leftPriority = left.status === "in_progress" ? 0 : 1;
+      const rightPriority = right.status === "in_progress" ? 0 : 1;
+
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+
+      return Date.parse(right.started_at) - Date.parse(left.started_at);
+    });
 }
