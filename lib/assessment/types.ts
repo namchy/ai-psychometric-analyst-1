@@ -54,6 +54,8 @@ export type AnswerOption = {
 export type Attempt = {
   id: string;
   user_id: string | null;
+  organization_id: string | null;
+  participant_id: string | null;
   test_id: string;
   status: AttemptStatus;
   started_at: string;
@@ -83,3 +85,9 @@ export type ResponseSelection = {
 
 export type AssessmentSelectionValue = string | string[];
 export type AssessmentSelectionsInput = Record<string, AssessmentSelectionValue>;
+
+export type AttemptOwnershipContext = {
+  userId?: string | null;
+  organizationId?: string | null;
+  participantId?: string | null;
+};

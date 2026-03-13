@@ -16,6 +16,7 @@ import { ASSESSMENT_ATTEMPT_COOKIE_NAME } from "@/lib/assessment/tests";
 import type {
   AssessmentSelectionsInput,
   AssessmentSelectionValue,
+  AttemptOwnershipContext,
   AttemptStatus,
   QuestionType,
 } from "@/lib/assessment/types";
@@ -25,6 +26,7 @@ export type SaveAssessmentSelectionsInput = {
   attemptId: string | null;
   testId: string;
   selections: AssessmentSelectionsInput;
+  ownershipContext?: AttemptOwnershipContext;
 };
 
 type SaveAssessmentSelectionsResult =
@@ -344,7 +346,12 @@ async function persistAssessmentSelections(
   if (!nextAttemptId) {
     const { data: createdAttemptData, error: createAttemptError } = await supabase
       .from("attempts")
-      .insert({ test_id: input.testId })
+      .insert({
+        test_id: input.testId,
+        user_id: input.ownershipContext?.userId ?? null,
+        organization_id: input.ownershipContext?.organizationId ?? null,
+        participant_id: input.ownershipContext?.participantId ?? null,
+      })
       .select("id")
       .single();
 
@@ -586,4 +593,6 @@ export async function completeAssessmentAttempt(
     };
   }
 }
+
+
 
