@@ -1,10 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
+  completeProtectedAssessmentAttempt,
   completeAssessmentAttempt,
+  saveProtectedAssessmentProgress,
   saveAssessmentProgress,
 } from "@/app/actions/assessment";
+import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState } from "@/lib/assessment/completion";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
@@ -17,6 +21,8 @@ import type {
 import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
 
 type AssessmentFormProps = {
+  executionMode?: "public" | "protected";
+  completionRedirectPath?: string | null;
   testId: string;
   questions: TestQuestion[];
   answerOptionsByQuestionId: Record<string, TestAnswerOption[]>;
@@ -49,23 +55,6 @@ function resetSaveFeedback(
   setSaveMessage(null);
 }
 
-function formatDimensionLabel(dimension: string): string {
-  return dimension
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function formatUnscoredReason(
-  reason: CompletedAssessmentResults["unscoredResponses"][number]["reason"],
-): string {
-  if (reason === "question_type_not_scoreable") {
-    return "Recorded but not scored in the current MVP model.";
-  }
-
-  return "Recorded without numeric scoring values in the current seed data.";
-}
-
 function getIncompleteRequiredAnswersMessage(completionState: AssessmentCompletionState): string {
   const missingCount = completionState.missingRequiredQuestionIds.length;
 
@@ -81,6 +70,8 @@ function getIncompleteRequiredAnswersMessage(completionState: AssessmentCompleti
 }
 
 export function AssessmentForm({
+  executionMode = "public",
+  completionRedirectPath = null,
   testId,
   questions,
   answerOptionsByQuestionId,
@@ -91,6 +82,7 @@ export function AssessmentForm({
   initialResults,
   initialReport,
 }: AssessmentFormProps) {
+  const router = useRouter();
   const [selections, setSelections] = useState<SelectionState>(initialSelections);
   const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<AttemptStatus | null>(initialAttemptStatus);
@@ -118,6 +110,12 @@ export function AssessmentForm({
   const incompleteRequiredAnswersMessage = isCompleted
     ? null
     : getIncompleteRequiredAnswersMessage(completionState);
+  const saveAction =
+    executionMode === "protected" ? saveProtectedAssessmentProgress : saveAssessmentProgress;
+  const completeAction =
+    executionMode === "protected"
+      ? completeProtectedAssessmentAttempt
+      : completeAssessmentAttempt;
 
   async function handleSave() {
     if (isCompleted) {
@@ -128,7 +126,7 @@ export function AssessmentForm({
     setSaveMessage(null);
 
     try {
-      const result = await saveAssessmentProgress({
+      const result = await saveAction({
         attemptId,
         testId,
         selections: getSerializableSelections(selections),
@@ -162,7 +160,7 @@ export function AssessmentForm({
     setSaveMessage(null);
 
     try {
-      const result = await completeAssessmentAttempt({
+      const result = await completeAction({
         attemptId,
         testId,
         selections: getSerializableSelections(selections),
@@ -181,6 +179,11 @@ export function AssessmentForm({
       setReportState(result.report);
       setSaveStatus("completed");
       setSaveMessage(result.message);
+
+      if (executionMode === "protected" && completionRedirectPath) {
+        router.push(completionRedirectPath);
+        router.refresh();
+      }
     } catch {
       setSaveStatus("error");
       setSaveMessage("Unable to complete the assessment right now. Please try again.");
@@ -194,11 +197,11 @@ export function AssessmentForm({
   return (
     <>
       {isCompleted ? (
-        <p>
-          Assessment completed.
-          {completedAt ? ` Completed at ${new Date(completedAt).toLocaleString()}.` : ""} Your
-          answers are now read-only.
-        </p>
+        <CompletedAssessmentSummary
+          completedAt={completedAt}
+          results={results}
+          reportState={reportState}
+        />
       ) : null}
 
       <ol>
@@ -309,98 +312,6 @@ export function AssessmentForm({
 
           {incompleteRequiredAnswersMessage ? <p>{incompleteRequiredAnswersMessage}</p> : null}
         </>
-      ) : null}
-
-      {results ? (
-        <section>
-          <h2>Results</h2>
-          <p>
-            Scoring method: {results.scoringMethod}. Scored responses: {results.scoredResponseCount}.
-          </p>
-
-          {results.dimensions.length > 0 ? (
-            <ol>
-              {results.dimensions.map((dimension) => (
-                <li key={dimension.dimension}>
-                  <strong>{formatDimensionLabel(dimension.dimension)}</strong>: raw score {dimension.rawScore}{" "}
-                  from {dimension.scoredQuestionCount} scored question(s).
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p>No scoreable responses are available for this completed attempt.</p>
-          )}
-
-          {results.unscoredResponses.length > 0 ? (
-            <>
-              <h3>Recorded but unscored responses</h3>
-              <ol>
-                {results.unscoredResponses.map((response) => (
-                  <li key={response.questionId}>
-                    <strong>{response.questionCode}</strong>: {formatUnscoredReason(response.reason)}
-                  </li>
-                ))}
-              </ol>
-            </>
-          ) : null}
-        </section>
-      ) : null}
-
-      {isCompleted && reportState?.status === "ready" ? (
-        <section>
-          <h2>Assessment report</h2>
-          <p>
-            Generator: {reportState.report.generator_type}. Snapshot generated at{" "}
-            {new Date(reportState.report.generated_at).toLocaleString()}.
-          </p>
-          <p>{reportState.report.summary}</p>
-
-          <h3>Dimensions</h3>
-          <ol>
-            {reportState.report.dimensions.map((dimension) => (
-              <li key={dimension.dimension_key}>
-                <strong>{formatDimensionLabel(dimension.dimension_key)}</strong>: score {dimension.score}. {dimension.short_interpretation}
-              </li>
-            ))}
-          </ol>
-
-          <h3>Strengths</h3>
-          <ul>
-            {reportState.report.strengths.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-
-          <h3>Blind spots</h3>
-          <ul>
-            {reportState.report.blind_spots.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-
-          <h3>Work style</h3>
-          <ul>
-            {reportState.report.work_style.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-
-          <h3>Development recommendations</h3>
-          <ul>
-            {reportState.report.development_recommendations.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-
-          <p>{reportState.report.disclaimer}</p>
-        </section>
-      ) : null}
-
-      {isCompleted && reportState?.status === "unavailable" ? (
-        <section>
-          <h2>Assessment report</h2>
-          <p>AI izvjestaj trenutno nije dostupan za ovaj zavrseni attempt.</p>
-        </section>
       ) : null}
 
       {saveMessage ? <p>{saveMessage}</p> : null}

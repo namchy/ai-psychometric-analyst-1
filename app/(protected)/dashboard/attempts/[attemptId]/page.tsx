@@ -1,56 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
+import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import {
+  getCompletedAssessmentReportSnapshot,
+  getCompletedAssessmentResults,
+} from "@/lib/assessment/tests";
+import {
+  getActiveOrganizationForUser,
+  getAttemptForOrganization,
+} from "@/lib/b2b/organizations";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type AttemptDetailPageProps = {
   params: {
     attemptId: string;
   };
 };
-
-type AttemptDetail = {
-  id: string;
-  user_id: string | null;
-  organization_id: string | null;
-  participant_id: string | null;
-  status: "in_progress" | "completed" | "abandoned";
-  started_at: string;
-  tests: {
-    slug: string;
-    name: string;
-  } | null;
-  participants: {
-    full_name: string;
-    email: string;
-  } | null;
-  organizations: {
-    name: string;
-    slug: string;
-  } | null;
-};
-
-async function getAttemptDetailForOrganization(
-  attemptId: string,
-  organizationId: string,
-): Promise<AttemptDetail | null> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("attempts")
-    .select(
-      "id, user_id, organization_id, participant_id, status, started_at, tests(slug, name), participants(full_name, email), organizations(name, slug)",
-    )
-    .eq("id", attemptId)
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load attempt detail: ${error.message}`);
-  }
-
-  return (data as AttemptDetail | null) ?? null;
-}
 
 export const dynamic = "force-dynamic";
 
@@ -62,18 +27,32 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
     notFound();
   }
 
-  const attempt = await getAttemptDetailForOrganization(params.attemptId, organization.id);
+  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
 
   if (!attempt) {
     notFound();
   }
 
+  const [results, report] =
+    attempt.status === "completed"
+      ? await Promise.all([
+          getCompletedAssessmentResults(attempt.test_id, attempt.id),
+          getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id),
+        ])
+      : [null, null];
+
   return (
     <main className="stack-md">
       <section className="card stack-sm">
         <div className="stack-xs">
-          <h1>Attempt created</h1>
-          <p>The B2B attempt was created successfully and is scoped to the active organization.</p>
+          <h1>
+            {attempt.status === "completed" ? "Completed assessment" : "Attempt created"}
+          </h1>
+          <p>
+            {attempt.status === "completed"
+              ? "This completed B2B attempt stays in the protected dashboard and can be reopened here later."
+              : "The B2B attempt was created successfully and is scoped to the active organization."}
+          </p>
         </div>
 
         <dl>
@@ -91,12 +70,32 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
           <dd>{attempt.tests?.name ?? attempt.tests?.slug ?? "Unknown test"}</dd>
           <dt>Ownership user</dt>
           <dd>{attempt.user_id ?? "N/A"}</dd>
+          <dt>Completed at</dt>
+          <dd>{attempt.completed_at ? new Date(attempt.completed_at).toLocaleString() : "N/A"}</dd>
         </dl>
+
+        {attempt.status === "completed" ? (
+          <p>Results and report for this completed attempt are shown below.</p>
+        ) : (
+          <p>
+            <Link href={`/dashboard/attempts/${attempt.id}/run`}>Continue assessment</Link>
+          </p>
+        )}
 
         <p>
           <Link href="/dashboard">Back to dashboard</Link>
         </p>
       </section>
+
+      {attempt.status === "completed" ? (
+        <section className="card stack-sm">
+          <CompletedAssessmentSummary
+            completedAt={attempt.completed_at}
+            results={results}
+            reportState={report}
+          />
+        </section>
+      ) : null}
     </main>
   );
 }
