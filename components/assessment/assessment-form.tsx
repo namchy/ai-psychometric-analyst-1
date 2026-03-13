@@ -7,7 +7,7 @@ import {
 } from "@/app/actions/assessment";
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState } from "@/lib/assessment/completion";
-import type { CompletedAssessmentReport } from "@/lib/assessment/reports";
+import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type {
   AssessmentSelectionsInput,
@@ -25,7 +25,7 @@ type AssessmentFormProps = {
   initialAttemptStatus: AttemptStatus | null;
   initialCompletedAt: string | null;
   initialResults: CompletedAssessmentResults | null;
-  initialReport: CompletedAssessmentReport | null;
+  initialReport: CompletedAssessmentReportState | null;
 };
 
 type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
@@ -96,7 +96,9 @@ export function AssessmentForm({
   const [attemptStatus, setAttemptStatus] = useState<AttemptStatus | null>(initialAttemptStatus);
   const [completedAt, setCompletedAt] = useState<string | null>(initialCompletedAt);
   const [results, setResults] = useState<CompletedAssessmentResults | null>(initialResults);
-  const [report, setReport] = useState<CompletedAssessmentReport | null>(initialReport);
+  const [reportState, setReportState] = useState<CompletedAssessmentReportState | null>(
+    initialReport,
+  );
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(
     initialAttemptStatus === "completed" ? "completed" : "idle",
   );
@@ -142,7 +144,7 @@ export function AssessmentForm({
       setAttemptStatus("in_progress");
       setCompletedAt(null);
       setResults(null);
-      setReport(null);
+      setReportState(null);
       setSaveStatus("saved");
       setSaveMessage(result.message);
     } catch {
@@ -176,7 +178,7 @@ export function AssessmentForm({
       setAttemptStatus("completed");
       setCompletedAt(result.completedAt);
       setResults(result.results);
-      setReport(result.report);
+      setReportState(result.report);
       setSaveStatus("completed");
       setSaveMessage(result.message);
     } catch {
@@ -344,17 +346,18 @@ export function AssessmentForm({
         </section>
       ) : null}
 
-      {isCompleted && report ? (
+      {isCompleted && reportState?.status === "ready" ? (
         <section>
           <h2>Assessment report</h2>
           <p>
-            Generator: {report.generator_type}. Snapshot generated at {new Date(report.generated_at).toLocaleString()}.
+            Generator: {reportState.report.generator_type}. Snapshot generated at{" "}
+            {new Date(reportState.report.generated_at).toLocaleString()}.
           </p>
-          <p>{report.summary}</p>
+          <p>{reportState.report.summary}</p>
 
           <h3>Dimensions</h3>
           <ol>
-            {report.dimensions.map((dimension) => (
+            {reportState.report.dimensions.map((dimension) => (
               <li key={dimension.dimension_key}>
                 <strong>{formatDimensionLabel(dimension.dimension_key)}</strong>: score {dimension.score}. {dimension.short_interpretation}
               </li>
@@ -363,33 +366,40 @@ export function AssessmentForm({
 
           <h3>Strengths</h3>
           <ul>
-            {report.strengths.map((item) => (
+            {reportState.report.strengths.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
           <h3>Blind spots</h3>
           <ul>
-            {report.blind_spots.map((item) => (
+            {reportState.report.blind_spots.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
           <h3>Work style</h3>
           <ul>
-            {report.work_style.map((item) => (
+            {reportState.report.work_style.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
           <h3>Development recommendations</h3>
           <ul>
-            {report.development_recommendations.map((item) => (
+            {reportState.report.development_recommendations.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
-          <p>{report.disclaimer}</p>
+          <p>{reportState.report.disclaimer}</p>
+        </section>
+      ) : null}
+
+      {isCompleted && reportState?.status === "unavailable" ? (
+        <section>
+          <h2>Assessment report</h2>
+          <p>AI izvjestaj trenutno nije dostupan za ovaj zavrseni attempt.</p>
         </section>
       ) : null}
 

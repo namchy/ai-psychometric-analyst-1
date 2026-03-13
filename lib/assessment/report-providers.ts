@@ -4,6 +4,7 @@ import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ScoringMethod } from "@/lib/assessment/types";
 
 export type ReportGeneratorType = "mock" | "openai";
+export type AttemptReportStatus = "ready" | "unavailable";
 
 export type CompletedAssessmentReportDimension = {
   dimension_key: string;
@@ -115,4 +116,8 @@ export function isCompletedAssessmentReport(value: unknown): value is CompletedA
     isStringArray(report.development_recommendations) &&
     typeof report.disclaimer === "string"
   );
+}
+
+export function isAttemptReportStatus(value: unknown): value is AttemptReportStatus {
+  return value === "ready" || value === "unavailable";
 }

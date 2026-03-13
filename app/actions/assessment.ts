@@ -6,7 +6,7 @@ import {
 } from "@/lib/assessment/completion-server";
 import {
   persistCompletedAssessmentReport,
-  type CompletedAssessmentReport,
+  type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
 import {
   persistCompletedAssessmentResults,
@@ -45,7 +45,7 @@ type CompleteAssessmentAttemptResult =
       completedAt: string;
       message: string;
       results: CompletedAssessmentResults | null;
-      report: CompletedAssessmentReport | null;
+      report: CompletedAssessmentReportState | null;
     }
   | {
       ok: false;

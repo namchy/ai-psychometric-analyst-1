@@ -242,24 +242,62 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
 
 async function assertUnavailableBehavior(supabase, validAttemptId) {
   const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertNotIncludes(firstHtml, "Assessment report", "Unavailable report should not render a report section.");
+  assertIncludes(firstHtml, "Assessment report", "Unavailable report should still render a stable report section.");
+  assertIncludes(
+    firstHtml,
+    "AI izvjestaj trenutno nije dostupan za ovaj zavrseni attempt.",
+    "Unavailable report message should render.",
+  );
 
   const { data: firstReportRow, error: firstReportError } = await supabase
     .from("attempt_reports")
-    .select("attempt_id")
+    .select("report_status, generator_type, generated_at, report_snapshot, failure_code")
     .eq("attempt_id", validAttemptId)
-    .maybeSingle();
+    .single();
 
   if (firstReportError) {
     fail(`Unable to inspect unavailable report state: ${firstReportError.message}`);
   }
 
-  if (firstReportRow) {
-    fail("Unavailable report scenario should not persist a report snapshot.");
+  if (firstReportRow.report_status !== "unavailable") {
+    fail(`Expected unavailable report status, received ${firstReportRow.report_status}.`);
   }
 
+  if (firstReportRow.generator_type !== EXPECTED_REPORT_GENERATOR) {
+    fail(`Expected unavailable generator_type ${EXPECTED_REPORT_GENERATOR}, received ${firstReportRow.generator_type}.`);
+  }
+
+  if (firstReportRow.report_snapshot !== null) {
+    fail("Unavailable report scenario should persist a null report snapshot.");
+  }
+
+  if (firstReportRow.failure_code !== "report_generation_failed") {
+    fail(`Expected failure_code report_generation_failed, received ${firstReportRow.failure_code}.`);
+  }
+
+  const firstGeneratedAt = firstReportRow.generated_at;
   const secondHtml = await fetchAssessmentPage(validAttemptId);
-  assertNotIncludes(secondHtml, "Assessment report", "Unavailable report should stay absent on reload.");
+  assertIncludes(
+    secondHtml,
+    "AI izvjestaj trenutno nije dostupan za ovaj zavrseni attempt.",
+    "Unavailable report message should remain stable on reload.",
+  );
+
+  const { data: secondReportRow, error: secondReportError } = await supabase
+    .from("attempt_reports")
+    .select("generated_at")
+    .eq("attempt_id", validAttemptId)
+    .single();
+
+  if (secondReportError || !secondReportRow) {
+    fail(
+      `Unable to reload unavailable report snapshot: ${secondReportError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  if (secondReportRow.generated_at !== firstGeneratedAt) {
+    fail("Expected unavailable report marker to stay stable on reload without regeneration.");
+  }
 }
 
 async function main() {
@@ -371,3 +409,4 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
+

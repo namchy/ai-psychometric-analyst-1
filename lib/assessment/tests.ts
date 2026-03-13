@@ -17,7 +17,7 @@ import {
 } from "@/lib/assessment/scoring";
 import {
   getCompletedAssessmentReport,
-  type CompletedAssessmentReport,
+  type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -209,6 +209,7 @@ export async function getCompletedAssessmentResults(
 export async function getCompletedAssessmentReportSnapshot(
   testId: string,
   attemptId: string | null,
-): Promise<CompletedAssessmentReport | null> {
+): Promise<CompletedAssessmentReportState | null> {
   return getCompletedAssessmentReport(testId, attemptId);
 }
+

@@ -6,11 +6,15 @@ import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-prov
 import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
 import { createSelectedReportProvider } from "@/lib/assessment/report-provider-registry";
 import type {
+  AttemptReportStatus,
   CompletedAssessmentReport,
   CompletedAssessmentReportRequest,
   ReportGeneratorType,
 } from "@/lib/assessment/report-providers";
-import { isCompletedAssessmentReport } from "@/lib/assessment/report-providers";
+import {
+  isAttemptReportStatus,
+  isCompletedAssessmentReport,
+} from "@/lib/assessment/report-providers";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import { calculateCompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ScoringMethod } from "@/lib/assessment/types";
@@ -21,6 +25,9 @@ type AttemptReportRow = {
   test_slug: string;
   generator_type: ReportGeneratorType;
   generated_at: string;
+  report_status: AttemptReportStatus;
+  failure_code: string | null;
+  failure_reason: string | null;
   report_snapshot: unknown;
 };
 
@@ -41,16 +48,44 @@ type LoadedReportContext = {
   results: CompletedAssessmentResults;
 };
 
+export type CompletedAssessmentReportState =
+  | {
+      status: "ready";
+      report: CompletedAssessmentReport;
+    }
+  | {
+      status: "unavailable";
+      generatorType: ReportGeneratorType;
+      generatedAt: string;
+      failureCode: string | null;
+      failureReason: string | null;
+    };
+
+type ReportGenerationResult =
+  | {
+      status: "ready";
+      report: CompletedAssessmentReport;
+    }
+  | {
+      status: "unavailable";
+      generatorType: ReportGeneratorType;
+      failureCode: string;
+      failureReason: string;
+    };
+
 async function generateReportWithFallback(
   input: CompletedAssessmentReportRequest,
-): Promise<CompletedAssessmentReport | null> {
+): Promise<ReportGenerationResult> {
   const config = getAiReportConfig();
   const selectedProvider = createSelectedReportProvider();
   const preparedInput = buildPreparedReportGenerationInput(input);
   const primaryResult = await selectedProvider.generateReport(preparedInput);
 
   if (primaryResult.ok) {
-    return primaryResult.report;
+    return {
+      status: "ready",
+      report: primaryResult.report,
+    };
   }
 
   console.error(`Report generation failed for provider ${selectedProvider.type}: ${primaryResult.reason}`);
@@ -59,13 +94,28 @@ async function generateReportWithFallback(
     const fallbackResult = await mockReportProvider.generateReport(preparedInput);
 
     if (fallbackResult.ok) {
-      return fallbackResult.report;
+      return {
+        status: "ready",
+        report: fallbackResult.report,
+      };
     }
 
     console.error(`Mock report fallback failed: ${fallbackResult.reason}`);
+
+    return {
+      status: "unavailable",
+      generatorType: mockReportProvider.type,
+      failureCode: "report_generation_failed",
+      failureReason: fallbackResult.reason,
+    };
   }
 
-  return null;
+  return {
+    status: "unavailable",
+    generatorType: selectedProvider.type,
+    failureCode: "report_generation_failed",
+    failureReason: primaryResult.reason,
+  };
 }
 
 async function loadReportContext(testId: string, attemptId: string): Promise<LoadedReportContext | null> {
@@ -122,10 +172,12 @@ async function loadReportContext(testId: string, attemptId: string): Promise<Loa
 async function loadPersistedReportSnapshot(
   context: LoadedReportContext,
   attemptId: string,
-): Promise<CompletedAssessmentReport | null> {
+): Promise<CompletedAssessmentReportState | null> {
   const { data, error } = await context.supabase
     .from("attempt_reports")
-    .select("attempt_id, test_slug, generator_type, generated_at, report_snapshot")
+    .select(
+      "attempt_id, test_slug, generator_type, generated_at, report_status, failure_code, failure_reason, report_snapshot",
+    )
     .eq("attempt_id", attemptId)
     .maybeSingle();
 
@@ -135,17 +187,38 @@ async function loadPersistedReportSnapshot(
 
   const row = data as AttemptReportRow | null;
 
-  if (row && isCompletedAssessmentReport(row.report_snapshot)) {
-    return row.report_snapshot;
+  if (!row) {
+    return null;
   }
 
-  return null;
+  if (!isAttemptReportStatus(row.report_status)) {
+    throw new Error(`Invalid attempt report status for attempt ${attemptId}.`);
+  }
+
+  if (row.report_status === "ready") {
+    if (!isCompletedAssessmentReport(row.report_snapshot)) {
+      throw new Error(`Attempt report ${attemptId} is marked ready without a valid snapshot.`);
+    }
+
+    return {
+      status: "ready",
+      report: row.report_snapshot,
+    };
+  }
+
+  return {
+    status: "unavailable",
+    generatorType: row.generator_type,
+    generatedAt: row.generated_at,
+    failureCode: row.failure_code,
+    failureReason: row.failure_reason,
+  };
 }
 
 export async function getCompletedAssessmentReport(
   testId: string,
   attemptId: string | null,
-): Promise<CompletedAssessmentReport | null> {
+): Promise<CompletedAssessmentReportState | null> {
   if (!attemptId) {
     return null;
   }
@@ -169,7 +242,7 @@ export async function persistCompletedAssessmentReport(
   testId: string,
   attemptId: string,
   existingContext?: LoadedReportContext,
-): Promise<CompletedAssessmentReport | null> {
+): Promise<CompletedAssessmentReportState | null> {
   const context = existingContext ?? (await loadReportContext(testId, attemptId));
 
   if (!context) {
@@ -182,7 +255,7 @@ export async function persistCompletedAssessmentReport(
     return existingReport;
   }
 
-  const report = await generateReportWithFallback({
+  const generationResult = await generateReportWithFallback({
     attemptId,
     testSlug: context.test.slug,
     scoringMethod: context.test.scoring_method,
@@ -190,18 +263,33 @@ export async function persistCompletedAssessmentReport(
     results: context.results,
   });
 
-  if (!report) {
-    return null;
-  }
+  const persistedGeneratedAt =
+    generationResult.status === "ready"
+      ? generationResult.report.generated_at
+      : new Date().toISOString();
 
   const { error } = await context.supabase.from("attempt_reports").upsert(
-    {
-      attempt_id: attemptId,
-      test_slug: report.test_slug,
-      generator_type: report.generator_type,
-      generated_at: report.generated_at,
-      report_snapshot: report,
-    },
+    generationResult.status === "ready"
+      ? {
+          attempt_id: attemptId,
+          test_slug: generationResult.report.test_slug,
+          generator_type: generationResult.report.generator_type,
+          generated_at: persistedGeneratedAt,
+          report_status: "ready",
+          failure_code: null,
+          failure_reason: null,
+          report_snapshot: generationResult.report,
+        }
+      : {
+          attempt_id: attemptId,
+          test_slug: context.test.slug,
+          generator_type: generationResult.generatorType,
+          generated_at: persistedGeneratedAt,
+          report_status: "unavailable",
+          failure_code: generationResult.failureCode,
+          failure_reason: generationResult.failureReason,
+          report_snapshot: null,
+        },
     {
       onConflict: "attempt_id",
     },
@@ -211,7 +299,17 @@ export async function persistCompletedAssessmentReport(
     throw new Error(`Failed to persist attempt report: ${error.message}`);
   }
 
-  return report;
+  if (generationResult.status === "ready") {
+    return generationResult;
+  }
+
+  return {
+    status: "unavailable",
+    generatorType: generationResult.generatorType,
+    generatedAt: persistedGeneratedAt,
+    failureCode: generationResult.failureCode,
+    failureReason: generationResult.failureReason,
+  };
 }
 
 export type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
