@@ -7,6 +7,7 @@ import {
 } from "@/lib/assessment/completion-server";
 import {
   getActiveOrganizationForUser,
+  getAttemptForOrganization,
   getParticipantForOrganization,
 } from "@/lib/b2b/organizations";
 import {
@@ -106,6 +107,11 @@ type PersistSelectionsResult =
       message: string;
     };
 
+type PersistAssessmentSelectionsOptions = {
+  persistAttemptCookie?: boolean;
+  requireProtectedOwnership?: boolean;
+};
+
 const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
 
 function isStringArray(value: AssessmentSelectionValue): value is string[] {
@@ -168,6 +174,7 @@ function getIncompleteRequiredAnswersMessage(missingRequiredQuestionCount: numbe
 
 async function persistAssessmentSelections(
   input: SaveAssessmentSelectionsInput,
+  options: PersistAssessmentSelectionsOptions = {},
 ): Promise<PersistSelectionsResult> {
   if (!input.testId) {
     return { ok: false, message: "Missing test id." };
@@ -318,7 +325,29 @@ async function persistAssessmentSelections(
 
   let nextAttemptId = input.attemptId;
 
+  if (options.requireProtectedOwnership && !nextAttemptId) {
+    return {
+      ok: false,
+      message: "Protected assessment execution requires an existing attempt.",
+    };
+  }
+
   if (nextAttemptId) {
+    if (options.requireProtectedOwnership) {
+      const user = await requireAuthenticatedUser();
+      const organization = await getActiveOrganizationForUser(user.id);
+
+      if (!organization) {
+        return { ok: false, message: "No active organization is available for this user." };
+      }
+
+      const ownedAttempt = await getAttemptForOrganization(organization.id, nextAttemptId);
+
+      if (!ownedAttempt || ownedAttempt.test_id !== input.testId) {
+        return { ok: false, message: "This assessment attempt is not available in the active organization." };
+      }
+    }
+
     const { data: existingAttemptData, error: existingAttemptError } = await supabase
       .from("attempts")
       .select("id, status, completed_at")
@@ -352,6 +381,13 @@ async function persistAssessmentSelections(
   }
 
   if (!nextAttemptId) {
+    if (options.requireProtectedOwnership) {
+      return {
+        ok: false,
+        message: "Protected assessment execution requires an existing attempt.",
+      };
+    }
+
     const { data: createdAttemptData, error: createAttemptError } = await supabase
       .from("attempts")
       .insert({
@@ -478,11 +514,13 @@ async function persistAssessmentSelections(
     }
   }
 
-  cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, nextAttemptId, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-  });
+  if (options.persistAttemptCookie !== false) {
+    cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, nextAttemptId, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
 
   return {
     ok: true,
@@ -522,6 +560,34 @@ export async function saveAssessmentProgress(
     };
   } catch (error) {
     console.error("saveAssessmentProgress failed", error);
+
+    return {
+      ok: false,
+      message: getSaveFailureMessage(error),
+    };
+  }
+}
+
+export async function saveProtectedAssessmentProgress(
+  input: SaveAssessmentSelectionsInput,
+): Promise<SaveAssessmentSelectionsResult> {
+  try {
+    const result = await persistAssessmentSelections(input, {
+      persistAttemptCookie: false,
+      requireProtectedOwnership: true,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      attemptId: result.attemptId,
+      message: "Progress saved.",
+    };
+  } catch (error) {
+    console.error("saveProtectedAssessmentProgress failed", error);
 
     return {
       ok: false,
@@ -664,4 +730,86 @@ export async function completeAssessmentAttempt(
   }
 }
 
+export async function completeProtectedAssessmentAttempt(
+  input: SaveAssessmentSelectionsInput,
+): Promise<CompleteAssessmentAttemptResult> {
+  try {
+    const persistResult = await persistAssessmentSelections(input, {
+      persistAttemptCookie: false,
+      requireProtectedOwnership: true,
+    });
 
+    if (!persistResult.ok) {
+      return persistResult;
+    }
+
+    const completionState = await loadAssessmentCompletionState(input.testId, persistResult.attemptId);
+
+    if (!completionState.isComplete) {
+      return {
+        ok: false,
+        message: getIncompleteRequiredAnswersMessage(
+          completionState.missingRequiredQuestionIds.length,
+        ),
+      };
+    }
+
+    const supabase = createSupabaseAdminClient();
+    const completedAt = new Date().toISOString();
+    const { data: completedAttemptData, error: completeAttemptError } = await supabase
+      .from("attempts")
+      .update({
+        status: "completed",
+        completed_at: completedAt,
+      })
+      .eq("id", persistResult.attemptId)
+      .eq("test_id", input.testId)
+      .eq("status", "in_progress")
+      .select("id, status, completed_at")
+      .maybeSingle();
+
+    if (completeAttemptError) {
+      return { ok: false, message: "Unable to complete attempt." };
+    }
+
+    let completedAttempt: AttemptRecord | null = completedAttemptData as AttemptRecord | null;
+
+    if (!completedAttempt) {
+      const { data: existingAttemptData, error: existingAttemptError } = await supabase
+        .from("attempts")
+        .select("id, status, completed_at")
+        .eq("id", persistResult.attemptId)
+        .eq("test_id", input.testId)
+        .maybeSingle();
+
+      if (existingAttemptError) {
+        return { ok: false, message: "Unable to confirm attempt completion." };
+      }
+
+      if ((existingAttemptData as AttemptRecord | null)?.status !== "completed") {
+        return { ok: false, message: "Unable to complete attempt." };
+      }
+
+      completedAttempt = existingAttemptData as AttemptRecord;
+    }
+
+    const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
+    const report = await persistCompletedAssessmentReport(input.testId, persistResult.attemptId);
+
+    return {
+      ok: true,
+      attemptId: persistResult.attemptId,
+      completedAt: completedAttempt.completed_at ?? completedAt,
+      message: "Assessment completed. Your answers are locked.",
+      results,
+      report,
+    };
+  } catch (error) {
+    console.error("completeProtectedAssessmentAttempt failed", error);
+
+    return {
+      ok: false,
+      message: getCompletionFailureMessage(error),
+    };
+  }
+}
