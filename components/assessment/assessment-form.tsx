@@ -206,9 +206,6 @@ export function AssessmentForm({
       : completeAssessmentAttempt;
   const currentQuestion = questions[currentQuestionIndex] ?? null;
   const currentSelection = currentQuestion ? selections[currentQuestion.id] : undefined;
-  const answeredQuestionCount = questions.filter((question) =>
-    isQuestionAnswered(question.question_type, selections[question.id]),
-  ).length;
   const progressPercent =
     questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
   const isInteractionLocked = isBusy || requestInFlightRef.current;
@@ -424,9 +421,7 @@ export function AssessmentForm({
           <div className="assessment-run-hero__content">
             <div className="assessment-run-hero__intro">
               <div className="assessment-run-hero__identity stack-sm">
-                <p className="assessment-eyebrow">Zaštićeni assessment tok</p>
-
-                <div className="stack-xs">
+                <div className="assessment-run-hero__title-group">
                   <h1>{assessmentDisplayName ?? "Procjena"}</h1>
                   {participantDisplayName ? (
                     <p className="assessment-run-hero__participant">{participantDisplayName}</p>
@@ -434,19 +429,12 @@ export function AssessmentForm({
                 </div>
               </div>
 
-              <div className="assessment-progress">
+              <div className="assessment-progress" aria-label="Trenutni napredak">
                 <div className="assessment-progress__summary" aria-label="Trenutni napredak">
                   <div className="assessment-progress__metric">
-                    <span className="assessment-progress__metric-label">Trenutno</span>
-                    <p className="assessment-progress__meta">
+                    <span className="assessment-progress__metric-label">Progres</span>
+                    <p className="assessment-progress__metric-value">
                       Pitanje {currentQuestionIndex + 1} od {questions.length}
-                    </p>
-                  </div>
-
-                  <div className="assessment-progress__metric">
-                    <span className="assessment-progress__metric-label">Status</span>
-                    <p className="assessment-progress__subtle">
-                      Odgovoreno {answeredQuestionCount} od {questions.length}
                     </p>
                   </div>
                 </div>
@@ -458,10 +446,6 @@ export function AssessmentForm({
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
-
-                  <p className="assessment-progress__caption">
-                    Napredak kroz procjenu se čuva automatski nakon svakog odabira.
-                  </p>
                 </div>
               </div>
             </div>
@@ -616,7 +600,7 @@ export function AssessmentForm({
 
         <div className={stepActionsClassName}>
           <button
-            className="button-secondary"
+            className="button-secondary assessment-step-actions__button assessment-step-actions__button--ghost"
             type="button"
             onClick={handleBack}
             disabled={isInteractionLocked || currentQuestionIndex === 0}
@@ -625,7 +609,7 @@ export function AssessmentForm({
           </button>
 
           <button
-            className="button-secondary"
+            className="button-secondary assessment-step-actions__button assessment-step-actions__button--save"
             type="button"
             onClick={handleSave}
             disabled={isInteractionLocked}
@@ -634,7 +618,12 @@ export function AssessmentForm({
           </button>
 
           {shouldShowContinueButton ? (
-            <button type="button" onClick={handleAdvance} disabled={isInteractionLocked}>
+            <button
+              className="assessment-step-actions__button assessment-step-actions__button--primary"
+              type="button"
+              onClick={handleAdvance}
+              disabled={isInteractionLocked}
+            >
               {saveStatus === "completing"
                 ? "Završavanje..."
                 : isLastQuestion
