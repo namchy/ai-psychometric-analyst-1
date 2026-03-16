@@ -62,21 +62,35 @@ export default async function ProtectedAttemptRunPage({
   const report = await getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id);
 
   return (
-    <main className="stack-md">
-      <section className="card stack-sm">
-        <div className="stack-xs">
-          <h1>{attempt.tests?.name ?? "Assessment"}</h1>
-          <p>
-            Attempt for {attempt.participants?.full_name ?? attempt.participant_id} in{" "}
-            {attempt.organizations?.name ?? organization.name}.
-          </p>
-          <p>Attempt ID: {attempt.id}</p>
+    <main className="assessment-run-page stack-md">
+      <section className="assessment-run-hero">
+        <div className="assessment-run-hero__content stack-sm">
+          <div className="stack-xs">
+            <p className="assessment-eyebrow">Protected assessment run</p>
+            <h1>{attempt.tests?.name ?? "Assessment"}</h1>
+            <p>
+              Candidate: {attempt.participants?.full_name ?? attempt.participant_id}
+            </p>
+            <p>Organization: {attempt.organizations?.name ?? organization.name}</p>
+          </div>
+
+          <dl className="assessment-run-hero__meta">
+            <div>
+              <dt>Status</dt>
+              <dd>{attempt.status}</dd>
+            </div>
+            <div>
+              <dt>Attempt ID</dt>
+              <dd>{attempt.id}</dd>
+            </div>
+          </dl>
         </div>
       </section>
 
-      <section className="card">
+      <section className="assessment-run-shell">
         <AssessmentForm
           executionMode="protected"
+          layoutMode="step"
           completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
           testId={attempt.test_id}
           questions={questions}
