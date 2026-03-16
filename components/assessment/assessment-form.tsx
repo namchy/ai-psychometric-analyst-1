@@ -442,8 +442,14 @@ export function AssessmentForm({
         </div>
 
         <section className="assessment-step-card">
-          <div className="assessment-step-card__header stack-sm">
-            <div className="stack-xs">
+          <div
+            className="assessment-step-card__header stack-sm"
+          >
+            <div
+              className={`assessment-step-card__question-region stack-xs${
+                isLikertQuestion ? " assessment-step-card__question-region--stable" : ""
+              }`}
+            >
               <p className="assessment-step-card__kicker">
                 Korak {currentQuestionIndex + 1}
               </p>

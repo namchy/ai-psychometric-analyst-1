@@ -215,6 +215,21 @@ button:disabled {
   box-shadow: 0 24px 60px -48px rgba(15, 23, 42, 0.45);
 }
 
+.assessment-step-card__header {
+  display: flex;
+  flex-direction: column;
+}
+
+.assessment-step-card__question-region {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.assessment-step-card__question-region--stable {
+  min-height: clamp(6.25rem, 11vw, 7.5rem);
+}
+
 .assessment-step-card__header h3 {
   margin: 0;
   font-size: clamp(1.4rem, 4vw, 2rem);
@@ -600,5 +615,9 @@ button:disabled {
   .assessment-likert-option {
     min-height: 3.75rem;
     border-radius: 16px;
+  }
+
+  .assessment-step-card__question-region--stable {
+    min-height: 5.5rem;
   }
 }
