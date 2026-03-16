@@ -265,7 +265,7 @@ async function main() {
   );
   assertIncludes(html, "fieldset disabled", "Expected completed page fieldsets to be disabled.");
   assertIncludes(html, "Rezultati", "Expected results section to render for a completed attempt.");
-  assertIncludes(html, "Extraversion", "Expected the completed result dimension to render.");
+  assertIncludes(html, "Ekstraverzija", "Expected the completed result dimension to render.");
   assertNotIncludes(
     html,
     "Answer the remaining",

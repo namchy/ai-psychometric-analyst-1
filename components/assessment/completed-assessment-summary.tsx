@@ -1,4 +1,5 @@
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
+import { formatDimensionLabel } from "@/lib/assessment/result-display";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 
 type CompletedAssessmentSummaryProps = {
@@ -6,13 +7,6 @@ type CompletedAssessmentSummaryProps = {
   results: CompletedAssessmentResults | null;
   reportState: CompletedAssessmentReportState | null;
 };
-
-function formatDimensionLabel(dimension: string): string {
-  return dimension
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function formatUnscoredReason(
   reason: CompletedAssessmentResults["unscoredResponses"][number]["reason"],

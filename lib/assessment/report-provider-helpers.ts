@@ -1,5 +1,6 @@
 import "server-only";
 
+export { formatDimensionLabel } from "@/lib/assessment/result-display";
 import type {
   AiReportPromptInput,
   CompletedAssessmentReportRequest,
@@ -8,13 +9,6 @@ import type {
 
 function roundScore(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-export function formatDimensionLabel(dimensionKey: string): string {
-  return dimensionKey
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 export function getAverageScore(rawScore: number, scoredQuestionCount: number): number {

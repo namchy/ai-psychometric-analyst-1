@@ -7,11 +7,11 @@ const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 const HEALTH_URL = `${APP_URL}/api/health`;
 const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
 const SCORING_CASES = [
-  { code: "E01", optionIndex: 4, expectedRaw: 5, expectedScored: 5, dimension: "Extraversion" },
-  { code: "A01", optionIndex: 3, expectedRaw: 4, expectedScored: 2, dimension: "Agreeableness" },
-  { code: "C01", optionIndex: 2, expectedRaw: 3, expectedScored: 3, dimension: "Conscientiousness" },
-  { code: "ES01", optionIndex: 1, expectedRaw: 2, expectedScored: 4, dimension: "Emotional Stability" },
-  { code: "O01", optionIndex: 0, expectedRaw: 1, expectedScored: 1, dimension: "Intellect" },
+  { code: "E01", optionIndex: 4, expectedRaw: 5, expectedScored: 5, dimension: "Ekstraverzija" },
+  { code: "A01", optionIndex: 3, expectedRaw: 4, expectedScored: 2, dimension: "Kooperativnost" },
+  { code: "C01", optionIndex: 2, expectedRaw: 3, expectedScored: 3, dimension: "Savjesnost" },
+  { code: "ES01", optionIndex: 1, expectedRaw: 2, expectedScored: 4, dimension: "Emocionalna stabilnost" },
+  { code: "O01", optionIndex: 0, expectedRaw: 1, expectedScored: 1, dimension: "Otvorenost prema iskustvu" },
 ];
 
 function fail(message) {
