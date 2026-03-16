@@ -27,36 +27,36 @@ function getDimensionInterpretation(dimensionKey: string, averageScore: number):
 
   const interpretationsByDimension: Record<string, Record<"high" | "mid" | "low", string>> = {
     extraversion: {
-      high: "Often appears energized by social contact and visible engagement.",
-      mid: "Shows a balanced mix of outward engagement and reflective pacing.",
-      low: "May prefer quieter environments and deliberate interpersonal pacing.",
+      high: "Često djeluje energizirano kroz socijalni kontakt i vidljivo uključivanje.",
+      mid: "Pokazuje uravnotežen spoj otvorenog angažmana i promišljenijeg tempa.",
+      low: "Može preferirati mirnije okruženje i odmjereniji interpersonalni ritam.",
     },
     agreeableness: {
-      high: "Tends to emphasize cooperation, tact, and relational harmony.",
-      mid: "Can balance candor with collaboration depending on the context.",
-      low: "May default to direct challenge over accommodation or consensus.",
+      high: "Naglašava saradnju, taktičnost i kvalitet međuljudskih odnosa.",
+      mid: "Može dobro balansirati iskrenost i saradnju, zavisno od konteksta.",
+      low: "Može češće birati direktan izazov umjesto prilagođavanja ili konsenzusa.",
     },
     conscientiousness: {
-      high: "Likely to value structure, follow-through, and dependable execution.",
-      mid: "Can adapt between planning and flexibility as demands change.",
-      low: "May work more spontaneously and need clearer external structure.",
+      high: "Vjerovatno vrednuje strukturu, dosljednost i pouzdanu realizaciju.",
+      mid: "Može se prilagođavati između planiranja i fleksibilnosti kako se zahtjevi mijenjaju.",
+      low: "Može raditi spontanije i imati korist od jasnije vanjske strukture.",
     },
     emotional_stability: {
-      high: "Likely to stay even-keeled under routine pressure.",
-      mid: "Shows a mixed stress profile that may vary by workload or context.",
-      low: "May feel pressure more intensely and benefit from steadier recovery habits.",
+      high: "Vjerovatno zadržava stabilnost i pod uobičajenim pritiskom.",
+      mid: "Pokazuje mješovit profil nošenja sa stresom koji može varirati po opterećenju ili kontekstu.",
+      low: "Može intenzivnije doživljavati pritisak i imati korist od stabilnijih navika oporavka.",
     },
     intellect: {
-      high: "Often drawn to ideas, exploration, and conceptual variety.",
-      mid: "Can engage with new ideas while still valuing familiar approaches.",
-      low: "May prefer practical clarity over abstract exploration.",
+      high: "Često je usmjeren prema idejama, istraživanju i konceptualnoj raznolikosti.",
+      mid: "Može prihvatati nove ideje uz zadržavanje vrijednosti poznatih pristupa.",
+      low: "Može preferirati praktičnu jasnoću umjesto apstraktnog istraživanja.",
     },
   };
 
   const fallback = {
-    high: "This area is relatively elevated in the current response pattern.",
-    mid: "This area is in the middle range in the current response pattern.",
-    low: "This area is relatively lower in the current response pattern.",
+    high: "Ova oblast je relativno izražena u trenutnom obrascu odgovora.",
+    mid: "Ova oblast je u srednjem rasponu u trenutnom obrascu odgovora.",
+    low: "Ova oblast je relativno niže izražena u trenutnom obrascu odgovora.",
   };
 
   return (interpretationsByDimension[dimensionKey] ?? fallback)[band];
@@ -83,12 +83,12 @@ function buildMockReport(input: PreparedReportGenerationInput): CompletedAssessm
     );
 
   const summaryParts = [
-    `Report for ${input.testSlug} built from persisted ${promptInput.scoring_method} scores.`,
+    `Izvještaj za ${input.testSlug} zasnovan je na pohranjenim skorovima metodologije ${promptInput.scoring_method}.`,
     primaryDimension
-      ? `${formatDimensionLabel(primaryDimension)} is the strongest visible signal in this attempt.`
-      : "No dimension scores were available for this attempt.",
+      ? `${formatDimensionLabel(primaryDimension)} je najuočljiviji signal u ovom pokušaju.`
+      : "Za ovaj pokušaj nisu bili dostupni skorovi po dimenzijama.",
     lowestDimension && lowestDimension !== primaryDimension
-      ? `${formatDimensionLabel(lowestDimension)} is comparatively lower and should be read as a development area, not a deficit.`
+      ? `${formatDimensionLabel(lowestDimension)} je komparativno niže izražena i treba je čitati kao razvojnu oblast, a ne kao nedostatak.`
       : null,
   ].filter((part): part is string => Boolean(part));
 
@@ -107,28 +107,28 @@ function buildMockReport(input: PreparedReportGenerationInput): CompletedAssessm
 
   const blindSpots = lowestDimension
     ? [
-        `${formatDimensionLabel(lowestDimension)} is lower in this response pattern, so the candidate may underuse behaviors associated with that area in some contexts.`,
-        "Narrative statements should be checked against real behavior, role context, and observation.",
+        `${formatDimensionLabel(lowestDimension)} je niže izražena u ovom obrascu odgovora, pa osoba može rjeđe koristiti ponašanja vezana za tu oblast u pojedinim situacijama.`,
+        "Narativne zaključke treba provjeravati kroz stvarno ponašanje, kontekst uloge i praktična opažanja.",
       ]
-    : ["No blind-spot interpretation is available because no scored dimensions were found."];
+    : ["Tumačenje potencijalnih slijepih tačaka nije dostupno jer nisu pronađene bodovane dimenzije."];
 
   const workStyle = [
     primaryDimension
-      ? `Likely work-style anchor: ${formatDimensionLabel(primaryDimension).toLowerCase()} themes are most prominent in this completed attempt.`
-      : "Likely work-style anchor is unavailable without scored dimensions.",
+      ? `Vjerovatno glavno uporište radnog stila: teme povezane sa dimenzijom ${formatDimensionLabel(primaryDimension).toLowerCase()} najizraženije su u ovom završenom pokušaju.`
+      : "Glavno uporište radnog stila nije moguće procijeniti bez bodovanih dimenzija.",
     secondaryDimension
-      ? `Secondary signal: ${formatDimensionLabel(secondaryDimension).toLowerCase()} meaningfully shapes how the overall profile may show up day to day.`
-      : "A secondary work-style signal was not available from the current score set.",
+      ? `Sekundarni signal: ${formatDimensionLabel(secondaryDimension).toLowerCase()} također značajno oblikuje način na koji se ukupni profil može ispoljavati iz dana u dan.`
+      : "Sekundarni signal radnog stila nije bio dostupan iz trenutnog skupa skorova.",
   ];
 
   const developmentRecommendations = lowestDimension
     ? [
-        `Create one deliberate practice habit tied to ${formatDimensionLabel(lowestDimension).toLowerCase()} behaviors in weekly work routines.`,
+        `Uvedi jednu namjernu razvojnu naviku povezanu s ponašanjima iz oblasti ${formatDimensionLabel(lowestDimension).toLowerCase()} u sedmične radne rutine.`,
         primaryDimension
-          ? `Use the stronger ${formatDimensionLabel(primaryDimension).toLowerCase()} pattern as leverage while building range in lower-scoring areas.`
-          : "Use repeated reflection on score patterns to turn results into concrete behavioral experiments.",
+          ? `Iskoristi izraženiji obrazac u oblasti ${formatDimensionLabel(primaryDimension).toLowerCase()} kao oslonac dok se gradi veći raspon ponašanja u niže bodovanim oblastima.`
+          : "Koristi redovnu refleksiju o obrascima skorova kako bi se rezultati pretvorili u konkretne bihevioralne eksperimente.",
       ]
-    : ["Collect a fuller scored attempt before making development recommendations."];
+    : ["Prikupi potpuniji bodovani pokušaj prije donošenja preporuka za razvoj."];
 
   return {
     attempt_id: input.attemptId,
@@ -142,7 +142,7 @@ function buildMockReport(input: PreparedReportGenerationInput): CompletedAssessm
     work_style: workStyle,
     development_recommendations: developmentRecommendations,
     disclaimer:
-      "This report is built from deterministic scoring data. It describes tendencies and development themes, not diagnosis, clinical judgment, or hiring advice.",
+      "Ovaj izvještaj je zasnovan na determinističkim scoring podacima. Opisuje tendencije i razvojne teme, a ne dijagnozu, kliničku procjenu niti preporuku za zapošljavanje.",
   };
 }
 

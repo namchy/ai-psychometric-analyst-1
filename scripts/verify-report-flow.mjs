@@ -187,14 +187,14 @@ async function createAttempt(supabase, testId, status) {
 
 async function assertSnapshotBehavior(supabase, validAttemptId) {
   const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(firstHtml, "Assessment report", "Expected assessment report section to render.");
+  assertIncludes(firstHtml, "AI izvještaj procjene", "Expected assessment report section to render.");
   assertIncludes(firstHtml, "Generator:", "Expected generator label to render.");
-  assertIncludes(firstHtml, "Snapshot generated at", "Expected report timestamp label to render.");
-  assertIncludes(firstHtml, "Strengths", "Expected strengths section to render.");
-  assertIncludes(firstHtml, "Blind spots", "Expected blind spots section to render.");
+  assertIncludes(firstHtml, "Sačuvani izvještaj generisan:", "Expected report timestamp label to render.");
+  assertIncludes(firstHtml, "Snage", "Expected strengths section to render.");
+  assertIncludes(firstHtml, "Slijepe tačke", "Expected blind spots section to render.");
   assertIncludes(
     firstHtml,
-    "Development recommendations",
+    "Preporuke za razvoj",
     "Expected recommendations section to render.",
   );
 
@@ -220,7 +220,7 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
 
   const firstGeneratedAt = firstReportRow.generated_at;
   const secondHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(secondHtml, "Assessment report", "Expected assessment report section to remain on reload.");
+  assertIncludes(secondHtml, "AI izvještaj procjene", "Expected assessment report section to remain on reload.");
   assertIncludes(secondHtml, "Generator:", "Expected generator label to remain on reload.");
 
   const { data: secondReportRow, error: secondReportError } = await supabase
@@ -242,10 +242,10 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
 
 async function assertUnavailableBehavior(supabase, validAttemptId) {
   const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(firstHtml, "Assessment report", "Unavailable report should still render a stable report section.");
+  assertIncludes(firstHtml, "AI izvještaj procjene", "Unavailable report should still render a stable report section.");
   assertIncludes(
     firstHtml,
-    "AI izvjestaj trenutno nije dostupan za ovaj zavrseni attempt.",
+    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
     "Unavailable report message should render.",
   );
 
@@ -279,7 +279,7 @@ async function assertUnavailableBehavior(supabase, validAttemptId) {
   const secondHtml = await fetchAssessmentPage(validAttemptId);
   assertIncludes(
     secondHtml,
-    "AI izvjestaj trenutno nije dostupan za ovaj zavrseni attempt.",
+    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
     "Unavailable report message should remain stable on reload.",
   );
 
@@ -355,7 +355,7 @@ async function main() {
   const incompleteHtml = await fetchAssessmentPage(incompleteAttemptId);
   assertNotIncludes(
     incompleteHtml,
-    "Assessment report",
+    "AI izvještaj procjene",
     "Incomplete completed attempt should not render a report.",
   );
 
@@ -409,4 +409,3 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
-

@@ -716,7 +716,7 @@ export async function completeAssessmentAttempt(
       ok: true,
       attemptId: persistResult.attemptId,
       completedAt: completedAttempt.completed_at ?? completedAt,
-      message: "Assessment completed. Your answers are locked.",
+      message: "Procjena je završena. Vaši odgovori su zaključani.",
       results,
       report,
     };
@@ -800,7 +800,7 @@ export async function completeProtectedAssessmentAttempt(
       ok: true,
       attemptId: persistResult.attemptId,
       completedAt: completedAttempt.completed_at ?? completedAt,
-      message: "Assessment completed. Your answers are locked.",
+      message: "Procjena je završena. Vaši odgovori su zaključani.",
       results,
       report,
     };

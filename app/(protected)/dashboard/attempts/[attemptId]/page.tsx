@@ -46,44 +46,46 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
       <section className="card stack-sm">
         <div className="stack-xs">
           <h1>
-            {attempt.status === "completed" ? "Completed assessment" : "Attempt created"}
+            {attempt.status === "completed" ? "Završena procjena" : "Pokušaj je kreiran"}
           </h1>
           <p>
             {attempt.status === "completed"
-              ? "This completed B2B attempt stays in the protected dashboard and can be reopened here later."
-              : "The B2B attempt was created successfully and is scoped to the active organization."}
+              ? "Ovaj završeni B2B pokušaj ostaje u zaštićenom dashboardu i ovdje ga možete ponovo otvoriti kasnije."
+              : "B2B pokušaj je uspješno kreiran i vezan je za aktivnu organizaciju."}
           </p>
         </div>
 
         <dl>
-          <dt>Attempt ID</dt>
+          <dt>ID pokušaja</dt>
           <dd>{attempt.id}</dd>
           <dt>Status</dt>
           <dd>{attempt.status}</dd>
-          <dt>Organization</dt>
+          <dt>Organizacija</dt>
           <dd>{attempt.organizations?.name ?? organization.name}</dd>
-          <dt>Participant</dt>
+          <dt>Učesnik</dt>
           <dd>{attempt.participants?.full_name ?? attempt.participant_id}</dd>
-          <dt>Participant email</dt>
-          <dd>{attempt.participants?.email ?? "N/A"}</dd>
+          <dt>Email učesnika</dt>
+          <dd>{attempt.participants?.email ?? "Nije dostupno"}</dd>
           <dt>Test</dt>
-          <dd>{attempt.tests?.name ?? attempt.tests?.slug ?? "Unknown test"}</dd>
-          <dt>Ownership user</dt>
-          <dd>{attempt.user_id ?? "N/A"}</dd>
-          <dt>Completed at</dt>
-          <dd>{attempt.completed_at ? new Date(attempt.completed_at).toLocaleString() : "N/A"}</dd>
+          <dd>{attempt.tests?.name ?? attempt.tests?.slug ?? "Nepoznat test"}</dd>
+          <dt>Vlasnički korisnik</dt>
+          <dd>{attempt.user_id ?? "Nije dostupno"}</dd>
+          <dt>Završeno</dt>
+          <dd>
+            {attempt.completed_at ? new Date(attempt.completed_at).toLocaleString() : "Nije dostupno"}
+          </dd>
         </dl>
 
         {attempt.status === "completed" ? (
-          <p>Results and report for this completed attempt are shown below.</p>
+          <p>Rezultati i AI izvještaj za ovaj završeni pokušaj prikazani su ispod.</p>
         ) : (
           <p>
-            <Link href={`/dashboard/attempts/${attempt.id}/run`}>Continue assessment</Link>
+            <Link href={`/dashboard/attempts/${attempt.id}/run`}>Nastavi procjenu</Link>
           </p>
         )}
 
         <p>
-          <Link href="/dashboard">Back to dashboard</Link>
+          <Link href="/dashboard">Nazad na dashboard</Link>
         </p>
       </section>
 

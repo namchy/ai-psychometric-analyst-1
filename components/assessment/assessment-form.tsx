@@ -175,7 +175,7 @@ export function AssessmentForm({
   );
   const [saveMessage, setSaveMessage] = useState<string | null>(
     initialAttemptStatus === "completed"
-      ? "Assessment completed. Your answers are locked."
+      ? "Procjena je završena. Vaši odgovori su zaključani."
       : null,
   );
   const [protectedCompletionUiPhase, setProtectedCompletionUiPhase] =

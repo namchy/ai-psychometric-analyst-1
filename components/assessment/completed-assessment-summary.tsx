@@ -18,10 +18,10 @@ function formatUnscoredReason(
   reason: CompletedAssessmentResults["unscoredResponses"][number]["reason"],
 ): string {
   if (reason === "question_type_not_scoreable") {
-    return "Recorded but not scored in the current MVP model.";
+    return "Zabilježeno, ali nije bodovano u trenutnom MVP modelu.";
   }
 
-  return "Recorded without numeric scoring values in the current seed data.";
+  return "Zabilježeno bez numeričkih scoring vrijednosti u trenutnim seed podacima.";
 }
 
 export function CompletedAssessmentSummary({
@@ -32,34 +32,35 @@ export function CompletedAssessmentSummary({
   return (
     <>
       <p>
-        Assessment completed.
-        {completedAt ? ` Completed at ${new Date(completedAt).toLocaleString()}.` : ""} Your
-        answers are now read-only.
+        Procjena je završena.
+        {completedAt ? ` Završeno: ${new Date(completedAt).toLocaleString()}.` : ""} Vaši odgovori
+        su sada dostupni samo za pregled.
       </p>
 
       {results ? (
         <section>
-          <h2>Results</h2>
+          <h2>Rezultati</h2>
           <p>
-            Scoring method: {results.scoringMethod}. Scored responses: {results.scoredResponseCount}.
+            Metoda bodovanja: {results.scoringMethod}. Broj bodovanih odgovora:{" "}
+            {results.scoredResponseCount}.
           </p>
 
           {results.dimensions.length > 0 ? (
             <ol>
               {results.dimensions.map((dimension) => (
                 <li key={dimension.dimension}>
-                  <strong>{formatDimensionLabel(dimension.dimension)}</strong>: raw score{" "}
-                  {dimension.rawScore} from {dimension.scoredQuestionCount} scored question(s).
+                  <strong>{formatDimensionLabel(dimension.dimension)}</strong>: sirovi skor{" "}
+                  {dimension.rawScore} iz {dimension.scoredQuestionCount} bodovanih pitanja.
                 </li>
               ))}
             </ol>
           ) : (
-            <p>No scoreable responses are available for this completed attempt.</p>
+            <p>Za ovaj završeni pokušaj nisu dostupni odgovori koji se mogu bodovati.</p>
           )}
 
           {results.unscoredResponses.length > 0 ? (
             <>
-              <h3>Recorded but unscored responses</h3>
+              <h3>Zabilježeni, ali nebodovani odgovori</h3>
               <ol>
                 {results.unscoredResponses.map((response) => (
                   <li key={response.questionId}>
@@ -74,45 +75,45 @@ export function CompletedAssessmentSummary({
 
       {reportState?.status === "ready" ? (
         <section>
-          <h2>Assessment report</h2>
+          <h2>AI izvještaj procjene</h2>
           <p>
-            Generator: {reportState.report.generator_type}. Snapshot generated at{" "}
+            Generator: {reportState.report.generator_type}. Sačuvani izvještaj generisan:{" "}
             {new Date(reportState.report.generated_at).toLocaleString()}.
           </p>
           <p>{reportState.report.summary}</p>
 
-          <h3>Dimensions</h3>
+          <h3>Dimenzije</h3>
           <ol>
             {reportState.report.dimensions.map((dimension) => (
               <li key={dimension.dimension_key}>
-                <strong>{formatDimensionLabel(dimension.dimension_key)}</strong>: score{" "}
+                <strong>{formatDimensionLabel(dimension.dimension_key)}</strong>: skor{" "}
                 {dimension.score}. {dimension.short_interpretation}
               </li>
             ))}
           </ol>
 
-          <h3>Strengths</h3>
+          <h3>Snage</h3>
           <ul>
             {reportState.report.strengths.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
-          <h3>Blind spots</h3>
+          <h3>Slijepe tačke</h3>
           <ul>
             {reportState.report.blind_spots.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
-          <h3>Work style</h3>
+          <h3>Radni stil</h3>
           <ul>
             {reportState.report.work_style.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
-          <h3>Development recommendations</h3>
+          <h3>Preporuke za razvoj</h3>
           <ul>
             {reportState.report.development_recommendations.map((item) => (
               <li key={item}>{item}</li>
@@ -125,8 +126,8 @@ export function CompletedAssessmentSummary({
 
       {reportState?.status === "unavailable" ? (
         <section>
-          <h2>Assessment report</h2>
-          <p>AI izvjestaj trenutno nije dostupan za ovaj zavrseni attempt.</p>
+          <h2>AI izvještaj procjene</h2>
+          <p>AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.</p>
         </section>
       ) : null}
     </>

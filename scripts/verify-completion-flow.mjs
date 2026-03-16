@@ -239,7 +239,7 @@ async function main() {
   );
   assertNotIncludes(
     inProgressHtml,
-    "Assessment completed.",
+    "Procjena je završena.",
     "Incomplete in-progress attempt should not render completed messaging.",
   );
 
@@ -257,14 +257,14 @@ async function main() {
   }
 
   const html = await fetchAssessmentPage(completedAttemptId);
-  assertIncludes(html, "Assessment completed.", "Expected completed state message to render.");
+  assertIncludes(html, "Procjena je završena.", "Expected completed state message to render.");
   assertIncludes(
     html,
-    "Your answers are now read-only.",
+    "Vaši odgovori su sada dostupni samo za pregled.",
     "Expected read-only completed messaging to render.",
   );
   assertIncludes(html, "fieldset disabled", "Expected completed page fieldsets to be disabled.");
-  assertIncludes(html, "Results", "Expected results section to render for a completed attempt.");
+  assertIncludes(html, "Rezultati", "Expected results section to render for a completed attempt.");
   assertIncludes(html, "Extraversion", "Expected the completed result dimension to render.");
   assertNotIncludes(
     html,

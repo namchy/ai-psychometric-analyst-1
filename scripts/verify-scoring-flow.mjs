@@ -174,14 +174,14 @@ async function main() {
   }
 
   const html = await fetchAssessmentPage(attemptId);
-  assertIncludes(html, "Results", "Expected results section to render for a completed attempt.");
-  assertIncludes(html, "Scored responses", "Expected scored response summary to render.");
+  assertIncludes(html, "Rezultati", "Expected results section to render for a completed attempt.");
+  assertIncludes(html, "Broj bodovanih odgovora", "Expected scored response summary to render.");
   for (const scoringCase of SCORING_CASES) {
     assertIncludes(html, scoringCase.dimension, `Expected ${scoringCase.dimension} result to render.`);
   }
   assertNotIncludes(
     html,
-    "Recorded but unscored responses",
+    "Zabilježeni, ali nebodovani odgovori",
     "Did not expect unscored response messaging for an all-single_choice test.",
   );
 
@@ -243,8 +243,8 @@ async function main() {
   }
 
   const reloadHtml = await fetchAssessmentPage(attemptId);
-  assertIncludes(reloadHtml, "Results", "Expected results section to remain on reload.");
-  assertIncludes(reloadHtml, "Scored responses", "Expected persisted results summary to remain on reload.");
+  assertIncludes(reloadHtml, "Rezultati", "Expected results section to remain on reload.");
+  assertIncludes(reloadHtml, "Broj bodovanih odgovora", "Expected persisted results summary to remain on reload.");
 
   console.log("Scoring flow verification passed.");
   console.log(`Verified attempt id: ${attemptId}`);

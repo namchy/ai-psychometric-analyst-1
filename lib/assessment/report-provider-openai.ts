@@ -103,15 +103,17 @@ function isStructuredReport(value: unknown): value is OpenAiStructuredReport {
 
 function buildSystemPrompt(promptVersion: string): string {
   return [
-    `You generate structured Big Five style assessment reports. Prompt version: ${promptVersion}.`,
-    "Use only the supplied deterministic scoring context.",
-    "Do not infer or calculate scores from raw answers.",
-    "Do not change the provided dimension keys or score values; they must be echoed exactly.",
-    "Describe tendencies and likely patterns, not fixed traits or certainty.",
-    "Do not provide diagnosis, clinical claims, protected-class inference, or treatment guidance.",
-    "Do not provide hire/no-hire recommendations or selection decisions.",
-    "Keep the tone developmental, reflective, and business-usable.",
-    "Return only JSON matching the provided schema.",
+    `Generišeš strukturirane Big Five assessment izvještaje. Verzija prompta: ${promptVersion}.`,
+    "Cjelokupan narativni sadržaj mora biti isključivo na bosanskom jeziku, ijekavica, latinica.",
+    "Ne miješaj engleski sa bosanskim u naslovima, opisima, preporukama ni disclaimeru.",
+    "Koristi isključivo dostavljeni deterministički scoring kontekst.",
+    "Ne zaključuj niti računaj skorove iz sirovih odgovora.",
+    "Ne mijenjaj dostavljene dimension keys niti score vrijednosti; vrati ih tačno kako su zadani.",
+    "Opisuj tendencije i vjerovatne obrasce ponašanja, ne fiksne osobine niti sigurnost.",
+    "Ne navodi dijagnoze, kliničke tvrdnje, zaključke o zaštićenim kategorijama ni savjete o tretmanu.",
+    "Ne daj preporuke za zaposliti/ne zaposliti niti selekcijske odluke.",
+    "Ton mora biti profesionalan, jasan, prirodan i upotrebljiv za HR/B2B izvještaj.",
+    "Vrati isključivo JSON koji odgovara dostavljenoj shemi.",
   ].join(" ");
 }
 
@@ -120,24 +122,65 @@ function buildUserPrompt(input: PreparedReportGenerationInput): string {
   const dimensionHints = promptInput.dimension_scores
     .map(
       (dimension) =>
-        `${formatDimensionLabel(dimension.dimension_key)}: raw score ${dimension.raw_score} across ${dimension.scored_question_count} scored questions.`,
+        `${formatDimensionLabel(dimension.dimension_key)}: sirovi skor ${dimension.raw_score} kroz ${dimension.scored_question_count} bodovanih pitanja.`,
     )
     .join(" ");
 
   return JSON.stringify({
     instructions: {
       report_goal:
-        "Write a concise, structured assessment narrative grounded in the provided deterministic scores.",
+        "Napiši sažet, strukturiran assessment izvještaj zasnovan isključivo na dostavljenim determinističkim skorovima.",
       guardrails: [
-        "Scores are already computed and are the only quantitative source of truth.",
-        "Do not speculate from raw answers or missing data.",
-        "Do not overstate certainty.",
-        "Use developmental language and avoid diagnosis or hiring judgments.",
+        "Sav tekst mora biti na bosanskom jeziku, ijekavica, latinica.",
+        "Skorovi su već izračunati i jedini su kvantitativni izvor istine.",
+        "Ne spekuliraj iz sirovih odgovora niti iz nedostajućih podataka.",
+        "Ne prenaglašavaj sigurnost zaključaka.",
+        "Koristi razvojni jezik i izbjegavaj dijagnostičke ili hiring zaključke.",
+        "Ako koristiš stručni termin, formuliraj ga prirodno za poslovni i HR kontekst na bosanskom jeziku.",
       ],
       dimension_hint_text: dimensionHints,
     },
     input: promptInput,
   });
+}
+
+function containsEnglishLeakage(value: string): boolean {
+  const normalized = value.toLowerCase();
+  const englishMarkers = [
+    "report",
+    "summary",
+    "strengths",
+    "blind spots",
+    "work style",
+    "development recommendations",
+    "candidate",
+    "score pattern",
+    "raw score",
+    "scored questions",
+    "likely",
+    "attempt",
+    "completed",
+    "hiring advice",
+    "diagnosis",
+  ];
+
+  return englishMarkers.some((marker) => normalized.includes(marker));
+}
+
+function assertBosnianNarrative(report: OpenAiStructuredReport): void {
+  const narrativeFields = [
+    report.summary,
+    report.disclaimer,
+    ...report.dimensions.map((dimension) => dimension.short_interpretation),
+    ...report.strengths,
+    ...report.blind_spots,
+    ...report.work_style,
+    ...report.development_recommendations,
+  ];
+
+  if (narrativeFields.some((field) => containsEnglishLeakage(field))) {
+    throw new Error("OpenAI report narrative did not pass the Bosnian-language consistency check.");
+  }
 }
 
 function normalizeStructuredReport(
@@ -159,7 +202,7 @@ function normalizeStructuredReport(
       score: dimension.raw_score,
       short_interpretation:
         interpretationsByDimension.get(dimension.dimension_key) ??
-        `Score pattern for ${formatDimensionLabel(dimension.dimension_key).toLowerCase()} suggests a meaningful behavioral tendency in this attempt.`,
+        `Obrazac skora za ${formatDimensionLabel(dimension.dimension_key).toLowerCase()} ukazuje na uočljivu tendenciju ponašanja u ovom pokušaju.`,
     })),
     strengths: report.strengths,
     blind_spots: report.blind_spots,
@@ -246,6 +289,8 @@ async function requestOpenAiReport(
     if (!isStructuredReport(parsed)) {
       throw new Error("OpenAI response JSON did not match the expected report contract.");
     }
+
+    assertBosnianNarrative(parsed);
 
     const report = normalizeStructuredReport(input, parsed);
 
