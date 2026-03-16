@@ -24,6 +24,8 @@ type AssessmentFormProps = {
   executionMode?: "public" | "protected";
   layoutMode?: "classic" | "step";
   completionRedirectPath?: string | null;
+  assessmentDisplayName?: string | null;
+  participantDisplayName?: string | null;
   testId: string;
   questions: TestQuestion[];
   answerOptionsByQuestionId: Record<string, TestAnswerOption[]>;
@@ -148,6 +150,8 @@ export function AssessmentForm({
   executionMode = "public",
   layoutMode = "classic",
   completionRedirectPath = null,
+  assessmentDisplayName = null,
+  participantDisplayName = null,
   testId,
   questions,
   answerOptionsByQuestionId,
@@ -408,9 +412,6 @@ export function AssessmentForm({
     const options = answerOptionsByQuestionId[currentQuestion.id] ?? [];
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
-    const selectedLikertOption = isLikertQuestion
-      ? options.find((option) => option.id === currentSelection) ?? null
-      : null;
     const shouldAutoAdvance = isLikertQuestion && !isLastQuestion;
     const shouldShowContinueButton = !shouldAutoAdvance;
     const stepActionsClassName = shouldShowContinueButton
@@ -419,53 +420,43 @@ export function AssessmentForm({
 
     return (
       <div className="assessment-run stack-md">
-        <div className="assessment-progress stack-sm">
-          <div className="assessment-progress__header">
-            <div>
-              <p className="assessment-eyebrow">Protected assessment</p>
-              <h2>Pitanje {currentQuestionIndex + 1} od {questions.length}</h2>
-            </div>
-            <p className="assessment-progress__meta">
-              Odgovoreno {answeredQuestionCount} / {questions.length}
-            </p>
-          </div>
+        <section className="assessment-run-hero">
+          <div className="assessment-run-hero__content stack-md">
+            <div className="assessment-run-hero__intro stack-sm">
+              <div className="stack-xs">
+                <h1>{assessmentDisplayName ?? "Procjena"}</h1>
+                {participantDisplayName ? (
+                  <p className="assessment-run-hero__participant">{participantDisplayName}</p>
+                ) : null}
+              </div>
 
-          <div
-            aria-hidden="true"
-            className="assessment-progress__track"
-          >
-            <div
-              className="assessment-progress__fill"
-              style={{ width: `${progressPercent}%` }}
-            />
+              <p className="assessment-progress__meta">
+                Pitanje {currentQuestionIndex + 1} od {questions.length}
+              </p>
+            </div>
+
+            <div className="assessment-progress stack-xs">
+              <div aria-hidden="true" className="assessment-progress__track">
+                <div className="assessment-progress__fill" style={{ width: `${progressPercent}%` }} />
+              </div>
+
+              <p className="assessment-progress__subtle">
+                Odgovoreno {answeredQuestionCount} od {questions.length}
+              </p>
+            </div>
           </div>
-        </div>
+        </section>
 
         <section className="assessment-step-card">
-          <div
-            className="assessment-step-card__header stack-sm"
-          >
+          <div className="assessment-step-card__header stack-md">
             <div
-              className={`assessment-step-card__question-region stack-xs${
+              className={`assessment-step-card__question-region stack-sm${
                 isLikertQuestion ? " assessment-step-card__question-region--stable" : ""
               }`}
             >
-              <p className="assessment-step-card__kicker">
-                Korak {currentQuestionIndex + 1}
-              </p>
+              <p className="assessment-step-card__kicker">Pitanje {currentQuestionIndex + 1}</p>
               <h3>{currentQuestion.text}</h3>
             </div>
-
-            {isLikertQuestion ? (
-              <div className="assessment-step-card__meta stack-xs">
-                <p className="assessment-step-card__hint">Skala odgovora 1-5</p>
-                {!isLastQuestion ? (
-                  <p className="assessment-step-card__autoflow">
-                    Odabir odgovora automatski otvara sljedeće pitanje.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
           </div>
 
           <fieldset className="assessment-step-card__fieldset" disabled={isInteractionLocked}>
@@ -481,7 +472,7 @@ export function AssessmentForm({
                 rows={4}
               />
             ) : isLikertQuestion ? (
-              <div className="assessment-likert stack-sm">
+              <div className="assessment-likert stack-md">
                 <div className="assessment-likert__labels" aria-hidden="true">
                   <span>{options[0]?.label}</span>
                   <span>{options[options.length - 1]?.label}</span>
@@ -518,12 +509,6 @@ export function AssessmentForm({
                     );
                   })}
                 </ol>
-
-                {selectedLikertOption ? (
-                  <p className="assessment-likert__selected-label">
-                    Odabrano: {selectedLikertOption.label}
-                  </p>
-                ) : null}
               </div>
             ) : options.length > 0 ? (
               <ol className="assessment-options">
