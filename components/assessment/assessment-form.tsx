@@ -421,28 +421,49 @@ export function AssessmentForm({
     return (
       <div className="assessment-run stack-md">
         <section className="assessment-run-hero">
-          <div className="assessment-run-hero__content stack-md">
-            <div className="assessment-run-hero__intro stack-sm">
-              <div className="stack-xs">
-                <h1>{assessmentDisplayName ?? "Procjena"}</h1>
-                {participantDisplayName ? (
-                  <p className="assessment-run-hero__participant">{participantDisplayName}</p>
-                ) : null}
+          <div className="assessment-run-hero__content">
+            <div className="assessment-run-hero__intro">
+              <div className="assessment-run-hero__identity stack-sm">
+                <p className="assessment-eyebrow">Zaštićeni assessment tok</p>
+
+                <div className="stack-xs">
+                  <h1>{assessmentDisplayName ?? "Procjena"}</h1>
+                  {participantDisplayName ? (
+                    <p className="assessment-run-hero__participant">{participantDisplayName}</p>
+                  ) : null}
+                </div>
               </div>
 
-              <p className="assessment-progress__meta">
-                Pitanje {currentQuestionIndex + 1} od {questions.length}
-              </p>
-            </div>
+              <div className="assessment-progress">
+                <div className="assessment-progress__summary" aria-label="Trenutni napredak">
+                  <div className="assessment-progress__metric">
+                    <span className="assessment-progress__metric-label">Trenutno</span>
+                    <p className="assessment-progress__meta">
+                      Pitanje {currentQuestionIndex + 1} od {questions.length}
+                    </p>
+                  </div>
 
-            <div className="assessment-progress stack-xs">
-              <div aria-hidden="true" className="assessment-progress__track">
-                <div className="assessment-progress__fill" style={{ width: `${progressPercent}%` }} />
+                  <div className="assessment-progress__metric">
+                    <span className="assessment-progress__metric-label">Status</span>
+                    <p className="assessment-progress__subtle">
+                      Odgovoreno {answeredQuestionCount} od {questions.length}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="assessment-progress__bar-region">
+                  <div aria-hidden="true" className="assessment-progress__track">
+                    <div
+                      className="assessment-progress__fill"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+
+                  <p className="assessment-progress__caption">
+                    Napredak kroz procjenu se čuva automatski nakon svakog odabira.
+                  </p>
+                </div>
               </div>
-
-              <p className="assessment-progress__subtle">
-                Odgovoreno {answeredQuestionCount} od {questions.length}
-              </p>
             </div>
           </div>
         </section>
@@ -472,43 +493,45 @@ export function AssessmentForm({
                 rows={4}
               />
             ) : isLikertQuestion ? (
-              <div className="assessment-likert stack-md">
-                <div className="assessment-likert__labels" aria-hidden="true">
-                  <span>{options[0]?.label}</span>
-                  <span>{options[options.length - 1]?.label}</span>
+              <div className="assessment-likert">
+                <div className="assessment-likert__scale">
+                  <div className="assessment-likert__labels" aria-hidden="true">
+                    <span>{options[0]?.label}</span>
+                    <span>{options[options.length - 1]?.label}</span>
+                  </div>
+
+                  <ol className="assessment-likert__options">
+                    {options.map((option) => {
+                      const inputId = `${currentQuestion.id}-${option.option_order}`;
+                      const isSelected = currentSelection === option.id;
+
+                      return (
+                        <li key={option.id}>
+                          <label
+                            className={`assessment-likert-option${
+                              isSelected ? " assessment-likert-option--selected" : ""
+                            }`}
+                            htmlFor={inputId}
+                          >
+                            <input
+                              id={inputId}
+                              type="radio"
+                              name={currentQuestion.id}
+                              checked={isSelected}
+                              onChange={() => {
+                                void handleSingleChoiceStepSelection(option.id);
+                              }}
+                            />
+                            <span className="assessment-likert-option__value">
+                              {option.option_order}
+                            </span>
+                            <span className="sr-only">{option.label}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ol>
                 </div>
-
-                <ol className="assessment-likert__options">
-                  {options.map((option) => {
-                    const inputId = `${currentQuestion.id}-${option.option_order}`;
-                    const isSelected = currentSelection === option.id;
-
-                    return (
-                      <li key={option.id}>
-                        <label
-                          className={`assessment-likert-option${
-                            isSelected ? " assessment-likert-option--selected" : ""
-                          }`}
-                          htmlFor={inputId}
-                        >
-                          <input
-                            id={inputId}
-                            type="radio"
-                            name={currentQuestion.id}
-                            checked={isSelected}
-                            onChange={() => {
-                              void handleSingleChoiceStepSelection(option.id);
-                            }}
-                          />
-                          <span className="assessment-likert-option__value">
-                            {option.option_order}
-                          </span>
-                          <span className="sr-only">{option.label}</span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ol>
               </div>
             ) : options.length > 0 ? (
               <ol className="assessment-options">
