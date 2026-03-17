@@ -3,31 +3,20 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import {
+  DEFAULT_REFRESH_COOKIE_MAX_AGE_SECONDS,
+  type AuthCookieName,
+  SUPABASE_ACCESS_TOKEN_COOKIE_NAME,
+  SUPABASE_REFRESH_TOKEN_COOKIE_NAME,
+  getAuthCookieOptions,
+} from "@/lib/auth/cookies";
 import { createSupabaseAuthClient } from "@/lib/supabase/server";
-
-export const SUPABASE_ACCESS_TOKEN_COOKIE_NAME = "sb-access-token";
-export const SUPABASE_REFRESH_TOKEN_COOKIE_NAME = "sb-refresh-token";
-const DEFAULT_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
-
-type AuthCookieName =
-  | typeof SUPABASE_ACCESS_TOKEN_COOKIE_NAME
-  | typeof SUPABASE_REFRESH_TOKEN_COOKIE_NAME;
 
 export class AuthenticationRequiredError extends Error {
   constructor(message = "Authentication required.") {
     super(message);
     this.name = "AuthenticationRequiredError";
   }
-}
-
-function getCookieOptions(maxAge: number) {
-  return {
-    httpOnly: true,
-    sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge,
-  };
 }
 
 function getTokenCookieValue(name: AuthCookieName): string | null {
@@ -39,23 +28,23 @@ export function persistAuthSession(session: {
   refresh_token: string;
   expires_in?: number;
 }) {
-  const maxAge = session.expires_in ?? DEFAULT_COOKIE_MAX_AGE_SECONDS;
+  const maxAge = session.expires_in ?? DEFAULT_REFRESH_COOKIE_MAX_AGE_SECONDS;
 
   cookies().set(
     SUPABASE_ACCESS_TOKEN_COOKIE_NAME,
     session.access_token,
-    getCookieOptions(maxAge),
+    getAuthCookieOptions(maxAge),
   );
   cookies().set(
     SUPABASE_REFRESH_TOKEN_COOKIE_NAME,
     session.refresh_token,
-    getCookieOptions(DEFAULT_COOKIE_MAX_AGE_SECONDS),
+    getAuthCookieOptions(DEFAULT_REFRESH_COOKIE_MAX_AGE_SECONDS),
   );
 }
 
 export function clearAuthSession() {
-  cookies().set(SUPABASE_ACCESS_TOKEN_COOKIE_NAME, "", getCookieOptions(0));
-  cookies().set(SUPABASE_REFRESH_TOKEN_COOKIE_NAME, "", getCookieOptions(0));
+  cookies().set(SUPABASE_ACCESS_TOKEN_COOKIE_NAME, "", getAuthCookieOptions(0));
+  cookies().set(SUPABASE_REFRESH_TOKEN_COOKIE_NAME, "", getAuthCookieOptions(0));
 }
 
 export async function getAuthenticatedUser(): Promise<User | null> {

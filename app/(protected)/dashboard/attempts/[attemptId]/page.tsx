@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import {
@@ -44,45 +43,10 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
 
   return (
     <main className="attempt-results-page stack-md">
-      <section className="card attempt-results-page__shell stack-sm">
-        <div className="attempt-results-page__topbar">
-          <Link href="/dashboard">Nazad na dashboard</Link>
-        </div>
-
-        <div className="attempt-results-page__summary">
-          <div className="stack-xs">
-            <p className="assessment-eyebrow">Zaštićeni izvještaj</p>
-            <h1>Rezultati završene procjene</h1>
-            <p className="attempt-results-page__lede">
-              Završeni pokušaj ostaje dostupan unutar zaštićenog dashboarda kao pregled
-              izvještaja i rezultata.
-            </p>
-          </div>
-
-          <dl className="attempt-results-page__meta">
-            <div>
-              <dt>Organizacija</dt>
-              <dd>{attempt.organizations?.name ?? organization.name}</dd>
-            </div>
-            <div>
-              <dt>Učesnik</dt>
-              <dd>{attempt.participants?.full_name ?? attempt.participant_id}</dd>
-            </div>
-            <div>
-              <dt>Email</dt>
-              <dd>{attempt.participants?.email ?? "Nije dostupno"}</dd>
-            </div>
-            <div>
-              <dt>Test</dt>
-              <dd>{attempt.tests?.name ?? attempt.tests?.slug ?? "Nepoznat test"}</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
-
       <section className="attempt-results-page__content">
         <CompletedAssessmentSummary
           completedAt={attempt.completed_at}
+          organizationName={attempt.organizations?.name ?? organization.name}
           participantName={attempt.participants?.full_name ?? null}
           testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
           results={results}
