@@ -13,6 +13,13 @@ type AuthCookieName =
   | typeof SUPABASE_ACCESS_TOKEN_COOKIE_NAME
   | typeof SUPABASE_REFRESH_TOKEN_COOKIE_NAME;
 
+export class AuthenticationRequiredError extends Error {
+  constructor(message = "Authentication required.") {
+    super(message);
+    this.name = "AuthenticationRequiredError";
+  }
+}
+
 function getCookieOptions(maxAge: number) {
   return {
     httpOnly: true,
@@ -73,6 +80,16 @@ export async function requireAuthenticatedUser(): Promise<User> {
 
   if (!user) {
     redirect("/login");
+  }
+
+  return user;
+}
+
+export async function requireAuthenticatedUserForAction(): Promise<User> {
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
+    throw new AuthenticationRequiredError();
   }
 
   return user;

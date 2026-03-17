@@ -26,7 +26,11 @@ import type {
   AttemptStatus,
   QuestionType,
 } from "@/lib/assessment/types";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
+import {
+  AuthenticationRequiredError,
+  requireAuthenticatedUser,
+  requireAuthenticatedUserForAction,
+} from "@/lib/auth/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type SaveAssessmentSelectionsInput = {
@@ -145,6 +149,10 @@ function isSupportedQuestionType(questionType: QuestionType): boolean {
 }
 
 function getSaveFailureMessage(error: unknown): string {
+  if (error instanceof AuthenticationRequiredError) {
+    return "Your session has expired. Sign in again to continue.";
+  }
+
   if (
     error instanceof Error &&
     error.message === "Missing required env var: SUPABASE_SERVICE_ROLE_KEY"
@@ -156,6 +164,10 @@ function getSaveFailureMessage(error: unknown): string {
 }
 
 function getCompletionFailureMessage(error: unknown): string {
+  if (error instanceof AuthenticationRequiredError) {
+    return "Your session has expired. Sign in again to continue.";
+  }
+
   if (
     error instanceof Error &&
     error.message === "Missing required env var: SUPABASE_SERVICE_ROLE_KEY"
@@ -170,6 +182,15 @@ function getIncompleteRequiredAnswersMessage(missingRequiredQuestionCount: numbe
   return missingRequiredQuestionCount === 1
     ? "Answer the remaining required question before completing the assessment."
     : `Answer all required questions before completing the assessment. ${missingRequiredQuestionCount} required questions are still unanswered.`;
+}
+
+function isNextRedirectError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const digest = Reflect.get(error, "digest");
+  return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
 }
 
 async function persistAssessmentSelections(
@@ -334,7 +355,7 @@ async function persistAssessmentSelections(
 
   if (nextAttemptId) {
     if (options.requireProtectedOwnership) {
-      const user = await requireAuthenticatedUser();
+      const user = await requireAuthenticatedUserForAction();
       const organization = await getActiveOrganizationForUser(user.id);
 
       if (!organization) {
@@ -559,6 +580,10 @@ export async function saveAssessmentProgress(
       message: "Progress saved.",
     };
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
     console.error("saveAssessmentProgress failed", error);
 
     return {
@@ -587,6 +612,10 @@ export async function saveProtectedAssessmentProgress(
       message: "Progress saved.",
     };
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
     console.error("saveProtectedAssessmentProgress failed", error);
 
     return {
@@ -721,6 +750,10 @@ export async function completeAssessmentAttempt(
       report,
     };
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
     console.error("completeAssessmentAttempt failed", error);
 
     return {
@@ -805,6 +838,10 @@ export async function completeProtectedAssessmentAttempt(
       report,
     };
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
     console.error("completeProtectedAssessmentAttempt failed", error);
 
     return {
