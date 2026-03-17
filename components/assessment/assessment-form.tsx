@@ -58,6 +58,16 @@ function getSerializableSelections(
   return Object.fromEntries(entries);
 }
 
+function getEffectiveSelections(
+  initialSelections: AssessmentSelectionsInput,
+  selections: SelectionState,
+): Record<string, AssessmentSelectionValue> {
+  return {
+    ...initialSelections,
+    ...getSerializableSelections(selections),
+  };
+}
+
 function resetSaveFeedback(
   setSaveStatus: (status: SaveStatus) => void,
   setSaveMessage: (message: string | null) => void,
@@ -186,14 +196,12 @@ export function AssessmentForm({
     useState<ProtectedCompletionUiPhase>(null);
   const [stepValidationMessage, setStepValidationMessage] = useState<string | null>(null);
   const requestInFlightRef = useRef(false);
+  const effectiveSelections = getEffectiveSelections(initialSelections, selections);
 
   const isCompleted = attemptStatus === "completed";
   const isBusy = saveStatus === "saving" || saveStatus === "completing";
   const isStepLayout = layoutMode === "step";
-  const completionState = getAssessmentCompletionState(
-    questions,
-    getSerializableSelections(selections),
-  );
+  const completionState = getAssessmentCompletionState(questions, effectiveSelections);
   const canComplete = completionState.isComplete;
   const incompleteRequiredAnswersMessage = isCompleted
     ? null
@@ -205,7 +213,7 @@ export function AssessmentForm({
       ? completeProtectedAssessmentAttempt
       : completeAssessmentAttempt;
   const currentQuestion = questions[currentQuestionIndex] ?? null;
-  const currentSelection = currentQuestion ? selections[currentQuestion.id] : undefined;
+  const currentSelection = currentQuestion ? effectiveSelections[currentQuestion.id] : undefined;
   const progressPercent =
     questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
   const isInteractionLocked = isBusy || requestInFlightRef.current;
@@ -228,7 +236,7 @@ export function AssessmentForm({
       const result = await saveAction({
         attemptId,
         testId,
-        selections: getSerializableSelections(nextSelections),
+        selections: getEffectiveSelections(initialSelections, nextSelections),
       });
 
       if (!result.ok) {
@@ -274,7 +282,7 @@ export function AssessmentForm({
       const result = await completeAction({
         attemptId,
         testId,
-        selections: getSerializableSelections(selections),
+        selections: effectiveSelections,
       });
 
       if (!result.ok) {
@@ -335,6 +343,14 @@ export function AssessmentForm({
     }
 
     setCurrentQuestionIndex((currentIndex) => Math.min(currentIndex + 1, questions.length - 1));
+  }
+
+  async function handleSingleChoiceStepConfirmation() {
+    if (!currentQuestion || isInteractionLocked) {
+      return;
+    }
+
+    await handleAdvance();
   }
 
   function handleBack() {
@@ -452,190 +468,215 @@ export function AssessmentForm({
           </div>
         </section>
 
-        <section className="assessment-step-card">
-          <div className="assessment-step-card__header stack-md">
-            <div
-              className={`assessment-step-card__question-region stack-sm${
-                isLikertQuestion ? " assessment-step-card__question-region--stable" : ""
-              }`}
-            >
-              <p className="assessment-step-card__kicker">Pitanje {currentQuestionIndex + 1}</p>
-              <h3>{currentQuestion.text}</h3>
+        <div className="assessment-step-layout">
+          <section className="assessment-step-card">
+            <div className="assessment-step-card__header stack-md">
+              <div
+                className={`assessment-step-card__question-region stack-sm${
+                  isLikertQuestion ? " assessment-step-card__question-region--stable" : ""
+                }`}
+              >
+                <p className="assessment-step-card__kicker">Pitanje {currentQuestionIndex + 1}</p>
+                <h3>{currentQuestion.text}</h3>
+              </div>
             </div>
-          </div>
 
-          <fieldset className="assessment-step-card__fieldset" disabled={isInteractionLocked}>
-            <legend className="sr-only">{currentQuestion.text}</legend>
+            <fieldset className="assessment-step-card__fieldset" disabled={isInteractionLocked}>
+              <legend className="sr-only">{currentQuestion.text}</legend>
 
-            {currentQuestion.question_type === "text" ? (
-              <textarea
-                className="assessment-textarea"
-                value={typeof currentSelection === "string" ? currentSelection : ""}
-                onChange={(event) => {
-                  updateSelection(currentQuestion.id, event.target.value);
-                }}
-                rows={4}
-              />
-            ) : isLikertQuestion ? (
-              <div className="assessment-likert">
-                <div className="assessment-likert__scale">
-                  <div className="assessment-likert__labels" aria-hidden="true">
-                    <span>{options[0]?.label}</span>
-                    <span>{options[options.length - 1]?.label}</span>
+              {currentQuestion.question_type === "text" ? (
+                <textarea
+                  className="assessment-textarea"
+                  value={typeof currentSelection === "string" ? currentSelection : ""}
+                  onChange={(event) => {
+                    updateSelection(currentQuestion.id, event.target.value);
+                  }}
+                  rows={4}
+                />
+              ) : isLikertQuestion ? (
+                <div className="assessment-likert">
+                  <div className="assessment-likert__scale">
+                    <div className="assessment-likert__labels" aria-hidden="true">
+                      <span>{options[0]?.label}</span>
+                      <span>{options[options.length - 1]?.label}</span>
+                    </div>
+
+                    <ol className="assessment-likert__options">
+                      {options.map((option) => {
+                        const inputId = `${currentQuestion.id}-${option.option_order}`;
+                        const isSelected = currentSelection === option.id;
+
+                        return (
+                          <li key={option.id}>
+                            <label
+                              className={`assessment-likert-option${
+                                isSelected ? " assessment-likert-option--selected" : ""
+                              }`}
+                              htmlFor={inputId}
+                            >
+                              <input
+                                id={inputId}
+                                type="radio"
+                                name={currentQuestion.id}
+                                checked={isSelected}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    void handleSingleChoiceStepConfirmation();
+                                  }
+                                }}
+                                onChange={() => {
+                                  void handleSingleChoiceStepSelection(option.id);
+                                }}
+                              />
+                              <span className="assessment-likert-option__value">
+                                {option.option_order}
+                              </span>
+                              <span className="sr-only">{option.label}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ol>
                   </div>
+                </div>
+              ) : options.length > 0 ? (
+                <ol className="assessment-options">
+                  {options.map((option) => {
+                    const inputId = `${currentQuestion.id}-${option.option_order}`;
 
-                  <ol className="assessment-likert__options">
-                    {options.map((option) => {
-                      const inputId = `${currentQuestion.id}-${option.option_order}`;
-                      const isSelected = currentSelection === option.id;
+                    if (currentQuestion.question_type === "multiple_choice") {
+                      const selectedOptionIds = Array.isArray(currentSelection)
+                        ? currentSelection
+                        : [];
+                      const isSelected = selectedOptionIds.includes(option.id);
 
                       return (
                         <li key={option.id}>
                           <label
-                            className={`assessment-likert-option${
-                              isSelected ? " assessment-likert-option--selected" : ""
+                            className={`assessment-option${
+                              isSelected ? " assessment-option--selected" : ""
                             }`}
                             htmlFor={inputId}
                           >
                             <input
                               id={inputId}
-                              type="radio"
-                              name={currentQuestion.id}
+                              type="checkbox"
                               checked={isSelected}
-                              onChange={() => {
-                                void handleSingleChoiceStepSelection(option.id);
+                              onChange={(event) => {
+                                const isChecked = event.target.checked;
+                                const currentValue = Array.isArray(currentSelection)
+                                  ? currentSelection
+                                  : [];
+                                const nextOptionIds = isChecked
+                                  ? [...currentValue, option.id]
+                                  : currentValue.filter((optionId) => optionId !== option.id);
+
+                                updateSelection(currentQuestion.id, nextOptionIds);
                               }}
                             />
-                            <span className="assessment-likert-option__value">
+                            <span className="assessment-option__marker">
                               {option.option_order}
                             </span>
-                            <span className="sr-only">{option.label}</span>
+                            <span className="assessment-option__label">{option.label}</span>
                           </label>
                         </li>
                       );
-                    })}
-                  </ol>
-                </div>
-              </div>
-            ) : options.length > 0 ? (
-              <ol className="assessment-options">
-                {options.map((option) => {
-                  const inputId = `${currentQuestion.id}-${option.option_order}`;
-
-                  if (currentQuestion.question_type === "multiple_choice") {
-                    const selectedOptionIds = Array.isArray(currentSelection)
-                      ? currentSelection
-                      : [];
+                    }
 
                     return (
                       <li key={option.id}>
-                        <label className="assessment-option" htmlFor={inputId}>
+                        <label
+                          className={`assessment-option${
+                            currentSelection === option.id ? " assessment-option--selected" : ""
+                          }`}
+                          htmlFor={inputId}
+                        >
                           <input
                             id={inputId}
-                            type="checkbox"
-                            checked={selectedOptionIds.includes(option.id)}
-                            onChange={(event) => {
-                              const isChecked = event.target.checked;
-                              const currentValue = Array.isArray(currentSelection)
-                                ? currentSelection
-                                : [];
-                              const nextOptionIds = isChecked
-                                ? [...currentValue, option.id]
-                                : currentValue.filter((optionId) => optionId !== option.id);
-
-                              updateSelection(currentQuestion.id, nextOptionIds);
+                            type="radio"
+                            name={currentQuestion.id}
+                            checked={currentSelection === option.id}
+                            onClick={() => {
+                              if (currentSelection === option.id) {
+                                void handleSingleChoiceStepConfirmation();
+                              }
+                            }}
+                            onChange={() => {
+                              updateSelection(currentQuestion.id, option.id);
                             }}
                           />
-                          <span className="assessment-option__marker">
-                            {option.option_order}
-                          </span>
+                          <span className="assessment-option__marker">{option.option_order}</span>
                           <span className="assessment-option__label">{option.label}</span>
                         </label>
                       </li>
                     );
-                  }
+                  })}
+                </ol>
+              ) : (
+                <p>No answer options available for this question.</p>
+              )}
+            </fieldset>
 
-                  return (
-                    <li key={option.id}>
-                      <label className="assessment-option" htmlFor={inputId}>
-                        <input
-                          id={inputId}
-                          type="radio"
-                          name={currentQuestion.id}
-                          checked={currentSelection === option.id}
-                          onChange={() => {
-                            updateSelection(currentQuestion.id, option.id);
-                          }}
-                        />
-                        <span className="assessment-option__marker">{option.option_order}</span>
-                        <span className="assessment-option__label">{option.label}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : (
-              <p>No answer options available for this question.</p>
-            )}
-          </fieldset>
+            {stepValidationMessage ? (
+              <p className="assessment-inline-message assessment-inline-message--error">
+                {stepValidationMessage}
+              </p>
+            ) : null}
 
-          {stepValidationMessage ? (
-            <p className="assessment-inline-message assessment-inline-message--error">
-              {stepValidationMessage}
-            </p>
-          ) : null}
+            {saveMessage ? (
+              <p
+                className={`assessment-inline-message ${
+                  saveStatus === "error"
+                    ? "assessment-inline-message--error"
+                    : "assessment-inline-message--success"
+                }`}
+              >
+                {saveMessage}
+              </p>
+            ) : null}
+          </section>
 
-          {saveMessage ? (
-            <p
-              className={`assessment-inline-message ${
-                saveStatus === "error"
-                  ? "assessment-inline-message--error"
-                  : "assessment-inline-message--success"
-              }`}
-            >
-              {saveMessage}
-            </p>
-          ) : null}
-        </section>
+          <div className="assessment-step-layout__footer">
+            {!canComplete && currentQuestionIndex === questions.length - 1 ? (
+              <p className="assessment-progress-note">{incompleteRequiredAnswersMessage}</p>
+            ) : null}
 
-        <div className={stepActionsClassName}>
-          <button
-            className="button-secondary assessment-step-actions__button assessment-step-actions__button--ghost"
-            type="button"
-            onClick={handleBack}
-            disabled={isInteractionLocked || currentQuestionIndex === 0}
-          >
-            Nazad
-          </button>
+            <div className={stepActionsClassName}>
+              <button
+                className="button-secondary assessment-step-actions__button assessment-step-actions__button--ghost"
+                type="button"
+                onClick={handleBack}
+                disabled={isInteractionLocked || currentQuestionIndex === 0}
+              >
+                Nazad
+              </button>
 
-          <button
-            className="button-secondary assessment-step-actions__button assessment-step-actions__button--save"
-            type="button"
-            onClick={handleSave}
-            disabled={isInteractionLocked}
-          >
-            {saveStatus === "saving" ? "Sačuvavanje..." : "Sačuvaj"}
-          </button>
+              <button
+                className="button-secondary assessment-step-actions__button assessment-step-actions__button--save"
+                type="button"
+                onClick={handleSave}
+                disabled={isInteractionLocked}
+              >
+                {saveStatus === "saving" ? "Sačuvavanje..." : "Sačuvaj"}
+              </button>
 
-          {shouldShowContinueButton ? (
-            <button
-              className="assessment-step-actions__button assessment-step-actions__button--primary"
-              type="button"
-              onClick={handleAdvance}
-              disabled={isInteractionLocked}
-            >
-              {saveStatus === "completing"
-                ? "Završavanje..."
-                : isLastQuestion
-                  ? "Završi procjenu"
-                  : "Nastavi"}
-            </button>
-          ) : null}
+              {shouldShowContinueButton ? (
+                <button
+                  className="assessment-step-actions__button assessment-step-actions__button--primary"
+                  type="button"
+                  onClick={handleAdvance}
+                  disabled={isInteractionLocked}
+                >
+                  {saveStatus === "completing"
+                    ? "Završavanje..."
+                    : isLastQuestion
+                      ? "Završi procjenu"
+                      : "Nastavi"}
+                </button>
+              ) : null}
+            </div>
+          </div>
         </div>
-
-        {!canComplete && currentQuestionIndex === questions.length - 1 ? (
-          <p className="assessment-progress-note">{incompleteRequiredAnswersMessage}</p>
-        ) : null}
       </div>
     );
   }
