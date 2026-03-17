@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import {
   getCompletedAssessmentReportSnapshot,
@@ -33,13 +33,14 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
     notFound();
   }
 
-  const [results, report] =
-    attempt.status === "completed"
-      ? await Promise.all([
-          getCompletedAssessmentResults(attempt.test_id, attempt.id),
-          getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id),
-        ])
-      : [null, null];
+  if (attempt.status !== "completed") {
+    redirect(`/dashboard/attempts/${attempt.id}/run`);
+  }
+
+  const [results, report] = await Promise.all([
+    getCompletedAssessmentResults(attempt.test_id, attempt.id),
+    getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id),
+  ]);
 
   return (
     <main className="attempt-results-page stack-md">
@@ -51,13 +52,10 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
         <div className="attempt-results-page__summary">
           <div className="stack-xs">
             <p className="assessment-eyebrow">Zaštićeni izvještaj</p>
-            <h1>
-              {attempt.status === "completed" ? "Rezultati završene procjene" : "Pokušaj je kreiran"}
-            </h1>
+            <h1>Rezultati završene procjene</h1>
             <p className="attempt-results-page__lede">
-              {attempt.status === "completed"
-                ? "Završeni pokušaj ostaje dostupan unutar zaštićenog dashboarda kao pregled izvještaja i rezultata."
-                : "Pokušaj je kreiran i spreman za nastavak procjene unutar zaštićenog toka."}
+              Završeni pokušaj ostaje dostupan unutar zaštićenog dashboarda kao pregled
+              izvještaja i rezultata.
             </p>
           </div>
 
@@ -80,25 +78,17 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
             </div>
           </dl>
         </div>
-
-        {attempt.status !== "completed" ? (
-          <p>
-            <Link href={`/dashboard/attempts/${attempt.id}/run`}>Nastavi procjenu</Link>
-          </p>
-        ) : null}
       </section>
 
-      {attempt.status === "completed" ? (
-        <section className="attempt-results-page__content">
-          <CompletedAssessmentSummary
-            completedAt={attempt.completed_at}
-            participantName={attempt.participants?.full_name ?? null}
-            testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
-            results={results}
-            reportState={report}
-          />
-        </section>
-      ) : null}
+      <section className="attempt-results-page__content">
+        <CompletedAssessmentSummary
+          completedAt={attempt.completed_at}
+          participantName={attempt.participants?.full_name ?? null}
+          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
+          results={results}
+          reportState={report}
+        />
+      </section>
     </main>
   );
 }

@@ -302,8 +302,7 @@ export function AssessmentForm({
 
       if (executionMode === "protected" && completionRedirectPath) {
         setProtectedCompletionUiPhase("redirecting");
-        router.push(completionRedirectPath);
-        router.refresh();
+        router.replace(completionRedirectPath);
         return;
       }
 
