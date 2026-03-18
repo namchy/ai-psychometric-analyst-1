@@ -24,11 +24,20 @@ type DimensionViewModel = {
   label: string;
   helperLabel: string | null;
   score: number;
+  averageScore: number;
   scoredQuestionCount: number;
   shortInterpretation: string;
   scoreWidth: number;
   rank: number;
   totalDimensions: number;
+};
+
+type DimensionDetailBlock = {
+  heading:
+    | "Kako se to kod tebe često pokazuje"
+    | "Šta ti to može donositi kao prednost"
+    | "Na šta vrijedi obratiti pažnju";
+  body: string;
 };
 
 function formatUnscoredReason(
@@ -64,6 +73,26 @@ function ensureSentence(text: string): string {
   }
 
   return /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
+}
+
+function getAverageScore(rawScore: number, scoredQuestionCount: number): number {
+  if (scoredQuestionCount === 0) {
+    return 0;
+  }
+
+  return Math.round((rawScore / scoredQuestionCount) * 100) / 100;
+}
+
+function getScoreBand(score: number): "high" | "mid" | "low" {
+  if (score >= 3.67) {
+    return "high";
+  }
+
+  if (score >= 2.34) {
+    return "mid";
+  }
+
+  return "low";
 }
 
 function toSecondPersonSingular(text: string): string {
@@ -174,14 +203,272 @@ function formatTopInsightSentence(text: string): string {
   return ensureSentence(`Kod tebe se posebno vidi da ${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`);
 }
 
-function getRemainingSentences(text: string): string | null {
-  const sentences = splitIntoSentences(text);
+function joinSentences(...sentences: Array<string | null | undefined>): string {
+  return sentences
+    .filter((sentence): sentence is string => Boolean(sentence))
+    .map((sentence) => ensureSentence(sentence))
+    .join(" ");
+}
 
-  if (sentences.length <= 1) {
-    return null;
+function getRankContext(dimension: DimensionViewModel): string {
+  if (dimension.rank === 0) {
+    return "Ovo je jedna od izraženijih niti tvog trenutnog obrasca i često daje ton načinu na koji prilaziš ljudima i zadacima";
   }
 
-  return sentences.slice(1).join(" ");
+  if (dimension.rank === dimension.totalDimensions - 1) {
+    return "Ova dimenzija je kod tebe tiša, pa je najkorisnije pratiti kako se uključuje onda kada situacija to zaista traži";
+  }
+
+  return "Ova dimenzija kod tebe djeluje kao stabilna sredina, pa često služi kao način da zadržiš ravnotežu između impulsa i zahtjeva situacije";
+}
+
+function getFallbackDimensionDetailBlocks(dimension: DimensionViewModel): DimensionDetailBlock[] {
+  return [
+    {
+      heading: "Kako se to kod tebe često pokazuje",
+      body: joinSentences(
+        getRankContext(dimension),
+        "Najčešće se vidi kroz sitne izbore u tempu, komunikaciji i načinu na koji odgovaraš na očekivanja oko sebe",
+      ),
+    },
+    {
+      heading: "Šta ti to može donositi kao prednost",
+      body: "Kada ovu tendenciju koristiš svjesno, može ti pomoći da prirodnije pronađeš stil rada i saradnje koji ti stvarno odgovara umjesto da radiš protiv sebe.",
+    },
+    {
+      heading: "Na šta vrijedi obratiti pažnju",
+      body: "Vrijedi paziti da ovu stranu sebe ne uzmeš kao fiksno pravilo, jer najbolji rezultat obično dolazi kada zadržiš malo fleksibilnosti prema kontekstu i ljudima oko sebe.",
+    },
+  ];
+}
+
+function getDimensionDetailBlocks(dimension: DimensionViewModel): DimensionDetailBlock[] {
+  const band = getScoreBand(dimension.averageScore);
+
+  const contentByDimension: Record<string, Record<"high" | "mid" | "low", DimensionDetailBlock[]>> = {
+    extraversion: {
+      high: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Često ti prija kontakt s ljudima, brže se uključuješ u razgovor i lakše unosiš energiju u prostor. U grupi se obično ne povlačiš dugo, nego spontano zauzmeš svoje mjesto.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može pomoći u povezivanju, pokretanju saradnje i davanju zamaha timu kada treba probiti početnu rezervu. Ljudi te često lakše primijete i zapamte jer djeluješ pristupačno i angažovano.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da brzina uključivanja ne ostavi premalo prostora za tuđi ritam ili tiše signale u razgovoru. Nekad upravo kratka pauza i više slušanja pojačaju utisak koji već prirodno ostavljaš.",
+        },
+      ],
+      mid: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Kod tebe se često vidi dobar balans između društvene otvorenosti i potrebe za vlastitim tempom. Znaš biti prisutan i topao, ali bez potrebe da budeš u centru svake situacije.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "Ovakav raspon ti može pomoći da se prilagodiš različitim ljudima i okruženjima bez velikog napora. U saradnji možeš prirodno prebacivati između angažmana, slušanja i mirnijeg promišljanja.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Pošto možeš djelovati i otvoreno i odmjereno, nekad drugi teže procijene kada ti treba više prostora, a kada više interakcije. Korisno je da to kažeš jasnije umjesto da pretpostaviš da će drugi sami prepoznati tvoj ritam.",
+        },
+      ],
+      low: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Često ti više odgovaraju mirniji razgovori, manji broj ljudi i situacije u kojima ne moraš stalno biti izložen. Obično se lakše otvaraš kada prvo osjetiš smisao, sigurnost ili dovoljno prostora za svoj tempo.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može davati smirenije prisustvo, bolju selektivnost u odnosima i više fokusa kada buka okoline raste. U radu često pomaže jer ne trošiš energiju na stalnu socijalnu aktivaciju nego je čuvaš za ono što ti je važno.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da potreba za mirom ne bude pogrešno pročitana kao nezainteresovanost ili distanca kada ti to zapravo nisi. Nekad je dovoljno da ranije pokažeš namjeru iako ne želiš odmah puno pričati.",
+        },
+      ],
+    },
+    agreeableness: {
+      high: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Često paziš kako tvoje riječi utiču na druge i prirodno tražiš ton koji čuva odnos. U saradnji ti je važno da komunikacija ostane korektna, a da ljudi osjete poštovanje i dobru namjeru.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može pomagati u građenju povjerenja, smirivanju tenzije i lakšem povezivanju različitih ljudi. Često si neko uz koga saradnja djeluje sigurnije i manje iscrpljujuće.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da želja za skladom ne potisne ono što ti stvarno misliš ili trebaš reći. Tvoja obzirnost ima najveću vrijednost kada uz nju ostane i dovoljno jasna granica.",
+        },
+      ],
+      mid: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Kod tebe se često vidi balans između saradnje i direktnosti. Znaš biti obziran, ali i reći šta misliš kada procijeniš da je to korisnije od pukog slaganja.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može donositi vjerodostojnost u odnosima jer ne djeluješ ni pretjerano mekan ni nepotrebno tvrd. U radu i dogovaranju često pomaže zato što možeš čuvati odnos, a ipak gurati stvari naprijed.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Pošto se dobro krećeš između takta i iskrenosti, nekad možeš predugo vagati koji pristup je pravi. Korisno je da ranije odlučiš kada je važniji mir, a kada je važnija potpuna jasnoća.",
+        },
+      ],
+      low: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Često radije ideš direktno na suštinu nego da dugo ublažavaš poruku. Kada nešto ne vidiš kao dobro rješenje, vjerovatno ti je prirodnije da to jasno pokažeš nego da ostaneš u diplomatskoj neodređenosti.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može donositi brzinu, odlučnost i veću spremnost da otvoriš teške teme koje drugi zaobilaze. U situacijama gdje treba presjeći maglu, tvoja direktnost može biti veoma korisna.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da jasnoća ne zazvuči oštrije nego što namjeravaš, posebno kada druga strana traži više takta nego argumenta. Nekad mala doza topline u formi pojača prijem tvoje poruke bez gubitka iskrenosti.",
+        },
+      ],
+    },
+    conscientiousness: {
+      high: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Vjerovatno ti prijaju struktura, red i osjećaj da stvari imaju jasan tok. Često misliš unaprijed, pratiš detalje i osjetiš unutrašnje zadovoljstvo kada obaveze držiš pod kontrolom.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može pomagati u pouzdanosti, dosljednosti i pretvaranju planova u stvarne rezultate. Ljudi te često mogu doživjeti kao nekoga na koga se može računati kada treba iznijeti posao do kraja.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da visoki kriteriji ne prerastu u nepotreban pritisak ili osjećaj da sve mora biti potpuno sređeno prije kretanja. Ponekad je dovoljno da nešto bude dovoljno dobro da bi moglo ići dalje.",
+        },
+      ],
+      mid: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Kod tebe se često vidi praktičan balans između plana i fleksibilnosti. Možeš se organizovati kada treba, ali obično ne djeluješ ukočeno ako se okolnosti usput promijene.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može biti korisno jer znaš održati osnovni red bez gušenja spontanosti. U radu i saradnji često znači da možeš pratiti dogovor, a ipak ostati dovoljno prilagodljiv kada realnost krene drugim putem.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Pošto se dobro snalaziš između strukture i improvizacije, nekad možeš prekasno primijetiti da zadatak ipak traži više sistema nego što si mu dao. Korisno je ranije procijeniti kada je dosta fleksibilnosti, a kada treba čvršći okvir.",
+        },
+      ],
+      low: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Često ti više odgovara spontaniji tok nego strogo praćenje unaprijed zadatog reda. Možeš brzo reagovati, krenuti iz momenta i tražiti vlastiti način umjesto da se oslanjaš na rigidnu rutinu.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može donositi svježinu, bržu prilagodbu i manje zakočenosti kada se okolnosti naglo mijenjaju. Posebno može pomoći tamo gdje treba uhvatiti momentum umjesto čekati savršen plan.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da spontanost ne pojede kontinuitet u stvarima koje traže praćenje, dovršavanje i dosljedan ritam. Često nije potreban veliki sistem, nego samo nekoliko vanjskih oslonaca koji te vraćaju na bitno.",
+        },
+      ],
+    },
+    emotional_stability: {
+      high: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "U zahtjevnijim situacijama često zadržiš prisebnost i ne prepuštaš se lako početnom talasu pritiska. Drugima možeš djelovati kao neko ko i pod opterećenjem ostaje dovoljno miran da razmišlja jasno.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može pomoći u donošenju odluka, smirenijoj komunikaciji i održavanju stabilnog ritma kada okolina postane napeta. Ljudi uz tebe često lakše ostaju fokusirani jer ne pojačavaš dodatno stres u prostoru.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da unutrašnju stabilnost ne pretvoriš u preveliku distancu prema vlastitim signalima umora ili tuđoj emocionalnoj reakciji. Nekad baš ono što te drži mirnim treba dopuniti malo otvorenijim pokazivanjem kako ti je.",
+        },
+      ],
+      mid: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Na pritisak vjerovatno reaguješ zavisno od konteksta, intenziteta i toga koliko imaš kontrole nad situacijom. Nekad ostaješ vrlo sabran, a nekad ti treba više vremena da vratiš unutrašnji mir.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "Ovakav raspon ti može pomoći jer nisi ni previše tvrd prema sebi ni potpuno preplavljen kada stvari postanu zahtjevne. Kada prepoznaš šta te stabilizuje, obično možeš prilično dobro vratiti fokus i ritam.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Pošto tvoja reakcija zavisi od situacije, korisno je da ranije prepoznaš svoje okidače umjesto da ih primijetiš tek kad se nakupi pritisak. Mala, redovna briga o oporavku ovdje često pravi veću razliku nego veliki jednokratni potezi.",
+        },
+      ],
+      low: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Pritisak možeš osjetiti brže i intenzivnije, posebno kada se nagomilaju neizvjesnost, očekivanja ili previše otvorenih frontova. To ne znači slabost, nego da tvoj sistem ranije registruje opterećenje i traži više regulacije.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "Kad to dobro upoznaš, može ti pomoći da ranije primijetiš šta nije održivo i da ozbiljnije shvatiš signale iscrpljenosti koje drugi ignorišu. Ta osjetljivost može te učiniti pažljivijim prema kvalitetu okruženja i načinu rada koji ti stvarno odgovara.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da intenzitet trenutnog osjećaja ne postane jedina slika cijele situacije. Korisno je unaprijed graditi male navike smirivanja i oslonce koji te vraćaju u osjećaj kontrole prije nego što stres preuzme tempo.",
+        },
+      ],
+    },
+    intellect: {
+      high: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Često te privuku nove ideje, drugačiji uglovi gledanja i prostor za istraživanje van očiglednog. Vjerovatno ti prija kada možeš povezivati teme, postavljati pitanja i širiti sliku prije nego što je zatvoriš.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može donositi kreativniji pristup, lakše učenje i veću spremnost da vidiš rješenja koja nisu odmah standardna. U razgovoru i radu često pomaže jer unosiš svježinu, radoznalost i mentalnu širinu.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da širina interesa ne odvuče fokus sa onoga što trenutno treba privesti kraju. Nekad najbolji efekat dolazi kada radoznalost namjerno spojiš s vrlo konkretnim narednim korakom.",
+        },
+      ],
+      mid: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Kod tebe se često vidi otvorenost za novo, ali bez potrebe da svaka stvar bude potpuno drugačija ili eksperimentalna. Možeš prihvatiti novu ideju kada vidiš smisao, a istovremeno zadržati poštovanje prema onome što već radi.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može pomagati da spajaš praktičnost i svježinu bez nepotrebnog idealizovanja novog ili starog. U saradnji je korisno jer često možeš biti most između onih koji guraju promjenu i onih kojima treba više sigurnosti.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Pošto vidiš vrijednost na obje strane, nekad možeš predugo ostati između istraživanja i odluke. Korisno je ranije odrediti kad je vrijeme za još pitanja, a kad je dovoljno jasno da kreneš dalje.",
+        },
+      ],
+      low: [
+        {
+          heading: "Kako se to kod tebe često pokazuje",
+          body: "Često ti više odgovara jasno, konkretno i primjenjivo nego dugo zadržavanje u apstraktnim idejama. Kada nešto procjenjuješ, vjerovatno ti je važno da brzo vidiš čemu služi i kako se može stvarno upotrijebiti.",
+        },
+        {
+          heading: "Šta ti to može donositi kao prednost",
+          body: "To ti može donositi praktičnost, manje rasipanja energije i bolji osjećaj za ono što je zaista izvedivo. U radu često pomaže jer brže spuštaš stvari na zemlju i tražiš upotrebljivo rješenje umjesto teorijskog sjaja.",
+        },
+        {
+          heading: "Na šta vrijedi obratiti pažnju",
+          body: "Vrijedi paziti da potreba za jasnoćom ne zatvori vrata ideji koja u početku još nema savršen oblik. Nekad mala doza istraživanja prije zaključka otvori rješenje koje bi inače ostalo neprimijećeno.",
+        },
+      ],
+    },
+  };
+
+  return contentByDimension[dimension.key]?.[band] ?? getFallbackDimensionDetailBlocks(dimension);
 }
 
 function formatCompletedAt(value?: string | null): string {
@@ -231,18 +518,6 @@ function getTopInsights(
   return uniqueItems
     .slice(0, 3)
     .map((item) => formatTopInsightSentence(item));
-}
-
-function getDimensionDetail(dimension: DimensionViewModel): string[] {
-  const nuance = getRemainingSentences(toSecondPersonSingular(dimension.shortInterpretation));
-  const rankSummary =
-    dimension.rank === 0
-      ? `${dimension.label} se kod tebe trenutno najviše ističe i snažno oblikuje tvoj ukupni obrazac.`
-      : dimension.rank === dimension.totalDimensions - 1
-        ? `${dimension.label} je kod tebe suptilnija, pa je najbolje posmatrati kako se pokazuje u različitim situacijama.`
-        : `${dimension.label} kod tebe djeluje prilično stabilno i daje važnu nijansu tvom ukupnom obrascu.`;
-
-  return [nuance, rankSummary].filter((detail): detail is string => Boolean(detail));
 }
 
 function getConclusion(
@@ -339,6 +614,7 @@ export function CompletedAssessmentSummary({
         label: formatDimensionLabel(dimension.dimension),
         helperLabel: getDimensionHelperLabel(dimension.dimension),
         score: dimension.rawScore,
+        averageScore: getAverageScore(dimension.rawScore, dimension.scoredQuestionCount),
         scoredQuestionCount: dimension.scoredQuestionCount,
         shortInterpretation:
           reportDimension?.short_interpretation ??
@@ -362,28 +638,33 @@ export function CompletedAssessmentSummary({
           <p className="results-report__eyebrow">Izvještaj procjene</p>
           <h2>{testName ?? "Rezultati procjene"}</h2>
 
-          <dl className="results-report__hero-meta">
-            {participantName ? (
-              <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
-                <dt>Korisnik</dt>
-                <dd>{participantName}</dd>
+          <div className="results-report__hero-meta-wrap">
+            <dl className="results-report__hero-meta">
+              {participantName ? (
+                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                  <dt>Korisnik</dt>
+                  <dd>{participantName}</dd>
+                </div>
+              ) : null}
+              {organizationName ? (
+                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                  <dt>Organizacija</dt>
+                  <dd>{organizationName}</dd>
+                </div>
+              ) : null}
+              <div className="results-report__hero-meta-item results-report__hero-meta-item--wide">
+                <dt>Završeno</dt>
+                <dd>{formatCompletedAt(completedAt)}</dd>
               </div>
-            ) : null}
-            {organizationName ? (
-              <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
-                <dt>Organizacija</dt>
-                <dd>{organizationName}</dd>
-              </div>
-            ) : null}
-            <div className="results-report__hero-meta-item results-report__hero-meta-item--wide">
-              <dt>Završeno</dt>
-              <dd>{formatCompletedAt(completedAt)}</dd>
-            </div>
-          </dl>
+            </dl>
+          </div>
         </div>
 
         {topInsights.length > 0 ? (
-          <section className="results-report__hero-insights" aria-label="Top insights">
+          <section
+            className="results-report__hero-insights results-report__hero-insights--mobile"
+            aria-label="Top insights"
+          >
             <p className="results-report__hero-label">Top uvidi</p>
             <ul className="results-insight-list">
               {topInsights.map((insight) => (
@@ -394,9 +675,26 @@ export function CompletedAssessmentSummary({
         ) : null}
       </section>
 
+      {topInsights.length > 0 ? (
+        <section
+          className="results-report__section results-report__section--insights results-report__panel card stack-sm"
+          aria-label="Top insights"
+        >
+          <div className="results-report__section-heading">
+            <p className="results-report__section-kicker">Top uvidi</p>
+            <h3>Sažetak ključnih obrazaca</h3>
+          </div>
+          <ul className="results-insight-list">
+            {topInsights.map((insight) => (
+              <li key={insight}>{insight}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {results ? (
         <>
-          <section className="results-report__section results-report__panel card stack-sm">
+          <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
             <div className="results-report__section-heading">
               <h3>Pregled dimenzija</h3>
               {scoreRangeLabel ? <p className="results-report__section-note">{scoreRangeLabel}</p> : null}
@@ -426,7 +724,7 @@ export function CompletedAssessmentSummary({
           </section>
 
           {dimensionCards.length > 0 ? (
-            <section className="results-report__section stack-sm">
+            <section className="results-report__section results-report__section--dimensions stack-sm">
               <div className="results-report__section-heading">
                 <h3>Dimenzije</h3>
               </div>
@@ -446,7 +744,9 @@ export function CompletedAssessmentSummary({
                           ) : null}
                         </div>
                         <div className="results-dimension-card__score">
-                          <span>{formatScoreLabel(dimension.score)}</span>
+                          <span className="results-dimension-card__score-value">
+                            {formatScoreLabel(dimension.score)}
+                          </span>
                         </div>
                       </div>
 
@@ -466,14 +766,22 @@ export function CompletedAssessmentSummary({
                             )
                           }
                         >
-                          {isExpanded ? "Manje" : "Više"}
+                          <span className="results-dimension-card__toggle-label-mobile">
+                            {isExpanded ? "Manje" : "Više"}
+                          </span>
+                          <span className="results-dimension-card__toggle-label-desktop" aria-hidden="true">
+                            {isExpanded ? "Sakrij detalje" : "Prikaži detalje"}
+                          </span>
                         </button>
                       </div>
 
                       {isExpanded ? (
                         <div id={detailId} className="results-dimension-card__details stack-xs">
-                          {getDimensionDetail(dimension).map((detail) => (
-                            <p key={detail}>{detail}</p>
+                          {getDimensionDetailBlocks(dimension).map((detail) => (
+                            <section key={detail.heading} className="results-dimension-card__detail-block">
+                              <h5>{detail.heading}</h5>
+                              <p>{detail.body}</p>
+                            </section>
                           ))}
                         </div>
                       ) : null}
@@ -502,8 +810,8 @@ export function CompletedAssessmentSummary({
       ) : null}
 
       {reportState?.status === "ready" ? (
-        <>
-          <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__closing stack-md">
+          <section className="results-report__section results-report__section--conclusion results-report__panel card stack-sm">
             <div className="results-report__section-heading">
               <h3>Zaključak</h3>
             </div>
@@ -515,7 +823,7 @@ export function CompletedAssessmentSummary({
           </section>
 
           {recommendations.length > 0 ? (
-            <section className="results-report__section results-report__panel card stack-sm">
+            <section className="results-report__section results-report__section--recommendations results-report__panel card stack-sm">
               <div className="results-report__section-heading">
                 <h3>Preporuke</h3>
               </div>
@@ -533,9 +841,11 @@ export function CompletedAssessmentSummary({
               </ul>
             </section>
           ) : null}
+        </div>
+      ) : null}
 
-          <p className="results-report__disclaimer">{reportState.report.disclaimer}</p>
-        </>
+      {reportState?.status === "ready" ? (
+        <p className="results-report__disclaimer">{reportState.report.disclaimer}</p>
       ) : null}
 
       {reportState?.status === "unavailable" ? (
