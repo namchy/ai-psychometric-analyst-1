@@ -27,7 +27,7 @@ export function LoginForm() {
           }
 
           setMessage(null);
-          router.push("/dashboard");
+          router.push(result.redirectPath);
           router.refresh();
         });
       }}

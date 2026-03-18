@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs"
+    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
+    "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

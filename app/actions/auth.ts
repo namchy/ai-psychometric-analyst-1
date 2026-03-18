@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
 import { clearAuthSession, persistAuthSession } from "@/lib/auth/session";
 import { createSupabaseAuthClient } from "@/lib/supabase/server";
 
@@ -12,6 +13,7 @@ export type LoginInput = {
 export type LoginResult =
   | {
       ok: true;
+      redirectPath: "/hr" | "/app" | "/dashboard";
     }
   | {
       ok: false;
@@ -48,7 +50,9 @@ export async function loginWithPassword(input: LoginInput): Promise<LoginResult>
 
   persistAuthSession(data.session);
 
-  return { ok: true };
+  const redirectPath = await getPostLoginRedirectPathForUserId(data.user.id);
+
+  return { ok: true, redirectPath };
 }
 
 export async function logout() {

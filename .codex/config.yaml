@@ -1,0 +1,7 @@
+approvals:
+  auto_approve:
+    - npm run verify:*
+    - npm run dev
+    - npm run build
+    - npm run typecheck
+    - npm run lint

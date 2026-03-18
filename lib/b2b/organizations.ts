@@ -176,6 +176,27 @@ export async function getParticipantForOrganization(
   return (data as ParticipantSummary | null) ?? null;
 }
 
+export async function getLinkedParticipantForUser(
+  userId: string,
+): Promise<ParticipantSummary | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("participants")
+    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load linked participant: ${error.message}`);
+  }
+
+  return (data as ParticipantSummary | null) ?? null;
+}
+
 export async function getAttemptForOrganization(
   organizationId: string,
   attemptId: string,

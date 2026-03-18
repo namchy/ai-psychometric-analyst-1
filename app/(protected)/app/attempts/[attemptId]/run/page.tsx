@@ -1,13 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { AssessmentForm } from "@/components/assessment/assessment-form";
 import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
-import {
-  getActiveOrganizationForUser,
-  getAttemptForOrganization,
-} from "@/lib/b2b/organizations";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
 
-type ProtectedAttemptRunPageProps = {
+type CandidateAttemptRunPageProps = {
   params: {
     attemptId: string;
   };
@@ -15,24 +12,22 @@ type ProtectedAttemptRunPageProps = {
 
 export const dynamic = "force-dynamic";
 
-export default async function ProtectedAttemptRunPage({
+export default async function CandidateAttemptRunPage({
   params,
-}: ProtectedAttemptRunPageProps) {
+}: CandidateAttemptRunPageProps) {
   const user = await requireAuthenticatedUser();
-  const organization = await getActiveOrganizationForUser(user.id);
-
-  if (!organization) {
-    notFound();
-  }
-
-  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();
   }
 
   if (attempt.status === "completed") {
-    redirect(`/dashboard/attempts/${attempt.id}`);
+    redirect(`/app/attempts/${attempt.id}/report`);
+  }
+
+  if (attempt.status === "abandoned") {
+    redirect(`/app/attempts/${attempt.id}`);
   }
 
   const runPageData = await loadProtectedAttemptRunPageData(attempt);
@@ -41,8 +36,8 @@ export default async function ProtectedAttemptRunPage({
     return (
       <main className="stack-md">
         <section className="card stack-sm">
-          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Assessment"}</h1>
-          <p>No questions are available for this test yet.</p>
+          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena"}</h1>
+          <p>Pitanja za ovu procjenu trenutno nisu dostupna.</p>
         </section>
       </main>
     );
@@ -54,7 +49,7 @@ export default async function ProtectedAttemptRunPage({
         <AssessmentForm
           executionMode="protected"
           layoutMode="step"
-          completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
+          completionRedirectPath={`/app/attempts/${attempt.id}/report`}
           assessmentDisplayName={runPageData.assessmentName}
           participantDisplayName={runPageData.participantName}
           testId={attempt.test_id}

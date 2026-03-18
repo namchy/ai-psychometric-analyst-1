@@ -1,13 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
-import {
-  getActiveOrganizationForUser,
-  getAttemptForOrganization,
-} from "@/lib/b2b/organizations";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
 
-type AttemptDetailPageProps = {
+type CandidateAttemptReportPageProps = {
   params: {
     attemptId: string;
   };
@@ -15,22 +12,22 @@ type AttemptDetailPageProps = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AttemptDetailPage({ params }: AttemptDetailPageProps) {
+export default async function CandidateAttemptReportPage({
+  params,
+}: CandidateAttemptReportPageProps) {
   const user = await requireAuthenticatedUser();
-  const organization = await getActiveOrganizationForUser(user.id);
-
-  if (!organization) {
-    notFound();
-  }
-
-  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();
   }
 
   if (attempt.status !== "completed") {
-    redirect(`/dashboard/attempts/${attempt.id}/run`);
+    redirect(
+      attempt.lifecycle === "in_progress"
+        ? `/app/attempts/${attempt.id}/run`
+        : `/app/attempts/${attempt.id}`,
+    );
   }
 
   const reportPageData = await loadProtectedAttemptReportPageData(attempt);
@@ -40,7 +37,7 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
       <section className="attempt-results-page__content">
         <CompletedAssessmentSummary
           completedAt={attempt.completed_at}
-          organizationName={attempt.organizations?.name ?? organization.name}
+          organizationName={attempt.organizations?.name ?? null}
           participantName={attempt.participants?.full_name ?? null}
           testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
           results={reportPageData.results}
