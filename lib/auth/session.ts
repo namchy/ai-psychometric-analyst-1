@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
 import {
   DEFAULT_REFRESH_COOKIE_MAX_AGE_SECONDS,
   type AuthCookieName,
@@ -85,9 +86,13 @@ export async function requireAuthenticatedUserForAction(): Promise<User> {
 }
 
 export async function redirectAuthenticatedUserToDashboard() {
+  await redirectAuthenticatedUserToAppContext();
+}
+
+export async function redirectAuthenticatedUserToAppContext() {
   const user = await getAuthenticatedUser();
 
   if (user) {
-    redirect("/dashboard");
+    redirect(await getPostLoginRedirectPathForUserId(user.id));
   }
 }

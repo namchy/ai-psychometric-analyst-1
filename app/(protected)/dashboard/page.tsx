@@ -39,6 +39,23 @@ function getDashboardMessage(rawError: string | string[] | undefined): string | 
   }
 }
 
+function getDashboardSuccessMessage(
+  rawSuccess: string | string[] | undefined,
+  rawAttemptId: string | string[] | undefined,
+): string | null {
+  const success = Array.isArray(rawSuccess) ? rawSuccess[0] : rawSuccess;
+  const attemptId = Array.isArray(rawAttemptId) ? rawAttemptId[0] : rawAttemptId;
+
+  switch (success) {
+    case "attempt-created":
+      return attemptId
+        ? `Assessment ${getAttemptLabel(attemptId)} was created successfully. The candidate can now access it from their app workspace.`
+        : "Assessment was created successfully. The candidate can now access it from their app workspace.";
+    default:
+      return null;
+  }
+}
+
 function formatTimestamp(value: string | null): string {
   if (!value) {
     return "N/A";
@@ -66,6 +83,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       ])
     : [[], []];
   const message = getDashboardMessage(searchParams?.error);
+  const successMessage = getDashboardSuccessMessage(searchParams?.success, searchParams?.attemptId);
 
   return (
     <main className="stack-md">
@@ -85,6 +103,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p>TODO: add an explicit organization switcher when multi-org selection becomes necessary.</p>
           ) : null}
           {message ? <p>{message}</p> : null}
+          {successMessage ? <p>{successMessage}</p> : null}
         </div>
 
         <form action={logout}>

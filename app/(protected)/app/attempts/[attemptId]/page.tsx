@@ -17,26 +17,46 @@ function formatEstimatedDuration(
   questionCount: number,
 ): string | null {
   if (durationMinutes && durationMinutes > 0) {
-    return `${durationMinutes} min`;
+    return `${durationMinutes} minuta`;
   }
 
   if (questionCount <= 0) {
     return null;
   }
 
-  return `oko ${Math.max(5, Math.ceil(questionCount / 2))} min`;
+  const minimum = Math.max(5, Math.floor(questionCount / 7));
+  const maximum = Math.max(minimum + 1, Math.ceil(questionCount / 5));
+  return `oko ${minimum} do ${maximum} minuta`;
 }
 
-function getMethodologyNote(testSlug: string | null | undefined): string | null {
-  if (!testSlug) {
-    return null;
+function getAssessmentTitle(name: string | null | undefined, slug: string | null | undefined): string {
+  const normalizedName = name?.trim();
+
+  if (normalizedName && /ličnost/i.test(normalizedName)) {
+    return normalizedName;
   }
 
-  if (testSlug.startsWith("ipip")) {
-    return "Procjena koristi kratke tvrdnje na koje odgovaraš stepenom slaganja kako bi se dobio pregled stabilnih obrazaca ličnosti.";
+  if (slug?.startsWith("ipip")) {
+    return "Procjena ličnosti";
   }
 
-  return null;
+  return normalizedName ?? slug ?? "Procjena";
+}
+
+function getAssessmentDescription(description: string | null | undefined): string {
+  if (description?.trim()) {
+    return description;
+  }
+
+  return "Ova procjena pruža strukturiran uvid u tvoje obrasce ponašanja, načine reagovanja i lične tendencije kroz niz kratkih tvrdnji.";
+}
+
+function getResponseScaleLabel(testSlug: string | null | undefined): string {
+  if (testSlug?.startsWith("ipip")) {
+    return "Odgovori na skali od 1 do 5";
+  }
+
+  return "Kratke tvrdnje sa ponuđenom skalom odgovora";
 }
 
 function getIntroAction(
@@ -85,50 +105,124 @@ export default async function CandidateAttemptIntroPage({
     questionCount,
   );
   const action = getIntroAction(attempt.id, attempt.lifecycle);
-  const methodologyNote = getMethodologyNote(attempt.tests?.slug);
+  const assessmentTitle = getAssessmentTitle(attempt.tests?.name, attempt.tests?.slug);
+  const assessmentDescription = getAssessmentDescription(attempt.tests?.description);
+  const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
 
   return (
-    <main className="stack-md">
-      <section className="card stack-sm">
-        <div className="stack-xs">
-          <p className="assessment-eyebrow">
-            {attempt.lifecycle === "completed" ? "Procjena završena" : "Procjena je spremna"}
-          </p>
-          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena"}</h1>
-          <p>
-            {attempt.tests?.description ??
-              "Ova procjena daje strukturisan uvid u obrasce ličnosti i način na koji najčešće pristupaš radu, saradnji i svakodnevnim situacijama."}
-          </p>
-        </div>
-
-        <div className="stack-xs">
-          <p>
-            <strong>Broj pitanja:</strong> {questionCount > 0 ? questionCount : "Biće prikazano pri početku"}
-          </p>
-          {estimatedDuration ? (
-            <p>
-              <strong>Procijenjeno trajanje:</strong> {estimatedDuration}
+    <main className="candidate-intro stack-md">
+      <section className="candidate-intro__hero card stack-sm">
+        <div className="stack-sm">
+          <div className="stack-xs">
+            <p className="assessment-eyebrow">
+              {attempt.lifecycle === "completed"
+                ? "Procjena završena"
+                : attempt.lifecycle === "in_progress"
+                  ? "Procjena je u toku"
+                  : "Spremno za početak"}
             </p>
-          ) : null}
-          <p>Nema tačnih i netačnih odgovora. Najkorisnije je da odgovaraš iskreno i bez previše premišljanja.</p>
-          <p>Rezultati služe kao uvid u obrasce ponašanja i ličnosti, a ne kao apsolutna presuda o tebi.</p>
-          {methodologyNote ? <p>{methodologyNote}</p> : null}
-        </div>
+            <h1>{assessmentTitle}</h1>
+            <p className="candidate-intro__lead">{assessmentDescription}</p>
+          </div>
 
-        <div className="stack-xs">
-          {attempt.lifecycle === "completed" ? (
-            <p>Tvoja procjena je već završena i izvještaj je dostupan za pregled.</p>
-          ) : attempt.lifecycle === "abandoned" ? (
-            <p>Ova procjena trenutno nije otvorena za nastavak. Ako očekuješ novi poziv, vrati se na početni ekran.</p>
-          ) : attempt.lifecycle === "in_progress" ? (
-            <p>Sačuvali smo tvoj dosadašnji napredak, pa možeš nastaviti tamo gdje si stao.</p>
-          ) : (
-            <p>Kada budeš spreman, možeš započeti procjenu i proći kroz pitanja svojim tempom.</p>
-          )}
-          <p>
-            <Link href={action.href}>{action.label}</Link>
-          </p>
+          <dl className="candidate-intro__meta" aria-label="Osnovne informacije o procjeni">
+            <div className="candidate-intro__meta-item">
+              <dt>Broj pitanja</dt>
+              <dd>{questionCount > 0 ? `${questionCount} pitanja` : "Biće prikazano pri početku"}</dd>
+            </div>
+            {estimatedDuration ? (
+              <div className="candidate-intro__meta-item">
+                <dt>Procijenjeno trajanje</dt>
+                <dd>{estimatedDuration}</dd>
+              </div>
+            ) : null}
+            <div className="candidate-intro__meta-item">
+              <dt>Format odgovora</dt>
+              <dd>{responseScaleLabel}</dd>
+            </div>
+          </dl>
         </div>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Šta možeš očekivati</p>
+          <h2>Kako izgleda procjena</h2>
+        </div>
+        <p>
+          Tokom procjene označavaš u kojoj mjeri te pojedine tvrdnje opisuju. Nema tačnih ni
+          netačnih odgovora. Najkorisnije je da odgovaraš iskreno i spontano, prema tome kako inače
+          funkcionišeš.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Kako će rezultati biti prikazani</p>
+          <h2>Šta dobijaš na kraju</h2>
+        </div>
+        <p>
+          Na kraju ćeš dobiti izvještaj sa glavnim uvidima o tvojim ličnim obrascima i načinu
+          funkcionisanja. Rezultati služe kao strukturiran uvid, a ne kao konačna ocjena tvoje
+          vrijednosti ili sposobnosti.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Na čemu se procjena zasniva</p>
+          <h2>Metodološka osnova</h2>
+        </div>
+        <p>
+          Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se
+          često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom
+          kontekstu.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Prije nego počneš</p>
+          <h2>Kratke smjernice</h2>
+        </div>
+        <ul className="candidate-intro__checklist">
+          <li>Odvoji nekoliko minuta bez prekida.</li>
+          <li>Odgovaraj iskreno.</li>
+          <li>Nemoj previše analizirati svaku tvrdnju.</li>
+          <li>Ako je omogućeno, procjenu možeš nastaviti kasnije.</li>
+        </ul>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Povjerljivost i upotreba rezultata</p>
+          <h2>Kako se odgovori koriste</h2>
+        </div>
+        <p>
+          Tvoji odgovori i rezultati koriste se u okviru procesa procjene za koji je ova aplikacija
+          namijenjena. Izvještaj je oblikovan tako da pruži strukturiran i smislen pregled rezultata
+          relevantnim učesnicima procesa.
+        </p>
+      </section>
+
+      <section className="candidate-intro__cta card stack-sm">
+        {attempt.lifecycle === "completed" ? (
+          <p>Tvoja procjena je završena i izvještaj je spreman za pregled.</p>
+        ) : attempt.lifecycle === "abandoned" ? (
+          <p>Ova procjena trenutno nije otvorena za nastavak. Vrati se na početni ekran za naredni korak.</p>
+        ) : attempt.lifecycle === "in_progress" ? (
+          <p>Sačuvali smo tvoj dosadašnji napredak, pa možeš nastaviti tamo gdje si stao.</p>
+        ) : (
+          <p>Kada budeš spreman, možeš započeti procjenu i proći kroz pitanja svojim tempom.</p>
+        )}
+        <div>
+          <Link className="candidate-home__link" href={action.href}>
+            {action.label}
+          </Link>
+        </div>
+        <p className="candidate-intro__cta-note">
+          Po završetku procjene dobit ćeš personalizovani izvještaj sa glavnim uvidima.
+        </p>
       </section>
     </main>
   );

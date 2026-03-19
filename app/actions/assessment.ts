@@ -10,6 +10,7 @@ import {
   getAttemptForOrganization,
   getParticipantForOrganization,
 } from "@/lib/b2b/organizations";
+import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
 import {
   persistCompletedAssessmentReport,
   type CompletedAssessmentReportState,
@@ -193,6 +194,22 @@ function isNextRedirectError(error: unknown): boolean {
   return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
 }
 
+async function getProtectedAttemptForUser(userId: string, attemptId: string) {
+  const candidateAttempt = await getCandidateAttemptForUser(userId, attemptId);
+
+  if (candidateAttempt) {
+    return candidateAttempt;
+  }
+
+  const organization = await getActiveOrganizationForUser(userId);
+
+  if (!organization) {
+    return null;
+  }
+
+  return getAttemptForOrganization(organization.id, attemptId);
+}
+
 async function persistAssessmentSelections(
   input: SaveAssessmentSelectionsInput,
   options: PersistAssessmentSelectionsOptions = {},
@@ -356,16 +373,13 @@ async function persistAssessmentSelections(
   if (nextAttemptId) {
     if (options.requireProtectedOwnership) {
       const user = await requireAuthenticatedUserForAction();
-      const organization = await getActiveOrganizationForUser(user.id);
-
-      if (!organization) {
-        return { ok: false, message: "No active organization is available for this user." };
-      }
-
-      const ownedAttempt = await getAttemptForOrganization(organization.id, nextAttemptId);
+      const ownedAttempt = await getProtectedAttemptForUser(user.id, nextAttemptId);
 
       if (!ownedAttempt || ownedAttempt.test_id !== input.testId) {
-        return { ok: false, message: "This assessment attempt is not available in the active organization." };
+        return {
+          ok: false,
+          message: "This assessment attempt is not available for the current user.",
+        };
       }
     }
 
@@ -669,7 +683,7 @@ export async function createB2BAttempt(formData: FormData) {
     redirect("/dashboard?error=create-attempt-failed");
   }
 
-  redirect(`/dashboard/attempts/${data.id}`);
+  redirect(`/dashboard?success=attempt-created&attemptId=${data.id}`);
 }
 
 export async function completeAssessmentAttempt(

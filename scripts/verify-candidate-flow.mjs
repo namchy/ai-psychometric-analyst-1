@@ -1,12 +1,15 @@
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
+import { encodeReply } from "next/dist/compiled/react-server-dom-webpack/client.edge.js";
 
 const APP_URL = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const HEALTH_URL = `${APP_URL}/api/health`;
 const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
 const ACCESS_COOKIE_NAME = "sb-access-token";
 const REFRESH_COOKIE_NAME = "sb-refresh-token";
+const PROTECTED_RUN_CHUNK_PATH =
+  "/_next/static/chunks/app/(protected)/app/attempts/%5BattemptId%5D/run/page.js";
 
 function fail(message) {
   throw new Error(message);
@@ -21,6 +24,26 @@ function assert(condition, message) {
 function assertIncludes(haystack, needle, message) {
   if (!haystack.includes(needle)) {
     fail(message);
+  }
+}
+
+function assertVisibleQuestion(html, expectedQuestionNumber, expectedQuestionText, message) {
+  const match = html.match(
+    /<p class="assessment-step-card__kicker">Pitanje\s*(?:<!-- -->)?(\d+)<\/p><h3>([^<]+)<\/h3>/,
+  );
+
+  if (!match) {
+    fail(`Unable to parse the visible protected run question. ${message}`);
+  }
+
+  const [, renderedQuestionNumber, renderedQuestionText] = match;
+  if (
+    Number(renderedQuestionNumber) !== expectedQuestionNumber ||
+    renderedQuestionText !== expectedQuestionText
+  ) {
+    fail(
+      `${message} Expected visible question ${expectedQuestionNumber} (${expectedQuestionText}), received ${renderedQuestionNumber} (${renderedQuestionText}).`,
+    );
   }
 }
 
@@ -111,6 +134,69 @@ async function fetchProtectedHtml(pathname, session) {
   return response.text();
 }
 
+async function loadProtectedRunActionIds() {
+  const response = await fetch(`${APP_URL}${PROTECTED_RUN_CHUNK_PATH}`);
+
+  if (!response.ok) {
+    fail(`Unable to load protected run chunk: HTTP ${response.status}.`);
+  }
+
+  const chunk = await response.text();
+  const match = chunk.match(/__next_internal_action_entry_do_not_use__\s+(\{[^}]+\})/);
+
+  if (!match) {
+    fail("Unable to discover protected run action ids from the client chunk.");
+  }
+
+  const actionEntries = JSON.parse(match[1]);
+  const actionIdsByName = Object.fromEntries(
+    Object.entries(actionEntries).map(([actionId, actionName]) => [actionName, actionId]),
+  );
+
+  const saveActionId = actionIdsByName.saveProtectedAssessmentProgress;
+  const completeActionId = actionIdsByName.completeProtectedAssessmentAttempt;
+
+  if (!saveActionId || !completeActionId) {
+    fail("Protected save/complete action ids are missing from the client chunk.");
+  }
+
+  return {
+    saveActionId,
+    completeActionId,
+  };
+}
+
+function parseServerActionResult(payload) {
+  const resultLine = payload
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.startsWith("1:"));
+
+  if (!resultLine) {
+    fail(`Unable to parse server action result payload: ${payload.slice(0, 400)}.`);
+  }
+
+  return JSON.parse(resultLine.slice(2));
+}
+
+async function invokeProtectedServerAction(pathname, session, actionId, input) {
+  const body = await encodeReply([input]);
+  const response = await fetchProtectedPage(pathname, session, {
+    method: "POST",
+    headers: {
+      Accept: "text/x-component",
+      "Next-Action": actionId,
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    fail(`Protected server action ${actionId} failed with status ${response.status}.`);
+  }
+
+  return parseServerActionResult(await response.text());
+}
+
 async function createPasswordUser(serviceSupabase, email, password) {
   const { data, error } = await serviceSupabase.auth.admin.createUser({
     email,
@@ -159,7 +245,7 @@ async function loadActiveTest(supabase) {
 async function loadRequiredQuestionsWithOptions(supabase, testId) {
   const { data: questions, error: questionsError } = await supabase
     .from("questions")
-    .select("id, code, question_type, is_required")
+    .select("id, code, text, question_type, is_required")
     .eq("test_id", testId)
     .eq("is_active", true)
     .order("question_order", { ascending: true });
@@ -228,6 +314,25 @@ async function fillCompletedAttempt(supabase, attemptId, requiredQuestions, answ
       index % 5,
     );
   }
+}
+
+function buildSingleChoiceSelections(requiredQuestions, answerOptionsByQuestionId) {
+  return Object.fromEntries(
+    requiredQuestions.map((question, index) => {
+      if (question.question_type !== "single_choice") {
+        fail("Candidate verification expects required questions to be single_choice for stable action coverage.");
+      }
+
+      const options = answerOptionsByQuestionId.get(question.id) ?? [];
+      const selectedOption = options[index % 5] ?? options[0];
+
+      if (!selectedOption) {
+        fail(`Unable to find answer option for ${question.code}.`);
+      }
+
+      return [question.id, selectedOption.id];
+    }),
+  );
 }
 
 async function createOrganization(supabase, slug, name) {
@@ -300,6 +405,46 @@ async function updateAttemptStatus(supabase, attemptId, status) {
   if (error) {
     fail(`Unable to update attempt ${attemptId} to ${status}: ${error.message}`);
   }
+}
+
+async function loadAttemptResponses(supabase, attemptId) {
+  const { data, error } = await supabase
+    .from("responses")
+    .select("question_id, answer_option_id, text_value")
+    .eq("attempt_id", attemptId);
+
+  if (error) {
+    fail(`Unable to inspect responses for ${attemptId}: ${error.message}`);
+  }
+
+  return data ?? [];
+}
+
+async function loadAttemptRecord(supabase, attemptId) {
+  const { data, error } = await supabase
+    .from("attempts")
+    .select("id, status, completed_at")
+    .eq("id", attemptId)
+    .maybeSingle();
+
+  if (error) {
+    fail(`Unable to inspect attempt ${attemptId}: ${error.message}`);
+  }
+
+  return data;
+}
+
+async function loadDimensionScores(supabase, attemptId) {
+  const { data, error } = await supabase
+    .from("dimension_scores")
+    .select("dimension")
+    .eq("attempt_id", attemptId);
+
+  if (error) {
+    fail(`Unable to inspect dimension scores for ${attemptId}: ${error.message}`);
+  }
+
+  return data ?? [];
 }
 
 async function main() {
@@ -377,6 +522,13 @@ async function main() {
       participant_id: candidateParticipantId,
       status: "in_progress",
     });
+    const protectedFlowAttemptId = await createAttempt(serviceSupabase, {
+      test_id: activeTest.id,
+      user_id: candidateUser.id,
+      organization_id: organizationId,
+      participant_id: candidateParticipantId,
+      status: "in_progress",
+    });
     const notStartedAttemptId = await createAttempt(serviceSupabase, {
       test_id: activeTest.id,
       user_id: candidateUser.id,
@@ -410,6 +562,7 @@ async function main() {
 
     createdAttemptIds.push(
       inProgressAttemptId,
+      protectedFlowAttemptId,
       notStartedAttemptId,
       oldCompletedAttemptId,
       latestCompletedAttemptId,
@@ -439,23 +592,144 @@ async function main() {
     await seedUnavailableReport(serviceSupabase, latestCompletedAttemptId, activeTest.slug);
 
     const candidateSession = await signInWithPassword(authSupabase, candidateEmail, candidatePassword);
+    const { saveActionId, completeActionId } = await loadProtectedRunActionIds();
+    const { data: candidateMemberships, error: membershipsError } = await serviceSupabase
+      .from("organization_memberships")
+      .select("id")
+      .eq("user_id", candidateUser.id);
+
+    if (membershipsError) {
+      fail(`Unable to inspect candidate memberships: ${membershipsError.message}`);
+    }
+
+    assert(
+      (candidateMemberships ?? []).length === 0,
+      "Candidate verification user should not have an active organization membership.",
+    );
 
     const homeWithInProgressHtml = await fetchProtectedHtml("/app", candidateSession);
     assertIncludes(homeWithInProgressHtml, "Candidate Home", "Expected candidate home page to render.");
+    assertIncludes(homeWithInProgressHtml, "Dostupne procjene", "Expected multi-attempt state heading to render.");
     assertIncludes(homeWithInProgressHtml, "Nastavi test", "Expected in-progress CTA to render.");
+    assertIncludes(homeWithInProgressHtml, "Započni test", "Expected multi-attempt state to list the untouched open attempt.");
     assertIncludes(
       homeWithInProgressHtml,
       `/app/attempts/${inProgressAttemptId}/run`,
-      "Expected candidate home to prioritize the in-progress attempt with saved answers.",
+      "Expected candidate home to expose the in-progress attempt action.",
+    );
+    assertIncludes(
+      homeWithInProgressHtml,
+      `/app/attempts/${notStartedAttemptId}`,
+      "Expected candidate home to expose the not-started attempt action when multiple open attempts exist.",
     );
 
     const introHtml = await fetchProtectedHtml(`/app/attempts/${notStartedAttemptId}`, candidateSession);
-    assertIncludes(introHtml, "Procjena je spremna", "Expected intro route to render the ready state.");
+    assertIncludes(introHtml, "Spremno za početak", "Expected intro route to render the ready state.");
+    assertIncludes(introHtml, "Šta možeš očekivati", "Expected intro route to render the guidance sections.");
     assertIncludes(
       introHtml,
       `/app/attempts/${notStartedAttemptId}/run`,
       "Expected intro route CTA to point to the candidate run route.",
     );
+
+    const protectedRunPath = `/app/attempts/${protectedFlowAttemptId}/run`;
+    const protectedRunHtml = await fetchProtectedHtml(protectedRunPath, candidateSession);
+    assertIncludes(
+      protectedRunHtml,
+      "Candidate Flow Verification",
+      "Protected run verification should render the candidate shell for a user without organization membership.",
+    );
+    assertVisibleQuestion(
+      protectedRunHtml,
+      1,
+      requiredQuestions[0].text,
+      "Protected run verification should render the first required question before any answers are saved.",
+    );
+
+    const protectedSaveResult = await invokeProtectedServerAction(
+      protectedRunPath,
+      candidateSession,
+      saveActionId,
+      {
+        attemptId: protectedFlowAttemptId,
+        testId: activeTest.id,
+        selections: {
+          [requiredQuestions[0].id]: (answerOptionsByQuestionId.get(requiredQuestions[0].id) ?? [])[2]
+            ?.id ?? fail(`Unable to find save option for ${requiredQuestions[0].code}.`),
+        },
+      },
+    );
+    assert(
+      protectedSaveResult.ok === true,
+      `Protected save should succeed for the candidate without organization membership: ${JSON.stringify(protectedSaveResult)}.`,
+    );
+    assert(
+      protectedSaveResult.attemptId === protectedFlowAttemptId,
+      "Protected save should keep using the assigned attempt id.",
+    );
+
+    const protectedSavedResponses = await loadAttemptResponses(serviceSupabase, protectedFlowAttemptId);
+    assert(
+      protectedSavedResponses.length === 1 &&
+        protectedSavedResponses[0].question_id === requiredQuestions[0].id,
+      "Protected save should persist exactly the saved candidate response.",
+    );
+
+    const protectedRunAfterRefreshHtml = await fetchProtectedHtml(protectedRunPath, candidateSession);
+    assertVisibleQuestion(
+      protectedRunAfterRefreshHtml,
+      2,
+      requiredQuestions[1].text,
+      "Refreshing the protected run route should resume on the next unanswered question.",
+    );
+
+    const protectedCompletionResult = await invokeProtectedServerAction(
+      protectedRunPath,
+      candidateSession,
+      completeActionId,
+      {
+        attemptId: protectedFlowAttemptId,
+        testId: activeTest.id,
+        selections: buildSingleChoiceSelections(requiredQuestions, answerOptionsByQuestionId),
+      },
+    );
+    assert(
+      protectedCompletionResult.ok === true,
+      `Protected completion should succeed for the candidate without organization membership: ${JSON.stringify(protectedCompletionResult)}.`,
+    );
+    assert(
+      protectedCompletionResult.attemptId === protectedFlowAttemptId,
+      "Protected completion should return the assigned attempt id.",
+    );
+
+    const completedProtectedAttempt = await loadAttemptRecord(serviceSupabase, protectedFlowAttemptId);
+    assert(
+      completedProtectedAttempt?.status === "completed" && !!completedProtectedAttempt.completed_at,
+      "Protected completion should persist a completed attempt state.",
+    );
+
+    const protectedDimensionScores = await loadDimensionScores(serviceSupabase, protectedFlowAttemptId);
+    assert(
+      protectedDimensionScores.length > 0,
+      "Protected completion should persist dimension scores for the completed attempt.",
+    );
+
+    const protectedReportHtml = await fetchProtectedHtml(
+      `/app/attempts/${protectedFlowAttemptId}/report`,
+      candidateSession,
+    );
+    assertIncludes(
+      protectedReportHtml,
+      "Izvještaj procjene",
+      "Protected completion should land on a readable candidate report route.",
+    );
+    assertIncludes(
+      protectedReportHtml,
+      "Pregled dimenzija",
+      "Protected report route should render scored dimensions after protected completion.",
+    );
+
+    await serviceSupabase.from("attempts").delete().eq("id", protectedFlowAttemptId);
 
     await updateAttemptStatus(serviceSupabase, inProgressAttemptId, "abandoned");
 
@@ -508,9 +782,10 @@ async function main() {
     assertIncludes(reportHtml, "Pregled dimenzija", "Expected candidate report route to render scored results.");
 
     console.log("Verified candidate flow:");
-    console.log("- /app renders for a linked participant and chooses the primary attempt CTA.");
-    console.log("- heuristic priority is stable: in-progress with responses, then untouched open attempt, then latest completed report.");
+    console.log("- /app renders empty, single-action and multi-attempt candidate states without becoming a dashboard.");
+    console.log("- single-action heuristic remains stable: in-progress with responses, then untouched open attempt, then latest completed report.");
     console.log("- /app/attempts/[attemptId] respects candidate ownership and returns 404 for a foreign attempt.");
+    console.log("- a candidate without organization membership can open an assigned protected attempt, save through the protected server action, refresh into persisted progress, and complete successfully.");
     console.log("- /app/attempts/[attemptId]/run renders through the candidate namespace.");
     console.log("- /app/attempts/[attemptId]/report renders through the candidate namespace.");
   } finally {

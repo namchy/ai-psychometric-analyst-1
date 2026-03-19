@@ -12,7 +12,6 @@ import {
 } from "@/lib/assessment/completion";
 import {
   calculateCompletedAssessmentResults,
-  persistCompletedAssessmentResults,
   type CompletedAssessmentResults,
 } from "@/lib/assessment/scoring";
 import {
@@ -179,31 +178,7 @@ export async function getCompletedAssessmentResults(
     return null;
   }
 
-  const results = await calculateCompletedAssessmentResults(testId, attemptId);
-
-  if (!results) {
-    return null;
-  }
-
-  if (results.dimensions.length === 0) {
-    return results;
-  }
-
-  const supabase = createSupabaseAdminClient();
-  const { count, error } = await supabase
-    .from("dimension_scores")
-    .select("id", { count: "exact", head: true })
-    .eq("attempt_id", attemptId);
-
-  if (error) {
-    throw new Error(`Failed to load persisted results: ${error.message}`);
-  }
-
-  if ((count ?? 0) === 0) {
-    return persistCompletedAssessmentResults(testId, attemptId);
-  }
-
-  return results;
+  return calculateCompletedAssessmentResults(testId, attemptId);
 }
 
 export async function getCompletedAssessmentReportSnapshot(
@@ -212,4 +187,3 @@ export async function getCompletedAssessmentReportSnapshot(
 ): Promise<CompletedAssessmentReportState | null> {
   return getCompletedAssessmentReport(testId, attemptId);
 }
-

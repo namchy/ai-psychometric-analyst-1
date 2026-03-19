@@ -40,6 +40,28 @@ type DimensionDetailBlock = {
   body: string;
 };
 
+type ReportDimensionSnapshot = {
+  dimension_key: string;
+  short_interpretation: string;
+};
+
+function getReportDimensionsByKey(
+  reportState: CompletedAssessmentReportState | null,
+): Map<string, ReportDimensionSnapshot> {
+  if (reportState?.status !== "ready") {
+    return new Map();
+  }
+
+  return reportState.report.dimensions.reduce((dimensionsByKey, dimension) => {
+    if (!dimension.dimension_key || dimensionsByKey.has(dimension.dimension_key)) {
+      return dimensionsByKey;
+    }
+
+    dimensionsByKey.set(dimension.dimension_key, dimension);
+    return dimensionsByKey;
+  }, new Map<string, ReportDimensionSnapshot>());
+}
+
 function formatUnscoredReason(
   reason: CompletedAssessmentResults["unscoredResponses"][number]["reason"],
 ): string {
@@ -592,18 +614,14 @@ export function CompletedAssessmentSummary({
   reportState,
 }: CompletedAssessmentSummaryProps) {
   const [expandedDimension, setExpandedDimension] = useState<string | null>(null);
+  const hasResults = results !== null;
 
   const maxRawScore =
     results && results.dimensions.length > 0
       ? Math.max(...results.dimensions.map((dimension) => dimension.rawScore), 0)
       : 0;
 
-  const reportDimensionsByKey =
-    reportState?.status === "ready"
-      ? new Map(
-          reportState.report.dimensions.map((dimension) => [dimension.dimension_key, dimension]),
-        )
-      : new Map();
+  const reportDimensionsByKey = getReportDimensionsByKey(reportState);
 
   const dimensionCards: DimensionViewModel[] =
     results?.dimensions.map((dimension, index, dimensions) => {
@@ -630,6 +648,9 @@ export function CompletedAssessmentSummary({
   const recommendations = getRecommendations(reportState);
   const scoreRangeLabel = maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
+  const hasScoredDimensions = dimensionCards.length > 0;
+  const shouldShowNarrativePending = hasResults && reportState === null;
+  const shouldShowResultsUnavailable = !hasResults;
 
   return (
     <div className="results-report stack-md">
@@ -692,6 +713,18 @@ export function CompletedAssessmentSummary({
         </section>
       ) : null}
 
+      {shouldShowResultsUnavailable ? (
+        <section className="results-report__section results-report__status results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Rezultati trenutno nisu dostupni</h3>
+          </div>
+          <p className="results-report__section-body">
+            Ovaj pokušaj je završen, ali pregled bodovanja trenutno nije dostupan. To najčešće
+            znači da podaci za izvještaj još nisu usklađeni.
+          </p>
+        </section>
+      ) : null}
+
       {results ? (
         <>
           <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
@@ -723,7 +756,7 @@ export function CompletedAssessmentSummary({
             )}
           </section>
 
-          {dimensionCards.length > 0 ? (
+          {hasScoredDimensions ? (
             <section className="results-report__section results-report__section--dimensions stack-sm">
               <div className="results-report__section-heading">
                 <h3>Dimenzije</h3>
@@ -848,8 +881,20 @@ export function CompletedAssessmentSummary({
         <p className="results-report__disclaimer">{reportState.report.disclaimer}</p>
       ) : null}
 
+      {shouldShowNarrativePending ? (
+        <section className="results-report__section results-report__status results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Narativni izvještaj se još priprema</h3>
+          </div>
+          <p className="results-report__section-body">
+            Bodovani rezultati su dostupni ispod, a narativni sažetak za ovaj pokušaj još nije
+            spreman.
+          </p>
+        </section>
+      ) : null}
+
       {reportState?.status === "unavailable" ? (
-        <section className="results-report__section results-report__panel card stack-sm">
+        <section className="results-report__section results-report__status results-report__panel card stack-sm">
           <div className="results-report__section-heading">
             <h3>Narativni izvještaj trenutno nije dostupan</h3>
           </div>

@@ -40,8 +40,19 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.codex/
+  config.yaml
 app/
   (protected)/
+    app/
+      attempts/
+        [attemptId]/
+          report/
+            page.tsx
+          run/
+            page.tsx
+          page.tsx
+      page.tsx
     dashboard/
       attempts/
         [attemptId]/
@@ -49,12 +60,16 @@ app/
             page.tsx
           page.tsx
       page.tsx
+    hr/
+      page.tsx
   actions/
     assessment.ts
     auth.ts
   api/
     health/
       route.ts
+  assessment/
+    page.tsx
   login/
     page.tsx
   globals.css
@@ -71,6 +86,7 @@ lib/
     completion-server.ts
     completion.ts
     display.ts
+    protected-attempts.ts
     report-config.ts
     report-provider-helpers.ts
     report-provider-mock.ts
@@ -83,10 +99,13 @@ lib/
     tests.ts
     types.ts
   auth/
+    app-context.ts
     cookies.ts
     session.ts
   b2b/
     organizations.ts
+  candidate/
+    attempts.ts
   supabase/
     admin.ts
     client.ts
@@ -94,6 +113,7 @@ lib/
     server.ts
 scripts/
   check-supabase.mjs
+  verify-candidate-flow.mjs
   verify-completion-flow.mjs
   verify-report-flow.mjs
   verify-resume-flow.mjs
@@ -132,63 +152,698 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="app/actions/auth.ts">
-"use server";
+<file path="app/assessment/page.tsx">
+import { cookies } from "next/headers";
+import { AssessmentForm } from "@/components/assessment/assessment-form";
+import {
+  ASSESSMENT_ATTEMPT_COOKIE_NAME,
+  getActiveTest,
+  getAnswerOptionsForQuestions,
+  getAssessmentResumeState,
+  getCompletedAssessmentReportSnapshot,
+  getCompletedAssessmentResults,
+  getQuestionsForTest,
+} from "@/lib/assessment/tests";
 
-import { redirect } from "next/navigation";
-import { clearAuthSession, persistAuthSession } from "@/lib/auth/session";
-import { createSupabaseAuthClient } from "@/lib/supabase/server";
+export const dynamic = "force-dynamic";
 
-export type LoginInput = {
-  email: string;
-  password: string;
+export default async function LegacyAssessmentPage() {
+  try {
+    const test = await getActiveTest();
+
+    if (!test) {
+      return (
+        <main>
+          <section className="card">
+            <h1>No active test available</h1>
+            <p>Please check back later.</p>
+          </section>
+        </main>
+      );
+    }
+
+    const questions = await getQuestionsForTest(test.id);
+
+    if (questions.length === 0) {
+      return (
+        <main>
+          <section className="card">
+            <h1>{test.name}</h1>
+            <p>{test.description ?? "Opis testa trenutno nije dostupan."}</p>
+          </section>
+
+          <section className="card">
+            <h2>No questions available</h2>
+            <p>This test does not have any questions yet.</p>
+          </section>
+        </main>
+      );
+    }
+
+    const attemptId = cookies().get(ASSESSMENT_ATTEMPT_COOKIE_NAME)?.value;
+    const answerOptionsByQuestionId = await getAnswerOptionsForQuestions(
+      questions.map((question) => question.id),
+    );
+    const resumeState = await getAssessmentResumeState(test.id, attemptId);
+    const results = await getCompletedAssessmentResults(test.id, resumeState.attemptId);
+    const report = await getCompletedAssessmentReportSnapshot(test.id, resumeState.attemptId);
+
+    return (
+      <main>
+        <section className="card">
+          <h1>{test.name}</h1>
+          <p>{test.description ?? "Opis testa trenutno nije dostupan."}</p>
+        </section>
+
+        <section className="card">
+          <AssessmentForm
+            testId={test.id}
+            questions={questions}
+            answerOptionsByQuestionId={answerOptionsByQuestionId}
+            initialAttemptId={resumeState.attemptId}
+            initialAttemptStatus={resumeState.attemptStatus}
+            initialCompletedAt={resumeState.completedAt}
+            initialSelections={resumeState.selections}
+            initialResults={results}
+            initialReport={report}
+          />
+        </section>
+      </main>
+    );
+  } catch {
+    return (
+      <main>
+        <section className="card">
+          <h1>Unable to load assessment</h1>
+          <p>Please try again later.</p>
+        </section>
+      </main>
+    );
+  }
+}
+</file>
+
+<file path=".codex/config.yaml">
+approvals:
+  auto_approve:
+    - npm run verify:*
+    - npm run dev
+    - npm run build
+    - npm run typecheck
+    - npm run lint
+</file>
+
+<file path="app/(protected)/app/attempts/[attemptId]/report/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+
+type CandidateAttemptReportPageProps = {
+  params: {
+    attemptId: string;
+  };
 };
 
-export type LoginResult =
-  | {
-      ok: true;
-    }
-  | {
-      ok: false;
-      message: string;
-    };
+export const dynamic = "force-dynamic";
 
-function normalizeCredential(value: string): string {
-  return value.trim();
+export default async function CandidateAttemptReportPage({
+  params,
+}: CandidateAttemptReportPageProps) {
+  const user = await requireAuthenticatedUser();
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status !== "completed") {
+    redirect(
+      attempt.lifecycle === "in_progress"
+        ? `/app/attempts/${attempt.id}/run`
+        : `/app/attempts/${attempt.id}`,
+    );
+  }
+
+  const reportPageData = await loadProtectedAttemptReportPageData(attempt);
+
+  return (
+    <main className="attempt-results-page stack-md">
+      <section className="attempt-results-page__content">
+        <CompletedAssessmentSummary
+          completedAt={attempt.completed_at}
+          organizationName={attempt.organizations?.name ?? null}
+          participantName={attempt.participants?.full_name ?? null}
+          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
+          results={reportPageData.results}
+          reportState={reportPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/(protected)/app/attempts/[attemptId]/run/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { AssessmentForm } from "@/components/assessment/assessment-form";
+import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+
+type CandidateAttemptRunPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function CandidateAttemptRunPage({
+  params,
+}: CandidateAttemptRunPageProps) {
+  const user = await requireAuthenticatedUser();
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status === "completed") {
+    redirect(`/app/attempts/${attempt.id}/report`);
+  }
+
+  if (attempt.status === "abandoned") {
+    redirect(`/app/attempts/${attempt.id}`);
+  }
+
+  const runPageData = await loadProtectedAttemptRunPageData(attempt);
+
+  if (runPageData.questions.length === 0) {
+    return (
+      <main className="stack-md">
+        <section className="card stack-sm">
+          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena"}</h1>
+          <p>Pitanja za ovu procjenu trenutno nisu dostupna.</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="assessment-run-page stack-md">
+      <section className="assessment-run-shell">
+        <AssessmentForm
+          executionMode="protected"
+          layoutMode="step"
+          completionRedirectPath={`/app/attempts/${attempt.id}/report`}
+          assessmentDisplayName={runPageData.assessmentName}
+          participantDisplayName={runPageData.participantName}
+          testId={attempt.test_id}
+          questions={runPageData.questions}
+          answerOptionsByQuestionId={runPageData.answerOptionsByQuestionId}
+          initialAttemptId={runPageData.resumeState.attemptId}
+          initialAttemptStatus={runPageData.resumeState.attemptStatus}
+          initialCompletedAt={runPageData.resumeState.completedAt}
+          initialSelections={runPageData.resumeState.selections}
+          initialResults={runPageData.results}
+          initialReport={runPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/(protected)/app/attempts/[attemptId]/page.tsx">
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import {
+  getCandidateAttemptForUser,
+  getCandidateAttemptQuestionCount,
+} from "@/lib/candidate/attempts";
+
+type CandidateAttemptIntroPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+function formatEstimatedDuration(
+  durationMinutes: number | null,
+  questionCount: number,
+): string | null {
+  if (durationMinutes && durationMinutes > 0) {
+    return `${durationMinutes} minuta`;
+  }
+
+  if (questionCount <= 0) {
+    return null;
+  }
+
+  const minimum = Math.max(5, Math.floor(questionCount / 7));
+  const maximum = Math.max(minimum + 1, Math.ceil(questionCount / 5));
+  return `oko ${minimum} do ${maximum} minuta`;
 }
 
-export async function loginWithPassword(input: LoginInput): Promise<LoginResult> {
-  const email = normalizeCredential(input.email).toLowerCase();
-  const password = normalizeCredential(input.password);
+function getAssessmentTitle(name: string | null | undefined, slug: string | null | undefined): string {
+  const normalizedName = name?.trim();
 
-  if (!email || !password) {
+  if (normalizedName && /ličnost/i.test(normalizedName)) {
+    return normalizedName;
+  }
+
+  if (slug?.startsWith("ipip")) {
+    return "Procjena ličnosti";
+  }
+
+  return normalizedName ?? slug ?? "Procjena";
+}
+
+function getAssessmentDescription(description: string | null | undefined): string {
+  if (description?.trim()) {
+    return description;
+  }
+
+  return "Ova procjena pruža strukturiran uvid u tvoje obrasce ponašanja, načine reagovanja i lične tendencije kroz niz kratkih tvrdnji.";
+}
+
+function getResponseScaleLabel(testSlug: string | null | undefined): string {
+  if (testSlug?.startsWith("ipip")) {
+    return "Odgovori na skali od 1 do 5";
+  }
+
+  return "Kratke tvrdnje sa ponuđenom skalom odgovora";
+}
+
+function getIntroAction(
+  attemptId: string,
+  lifecycle: "in_progress" | "not_started" | "completed" | "abandoned",
+) {
+  switch (lifecycle) {
+    case "in_progress":
+      return {
+        href: `/app/attempts/${attemptId}/run`,
+        label: "Nastavi procjenu",
+      };
+    case "completed":
+      return {
+        href: `/app/attempts/${attemptId}/report`,
+        label: "Pogledaj izvještaj",
+      };
+    case "abandoned":
+      return {
+        href: "/app",
+        label: "Nazad na početak",
+      };
+    default:
+      return {
+        href: `/app/attempts/${attemptId}/run`,
+        label: "Započni procjenu",
+      };
+  }
+}
+
+export const dynamic = "force-dynamic";
+
+export default async function CandidateAttemptIntroPage({
+  params,
+}: CandidateAttemptIntroPageProps) {
+  const user = await requireAuthenticatedUser();
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  const questionCount = await getCandidateAttemptQuestionCount(attempt.test_id);
+  const estimatedDuration = formatEstimatedDuration(
+    attempt.tests?.duration_minutes ?? null,
+    questionCount,
+  );
+  const action = getIntroAction(attempt.id, attempt.lifecycle);
+  const assessmentTitle = getAssessmentTitle(attempt.tests?.name, attempt.tests?.slug);
+  const assessmentDescription = getAssessmentDescription(attempt.tests?.description);
+  const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
+
+  return (
+    <main className="candidate-intro stack-md">
+      <section className="candidate-intro__hero card stack-sm">
+        <div className="stack-sm">
+          <div className="stack-xs">
+            <p className="assessment-eyebrow">
+              {attempt.lifecycle === "completed"
+                ? "Procjena završena"
+                : attempt.lifecycle === "in_progress"
+                  ? "Procjena je u toku"
+                  : "Spremno za početak"}
+            </p>
+            <h1>{assessmentTitle}</h1>
+            <p className="candidate-intro__lead">{assessmentDescription}</p>
+          </div>
+
+          <dl className="candidate-intro__meta" aria-label="Osnovne informacije o procjeni">
+            <div className="candidate-intro__meta-item">
+              <dt>Broj pitanja</dt>
+              <dd>{questionCount > 0 ? `${questionCount} pitanja` : "Biće prikazano pri početku"}</dd>
+            </div>
+            {estimatedDuration ? (
+              <div className="candidate-intro__meta-item">
+                <dt>Procijenjeno trajanje</dt>
+                <dd>{estimatedDuration}</dd>
+              </div>
+            ) : null}
+            <div className="candidate-intro__meta-item">
+              <dt>Format odgovora</dt>
+              <dd>{responseScaleLabel}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Šta možeš očekivati</p>
+          <h2>Kako izgleda procjena</h2>
+        </div>
+        <p>
+          Tokom procjene označavaš u kojoj mjeri te pojedine tvrdnje opisuju. Nema tačnih ni
+          netačnih odgovora. Najkorisnije je da odgovaraš iskreno i spontano, prema tome kako inače
+          funkcionišeš.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Kako će rezultati biti prikazani</p>
+          <h2>Šta dobijaš na kraju</h2>
+        </div>
+        <p>
+          Na kraju ćeš dobiti izvještaj sa glavnim uvidima o tvojim ličnim obrascima i načinu
+          funkcionisanja. Rezultati služe kao strukturiran uvid, a ne kao konačna ocjena tvoje
+          vrijednosti ili sposobnosti.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Na čemu se procjena zasniva</p>
+          <h2>Metodološka osnova</h2>
+        </div>
+        <p>
+          Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se
+          često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom
+          kontekstu.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Prije nego počneš</p>
+          <h2>Kratke smjernice</h2>
+        </div>
+        <ul className="candidate-intro__checklist">
+          <li>Odvoji nekoliko minuta bez prekida.</li>
+          <li>Odgovaraj iskreno.</li>
+          <li>Nemoj previše analizirati svaku tvrdnju.</li>
+          <li>Ako je omogućeno, procjenu možeš nastaviti kasnije.</li>
+        </ul>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Povjerljivost i upotreba rezultata</p>
+          <h2>Kako se odgovori koriste</h2>
+        </div>
+        <p>
+          Tvoji odgovori i rezultati koriste se u okviru procesa procjene za koji je ova aplikacija
+          namijenjena. Izvještaj je oblikovan tako da pruži strukturiran i smislen pregled rezultata
+          relevantnim učesnicima procesa.
+        </p>
+      </section>
+
+      <section className="candidate-intro__cta card stack-sm">
+        {attempt.lifecycle === "completed" ? (
+          <p>Tvoja procjena je završena i izvještaj je spreman za pregled.</p>
+        ) : attempt.lifecycle === "abandoned" ? (
+          <p>Ova procjena trenutno nije otvorena za nastavak. Vrati se na početni ekran za naredni korak.</p>
+        ) : attempt.lifecycle === "in_progress" ? (
+          <p>Sačuvali smo tvoj dosadašnji napredak, pa možeš nastaviti tamo gdje si stao.</p>
+        ) : (
+          <p>Kada budeš spreman, možeš započeti procjenu i proći kroz pitanja svojim tempom.</p>
+        )}
+        <div>
+          <Link className="candidate-home__link" href={action.href}>
+            {action.label}
+          </Link>
+        </div>
+        <p className="candidate-intro__cta-note">
+          Po završetku procjene dobit ćeš personalizovani izvještaj sa glavnim uvidima.
+        </p>
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/(protected)/app/page.tsx">
+import Link from "next/link";
+import { logout } from "@/app/actions/auth";
+import { getAppContextForUserId } from "@/lib/auth/app-context";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import {
+  type CandidateAttemptSummary,
+  getCandidateAttemptLookupForUser,
+} from "@/lib/candidate/attempts";
+
+export const dynamic = "force-dynamic";
+
+function formatActivityTimestamp(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  return new Date(value).toLocaleString();
+}
+
+function isOpenCandidateAttempt(attempt: CandidateAttemptSummary): boolean {
+  return attempt.lifecycle === "in_progress" || attempt.lifecycle === "not_started";
+}
+
+function getAttemptDisplayName(attempt: CandidateAttemptSummary): string {
+  return attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena";
+}
+
+function getAttemptStatusLabel(attempt: CandidateAttemptSummary): string {
+  return attempt.lifecycle === "in_progress" ? "U toku" : "Nije započet";
+}
+
+function getAttemptAction(attempt: CandidateAttemptSummary): {
+  href: string;
+  label: string;
+  supportingText: string;
+} {
+  if (attempt.lifecycle === "in_progress") {
     return {
-      ok: false,
-      message: "Email and password are required.",
+      href: `/app/attempts/${attempt.id}/run`,
+      label: "Nastavi test",
+      supportingText: "Sačuvali smo tvoj dosadašnji napredak i možeš nastaviti tamo gdje si stao.",
     };
   }
 
-  const supabase = createSupabaseAuthClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error || !data.session) {
+  if (attempt.lifecycle === "completed") {
     return {
-      ok: false,
-      message: "Invalid email or password.",
+      href: `/app/attempts/${attempt.id}/report`,
+      label: "Pogledaj izvještaj",
+      supportingText: "Procjena je završena i izvještaj je spreman za pregled.",
     };
   }
 
-  persistAuthSession(data.session);
-
-  return { ok: true };
+  return {
+    href: `/app/attempts/${attempt.id}`,
+    label: "Započni test",
+    supportingText:
+      "Procjena je spremna. Prvo možeš pogledati kratke uvodne informacije prije početka.",
+  };
 }
 
-export async function logout() {
-  clearAuthSession();
-  redirect("/login");
+export default async function CandidateAppEntryPage() {
+  const user = await requireAuthenticatedUser();
+  const [context, candidateLookup] = await Promise.all([
+    getAppContextForUserId(user.id),
+    getCandidateAttemptLookupForUser(user.id),
+  ]);
+  const linkedParticipant = context.linkedParticipant;
+  const primaryAttempt = candidateLookup.primaryAttempt;
+  const openAttempts = candidateLookup.attempts.filter(isOpenCandidateAttempt);
+
+  let primaryAction:
+    | {
+        href: string;
+        label: string;
+        supportingText: string;
+      }
+    | null = null;
+
+  if (openAttempts.length <= 1 && primaryAttempt) {
+    primaryAction = getAttemptAction(primaryAttempt);
+  }
+
+  return (
+    <main className="candidate-home stack-md">
+      <section className="candidate-home__hero card stack-sm">
+        <div className="stack-sm">
+          <div className="stack-xs">
+            <p className="assessment-eyebrow">Candidate Home</p>
+            <h1>Dobro došao u prostor za procjene</h1>
+            <p className="candidate-home__intro">
+              Ovdje možeš mirno pregledati dostupne procjene i odabrati onu koju želiš započeti ili
+              nastaviti.
+            </p>
+          </div>
+
+          {linkedParticipant ? (
+            <div className="candidate-home__identity">
+              <p>
+                Prijavljen si kao <strong>{linkedParticipant.full_name}</strong>
+              </p>
+              <p>{linkedParticipant.email}</p>
+            </div>
+          ) : (
+            <div className="candidate-home__empty-state candidate-home__empty-state--muted stack-xs">
+              <h2>Kandidat profil još nije povezan</h2>
+              <p>Ovaj nalog trenutno nema povezan kandidat profil, pa procjene još nisu dostupne.</p>
+              <p>Dok se povezivanje ne završi, ovdje se neće prikazati dostupni testovi ni izvještaji.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {linkedParticipant ? (
+        <section className="candidate-home__panel card stack-sm">
+          {openAttempts.length > 1 ? (
+            <div className="stack-sm">
+              <div className="stack-xs">
+                <h2>Dostupne procjene</h2>
+                <p>
+                  Imaš više otvorenih procjena. Odaberi onu koju želiš sada započeti ili nastaviti.
+                </p>
+              </div>
+
+              <div className="candidate-home__attempt-list" role="list">
+                {openAttempts.map((attempt) => {
+                  const action = getAttemptAction(attempt);
+
+                  return (
+                    <article key={attempt.id} className="candidate-home__attempt-card stack-xs" role="listitem">
+                      <div className="candidate-home__attempt-header">
+                        <div>
+                          <h3>{getAttemptDisplayName(attempt)}</h3>
+                          <p>{getAttemptStatusLabel(attempt)}</p>
+                        </div>
+                        <Link className="candidate-home__link" href={action.href}>
+                          {action.label}
+                        </Link>
+                      </div>
+                      <p>{action.supportingText}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ) : primaryAttempt && primaryAction ? (
+            <div className="candidate-home__single-action stack-sm">
+              <div className="stack-xs">
+                <h2>{getAttemptDisplayName(primaryAttempt)}</h2>
+                <p>{primaryAction.supportingText}</p>
+              </div>
+
+              <div className="candidate-home__single-meta">
+                <p className="candidate-home__status-pill">
+                  {primaryAttempt.lifecycle === "completed"
+                    ? "Izvještaj dostupan"
+                    : getAttemptStatusLabel(primaryAttempt)}
+                </p>
+                <p>
+                  {primaryAttempt.lifecycle === "completed"
+                    ? `Završeno ${formatActivityTimestamp(primaryAttempt.completed_at) ?? "nedavno"}`
+                    : `Otvoreno ${formatActivityTimestamp(primaryAttempt.started_at) ?? "nedavno"}`}
+                </p>
+              </div>
+
+              <div>
+                <Link className="candidate-home__link" href={primaryAction.href}>
+                  {primaryAction.label}
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="candidate-home__empty-state stack-xs">
+              <h2>Trenutno nema dostupnih procjena</h2>
+              <p>Za ovaj nalog trenutno nema aktivne procjene koju treba započeti ili nastaviti.</p>
+              <p>Kada nova procjena bude dostupna, ovdje ćeš dobiti jasan sljedeći korak.</p>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      <section className="candidate-home__footer card stack-sm">
+        {context.recommendedAppArea === "hr" ? (
+          <p>
+            Ovaj nalog ima i HR pristup. <Link href="/hr">Otvori HR workspace</Link>.
+          </p>
+        ) : null}
+        <p>Prijavljen si kao {user.email ?? user.id}</p>
+        <form action={logout}>
+          <button type="submit">Odjavi se</button>
+        </form>
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/(protected)/hr/page.tsx">
+import Link from "next/link";
+import { logout } from "@/app/actions/auth";
+import { getAppContextForUserId } from "@/lib/auth/app-context";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
+
+export default async function HrEntryPage() {
+  const user = await requireAuthenticatedUser();
+  const context = await getAppContextForUserId(user.id);
+
+  return (
+    <main className="stack-md">
+      <section className="card stack-sm">
+        <div className="stack-xs">
+          <h1>HR Workspace</h1>
+          <p>Operational area for organization management, participant setup, and assessment oversight.</p>
+          <p>
+            {context.activeOrganizationId
+              ? `Active organization context is available for this account.`
+              : "This transitional HR entry is ready, but no active organization context is available yet."}
+          </p>
+          <p>
+            This is the future canonical <code>/hr</code> namespace. The current dashboard remains active during the
+            transition.
+          </p>
+        </div>
+
+        <p>
+          <Link href="/dashboard">Open current dashboard</Link>
+        </p>
+
+        <form action={logout}>
+          <button type="submit">Sign out</button>
+        </form>
+      </section>
+    </main>
+  );
 }
 </file>
 
@@ -197,30 +852,6 @@ import { NextResponse } from "next/server";
 
 export function GET() {
   return NextResponse.json({ ok: true });
-}
-</file>
-
-<file path="app/login/page.tsx">
-import { LoginForm } from "@/components/auth/login-form";
-import { redirectAuthenticatedUserToDashboard } from "@/lib/auth/session";
-
-export const dynamic = "force-dynamic";
-
-export default async function LoginPage() {
-  await redirectAuthenticatedUserToDashboard();
-
-  return (
-    <main>
-      <section className="card stack-md">
-        <div className="stack-xs">
-          <h1>Sign in</h1>
-          <p>Use your Supabase Auth email/password credentials to access the B2B admin area.</p>
-        </div>
-
-        <LoginForm />
-      </section>
-    </main>
-  );
 }
 </file>
 
@@ -243,67 +874,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <body>{children}</body>
     </html>
-  );
-}
-</file>
-
-<file path="components/auth/login-form.tsx">
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { loginWithPassword } from "@/app/actions/auth";
-
-export function LoginForm() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
-
-  return (
-    <form
-      className="stack-sm"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const email = String(formData.get("email") ?? "");
-        const password = String(formData.get("password") ?? "");
-
-        startTransition(async () => {
-          const result = await loginWithPassword({ email, password });
-
-          if (!result.ok) {
-            setMessage(result.message);
-            return;
-          }
-
-          setMessage(null);
-          router.push("/dashboard");
-          router.refresh();
-        });
-      }}
-    >
-      <label className="stack-xs" htmlFor="email">
-        <span>Email</span>
-        <input id="email" name="email" type="email" autoComplete="email" required />
-      </label>
-
-      <label className="stack-xs" htmlFor="password">
-        <span>Password</span>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
-      </label>
-
-      <button type="submit" disabled={isPending}>
-        {isPending ? "Signing in..." : "Sign in"}
-      </button>
-
-      {message ? <p>{message}</p> : null}
-    </form>
   );
 }
 </file>
@@ -482,6 +1052,91 @@ export function getAssessmentDisplayName(
   }
 
   return input?.name ?? input?.slug ?? "Procjena";
+}
+</file>
+
+<file path="lib/assessment/protected-attempts.ts">
+import "server-only";
+
+import { getAssessmentDisplayName } from "@/lib/assessment/display";
+import {
+  getAnswerOptionsForQuestions,
+  getAssessmentResumeState,
+  getCompletedAssessmentReportSnapshot,
+  getCompletedAssessmentResults,
+  getQuestionsForTest,
+} from "@/lib/assessment/tests";
+
+type ProtectedAttemptLike = {
+  id: string;
+  test_id: string;
+  status: "in_progress" | "completed" | "abandoned";
+  completed_at: string | null;
+  tests: {
+    name: string;
+    slug: string;
+  } | null;
+  participants: {
+    full_name: string;
+  } | null;
+};
+
+export async function loadProtectedAttemptRunPageData(attempt: ProtectedAttemptLike) {
+  const questions = await getQuestionsForTest(attempt.test_id);
+
+  if (questions.length === 0) {
+    return {
+      questions,
+      answerOptionsByQuestionId: {},
+      resumeState: {
+        attemptId: attempt.id,
+        attemptStatus: attempt.status ?? null,
+        completedAt: attempt.completed_at ?? null,
+        selections: {},
+      },
+      results: null,
+      report: null,
+      assessmentName: getAssessmentDisplayName({
+        name: attempt.tests?.name,
+        slug: attempt.tests?.slug,
+      }),
+      participantName: attempt.participants?.full_name ?? null,
+    };
+  }
+
+  const [answerOptionsByQuestionId, resumeState, results, report] = await Promise.all([
+    getAnswerOptionsForQuestions(questions.map((question) => question.id)),
+    getAssessmentResumeState(attempt.test_id, attempt.id),
+    getCompletedAssessmentResults(attempt.test_id, attempt.id),
+    getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id),
+  ]);
+
+  return {
+    questions,
+    answerOptionsByQuestionId,
+    resumeState,
+    results,
+    report,
+    assessmentName: getAssessmentDisplayName({
+      name: attempt.tests?.name,
+      slug: attempt.tests?.slug,
+    }),
+    participantName: attempt.participants?.full_name ?? null,
+  };
+}
+
+export async function loadProtectedAttemptReportPageData(
+  attempt: Pick<ProtectedAttemptLike, "id" | "test_id">,
+) {
+  const [results, report] = await Promise.all([
+    getCompletedAssessmentResults(attempt.test_id, attempt.id),
+    getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id),
+  ]);
+
+  return {
+    results,
+    report,
+  };
 }
 </file>
 
@@ -890,6 +1545,84 @@ export async function persistCompletedAssessmentResults(
 }
 </file>
 
+<file path="lib/auth/app-context.ts">
+import "server-only";
+
+import {
+  getActiveOrganizationForUser,
+  getLinkedParticipantForUser,
+  getMembershipsForUser,
+  type ParticipantSummary,
+} from "@/lib/b2b/organizations";
+
+export type RecommendedAppArea = "hr" | "app" | null;
+
+export type CurrentUserAppContext = {
+  authUserId: string;
+  activeOrganizationId: string | null;
+  hasOrganizationMembership: boolean;
+  linkedParticipantId: string | null;
+  linkedParticipant: ParticipantSummary | null;
+  recommendedAppArea: RecommendedAppArea;
+};
+
+export function getRecommendedAppAreaRedirectPath(
+  context: Pick<CurrentUserAppContext, "recommendedAppArea">,
+): "/hr" | "/app" | "/dashboard" {
+  switch (context.recommendedAppArea) {
+    case "hr":
+      return "/hr";
+    case "app":
+      return "/app";
+    default:
+      // Transitional fallback until every authenticated user has a clearer area mapping.
+      return "/dashboard";
+  }
+}
+
+async function buildAppContextForUserId(userId: string): Promise<CurrentUserAppContext> {
+  const [activeOrganization, linkedParticipant, memberships] = await Promise.all([
+    getActiveOrganizationForUser(userId),
+    getLinkedParticipantForUser(userId),
+    getMembershipsForUser(userId),
+  ]);
+
+  const hasOrganizationMembership = memberships.length > 0;
+
+  let recommendedAppArea: RecommendedAppArea = null;
+
+  if (hasOrganizationMembership) {
+    recommendedAppArea = "hr";
+  } else if (linkedParticipant) {
+    recommendedAppArea = "app";
+  }
+
+  return {
+    authUserId: userId,
+    activeOrganizationId: activeOrganization?.id ?? null,
+    hasOrganizationMembership,
+    linkedParticipantId: linkedParticipant?.id ?? null,
+    linkedParticipant,
+    recommendedAppArea,
+  };
+}
+
+export async function getAppContextForUserId(
+  userId: string,
+): Promise<CurrentUserAppContext> {
+  return buildAppContextForUserId(userId);
+}
+
+export async function getPostLoginRedirectPathForUserId(
+  userId: string,
+): Promise<
+  "/hr" | "/app" | "/dashboard"
+> {
+  const context = await getAppContextForUserId(userId);
+  return getRecommendedAppAreaRedirectPath(context);
+}
+</file>
+
 <file path="lib/auth/cookies.ts">
 export const SUPABASE_ACCESS_TOKEN_COOKIE_NAME = "sb-access-token";
 export const SUPABASE_REFRESH_TOKEN_COOKIE_NAME = "sb-refresh-token";
@@ -907,6 +1640,250 @@ export function getAuthCookieOptions(maxAge: number) {
     path: "/",
     maxAge,
   };
+}
+</file>
+
+<file path="lib/candidate/attempts.ts">
+import "server-only";
+
+import { getQuestionsForTest } from "@/lib/assessment/tests";
+import {
+  getLinkedParticipantForUser,
+  type ParticipantSummary,
+} from "@/lib/b2b/organizations";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+type CandidateAttemptRelation<T> = T | T[] | null;
+
+type CandidateAttemptTestSummary = {
+  slug: string;
+  name: string;
+  description: string | null;
+  duration_minutes: number | null;
+};
+
+type CandidateAttemptParticipantSummary = {
+  id: string;
+  organization_id: string;
+  full_name: string;
+  email: string;
+};
+
+type CandidateAttemptOrganizationSummary = {
+  name: string;
+  slug: string;
+};
+
+type CandidateAttemptRow = {
+  id: string;
+  test_id: string;
+  user_id: string | null;
+  organization_id: string | null;
+  participant_id: string | null;
+  status: "in_progress" | "completed" | "abandoned";
+  started_at: string;
+  completed_at: string | null;
+  tests: CandidateAttemptRelation<CandidateAttemptTestSummary>;
+  participants: CandidateAttemptRelation<CandidateAttemptParticipantSummary>;
+  organizations: CandidateAttemptRelation<CandidateAttemptOrganizationSummary>;
+};
+
+type AttemptResponseRow = {
+  attempt_id: string;
+};
+
+export type CandidateAttemptLifecycle =
+  | "in_progress"
+  | "not_started"
+  | "completed"
+  | "abandoned";
+
+export type CandidateAttemptSummary = {
+  id: string;
+  test_id: string;
+  user_id: string | null;
+  organization_id: string | null;
+  participant_id: string | null;
+  status: "in_progress" | "completed" | "abandoned";
+  lifecycle: CandidateAttemptLifecycle;
+  started_at: string;
+  completed_at: string | null;
+  responseCount: number;
+  tests: CandidateAttemptTestSummary | null;
+  participants: CandidateAttemptParticipantSummary | null;
+  organizations: CandidateAttemptOrganizationSummary | null;
+};
+
+export type CandidateAttemptLookup = {
+  linkedParticipant: ParticipantSummary | null;
+  attempts: CandidateAttemptSummary[];
+  primaryAttempt: CandidateAttemptSummary | null;
+};
+
+function normalizeRelation<T>(value: CandidateAttemptRelation<T>): T | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function getCandidateAttemptLifecycle(
+  attempt: Pick<CandidateAttemptSummary, "status" | "responseCount">,
+): CandidateAttemptLifecycle {
+  if (attempt.status === "completed") {
+    return "completed";
+  }
+
+  if (attempt.status === "abandoned") {
+    return "abandoned";
+  }
+
+  return attempt.responseCount > 0 ? "in_progress" : "not_started";
+}
+
+function getPrimaryAttemptPriority(lifecycle: CandidateAttemptLifecycle): number {
+  switch (lifecycle) {
+    case "in_progress":
+      return 0;
+    case "not_started":
+      return 1;
+    case "completed":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function getAttemptSortTimestamp(attempt: CandidateAttemptSummary): number {
+  return Date.parse(attempt.completed_at ?? attempt.started_at);
+}
+
+function selectPrimaryCandidateAttempt(
+  attempts: CandidateAttemptSummary[],
+): CandidateAttemptSummary | null {
+  if (attempts.length === 0) {
+    return null;
+  }
+
+  return [...attempts].sort((left, right) => {
+    // Transitional heuristic for the single-entry candidate home:
+    // resume a started attempt first, otherwise offer an untouched open attempt,
+    // and only fall back to the latest completed report when no open work exists.
+    const priorityDifference =
+      getPrimaryAttemptPriority(left.lifecycle) - getPrimaryAttemptPriority(right.lifecycle);
+
+    if (priorityDifference !== 0) {
+      return priorityDifference;
+    }
+
+    return getAttemptSortTimestamp(right) - getAttemptSortTimestamp(left);
+  })[0] ?? null;
+}
+
+async function getResponseCountsForAttemptIds(
+  attemptIds: string[],
+): Promise<Map<string, number>> {
+  if (attemptIds.length === 0) {
+    return new Map();
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("responses")
+    .select("attempt_id")
+    .in("attempt_id", attemptIds);
+
+  if (error) {
+    throw new Error(`Failed to load candidate attempt responses: ${error.message}`);
+  }
+
+  return ((data ?? []) as AttemptResponseRow[]).reduce((counts, response) => {
+    counts.set(response.attempt_id, (counts.get(response.attempt_id) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>());
+}
+
+function mapCandidateAttemptSummary(
+  attemptRow: CandidateAttemptRow,
+  responseCount: number,
+): CandidateAttemptSummary {
+  const attempt: CandidateAttemptSummary = {
+    ...attemptRow,
+    responseCount,
+    lifecycle: "not_started",
+    tests: normalizeRelation(attemptRow.tests),
+    participants: normalizeRelation(attemptRow.participants),
+    organizations: normalizeRelation(attemptRow.organizations),
+  };
+
+  attempt.lifecycle = getCandidateAttemptLifecycle(attempt);
+  return attempt;
+}
+
+async function getCandidateAttemptsForParticipantId(
+  participantId: string,
+): Promise<CandidateAttemptSummary[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempts")
+    .select(
+      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
+    )
+    .eq("participant_id", participantId)
+    .order("started_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load candidate attempts: ${error.message}`);
+  }
+
+  const attemptRows = (data ?? []) as CandidateAttemptRow[];
+  const responseCounts = await getResponseCountsForAttemptIds(attemptRows.map((attempt) => attempt.id));
+
+  return attemptRows.map((attempt) =>
+    mapCandidateAttemptSummary(attempt, responseCounts.get(attempt.id) ?? 0),
+  );
+}
+
+export async function getCandidateAttemptLookupForUser(
+  userId: string,
+): Promise<CandidateAttemptLookup> {
+  const linkedParticipant = await getLinkedParticipantForUser(userId);
+
+  if (!linkedParticipant) {
+    return {
+      linkedParticipant: null,
+      attempts: [],
+      primaryAttempt: null,
+    };
+  }
+
+  const attempts = await getCandidateAttemptsForParticipantId(linkedParticipant.id);
+
+  return {
+    linkedParticipant,
+    attempts,
+    primaryAttempt: selectPrimaryCandidateAttempt(attempts),
+  };
+}
+
+export async function getCandidateAttemptForUser(
+  userId: string,
+  attemptId: string,
+): Promise<CandidateAttemptSummary | null> {
+  const lookup = await getCandidateAttemptLookupForUser(userId);
+
+  if (!lookup.linkedParticipant) {
+    return null;
+  }
+
+  return lookup.attempts.find((attempt) => attempt.id === attemptId) ?? null;
+}
+
+export async function getCandidateAttemptQuestionCount(testId: string): Promise<number> {
+  const questions = await getQuestionsForTest(testId);
+  return questions.length;
 }
 </file>
 
@@ -957,12 +1934,557 @@ export function getSupabaseBrowserClient() {
 }
 </file>
 
-<file path="supabase/.branches/_current_branch">
-main
+<file path="scripts/verify-candidate-flow.mjs">
+import process from "node:process";
+import { setTimeout as delay } from "node:timers/promises";
+import { createClient } from "@supabase/supabase-js";
+
+const APP_URL = process.env.APP_URL ?? "http://127.0.0.1:3100";
+const HEALTH_URL = `${APP_URL}/api/health`;
+const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const ACCESS_COOKIE_NAME = "sb-access-token";
+const REFRESH_COOKIE_NAME = "sb-refresh-token";
+
+function fail(message) {
+  throw new Error(message);
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    fail(message);
+  }
+}
+
+function assertIncludes(haystack, needle, message) {
+  if (!haystack.includes(needle)) {
+    fail(message);
+  }
+}
+
+async function waitForServer() {
+  let lastDetail = `No response from ${HEALTH_URL}.`;
+
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    try {
+      const response = await fetch(HEALTH_URL);
+
+      if (response.ok) {
+        return;
+      }
+
+      lastDetail = `HTTP ${response.status} from ${HEALTH_URL}.`;
+    } catch (error) {
+      lastDetail = error instanceof Error ? error.message : String(error);
+    }
+
+    await delay(1000);
+  }
+
+  fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
+}
+
+async function waitForSupabase(supabaseUrl, serviceRoleKey) {
+  const healthUrl = `${supabaseUrl}/rest/v1/tests?select=id&limit=1`;
+  let lastDetail = `No response from ${healthUrl}.`;
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      const response = await fetch(healthUrl, {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+      });
+
+      if (response.ok) {
+        return;
+      }
+
+      lastDetail = `HTTP ${response.status} from ${healthUrl}.`;
+    } catch (error) {
+      lastDetail = error instanceof Error ? error.message : String(error);
+    }
+
+    await delay(500);
+  }
+
+  fail(`Local Supabase did not become reachable at ${supabaseUrl}. Last check: ${lastDetail}`);
+}
+
+function getRequiredEnv(name) {
+  const value = process.env[name];
+
+  if (!value) {
+    fail(`Missing required env var: ${name}.`);
+  }
+
+  return value;
+}
+
+function getCookieHeader(session) {
+  return `${ACCESS_COOKIE_NAME}=${session.access_token}; ${REFRESH_COOKIE_NAME}=${session.refresh_token}`;
+}
+
+async function fetchProtectedPage(pathname, session, init = {}) {
+  const response = await fetch(`${APP_URL}${pathname}`, {
+    redirect: "manual",
+    ...init,
+    headers: {
+      cookie: getCookieHeader(session),
+      ...(init.headers ?? {}),
+    },
+  });
+
+  return response;
+}
+
+async function fetchProtectedHtml(pathname, session) {
+  const response = await fetchProtectedPage(pathname, session);
+
+  if (!response.ok) {
+    fail(`Request to ${pathname} failed with status ${response.status}.`);
+  }
+
+  return response.text();
+}
+
+async function createPasswordUser(serviceSupabase, email, password) {
+  const { data, error } = await serviceSupabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (error || !data.user) {
+    fail(`Unable to create auth user ${email}: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.user;
+}
+
+async function signInWithPassword(authSupabase, email, password) {
+  const { data, error } = await authSupabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error || !data.session) {
+    fail(`Unable to sign in verification user ${email}: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.session;
+}
+
+async function loadActiveTest(supabase) {
+  const { data, error } = await supabase
+    .from("tests")
+    .select("id, slug")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error || !data) {
+    fail(`Unable to load active test: ${error?.message ?? "Unknown error"}`);
+  }
+
+  if (data.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
+    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${data.slug}.`);
+  }
+
+  return data;
+}
+
+async function loadRequiredQuestionsWithOptions(supabase, testId) {
+  const { data: questions, error: questionsError } = await supabase
+    .from("questions")
+    .select("id, code, question_type, is_required")
+    .eq("test_id", testId)
+    .eq("is_active", true)
+    .order("question_order", { ascending: true });
+
+  if (questionsError || !questions) {
+    fail(`Unable to load active questions: ${questionsError?.message ?? "Unknown error"}`);
+  }
+
+  const requiredQuestions = questions.filter((question) => question.is_required);
+  const nonTextQuestionIds = requiredQuestions
+    .filter((question) => question.question_type !== "text")
+    .map((question) => question.id);
+
+  const { data: answerOptions, error: answerOptionsError } = await supabase
+    .from("answer_options")
+    .select("id, question_id, option_order")
+    .in("question_id", nonTextQuestionIds)
+    .order("question_id", { ascending: true })
+    .order("option_order", { ascending: true });
+
+  if (answerOptionsError) {
+    fail(`Unable to load answer options: ${answerOptionsError.message}`);
+  }
+
+  const answerOptionsByQuestionId = (answerOptions ?? []).reduce((grouped, option) => {
+    const questionOptions = grouped.get(option.question_id) ?? [];
+    questionOptions.push(option);
+    grouped.set(option.question_id, questionOptions);
+    return grouped;
+  }, new Map());
+
+  return { requiredQuestions, answerOptionsByQuestionId };
+}
+
+async function insertSingleChoiceResponse(supabase, attemptId, question, answerOptionsByQuestionId, optionIndex = 0) {
+  const options = answerOptionsByQuestionId.get(question.id) ?? [];
+  const selectedOption = options[optionIndex] ?? options[0];
+
+  if (!selectedOption) {
+    fail(`Unable to find answer option for ${question.code}.`);
+  }
+
+  const { error } = await supabase.from("responses").insert({
+    attempt_id: attemptId,
+    question_id: question.id,
+    response_kind: "single_choice",
+    answer_option_id: selectedOption.id,
+  });
+
+  if (error) {
+    fail(`Unable to create response for ${question.code}: ${error.message}`);
+  }
+}
+
+async function fillCompletedAttempt(supabase, attemptId, requiredQuestions, answerOptionsByQuestionId) {
+  for (const [index, question] of requiredQuestions.entries()) {
+    if (question.question_type !== "single_choice") {
+      fail("Candidate verification expects required questions to be single_choice for stable seeding.");
+    }
+
+    await insertSingleChoiceResponse(
+      supabase,
+      attemptId,
+      question,
+      answerOptionsByQuestionId,
+      index % 5,
+    );
+  }
+}
+
+async function createOrganization(supabase, slug, name) {
+  const { data, error } = await supabase
+    .from("organizations")
+    .insert({ slug, name })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    fail(`Unable to create verification organization: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.id;
+}
+
+async function createParticipant(supabase, input) {
+  const { data, error } = await supabase
+    .from("participants")
+    .insert(input)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    fail(`Unable to create verification participant: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.id;
+}
+
+async function createAttempt(supabase, input) {
+  const { data, error } = await supabase
+    .from("attempts")
+    .insert(input)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    fail(`Unable to create verification attempt: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.id;
+}
+
+async function seedUnavailableReport(supabase, attemptId, testSlug) {
+  const { error } = await supabase.from("attempt_reports").upsert({
+    attempt_id: attemptId,
+    test_slug: testSlug,
+    generator_type: "mock",
+    generated_at: new Date().toISOString(),
+    report_status: "unavailable",
+    failure_code: "verification_unavailable",
+    failure_reason: "Seeded verification report state.",
+    report_snapshot: null,
+  });
+
+  if (error) {
+    fail(`Unable to seed attempt report for ${attemptId}: ${error.message}`);
+  }
+}
+
+async function updateAttemptStatus(supabase, attemptId, status) {
+  const patch = { status };
+
+  const { error } = await supabase
+    .from("attempts")
+    .update(patch)
+    .eq("id", attemptId);
+
+  if (error) {
+    fail(`Unable to update attempt ${attemptId} to ${status}: ${error.message}`);
+  }
+}
+
+async function main() {
+  const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const publishableKey = getRequiredEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  const serviceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  const serviceSupabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  const authSupabase = createClient(supabaseUrl, publishableKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  const createdAttemptIds = [];
+  const createdParticipantIds = [];
+  const createdOrganizationIds = [];
+  const createdUserIds = [];
+
+  try {
+    await waitForServer();
+    await waitForSupabase(supabaseUrl, serviceRoleKey);
+
+    const activeTest = await loadActiveTest(serviceSupabase);
+    const { requiredQuestions, answerOptionsByQuestionId } = await loadRequiredQuestionsWithOptions(
+      serviceSupabase,
+      activeTest.id,
+    );
+
+    assert(requiredQuestions.length > 0, "Active test must contain required questions.");
+
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const candidateEmail = `candidate-flow-${uniqueSuffix}@example.com`;
+    const candidatePassword = `CandidateFlow!${uniqueSuffix}`;
+    const outsiderEmail = `candidate-flow-outsider-${uniqueSuffix}@example.com`;
+    const outsiderPassword = `CandidateFlowOutsider!${uniqueSuffix}`;
+
+    const candidateUser = await createPasswordUser(serviceSupabase, candidateEmail, candidatePassword);
+    const outsiderUser = await createPasswordUser(serviceSupabase, outsiderEmail, outsiderPassword);
+    createdUserIds.push(candidateUser.id, outsiderUser.id);
+
+    const organizationId = await createOrganization(
+      serviceSupabase,
+      `candidate-flow-${uniqueSuffix}`,
+      `Candidate Flow Verification ${uniqueSuffix}`,
+    );
+    createdOrganizationIds.push(organizationId);
+
+    const candidateParticipantId = await createParticipant(serviceSupabase, {
+      organization_id: organizationId,
+      user_id: candidateUser.id,
+      email: candidateEmail,
+      full_name: "Candidate Flow Verification",
+      participant_type: "candidate",
+    });
+    const outsiderParticipantId = await createParticipant(serviceSupabase, {
+      organization_id: organizationId,
+      user_id: outsiderUser.id,
+      email: outsiderEmail,
+      full_name: "Outsider Verification",
+      participant_type: "candidate",
+    });
+    createdParticipantIds.push(candidateParticipantId, outsiderParticipantId);
+
+    const inProgressAttemptId = await createAttempt(serviceSupabase, {
+      test_id: activeTest.id,
+      user_id: candidateUser.id,
+      organization_id: organizationId,
+      participant_id: candidateParticipantId,
+      status: "in_progress",
+    });
+    const notStartedAttemptId = await createAttempt(serviceSupabase, {
+      test_id: activeTest.id,
+      user_id: candidateUser.id,
+      organization_id: organizationId,
+      participant_id: candidateParticipantId,
+      status: "in_progress",
+    });
+    const oldCompletedAttemptId = await createAttempt(serviceSupabase, {
+      test_id: activeTest.id,
+      user_id: candidateUser.id,
+      organization_id: organizationId,
+      participant_id: candidateParticipantId,
+      status: "completed",
+      completed_at: "2026-01-10T09:00:00.000Z",
+    });
+    const latestCompletedAttemptId = await createAttempt(serviceSupabase, {
+      test_id: activeTest.id,
+      user_id: candidateUser.id,
+      organization_id: organizationId,
+      participant_id: candidateParticipantId,
+      status: "completed",
+      completed_at: "2026-02-10T09:00:00.000Z",
+    });
+    const forbiddenAttemptId = await createAttempt(serviceSupabase, {
+      test_id: activeTest.id,
+      user_id: outsiderUser.id,
+      organization_id: organizationId,
+      participant_id: outsiderParticipantId,
+      status: "in_progress",
+    });
+
+    createdAttemptIds.push(
+      inProgressAttemptId,
+      notStartedAttemptId,
+      oldCompletedAttemptId,
+      latestCompletedAttemptId,
+      forbiddenAttemptId,
+    );
+
+    await insertSingleChoiceResponse(
+      serviceSupabase,
+      inProgressAttemptId,
+      requiredQuestions[0],
+      answerOptionsByQuestionId,
+      3,
+    );
+    await fillCompletedAttempt(
+      serviceSupabase,
+      oldCompletedAttemptId,
+      requiredQuestions,
+      answerOptionsByQuestionId,
+    );
+    await fillCompletedAttempt(
+      serviceSupabase,
+      latestCompletedAttemptId,
+      requiredQuestions,
+      answerOptionsByQuestionId,
+    );
+    await seedUnavailableReport(serviceSupabase, oldCompletedAttemptId, activeTest.slug);
+    await seedUnavailableReport(serviceSupabase, latestCompletedAttemptId, activeTest.slug);
+
+    const candidateSession = await signInWithPassword(authSupabase, candidateEmail, candidatePassword);
+
+    const homeWithInProgressHtml = await fetchProtectedHtml("/app", candidateSession);
+    assertIncludes(homeWithInProgressHtml, "Candidate Home", "Expected candidate home page to render.");
+    assertIncludes(homeWithInProgressHtml, "Dostupne procjene", "Expected multi-attempt state heading to render.");
+    assertIncludes(homeWithInProgressHtml, "Nastavi test", "Expected in-progress CTA to render.");
+    assertIncludes(homeWithInProgressHtml, "Započni test", "Expected multi-attempt state to list the untouched open attempt.");
+    assertIncludes(
+      homeWithInProgressHtml,
+      `/app/attempts/${inProgressAttemptId}/run`,
+      "Expected candidate home to expose the in-progress attempt action.",
+    );
+    assertIncludes(
+      homeWithInProgressHtml,
+      `/app/attempts/${notStartedAttemptId}`,
+      "Expected candidate home to expose the not-started attempt action when multiple open attempts exist.",
+    );
+
+    const introHtml = await fetchProtectedHtml(`/app/attempts/${notStartedAttemptId}`, candidateSession);
+    assertIncludes(introHtml, "Spremno za početak", "Expected intro route to render the ready state.");
+    assertIncludes(introHtml, "Šta možeš očekivati", "Expected intro route to render the guidance sections.");
+    assertIncludes(
+      introHtml,
+      `/app/attempts/${notStartedAttemptId}/run`,
+      "Expected intro route CTA to point to the candidate run route.",
+    );
+
+    await updateAttemptStatus(serviceSupabase, inProgressAttemptId, "abandoned");
+
+    const homeWithNotStartedHtml = await fetchProtectedHtml("/app", candidateSession);
+    assertIncludes(homeWithNotStartedHtml, "Započni test", "Expected not-started CTA to render.");
+    assertIncludes(
+      homeWithNotStartedHtml,
+      `/app/attempts/${notStartedAttemptId}`,
+      "Expected candidate home to fall back to the untouched open attempt.",
+    );
+
+    await updateAttemptStatus(serviceSupabase, notStartedAttemptId, "abandoned");
+
+    const homeWithCompletedHtml = await fetchProtectedHtml("/app", candidateSession);
+    assertIncludes(homeWithCompletedHtml, "Pogledaj izvještaj", "Expected completed CTA to render.");
+    assertIncludes(
+      homeWithCompletedHtml,
+      `/app/attempts/${latestCompletedAttemptId}/report`,
+      "Expected candidate home to fall back to the latest completed attempt when no open work remains.",
+    );
+
+    const forbiddenIntroResponse = await fetchProtectedPage(
+      `/app/attempts/${forbiddenAttemptId}`,
+      candidateSession,
+    );
+    assert(
+      forbiddenIntroResponse.status === 404,
+      `Expected forbidden candidate intro route to return 404, received ${forbiddenIntroResponse.status}.`,
+    );
+
+    await updateAttemptStatus(serviceSupabase, inProgressAttemptId, "in_progress");
+
+    const runHtml = await fetchProtectedHtml(`/app/attempts/${inProgressAttemptId}/run`, candidateSession);
+    assertIncludes(
+      runHtml,
+      "Candidate Flow Verification",
+      "Expected candidate run route to render the candidate assessment shell.",
+    );
+    assertIncludes(
+      runHtml,
+      `/app/attempts/${inProgressAttemptId}/report`,
+      "Expected candidate run route to use the candidate report redirect path.",
+    );
+
+    const reportHtml = await fetchProtectedHtml(
+      `/app/attempts/${latestCompletedAttemptId}/report`,
+      candidateSession,
+    );
+    assertIncludes(reportHtml, "Izvještaj procjene", "Expected candidate report route to render the report shell.");
+    assertIncludes(reportHtml, "Pregled dimenzija", "Expected candidate report route to render scored results.");
+
+    console.log("Verified candidate flow:");
+    console.log("- /app renders empty, single-action and multi-attempt candidate states without becoming a dashboard.");
+    console.log("- single-action heuristic remains stable: in-progress with responses, then untouched open attempt, then latest completed report.");
+    console.log("- /app/attempts/[attemptId] respects candidate ownership and returns 404 for a foreign attempt.");
+    console.log("- /app/attempts/[attemptId]/run renders through the candidate namespace.");
+    console.log("- /app/attempts/[attemptId]/report renders through the candidate namespace.");
+  } finally {
+    if (createdAttemptIds.length > 0) {
+      await serviceSupabase.from("attempts").delete().in("id", createdAttemptIds);
+    }
+
+    if (createdParticipantIds.length > 0) {
+      await serviceSupabase.from("participants").delete().in("id", createdParticipantIds);
+    }
+
+    if (createdOrganizationIds.length > 0) {
+      await serviceSupabase.from("organizations").delete().in("id", createdOrganizationIds);
+    }
+
+    for (const userId of createdUserIds) {
+      await serviceSupabase.auth.admin.deleteUser(userId);
+    }
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
 </file>
 
-<file path="supabase/.temp/cli-latest">
-v2.75.0
+<file path="supabase/.branches/_current_branch">
+main
 </file>
 
 <file path="supabase/migrations/20260309122751_init_assessment_schema.sql">
@@ -2547,6 +4069,161 @@ module.exports = nextConfig;
 }
 </file>
 
+<file path="app/actions/auth.ts">
+"use server";
+
+import { redirect } from "next/navigation";
+import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
+import { clearAuthSession, persistAuthSession } from "@/lib/auth/session";
+import { createSupabaseAuthClient } from "@/lib/supabase/server";
+
+export type LoginInput = {
+  email: string;
+  password: string;
+};
+
+export type LoginResult =
+  | {
+      ok: true;
+      redirectPath: "/hr" | "/app" | "/dashboard";
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+function normalizeCredential(value: string): string {
+  return value.trim();
+}
+
+export async function loginWithPassword(input: LoginInput): Promise<LoginResult> {
+  const email = normalizeCredential(input.email).toLowerCase();
+  const password = normalizeCredential(input.password);
+
+  if (!email || !password) {
+    return {
+      ok: false,
+      message: "Email and password are required.",
+    };
+  }
+
+  const supabase = createSupabaseAuthClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error || !data.session) {
+    return {
+      ok: false,
+      message: "Invalid email or password.",
+    };
+  }
+
+  persistAuthSession(data.session);
+
+  const redirectPath = await getPostLoginRedirectPathForUserId(data.user.id);
+
+  return { ok: true, redirectPath };
+}
+
+export async function logout() {
+  clearAuthSession();
+  redirect("/login");
+}
+</file>
+
+<file path="app/login/page.tsx">
+import { LoginForm } from "@/components/auth/login-form";
+import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
+import { getAuthenticatedUser } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage() {
+  const user = await getAuthenticatedUser();
+
+  if (user) {
+    redirect(await getPostLoginRedirectPathForUserId(user.id));
+  }
+
+  return (
+    <main>
+      <section className="card stack-md">
+        <div className="stack-xs">
+          <h1>Sign in</h1>
+          <p>Use your Supabase Auth email/password credentials to access the HR or candidate area.</p>
+        </div>
+
+        <LoginForm />
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="components/auth/login-form.tsx">
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { loginWithPassword } from "@/app/actions/auth";
+
+export function LoginForm() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+
+  return (
+    <form
+      className="stack-sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        const email = String(formData.get("email") ?? "");
+        const password = String(formData.get("password") ?? "");
+
+        startTransition(async () => {
+          const result = await loginWithPassword({ email, password });
+
+          if (!result.ok) {
+            setMessage(result.message);
+            return;
+          }
+
+          setMessage(null);
+          router.push(result.redirectPath);
+          router.refresh();
+        });
+      }}
+    >
+      <label className="stack-xs" htmlFor="email">
+        <span>Email</span>
+        <input id="email" name="email" type="email" autoComplete="email" required />
+      </label>
+
+      <label className="stack-xs" htmlFor="password">
+        <span>Password</span>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
+      </label>
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Signing in..." : "Sign in"}
+      </button>
+
+      {message ? <p>{message}</p> : null}
+    </form>
+  );
+}
+</file>
+
 <file path="lib/assessment/report-config.ts">
 import "server-only";
 
@@ -3033,267 +4710,6 @@ export function getDimensionHelperLabel(dimensionKey: string): string | null {
 }
 </file>
 
-<file path="lib/b2b/organizations.ts">
-import "server-only";
-
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-
-export type OrganizationSummary = {
-  id: string;
-  name: string;
-  slug: string;
-  status: "active" | "inactive";
-};
-
-export type MembershipSummary = {
-  id: string;
-  role: "org_owner" | "hr_admin" | "manager";
-  status: "active" | "invited" | "disabled";
-  created_at: string;
-  organization: OrganizationSummary | null;
-};
-
-export type ParticipantSummary = {
-  id: string;
-  organization_id: string;
-  user_id: string | null;
-  email: string;
-  full_name: string;
-  participant_type: "employee" | "candidate";
-  status: "active" | "inactive";
-  created_at: string;
-};
-
-export type OrganizationScopedAttemptSummary = {
-  id: string;
-  test_id: string;
-  user_id: string | null;
-  organization_id: string | null;
-  participant_id: string | null;
-  status: "in_progress" | "completed" | "abandoned";
-  started_at: string;
-  completed_at: string | null;
-  tests: {
-    slug: string;
-    name: string;
-  } | null;
-  participants: {
-    id: string;
-    organization_id: string;
-    full_name: string;
-    email: string;
-  } | null;
-  organizations: {
-    name: string;
-    slug: string;
-  } | null;
-};
-
-type AttemptRelation<T> = T | T[] | null;
-
-type MembershipRow = {
-  id: string;
-  role: MembershipSummary["role"];
-  status: MembershipSummary["status"];
-  created_at: string;
-  organizations:
-    | OrganizationSummary
-    | OrganizationSummary[]
-    | null;
-};
-
-type AttemptRow = {
-  id: string;
-  test_id: string;
-  user_id: string | null;
-  organization_id: string | null;
-  participant_id: string | null;
-  status: OrganizationScopedAttemptSummary["status"];
-  started_at: string;
-  completed_at: string | null;
-  tests: AttemptRelation<OrganizationScopedAttemptSummary["tests"] extends infer T ? NonNullable<T> : never>;
-  participants: AttemptRelation<
-    OrganizationScopedAttemptSummary["participants"] extends infer T ? NonNullable<T> : never
-  >;
-  organizations: AttemptRelation<
-    OrganizationScopedAttemptSummary["organizations"] extends infer T ? NonNullable<T> : never
-  >;
-};
-
-function normalizeOrganization(
-  value: MembershipRow["organizations"],
-): OrganizationSummary | null {
-  if (!value) {
-    return null;
-  }
-
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
-
-function normalizeAttemptRelation<T>(value: AttemptRelation<T>): T | null {
-  if (!value) {
-    return null;
-  }
-
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
-
-export async function getMembershipsForUser(userId: string): Promise<MembershipSummary[]> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("organization_memberships")
-    .select("id, role, status, created_at, organizations(id, name, slug, status)")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true });
-
-  if (error) {
-    throw new Error(`Failed to load organization memberships: ${error.message}`);
-  }
-
-  return ((data ?? []) as MembershipRow[]).map((membership) => ({
-    id: membership.id,
-    role: membership.role,
-    status: membership.status,
-    created_at: membership.created_at,
-    organization: normalizeOrganization(membership.organizations),
-  }));
-}
-
-export async function getActiveOrganizationForUser(
-  userId: string,
-): Promise<OrganizationSummary | null> {
-  const memberships = await getMembershipsForUser(userId);
-
-  const activeMembership = memberships.find(
-    (membership) =>
-      membership.status === "active" && membership.organization?.status === "active",
-  );
-
-  return activeMembership?.organization ?? null;
-}
-
-export async function getParticipantsForOrganization(
-  organizationId: string,
-): Promise<ParticipantSummary[]> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
-    .eq("organization_id", organizationId)
-    .eq("status", "active")
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true });
-
-  if (error) {
-    throw new Error(`Failed to load organization participants: ${error.message}`);
-  }
-
-  return (data ?? []) as ParticipantSummary[];
-}
-
-export async function getParticipantForOrganization(
-  organizationId: string,
-  participantId: string,
-): Promise<ParticipantSummary | null> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
-    .eq("organization_id", organizationId)
-    .eq("id", participantId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load organization participant: ${error.message}`);
-  }
-
-  return (data as ParticipantSummary | null) ?? null;
-}
-
-export async function getAttemptForOrganization(
-  organizationId: string,
-  attemptId: string,
-): Promise<OrganizationScopedAttemptSummary | null> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("attempts")
-    .select(
-      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
-    )
-    .eq("id", attemptId)
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load organization attempt: ${error.message}`);
-  }
-
-  const attemptRow = (data as AttemptRow | null) ?? null;
-
-  if (!attemptRow) {
-    return null;
-  }
-
-  const attempt: OrganizationScopedAttemptSummary = {
-    ...attemptRow,
-    tests: normalizeAttemptRelation(attemptRow.tests),
-    participants: normalizeAttemptRelation(attemptRow.participants),
-    organizations: normalizeAttemptRelation(attemptRow.organizations),
-  };
-
-  if (
-    attempt.participants &&
-    attempt.participants.organization_id !== organizationId
-  ) {
-    return null;
-  }
-
-  return attempt;
-}
-
-export async function getAttemptsForOrganization(
-  organizationId: string,
-): Promise<OrganizationScopedAttemptSummary[]> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("attempts")
-    .select(
-      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
-    )
-    .eq("organization_id", organizationId)
-    .order("started_at", { ascending: false })
-    .order("id", { ascending: false });
-
-  if (error) {
-    throw new Error(`Failed to load organization attempts: ${error.message}`);
-  }
-
-  return ((data ?? []) as AttemptRow[])
-    .map((attempt) => ({
-      ...attempt,
-      tests: normalizeAttemptRelation(attempt.tests),
-      participants: normalizeAttemptRelation(attempt.participants),
-      organizations: normalizeAttemptRelation(attempt.organizations),
-    }))
-    .filter(
-      (attempt) =>
-        !attempt.participants || attempt.participants.organization_id === organizationId,
-    )
-    .sort((left, right) => {
-      const leftPriority = left.status === "in_progress" ? 0 : 1;
-      const rightPriority = right.status === "in_progress" ? 0 : 1;
-
-      if (leftPriority !== rightPriority) {
-        return leftPriority - rightPriority;
-      }
-
-      return Date.parse(right.started_at) - Date.parse(left.started_at);
-    });
-}
-</file>
-
 <file path="lib/supabase/env.ts">
 function getRequiredEnvVar(value: string | undefined, name: string): string {
   if (!value) {
@@ -3338,137 +4754,15 @@ export function createSupabaseAuthClient() {
 }
 </file>
 
+<file path="supabase/.temp/cli-latest">
+v2.78.1
+</file>
+
 <file path="supabase/snippets/Untitled query 398.sql">
 select id, test_id, status, started_at, completed_at
 from public.attempts
 order by started_at desc
 limit 5;
-</file>
-
-<file path="package.json">
-{
-  "name": "ai-psychometric-analyst-hr-v1",
-  "private": true,
-  "version": "0.1.0",
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
-    "next": "^14.2.5",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.14.11",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.5",
-    "supabase": "^2.76.8",
-    "typescript": "^5.5.4"
-  }
-}
-</file>
-
-<file path="app/(protected)/dashboard/attempts/[attemptId]/run/page.tsx">
-import { notFound, redirect } from "next/navigation";
-import { AssessmentForm } from "@/components/assessment/assessment-form";
-import {
-  getActiveOrganizationForUser,
-  getAttemptForOrganization,
-} from "@/lib/b2b/organizations";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
-import {
-  getAnswerOptionsForQuestions,
-  getAssessmentResumeState,
-  getCompletedAssessmentReportSnapshot,
-  getCompletedAssessmentResults,
-  getQuestionsForTest,
-} from "@/lib/assessment/tests";
-import { getAssessmentDisplayName } from "@/lib/assessment/display";
-
-type ProtectedAttemptRunPageProps = {
-  params: {
-    attemptId: string;
-  };
-};
-
-export const dynamic = "force-dynamic";
-
-export default async function ProtectedAttemptRunPage({
-  params,
-}: ProtectedAttemptRunPageProps) {
-  const user = await requireAuthenticatedUser();
-  const organization = await getActiveOrganizationForUser(user.id);
-
-  if (!organization) {
-    notFound();
-  }
-
-  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
-
-  if (!attempt) {
-    notFound();
-  }
-
-  if (attempt.status === "completed") {
-    redirect(`/dashboard/attempts/${attempt.id}`);
-  }
-
-  const questions = await getQuestionsForTest(attempt.test_id);
-
-  if (questions.length === 0) {
-    return (
-      <main className="stack-md">
-        <section className="card stack-sm">
-          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Assessment"}</h1>
-          <p>No questions are available for this test yet.</p>
-        </section>
-      </main>
-    );
-  }
-
-  const answerOptionsByQuestionId = await getAnswerOptionsForQuestions(
-    questions.map((question) => question.id),
-  );
-  const resumeState = await getAssessmentResumeState(attempt.test_id, attempt.id);
-  const results = await getCompletedAssessmentResults(attempt.test_id, attempt.id);
-  const report = await getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id);
-  const assessmentName = getAssessmentDisplayName({
-    name: attempt.tests?.name,
-    slug: attempt.tests?.slug,
-  });
-  const participantName = attempt.participants?.full_name ?? null;
-
-  return (
-    <main className="assessment-run-page stack-md">
-      <section className="assessment-run-shell">
-        <AssessmentForm
-          executionMode="protected"
-          layoutMode="step"
-          completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
-          assessmentDisplayName={assessmentName}
-          participantDisplayName={participantName}
-          testId={attempt.test_id}
-          questions={questions}
-          answerOptionsByQuestionId={answerOptionsByQuestionId}
-          initialAttemptId={resumeState.attemptId}
-          initialAttemptStatus={resumeState.attemptStatus}
-          initialCompletedAt={resumeState.completedAt}
-          initialSelections={resumeState.selections}
-          initialResults={results}
-          initialReport={report}
-        />
-      </section>
-    </main>
-  );
-}
 </file>
 
 <file path="app/(protected)/dashboard/page.tsx">
@@ -3513,6 +4807,23 @@ function getDashboardMessage(rawError: string | string[] | undefined): string | 
   }
 }
 
+function getDashboardSuccessMessage(
+  rawSuccess: string | string[] | undefined,
+  rawAttemptId: string | string[] | undefined,
+): string | null {
+  const success = Array.isArray(rawSuccess) ? rawSuccess[0] : rawSuccess;
+  const attemptId = Array.isArray(rawAttemptId) ? rawAttemptId[0] : rawAttemptId;
+
+  switch (success) {
+    case "attempt-created":
+      return attemptId
+        ? `Assessment ${getAttemptLabel(attemptId)} was created successfully. The candidate can now access it from their app workspace.`
+        : "Assessment was created successfully. The candidate can now access it from their app workspace.";
+    default:
+      return null;
+  }
+}
+
 function formatTimestamp(value: string | null): string {
   if (!value) {
     return "N/A";
@@ -3540,6 +4851,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       ])
     : [[], []];
   const message = getDashboardMessage(searchParams?.error);
+  const successMessage = getDashboardSuccessMessage(searchParams?.success, searchParams?.attemptId);
 
   return (
     <main className="stack-md">
@@ -3559,6 +4871,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p>TODO: add an explicit organization switcher when multi-org selection becomes necessary.</p>
           ) : null}
           {message ? <p>{message}</p> : null}
+          {successMessage ? <p>{successMessage}</p> : null}
         </div>
 
         <form action={logout}>
@@ -4117,6 +5430,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
 import {
   DEFAULT_REFRESH_COOKIE_MAX_AGE_SECONDS,
   type AuthCookieName,
@@ -4199,11 +5513,297 @@ export async function requireAuthenticatedUserForAction(): Promise<User> {
 }
 
 export async function redirectAuthenticatedUserToDashboard() {
+  await redirectAuthenticatedUserToAppContext();
+}
+
+export async function redirectAuthenticatedUserToAppContext() {
   const user = await getAuthenticatedUser();
 
   if (user) {
-    redirect("/dashboard");
+    redirect(await getPostLoginRedirectPathForUserId(user.id));
   }
+}
+</file>
+
+<file path="lib/b2b/organizations.ts">
+import "server-only";
+
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export type OrganizationSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  status: "active" | "inactive";
+};
+
+export type MembershipSummary = {
+  id: string;
+  role: "org_owner" | "hr_admin" | "manager";
+  status: "active" | "invited" | "disabled";
+  created_at: string;
+  organization: OrganizationSummary | null;
+};
+
+export type ParticipantSummary = {
+  id: string;
+  organization_id: string;
+  user_id: string | null;
+  email: string;
+  full_name: string;
+  participant_type: "employee" | "candidate";
+  status: "active" | "inactive";
+  created_at: string;
+};
+
+export type OrganizationScopedAttemptSummary = {
+  id: string;
+  test_id: string;
+  user_id: string | null;
+  organization_id: string | null;
+  participant_id: string | null;
+  status: "in_progress" | "completed" | "abandoned";
+  started_at: string;
+  completed_at: string | null;
+  tests: {
+    slug: string;
+    name: string;
+  } | null;
+  participants: {
+    id: string;
+    organization_id: string;
+    full_name: string;
+    email: string;
+  } | null;
+  organizations: {
+    name: string;
+    slug: string;
+  } | null;
+};
+
+type AttemptRelation<T> = T | T[] | null;
+
+type MembershipRow = {
+  id: string;
+  role: MembershipSummary["role"];
+  status: MembershipSummary["status"];
+  created_at: string;
+  organizations:
+    | OrganizationSummary
+    | OrganizationSummary[]
+    | null;
+};
+
+type AttemptRow = {
+  id: string;
+  test_id: string;
+  user_id: string | null;
+  organization_id: string | null;
+  participant_id: string | null;
+  status: OrganizationScopedAttemptSummary["status"];
+  started_at: string;
+  completed_at: string | null;
+  tests: AttemptRelation<OrganizationScopedAttemptSummary["tests"] extends infer T ? NonNullable<T> : never>;
+  participants: AttemptRelation<
+    OrganizationScopedAttemptSummary["participants"] extends infer T ? NonNullable<T> : never
+  >;
+  organizations: AttemptRelation<
+    OrganizationScopedAttemptSummary["organizations"] extends infer T ? NonNullable<T> : never
+  >;
+};
+
+function normalizeOrganization(
+  value: MembershipRow["organizations"],
+): OrganizationSummary | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function normalizeAttemptRelation<T>(value: AttemptRelation<T>): T | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+export async function getMembershipsForUser(userId: string): Promise<MembershipSummary[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("organization_memberships")
+    .select("id, role, status, created_at, organizations(id, name, slug, status)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load organization memberships: ${error.message}`);
+  }
+
+  return ((data ?? []) as MembershipRow[]).map((membership) => ({
+    id: membership.id,
+    role: membership.role,
+    status: membership.status,
+    created_at: membership.created_at,
+    organization: normalizeOrganization(membership.organizations),
+  }));
+}
+
+export async function getActiveOrganizationForUser(
+  userId: string,
+): Promise<OrganizationSummary | null> {
+  const memberships = await getMembershipsForUser(userId);
+
+  const activeMembership = memberships.find(
+    (membership) =>
+      membership.status === "active" && membership.organization?.status === "active",
+  );
+
+  return activeMembership?.organization ?? null;
+}
+
+export async function getParticipantsForOrganization(
+  organizationId: string,
+): Promise<ParticipantSummary[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("participants")
+    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .eq("organization_id", organizationId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load organization participants: ${error.message}`);
+  }
+
+  return (data ?? []) as ParticipantSummary[];
+}
+
+export async function getParticipantForOrganization(
+  organizationId: string,
+  participantId: string,
+): Promise<ParticipantSummary | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("participants")
+    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .eq("organization_id", organizationId)
+    .eq("id", participantId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load organization participant: ${error.message}`);
+  }
+
+  return (data as ParticipantSummary | null) ?? null;
+}
+
+export async function getLinkedParticipantForUser(
+  userId: string,
+): Promise<ParticipantSummary | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("participants")
+    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load linked participant: ${error.message}`);
+  }
+
+  return (data as ParticipantSummary | null) ?? null;
+}
+
+export async function getAttemptForOrganization(
+  organizationId: string,
+  attemptId: string,
+): Promise<OrganizationScopedAttemptSummary | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempts")
+    .select(
+      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+    )
+    .eq("id", attemptId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load organization attempt: ${error.message}`);
+  }
+
+  const attemptRow = (data as AttemptRow | null) ?? null;
+
+  if (!attemptRow) {
+    return null;
+  }
+
+  const attempt: OrganizationScopedAttemptSummary = {
+    ...attemptRow,
+    tests: normalizeAttemptRelation(attemptRow.tests),
+    participants: normalizeAttemptRelation(attemptRow.participants),
+    organizations: normalizeAttemptRelation(attemptRow.organizations),
+  };
+
+  if (
+    attempt.participants &&
+    attempt.participants.organization_id !== organizationId
+  ) {
+    return null;
+  }
+
+  return attempt;
+}
+
+export async function getAttemptsForOrganization(
+  organizationId: string,
+): Promise<OrganizationScopedAttemptSummary[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempts")
+    .select(
+      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+    )
+    .eq("organization_id", organizationId)
+    .order("started_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load organization attempts: ${error.message}`);
+  }
+
+  return ((data ?? []) as AttemptRow[])
+    .map((attempt) => ({
+      ...attempt,
+      tests: normalizeAttemptRelation(attempt.tests),
+      participants: normalizeAttemptRelation(attempt.participants),
+      organizations: normalizeAttemptRelation(attempt.organizations),
+    }))
+    .filter(
+      (attempt) =>
+        !attempt.participants || attempt.participants.organization_id === organizationId,
+    )
+    .sort((left, right) => {
+      const leftPriority = left.status === "in_progress" ? 0 : 1;
+      const rightPriority = right.status === "in_progress" ? 0 : 1;
+
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+
+      return Date.parse(right.started_at) - Date.parse(left.started_at);
+    });
 }
 </file>
 
@@ -4567,6 +6167,114 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
+</file>
+
+<file path="package.json">
+{
+  "name": "ai-psychometric-analyst-hr-v1",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
+    "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "next": "^14.2.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.5",
+    "supabase": "^2.76.8",
+    "typescript": "^5.5.4"
+  }
+}
+</file>
+
+<file path="app/(protected)/dashboard/attempts/[attemptId]/run/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { AssessmentForm } from "@/components/assessment/assessment-form";
+import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
+import {
+  getActiveOrganizationForUser,
+  getAttemptForOrganization,
+} from "@/lib/b2b/organizations";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+
+type ProtectedAttemptRunPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function ProtectedAttemptRunPage({
+  params,
+}: ProtectedAttemptRunPageProps) {
+  const user = await requireAuthenticatedUser();
+  const organization = await getActiveOrganizationForUser(user.id);
+
+  if (!organization) {
+    notFound();
+  }
+
+  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status === "completed") {
+    redirect(`/dashboard/attempts/${attempt.id}`);
+  }
+
+  const runPageData = await loadProtectedAttemptRunPageData(attempt);
+
+  if (runPageData.questions.length === 0) {
+    return (
+      <main className="stack-md">
+        <section className="card stack-sm">
+          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Assessment"}</h1>
+          <p>No questions are available for this test yet.</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="assessment-run-page stack-md">
+      <section className="assessment-run-shell">
+        <AssessmentForm
+          executionMode="protected"
+          layoutMode="step"
+          completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
+          assessmentDisplayName={runPageData.assessmentName}
+          participantDisplayName={runPageData.participantName}
+          testId={attempt.test_id}
+          questions={runPageData.questions}
+          answerOptionsByQuestionId={runPageData.answerOptionsByQuestionId}
+          initialAttemptId={runPageData.resumeState.attemptId}
+          initialAttemptStatus={runPageData.resumeState.attemptStatus}
+          initialCompletedAt={runPageData.resumeState.completedAt}
+          initialSelections={runPageData.resumeState.selections}
+          initialResults={runPageData.results}
+          initialReport={runPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
 </file>
 
 <file path="scripts/check-supabase.mjs">
@@ -5295,6 +7003,749 @@ values
   ('fc40c108-6f9b-4a31-ac72-51458561ea6e', '3', 'Ni tačno ni netačno', 3, 3),
   ('fc40c108-6f9b-4a31-ac72-51458561ea6e', '4', 'Uglavnom tačno', 4, 4),
   ('fc40c108-6f9b-4a31-ac72-51458561ea6e', '5', 'Vrlo tačno', 5, 5);
+</file>
+
+<file path="lib/assessment/reports.ts">
+import "server-only";
+
+import { loadAssessmentCompletionState } from "@/lib/assessment/completion-server";
+import { getAiReportConfig } from "@/lib/assessment/report-config";
+import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
+import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
+import { createSelectedReportProvider } from "@/lib/assessment/report-provider-registry";
+import type {
+  AttemptReportStatus,
+  CompletedAssessmentReport,
+  CompletedAssessmentReportRequest,
+  ReportGeneratorType,
+} from "@/lib/assessment/report-providers";
+import {
+  isAttemptReportStatus,
+  isCompletedAssessmentReport,
+} from "@/lib/assessment/report-providers";
+import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
+import { calculateCompletedAssessmentResults } from "@/lib/assessment/scoring";
+import type { ScoringMethod } from "@/lib/assessment/types";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+type AttemptReportRow = {
+  attempt_id: string;
+  test_slug: string;
+  generator_type: ReportGeneratorType;
+  generated_at: string;
+  report_status: AttemptReportStatus;
+  failure_code: string | null;
+  failure_reason: string | null;
+  report_snapshot: unknown;
+};
+
+type AttemptRecord = {
+  id: string;
+  status: "in_progress" | "completed" | "abandoned";
+};
+
+type TestRecord = {
+  id: string;
+  slug: string;
+  scoring_method: ScoringMethod;
+};
+
+type LoadedReportContext = {
+  supabase: ReturnType<typeof createSupabaseAdminClient>;
+  test: TestRecord;
+  results: CompletedAssessmentResults;
+};
+
+export type CompletedAssessmentReportState =
+  | {
+      status: "ready";
+      report: CompletedAssessmentReport;
+    }
+  | {
+      status: "unavailable";
+      generatorType: ReportGeneratorType;
+      generatedAt: string;
+      failureCode: string | null;
+      failureReason: string | null;
+    };
+
+type ReportGenerationResult =
+  | {
+      status: "ready";
+      report: CompletedAssessmentReport;
+    }
+  | {
+      status: "unavailable";
+      generatorType: ReportGeneratorType;
+      failureCode: string;
+      failureReason: string;
+    };
+
+async function generateReportWithFallback(
+  input: CompletedAssessmentReportRequest,
+): Promise<ReportGenerationResult> {
+  const config = getAiReportConfig();
+  const selectedProvider = createSelectedReportProvider();
+  const preparedInput = buildPreparedReportGenerationInput(input);
+  const primaryResult = await selectedProvider.generateReport(preparedInput);
+
+  if (primaryResult.ok) {
+    return {
+      status: "ready",
+      report: primaryResult.report,
+    };
+  }
+
+  console.error("Report generation failed for primary provider", {
+    provider: selectedProvider.type,
+    attemptId: input.attemptId,
+    testSlug: input.testSlug,
+    reason: primaryResult.reason,
+    fallbackToMockEnabled: config.fallbackToMock,
+  });
+
+  if (selectedProvider.type !== "mock" && config.fallbackToMock) {
+    const fallbackResult = await mockReportProvider.generateReport(preparedInput);
+
+    if (fallbackResult.ok) {
+      return {
+        status: "ready",
+        report: fallbackResult.report,
+      };
+    }
+
+    console.error("Report generation fallback failed", {
+      provider: mockReportProvider.type,
+      attemptId: input.attemptId,
+      testSlug: input.testSlug,
+      reason: fallbackResult.reason,
+    });
+
+    return {
+      status: "unavailable",
+      generatorType: mockReportProvider.type,
+      failureCode: "report_generation_failed",
+      failureReason: fallbackResult.reason,
+    };
+  }
+
+  return {
+    status: "unavailable",
+    generatorType: selectedProvider.type,
+    failureCode: "report_generation_failed",
+    failureReason: primaryResult.reason,
+  };
+}
+
+async function loadReportContext(testId: string, attemptId: string): Promise<LoadedReportContext | null> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: attemptData, error: attemptError } = await supabase
+    .from("attempts")
+    .select("id, status")
+    .eq("id", attemptId)
+    .eq("test_id", testId)
+    .maybeSingle();
+
+  if (attemptError) {
+    throw new Error(`Failed to load attempt for report generation: ${attemptError.message}`);
+  }
+
+  const attempt = attemptData as AttemptRecord | null;
+
+  if (!attempt || attempt.status !== "completed") {
+    return null;
+  }
+
+  const completionState = await loadAssessmentCompletionState(testId, attemptId);
+
+  if (!completionState.isComplete) {
+    return null;
+  }
+
+  const { data: testData, error: testError } = await supabase
+    .from("tests")
+    .select("id, slug, scoring_method")
+    .eq("id", testId)
+    .maybeSingle();
+
+  if (testError || !testData) {
+    throw new Error(
+      `Failed to load test for report generation: ${testError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  const results = await calculateCompletedAssessmentResults(testId, attemptId);
+
+  if (!results) {
+    return null;
+  }
+
+  return {
+    supabase,
+    test: testData as TestRecord,
+    results,
+  };
+}
+
+async function loadPersistedReportSnapshot(
+  context: LoadedReportContext,
+  attemptId: string,
+): Promise<CompletedAssessmentReportState | null> {
+  const { data, error } = await context.supabase
+    .from("attempt_reports")
+    .select(
+      "attempt_id, test_slug, generator_type, generated_at, report_status, failure_code, failure_reason, report_snapshot",
+    )
+    .eq("attempt_id", attemptId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load attempt report: ${error.message}`);
+  }
+
+  const row = data as AttemptReportRow | null;
+
+  if (!row) {
+    return null;
+  }
+
+  if (!isAttemptReportStatus(row.report_status)) {
+    throw new Error(`Invalid attempt report status for attempt ${attemptId}.`);
+  }
+
+  if (row.report_status === "ready") {
+    if (!isCompletedAssessmentReport(row.report_snapshot)) {
+      throw new Error(`Attempt report ${attemptId} is marked ready without a valid snapshot.`);
+    }
+
+    return {
+      status: "ready",
+      report: row.report_snapshot,
+    };
+  }
+
+  return {
+    status: "unavailable",
+    generatorType: row.generator_type,
+    generatedAt: row.generated_at,
+    failureCode: row.failure_code,
+    failureReason: row.failure_reason,
+  };
+}
+
+export async function getCompletedAssessmentReport(
+  testId: string,
+  attemptId: string | null,
+): Promise<CompletedAssessmentReportState | null> {
+  if (!attemptId) {
+    return null;
+  }
+
+  const context = await loadReportContext(testId, attemptId);
+
+  if (!context) {
+    return null;
+  }
+
+  const persistedReport = await loadPersistedReportSnapshot(context, attemptId);
+
+  if (persistedReport) {
+    return persistedReport;
+  }
+
+  return persistCompletedAssessmentReport(testId, attemptId, context);
+}
+
+export async function persistCompletedAssessmentReport(
+  testId: string,
+  attemptId: string,
+  existingContext?: LoadedReportContext,
+): Promise<CompletedAssessmentReportState | null> {
+  const context = existingContext ?? (await loadReportContext(testId, attemptId));
+
+  if (!context) {
+    return null;
+  }
+
+  const existingReport = await loadPersistedReportSnapshot(context, attemptId);
+
+  if (existingReport) {
+    return existingReport;
+  }
+
+  const generationResult = await generateReportWithFallback({
+    attemptId,
+    testSlug: context.test.slug,
+    scoringMethod: context.test.scoring_method,
+    promptVersion: getAiReportConfig().promptVersion,
+    results: context.results,
+  });
+
+  const persistedGeneratedAt =
+    generationResult.status === "ready"
+      ? generationResult.report.generated_at
+      : new Date().toISOString();
+
+  const { error } = await context.supabase.from("attempt_reports").upsert(
+    generationResult.status === "ready"
+      ? {
+          attempt_id: attemptId,
+          test_slug: generationResult.report.test_slug,
+          generator_type: generationResult.report.generator_type,
+          generated_at: persistedGeneratedAt,
+          report_status: "ready",
+          failure_code: null,
+          failure_reason: null,
+          report_snapshot: generationResult.report,
+        }
+      : {
+          attempt_id: attemptId,
+          test_slug: context.test.slug,
+          generator_type: generationResult.generatorType,
+          generated_at: persistedGeneratedAt,
+          report_status: "unavailable",
+          failure_code: generationResult.failureCode,
+          failure_reason: generationResult.failureReason,
+          report_snapshot: null,
+        },
+    {
+      onConflict: "attempt_id",
+    },
+  );
+
+  if (error) {
+    throw new Error(`Failed to persist attempt report: ${error.message}`);
+  }
+
+  if (generationResult.status === "ready") {
+    return generationResult;
+  }
+
+  return {
+    status: "unavailable",
+    generatorType: generationResult.generatorType,
+    generatedAt: persistedGeneratedAt,
+    failureCode: generationResult.failureCode,
+    failureReason: generationResult.failureReason,
+  };
+}
+
+export type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
+</file>
+
+<file path="scripts/verify-report-flow.mjs">
+import process from "node:process";
+import { setTimeout as delay } from "node:timers/promises";
+import { createClient } from "@supabase/supabase-js";
+
+const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
+const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
+const HEALTH_URL = `${APP_URL}/api/health`;
+const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const EXPECTED_REPORT_BEHAVIOR = process.env.VERIFY_REPORT_EXPECTED_BEHAVIOR ?? "snapshot";
+const EXPECTED_REPORT_GENERATOR = process.env.VERIFY_REPORT_EXPECTED_GENERATOR ?? "mock";
+const REPORT_CASES = [
+  { code: "E01", optionIndex: 4 },
+  { code: "A01", optionIndex: 3 },
+  { code: "C01", optionIndex: 2 },
+  { code: "ES01", optionIndex: 1 },
+  { code: "O01", optionIndex: 0 },
+];
+
+function fail(message) {
+  throw new Error(message);
+}
+
+function assertIncludes(haystack, needle, message) {
+  if (!haystack.includes(needle)) {
+    fail(message);
+  }
+}
+
+function assertNotIncludes(haystack, needle, message) {
+  if (haystack.includes(needle)) {
+    fail(message);
+  }
+}
+
+async function fetchAssessmentPage(attemptId) {
+  const response = await fetch(APP_URL, {
+    headers: {
+      cookie: `${ATTEMPT_COOKIE_NAME}=${attemptId}`,
+    },
+  });
+
+  if (!response.ok) {
+    fail(`Page request failed with status ${response.status}.`);
+  }
+
+  return response.text();
+}
+
+async function waitForServer() {
+  let lastDetail = `No response from ${HEALTH_URL}.`;
+
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    try {
+      const response = await fetch(HEALTH_URL);
+
+      if (response.ok) {
+        return;
+      }
+
+      lastDetail = `HTTP ${response.status} from ${HEALTH_URL}.`;
+    } catch (error) {
+      lastDetail = error instanceof Error ? error.message : String(error);
+    }
+
+    await delay(1000);
+  }
+
+  fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
+}
+
+async function loadRequiredQuestionsWithOptions(supabase, testId) {
+  const { data: questions, error: questionsError } = await supabase
+    .from("questions")
+    .select("id, code, question_type, is_required")
+    .eq("test_id", testId)
+    .eq("is_active", true)
+    .order("question_order", { ascending: true });
+
+  if (questionsError || !questions) {
+    fail(`Unable to load report verification questions: ${questionsError?.message ?? "Unknown error"}`);
+  }
+
+  const requiredQuestions = questions.filter((question) => question.is_required);
+  const nonTextQuestionIds = requiredQuestions
+    .filter((question) => question.question_type !== "text")
+    .map((question) => question.id);
+
+  const { data: answerOptions, error: answerOptionsError } = await supabase
+    .from("answer_options")
+    .select("id, question_id, option_order")
+    .in("question_id", nonTextQuestionIds)
+    .order("question_id", { ascending: true })
+    .order("option_order", { ascending: true });
+
+  if (answerOptionsError || !answerOptions) {
+    fail(
+      `Unable to load report verification options: ${answerOptionsError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  const answerOptionsByQuestionId = answerOptions.reduce((groupedOptions, option) => {
+    const questionOptions = groupedOptions.get(option.question_id) ?? [];
+    questionOptions.push(option);
+    groupedOptions.set(option.question_id, questionOptions);
+    return groupedOptions;
+  }, new Map());
+
+  return { requiredQuestions, answerOptionsByQuestionId };
+}
+
+async function insertAnswerForQuestion(supabase, attemptId, question, answerOptionsByQuestionId, optionIndex = 0) {
+  if (question.question_type === "text") {
+    const { error } = await supabase.from("responses").insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "text",
+      text_value: `Verification response for ${question.code}`,
+    });
+
+    if (error) {
+      fail(`Unable to create text response for ${question.code}: ${error.message}`);
+    }
+
+    return;
+  }
+
+  const options = answerOptionsByQuestionId.get(question.id) ?? [];
+  const selectedOption = options[optionIndex] ?? options[0];
+
+  if (!selectedOption) {
+    fail(`Expected option index ${optionIndex} for ${question.code}.`);
+  }
+
+  if (question.question_type === "single_choice") {
+    const { error } = await supabase.from("responses").insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "single_choice",
+      answer_option_id: selectedOption.id,
+    });
+
+    if (error) {
+      fail(`Unable to create single choice response for ${question.code}: ${error.message}`);
+    }
+
+    return;
+  }
+
+  const { data: responseRow, error: responseError } = await supabase
+    .from("responses")
+    .insert({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response_kind: "multiple_choice",
+    })
+    .select("id")
+    .single();
+
+  if (responseError || !responseRow) {
+    fail(`Unable to create multiple choice response for ${question.code}: ${responseError?.message ?? "Unknown error"}`);
+  }
+
+  const { error: selectionError } = await supabase.from("response_selections").insert({
+    response_id: responseRow.id,
+    question_id: question.id,
+    answer_option_id: selectedOption.id,
+  });
+
+  if (selectionError) {
+    fail(`Unable to create multiple choice selection for ${question.code}: ${selectionError.message}`);
+  }
+}
+
+async function createAttempt(supabase, testId, status) {
+  const insert = status === "completed"
+    ? { test_id: testId, status: "completed", completed_at: new Date().toISOString() }
+    : { test_id: testId };
+
+  const { data, error } = await supabase.from("attempts").insert(insert).select("id").single();
+
+  if (error || !data) {
+    fail(`Unable to create ${status} attempt: ${error?.message ?? "Unknown error"}`);
+  }
+
+  return data.id;
+}
+
+async function assertSnapshotBehavior(supabase, validAttemptId) {
+  const firstHtml = await fetchAssessmentPage(validAttemptId);
+  assertIncludes(firstHtml, "AI izvještaj procjene", "Expected assessment report section to render.");
+  assertIncludes(firstHtml, "Generator:", "Expected generator label to render.");
+  assertIncludes(firstHtml, "Sačuvani izvještaj generisan:", "Expected report timestamp label to render.");
+  assertIncludes(firstHtml, "Snage", "Expected strengths section to render.");
+  assertIncludes(firstHtml, "Slijepe tačke", "Expected blind spots section to render.");
+  assertIncludes(
+    firstHtml,
+    "Preporuke za razvoj",
+    "Expected recommendations section to render.",
+  );
+
+  const { data: firstReportRow, error: firstReportError } = await supabase
+    .from("attempt_reports")
+    .select("generated_at, generator_type, report_snapshot")
+    .eq("attempt_id", validAttemptId)
+    .single();
+
+  if (firstReportError || !firstReportRow) {
+    fail(
+      `Unable to load persisted report snapshot: ${firstReportError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  if (firstReportRow.generator_type !== EXPECTED_REPORT_GENERATOR) {
+    fail(`Expected persisted generator_type ${EXPECTED_REPORT_GENERATOR}, received ${firstReportRow.generator_type}.`);
+  }
+
+  if (firstReportRow.report_snapshot?.generator_type !== EXPECTED_REPORT_GENERATOR) {
+    fail(`Expected persisted report snapshot to include generator_type ${EXPECTED_REPORT_GENERATOR}.`);
+  }
+
+  const firstGeneratedAt = firstReportRow.generated_at;
+  const secondHtml = await fetchAssessmentPage(validAttemptId);
+  assertIncludes(secondHtml, "AI izvještaj procjene", "Expected assessment report section to remain on reload.");
+  assertIncludes(secondHtml, "Generator:", "Expected generator label to remain on reload.");
+
+  const { data: secondReportRow, error: secondReportError } = await supabase
+    .from("attempt_reports")
+    .select("generated_at")
+    .eq("attempt_id", validAttemptId)
+    .single();
+
+  if (secondReportError || !secondReportRow) {
+    fail(
+      `Unable to reload persisted report snapshot: ${secondReportError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  if (secondReportRow.generated_at !== firstGeneratedAt) {
+    fail("Expected report snapshot to stay stable on reload without regeneration.");
+  }
+}
+
+async function assertUnavailableBehavior(supabase, validAttemptId) {
+  const firstHtml = await fetchAssessmentPage(validAttemptId);
+  assertIncludes(firstHtml, "AI izvještaj procjene", "Unavailable report should still render a stable report section.");
+  assertIncludes(
+    firstHtml,
+    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
+    "Unavailable report message should render.",
+  );
+
+  const { data: firstReportRow, error: firstReportError } = await supabase
+    .from("attempt_reports")
+    .select("report_status, generator_type, generated_at, report_snapshot, failure_code")
+    .eq("attempt_id", validAttemptId)
+    .single();
+
+  if (firstReportError) {
+    fail(`Unable to inspect unavailable report state: ${firstReportError.message}`);
+  }
+
+  if (firstReportRow.report_status !== "unavailable") {
+    fail(`Expected unavailable report status, received ${firstReportRow.report_status}.`);
+  }
+
+  if (firstReportRow.generator_type !== EXPECTED_REPORT_GENERATOR) {
+    fail(`Expected unavailable generator_type ${EXPECTED_REPORT_GENERATOR}, received ${firstReportRow.generator_type}.`);
+  }
+
+  if (firstReportRow.report_snapshot !== null) {
+    fail("Unavailable report scenario should persist a null report snapshot.");
+  }
+
+  if (firstReportRow.failure_code !== "report_generation_failed") {
+    fail(`Expected failure_code report_generation_failed, received ${firstReportRow.failure_code}.`);
+  }
+
+  const firstGeneratedAt = firstReportRow.generated_at;
+  const secondHtml = await fetchAssessmentPage(validAttemptId);
+  assertIncludes(
+    secondHtml,
+    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
+    "Unavailable report message should remain stable on reload.",
+  );
+
+  const { data: secondReportRow, error: secondReportError } = await supabase
+    .from("attempt_reports")
+    .select("generated_at")
+    .eq("attempt_id", validAttemptId)
+    .single();
+
+  if (secondReportError || !secondReportRow) {
+    fail(
+      `Unable to reload unavailable report snapshot: ${secondReportError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  if (secondReportRow.generated_at !== firstGeneratedAt) {
+    fail("Expected unavailable report marker to stay stable on reload without regeneration.");
+  }
+}
+
+async function main() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    fail("Missing required Supabase env vars.");
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  await waitForServer();
+
+  const { data: activeTest, error: activeTestError } = await supabase
+    .from("tests")
+    .select("id, slug")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (activeTestError || !activeTest) {
+    fail(`Unable to load active test: ${activeTestError?.message ?? "Unknown error"}`);
+  }
+
+  if (activeTest.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
+    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
+  }
+
+  const { requiredQuestions, answerOptionsByQuestionId } = await loadRequiredQuestionsWithOptions(
+    supabase,
+    activeTest.id,
+  );
+  const reportOverrides = new Map(REPORT_CASES.map((reportCase) => [reportCase.code, reportCase.optionIndex]));
+
+  const incompleteAttemptId = await createAttempt(supabase, activeTest.id, "completed");
+  const partialQuestion = requiredQuestions.find((question) => question.code === REPORT_CASES[0].code);
+
+  if (!partialQuestion) {
+    fail(`Expected seeded question ${REPORT_CASES[0].code} was not found.`);
+  }
+
+  await insertAnswerForQuestion(
+    supabase,
+    incompleteAttemptId,
+    partialQuestion,
+    answerOptionsByQuestionId,
+    REPORT_CASES[0].optionIndex,
+  );
+
+  const incompleteHtml = await fetchAssessmentPage(incompleteAttemptId);
+  assertNotIncludes(
+    incompleteHtml,
+    "AI izvještaj procjene",
+    "Incomplete completed attempt should not render a report.",
+  );
+
+  const { data: incompleteReportRow, error: incompleteReportError } = await supabase
+    .from("attempt_reports")
+    .select("attempt_id")
+    .eq("attempt_id", incompleteAttemptId)
+    .maybeSingle();
+
+  if (incompleteReportError) {
+    fail(`Unable to inspect incomplete attempt report state: ${incompleteReportError.message}`);
+  }
+
+  if (incompleteReportRow) {
+    fail("Incomplete completed attempt should not persist a report snapshot.");
+  }
+
+  const validAttemptId = await createAttempt(supabase, activeTest.id, "completed");
+
+  for (const question of requiredQuestions) {
+    await insertAnswerForQuestion(
+      supabase,
+      validAttemptId,
+      question,
+      answerOptionsByQuestionId,
+      reportOverrides.get(question.code) ?? 0,
+    );
+  }
+
+  if (EXPECTED_REPORT_BEHAVIOR === "unavailable") {
+    await assertUnavailableBehavior(supabase, validAttemptId);
+  } else {
+    await assertSnapshotBehavior(supabase, validAttemptId);
+  }
+
+  console.log("Report flow verification passed.");
+  console.log(`Verified incomplete attempt id: ${incompleteAttemptId}`);
+  console.log(`Verified valid completed attempt id: ${validAttemptId}`);
+  console.log("Verified behaviors:");
+  console.log("- incomplete completed attempt does not generate or render a report");
+
+  if (EXPECTED_REPORT_BEHAVIOR === "unavailable") {
+    console.log("- fully answered completed attempt stays stable when report generation is unavailable");
+  } else {
+    console.log(`- fully answered completed attempt generates a persisted ${EXPECTED_REPORT_GENERATOR} report snapshot on first render`);
+    console.log("- reload reuses the same generated_at timestamp instead of regenerating a new report");
+  }
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+});
 </file>
 
 <file path="components/assessment/completed-assessment-summary.tsx">
@@ -6164,810 +8615,6 @@ export function CompletedAssessmentSummary({
 }
 </file>
 
-<file path="lib/assessment/reports.ts">
-import "server-only";
-
-import { loadAssessmentCompletionState } from "@/lib/assessment/completion-server";
-import { getAiReportConfig } from "@/lib/assessment/report-config";
-import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
-import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
-import { createSelectedReportProvider } from "@/lib/assessment/report-provider-registry";
-import type {
-  AttemptReportStatus,
-  CompletedAssessmentReport,
-  CompletedAssessmentReportRequest,
-  ReportGeneratorType,
-} from "@/lib/assessment/report-providers";
-import {
-  isAttemptReportStatus,
-  isCompletedAssessmentReport,
-} from "@/lib/assessment/report-providers";
-import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
-import { calculateCompletedAssessmentResults } from "@/lib/assessment/scoring";
-import type { ScoringMethod } from "@/lib/assessment/types";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-
-type AttemptReportRow = {
-  attempt_id: string;
-  test_slug: string;
-  generator_type: ReportGeneratorType;
-  generated_at: string;
-  report_status: AttemptReportStatus;
-  failure_code: string | null;
-  failure_reason: string | null;
-  report_snapshot: unknown;
-};
-
-type AttemptRecord = {
-  id: string;
-  status: "in_progress" | "completed" | "abandoned";
-};
-
-type TestRecord = {
-  id: string;
-  slug: string;
-  scoring_method: ScoringMethod;
-};
-
-type LoadedReportContext = {
-  supabase: ReturnType<typeof createSupabaseAdminClient>;
-  test: TestRecord;
-  results: CompletedAssessmentResults;
-};
-
-export type CompletedAssessmentReportState =
-  | {
-      status: "ready";
-      report: CompletedAssessmentReport;
-    }
-  | {
-      status: "unavailable";
-      generatorType: ReportGeneratorType;
-      generatedAt: string;
-      failureCode: string | null;
-      failureReason: string | null;
-    };
-
-type ReportGenerationResult =
-  | {
-      status: "ready";
-      report: CompletedAssessmentReport;
-    }
-  | {
-      status: "unavailable";
-      generatorType: ReportGeneratorType;
-      failureCode: string;
-      failureReason: string;
-    };
-
-async function generateReportWithFallback(
-  input: CompletedAssessmentReportRequest,
-): Promise<ReportGenerationResult> {
-  const config = getAiReportConfig();
-  const selectedProvider = createSelectedReportProvider();
-  const preparedInput = buildPreparedReportGenerationInput(input);
-  const primaryResult = await selectedProvider.generateReport(preparedInput);
-
-  if (primaryResult.ok) {
-    return {
-      status: "ready",
-      report: primaryResult.report,
-    };
-  }
-
-  console.error("Report generation failed for primary provider", {
-    provider: selectedProvider.type,
-    attemptId: input.attemptId,
-    testSlug: input.testSlug,
-    reason: primaryResult.reason,
-    fallbackToMockEnabled: config.fallbackToMock,
-  });
-
-  if (selectedProvider.type !== "mock" && config.fallbackToMock) {
-    const fallbackResult = await mockReportProvider.generateReport(preparedInput);
-
-    if (fallbackResult.ok) {
-      return {
-        status: "ready",
-        report: fallbackResult.report,
-      };
-    }
-
-    console.error("Report generation fallback failed", {
-      provider: mockReportProvider.type,
-      attemptId: input.attemptId,
-      testSlug: input.testSlug,
-      reason: fallbackResult.reason,
-    });
-
-    return {
-      status: "unavailable",
-      generatorType: mockReportProvider.type,
-      failureCode: "report_generation_failed",
-      failureReason: fallbackResult.reason,
-    };
-  }
-
-  return {
-    status: "unavailable",
-    generatorType: selectedProvider.type,
-    failureCode: "report_generation_failed",
-    failureReason: primaryResult.reason,
-  };
-}
-
-async function loadReportContext(testId: string, attemptId: string): Promise<LoadedReportContext | null> {
-  const supabase = createSupabaseAdminClient();
-
-  const { data: attemptData, error: attemptError } = await supabase
-    .from("attempts")
-    .select("id, status")
-    .eq("id", attemptId)
-    .eq("test_id", testId)
-    .maybeSingle();
-
-  if (attemptError) {
-    throw new Error(`Failed to load attempt for report generation: ${attemptError.message}`);
-  }
-
-  const attempt = attemptData as AttemptRecord | null;
-
-  if (!attempt || attempt.status !== "completed") {
-    return null;
-  }
-
-  const completionState = await loadAssessmentCompletionState(testId, attemptId);
-
-  if (!completionState.isComplete) {
-    return null;
-  }
-
-  const { data: testData, error: testError } = await supabase
-    .from("tests")
-    .select("id, slug, scoring_method")
-    .eq("id", testId)
-    .maybeSingle();
-
-  if (testError || !testData) {
-    throw new Error(
-      `Failed to load test for report generation: ${testError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  const results = await calculateCompletedAssessmentResults(testId, attemptId);
-
-  if (!results) {
-    return null;
-  }
-
-  return {
-    supabase,
-    test: testData as TestRecord,
-    results,
-  };
-}
-
-async function loadPersistedReportSnapshot(
-  context: LoadedReportContext,
-  attemptId: string,
-): Promise<CompletedAssessmentReportState | null> {
-  const { data, error } = await context.supabase
-    .from("attempt_reports")
-    .select(
-      "attempt_id, test_slug, generator_type, generated_at, report_status, failure_code, failure_reason, report_snapshot",
-    )
-    .eq("attempt_id", attemptId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load attempt report: ${error.message}`);
-  }
-
-  const row = data as AttemptReportRow | null;
-
-  if (!row) {
-    return null;
-  }
-
-  if (!isAttemptReportStatus(row.report_status)) {
-    throw new Error(`Invalid attempt report status for attempt ${attemptId}.`);
-  }
-
-  if (row.report_status === "ready") {
-    if (!isCompletedAssessmentReport(row.report_snapshot)) {
-      throw new Error(`Attempt report ${attemptId} is marked ready without a valid snapshot.`);
-    }
-
-    return {
-      status: "ready",
-      report: row.report_snapshot,
-    };
-  }
-
-  return {
-    status: "unavailable",
-    generatorType: row.generator_type,
-    generatedAt: row.generated_at,
-    failureCode: row.failure_code,
-    failureReason: row.failure_reason,
-  };
-}
-
-export async function getCompletedAssessmentReport(
-  testId: string,
-  attemptId: string | null,
-): Promise<CompletedAssessmentReportState | null> {
-  if (!attemptId) {
-    return null;
-  }
-
-  const context = await loadReportContext(testId, attemptId);
-
-  if (!context) {
-    return null;
-  }
-
-  const persistedReport = await loadPersistedReportSnapshot(context, attemptId);
-
-  if (persistedReport) {
-    return persistedReport;
-  }
-
-  return persistCompletedAssessmentReport(testId, attemptId, context);
-}
-
-export async function persistCompletedAssessmentReport(
-  testId: string,
-  attemptId: string,
-  existingContext?: LoadedReportContext,
-): Promise<CompletedAssessmentReportState | null> {
-  const context = existingContext ?? (await loadReportContext(testId, attemptId));
-
-  if (!context) {
-    return null;
-  }
-
-  const existingReport = await loadPersistedReportSnapshot(context, attemptId);
-
-  if (existingReport) {
-    return existingReport;
-  }
-
-  const generationResult = await generateReportWithFallback({
-    attemptId,
-    testSlug: context.test.slug,
-    scoringMethod: context.test.scoring_method,
-    promptVersion: getAiReportConfig().promptVersion,
-    results: context.results,
-  });
-
-  const persistedGeneratedAt =
-    generationResult.status === "ready"
-      ? generationResult.report.generated_at
-      : new Date().toISOString();
-
-  const { error } = await context.supabase.from("attempt_reports").upsert(
-    generationResult.status === "ready"
-      ? {
-          attempt_id: attemptId,
-          test_slug: generationResult.report.test_slug,
-          generator_type: generationResult.report.generator_type,
-          generated_at: persistedGeneratedAt,
-          report_status: "ready",
-          failure_code: null,
-          failure_reason: null,
-          report_snapshot: generationResult.report,
-        }
-      : {
-          attempt_id: attemptId,
-          test_slug: context.test.slug,
-          generator_type: generationResult.generatorType,
-          generated_at: persistedGeneratedAt,
-          report_status: "unavailable",
-          failure_code: generationResult.failureCode,
-          failure_reason: generationResult.failureReason,
-          report_snapshot: null,
-        },
-    {
-      onConflict: "attempt_id",
-    },
-  );
-
-  if (error) {
-    throw new Error(`Failed to persist attempt report: ${error.message}`);
-  }
-
-  if (generationResult.status === "ready") {
-    return generationResult;
-  }
-
-  return {
-    status: "unavailable",
-    generatorType: generationResult.generatorType,
-    generatedAt: persistedGeneratedAt,
-    failureCode: generationResult.failureCode,
-    failureReason: generationResult.failureReason,
-  };
-}
-
-export type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
-</file>
-
-<file path="scripts/verify-report-flow.mjs">
-import process from "node:process";
-import { setTimeout as delay } from "node:timers/promises";
-import { createClient } from "@supabase/supabase-js";
-
-const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
-const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
-const HEALTH_URL = `${APP_URL}/api/health`;
-const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
-const EXPECTED_REPORT_BEHAVIOR = process.env.VERIFY_REPORT_EXPECTED_BEHAVIOR ?? "snapshot";
-const EXPECTED_REPORT_GENERATOR = process.env.VERIFY_REPORT_EXPECTED_GENERATOR ?? "mock";
-const REPORT_CASES = [
-  { code: "E01", optionIndex: 4 },
-  { code: "A01", optionIndex: 3 },
-  { code: "C01", optionIndex: 2 },
-  { code: "ES01", optionIndex: 1 },
-  { code: "O01", optionIndex: 0 },
-];
-
-function fail(message) {
-  throw new Error(message);
-}
-
-function assertIncludes(haystack, needle, message) {
-  if (!haystack.includes(needle)) {
-    fail(message);
-  }
-}
-
-function assertNotIncludes(haystack, needle, message) {
-  if (haystack.includes(needle)) {
-    fail(message);
-  }
-}
-
-async function fetchAssessmentPage(attemptId) {
-  const response = await fetch(APP_URL, {
-    headers: {
-      cookie: `${ATTEMPT_COOKIE_NAME}=${attemptId}`,
-    },
-  });
-
-  if (!response.ok) {
-    fail(`Page request failed with status ${response.status}.`);
-  }
-
-  return response.text();
-}
-
-async function waitForServer() {
-  let lastDetail = `No response from ${HEALTH_URL}.`;
-
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    try {
-      const response = await fetch(HEALTH_URL);
-
-      if (response.ok) {
-        return;
-      }
-
-      lastDetail = `HTTP ${response.status} from ${HEALTH_URL}.`;
-    } catch (error) {
-      lastDetail = error instanceof Error ? error.message : String(error);
-    }
-
-    await delay(1000);
-  }
-
-  fail(`Next.js server did not become ready at ${HEALTH_URL}. Last check: ${lastDetail}`);
-}
-
-async function loadRequiredQuestionsWithOptions(supabase, testId) {
-  const { data: questions, error: questionsError } = await supabase
-    .from("questions")
-    .select("id, code, question_type, is_required")
-    .eq("test_id", testId)
-    .eq("is_active", true)
-    .order("question_order", { ascending: true });
-
-  if (questionsError || !questions) {
-    fail(`Unable to load report verification questions: ${questionsError?.message ?? "Unknown error"}`);
-  }
-
-  const requiredQuestions = questions.filter((question) => question.is_required);
-  const nonTextQuestionIds = requiredQuestions
-    .filter((question) => question.question_type !== "text")
-    .map((question) => question.id);
-
-  const { data: answerOptions, error: answerOptionsError } = await supabase
-    .from("answer_options")
-    .select("id, question_id, option_order")
-    .in("question_id", nonTextQuestionIds)
-    .order("question_id", { ascending: true })
-    .order("option_order", { ascending: true });
-
-  if (answerOptionsError || !answerOptions) {
-    fail(
-      `Unable to load report verification options: ${answerOptionsError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  const answerOptionsByQuestionId = answerOptions.reduce((groupedOptions, option) => {
-    const questionOptions = groupedOptions.get(option.question_id) ?? [];
-    questionOptions.push(option);
-    groupedOptions.set(option.question_id, questionOptions);
-    return groupedOptions;
-  }, new Map());
-
-  return { requiredQuestions, answerOptionsByQuestionId };
-}
-
-async function insertAnswerForQuestion(supabase, attemptId, question, answerOptionsByQuestionId, optionIndex = 0) {
-  if (question.question_type === "text") {
-    const { error } = await supabase.from("responses").insert({
-      attempt_id: attemptId,
-      question_id: question.id,
-      response_kind: "text",
-      text_value: `Verification response for ${question.code}`,
-    });
-
-    if (error) {
-      fail(`Unable to create text response for ${question.code}: ${error.message}`);
-    }
-
-    return;
-  }
-
-  const options = answerOptionsByQuestionId.get(question.id) ?? [];
-  const selectedOption = options[optionIndex] ?? options[0];
-
-  if (!selectedOption) {
-    fail(`Expected option index ${optionIndex} for ${question.code}.`);
-  }
-
-  if (question.question_type === "single_choice") {
-    const { error } = await supabase.from("responses").insert({
-      attempt_id: attemptId,
-      question_id: question.id,
-      response_kind: "single_choice",
-      answer_option_id: selectedOption.id,
-    });
-
-    if (error) {
-      fail(`Unable to create single choice response for ${question.code}: ${error.message}`);
-    }
-
-    return;
-  }
-
-  const { data: responseRow, error: responseError } = await supabase
-    .from("responses")
-    .insert({
-      attempt_id: attemptId,
-      question_id: question.id,
-      response_kind: "multiple_choice",
-    })
-    .select("id")
-    .single();
-
-  if (responseError || !responseRow) {
-    fail(`Unable to create multiple choice response for ${question.code}: ${responseError?.message ?? "Unknown error"}`);
-  }
-
-  const { error: selectionError } = await supabase.from("response_selections").insert({
-    response_id: responseRow.id,
-    question_id: question.id,
-    answer_option_id: selectedOption.id,
-  });
-
-  if (selectionError) {
-    fail(`Unable to create multiple choice selection for ${question.code}: ${selectionError.message}`);
-  }
-}
-
-async function createAttempt(supabase, testId, status) {
-  const insert = status === "completed"
-    ? { test_id: testId, status: "completed", completed_at: new Date().toISOString() }
-    : { test_id: testId };
-
-  const { data, error } = await supabase.from("attempts").insert(insert).select("id").single();
-
-  if (error || !data) {
-    fail(`Unable to create ${status} attempt: ${error?.message ?? "Unknown error"}`);
-  }
-
-  return data.id;
-}
-
-async function assertSnapshotBehavior(supabase, validAttemptId) {
-  const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(firstHtml, "AI izvještaj procjene", "Expected assessment report section to render.");
-  assertIncludes(firstHtml, "Generator:", "Expected generator label to render.");
-  assertIncludes(firstHtml, "Sačuvani izvještaj generisan:", "Expected report timestamp label to render.");
-  assertIncludes(firstHtml, "Snage", "Expected strengths section to render.");
-  assertIncludes(firstHtml, "Slijepe tačke", "Expected blind spots section to render.");
-  assertIncludes(
-    firstHtml,
-    "Preporuke za razvoj",
-    "Expected recommendations section to render.",
-  );
-
-  const { data: firstReportRow, error: firstReportError } = await supabase
-    .from("attempt_reports")
-    .select("generated_at, generator_type, report_snapshot")
-    .eq("attempt_id", validAttemptId)
-    .single();
-
-  if (firstReportError || !firstReportRow) {
-    fail(
-      `Unable to load persisted report snapshot: ${firstReportError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  if (firstReportRow.generator_type !== EXPECTED_REPORT_GENERATOR) {
-    fail(`Expected persisted generator_type ${EXPECTED_REPORT_GENERATOR}, received ${firstReportRow.generator_type}.`);
-  }
-
-  if (firstReportRow.report_snapshot?.generator_type !== EXPECTED_REPORT_GENERATOR) {
-    fail(`Expected persisted report snapshot to include generator_type ${EXPECTED_REPORT_GENERATOR}.`);
-  }
-
-  const firstGeneratedAt = firstReportRow.generated_at;
-  const secondHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(secondHtml, "AI izvještaj procjene", "Expected assessment report section to remain on reload.");
-  assertIncludes(secondHtml, "Generator:", "Expected generator label to remain on reload.");
-
-  const { data: secondReportRow, error: secondReportError } = await supabase
-    .from("attempt_reports")
-    .select("generated_at")
-    .eq("attempt_id", validAttemptId)
-    .single();
-
-  if (secondReportError || !secondReportRow) {
-    fail(
-      `Unable to reload persisted report snapshot: ${secondReportError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  if (secondReportRow.generated_at !== firstGeneratedAt) {
-    fail("Expected report snapshot to stay stable on reload without regeneration.");
-  }
-}
-
-async function assertUnavailableBehavior(supabase, validAttemptId) {
-  const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(firstHtml, "AI izvještaj procjene", "Unavailable report should still render a stable report section.");
-  assertIncludes(
-    firstHtml,
-    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
-    "Unavailable report message should render.",
-  );
-
-  const { data: firstReportRow, error: firstReportError } = await supabase
-    .from("attempt_reports")
-    .select("report_status, generator_type, generated_at, report_snapshot, failure_code")
-    .eq("attempt_id", validAttemptId)
-    .single();
-
-  if (firstReportError) {
-    fail(`Unable to inspect unavailable report state: ${firstReportError.message}`);
-  }
-
-  if (firstReportRow.report_status !== "unavailable") {
-    fail(`Expected unavailable report status, received ${firstReportRow.report_status}.`);
-  }
-
-  if (firstReportRow.generator_type !== EXPECTED_REPORT_GENERATOR) {
-    fail(`Expected unavailable generator_type ${EXPECTED_REPORT_GENERATOR}, received ${firstReportRow.generator_type}.`);
-  }
-
-  if (firstReportRow.report_snapshot !== null) {
-    fail("Unavailable report scenario should persist a null report snapshot.");
-  }
-
-  if (firstReportRow.failure_code !== "report_generation_failed") {
-    fail(`Expected failure_code report_generation_failed, received ${firstReportRow.failure_code}.`);
-  }
-
-  const firstGeneratedAt = firstReportRow.generated_at;
-  const secondHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(
-    secondHtml,
-    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
-    "Unavailable report message should remain stable on reload.",
-  );
-
-  const { data: secondReportRow, error: secondReportError } = await supabase
-    .from("attempt_reports")
-    .select("generated_at")
-    .eq("attempt_id", validAttemptId)
-    .single();
-
-  if (secondReportError || !secondReportRow) {
-    fail(
-      `Unable to reload unavailable report snapshot: ${secondReportError?.message ?? "Unknown error"}`,
-    );
-  }
-
-  if (secondReportRow.generated_at !== firstGeneratedAt) {
-    fail("Expected unavailable report marker to stay stable on reload without regeneration.");
-  }
-}
-
-async function main() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    fail("Missing required Supabase env vars.");
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  await waitForServer();
-
-  const { data: activeTest, error: activeTestError } = await supabase
-    .from("tests")
-    .select("id, slug")
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (activeTestError || !activeTest) {
-    fail(`Unable to load active test: ${activeTestError?.message ?? "Unknown error"}`);
-  }
-
-  if (activeTest.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
-    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
-  }
-
-  const { requiredQuestions, answerOptionsByQuestionId } = await loadRequiredQuestionsWithOptions(
-    supabase,
-    activeTest.id,
-  );
-  const reportOverrides = new Map(REPORT_CASES.map((reportCase) => [reportCase.code, reportCase.optionIndex]));
-
-  const incompleteAttemptId = await createAttempt(supabase, activeTest.id, "completed");
-  const partialQuestion = requiredQuestions.find((question) => question.code === REPORT_CASES[0].code);
-
-  if (!partialQuestion) {
-    fail(`Expected seeded question ${REPORT_CASES[0].code} was not found.`);
-  }
-
-  await insertAnswerForQuestion(
-    supabase,
-    incompleteAttemptId,
-    partialQuestion,
-    answerOptionsByQuestionId,
-    REPORT_CASES[0].optionIndex,
-  );
-
-  const incompleteHtml = await fetchAssessmentPage(incompleteAttemptId);
-  assertNotIncludes(
-    incompleteHtml,
-    "AI izvještaj procjene",
-    "Incomplete completed attempt should not render a report.",
-  );
-
-  const { data: incompleteReportRow, error: incompleteReportError } = await supabase
-    .from("attempt_reports")
-    .select("attempt_id")
-    .eq("attempt_id", incompleteAttemptId)
-    .maybeSingle();
-
-  if (incompleteReportError) {
-    fail(`Unable to inspect incomplete attempt report state: ${incompleteReportError.message}`);
-  }
-
-  if (incompleteReportRow) {
-    fail("Incomplete completed attempt should not persist a report snapshot.");
-  }
-
-  const validAttemptId = await createAttempt(supabase, activeTest.id, "completed");
-
-  for (const question of requiredQuestions) {
-    await insertAnswerForQuestion(
-      supabase,
-      validAttemptId,
-      question,
-      answerOptionsByQuestionId,
-      reportOverrides.get(question.code) ?? 0,
-    );
-  }
-
-  if (EXPECTED_REPORT_BEHAVIOR === "unavailable") {
-    await assertUnavailableBehavior(supabase, validAttemptId);
-  } else {
-    await assertSnapshotBehavior(supabase, validAttemptId);
-  }
-
-  console.log("Report flow verification passed.");
-  console.log(`Verified incomplete attempt id: ${incompleteAttemptId}`);
-  console.log(`Verified valid completed attempt id: ${validAttemptId}`);
-  console.log("Verified behaviors:");
-  console.log("- incomplete completed attempt does not generate or render a report");
-
-  if (EXPECTED_REPORT_BEHAVIOR === "unavailable") {
-    console.log("- fully answered completed attempt stays stable when report generation is unavailable");
-  } else {
-    console.log(`- fully answered completed attempt generates a persisted ${EXPECTED_REPORT_GENERATOR} report snapshot on first render`);
-    console.log("- reload reuses the same generated_at timestamp instead of regenerating a new report");
-  }
-}
-
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
-</file>
-
-<file path="app/(protected)/dashboard/attempts/[attemptId]/page.tsx">
-import { notFound, redirect } from "next/navigation";
-import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
-import {
-  getCompletedAssessmentReportSnapshot,
-  getCompletedAssessmentResults,
-} from "@/lib/assessment/tests";
-import {
-  getActiveOrganizationForUser,
-  getAttemptForOrganization,
-} from "@/lib/b2b/organizations";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
-
-type AttemptDetailPageProps = {
-  params: {
-    attemptId: string;
-  };
-};
-
-export const dynamic = "force-dynamic";
-
-export default async function AttemptDetailPage({ params }: AttemptDetailPageProps) {
-  const user = await requireAuthenticatedUser();
-  const organization = await getActiveOrganizationForUser(user.id);
-
-  if (!organization) {
-    notFound();
-  }
-
-  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
-
-  if (!attempt) {
-    notFound();
-  }
-
-  if (attempt.status !== "completed") {
-    redirect(`/dashboard/attempts/${attempt.id}/run`);
-  }
-
-  const [results, report] = await Promise.all([
-    getCompletedAssessmentResults(attempt.test_id, attempt.id),
-    getCompletedAssessmentReportSnapshot(attempt.test_id, attempt.id),
-  ]);
-
-  return (
-    <main className="attempt-results-page stack-md">
-      <section className="attempt-results-page__content">
-        <CompletedAssessmentSummary
-          completedAt={attempt.completed_at}
-          organizationName={attempt.organizations?.name ?? organization.name}
-          participantName={attempt.participants?.full_name ?? null}
-          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
-          results={results}
-          reportState={report}
-        />
-      </section>
-    </main>
-  );
-}
-</file>
-
 <file path="scripts/verify-completion-flow.mjs">
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
@@ -7259,6 +8906,79 @@ main().catch((error) => {
 });
 </file>
 
+<file path="app/(protected)/dashboard/attempts/[attemptId]/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
+import {
+  getActiveOrganizationForUser,
+  getAttemptForOrganization,
+} from "@/lib/b2b/organizations";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+
+type AttemptDetailPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function AttemptDetailPage({ params }: AttemptDetailPageProps) {
+  const user = await requireAuthenticatedUser();
+  const organization = await getActiveOrganizationForUser(user.id);
+
+  if (!organization) {
+    notFound();
+  }
+
+  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status !== "completed") {
+    redirect(`/dashboard/attempts/${attempt.id}/run`);
+  }
+
+  const reportPageData = await loadProtectedAttemptReportPageData(attempt);
+
+  return (
+    <main className="attempt-results-page stack-md">
+      <section className="attempt-results-page__content">
+        <CompletedAssessmentSummary
+          completedAt={attempt.completed_at}
+          organizationName={attempt.organizations?.name ?? organization.name}
+          participantName={attempt.participants?.full_name ?? null}
+          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
+          results={reportPageData.results}
+          reportState={reportPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/page.tsx">
+import { redirect } from "next/navigation";
+import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
+import { getAuthenticatedUser } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  redirect(await getPostLoginRedirectPathForUserId(user.id));
+}
+</file>
+
 <file path="app/globals.css">
 :root {
   font-family: Arial, Helvetica, sans-serif;
@@ -7368,6 +9088,207 @@ button:disabled {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent);
+}
+
+.candidate-home,
+.candidate-intro {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.candidate-home__hero,
+.candidate-intro__hero {
+  padding: clamp(1.35rem, 3vw, 2.4rem);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(31, 58, 95, 0.08), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+}
+
+.candidate-home__hero h1,
+.candidate-intro__hero h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: clamp(2rem, 4vw, 2.7rem);
+  font-weight: 520;
+  line-height: 1.08;
+  letter-spacing: 0.01em;
+}
+
+.candidate-home__intro,
+.candidate-intro__lead {
+  margin: 0;
+  max-width: 42rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.candidate-home__identity {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(188, 200, 214, 0.72);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.candidate-home__identity p {
+  margin: 0;
+}
+
+.candidate-home__panel,
+.candidate-intro__section,
+.candidate-intro__cta,
+.candidate-home__footer {
+  padding: clamp(1.15rem, 2.4vw, 1.75rem);
+  border-radius: 22px;
+}
+
+.candidate-home__empty-state h2,
+.candidate-home__single-action h2,
+.candidate-intro__section h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: clamp(1.35rem, 2.5vw, 1.7rem);
+  font-weight: 520;
+  line-height: 1.2;
+}
+
+.candidate-home__empty-state p,
+.candidate-home__single-action p,
+.candidate-home__attempt-card p,
+.candidate-intro__section p,
+.candidate-intro__cta p {
+  margin: 0;
+  line-height: 1.68;
+  color: var(--text-muted);
+}
+
+.candidate-home__empty-state--muted {
+  padding: 1rem 1.1rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.74);
+}
+
+.candidate-home__attempt-list {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.candidate-home__attempt-card {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
+}
+
+.candidate-home__attempt-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.candidate-home__attempt-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.candidate-home__attempt-header p,
+.candidate-home__single-meta p {
+  margin: 0;
+}
+
+.candidate-home__single-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  align-items: center;
+}
+
+.candidate-home__status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.candidate-home__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.72rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.candidate-home__link:hover {
+  background: #284a74;
+  border-color: #284a74;
+}
+
+.candidate-intro__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.9rem;
+  margin: 0;
+}
+
+.candidate-intro__meta-item {
+  margin: 0;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(188, 200, 214, 0.72);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.88);
+}
+
+.candidate-intro__meta-item dt {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.candidate-intro__meta-item dd {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.candidate-intro__section-heading h2 {
+  margin: 0;
+}
+
+.candidate-intro__checklist {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+}
+
+.candidate-intro__checklist li + li {
+  margin-top: 0.55rem;
+}
+
+.candidate-intro__cta {
+  text-align: left;
+}
+
+.candidate-intro__cta-note {
+  font-size: 0.96rem;
 }
 
 .assessment-run-page {
@@ -9543,95 +11464,19 @@ button:disabled {
     transform: scale(0.992);
   }
 }
-</file>
 
-<file path="app/page.tsx">
-import { cookies } from "next/headers";
-import { AssessmentForm } from "@/components/assessment/assessment-form";
-import {
-  ASSESSMENT_ATTEMPT_COOKIE_NAME,
-  getActiveTest,
-  getAnswerOptionsForQuestions,
-  getAssessmentResumeState,
-  getCompletedAssessmentReportSnapshot,
-  getCompletedAssessmentResults,
-  getQuestionsForTest,
-} from "@/lib/assessment/tests";
+@media (max-width: 640px) {
+  .candidate-home__attempt-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-export const dynamic = "force-dynamic";
+  .candidate-home__link {
+    width: 100%;
+  }
 
-export default async function HomePage() {
-  try {
-    const test = await getActiveTest();
-
-    if (!test) {
-      return (
-        <main>
-          <section className="card">
-            <h1>No active test available</h1>
-            <p>Please check back later.</p>
-          </section>
-        </main>
-      );
-    }
-
-    const questions = await getQuestionsForTest(test.id);
-
-    if (questions.length === 0) {
-      return (
-        <main>
-          <section className="card">
-            <h1>{test.name}</h1>
-            <p>{test.description ?? "Opis testa trenutno nije dostupan."}</p>
-          </section>
-
-          <section className="card">
-            <h2>No questions available</h2>
-            <p>This test does not have any questions yet.</p>
-          </section>
-        </main>
-      );
-    }
-
-    const attemptId = cookies().get(ASSESSMENT_ATTEMPT_COOKIE_NAME)?.value;
-    const answerOptionsByQuestionId = await getAnswerOptionsForQuestions(
-      questions.map((question) => question.id),
-    );
-    const resumeState = await getAssessmentResumeState(test.id, attemptId);
-    const results = await getCompletedAssessmentResults(test.id, resumeState.attemptId);
-    const report = await getCompletedAssessmentReportSnapshot(test.id, resumeState.attemptId);
-
-    return (
-      <main>
-        <section className="card">
-          <h1>{test.name}</h1>
-          <p>{test.description ?? "Opis testa trenutno nije dostupan."}</p>
-        </section>
-
-        <section className="card">
-          <AssessmentForm
-            testId={test.id}
-            questions={questions}
-            answerOptionsByQuestionId={answerOptionsByQuestionId}
-            initialAttemptId={resumeState.attemptId}
-            initialAttemptStatus={resumeState.attemptStatus}
-            initialCompletedAt={resumeState.completedAt}
-            initialSelections={resumeState.selections}
-            initialResults={results}
-            initialReport={report}
-          />
-        </section>
-      </main>
-    );
-  } catch {
-    return (
-      <main>
-        <section className="card">
-          <h1>Unable to load assessment</h1>
-          <p>Please try again later.</p>
-        </section>
-      </main>
-    );
+  .candidate-intro__meta {
+    grid-template-columns: 1fr;
   }
 }
 </file>
@@ -10525,7 +12370,7 @@ export async function createB2BAttempt(formData: FormData) {
     redirect("/dashboard?error=create-attempt-failed");
   }
 
-  redirect(`/dashboard/attempts/${data.id}`);
+  redirect(`/dashboard?success=attempt-created&attemptId=${data.id}`);
 }
 
 export async function completeAssessmentAttempt(
