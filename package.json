@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
-    "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs"
+    "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
+    "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -27,3 +28,5 @@
     "typescript": "^5.5.4"
   }
 }
+
+"process-report-jobs:prod": "node ./scripts/run-process-report-jobs.cjs"
