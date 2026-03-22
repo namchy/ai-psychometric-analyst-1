@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-profile.local/schemas/detailed-report-v1-openai.json",
+  "title": "Detailed Report v1 OpenAI",
+  "description": "OpenAI Structured Outputs compatible schema for detailed psychometric reports for participant and HR audiences in AI Psychometric Analyst for HR v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_title",
+    "report_subtitle",
+    "summary",
+    "strengths",
+    "blind_spots",
+    "development_recommendations",
+    "dimension_insights",
+    "disclaimer"
+  ],
+  "properties": {
+    "report_title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "report_subtitle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headline",
+        "overview"
+      ],
+      "properties": {
+        "headline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "overview": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "description"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "blind_spots": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "description"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "development_recommendations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "description",
+          "action"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "dimension_insights": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dimension_code",
+          "dimension_label",
+          "score_band",
+          "summary",
+          "work_style",
+          "risks",
+          "development_focus"
+        ],
+        "properties": {
+          "dimension_code": {
+            "type": "string",
+            "enum": [
+              "EXTRAVERSION",
+              "AGREEABLENESS",
+              "CONSCIENTIOUSNESS",
+              "EMOTIONAL_STABILITY",
+              "INTELLECT"
+            ]
+          },
+          "dimension_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "score_band": {
+            "type": "string",
+            "enum": [
+              "low",
+              "moderate",
+              "high"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "work_style": {
+            "type": "string",
+            "minLength": 1
+          },
+          "risks": {
+            "type": "string",
+            "minLength": 1
+          },
+          "development_focus": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "disclaimer": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

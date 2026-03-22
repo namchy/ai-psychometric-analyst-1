@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  formatDetailedReportValidationErrors,
+  validateDetailedReportV1,
+} from "@/lib/assessment/detailed-report-v1";
 import type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
 import {
   buildCompletedAssessmentReportRequest,
@@ -500,6 +504,8 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
     promptTemplate: activePromptVersion,
   });
   const request = await buildCompletedAssessmentReportRequest(attemptContext.testId, job.attempt_id, {
+    audience: job.audience,
+    locale: attemptContext.locale,
     promptVersion,
   });
 
@@ -538,17 +544,26 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
     reportId: job.id,
     attemptId: job.attempt_id,
     audience: job.audience,
-    provider: generationResult.report.generator_type,
+    provider: job.generator_type,
   });
 
   console.info("Report snapshot normalization succeeded", {
     reportId: job.id,
     attemptId: job.attempt_id,
-    dimensionCount: generationResult.report.dimensions.length,
+    dimensionCount: generationResult.report.dimension_insights.length,
   });
 
+  const validationResult = validateDetailedReportV1(generationResult.report);
+
+  if (!validationResult.ok) {
+    throw new ReportJobError(
+      "PARSE_ERROR",
+      `Generated report failed schema validation: ${formatDetailedReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
   return {
-    snapshot: generationResult.report,
+    snapshot: validationResult.value,
     modelName: resolvedModelName,
   };
 }
@@ -589,7 +604,7 @@ export async function processClaimedReportJob(
     const { snapshot, modelName } = await buildReportSnapshot(job);
 
     await completeReportJob(job.id, snapshot, {
-      modelName: snapshot.generator_type === "openai" ? modelName : null,
+      modelName: job.generator_type === "openai" ? modelName : null,
       generatorVersion: job.generator_version ?? "v1",
     });
 

@@ -1,5 +1,12 @@
 import "server-only";
 
+import type { AssessmentLocale } from "@/lib/assessment/locale";
+import type {
+  DetailedReportV1,
+  DetailedReportDimensionCode,
+  DetailedReportScoreBand,
+} from "@/lib/assessment/detailed-report-v1";
+import { validateDetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type { ScoringMethod } from "@/lib/assessment/types";
@@ -12,51 +19,42 @@ export type AttemptReportStatus =
   | "failed"
   | "unavailable";
 
-export type CompletedAssessmentReportDimension = {
-  dimension_key: string;
-  score: number;
-  short_interpretation: string;
-};
-
-export type CompletedAssessmentReport = {
-  attempt_id: string;
-  test_slug: string;
-  generated_at: string;
-  generator_type: ReportGeneratorType;
-  summary: string;
-  dimensions: CompletedAssessmentReportDimension[];
-  strengths: string[];
-  blind_spots: string[];
-  work_style: string[];
-  development_recommendations: string[];
-  disclaimer: string;
-};
+export type CompletedAssessmentReport = DetailedReportV1;
 
 export type CompletedAssessmentReportRequest = {
   attemptId: string;
+  testId: string;
   testSlug: string;
+  audience: "participant" | "hr";
+  locale: AssessmentLocale;
   scoringMethod: ScoringMethod;
   promptVersion: string;
   results: CompletedAssessmentResults;
 };
 
 export type AiReportDimensionInput = {
-  dimension_key: string;
+  dimension_code: DetailedReportDimensionCode;
+  dimension_label: string;
   raw_score: number;
   scored_question_count: number;
+  average_score: number;
+  score_band: DetailedReportScoreBand;
 };
 
 export type AiReportPromptInput = {
   attempt_id: string;
+  test_id: string;
   test_slug: string;
+  audience: "participant" | "hr";
+  locale: AssessmentLocale;
   scoring_method: ScoringMethod;
   prompt_version: string;
   scored_response_count: number;
   dimension_scores: AiReportDimensionInput[];
   deterministic_summary: {
-    highest_dimension: string | null;
-    lowest_dimension: string | null;
-    dimensions_ranked: string[];
+    highest_dimension: DetailedReportDimensionCode | null;
+    lowest_dimension: DetailedReportDimensionCode | null;
+    dimensions_ranked: DetailedReportDimensionCode[];
   };
 };
 
@@ -84,46 +82,8 @@ export type ReportProvider = {
   generateReport: (input: PreparedReportGenerationInput) => Promise<ReportProviderResult>;
 };
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isReportDimension(value: unknown): value is CompletedAssessmentReportDimension {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const dimension = value as Record<string, unknown>;
-
-  return (
-    typeof dimension.dimension_key === "string" &&
-    typeof dimension.score === "number" &&
-    typeof dimension.short_interpretation === "string"
-  );
-}
-
 export function isCompletedAssessmentReport(value: unknown): value is CompletedAssessmentReport {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const report = value as Record<string, unknown>;
-  const generatorType = report.generator_type;
-
-  return (
-    typeof report.attempt_id === "string" &&
-    typeof report.test_slug === "string" &&
-    typeof report.generated_at === "string" &&
-    (generatorType === "mock" || generatorType === "openai") &&
-    typeof report.summary === "string" &&
-    Array.isArray(report.dimensions) &&
-    report.dimensions.every(isReportDimension) &&
-    isStringArray(report.strengths) &&
-    isStringArray(report.blind_spots) &&
-    isStringArray(report.work_style) &&
-    isStringArray(report.development_recommendations) &&
-    typeof report.disclaimer === "string"
-  );
+  return validateDetailedReportV1(value).ok;
 }
 
 export function isAttemptReportStatus(value: unknown): value is AttemptReportStatus {

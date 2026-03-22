@@ -41,8 +41,11 @@ type DimensionDetailBlock = {
 };
 
 type ReportDimensionSnapshot = {
-  dimension_key: string;
-  short_interpretation: string;
+  dimension_code: string;
+  summary: string;
+  work_style: string;
+  risks: string;
+  development_focus: string;
 };
 
 function getReportDimensionsByKey(
@@ -52,12 +55,12 @@ function getReportDimensionsByKey(
     return new Map();
   }
 
-  return reportState.report.dimensions.reduce((dimensionsByKey, dimension) => {
-    if (!dimension.dimension_key || dimensionsByKey.has(dimension.dimension_key)) {
+  return reportState.report.dimension_insights.reduce((dimensionsByKey, dimension) => {
+    if (!dimension.dimension_code || dimensionsByKey.has(dimension.dimension_code)) {
       return dimensionsByKey;
     }
 
-    dimensionsByKey.set(dimension.dimension_key, dimension);
+    dimensionsByKey.set(dimension.dimension_code, dimension);
     return dimensionsByKey;
   }, new Map<string, ReportDimensionSnapshot>());
 }
@@ -523,10 +526,10 @@ function getTopInsights(
   }
 
   const candidates = [
-    ...reportState.report.strengths,
-    ...reportState.report.work_style,
-    ...reportState.report.blind_spots,
-    ...reportState.report.development_recommendations,
+    ...reportState.report.strengths.map((item) => item.description),
+    ...reportState.report.blind_spots.map((item) => item.description),
+    ...reportState.report.development_recommendations.map((item) => item.description),
+    ...reportState.report.dimension_insights.map((item) => item.work_style),
     ...dimensions.map((dimension) => dimension.shortInterpretation),
   ];
 
@@ -550,7 +553,8 @@ function getConclusion(
 
   const highest = dimensions[0];
   const lowest = dimensions[dimensions.length - 1];
-  const summaryLead = splitIntoSentences(toSecondPersonSingular(reportState.report.summary))[0] ?? null;
+  const summaryLead =
+    splitIntoSentences(toSecondPersonSingular(reportState.report.summary.headline))[0] ?? null;
   const firstParagraph = [
     summaryLead,
     highest ? `${highest.label} se kod tebe najviše ističe.` : null,
@@ -561,45 +565,30 @@ function getConclusion(
     .filter((sentence): sentence is string => Boolean(sentence))
     .join(" ");
   const secondParagraph = toSecondPersonSingular(
-    reportState.report.work_style[0] ??
-      "U načinu na koji pristupaš radu vidi se jasan i prilično dosljedan obrazac.",
+    reportState.report.summary.overview,
   );
 
   return [firstParagraph, secondParagraph].filter(Boolean);
 }
 
-function getRecommendations(reportState: CompletedAssessmentReportState | null): string[] {
+function getRecommendations(
+  reportState: CompletedAssessmentReportState | null,
+): Array<{ title: string; description: string; action: string }> {
   if (reportState?.status !== "ready") {
     return [];
   }
 
-  const recommendations =
-    reportState.report.development_recommendations.length > 0
-      ? reportState.report.development_recommendations
-      : reportState.report.blind_spots;
-
-  return recommendations.slice(0, 4);
+  return reportState.report.development_recommendations.slice(0, 3);
 }
 
-function formatRecommendation(item: string): { lead: string; body: string | null } {
-  const normalized = item.trim().replace(/\s+/g, " ");
-  const words = normalized.split(" ");
-
-  if (normalized.includes(":")) {
-    const [lead, ...rest] = normalized.split(":");
-    return {
-      lead: lead.trim(),
-      body: rest.join(":").trim() || null,
-    };
-  }
-
-  if (words.length <= 4) {
-    return { lead: normalized.replace(/[.,;:!?]+$/, ""), body: null };
-  }
-
+function formatRecommendation(item: {
+  title: string;
+  description: string;
+  action: string;
+}): { lead: string; body: string | null } {
   return {
-    lead: words.slice(0, 4).join(" ").replace(/[.,;:!?]+$/, ""),
-    body: words.slice(4).join(" ").trim() || null,
+    lead: item.title.trim().replace(/[.,;:!?]+$/, ""),
+    body: `${item.description.trim()} ${item.action.trim()}`.trim(),
   };
 }
 
@@ -633,7 +622,7 @@ export function CompletedAssessmentSummary({
         averageScore: getAverageScore(dimension.rawScore, dimension.scoredQuestionCount),
         scoredQuestionCount: dimension.scoredQuestionCount,
         shortInterpretation:
-          reportDimension?.short_interpretation ??
+          reportDimension?.summary ??
           "Detaljna interpretacija za ovu dimenziju trenutno nije dostupna.",
         scoreWidth: maxRawScore > 0 ? Math.max((dimension.rawScore / maxRawScore) * 100, 10) : 0,
         rank: index,
@@ -837,7 +826,26 @@ export function CompletedAssessmentSummary({
 
                       {isExpanded ? (
                         <div id={detailId} className="results-dimension-card__details stack-xs">
-                          {getDimensionDetailBlocks(dimension).map((detail) => (
+                          {(reportDimensionsByKey.get(dimension.key)
+                            ? [
+                                {
+                                  heading: "Kako se to kod tebe često pokazuje" as const,
+                                  body: reportDimensionsByKey.get(dimension.key)?.work_style ?? "",
+                                },
+                                {
+                                  heading: "Šta ti to može donositi kao prednost" as const,
+                                  body: reportDimensionsByKey.get(dimension.key)?.summary ?? "",
+                                },
+                                {
+                                  heading: "Na šta vrijedi obratiti pažnju" as const,
+                                  body:
+                                    reportDimensionsByKey.get(dimension.key)?.risks ??
+                                    reportDimensionsByKey.get(dimension.key)?.development_focus ??
+                                    "",
+                                },
+                              ]
+                            : getDimensionDetailBlocks(dimension)
+                          ).map((detail) => (
                             <section key={detail.heading} className="results-dimension-card__detail-block">
                               <h5>{detail.heading}</h5>
                               <p>{detail.body}</p>
@@ -889,10 +897,14 @@ export function CompletedAssessmentSummary({
               </div>
               <ul className="results-bullet-list">
                 {recommendations.map((item) => {
-                  const formatted = formatRecommendation(toSecondPersonSingular(item));
+                  const formatted = formatRecommendation({
+                    title: toSecondPersonSingular(item.title),
+                    description: toSecondPersonSingular(item.description),
+                    action: toSecondPersonSingular(item.action),
+                  });
 
                   return (
-                    <li key={item}>
+                    <li key={item.title}>
                       <strong>{formatted.lead}:</strong>
                       {formatted.body ? ` ${formatted.body}` : null}
                     </li>

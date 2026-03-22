@@ -1,10 +1,15 @@
 const DIMENSION_DISPLAY_LABELS: Record<string, string> = {
   extraversion: "Ekstraverzija",
+  EXTRAVERSION: "Ekstraverzija",
   agreeableness: "Kooperativnost",
+  AGREEABLENESS: "Kooperativnost",
   conscientiousness: "Savjesnost",
+  CONSCIENTIOUSNESS: "Savjesnost",
   emotional_stability: "Emocionalna stabilnost",
+  EMOTIONAL_STABILITY: "Emocionalna stabilnost",
   neuroticism: "Emocionalna stabilnost",
   intellect: "Intelekt / imaginacija",
+  INTELLECT: "Intelekt / imaginacija",
   openness: "Otvorenost prema iskustvu",
   openness_to_experience: "Otvorenost prema iskustvu",
 };
@@ -19,15 +24,20 @@ const DIMENSION_HELPER_LABELS: Record<string, string> = {
 };
 
 export function formatDimensionLabel(dimensionKey: string): string {
-  const normalizedKey = dimensionKey.trim().toLowerCase();
+  const rawKey = dimensionKey.trim();
+  const normalizedKey = rawKey.toLowerCase();
+
+  if (DIMENSION_DISPLAY_LABELS[rawKey]) {
+    return DIMENSION_DISPLAY_LABELS[rawKey];
+  }
 
   if (DIMENSION_DISPLAY_LABELS[normalizedKey]) {
     return DIMENSION_DISPLAY_LABELS[normalizedKey];
   }
 
-  return dimensionKey
+  return rawKey
     .split(/[_-]+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
 }
 

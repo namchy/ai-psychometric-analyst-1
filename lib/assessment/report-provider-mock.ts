@@ -1,157 +1,352 @@
 import "server-only";
 
+import {
+  formatDetailedReportValidationErrors,
+  validateDetailedReportV1,
+  type DetailedReportDimensionCode,
+  type DetailedReportScoreBand,
+} from "@/lib/assessment/detailed-report-v1";
 import type {
   CompletedAssessmentReport,
   PreparedReportGenerationInput,
   ReportProvider,
 } from "@/lib/assessment/report-providers";
-import {
-  formatDimensionLabel,
-  getAverageScore,
-} from "@/lib/assessment/report-provider-helpers";
 
-function getScoreBand(score: number): "high" | "mid" | "low" {
-  if (score >= 3.67) {
-    return "high";
-  }
-
-  if (score >= 2.34) {
-    return "mid";
-  }
-
-  return "low";
+function getPrimaryDimensions(
+  input: PreparedReportGenerationInput,
+): DetailedReportDimensionCode[] {
+  return input.promptInput.deterministic_summary.dimensions_ranked.slice(0, 3);
 }
 
-function getDimensionInterpretation(dimensionKey: string, averageScore: number): string {
-  const band = getScoreBand(averageScore);
+function getLowestDimensions(
+  input: PreparedReportGenerationInput,
+): DetailedReportDimensionCode[] {
+  return [...input.promptInput.deterministic_summary.dimensions_ranked].reverse().slice(0, 3);
+}
 
-  const interpretationsByDimension: Record<string, Record<"high" | "mid" | "low", string>> = {
-    extraversion: {
-      high: "Često djeluje energizirano kroz socijalni kontakt i vidljivo uključivanje.",
-      mid: "Pokazuje uravnotežen spoj otvorenog angažmana i promišljenijeg tempa.",
-      low: "Može preferirati mirnije okruženje i odmjereniji interpersonalni ritam.",
+function getDimensionInsightCopy(
+  dimensionCode: DetailedReportDimensionCode,
+  scoreBand: DetailedReportScoreBand,
+) {
+  const copyByDimension: Record<
+    DetailedReportDimensionCode,
+    Record<
+      DetailedReportScoreBand,
+      {
+        summary: string;
+        work_style: string;
+        risks: string;
+        development_focus: string;
+      }
+    >
+  > = {
+    EXTRAVERSION: {
+      high: {
+        summary: "Rezultat ukazuje na izraženiju sklonost vidljivom angažmanu, socijalnoj energiji i bržem uključivanju u kontakt s drugima.",
+        work_style: "U radu se to često vidi kroz spremnost da pokreneš razgovor, daš energiju grupi i lakše radiš u okruženjima s više interakcije.",
+        risks: "U zahtjevnijim situacijama vrijedi paziti da brzina uključivanja ne potisne slušanje, tuđi ritam ili potrebu za fokusiranijim, mirnijim radom.",
+        development_focus: "Korisno je svjesno uparivati energiju i inicijativu s kratkim pauzama za provjeru prioriteta i prostora koji drugima treba.",
+      },
+      moderate: {
+        summary: "Rezultat ukazuje na uravnotežen spoj otvorenosti prema ljudima i potrebe za vlastitim tempom.",
+        work_style: "U radu se to često vidi kroz sposobnost da se prilagodiš i timskoj dinamici i samostalnijem, mirnijem načinu rada.",
+        risks: "Kako stil može djelovati fleksibilno, drugi ponekad teže procijene kada ti treba više interakcije, a kada više prostora.",
+        development_focus: "Korisno je ranije komunicirati koji ritam saradnje ti najviše pomaže u konkretnoj situaciji.",
+      },
+      low: {
+        summary: "Rezultat ukazuje na mirniji interpersonalni tempo i manju potrebu za stalnom socijalnom aktivacijom.",
+        work_style: "U radu se to često vidi kroz bolji osjećaj za fokus, promišljeniji pristup i preferenciju za sadržajniji kontakt umjesto stalne izloženosti.",
+        risks: "Vrijedi paziti da mirniji stil ne bude pogrešno protumačen kao distanca ili manjak interesa kada to nije slučaj.",
+        development_focus: "Korisno je ranije pokazati namjeru, kontekst ili očekivanja kako bi tvoj doprinos bio vidljiv bez nepotrebnog trošenja energije.",
+      },
     },
-    agreeableness: {
-      high: "Naglašava saradnju, taktičnost i kvalitet međuljudskih odnosa.",
-      mid: "Može dobro balansirati iskrenost i saradnju, zavisno od konteksta.",
-      low: "Može češće birati direktan izazov umjesto prilagođavanja ili konsenzusa.",
+    AGREEABLENESS: {
+      high: {
+        summary: "Rezultat ukazuje na jači naglasak na saradnji, obzirnosti i očuvanju kvalitetnih odnosa.",
+        work_style: "U radu se to često vidi kroz taktičnu komunikaciju, spremnost na saradnju i ulaganje u povjerenje unutar tima.",
+        risks: "Vrijedi paziti da želja za skladom ne odgodi direktan razgovor ili jasnu granicu kada su oni potrebni.",
+        development_focus: "Korisno je vježbati situacije u kojima obzirnost i jasnoća mogu ići zajedno, bez povlačenja važnih tema.",
+      },
+      moderate: {
+        summary: "Rezultat ukazuje na balans između saradnje i direktnosti, bez izraženog oslanjanja samo na jedan stil.",
+        work_style: "U radu se to često vidi kroz sposobnost da zadržiš odnos, a da ipak kažeš šta je potrebno kada procijeniš da to pomaže poslu.",
+        risks: "U nejasnim situacijama može se javiti produženo vaganje između očuvanja mira i potpune jasnoće.",
+        development_focus: "Korisno je ranije odlučiti kada je važniji odnos, a kada brže i direktnije rješavanje pitanja.",
+      },
+      low: {
+        summary: "Rezultat ukazuje na direktniji, manje prilagodljiv stil i veću spremnost da se ide pravo na suštinu.",
+        work_style: "U radu se to često vidi kroz otvoreno osporavanje slabih rješenja i veću spremnost da se pokrenu teške teme bez puno uvoda.",
+        risks: "Vrijedi paziti da jasnoća ne zazvuči oštrije nego što je namjera, posebno kada druga strana traži više takta ili pripreme.",
+        development_focus: "Korisno je namjerno dodati malo više konteksta i topline u formi kada poruka treba da ostane jasna, ali bolje primljena.",
+      },
     },
-    conscientiousness: {
-      high: "Vjerovatno vrednuje strukturu, dosljednost i pouzdanu realizaciju.",
-      mid: "Može se prilagođavati između planiranja i fleksibilnosti kako se zahtjevi mijenjaju.",
-      low: "Može raditi spontanije i imati korist od jasnije vanjske strukture.",
+    CONSCIENTIOUSNESS: {
+      high: {
+        summary: "Rezultat ukazuje na jači naglasak na strukturi, odgovornosti i dosljednom provođenju obaveza.",
+        work_style: "U radu se to često vidi kroz planiranje, praćenje detalja i visok osjećaj odgovornosti za dovršavanje onoga što je preuzeto.",
+        risks: "Vrijedi paziti da visoki standardi ne prerastu u nepotreban pritisak, odgađanje kretanja ili preuzimanje previše kontrole.",
+        development_focus: "Korisno je povremeno razlikovati šta zaista traži preciznost, a šta može ići naprijed i kad je dovoljno dobro.",
+      },
+      moderate: {
+        summary: "Rezultat ukazuje na praktičan balans između organizacije i fleksibilnosti.",
+        work_style: "U radu se to često vidi kroz sposobnost da pratiš dogovor i rokove bez pretjerane ukočenosti kada se okolnosti promijene.",
+        risks: "U promjenjivim situacijama ponekad kasno postane vidljivo da zadatak ipak traži više strukture nego što je prvobitno dato.",
+        development_focus: "Korisno je ranije procijeniti kada je dosta fleksibilnosti, a kada se isplati postaviti čvršći okvir rada.",
+      },
+      low: {
+        summary: "Rezultat ukazuje na spontaniji pristup i manju oslonjenost na fiksnu strukturu ili strogu rutinu.",
+        work_style: "U radu se to često vidi kroz bržu prilagodbu, kretanje iz momenta i lakše reagovanje kada okolnosti traže improvizaciju.",
+        risks: "Vrijedi paziti da spontanost ne oslabi kontinuitet u zadacima koji traže praćenje, dovršavanje i stabilan sistem rada.",
+        development_focus: "Korisno je uvesti nekoliko jednostavnih vanjskih oslonaca koji održavaju ritam bez gušenja fleksibilnosti.",
+      },
     },
-    emotional_stability: {
-      high: "Vjerovatno zadržava stabilnost i pod uobičajenim pritiskom.",
-      mid: "Pokazuje mješovit profil nošenja sa stresom koji može varirati po opterećenju ili kontekstu.",
-      low: "Može intenzivnije doživljavati pritisak i imati korist od stabilnijih navika oporavka.",
+    EMOTIONAL_STABILITY: {
+      high: {
+        summary: "Rezultat ukazuje na stabilniji odgovor na uobičajen pritisak i manju vjerovatnoću da emocije brzo preuzmu tempo.",
+        work_style: "U radu se to često vidi kroz smireniju komunikaciju, održavanje fokusa i stabilniji ritam kada okolina postane zahtjevna.",
+        risks: "Vrijedi paziti da smirenost ne preraste u preveliku distancu prema vlastitim signalima umora ili tuđem emocionalnom stanju.",
+        development_focus: "Korisno je zadržati ono što te stabilizuje, uz svjesniji prostor za pokazivanje signala opterećenja kada je to važno.",
+      },
+      moderate: {
+        summary: "Rezultat ukazuje na mješovit, kontekstualan obrazac reagovanja na pritisak bez izražene krajnosti.",
+        work_style: "U radu se to često vidi kroz sposobnost da u nekim situacijama ostaneš vrlo sabran, dok u drugima treba više vremena za povratak fokusa.",
+        risks: "Kako reakcija zavisi od opterećenja i kontrole nad situacijom, okidači mogu postati vidljivi tek kad se pritisak već nagomila.",
+        development_focus: "Korisno je ranije prepoznati obrasce koji te stabilizuju i namjerno ih ugraditi u svakodnevni ritam rada.",
+      },
+      low: {
+        summary: "Rezultat ukazuje na osjetljiviji odgovor na pritisak, neizvjesnost i veće opterećenje, bez kliničkog značenja.",
+        work_style: "U radu se to često vidi kroz brže registrovanje napetosti i veći uticaj zahtjevnih okolnosti na unutrašnji osjećaj opterećenja.",
+        risks: "Vrijedi paziti da intenzitet trenutnog pritiska ne postane jedina slika cijele situacije ili sopstvenih kapaciteta.",
+        development_focus: "Korisno je unaprijed graditi male, ponovljive navike oporavka i jasne oslonce koji vraćaju osjećaj kontrole.",
+      },
     },
-    intellect: {
-      high: "Često je usmjeren prema idejama, istraživanju i konceptualnoj raznolikosti.",
-      mid: "Može prihvatati nove ideje uz zadržavanje vrijednosti poznatih pristupa.",
-      low: "Može preferirati praktičnu jasnoću umjesto apstraktnog istraživanja.",
+    INTELLECT: {
+      high: {
+        summary: "Rezultat ukazuje na veću otvorenost prema idejama, konceptualnom razmišljanju i istraživanju različitih pristupa.",
+        work_style: "U radu se to često vidi kroz radoznalost, povezivanje tema i spremnost da se traže širi obrasci ili svježiji uglovi gledanja.",
+        risks: "Vrijedi paziti da širina interesa ne odvuče fokus sa onoga što trenutno treba zatvoriti ili prevesti u konkretan korak.",
+        development_focus: "Korisno je radoznalost svjesno vezati za jasan ishod kako bi istraživanje ostalo korisno i operativno.",
+      },
+      moderate: {
+        summary: "Rezultat ukazuje na balans između otvorenosti prema novim idejama i poštovanja prema provjerenim pristupima.",
+        work_style: "U radu se to često vidi kroz sposobnost da prihvatiš novu ideju kada vidiš smisao, bez potrebe da sve mora biti eksperimentalno.",
+        risks: "U nekim situacijama može doći do produženog zadržavanja između istraživanja i odluke jer obje strane djeluju razumno.",
+        development_focus: "Korisno je unaprijed odrediti kada je vrijeme za dodatna pitanja, a kada ima dovoljno jasnoće za odluku i primjenu.",
+      },
+      low: {
+        summary: "Rezultat ukazuje na sklonost prema praktičnoj jasnoći, primjenjivosti i konkretnijim okvirima razmišljanja.",
+        work_style: "U radu se to često vidi kroz fokus na izvedivost, korisnost i brže spuštanje ideja na zemlju umjesto dužeg zadržavanja u apstrakciji.",
+        risks: "Vrijedi paziti da potreba za jasnoćom ne zatvori prerano prostor ideji koja još nema potpuno definisan oblik.",
+        development_focus: "Korisno je sebi dati kratku, kontrolisanu fazu istraživanja prije zaključka kada tema traži više opcija ili širu sliku.",
+      },
     },
   };
 
-  const fallback = {
-    high: "Ova oblast je relativno izražena u trenutnom obrascu odgovora.",
-    mid: "Ova oblast je u srednjem rasponu u trenutnom obrascu odgovora.",
-    low: "Ova oblast je relativno niže izražena u trenutnom obrascu odgovora.",
+  return copyByDimension[dimensionCode][scoreBand];
+}
+
+function buildTitleDescriptionItem(
+  title: string,
+  description: string,
+) {
+  return {
+    title,
+    description,
+  };
+}
+
+function getHrStrengthTitle(dimensionCode: DetailedReportDimensionCode): string {
+  const titleByDimension: Record<DetailedReportDimensionCode, string> = {
+    EXTRAVERSION: "Vidljiv angažman i timska energija",
+    AGREEABLENESS: "Kooperativan i stabilan odnosni stil",
+    CONSCIENTIOUSNESS: "Pouzdano izvršenje i osjećaj za strukturu",
+    EMOTIONAL_STABILITY: "Staložen odgovor pod pritiskom",
+    INTELLECT: "Praktično promišljanje i šira perspektiva",
   };
 
-  return (interpretationsByDimension[dimensionKey] ?? fallback)[band];
+  return titleByDimension[dimensionCode];
+}
+
+function getHrBlindSpotTitle(dimensionCode: DetailedReportDimensionCode): string {
+  const titleByDimension: Record<DetailedReportDimensionCode, string> = {
+    EXTRAVERSION: "Ritam uključivanja i prostor za druge",
+    AGREEABLENESS: "Direktnost i postavljanje granica",
+    CONSCIENTIOUSNESS: "Balans standarda i brzine",
+    EMOTIONAL_STABILITY: "Rani signali opterećenja",
+    INTELLECT: "Balans istraživanja i konkretnog zatvaranja",
+  };
+
+  return titleByDimension[dimensionCode];
+}
+
+function getHrRecommendationTitle(index: number): string {
+  const titleByIndex = [
+    "1. Check-in i feedback ritam",
+    "2. Struktura rada i očekivanja",
+    "3. Saradnja i razvojna podrška",
+  ];
+
+  return titleByIndex[index] ?? `${index + 1}. Operativna preporuka`;
+}
+
+function getHrRecommendationAction(
+  index: number,
+  dimensionLabel: string,
+  highestDimensionLabel: string | null,
+): string {
+  if (index === 0) {
+    return `Dogovorite kratak sedmični check-in u kojem se rano provjeravaju prioriteti, opterećenje i kvalitet izvršenja oko oblasti ${dimensionLabel.toLowerCase()}.`;
+  }
+
+  if (index === 1) {
+    return `Postavite jasne ishode, rokove i nivo autonomije tako da radni okvir podrži ${dimensionLabel.toLowerCase()}, uz oslonac na postojeću snagu${highestDimensionLabel ? ` u oblasti ${highestDimensionLabel.toLowerCase()}` : ""}.`;
+  }
+
+  return `U razvojnom razgovoru otvorite konkretne primjere saradnje, komunikacije i podrške koji mogu proširiti raspon ponašanja u oblasti ${dimensionLabel.toLowerCase()}.`;
 }
 
 function buildMockReport(input: PreparedReportGenerationInput): CompletedAssessmentReport {
-  const { promptInput } = input;
-  const primaryDimension = promptInput.deterministic_summary.highest_dimension;
-  const lowestDimension = promptInput.deterministic_summary.lowest_dimension;
-  const secondaryDimension = promptInput.deterministic_summary.dimensions_ranked[1] ?? null;
+  const highestDimension = input.promptInput.deterministic_summary.highest_dimension;
+  const lowestDimension = input.promptInput.deterministic_summary.lowest_dimension;
+  const primaryDimensions = getPrimaryDimensions(input);
+  const lowestDimensions = getLowestDimensions(input);
 
-  const dimensions = promptInput.dimension_scores
-    .map((dimension) => ({
-      dimension_key: dimension.dimension_key,
-      score: dimension.raw_score,
-      short_interpretation: getDimensionInterpretation(
-        dimension.dimension_key,
-        getAverageScore(dimension.raw_score, dimension.scored_question_count),
-      ),
-    }))
-    .sort(
-      (left, right) =>
-        right.score - left.score || left.dimension_key.localeCompare(right.dimension_key),
+  const dimensionsByCode = new Map(
+    input.promptInput.dimension_scores.map((dimension) => [dimension.dimension_code, dimension]),
+  );
+
+  const dimensionInsights = input.promptInput.dimension_scores.map((dimension) => {
+    const insightCopy = getDimensionInsightCopy(dimension.dimension_code, dimension.score_band);
+
+    return {
+      dimension_code: dimension.dimension_code,
+      dimension_label: dimension.dimension_label,
+      score_band: dimension.score_band,
+      summary: insightCopy.summary,
+      work_style: insightCopy.work_style,
+      risks: insightCopy.risks,
+      development_focus: insightCopy.development_focus,
+    };
+  });
+
+  const strengths = primaryDimensions.map((dimensionCode, index) => {
+    const dimension = dimensionsByCode.get(dimensionCode);
+    const insight = dimensionInsights.find((item) => item.dimension_code === dimensionCode);
+    const isHrAudience = input.promptInput.audience === "hr";
+
+    return buildTitleDescriptionItem(
+      isHrAudience
+        ? `${index + 1}. ${getHrStrengthTitle(dimensionCode)}`
+        : `${index + 1}. ${dimension?.dimension_label ?? dimensionCode}`,
+      insight?.work_style ??
+        "Ova dimenzija je među jačim signalima u trenutnom obrascu odgovora i vjerovatno donosi korisnu radnu prednost u odgovarajućem kontekstu.",
     );
+  });
 
-  const summaryParts = [
-    `Izvještaj za ${input.testSlug} zasnovan je na pohranjenim skorovima metodologije ${promptInput.scoring_method}.`,
-    primaryDimension
-      ? `${formatDimensionLabel(primaryDimension)} je najuočljiviji signal u ovom pokušaju.`
-      : "Za ovaj pokušaj nisu bili dostupni skorovi po dimenzijama.",
-    lowestDimension && lowestDimension !== primaryDimension
-      ? `${formatDimensionLabel(lowestDimension)} je komparativno niže izražena i treba je čitati kao razvojnu oblast, a ne kao nedostatak.`
-      : null,
-  ].filter((part): part is string => Boolean(part));
+  const blindSpots = lowestDimensions.map((dimensionCode, index) => {
+    const dimension = dimensionsByCode.get(dimensionCode);
+    const insight = dimensionInsights.find((item) => item.dimension_code === dimensionCode);
+    const isHrAudience = input.promptInput.audience === "hr";
 
-  const strengths = promptInput.deterministic_summary.dimensions_ranked
-    .slice(0, 2)
-    .map((dimensionKey) => {
-      const matchingDimension = promptInput.dimension_scores.find(
-        (dimension) => dimension.dimension_key === dimensionKey,
-      );
-      const averageScore = matchingDimension
-        ? getAverageScore(matchingDimension.raw_score, matchingDimension.scored_question_count)
-        : 0;
+    return buildTitleDescriptionItem(
+      isHrAudience
+        ? `${index + 1}. ${getHrBlindSpotTitle(dimensionCode)}`
+        : `${index + 1}. ${dimension?.dimension_label ?? dimensionCode}`,
+      insight?.risks ??
+        "Ovu oblast vrijedi čitati kao razvojni signal i provjeravati je kroz stvarno ponašanje i kontekst rada, a ne kao konačnu etiketu.",
+    );
+  });
 
-      return `${formatDimensionLabel(dimensionKey)}: ${getDimensionInterpretation(dimensionKey, averageScore)}`;
-    });
+  const developmentRecommendations = lowestDimensions.map((dimensionCode, index) => {
+    const dimension = dimensionsByCode.get(dimensionCode);
+    const insight = dimensionInsights.find((item) => item.dimension_code === dimensionCode);
+    const highestDimensionLabel =
+      highestDimension !== null
+        ? dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension
+        : null;
+    const isHrAudience = input.promptInput.audience === "hr";
 
-  const blindSpots = lowestDimension
-    ? [
-        `${formatDimensionLabel(lowestDimension)} je niže izražena u ovom obrascu odgovora, pa osoba može rjeđe koristiti ponašanja vezana za tu oblast u pojedinim situacijama.`,
-        "Narativne zaključke treba provjeravati kroz stvarno ponašanje, kontekst uloge i praktična opažanja.",
-      ]
-    : ["Tumačenje potencijalnih slijepih tačaka nije dostupno jer nisu pronađene bodovane dimenzije."];
+    return {
+      title: isHrAudience
+        ? getHrRecommendationTitle(index)
+        : `${index + 1}. Fokus na ${dimension?.dimension_label ?? dimensionCode}`,
+      description:
+        insight?.development_focus ??
+        "Odaberi mali, ponovljiv eksperiment u radu koji proširuje tvoj raspon ponašanja u ovoj oblasti.",
+      action: isHrAudience
+        ? getHrRecommendationAction(
+            index,
+            dimension?.dimension_label ?? dimensionCode,
+            highestDimensionLabel,
+          )
+        : highestDimension && highestDimension !== dimensionCode
+          ? `Upari razvoj ove oblasti s postojećom snagom koju pokazuje ${dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension}.`
+          : "Pretvori razvojni fokus u jednu konkretnu sedmičnu naviku i kratko ga prati kroz praksu.",
+    };
+  });
 
-  const workStyle = [
-    primaryDimension
-      ? `Vjerovatno glavno uporište radnog stila: teme povezane sa dimenzijom ${formatDimensionLabel(primaryDimension).toLowerCase()} najizraženije su u ovom završenom pokušaju.`
-      : "Glavno uporište radnog stila nije moguće procijeniti bez bodovanih dimenzija.",
-    secondaryDimension
-      ? `Sekundarni signal: ${formatDimensionLabel(secondaryDimension).toLowerCase()} također značajno oblikuje način na koji se ukupni profil može ispoljavati iz dana u dan.`
-      : "Sekundarni signal radnog stila nije bio dostupan iz trenutnog skupa skorova.",
-  ];
+  const titleByAudience =
+    input.promptInput.audience === "hr"
+      ? "HR pregled radnog i saradničkog stila"
+      : "Tvoj detaljni izvještaj procjene";
+  const subtitleByAudience =
+    input.promptInput.audience === "hr"
+      ? "Sažetak vjerovatnih obrazaca rada, saradnje i razvoja."
+      : `Razvojni pregled obrasca rezultata za ${input.testSlug}.`;
 
-  const developmentRecommendations = lowestDimension
-    ? [
-        `Uvedi jednu namjernu razvojnu naviku povezanu s ponašanjima iz oblasti ${formatDimensionLabel(lowestDimension).toLowerCase()} u sedmične radne rutine.`,
-        primaryDimension
-          ? `Iskoristi izraženiji obrazac u oblasti ${formatDimensionLabel(primaryDimension).toLowerCase()} kao oslonac dok se gradi veći raspon ponašanja u niže bodovanim oblastima.`
-          : "Koristi redovnu refleksiju o obrascima skorova kako bi se rezultati pretvorili u konkretne bihevioralne eksperimente.",
-      ]
-    : ["Prikupi potpuniji bodovani pokušaj prije donošenja preporuka za razvoj."];
-
-  return {
-    attempt_id: input.attemptId,
-    test_slug: input.testSlug,
-    generated_at: new Date().toISOString(),
-    generator_type: "mock",
-    summary: summaryParts.join(" "),
-    dimensions,
+  const report: CompletedAssessmentReport = {
+    report_title: titleByAudience,
+    report_subtitle: subtitleByAudience,
+    summary: {
+      headline:
+        highestDimension !== null
+          ? input.promptInput.audience === "hr"
+            ? `${dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension} se izdvaja kao najjači signal za radni stil i saradnju.`
+            : `${dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension} se najviše ističe u ovom obrascu rezultata.`
+          : "Rezultati daju uravnotežen pregled radnog obrasca bez jednog dominantnog signala.",
+      overview:
+        input.promptInput.audience === "hr"
+          ? lowestDimension && highestDimension && lowestDimension !== highestDimension
+            ? `Profil ukazuje na izraženiji oslonac na ${dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension}, dok oblast ${dimensionsByCode.get(lowestDimension)?.dimension_label ?? lowestDimension} traži nešto svjesniju podršku kroz način rada, komunikaciju i razvojni feedback.`
+            : "Profil daje uravnotežen pregled vjerovatnih obrazaca rada, saradnje i razvoja, bez pojednostavljenih ili apsolutnih zaključaka."
+          : lowestDimension && highestDimension && lowestDimension !== highestDimension
+            ? `Izvještaj koristi determinističke skorove po svih pet dimenzija. Najizraženiji signal je ${dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension}, dok ${dimensionsByCode.get(lowestDimension)?.dimension_label ?? lowestDimension} djeluje kao komparativno mirnija razvojna oblast.`
+            : "Izvještaj koristi determinističke skorove po svih pet dimenzija i opisuje vjerovatne obrasce rada, komunikacije i razvoja bez apsolutnih zaključaka.",
+    },
     strengths,
     blind_spots: blindSpots,
-    work_style: workStyle,
     development_recommendations: developmentRecommendations,
+    dimension_insights: dimensionInsights,
     disclaimer:
-      "Ovaj izvještaj je zasnovan na determinističkim scoring podacima. Opisuje tendencije i razvojne teme, a ne dijagnozu, kliničku procjenu niti preporuku za zapošljavanje.",
+      input.promptInput.audience === "hr"
+        ? "Ovaj izvještaj je profesionalni razvojni pregled vjerovatnih obrazaca rada i saradnje. Ne predstavlja dijagnozu, ne potvrđuje zaštićene osobine i ne daje hiring odluku ili konačnu istinu o osobi."
+        : "Ovaj izvještaj je razvojni, ne-klinički pregled zasnovan na determinističkim skorovima procjene. Ne daje dijagnozu, ne potvrđuje zaštićene osobine i ne predstavlja preporuku za zapošljavanje ili konačnu istinu o osobi.",
   };
+
+  const validationResult = validateDetailedReportV1(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock report failed detailed report validation: ${formatDetailedReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
 }
 
 export const mockReportProvider: ReportProvider = {
   type: "mock",
   async generateReport(input) {
-    return {
-      ok: true,
-      report: buildMockReport(input),
-    };
+    try {
+      return {
+        ok: true,
+        report: buildMockReport(input),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        reason: error instanceof Error ? error.message : "Unknown mock provider error.",
+      };
+    }
   },
 };

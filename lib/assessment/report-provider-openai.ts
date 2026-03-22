@@ -1,10 +1,14 @@
 import "server-only";
 
-import { formatDimensionLabel } from "@/lib/assessment/report-provider-helpers";
+import {
+  detailedReportV1OpenAiSchema,
+  formatDetailedReportValidationErrors,
+  normalizeDetailedReportV1,
+  validateDetailedReportV1,
+} from "@/lib/assessment/detailed-report-v1";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type {
   CompletedAssessmentReport,
-  CompletedAssessmentReportDimension,
   PreparedReportGenerationInput,
   ReportProvider,
 } from "@/lib/assessment/report-providers";
@@ -15,138 +19,59 @@ type OpenAiProviderOptions = {
   timeoutMs?: number;
 };
 
-type OpenAiStructuredReport = {
-  summary: string;
-  dimensions: CompletedAssessmentReportDimension[];
-  strengths: string[];
-  blind_spots: string[];
-  work_style: string[];
-  development_recommendations: string[];
-  disclaimer: string;
-};
-
 type ErrorWithCause = Error & {
   cause?: unknown;
 };
 
-const OPENAI_REPORT_SCHEMA = {
-  name: "assessment_report_v1",
-  strict: true,
-  schema: {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      summary: { type: "string" },
-      dimensions: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            dimension_key: { type: "string" },
-            score: { type: "number" },
-            short_interpretation: { type: "string" },
-          },
-          required: ["dimension_key", "score", "short_interpretation"],
-        },
-      },
-      strengths: { type: "array", items: { type: "string" } },
-      blind_spots: { type: "array", items: { type: "string" } },
-      work_style: { type: "array", items: { type: "string" } },
-      development_recommendations: { type: "array", items: { type: "string" } },
-      disclaimer: { type: "string" },
-    },
-    required: [
-      "summary",
-      "dimensions",
-      "strengths",
-      "blind_spots",
-      "work_style",
-      "development_recommendations",
-      "disclaimer",
-    ],
-  },
-} as const;
-
-function isStructuredReport(value: unknown): value is OpenAiStructuredReport {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const report = value as Record<string, unknown>;
-
-  return (
-    typeof report.summary === "string" &&
-    Array.isArray(report.dimensions) &&
-    report.dimensions.every((dimension) => {
-      if (!dimension || typeof dimension !== "object") {
-        return false;
-      }
-
-      const item = dimension as Record<string, unknown>;
-      return (
-        typeof item.dimension_key === "string" &&
-        typeof item.score === "number" &&
-        typeof item.short_interpretation === "string"
-      );
-    }) &&
-    Array.isArray(report.strengths) &&
-    report.strengths.every((item) => typeof item === "string") &&
-    Array.isArray(report.blind_spots) &&
-    report.blind_spots.every((item) => typeof item === "string") &&
-    Array.isArray(report.work_style) &&
-    report.work_style.every((item) => typeof item === "string") &&
-    Array.isArray(report.development_recommendations) &&
-    report.development_recommendations.every((item) => typeof item === "string") &&
-    typeof report.disclaimer === "string"
-  );
-}
-
 function buildDefaultSystemPrompt(promptVersion: string): string {
   return [
-    `Generišeš strukturirane Big Five assessment izvještaje. Verzija prompta: ${promptVersion}.`,
-    "Cjelokupan narativni sadržaj mora biti isključivo na bosanskom jeziku, ijekavica, latinica.",
-    "Ne miješaj engleski sa bosanskim u naslovima, opisima, preporukama ni disclaimeru.",
-    "Koristi isključivo dostavljeni deterministički scoring kontekst.",
-    "Ne zaključuj niti računaj skorove iz sirovih odgovora.",
-    "Ne mijenjaj dostavljene dimension keys niti score vrijednosti; vrati ih tačno kako su zadani.",
-    "Opisuj tendencije i vjerovatne obrasce ponašanja, ne fiksne osobine niti sigurnost.",
-    "Ne navodi dijagnoze, kliničke tvrdnje, zaključke o zaštićenim kategorijama ni savjete o tretmanu.",
-    "Ne daj preporuke za zaposliti/ne zaposliti niti selekcijske odluke.",
-    "Ton mora biti profesionalan, jasan, prirodan i upotrebljiv za HR/B2B izvještaj.",
-    "Vrati isključivo JSON koji odgovara dostavljenoj shemi.",
+    `You generate completed assessment reports. Prompt version: ${promptVersion}.`,
+    "Return only JSON that matches the supplied JSON schema exactly.",
+    "Use only the provided deterministic scoring input.",
+    "Do not infer raw scores, hidden traits, diagnoses, or hiring decisions.",
+    "Do not use clinical language, protected-trait inferences, IQ claims, or absolute statements.",
+    "Treat Emotional Stability and Intellect as non-clinical Big Five dimensions only.",
   ].join(" ");
 }
 
 function buildDimensionHintText(input: PreparedReportGenerationInput): string {
-  const { promptInput } = input;
-  return promptInput.dimension_scores
+  return input.promptInput.dimension_scores
     .map(
       (dimension) =>
-        `${formatDimensionLabel(dimension.dimension_key)}: sirovi skor ${dimension.raw_score} kroz ${dimension.scored_question_count} bodovanih pitanja.`,
+        `${dimension.dimension_code} (${dimension.dimension_label}): raw_score=${dimension.raw_score}, average_score=${dimension.average_score}, score_band=${dimension.score_band}, scored_question_count=${dimension.scored_question_count}`,
     )
-    .join(" ");
+    .join(" | ");
 }
 
 function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
-  const { promptInput } = input;
-  const dimensionHints = buildDimensionHintText(input);
-
   return JSON.stringify({
     instructions: {
-      report_goal:
-        "Napiši sažet, strukturiran assessment izvještaj zasnovan isključivo na dostavljenim determinističkim skorovima.",
+      output_contract: "Return one completed assessment report in the exact schema.",
+      audience_behavior:
+        input.promptInput.audience === "participant"
+          ? "Use developmental, clear, supportive, non-judgmental wording."
+          : "Use neutral, operational, professional wording without therapeutic or hiring-prescriptive language.",
+      locale_rule:
+        "Write all narrative text in the locale requested in input.locale. Do not hardcode a different language.",
+      dimension_order: input.promptInput.dimension_scores.map((dimension) => dimension.dimension_code),
+      list_sizes: {
+        strengths: 3,
+        blind_spots: 3,
+        development_recommendations: 3,
+        dimension_insights: 5,
+      },
       guardrails: [
-        "Sav tekst mora biti na bosanskom jeziku, ijekavica, latinica.",
-        "Skorovi su već izračunati i jedini su kvantitativni izvor istine.",
-        "Ne spekuliraj iz sirovih odgovora niti iz nedostajućih podataka.",
-        "Ne prenaglašavaj sigurnost zaključaka.",
-        "Koristi razvojni jezik i izbjegavaj dijagnostičke ili hiring zaključke.",
-        "Ako koristiš stručni termin, formuliraj ga prirodno za poslovni i HR kontekst na bosanskom jeziku.",
+        "Do not diagnose or use clinical language.",
+        "Do not give hire/no-hire recommendations.",
+        "Do not infer protected traits.",
+        "Do not treat the report as final truth about the person.",
+        "Do not claim IQ from INTELLECT.",
+        "Do not claim clinical meaning from EMOTIONAL_STABILITY.",
+        "Do not use absolute statements such as always, never, or definitely proves.",
       ],
-      dimension_hint_text: dimensionHints,
+      dimension_hint_text: buildDimensionHintText(input),
     },
-    input: promptInput,
+    input: input.promptInput,
   });
 }
 
@@ -183,72 +108,28 @@ function buildUserPrompt(input: PreparedReportGenerationInput): string {
   return applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
 }
 
-function containsEnglishLeakage(value: string): boolean {
-  const normalized = value.toLowerCase();
-  const englishMarkers = [
-    "report",
-    "summary",
-    "strengths",
-    "blind spots",
-    "work style",
-    "development recommendations",
-    "candidate",
-    "score pattern",
-    "raw score",
-    "scored questions",
-    "likely",
-    "attempt",
-    "completed",
-    "hiring advice",
-    "diagnosis",
-  ];
-
-  return englishMarkers.some((marker) => normalized.includes(marker));
+function resolveOpenAiResponseFormatSchema(): Record<string, unknown> {
+  return detailedReportV1OpenAiSchema as Record<string, unknown>;
 }
 
-function assertBosnianNarrative(report: OpenAiStructuredReport): void {
-  const narrativeFields = [
-    report.summary,
-    report.disclaimer,
-    ...report.dimensions.map((dimension) => dimension.short_interpretation),
-    ...report.strengths,
-    ...report.blind_spots,
-    ...report.work_style,
-    ...report.development_recommendations,
-  ];
+function parseStructuredContent(content: string): unknown {
+  return JSON.parse(content) as unknown;
+}
 
-  if (narrativeFields.some((field) => containsEnglishLeakage(field))) {
-    throw new Error("OpenAI report narrative did not pass the Bosnian-language consistency check.");
+function normalizeStructuredReport(content: unknown): CompletedAssessmentReport {
+  return normalizeDetailedReportV1(content);
+}
+
+function validateStructuredReport(report: CompletedAssessmentReport): CompletedAssessmentReport {
+  const validationResult = validateDetailedReportV1(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `OpenAI response JSON failed detailed report validation: ${formatDetailedReportValidationErrors(validationResult.errors)}`,
+    );
   }
-}
 
-function normalizeStructuredReport(
-  input: PreparedReportGenerationInput,
-  report: OpenAiStructuredReport,
-): CompletedAssessmentReport {
-  const interpretationsByDimension = new Map(
-    report.dimensions.map((dimension) => [dimension.dimension_key, dimension.short_interpretation]),
-  );
-
-  return {
-    attempt_id: input.attemptId,
-    test_slug: input.testSlug,
-    generated_at: new Date().toISOString(),
-    generator_type: "openai",
-    summary: report.summary,
-    dimensions: input.promptInput.dimension_scores.map((dimension) => ({
-      dimension_key: dimension.dimension_key,
-      score: dimension.raw_score,
-      short_interpretation:
-        interpretationsByDimension.get(dimension.dimension_key) ??
-        `Obrazac skora za ${formatDimensionLabel(dimension.dimension_key).toLowerCase()} ukazuje na uočljivu tendenciju ponašanja u ovom pokušaju.`,
-    })),
-    strengths: report.strengths,
-    blind_spots: report.blind_spots,
-    work_style: report.work_style,
-    development_recommendations: report.development_recommendations,
-    disclaimer: report.disclaimer,
-  };
+  return validationResult.value;
 }
 
 async function requestOpenAiReport(
@@ -265,7 +146,13 @@ async function requestOpenAiReport(
 
   const timeoutMs = options.timeoutMs ?? 120000;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(new Error(`OpenAI report generation timed out after ${timeoutMs}ms.`)), timeoutMs);
+  const timeout = setTimeout(
+    () =>
+      controller.abort(
+        new Error(`OpenAI report generation timed out after ${timeoutMs}ms.`),
+      ),
+    timeoutMs,
+  );
 
   console.info("OpenAI report generation started", {
     attemptId: input.attemptId,
@@ -287,7 +174,11 @@ async function requestOpenAiReport(
         temperature: 0.2,
         response_format: {
           type: "json_schema",
-          json_schema: OPENAI_REPORT_SCHEMA,
+          json_schema: {
+            name: "detailed_report_v1",
+            strict: true,
+            schema: resolveOpenAiResponseFormatSchema(),
+          },
         },
         messages: [
           {
@@ -323,25 +214,19 @@ async function requestOpenAiReport(
       throw new Error("OpenAI response did not contain structured content.");
     }
 
-    const parsed = JSON.parse(content) as unknown;
-
-    if (!isStructuredReport(parsed)) {
-      throw new Error("OpenAI response JSON did not match the expected report contract.");
-    }
-
-    assertBosnianNarrative(parsed);
-
-    const report = normalizeStructuredReport(input, parsed);
+    const parsed = parseStructuredContent(content);
+    const normalized = normalizeStructuredReport(parsed);
+    const validated = validateStructuredReport(normalized);
 
     console.info("OpenAI report generation succeeded", {
       attemptId: input.attemptId,
       testSlug: input.testSlug,
       model: options.model,
       timeoutMs,
-      dimensionCount: report.dimensions.length,
+      dimensionCount: validated.dimension_insights.length,
     });
 
-    return report;
+    return validated;
   } catch (error) {
     const normalizedError = error instanceof Error ? (error as ErrorWithCause) : null;
 

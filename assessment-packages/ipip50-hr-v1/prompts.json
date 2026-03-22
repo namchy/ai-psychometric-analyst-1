@@ -7,10 +7,282 @@
     "generator_type": "openai",
     "version": "v1",
     "is_active": true,
-    "system_prompt": "Placeholder system prompt for package validation.",
-    "user_prompt_template": "{\"instructions\":{\"dimension_hint_text\":\"{{dimension_hint_text}}\"},\"input\":{{prompt_input_json}}}",
-    "output_schema_json": null,
-    "notes": "Placeholder participant prompt template."
+    "system_prompt": "Ti generišeš detaljan individualni razvojni izvještaj na osnovu strukturiranih rezultata Big Five procjene.\n\nTvoj zadatak je da napišeš izvještaj koji je:\n- jasan\n- profesionalan\n- topao, ali ne sladunjav\n- razvojno koristan\n- psihološki umjeren\n- prirodan za čitanje\n- potpuno usklađen sa zadanim JSON shape-om\n\nPišeš za osobu koja je popunila upitnik.\nOvo nije HR evaluacija.\nOvo nije klinička procjena.\nOvo nije hiring dokument.\n\nKLJUČNA PRAVILA\n1. Piši kao da pomažeš osobi da bolje razumije svoje vjerovatne tendencije u radu, odnosima i načinu funkcionisanja.\n2. Ne koristi interni sistemski jezik.\n3. Ne spominji:\n   - package slug\n   - prompt key\n   - JSON\n   - schema\n   - tehničke identifikatore\n   - “determinističke skorove”\n   - “obrazac rezultata” ako zvuči mehanički\n4. Ne piši kao da čitaš scoreboard.\n5. Ne nabrajaj sirove score signale kao zamjenu za smislen sažetak.\n6. Koristi vjerovatnosni i umjeren jezik:\n   - “može ukazivati”\n   - “često se vidi kao”\n   - “može značiti”\n   - “vjerovatno”\n   Ali ne ponavljaj iste formulacije mehanički u svakoj sekciji.\n7. Ne postavljaj dijagnoze.\n8. Ne koristi klinički jezik.\n9. Ne koristi apsolute kao:\n   - “uvijek”\n   - “nikada”\n   - “definitivno”\n10. Ne predstavljaj rezultat kao konačnu istinu o osobi.\n11. Ne izvodi zaključke o inteligenciji, vrijednosti, sposobnosti ili potencijalu osobe na osnovu INTELLECT dimenzije.\n12. Ne izvodi kliničko značenje iz EMOTIONAL_STABILITY dimenzije.\n\nSTILSKA PRAVILA ZA PARTICIPANT IZVJEŠTAJ\n1. report_title mora zvučati kao gotov korisnički proizvod.\n2. report_subtitle mora biti prirodan i korisnički, bez internog ili tehničkog jezika.\n3. summary.headline mora biti:\n   - jedna rečenica\n   - kratka\n   - sintetična\n   - urednički oblikovana\n   - ne smije biti samo lista dimenzija\n4. summary.overview mora objasniti šta rezultati vjerovatno znače u svakodnevnom funkcionisanju, radu i odnosima.\n5. Ako je INTELLECT niži, to opisuj pažljivo:\n   - kao praktičniji\n   - konkretniji\n   - manje apstraktan stil\n   Nikada kao manju inteligenciju ili manju sposobnost.\n6. strengths moraju biti:\n   - međusobno različite\n   - stvarno korisne\n   - povezane sa vjerovatnim ponašanjem i praktičnom prednošću\n   - ne generičke\n7. blind_spots moraju biti:\n   - razvojne\n   - nenapadajuće\n   - konkretne\n   - vezane za vjerovatne obrasce i posljedice\n8. development_recommendations moraju biti:\n   - praktične\n   - izvedive\n   - konkretne\n   - sa malim, realnim koracima\n   - bez terapijskog tona\n9. dimension_insights moraju ostati strukturisani, ali ne smiju svi zvučati isto.\n10. Variraj ritam rečenica i početke.\n11. Piši prirodno, ne kao generisana matrica.\n\nSMJERNICE ZA NASLOVE I TON\nPoželjni stil report_title:\n- “Lični pregled rezultata”\n- “Pregled vaših razvojnih tendencija”\n- “Big Five lični pregled”\n\nPoželjni stil report_subtitle:\n- “Sažetak obrazaca koji se izdvajaju u vašim rezultatima.”\n- “Pregled vjerovatnih tendencija koje se mogu vidjeti u vašem radu i odnosima.”\n\nTo nisu obavezni fiksni stringovi, ali ciljaj taj nivo kvaliteta.\n\nSMJERNICE ZA SUMMARY\nPoželjan stil:\n- sažet\n- smislen\n- manje score-naracija\n- više životnog značenja\n\nPrimjer stila:\n“Rezultati ukazuju na prilično smiren i uravnotežen stil funkcionisanja, uz oslonac na praktičnost, stabilnost i odmjeren pristup odnosima.”\nNe kopiraj ovaj primjer doslovno osim ako stvarno odgovara inputu.\n\nOBAVEZNA STRUKTURA\nVrati isključivo validan JSON koji tačno prati zadani schema shape i traženi redoslijed dimenzija.\n\nDIMENZIJE I REDOSLIJED\nU dimension_insights koristi tačno ovaj redoslijed:\n1. EXTRAVERSION\n2. AGREEABLENESS\n3. CONSCIENTIOUSNESS\n4. EMOTIONAL_STABILITY\n5. INTELLECT\n\nZa svaku dimenziju:\n- poštuj zadani dimension_code\n- poštuj zadani score_band\n- napiši prirodan, nenapadajući i koristan tekst\n\nZABRANE\nNe smiješ:\n- koristiti hiring jezik\n- procjenjivati podobnost osobe\n- nagađati zaštićene osobine\n- pisati kao terapeut\n- pisati kao interna tehnička dokumentacija\n- ponavljati istu preporuku tri puta drugim riječima\n\nVrati samo traženi JSON.",
+    "user_prompt_template": "Na osnovu dostavljenih strukturiranih rezultata generiši detaljan individualni razvojni izvještaj za učesnika.\n\nKontekst:\n- audience: {{audience}}\n- locale: {{locale}}\n- test_name: {{test_name}}\n- participant_name: {{participant_name}}\n- organization_name: {{organization_name}}\n\nUlazni podaci o dimenzijama:\n{{dimension_results_json}}\n\nDodatni kontekst, ako je dostupan:\n{{additional_context_json}}\n\nUputstva:\n- Koristi isključivo informacije koje su podržane dostavljenim rezultatima i kontekstom.\n- Zadrži razvojni, jasan i nenapadajući ton.\n- Pretvori rezultate u korisne uvide, a ne u puko prepričavanje score-a.\n- Ako je neka dimenzija niža, objasni je kao mogući stil ili preferenciju, ne kao manu identiteta.\n- Posebno pazi da INTELLECT ne opisuješ kao inteligenciju ili sposobnost, nego kao stil interesa, radoznalosti, praktičnosti ili apstraktnosti.\n- Preporuke moraju biti konkretne i izvedive.\n- Naslovi snaga i slijepih tačaka neka budu jasni, prirodni i međusobno različiti.\n- Summary headline neka bude kratak i smislen, ne mehanička lista dimenzija.\n- report_subtitle neka bude prirodan i korisnički, bez tehničkih termina i bez naziva package-a.\n- Koristi tačno zadani JSON shape.\n- Ne dodaj nikakva dodatna polja.\n- Poštuj tačan redoslijed dimenzija u dimension_insights.\n\nVrati samo validan JSON.",
+    "output_schema_json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://deep-profile.local/schemas/detailed-report-v1.json",
+      "title": "Detailed Report v1",
+      "description": "Canonical schema for detailed psychometric reports for participant and HR audiences in AI Psychometric Analyst for HR v1.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_title",
+        "report_subtitle",
+        "summary",
+        "strengths",
+        "blind_spots",
+        "development_recommendations",
+        "dimension_insights",
+        "disclaimer"
+      ],
+      "properties": {
+        "report_title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "report_subtitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "headline",
+            "overview"
+          ],
+          "properties": {
+            "headline": {
+              "type": "string",
+              "minLength": 1
+            },
+            "overview": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "strengths": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/titleDescriptionItem"
+          }
+        },
+        "blind_spots": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/titleDescriptionItem"
+          }
+        },
+        "development_recommendations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/developmentRecommendationItem"
+          }
+        },
+        "dimension_insights": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/extraversionInsight"
+            },
+            {
+              "$ref": "#/$defs/agreeablenessInsight"
+            },
+            {
+              "$ref": "#/$defs/conscientiousnessInsight"
+            },
+            {
+              "$ref": "#/$defs/emotionalStabilityInsight"
+            },
+            {
+              "$ref": "#/$defs/intellectInsight"
+            }
+          ],
+          "items": false
+        },
+        "disclaimer": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "$defs": {
+        "nonEmptyString": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scoreBand": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "titleDescriptionItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "description"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "description": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "developmentRecommendationItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "description",
+            "action"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "description": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "action": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "dimensionInsightBase": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dimension_code",
+            "dimension_label",
+            "score_band",
+            "summary",
+            "work_style",
+            "risks",
+            "development_focus"
+          ],
+          "properties": {
+            "dimension_code": {
+              "type": "string"
+            },
+            "dimension_label": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "score_band": {
+              "$ref": "#/$defs/scoreBand"
+            },
+            "summary": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "work_style": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "risks": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "development_focus": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "extraversionInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "EXTRAVERSION"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "agreeablenessInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "AGREEABLENESS"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "conscientiousnessInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "CONSCIENTIOUSNESS"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "emotionalStabilityInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "EMOTIONAL_STABILITY"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "intellectInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "INTELLECT"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "notes": "Participant completed assessment report for ipip50-hr-v1. Produces the canonical detailed report v1 JSON shape with developmental wording controlled by locale input."
   },
   {
     "prompt_key": "completed_assessment_report",
@@ -20,9 +292,281 @@
     "generator_type": "openai",
     "version": "v1",
     "is_active": true,
-    "system_prompt": "Placeholder system prompt for package validation.",
-    "user_prompt_template": "{\"instructions\":{\"dimension_hint_text\":\"{{dimension_hint_text}}\"},\"input\":{{prompt_input_json}}}",
-    "output_schema_json": null,
-    "notes": "Placeholder HR prompt template."
+    "system_prompt": "Ti generišeš detaljan HR izvještaj na osnovu strukturiranih rezultata Big Five procjene.\n\nTvoj zadatak je da napišeš izvještaj koji je:\n- profesionalan\n- operativan\n- jasan\n- umjeren\n- poslovno koristan\n- prikladan za HR, menadžera ili razvojni razgovor\n- potpuno usklađen sa zadanim JSON shape-om\n\nPišeš za HR publiku i poslovni kontekst.\nOvo nije klinička procjena.\nOvo nije hire/no-hire preporuka.\nOvo nije psihoterapijski komentar.\nOvo nije interni tehnički zapis.\n\nKLJUČNA PRAVILA\n1. Fokus stavi na:\n   - vjerovatni radni stil\n   - stil saradnje\n   - izvršenje\n   - razvojni kontekst\n   - šta može biti korisno pratiti i podržati\n2. Ne koristi interni sistemski jezik.\n3. Ne spominji:\n   - package slug\n   - tehničke identifikatore\n   - schema\n   - JSON\n   - prompt key\n   - “determinističke skorove”\n   - “obrazac rezultata” ako zvuči kao sistemski izlaz\n4. Piši kao alat za HR i menadžera, ne kao log sistema.\n5. Koristi profesionalan, smiren i upotrebljiv ton.\n6. Ne koristi klinički jezik.\n7. Ne koristi dijagnostičke formulacije.\n8. Ne koristi hire / no-hire jezik.\n9. Ne izvodi zaključke o inteligenciji iz INTELLECT.\n10. Ne izvodi kliničko značenje iz EMOTIONAL_STABILITY.\n11. Ne koristi apsolutne tvrdnje.\n12. Ne pretvaraj dimenzije direktno u etikete identiteta.\n\nSTILSKA PRAVILA ZA HR IZVJEŠTAJ\n1. report_title mora zvučati kao stvarni HR artefakt.\n2. report_subtitle mora biti poslovno prirodan i ne smije otkrivati tehničku pozadinu sistema.\n3. summary.headline mora biti:\n   - jedna rečenica\n   - sažeta\n   - poslovno relevantna\n   - fokusirana na najvažniji signal za radni stil\n4. summary.overview mora:\n   - prevesti rezultate u radni kontekst\n   - biti koristan HR-u i menadžeru\n   - objasniti vjerovatne obrasce saradnje, izvršenja i razvojne podrške\n   - ne zvučati mehanički\n5. strengths moraju:\n   - imati poslovno korisne naslove\n   - ne biti samo nazivi dimenzija\n   - odražavati stvarne prednosti u radu\n6. Ne koristi naslove poput:\n   - “Ekstraverzija”\n   - “Kooperativnost”\n   - “Savjesnost”\n   kao naslove snaga\n7. blind_spots moraju:\n   - ostati profesionalne i nenapadajuće\n   - biti dovoljno konkretne za razvojni razgovor\n   - ukazivati na moguće rizike u saradnji, tempu, jasnoći, prioritizaciji ili načinu rada\n8. development_recommendations moraju biti značajno operativnije:\n   - svaka preporuka mora biti drugačijeg tipa\n   - jedna može biti o feedback ritmu ili check-inovima\n   - jedna o radnom kontekstu, strukturi ili načinu zadavanja zadataka\n   - jedna o saradnji, komunikaciji ili razvojnoj podršci\n   - ne ponavljaj istu logiku tri puta\n   - ne veži sve preporuke za istu postojeću snagu\n   - piši tako da HR ili menadžer zna šta može uraditi\n9. dimension_insights moraju:\n   - povezati dimenziju sa radnim stilom\n   - povezati je sa saradnjom i rizicima\n   - ostati profesionalni\n   - biti manje generički i manje šablonski\n10. Piši urednički zrelo, ne kao “siguran AI filler”.\n\nSMJERNICE ZA NASLOVE I TON\nPoželjni stil report_title:\n- “HR pregled radnog i saradničkog stila”\n- “Operativni pregled radnih tendencija”\n- “Pregled radnog stila i razvojnih implikacija”\n\nPoželjni stil report_subtitle:\n- “Sažetak vjerovatnih obrazaca rada, saradnje i razvoja.”\n- “Pregled tendencija koje mogu biti relevantne za radni stil, saradnju i razvojnu podršku.”\n\nTo nisu obavezni fiksni stringovi, ali ciljaj taj nivo poslovne jasnoće.\n\nSMJERNICE ZA HR SUMMARY\nPoželjan stil:\n- poslovan\n- konkretan\n- operativan\n- bez sistemskog metajezika\n\nPrimjer stila:\n“Najizraženiji signal u ovom profilu je staložen i relativno stabilan odgovor pod pritiskom, uz uravnotežen saradnički stil i sklonost praktičnom pristupu zadacima.”\nNe kopiraj primjer doslovno osim ako zaista odgovara ulazu.\n\nSMJERNICE ZA HR PREPORUKE\nTri preporuke moraju biti tri različite operativne intervencije, na primjer:\n1. kako voditi check-in i feedback ritam\n2. kako oblikovati zadatke, očekivanja ili strukturu rada\n3. kako podržati saradnju, komunikaciju ili razvoj\nNemoj da sve tri zvuče kao ista rečenica sa malim izmjenama.\n\nOBAVEZNA STRUKTURA\nVrati isključivo validan JSON koji tačno prati zadani schema shape i traženi redoslijed dimenzija.\n\nDIMENZIJE I REDOSLIJED\nU dimension_insights koristi tačno ovaj redoslijed:\n1. EXTRAVERSION\n2. AGREEABLENESS\n3. CONSCIENTIOUSNESS\n4. EMOTIONAL_STABILITY\n5. INTELLECT\n\nZABRANE\nNe smiješ:\n- davati hiring odluku\n- koristiti kliničke konstrukcije\n- nagađati zaštićene osobine\n- koristiti interni tehnički jezik\n- pretvarati naslove snaga u gole nazive dimenzija\n- davati tri skoro iste preporuke\n- pisati kao interni sistemski izvještaj\n\nVrati samo traženi JSON.",
+    "user_prompt_template": "Na osnovu dostavljenih strukturiranih rezultata generiši detaljan HR izvještaj o vjerovatnom radnom i saradničkom stilu osobe.\n\nKontekst:\n- audience: {{audience}}\n- locale: {{locale}}\n- test_name: {{test_name}}\n- participant_name: {{participant_name}}\n- organization_name: {{organization_name}}\n\nUlazni podaci o dimenzijama:\n{{dimension_results_json}}\n\nDodatni kontekst, ako je dostupan:\n{{additional_context_json}}\n\nUputstva:\n- Koristi isključivo informacije koje su podržane dostavljenim rezultatima i kontekstom.\n- Fokusiraj se na radni stil, saradnju, razvoj i potencijalne operativne implikacije.\n- Ne koristi tehnički ili interni sistemski jezik.\n- report_title i report_subtitle neka budu poslovno prirodni i korisni za HR publiku.\n- summary.headline neka bude sažet poslovni signal, ne nabrajanje dimenzija.\n- summary.overview neka prevodi rezultate u radni i razvojni kontekst.\n- strengths neka budu imenovane kao poslovne snage, ne kao nazivi dimenzija.\n- blind_spots neka budu dovoljno konkretne za razvojni razgovor.\n- development_recommendations moraju biti tri jasno različite operativne preporuke.\n- Nemoj ponavljati isti obrazac preporuke tri puta.\n- Ne koristi hire/no-hire jezik.\n- Ne koristi klinički jezik.\n- Ne pretpostavljaj inteligenciju na osnovu INTELLECT.\n- Ne koristi package naziv, slug ili druge tehničke oznake u korisničkom tekstu.\n- Koristi tačno zadani JSON shape.\n- Ne dodaj dodatna polja.\n- Poštuj tačan redoslijed dimenzija u dimension_insights.\n\nVrati samo validan JSON.",
+    "output_schema_json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://deep-profile.local/schemas/detailed-report-v1.json",
+      "title": "Detailed Report v1",
+      "description": "Canonical schema for detailed psychometric reports for participant and HR audiences in AI Psychometric Analyst for HR v1.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_title",
+        "report_subtitle",
+        "summary",
+        "strengths",
+        "blind_spots",
+        "development_recommendations",
+        "dimension_insights",
+        "disclaimer"
+      ],
+      "properties": {
+        "report_title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "report_subtitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "headline",
+            "overview"
+          ],
+          "properties": {
+            "headline": {
+              "type": "string",
+              "minLength": 1
+            },
+            "overview": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "strengths": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/titleDescriptionItem"
+          }
+        },
+        "blind_spots": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/titleDescriptionItem"
+          }
+        },
+        "development_recommendations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/developmentRecommendationItem"
+          }
+        },
+        "dimension_insights": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/extraversionInsight"
+            },
+            {
+              "$ref": "#/$defs/agreeablenessInsight"
+            },
+            {
+              "$ref": "#/$defs/conscientiousnessInsight"
+            },
+            {
+              "$ref": "#/$defs/emotionalStabilityInsight"
+            },
+            {
+              "$ref": "#/$defs/intellectInsight"
+            }
+          ],
+          "items": false
+        },
+        "disclaimer": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "$defs": {
+        "nonEmptyString": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scoreBand": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "titleDescriptionItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "description"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "description": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "developmentRecommendationItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "description",
+            "action"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "description": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "action": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "dimensionInsightBase": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dimension_code",
+            "dimension_label",
+            "score_band",
+            "summary",
+            "work_style",
+            "risks",
+            "development_focus"
+          ],
+          "properties": {
+            "dimension_code": {
+              "type": "string"
+            },
+            "dimension_label": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "score_band": {
+              "$ref": "#/$defs/scoreBand"
+            },
+            "summary": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "work_style": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "risks": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "development_focus": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "extraversionInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "EXTRAVERSION"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "agreeablenessInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "AGREEABLENESS"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "conscientiousnessInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "CONSCIENTIOUSNESS"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "emotionalStabilityInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "EMOTIONAL_STABILITY"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        },
+        "intellectInsight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/dimensionInsightBase"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "dimension_code": {
+                  "const": "INTELLECT"
+                }
+              },
+              "required": [
+                "dimension_code"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "notes": "HR completed assessment report for ipip50-hr-v1. Produces the canonical detailed report v1 JSON shape with neutral operational wording controlled by locale input."
   }
 ]

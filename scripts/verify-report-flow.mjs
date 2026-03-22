@@ -187,14 +187,12 @@ async function createAttempt(supabase, testId, status) {
 
 async function assertSnapshotBehavior(supabase, validAttemptId) {
   const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(firstHtml, "AI izvještaj procjene", "Expected assessment report section to render.");
-  assertIncludes(firstHtml, "Generator:", "Expected generator label to render.");
-  assertIncludes(firstHtml, "Sačuvani izvještaj generisan:", "Expected report timestamp label to render.");
-  assertIncludes(firstHtml, "Snage", "Expected strengths section to render.");
-  assertIncludes(firstHtml, "Slijepe tačke", "Expected blind spots section to render.");
+  assertIncludes(firstHtml, "Izvještaj procjene", "Expected assessment report section to render.");
+  assertIncludes(firstHtml, "Top uvidi", "Expected top insights section to render.");
+  assertIncludes(firstHtml, "Zaključak", "Expected conclusion section to render.");
   assertIncludes(
     firstHtml,
-    "Preporuke za razvoj",
+    "Preporuke",
     "Expected recommendations section to render.",
   );
 
@@ -214,14 +212,24 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
     fail(`Expected persisted generator_type ${EXPECTED_REPORT_GENERATOR}, received ${firstReportRow.generator_type}.`);
   }
 
-  if (firstReportRow.report_snapshot?.generator_type !== EXPECTED_REPORT_GENERATOR) {
-    fail(`Expected persisted report snapshot to include generator_type ${EXPECTED_REPORT_GENERATOR}.`);
+  if (!firstReportRow.report_snapshot?.report_title) {
+    fail("Expected persisted report snapshot to include report_title.");
+  }
+
+  if (!Array.isArray(firstReportRow.report_snapshot?.dimension_insights)) {
+    fail("Expected persisted report snapshot to include dimension_insights.");
+  }
+
+  if (firstReportRow.report_snapshot.dimension_insights.length !== 5) {
+    fail(
+      `Expected persisted report snapshot to include 5 dimension_insights, received ${firstReportRow.report_snapshot.dimension_insights.length}.`,
+    );
   }
 
   const firstGeneratedAt = firstReportRow.generated_at;
   const secondHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(secondHtml, "AI izvještaj procjene", "Expected assessment report section to remain on reload.");
-  assertIncludes(secondHtml, "Generator:", "Expected generator label to remain on reload.");
+  assertIncludes(secondHtml, "Izvještaj procjene", "Expected assessment report section to remain on reload.");
+  assertIncludes(secondHtml, "Top uvidi", "Expected top insights section to remain on reload.");
 
   const { data: secondReportRow, error: secondReportError } = await supabase
     .from("attempt_reports")
@@ -242,10 +250,10 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
 
 async function assertUnavailableBehavior(supabase, validAttemptId) {
   const firstHtml = await fetchAssessmentPage(validAttemptId);
-  assertIncludes(firstHtml, "AI izvještaj procjene", "Unavailable report should still render a stable report section.");
+  assertIncludes(firstHtml, "Izvještaj procjene", "Unavailable report should still render a stable report section.");
   assertIncludes(
     firstHtml,
-    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
+    "Izvještaj trenutno nije dostupan",
     "Unavailable report message should render.",
   );
 
@@ -279,7 +287,7 @@ async function assertUnavailableBehavior(supabase, validAttemptId) {
   const secondHtml = await fetchAssessmentPage(validAttemptId);
   assertIncludes(
     secondHtml,
-    "AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj.",
+    "Izvještaj trenutno nije dostupan",
     "Unavailable report message should remain stable on reload.",
   );
 

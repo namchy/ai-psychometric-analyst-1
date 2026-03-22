@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-profile.local/schemas/detailed-report-v1.json",
+  "title": "Detailed Report v1",
+  "description": "Canonical schema for detailed psychometric reports for participant and HR audiences in AI Psychometric Analyst for HR v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_title",
+    "report_subtitle",
+    "summary",
+    "strengths",
+    "blind_spots",
+    "development_recommendations",
+    "dimension_insights",
+    "disclaimer"
+  ],
+  "properties": {
+    "report_title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "report_subtitle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headline",
+        "overview"
+      ],
+      "properties": {
+        "headline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "overview": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/titleDescriptionItem"
+      }
+    },
+    "blind_spots": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/titleDescriptionItem"
+      }
+    },
+    "development_recommendations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/developmentRecommendationItem"
+      }
+    },
+    "dimension_insights": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/extraversionInsight"
+        },
+        {
+          "$ref": "#/$defs/agreeablenessInsight"
+        },
+        {
+          "$ref": "#/$defs/conscientiousnessInsight"
+        },
+        {
+          "$ref": "#/$defs/emotionalStabilityInsight"
+        },
+        {
+          "$ref": "#/$defs/intellectInsight"
+        }
+      ],
+      "items": false
+    },
+    "disclaimer": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scoreBand": {
+      "type": "string",
+      "enum": [
+        "low",
+        "moderate",
+        "high"
+      ]
+    },
+    "titleDescriptionItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "description"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "developmentRecommendationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "description",
+        "action"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "action": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "dimensionInsightBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimension_code",
+        "dimension_label",
+        "score_band",
+        "summary",
+        "work_style",
+        "risks",
+        "development_focus"
+      ],
+      "properties": {
+        "dimension_code": {
+          "type": "string"
+        },
+        "dimension_label": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "score_band": {
+          "$ref": "#/$defs/scoreBand"
+        },
+        "summary": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "work_style": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "risks": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "development_focus": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "extraversionInsight": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dimensionInsightBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dimension_code": {
+              "const": "EXTRAVERSION"
+            }
+          },
+          "required": [
+            "dimension_code"
+          ]
+        }
+      ]
+    },
+    "agreeablenessInsight": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dimensionInsightBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dimension_code": {
+              "const": "AGREEABLENESS"
+            }
+          },
+          "required": [
+            "dimension_code"
+          ]
+        }
+      ]
+    },
+    "conscientiousnessInsight": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dimensionInsightBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dimension_code": {
+              "const": "CONSCIENTIOUSNESS"
+            }
+          },
+          "required": [
+            "dimension_code"
+          ]
+        }
+      ]
+    },
+    "emotionalStabilityInsight": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dimensionInsightBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dimension_code": {
+              "const": "EMOTIONAL_STABILITY"
+            }
+          },
+          "required": [
+            "dimension_code"
+          ]
+        }
+      ]
+    },
+    "intellectInsight": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dimensionInsightBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dimension_code": {
+              "const": "INTELLECT"
+            }
+          },
+          "required": [
+            "dimension_code"
+          ]
+        }
+      ]
+    }
+  }
+}

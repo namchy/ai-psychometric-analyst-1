@@ -12,7 +12,8 @@
     "bootstrap-local-demo": "bash scripts/bootstrap-local-demo.sh",
     "import:assessment-package": "node --env-file=.env.local scripts/import-assessment-package.mjs",
     "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
-    "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs"
+    "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs",
+    "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

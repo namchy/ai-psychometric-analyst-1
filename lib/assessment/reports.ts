@@ -1,6 +1,7 @@
 import "server-only";
 
 import { loadAssessmentCompletionState } from "@/lib/assessment/completion-server";
+import type { AssessmentLocale } from "@/lib/assessment/locale";
 import { getAiReportConfig, type AiReportConfig } from "@/lib/assessment/report-config";
 import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
 import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
@@ -223,7 +224,10 @@ async function loadReportContext(testId: string, attemptId: string): Promise<Loa
 export async function buildCompletedAssessmentReportRequest(
   testId: string,
   attemptId: string,
-  options?: Pick<ReportGenerationOverrides, "promptVersion">,
+  options?: Pick<ReportGenerationOverrides, "promptVersion"> & {
+    audience?: "participant" | "hr";
+    locale?: AssessmentLocale;
+  },
 ): Promise<CompletedAssessmentReportRequest | null> {
   const context = await loadReportContext(testId, attemptId);
 
@@ -233,7 +237,10 @@ export async function buildCompletedAssessmentReportRequest(
 
   return {
     attemptId,
+    testId,
     testSlug: context.test.slug,
+    audience: options?.audience ?? "participant",
+    locale: options?.locale ?? "bs",
     scoringMethod: context.test.scoring_method,
     promptVersion: options?.promptVersion ?? getAiReportConfig().promptVersion,
     results: context.results,
@@ -277,7 +284,14 @@ async function loadPersistedReportSnapshot(
 
   if (row.report_status === "ready") {
     if (!isCompletedAssessmentReport(row.report_snapshot)) {
-      throw new Error(`Attempt report ${attemptId} is marked ready without a valid snapshot.`);
+      return {
+        status: "failed",
+        generatorType: row.generator_type,
+        generatedAt: row.generated_at,
+        completedAt: row.completed_at,
+        failureCode: "invalid_report_snapshot",
+        failureReason: "Persisted report snapshot does not match the current detailed report contract.",
+      };
     }
 
     return {
@@ -338,7 +352,14 @@ async function loadPersistedParticipantReportSnapshot(
 
   if (row.report_status === "ready") {
     if (!isCompletedAssessmentReport(row.report_snapshot)) {
-      throw new Error(`Attempt report ${attemptId} is marked ready without a valid snapshot.`);
+      return {
+        status: "failed",
+        generatorType: row.generator_type,
+        generatedAt: row.generated_at,
+        completedAt: row.completed_at,
+        failureCode: "invalid_report_snapshot",
+        failureReason: "Persisted report snapshot does not match the current detailed report contract.",
+      };
     }
 
     return {
@@ -459,7 +480,10 @@ export async function persistCompletedAssessmentReport(
 
   const generationResult = await generateReportWithFallback({
     attemptId,
+    testId,
     testSlug: context.test.slug,
+    audience: "participant",
+    locale: "bs",
     scoringMethod: context.test.scoring_method,
     promptVersion: getAiReportConfig().promptVersion,
     results: context.results,
@@ -467,15 +491,15 @@ export async function persistCompletedAssessmentReport(
 
   const persistedGeneratedAt =
     generationResult.status === "ready"
-      ? generationResult.report.generated_at
+      ? new Date().toISOString()
       : new Date().toISOString();
 
   const { error } = await context.supabase.from("attempt_reports").upsert(
     generationResult.status === "ready"
       ? {
           attempt_id: attemptId,
-          test_slug: generationResult.report.test_slug,
-          generator_type: generationResult.report.generator_type,
+          test_slug: context.test.slug,
+          generator_type: getAiReportConfig().provider,
           generated_at: persistedGeneratedAt,
           report_status: "ready",
           failure_code: null,
