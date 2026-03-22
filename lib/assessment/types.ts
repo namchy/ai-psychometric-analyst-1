@@ -57,6 +57,7 @@ export type Attempt = {
   organization_id: string | null;
   participant_id: string | null;
   test_id: string;
+  locale: "bs" | "hr";
   status: AttemptStatus;
   started_at: string;
   completed_at: string | null;

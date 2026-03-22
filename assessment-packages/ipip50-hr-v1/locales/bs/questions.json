@@ -1,0 +1,61 @@
+[
+  { "code": "E01", "text": "Unosim živost u svako druženje." },
+  { "code": "A01", "text": "Ne brinem mnogo za druge ljude." },
+  { "code": "C01", "text": "Uvijek sam spreman/spremna." },
+  { "code": "ES01", "text": "Lako podliježem stresu." },
+  { "code": "O01", "text": "Imam bogat rječnik." },
+
+  { "code": "E02", "text": "Ne pričam mnogo." },
+  { "code": "A02", "text": "Zanimaju me drugi ljudi." },
+  { "code": "C02", "text": "Ostavljam svoje stvari posvuda." },
+  { "code": "ES02", "text": "Uglavnom se osjećam opušteno." },
+  { "code": "O02", "text": "Teško razumijem apstraktne ideje." },
+
+  { "code": "E03", "text": "Osjećam se ugodno među ljudima." },
+  { "code": "A03", "text": "Vrijeđam ljude." },
+  { "code": "C03", "text": "Obraćam pažnju na detalje." },
+  { "code": "ES03", "text": "Često sam zabrinut/zabrinuta." },
+  { "code": "O03", "text": "Imam bujnu maštu." },
+
+  { "code": "E04", "text": "Držim se po strani." },
+  { "code": "A04", "text": "Saosjećam s drugima." },
+  { "code": "C04", "text": "Pravim nered." },
+  { "code": "ES04", "text": "Rijetko sam tužan/tužna." },
+  { "code": "O04", "text": "Ne zanimaju me apstraktne ideje." },
+
+  { "code": "E05", "text": "Prvi/prva započinjem razgovor." },
+  { "code": "A05", "text": "Ne zanimaju me tuđi problemi." },
+  { "code": "C05", "text": "Odmah završavam kućne obaveze." },
+  { "code": "ES05", "text": "Lako se iznerviram." },
+  { "code": "O05", "text": "Imam odlične ideje." },
+
+  { "code": "E06", "text": "Nemam mnogo toga za reći." },
+  { "code": "A06", "text": "Imam meko srce." },
+  { "code": "C06", "text": "Često zaboravljam vratiti stvari na njihovo mjesto." },
+  { "code": "ES06", "text": "Lako se uznemirim." },
+  { "code": "O06", "text": "Nemam mnogo mašte." },
+
+  { "code": "E07", "text": "Na zabavama razgovaram s mnogo različitih ljudi." },
+  { "code": "A07", "text": "Drugi ljudi me zapravo ne zanimaju." },
+  { "code": "C07", "text": "Volim red." },
+  { "code": "ES07", "text": "Raspoloženje mi se često mijenja." },
+  { "code": "O07", "text": "Brzo shvatam stvari." },
+
+  { "code": "E08", "text": "Ne volim privlačiti pažnju." },
+  { "code": "A08", "text": "Odvajam vrijeme za druge ljude." },
+  { "code": "C08", "text": "Izbjegavam svoje obaveze." },
+  { "code": "ES08", "text": "Često mijenjam raspoloženje." },
+  { "code": "O08", "text": "Koristim učene izraze." },
+
+  { "code": "E09", "text": "Nije mi neprijatno biti u centru pažnje." },
+  { "code": "A09", "text": "Osjetljiv/osjetljiva sam na tuđa osjećanja." },
+  { "code": "C09", "text": "Pridržavam se plana." },
+  { "code": "ES09", "text": "Lako se iznerviram." },
+  { "code": "O09", "text": "Volim razmišljati." },
+
+  { "code": "E10", "text": "Šutljiv/šutljiva sam s nepoznatim ljudima." },
+  { "code": "A10", "text": "Trudim se da se drugi osjećaju ugodno." },
+  { "code": "C10", "text": "Posao obavljam temeljito." },
+  { "code": "ES10", "text": "Često sam tužan/tužna." },
+  { "code": "O10", "text": "Pun/puna sam ideja." }
+]

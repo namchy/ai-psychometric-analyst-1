@@ -1,10 +1,12 @@
 import "server-only";
 
 import { loadAssessmentCompletionState } from "@/lib/assessment/completion-server";
-import { getAiReportConfig } from "@/lib/assessment/report-config";
+import { getAiReportConfig, type AiReportConfig } from "@/lib/assessment/report-config";
 import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
 import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
 import { createSelectedReportProvider } from "@/lib/assessment/report-provider-registry";
+import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
+import { getActiveReportRuntimeConfig } from "@/lib/assessment/report-runtime-config";
 import type {
   AttemptReportStatus,
   CompletedAssessmentReport,
@@ -21,15 +23,21 @@ import type { ScoringMethod } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type AttemptReportRow = {
+  id: string;
   attempt_id: string;
   test_slug: string;
-  generator_type: ReportGeneratorType;
+  generator_type: ReportGeneratorType | null;
   generated_at: string;
+  completed_at: string | null;
   report_status: AttemptReportStatus;
   failure_code: string | null;
   failure_reason: string | null;
   report_snapshot: unknown;
 };
+
+const PARTICIPANT_REPORT_TYPE = "individual";
+const PARTICIPANT_REPORT_AUDIENCE = "participant";
+const PARTICIPANT_REPORT_SOURCE_TYPE = "single_test";
 
 type AttemptRecord = {
   id: string;
@@ -48,15 +56,23 @@ type LoadedReportContext = {
   results: CompletedAssessmentResults;
 };
 
+type AttemptReportLifecycleState = {
+  generatorType: ReportGeneratorType | null;
+  generatedAt: string;
+  completedAt: string | null;
+};
+
 export type CompletedAssessmentReportState =
+  | {
+      status: "queued" | "processing";
+    } & AttemptReportLifecycleState
   | {
       status: "ready";
       report: CompletedAssessmentReport;
     }
   | {
-      status: "unavailable";
-      generatorType: ReportGeneratorType;
-      generatedAt: string;
+      status: "failed" | "unavailable";
+    } & AttemptReportLifecycleState & {
       failureCode: string | null;
       failureReason: string | null;
     };
@@ -73,12 +89,36 @@ type ReportGenerationResult =
       failureReason: string;
     };
 
+export type ReportGenerationOverrides = Partial<
+  Pick<
+    AiReportConfig,
+    "provider" | "model" | "promptVersion" | "fallbackToMock" | "openAiApiKey" | "openAiTimeoutMs"
+  >
+> & {
+  promptVersionId?: string | null;
+  promptTemplate?: ActivePromptVersion | null;
+};
+
+function resolveAiReportConfig(overrides?: ReportGenerationOverrides): AiReportConfig {
+  const baseConfig = getAiReportConfig();
+
+  return {
+    ...baseConfig,
+    ...overrides,
+    promptVersion: overrides?.promptVersion ?? baseConfig.promptVersion,
+  };
+}
+
 async function generateReportWithFallback(
   input: CompletedAssessmentReportRequest,
+  overrides?: ReportGenerationOverrides,
 ): Promise<ReportGenerationResult> {
-  const config = getAiReportConfig();
-  const selectedProvider = createSelectedReportProvider();
-  const preparedInput = buildPreparedReportGenerationInput(input);
+  const config = resolveAiReportConfig(overrides);
+  const selectedProvider = createSelectedReportProvider(config);
+  const preparedInput = buildPreparedReportGenerationInput(input, {
+    promptVersionId: overrides?.promptVersionId ?? null,
+    promptTemplate: overrides?.promptTemplate ?? null,
+  });
   const primaryResult = await selectedProvider.generateReport(preparedInput);
 
   if (primaryResult.ok) {
@@ -180,20 +220,110 @@ async function loadReportContext(testId: string, attemptId: string): Promise<Loa
   };
 }
 
+export async function buildCompletedAssessmentReportRequest(
+  testId: string,
+  attemptId: string,
+  options?: Pick<ReportGenerationOverrides, "promptVersion">,
+): Promise<CompletedAssessmentReportRequest | null> {
+  const context = await loadReportContext(testId, attemptId);
+
+  if (!context) {
+    return null;
+  }
+
+  return {
+    attemptId,
+    testSlug: context.test.slug,
+    scoringMethod: context.test.scoring_method,
+    promptVersion: options?.promptVersion ?? getAiReportConfig().promptVersion,
+    results: context.results,
+  };
+}
+
+export async function generateCompletedAssessmentReport(
+  request: CompletedAssessmentReportRequest,
+  overrides?: ReportGenerationOverrides,
+): Promise<ReportGenerationResult> {
+  return generateReportWithFallback(request, overrides);
+}
+
 async function loadPersistedReportSnapshot(
-  context: LoadedReportContext,
   attemptId: string,
 ): Promise<CompletedAssessmentReportState | null> {
-  const { data, error } = await context.supabase
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
     .from("attempt_reports")
     .select(
-      "attempt_id, test_slug, generator_type, generated_at, report_status, failure_code, failure_reason, report_snapshot",
+      "id, attempt_id, test_slug, generator_type, generated_at, completed_at, report_status, failure_code, failure_reason, report_snapshot",
     )
     .eq("attempt_id", attemptId)
-    .maybeSingle();
+    .order("generated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1);
 
   if (error) {
     throw new Error(`Failed to load attempt report: ${error.message}`);
+  }
+
+  const row = ((data ?? []) as AttemptReportRow[])[0] ?? null;
+
+  if (!row) {
+    return null;
+  }
+
+  if (!isAttemptReportStatus(row.report_status)) {
+    throw new Error(`Invalid attempt report status for attempt ${attemptId}.`);
+  }
+
+  if (row.report_status === "ready") {
+    if (!isCompletedAssessmentReport(row.report_snapshot)) {
+      throw new Error(`Attempt report ${attemptId} is marked ready without a valid snapshot.`);
+    }
+
+    return {
+      status: "ready",
+      report: row.report_snapshot,
+    };
+  }
+
+  if (row.report_status === "queued" || row.report_status === "processing") {
+    return {
+      status: row.report_status,
+      generatorType: row.generator_type,
+      generatedAt: row.generated_at,
+      completedAt: row.completed_at,
+    };
+  }
+
+  return {
+    status: row.report_status,
+    generatorType: row.generator_type,
+    generatedAt: row.generated_at,
+    completedAt: row.completed_at,
+    failureCode: row.failure_code,
+    failureReason: row.failure_reason,
+  };
+}
+
+async function loadPersistedParticipantReportSnapshot(
+  attemptId: string,
+): Promise<CompletedAssessmentReportState | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select(
+      "id, attempt_id, test_slug, generator_type, generated_at, completed_at, report_status, failure_code, failure_reason, report_snapshot",
+    )
+    // attempt_reports is no longer 1:1 with attempts, so participant UI must filter the
+    // full artifact identity and never read HR artifacts for the same attempt.
+    .eq("attempt_id", attemptId)
+    .eq("report_type", PARTICIPANT_REPORT_TYPE)
+    .eq("audience", PARTICIPANT_REPORT_AUDIENCE)
+    .eq("source_type", PARTICIPANT_REPORT_SOURCE_TYPE)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load participant attempt report: ${error.message}`);
   }
 
   const row = data as AttemptReportRow | null;
@@ -217,10 +347,20 @@ async function loadPersistedReportSnapshot(
     };
   }
 
+  if (row.report_status === "queued" || row.report_status === "processing") {
+    return {
+      status: row.report_status,
+      generatorType: row.generator_type,
+      generatedAt: row.generated_at,
+      completedAt: row.completed_at,
+    };
+  }
+
   return {
-    status: "unavailable",
+    status: row.report_status,
     generatorType: row.generator_type,
     generatedAt: row.generated_at,
+    completedAt: row.completed_at,
     failureCode: row.failure_code,
     failureReason: row.failure_reason,
   };
@@ -240,13 +380,64 @@ export async function getCompletedAssessmentReport(
     return null;
   }
 
-  const persistedReport = await loadPersistedReportSnapshot(context, attemptId);
+  const persistedReport = await loadPersistedParticipantReportSnapshot(attemptId);
 
-  if (persistedReport) {
-    return persistedReport;
+  return persistedReport;
+}
+
+export async function getPersistedCompletedAssessmentReportState(
+  attemptId: string | null,
+): Promise<CompletedAssessmentReportState | null> {
+  return getPersistedParticipantCompletedAssessmentReportState(attemptId);
+}
+
+export async function getPersistedParticipantCompletedAssessmentReportState(
+  attemptId: string | null,
+): Promise<CompletedAssessmentReportState | null> {
+  if (!attemptId) {
+    return null;
   }
 
-  return persistCompletedAssessmentReport(testId, attemptId, context);
+  return loadPersistedParticipantReportSnapshot(attemptId);
+}
+
+export async function enqueueCompletedAssessmentReports(attemptId: string): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.rpc("enqueue_individual_reports", {
+    p_attempt_id: attemptId,
+  });
+
+  if (error) {
+    throw new Error(`Failed to enqueue attempt reports: ${error.message}`);
+  }
+
+  const runtimeConfig = await getActiveReportRuntimeConfig({
+    reportType: PARTICIPANT_REPORT_TYPE,
+    audience: PARTICIPANT_REPORT_AUDIENCE,
+    sourceType: PARTICIPANT_REPORT_SOURCE_TYPE,
+    generatorType: "openai",
+  });
+
+  if (!runtimeConfig?.modelName) {
+    return;
+  }
+
+  const { error: freezeError } = await supabase
+    .from("attempt_reports")
+    .update({
+      model_name: runtimeConfig.modelName,
+    })
+    .eq("attempt_id", attemptId)
+    .eq("report_type", PARTICIPANT_REPORT_TYPE)
+    .eq("audience", PARTICIPANT_REPORT_AUDIENCE)
+    .eq("source_type", PARTICIPANT_REPORT_SOURCE_TYPE)
+    .eq("generator_type", "openai")
+    .eq("report_status", "queued")
+    .is("model_name", null);
+
+  if (freezeError) {
+    throw new Error(`Failed to freeze queued attempt report model: ${freezeError.message}`);
+  }
 }
 
 export async function persistCompletedAssessmentReport(
@@ -260,7 +451,7 @@ export async function persistCompletedAssessmentReport(
     return null;
   }
 
-  const existingReport = await loadPersistedReportSnapshot(context, attemptId);
+  const existingReport = await loadPersistedReportSnapshot(attemptId);
 
   if (existingReport) {
     return existingReport;
@@ -318,9 +509,11 @@ export async function persistCompletedAssessmentReport(
     status: "unavailable",
     generatorType: generationResult.generatorType,
     generatedAt: persistedGeneratedAt,
+    completedAt: persistedGeneratedAt,
     failureCode: generationResult.failureCode,
     failureReason: generationResult.failureReason,
   };
 }
 
 export type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
+export type { CompletedAssessmentReport as CompletedAssessmentReportSnapshot } from "@/lib/assessment/report-providers";

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assessment Package Options",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["code", "label", "value", "option_order"],
+    "properties": {
+      "code": { "type": "string" },
+      "label": { "type": "string" },
+      "value": { "type": ["number", "null"] },
+      "option_order": { "type": "integer" }
+    },
+    "additionalProperties": true
+  }
+}

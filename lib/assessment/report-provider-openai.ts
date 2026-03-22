@@ -1,6 +1,7 @@
 import "server-only";
 
 import { formatDimensionLabel } from "@/lib/assessment/report-provider-helpers";
+import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type {
   CompletedAssessmentReport,
   CompletedAssessmentReportDimension,
@@ -101,7 +102,7 @@ function isStructuredReport(value: unknown): value is OpenAiStructuredReport {
   );
 }
 
-function buildSystemPrompt(promptVersion: string): string {
+function buildDefaultSystemPrompt(promptVersion: string): string {
   return [
     `Generišeš strukturirane Big Five assessment izvještaje. Verzija prompta: ${promptVersion}.`,
     "Cjelokupan narativni sadržaj mora biti isključivo na bosanskom jeziku, ijekavica, latinica.",
@@ -117,14 +118,19 @@ function buildSystemPrompt(promptVersion: string): string {
   ].join(" ");
 }
 
-function buildUserPrompt(input: PreparedReportGenerationInput): string {
+function buildDimensionHintText(input: PreparedReportGenerationInput): string {
   const { promptInput } = input;
-  const dimensionHints = promptInput.dimension_scores
+  return promptInput.dimension_scores
     .map(
       (dimension) =>
         `${formatDimensionLabel(dimension.dimension_key)}: sirovi skor ${dimension.raw_score} kroz ${dimension.scored_question_count} bodovanih pitanja.`,
     )
     .join(" ");
+}
+
+function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
+  const { promptInput } = input;
+  const dimensionHints = buildDimensionHintText(input);
 
   return JSON.stringify({
     instructions: {
@@ -142,6 +148,39 @@ function buildUserPrompt(input: PreparedReportGenerationInput): string {
     },
     input: promptInput,
   });
+}
+
+function buildSystemPrompt(input: PreparedReportGenerationInput): string {
+  return input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input.promptVersion);
+}
+
+function applyPromptTemplate(
+  template: string,
+  input: PreparedReportGenerationInput,
+  promptTemplate: ActivePromptVersion,
+): string {
+  const replacements = new Map<string, string>([
+    ["{{prompt_version}}", promptTemplate.version],
+    ["{{prompt_version_id}}", promptTemplate.id],
+    ["{{dimension_hint_text}}", buildDimensionHintText(input)],
+    ["{{prompt_input_json}}", JSON.stringify(input.promptInput)],
+  ]);
+
+  let rendered = template;
+
+  for (const [token, value] of replacements) {
+    rendered = rendered.split(token).join(value);
+  }
+
+  return rendered;
+}
+
+function buildUserPrompt(input: PreparedReportGenerationInput): string {
+  if (!input.promptTemplate) {
+    return buildDefaultUserPrompt(input);
+  }
+
+  return applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
 }
 
 function containsEnglishLeakage(value: string): boolean {
@@ -253,7 +292,7 @@ async function requestOpenAiReport(
         messages: [
           {
             role: "system",
-            content: buildSystemPrompt(input.promptVersion),
+            content: buildSystemPrompt(input),
           },
           {
             role: "user",

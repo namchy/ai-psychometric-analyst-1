@@ -4,6 +4,17 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { loginWithPassword } from "@/app/actions/auth";
 
+function getDesktopLoginMessage(message: string) {
+  switch (message) {
+    case "Email and password are required.":
+      return "Korisničko ime i lozinka su obavezni.";
+    case "Invalid email or password.":
+      return "Korisničko ime ili lozinka nisu ispravni.";
+    default:
+      return message;
+  }
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -11,7 +22,7 @@ export function LoginForm() {
 
   return (
     <form
-      className="stack-sm"
+      className="form-stack"
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -32,13 +43,15 @@ export function LoginForm() {
         });
       }}
     >
-      <label className="stack-xs" htmlFor="email">
-        <span>Email</span>
+      <label className="field" htmlFor="email">
+        <span className="field__label auth-copy-mobile">Email</span>
+        <span className="field__label auth-copy-desktop">Korisničko ime</span>
         <input id="email" name="email" type="email" autoComplete="email" required />
       </label>
 
-      <label className="stack-xs" htmlFor="password">
-        <span>Password</span>
+      <label className="field" htmlFor="password">
+        <span className="field__label auth-copy-mobile">Password</span>
+        <span className="field__label auth-copy-desktop">Lozinka</span>
         <input
           id="password"
           name="password"
@@ -48,11 +61,17 @@ export function LoginForm() {
         />
       </label>
 
-      <button type="submit" disabled={isPending}>
-        {isPending ? "Signing in..." : "Sign in"}
+      <button className="button-primary button-block" type="submit" disabled={isPending}>
+        <span className="auth-copy-mobile">{isPending ? "Signing in..." : "Sign in"}</span>
+        <span className="auth-copy-desktop">{isPending ? "Prijava u toku..." : "Prijavi se"}</span>
       </button>
 
-      {message ? <p>{message}</p> : null}
+      {message ? (
+        <p className="status-message status-message--danger">
+          <span className="auth-copy-mobile">{message}</span>
+          <span className="auth-copy-desktop">{getDesktopLoginMessage(message)}</span>
+        </p>
+      ) : null}
     </form>
   );
 }

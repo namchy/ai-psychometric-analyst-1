@@ -86,69 +86,116 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const successMessage = getDashboardSuccessMessage(searchParams?.success, searchParams?.attemptId);
 
   return (
-    <main className="stack-md">
-      <section className="card stack-sm">
-        <div className="stack-xs">
-          <h1>Dashboard</h1>
-          <p>Signed in as {user.email ?? user.id}</p>
-          <p>
-            Active organization: {activeOrganization ? activeOrganization.name : "No active organization"}
-          </p>
-          {activeOrganization ? (
-            <p>
-              Current B2B test: <code>{DEFAULT_B2B_TEST_SLUG}</code>
+    <main className="app-shell dashboard-page stack-lg">
+      <section className="dashboard-hero card stack-md">
+        <div className="stack-md">
+          <div className="stack-xs">
+            <p className="eyebrow">HR Dashboard</p>
+            <h1>Assessment operations</h1>
+            <p className="page-lead">
+              Create attempts, monitor participant activity, and keep the current assessment workflow moving.
+            </p>
+          </div>
+
+          <div className="dashboard-hero__meta">
+            <div className="dashboard-meta-card">
+              <span className="dashboard-meta-card__label">Signed in as</span>
+              <p>{user.email ?? user.id}</p>
+            </div>
+            <div className="dashboard-meta-card">
+              <span className="dashboard-meta-card__label">Active organization</span>
+              <p>{activeOrganization ? activeOrganization.name : "No active organization"}</p>
+            </div>
+            {activeOrganization ? (
+              <div className="dashboard-meta-card">
+                <span className="dashboard-meta-card__label">Current B2B test</span>
+                <p>
+                  <code>{DEFAULT_B2B_TEST_SLUG}</code>
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          {memberships.length > 1 ? (
+            <p className="dashboard-note">
+              TODO: add an explicit organization switcher when multi-org selection becomes necessary.
             </p>
           ) : null}
-          {memberships.length > 1 ? (
-            <p>TODO: add an explicit organization switcher when multi-org selection becomes necessary.</p>
-          ) : null}
-          {message ? <p>{message}</p> : null}
-          {successMessage ? <p>{successMessage}</p> : null}
+          {message ? <p className="status-message status-message--danger">{message}</p> : null}
+          {successMessage ? <p className="status-message status-message--success">{successMessage}</p> : null}
         </div>
 
         <form action={logout}>
-          <button type="submit">Sign out</button>
+          <button className="button-secondary" type="submit">
+            Sign out
+          </button>
         </form>
       </section>
 
-      <section className="card stack-sm">
-        <h2>Memberships</h2>
+      <section className="card stack-md">
+        <div className="section-heading">
+          <div>
+            <h2>Memberships</h2>
+            <p>Organization access and role context for the signed-in account.</p>
+          </div>
+        </div>
 
         {memberships.length === 0 ? (
-          <p>No organization memberships found for this user yet.</p>
+          <div className="empty-state">
+            <p>No organization memberships found for this user yet.</p>
+          </div>
         ) : (
-          <ul>
+          <ul className="data-list">
             {memberships.map((membership) => (
-              <li key={membership.id}>
-                {getOrganizationName(membership)} ({membership.role}, {membership.status})
+              <li key={membership.id} className="data-list__item">
+                <div className="data-list__row">
+                  <div className="stack-xs">
+                    <h3>{getOrganizationName(membership)}</h3>
+                    <p>
+                      {membership.role} · {membership.status}
+                    </p>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section className="card stack-sm">
-        <h2>Participants</h2>
+      <section className="card stack-md">
+        <div className="section-heading">
+          <div>
+            <h2>Participants</h2>
+            <p>Launch the active IPIP-50 assessment for participants in the current organization.</p>
+          </div>
+        </div>
 
         {!activeOrganization ? (
-          <p>This user does not have an active organization yet, so no B2B attempts can be created.</p>
+          <div className="empty-state">
+            <p>This user does not have an active organization yet, so no B2B attempts can be created.</p>
+          </div>
         ) : participants.length === 0 ? (
-          <p>No active participants found for {activeOrganization.name}.</p>
+          <div className="empty-state">
+            <p>No active participants found for {activeOrganization.name}.</p>
+          </div>
         ) : (
-          <ul>
+          <ul className="data-list">
             {participants.map((participant) => (
-              <li key={participant.id}>
-                <div className="stack-xs">
-                  <p>
-                    <strong>{participant.full_name}</strong> ({participant.email})
-                  </p>
-                  <p>
-                    {participant.participant_type} {participant.user_id ? "· linked user" : "· no linked user"}
-                  </p>
+              <li key={participant.id} className="data-list__item">
+                <div className="data-list__row data-list__row--split">
+                  <div className="stack-xs">
+                    <h3>{participant.full_name}</h3>
+                    <p>{participant.email}</p>
+                    <p>
+                      {participant.participant_type} {participant.user_id ? "· linked user" : "· no linked user"}
+                    </p>
+                  </div>
                   <form action={createB2BAttempt}>
                     <input type="hidden" name="participantId" value={participant.id} />
                     <input type="hidden" name="testSlug" value={DEFAULT_B2B_TEST_SLUG} />
-                    <button type="submit">Create IPIP-50 attempt</button>
+                    <button className="button-primary" type="submit">
+                      Create IPIP-50 attempt
+                    </button>
                   </form>
                 </div>
               </li>
@@ -157,18 +204,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         )}
       </section>
 
-      <section className="card stack-sm">
-        <h2>Attempts</h2>
+      <section className="card stack-md">
+        <div className="section-heading">
+          <div>
+            <h2>Attempts</h2>
+            <p>Recent assessment activity across the active organization.</p>
+          </div>
+        </div>
 
         {!activeOrganization ? (
-          <p>This user does not have an active organization yet, so no organization-scoped attempts are available.</p>
+          <div className="empty-state">
+            <p>
+              This user does not have an active organization yet, so no organization-scoped attempts are available.
+            </p>
+          </div>
         ) : attempts.length === 0 ? (
-          <div className="stack-xs">
+          <div className="empty-state stack-xs">
             <p>No attempts exist for {activeOrganization.name} yet.</p>
             <p>Create the first attempt for a participant above to start the protected assessment flow.</p>
           </div>
         ) : (
-          <ul>
+          <ul className="data-list">
             {attempts.map((attempt) => {
               const detailHref = `/dashboard/attempts/${attempt.id}`;
               const continueHref = `${detailHref}/run`;
@@ -181,19 +237,23 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   : `Started ${formatTimestamp(attempt.started_at)}`;
 
               return (
-                <li key={attempt.id}>
+                <li key={attempt.id} className="data-list__item">
+                  <div className="data-list__row">
+                    <div className="stack-xs">
+                      <h3>{participantName}</h3>
+                      <p>{participantEmail}</p>
+                    </div>
+                    <p className="data-list__meta">{attempt.status}</p>
+                  </div>
                   <div className="stack-xs">
                     <p>
-                      <strong>{participantName}</strong> ({participantEmail})
-                    </p>
-                    <p>
-                      Attempt {getAttemptLabel(attempt.id)} · {testLabel} · {attempt.status}
+                      Attempt {getAttemptLabel(attempt.id)} · {testLabel}
                     </p>
                     <p>{activityLabel}</p>
                     {attempt.user_id ? <p>Owner: {attempt.user_id}</p> : null}
-                    <p>
+                    <p className="dashboard-links">
                       <Link href={detailHref}>Open attempt</Link>
-                      {" · "}
+                      <span aria-hidden="true">·</span>
                       {attempt.status === "completed" ? (
                         <Link href={detailHref}>View results</Link>
                       ) : (

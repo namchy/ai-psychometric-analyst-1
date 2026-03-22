@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assessment Package Items",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "code",
+      "text",
+      "question_type",
+      "question_order",
+      "is_required",
+      "is_active",
+      "mappings"
+    ],
+    "properties": {
+      "code": { "type": "string" },
+      "text": { "type": "string" },
+      "question_type": { "type": "string" },
+      "question_order": { "type": "integer" },
+      "is_required": { "type": "boolean" },
+      "is_active": { "type": "boolean" },
+      "mappings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["dimension_code", "weight", "reverse_scored"],
+          "properties": {
+            "dimension_code": { "type": "string" },
+            "weight": { "type": "number" },
+            "reverse_scored": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        }
+      }
+    },
+    "additionalProperties": true
+  }
+}

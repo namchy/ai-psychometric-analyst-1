@@ -1,0 +1,452 @@
+[
+  {
+    "code": "E01",
+    "text": "Unosim živost u neku zabavu.",
+    "question_type": "single_choice",
+    "question_order": 1,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "A01",
+    "text": "Ne brinem se puno za druge ljude.",
+    "question_type": "single_choice",
+    "question_order": 2,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "C01",
+    "text": "Uvijek sam spreman (spremna).",
+    "question_type": "single_choice",
+    "question_order": 3,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "ES01",
+    "text": "Lako podliježem stresu.",
+    "question_type": "single_choice",
+    "question_order": 4,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O01",
+    "text": "Imam bogat rječnik.",
+    "question_type": "single_choice",
+    "question_order": 5,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "E02",
+    "text": "Ne pričam puno.",
+    "question_type": "single_choice",
+    "question_order": 6,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "A02",
+    "text": "Zanimaju me drugi ljudi.",
+    "question_type": "single_choice",
+    "question_order": 7,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "C02",
+    "text": "Ostavljam svoje stvari posvuda.",
+    "question_type": "single_choice",
+    "question_order": 8,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "ES02",
+    "text": "Uglavnom se osjećam opušteno.",
+    "question_type": "single_choice",
+    "question_order": 9,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "O02",
+    "text": "Teško razumijem apstraktne ideje.",
+    "question_type": "single_choice",
+    "question_order": 10,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "E03",
+    "text": "Osjećam se ugodno u društvu.",
+    "question_type": "single_choice",
+    "question_order": 11,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "A03",
+    "text": "Vrijeđam ljude.",
+    "question_type": "single_choice",
+    "question_order": 12,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "C03",
+    "text": "Obraćam pažnju na detalje.",
+    "question_type": "single_choice",
+    "question_order": 13,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "ES03",
+    "text": "Često sam zabrinut (zabrinuta).",
+    "question_type": "single_choice",
+    "question_order": 14,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O03",
+    "text": "Imam bujnu maštu.",
+    "question_type": "single_choice",
+    "question_order": 15,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "E04",
+    "text": "Držim se po strani.",
+    "question_type": "single_choice",
+    "question_order": 16,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "A04",
+    "text": "Suosjećam s drugima.",
+    "question_type": "single_choice",
+    "question_order": 17,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "C04",
+    "text": "Pravim nered.",
+    "question_type": "single_choice",
+    "question_order": 18,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "ES04",
+    "text": "Rijetko sam tužan (tužna).",
+    "question_type": "single_choice",
+    "question_order": 19,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "O04",
+    "text": "Ne zanimaju me apstraktne ideje.",
+    "question_type": "single_choice",
+    "question_order": 20,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "E05",
+    "text": "Sam(a) započinjem razgovore.",
+    "question_type": "single_choice",
+    "question_order": 21,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "A05",
+    "text": "Ne zanimaju me tuđi problemi.",
+    "question_type": "single_choice",
+    "question_order": 22,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "C05",
+    "text": "Odmah obavljam kućne poslove.",
+    "question_type": "single_choice",
+    "question_order": 23,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "ES05",
+    "text": "Lako me zasmetati.",
+    "question_type": "single_choice",
+    "question_order": 24,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O05",
+    "text": "Imam izvrsne ideje.",
+    "question_type": "single_choice",
+    "question_order": 25,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "E06",
+    "text": "Imam malo toga za reći.",
+    "question_type": "single_choice",
+    "question_order": 26,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "A06",
+    "text": "Imam meko srce.",
+    "question_type": "single_choice",
+    "question_order": 27,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "C06",
+    "text": "Često zaboravljam vratiti stvari na njihovo mjesto.",
+    "question_type": "single_choice",
+    "question_order": 28,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "ES06",
+    "text": "Lako se uzrujam.",
+    "question_type": "single_choice",
+    "question_order": 29,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O06",
+    "text": "Nemam mnogo mašte.",
+    "question_type": "single_choice",
+    "question_order": 30,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "E07",
+    "text": "Na zabavama razgovaram s mnogo različitih osoba.",
+    "question_type": "single_choice",
+    "question_order": 31,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "A07",
+    "text": "Drugi ljudi me zapravo ne zanimaju.",
+    "question_type": "single_choice",
+    "question_order": 32,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "C07",
+    "text": "Volim red.",
+    "question_type": "single_choice",
+    "question_order": 33,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "ES07",
+    "text": "Često mijenjam raspoloženja.",
+    "question_type": "single_choice",
+    "question_order": 34,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O07",
+    "text": "Brzo shvaćam različite stvari.",
+    "question_type": "single_choice",
+    "question_order": 35,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "E08",
+    "text": "Ne volim privlačiti pažnju.",
+    "question_type": "single_choice",
+    "question_order": 36,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "A08",
+    "text": "Posvećujem vrijeme drugim ljudima.",
+    "question_type": "single_choice",
+    "question_order": 37,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "C08",
+    "text": "Izbjegavam obveze.",
+    "question_type": "single_choice",
+    "question_order": 38,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "ES08",
+    "text": "Podliježem čestim promjenama raspoloženja.",
+    "question_type": "single_choice",
+    "question_order": 39,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O08",
+    "text": "Koristim učene izraze.",
+    "question_type": "single_choice",
+    "question_order": 40,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "E09",
+    "text": "Nije mi nelagodno biti u središtu pozornosti.",
+    "question_type": "single_choice",
+    "question_order": 41,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "A09",
+    "text": "Osjetljiv(a) sam na tuđe osjećaje.",
+    "question_type": "single_choice",
+    "question_order": 42,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "C09",
+    "text": "Slijedim zacrtani plan.",
+    "question_type": "single_choice",
+    "question_order": 43,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "ES09",
+    "text": "Lako me je razdražiti.",
+    "question_type": "single_choice",
+    "question_order": 44,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O09",
+    "text": "Provodim vrijeme razmišljajući.",
+    "question_type": "single_choice",
+    "question_order": 45,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "E10",
+    "text": "Šutljiv(a) sam s nepoznatima.",
+    "question_type": "single_choice",
+    "question_order": 46,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EXTRAVERSION", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "A10",
+    "text": "Nastojim da se drugi osjećaju ugodno.",
+    "question_type": "single_choice",
+    "question_order": 47,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "AGREEABLENESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "C10",
+    "text": "Posao obavljam točno i precizno.",
+    "question_type": "single_choice",
+    "question_order": 48,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "CONSCIENTIOUSNESS", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "ES10",
+    "text": "Često sam tužan (tužna).",
+    "question_type": "single_choice",
+    "question_order": 49,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "EMOTIONAL_STABILITY", "weight": 1, "reverse_scored": true }]
+  },
+  {
+    "code": "O10",
+    "text": "Pun(a) sam ideja.",
+    "question_type": "single_choice",
+    "question_order": 50,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "INTELLECT", "weight": 1, "reverse_scored": false }]
+  }
+]

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { AssessmentForm } from "@/components/assessment/assessment-form";
+import { DEFAULT_ASSESSMENT_LOCALE } from "@/lib/assessment/locale";
 import {
   ASSESSMENT_ATTEMPT_COOKIE_NAME,
   getActiveTest,
@@ -27,7 +28,7 @@ export default async function LegacyAssessmentPage() {
       );
     }
 
-    const questions = await getQuestionsForTest(test.id);
+    const questions = await getQuestionsForTest(test.id, DEFAULT_ASSESSMENT_LOCALE);
 
     if (questions.length === 0) {
       return (
@@ -48,6 +49,7 @@ export default async function LegacyAssessmentPage() {
     const attemptId = cookies().get(ASSESSMENT_ATTEMPT_COOKIE_NAME)?.value;
     const answerOptionsByQuestionId = await getAnswerOptionsForQuestions(
       questions.map((question) => question.id),
+      DEFAULT_ASSESSMENT_LOCALE,
     );
     const resumeState = await getAssessmentResumeState(test.id, attemptId);
     const results = await getCompletedAssessmentResults(test.id, resumeState.attemptId);
@@ -63,6 +65,7 @@ export default async function LegacyAssessmentPage() {
         <section className="card">
           <AssessmentForm
             testId={test.id}
+            locale={DEFAULT_ASSESSMENT_LOCALE}
             questions={questions}
             answerOptionsByQuestionId={answerOptionsByQuestionId}
             initialAttemptId={resumeState.attemptId}

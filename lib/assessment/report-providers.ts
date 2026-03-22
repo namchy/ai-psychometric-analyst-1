@@ -1,10 +1,16 @@
 import "server-only";
 
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
+import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type { ScoringMethod } from "@/lib/assessment/types";
 
 export type ReportGeneratorType = "mock" | "openai";
-export type AttemptReportStatus = "ready" | "unavailable";
+export type AttemptReportStatus =
+  | "queued"
+  | "processing"
+  | "ready"
+  | "failed"
+  | "unavailable";
 
 export type CompletedAssessmentReportDimension = {
   dimension_key: string;
@@ -58,6 +64,8 @@ export type PreparedReportGenerationInput = {
   attemptId: string;
   testSlug: string;
   promptVersion: string;
+  promptVersionId: string | null;
+  promptTemplate: ActivePromptVersion | null;
   promptInput: AiReportPromptInput;
 };
 
@@ -119,5 +127,11 @@ export function isCompletedAssessmentReport(value: unknown): value is CompletedA
 }
 
 export function isAttemptReportStatus(value: unknown): value is AttemptReportStatus {
-  return value === "ready" || value === "unavailable";
+  return (
+    value === "queued" ||
+    value === "processing" ||
+    value === "ready" ||
+    value === "failed" ||
+    value === "unavailable"
+  );
 }

@@ -12,9 +12,14 @@ import {
 } from "@/lib/b2b/organizations";
 import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
 import {
+  enqueueCompletedAssessmentReports,
   persistCompletedAssessmentReport,
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
+import {
+  normalizeAssessmentLocale,
+  type AssessmentLocale,
+} from "@/lib/assessment/locale";
 import {
   persistCompletedAssessmentResults,
   type CompletedAssessmentResults,
@@ -38,6 +43,7 @@ export type SaveAssessmentSelectionsInput = {
   attemptId: string | null;
   testId: string;
   selections: AssessmentSelectionsInput;
+  locale?: AssessmentLocale | null;
   ownershipContext?: AttemptOwnershipContext;
 };
 
@@ -78,6 +84,7 @@ type AnswerOptionRecord = {
 
 type AttemptRecord = {
   id: string;
+  locale?: AssessmentLocale;
   status: AttemptStatus;
   completed_at: string | null;
 };
@@ -427,6 +434,7 @@ async function persistAssessmentSelections(
       .from("attempts")
       .insert({
         test_id: input.testId,
+        locale: normalizeAssessmentLocale(input.locale),
         user_id: input.ownershipContext?.userId ?? null,
         organization_id: input.ownershipContext?.organizationId ?? null,
         participant_id: input.ownershipContext?.participantId ?? null,
@@ -686,6 +694,55 @@ export async function createB2BAttempt(formData: FormData) {
   redirect(`/dashboard?success=attempt-created&attemptId=${data.id}`);
 }
 
+export async function setProtectedAttemptLocale(formData: FormData) {
+  const attemptId = String(formData.get("attemptId") ?? "").trim();
+  const locale = normalizeAssessmentLocale(String(formData.get("locale") ?? ""));
+  const returnPath = String(formData.get("returnPath") ?? "").trim();
+  const user = await requireAuthenticatedUser();
+
+  if (!attemptId) {
+    redirect("/app?error=missing-attempt");
+  }
+
+  const ownedAttempt = await getProtectedAttemptForUser(user.id, attemptId);
+
+  if (!ownedAttempt) {
+    redirect("/app?error=attempt-not-found");
+  }
+
+  if (ownedAttempt.status !== "in_progress") {
+    redirect(returnPath || `/app/attempts/${attemptId}`);
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { count, error: responseCountError } = await supabase
+    .from("responses")
+    .select("id", { count: "exact", head: true })
+    .eq("attempt_id", attemptId);
+
+  if (responseCountError) {
+    console.error("setProtectedAttemptLocale response count failed", responseCountError);
+    redirect(`${returnPath || `/app/attempts/${attemptId}/run`}?error=locale-update-failed`);
+  }
+
+  if ((count ?? 0) > 0) {
+    redirect(`${returnPath || `/app/attempts/${attemptId}/run`}?error=locale-locked`);
+  }
+
+  const { error: updateError } = await supabase
+    .from("attempts")
+    .update({ locale })
+    .eq("id", attemptId)
+    .eq("status", "in_progress");
+
+  if (updateError) {
+    console.error("setProtectedAttemptLocale update failed", updateError);
+    redirect(`${returnPath || `/app/attempts/${attemptId}/run`}?error=locale-update-failed`);
+  }
+
+  redirect(returnPath || `/app/attempts/${attemptId}/run`);
+}
+
 export async function completeAssessmentAttempt(
   input: SaveAssessmentSelectionsInput,
 ): Promise<CompleteAssessmentAttemptResult> {
@@ -841,7 +898,13 @@ export async function completeProtectedAssessmentAttempt(
     }
 
     const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
-    const report = await persistCompletedAssessmentReport(input.testId, persistResult.attemptId);
+    await enqueueCompletedAssessmentReports(persistResult.attemptId);
+    const report: CompletedAssessmentReportState = {
+      status: "queued",
+      generatorType: null,
+      generatedAt: new Date().toISOString(),
+      completedAt: null,
+    };
 
     return {
       ok: true,

@@ -1,6 +1,7 @@
 import "server-only";
 
 export { formatDimensionLabel } from "@/lib/assessment/result-display";
+import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type {
   AiReportPromptInput,
   CompletedAssessmentReportRequest,
@@ -57,11 +58,17 @@ export function buildAiReportPromptInput(
 
 export function buildPreparedReportGenerationInput(
   input: CompletedAssessmentReportRequest,
+  options?: {
+    promptVersionId?: string | null;
+    promptTemplate?: ActivePromptVersion | null;
+  },
 ): PreparedReportGenerationInput {
   return {
     attemptId: input.attemptId,
     testSlug: input.testSlug,
     promptVersion: input.promptVersion,
+    promptVersionId: options?.promptVersionId ?? null,
+    promptTemplate: options?.promptTemplate ?? null,
     promptInput: buildAiReportPromptInput(input),
   };
 }

@@ -519,9 +519,7 @@ function getTopInsights(
   dimensions: DimensionViewModel[],
 ): string[] {
   if (reportState?.status !== "ready") {
-    return dimensions
-      .slice(0, 3)
-      .map((dimension) => formatTopInsightSentence(dimension.shortInterpretation));
+    return [];
   }
 
   const candidates = [
@@ -547,7 +545,7 @@ function getConclusion(
   dimensions: DimensionViewModel[],
 ): string[] {
   if (reportState?.status !== "ready") {
-    return ["Tvoji rezultati pokazuju prepoznatljiv obrazac po dimenzijama, ali narativni zaključak trenutno nije dostupan."];
+    return [];
   }
 
   const highest = dimensions[0];
@@ -649,7 +647,12 @@ export function CompletedAssessmentSummary({
   const scoreRangeLabel = maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
   const hasScoredDimensions = dimensionCards.length > 0;
-  const shouldShowNarrativePending = hasResults && reportState === null;
+  const shouldShowNarrativePending =
+    reportState === null ||
+    reportState.status === "queued" ||
+    reportState.status === "processing";
+  const shouldShowNarrativeFailed =
+    reportState?.status === "failed" || reportState?.status === "unavailable";
   const shouldShowResultsUnavailable = !hasResults;
 
   return (
@@ -710,6 +713,30 @@ export function CompletedAssessmentSummary({
               <li key={insight}>{insight}</li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {shouldShowNarrativePending ? (
+        <section className="results-report__section results-report__status results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Izvještaj se priprema</h3>
+          </div>
+          <p className="results-report__section-body">
+            Tvoj izvještaj je zaprimljen i trenutno se obrađuje. Ova stranica će se osvježavati
+            automatski čim izvještaj bude spreman.
+          </p>
+        </section>
+      ) : null}
+
+      {shouldShowNarrativeFailed ? (
+        <section className="results-report__section results-report__status results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Izvještaj trenutno nije dostupan</h3>
+          </div>
+          <p className="results-report__section-body">
+            Obrada izvještaja za ovaj završeni pokušaj trenutno nije uspjela. Bodovani rezultati i
+            dalje ostaju dostupni ispod.
+          </p>
         </section>
       ) : null}
 
@@ -881,29 +908,6 @@ export function CompletedAssessmentSummary({
         <p className="results-report__disclaimer">{reportState.report.disclaimer}</p>
       ) : null}
 
-      {shouldShowNarrativePending ? (
-        <section className="results-report__section results-report__status results-report__panel card stack-sm">
-          <div className="results-report__section-heading">
-            <h3>Narativni izvještaj se još priprema</h3>
-          </div>
-          <p className="results-report__section-body">
-            Bodovani rezultati su dostupni ispod, a narativni sažetak za ovaj pokušaj još nije
-            spreman.
-          </p>
-        </section>
-      ) : null}
-
-      {reportState?.status === "unavailable" ? (
-        <section className="results-report__section results-report__status results-report__panel card stack-sm">
-          <div className="results-report__section-heading">
-            <h3>Narativni izvještaj trenutno nije dostupan</h3>
-          </div>
-          <p className="results-report__section-body">
-            AI izvještaj trenutno nije dostupan za ovaj završeni pokušaj. Numerički rezultati i
-            dalje ostaju sačuvani za pregled.
-          </p>
-        </section>
-      ) : null}
     </div>
   );
 }

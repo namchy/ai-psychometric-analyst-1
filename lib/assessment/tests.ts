@@ -16,8 +16,13 @@ import {
 } from "@/lib/assessment/scoring";
 import {
   getCompletedAssessmentReport,
+  getPersistedParticipantCompletedAssessmentReportState,
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
+import {
+  normalizeAssessmentLocale,
+  type AssessmentLocale,
+} from "@/lib/assessment/locale";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -44,9 +49,32 @@ type ResumeResponseRecord = {
 
 type ResumeAttemptRecord = {
   id: string;
+  locale: AssessmentLocale;
   status: AttemptStatus;
   completed_at: string | null;
 };
+
+type QuestionLocalizationRow = {
+  question_id: string;
+  text: string;
+};
+
+type AnswerOptionLocalizationRow = {
+  answer_option_id: string;
+  label: string;
+};
+
+const LOCALIZATION_QUERY_CHUNK_SIZE = 50;
+
+function chunkValues<T>(values: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < values.length; index += chunkSize) {
+    chunks.push(values.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
 
 export type AssessmentResumeState = {
   attemptId: string | null;
@@ -70,8 +98,11 @@ export async function getActiveTest(): Promise<ActiveTest | null> {
   return data as ActiveTest | null;
 }
 
-export async function getQuestionsForTest(testId: string): Promise<TestQuestion[]> {
-  const supabase = createSupabaseServerClient();
+export async function getQuestionsForTest(
+  testId: string,
+  locale?: AssessmentLocale | null,
+): Promise<TestQuestion[]> {
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("questions")
     .select("id, code, text, question_order, question_type, is_required")
@@ -83,17 +114,56 @@ export async function getQuestionsForTest(testId: string): Promise<TestQuestion[
     throw new Error(`Failed to load questions: ${error.message}`);
   }
 
-  return (data ?? []) as TestQuestion[];
+  const questions = (data ?? []) as TestQuestion[];
+
+  if (questions.length === 0 || !locale) {
+    return questions;
+  }
+
+  const localizationChunks = await Promise.all(
+    chunkValues(
+      questions.map((question) => question.id),
+      LOCALIZATION_QUERY_CHUNK_SIZE,
+    ).map(async (questionIdsChunk) => {
+      const { data: localizationData, error: localizationError } = await supabase
+        .from("question_localizations")
+        .select("question_id, text")
+        .eq("locale", normalizeAssessmentLocale(locale))
+        .in("question_id", questionIdsChunk);
+
+      if (localizationError) {
+        throw new Error(`Failed to load question localizations: ${localizationError.message}`);
+      }
+
+      return (localizationData ?? []) as QuestionLocalizationRow[];
+    }),
+  );
+
+  const localizationData = localizationChunks.flat();
+
+  if (localizationData.length === 0) {
+    return questions;
+  }
+
+  const localizedTextByQuestionId = new Map(
+    localizationData.map((entry) => [entry.question_id, entry.text]),
+  );
+
+  return questions.map((question) => ({
+    ...question,
+    text: localizedTextByQuestionId.get(question.id) ?? question.text,
+  }));
 }
 
 export async function getAnswerOptionsForQuestions(
   questionIds: string[],
+  locale?: AssessmentLocale | null,
 ): Promise<Record<string, TestAnswerOption[]>> {
   if (questionIds.length === 0) {
     return {};
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("answer_options")
     .select("id, question_id, label, option_order")
@@ -104,7 +174,40 @@ export async function getAnswerOptionsForQuestions(
     throw new Error(`Failed to load answer options: ${error.message}`);
   }
 
-  return ((data ?? []) as TestAnswerOption[]).reduce<Record<string, TestAnswerOption[]>>(
+  const options = (data ?? []) as TestAnswerOption[];
+
+  if (options.length > 0 && locale) {
+    const localizationChunks = await Promise.all(
+      chunkValues(
+        options.map((option) => option.id),
+        LOCALIZATION_QUERY_CHUNK_SIZE,
+      ).map(async (optionIdsChunk) => {
+        const { data: localizationData, error: localizationError } = await supabase
+          .from("answer_option_localizations")
+          .select("answer_option_id, label")
+          .eq("locale", normalizeAssessmentLocale(locale))
+          .in("answer_option_id", optionIdsChunk);
+
+        if (localizationError) {
+          throw new Error(
+            `Failed to load answer option localizations: ${localizationError.message}`,
+          );
+        }
+
+        return (localizationData ?? []) as AnswerOptionLocalizationRow[];
+      }),
+    );
+
+    const localizedLabelByOptionId = new Map(
+      localizationChunks.flat().map((entry) => [entry.answer_option_id, entry.label]),
+    );
+
+    for (const option of options) {
+      option.label = localizedLabelByOptionId.get(option.id) ?? option.label;
+    }
+  }
+
+  return options.reduce<Record<string, TestAnswerOption[]>>(
     (groupedOptions, option) => {
       const questionOptions = groupedOptions[option.question_id] ?? [];
       questionOptions.push(option);
@@ -131,7 +234,7 @@ export async function getAssessmentResumeState(
   const supabase = createSupabaseAdminClient();
   const { data: attempt, error: attemptError } = await supabase
     .from("attempts")
-    .select("id, status, completed_at")
+    .select("id, locale, status, completed_at")
     .eq("id", attemptId)
     .eq("test_id", testId)
     .maybeSingle();
@@ -186,4 +289,12 @@ export async function getCompletedAssessmentReportSnapshot(
   attemptId: string | null,
 ): Promise<CompletedAssessmentReportState | null> {
   return getCompletedAssessmentReport(testId, attemptId);
+}
+
+export async function getCompletedAssessmentReportState(
+  testId: string,
+  attemptId: string | null,
+): Promise<CompletedAssessmentReportState | null> {
+  void testId;
+  return getPersistedParticipantCompletedAssessmentReportState(attemptId);
 }

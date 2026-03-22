@@ -1,0 +1,7 @@
+[
+  { "option_order": 1, "label": "Posve netočno" },
+  { "option_order": 2, "label": "Uglavnom netočno" },
+  { "option_order": 3, "label": "Ni točno ni netočno" },
+  { "option_order": 4, "label": "Uglavnom točno" },
+  { "option_order": 5, "label": "Posve točno" }
+]

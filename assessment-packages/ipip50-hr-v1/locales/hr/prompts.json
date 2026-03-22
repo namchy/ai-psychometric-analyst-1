@@ -1,0 +1,22 @@
+[
+  {
+    "prompt_key": "completed_assessment_report",
+    "audience": "participant",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "system_prompt": "Placeholder sistemski prompt za validaciju paketa na hrvatskom jeziku.",
+    "user_prompt_template": "{\"instructions\":{\"dimension_hint_text\":\"{{dimension_hint_text}}\",\"locale\":\"hr\"},\"input\":{{prompt_input_json}}}"
+  },
+  {
+    "prompt_key": "completed_assessment_report",
+    "audience": "hr",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "system_prompt": "Placeholder sistemski prompt za HR validaciju paketa na hrvatskom jeziku.",
+    "user_prompt_template": "{\"instructions\":{\"dimension_hint_text\":\"{{dimension_hint_text}}\",\"locale\":\"hr\"},\"input\":{{prompt_input_json}}}"
+  }
+]

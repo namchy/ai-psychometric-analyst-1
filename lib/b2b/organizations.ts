@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { AssessmentLocale } from "@/lib/assessment/locale";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type OrganizationSummary = {
@@ -31,6 +32,7 @@ export type ParticipantSummary = {
 export type OrganizationScopedAttemptSummary = {
   id: string;
   test_id: string;
+  locale: AssessmentLocale;
   user_id: string | null;
   organization_id: string | null;
   participant_id: string | null;
@@ -69,6 +71,7 @@ type MembershipRow = {
 type AttemptRow = {
   id: string;
   test_id: string;
+  locale: AssessmentLocale;
   user_id: string | null;
   organization_id: string | null;
   participant_id: string | null;
@@ -205,7 +208,7 @@ export async function getAttemptForOrganization(
   const { data, error } = await supabase
     .from("attempts")
     .select(
-      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
     )
     .eq("id", attemptId)
     .eq("organization_id", organizationId)
@@ -245,7 +248,7 @@ export async function getAttemptsForOrganization(
   const { data, error } = await supabase
     .from("attempts")
     .select(
-      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
     )
     .eq("organization_id", organizationId)
     .order("started_at", { ascending: false })

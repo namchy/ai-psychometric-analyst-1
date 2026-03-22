@@ -58,6 +58,7 @@ export default async function ProtectedAttemptRunPage({
           assessmentDisplayName={runPageData.assessmentName}
           participantDisplayName={runPageData.participantName}
           testId={attempt.test_id}
+          locale={attempt.locale}
           questions={runPageData.questions}
           answerOptionsByQuestionId={runPageData.answerOptionsByQuestionId}
           initialAttemptId={runPageData.resumeState.attemptId}

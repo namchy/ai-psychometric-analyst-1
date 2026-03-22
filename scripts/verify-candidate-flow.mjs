@@ -8,8 +8,11 @@ const HEALTH_URL = `${APP_URL}/api/health`;
 const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
 const ACCESS_COOKIE_NAME = "sb-access-token";
 const REFRESH_COOKIE_NAME = "sb-refresh-token";
-const PROTECTED_RUN_CHUNK_PATH =
-  "/_next/static/chunks/app/(protected)/app/attempts/%5BattemptId%5D/run/page.js";
+const PROTECTED_RUN_CHUNK_PATHS = [
+  "/_next/static/chunks/app/(protected)/app/attempts/%5BattemptId%5D/run/page.js",
+  "/_next/static/chunks/app/%28protected%29/app/attempts/%255BattemptId%255D/run/page.js",
+];
+const DEFAULT_LOCALE = "bs";
 
 function fail(message) {
   throw new Error(message);
@@ -135,13 +138,21 @@ async function fetchProtectedHtml(pathname, session) {
 }
 
 async function loadProtectedRunActionIds() {
-  const response = await fetch(`${APP_URL}${PROTECTED_RUN_CHUNK_PATH}`);
+  let chunk = null;
 
-  if (!response.ok) {
-    fail(`Unable to load protected run chunk: HTTP ${response.status}.`);
+  for (const chunkPath of PROTECTED_RUN_CHUNK_PATHS) {
+    const response = await fetch(`${APP_URL}${chunkPath}`);
+
+    if (response.ok) {
+      chunk = await response.text();
+      break;
+    }
   }
 
-  const chunk = await response.text();
+  if (!chunk) {
+    fail("Unable to load protected run chunk from any known path.");
+  }
+
   const match = chunk.match(/__next_internal_action_entry_do_not_use__\s+(\{[^}]+\})/);
 
   if (!match) {
@@ -252,6 +263,24 @@ async function loadRequiredQuestionsWithOptions(supabase, testId) {
 
   if (questionsError || !questions) {
     fail(`Unable to load active questions: ${questionsError?.message ?? "Unknown error"}`);
+  }
+
+  const { data: questionLocalizations, error: questionLocalizationError } = await supabase
+    .from("question_localizations")
+    .select("question_id, text")
+    .eq("locale", DEFAULT_LOCALE)
+    .in("question_id", questions.map((question) => question.id));
+
+  if (questionLocalizationError) {
+    fail(`Unable to load localized questions: ${questionLocalizationError.message}`);
+  }
+
+  const localizedTextByQuestionId = new Map(
+    (questionLocalizations ?? []).map((entry) => [entry.question_id, entry.text]),
+  );
+
+  for (const question of questions) {
+    question.text = localizedTextByQuestionId.get(question.id) ?? question.text;
   }
 
   const requiredQuestions = questions.filter((question) => question.is_required);
@@ -381,6 +410,9 @@ async function seedUnavailableReport(supabase, attemptId, testSlug) {
   const { error } = await supabase.from("attempt_reports").upsert({
     attempt_id: attemptId,
     test_slug: testSlug,
+    report_type: "individual",
+    audience: "participant",
+    source_type: "single_test",
     generator_type: "mock",
     generated_at: new Date().toISOString(),
     report_status: "unavailable",
@@ -517,6 +549,7 @@ async function main() {
 
     const inProgressAttemptId = await createAttempt(serviceSupabase, {
       test_id: activeTest.id,
+      locale: DEFAULT_LOCALE,
       user_id: candidateUser.id,
       organization_id: organizationId,
       participant_id: candidateParticipantId,
@@ -524,6 +557,7 @@ async function main() {
     });
     const protectedFlowAttemptId = await createAttempt(serviceSupabase, {
       test_id: activeTest.id,
+      locale: DEFAULT_LOCALE,
       user_id: candidateUser.id,
       organization_id: organizationId,
       participant_id: candidateParticipantId,
@@ -531,6 +565,7 @@ async function main() {
     });
     const notStartedAttemptId = await createAttempt(serviceSupabase, {
       test_id: activeTest.id,
+      locale: DEFAULT_LOCALE,
       user_id: candidateUser.id,
       organization_id: organizationId,
       participant_id: candidateParticipantId,
@@ -538,6 +573,7 @@ async function main() {
     });
     const oldCompletedAttemptId = await createAttempt(serviceSupabase, {
       test_id: activeTest.id,
+      locale: DEFAULT_LOCALE,
       user_id: candidateUser.id,
       organization_id: organizationId,
       participant_id: candidateParticipantId,
@@ -546,6 +582,7 @@ async function main() {
     });
     const latestCompletedAttemptId = await createAttempt(serviceSupabase, {
       test_id: activeTest.id,
+      locale: DEFAULT_LOCALE,
       user_id: candidateUser.id,
       organization_id: organizationId,
       participant_id: candidateParticipantId,
@@ -554,6 +591,7 @@ async function main() {
     });
     const forbiddenAttemptId = await createAttempt(serviceSupabase, {
       test_id: activeTest.id,
+      locale: DEFAULT_LOCALE,
       user_id: outsiderUser.id,
       organization_id: organizationId,
       participant_id: outsiderParticipantId,

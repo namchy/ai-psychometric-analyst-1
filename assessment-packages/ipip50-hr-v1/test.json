@@ -1,0 +1,12 @@
+{
+  "slug": "ipip50-hr-v1",
+  "name": "IPIP-50 HR v1",
+  "category": "personality",
+  "scoring_method": "likert_sum",
+  "version": "v1",
+  "status": "active",
+  "is_active": true,
+  "intended_use": "hr_assessment",
+  "report_family": "individual",
+  "description": "Croatian self-report package for the public-domain 50-item IPIP representation of Goldberg (1992) lexical Big-Five markers, based on the published Croatian translation by Boris Mlačić."
+}

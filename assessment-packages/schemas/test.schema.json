@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assessment Package Test",
+  "type": "object",
+  "required": [
+    "slug",
+    "name",
+    "category",
+    "scoring_method",
+    "version",
+    "status",
+    "is_active",
+    "intended_use",
+    "report_family",
+    "description"
+  ],
+  "properties": {
+    "slug": { "type": "string" },
+    "name": { "type": "string" },
+    "category": { "type": "string" },
+    "scoring_method": { "type": "string" },
+    "version": { "type": "string" },
+    "status": { "type": "string" },
+    "is_active": { "type": "boolean" },
+    "intended_use": { "type": "string" },
+    "report_family": { "type": "string" },
+    "description": { "type": "string" }
+  },
+  "additionalProperties": true
+}

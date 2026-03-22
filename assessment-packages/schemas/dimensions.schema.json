@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assessment Package Dimensions",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["code", "name", "description", "display_order", "is_active"],
+    "properties": {
+      "code": { "type": "string" },
+      "name": { "type": "string" },
+      "description": { "type": "string" },
+      "display_order": { "type": "integer" },
+      "is_active": { "type": "boolean" }
+    },
+    "additionalProperties": true
+  }
+}

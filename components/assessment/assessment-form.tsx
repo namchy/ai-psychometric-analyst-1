@@ -13,6 +13,10 @@ import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState, isQuestionAnswered } from "@/lib/assessment/completion";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
+import {
+  DEFAULT_ASSESSMENT_LOCALE,
+  type AssessmentLocale,
+} from "@/lib/assessment/locale";
 import type {
   AssessmentSelectionsInput,
   AssessmentSelectionValue,
@@ -27,6 +31,7 @@ type AssessmentFormProps = {
   assessmentDisplayName?: string | null;
   participantDisplayName?: string | null;
   testId: string;
+  locale?: AssessmentLocale;
   questions: TestQuestion[];
   answerOptionsByQuestionId: Record<string, TestAnswerOption[]>;
   initialSelections: AssessmentSelectionsInput;
@@ -163,6 +168,7 @@ export function AssessmentForm({
   assessmentDisplayName = null,
   participantDisplayName = null,
   testId,
+  locale = DEFAULT_ASSESSMENT_LOCALE,
   questions,
   answerOptionsByQuestionId,
   initialSelections,
@@ -236,6 +242,7 @@ export function AssessmentForm({
       const result = await saveAction({
         attemptId,
         testId,
+        locale,
         selections: getEffectiveSelections(initialSelections, nextSelections),
       });
 
@@ -282,6 +289,7 @@ export function AssessmentForm({
       const result = await completeAction({
         attemptId,
         testId,
+        locale,
         selections: effectiveSelections,
       });
 

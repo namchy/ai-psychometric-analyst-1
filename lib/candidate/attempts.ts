@@ -5,6 +5,7 @@ import {
   getLinkedParticipantForUser,
   type ParticipantSummary,
 } from "@/lib/b2b/organizations";
+import type { AssessmentLocale } from "@/lib/assessment/locale";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type CandidateAttemptRelation<T> = T | T[] | null;
@@ -31,6 +32,7 @@ type CandidateAttemptOrganizationSummary = {
 type CandidateAttemptRow = {
   id: string;
   test_id: string;
+  locale: AssessmentLocale;
   user_id: string | null;
   organization_id: string | null;
   participant_id: string | null;
@@ -55,6 +57,7 @@ export type CandidateAttemptLifecycle =
 export type CandidateAttemptSummary = {
   id: string;
   test_id: string;
+  locale: AssessmentLocale;
   user_id: string | null;
   organization_id: string | null;
   participant_id: string | null;
@@ -182,7 +185,7 @@ async function getCandidateAttemptsForParticipantId(
   const { data, error } = await supabase
     .from("attempts")
     .select(
-      "id, test_id, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
     )
     .eq("participant_id", participantId)
     .order("started_at", { ascending: false })

@@ -15,11 +15,24 @@ type QuestionRecord = {
   id: string;
   code: string;
   text: string;
-  dimension: string;
+  dimension: string | null;
   question_type: QuestionType;
   question_order: number;
   reverse_scored: boolean;
   weight: number;
+};
+
+type TestDimensionRecord = {
+  id: string;
+  code: string;
+  display_order: number;
+};
+
+type QuestionDimensionMappingRecord = {
+  question_id: string;
+  dimension_id: string;
+  weight: number;
+  reverse_scored: boolean;
 };
 
 type AnswerOptionRecord = {
@@ -72,6 +85,13 @@ type ComputedDimensionScore = {
   sortOrder: number;
 };
 
+type QuestionDimensionContribution = {
+  dimension: string;
+  weight: number;
+  reverseScored: boolean;
+  sortOrder: number;
+};
+
 function roundScore(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -103,6 +123,7 @@ function computeLikertResults(
   questions: QuestionRecord[],
   answerOptions: AnswerOptionRecord[],
   responses: ResponseRecord[],
+  dimensionContributionsByQuestionId?: Map<string, QuestionDimensionContribution[]>,
 ): {
   responseScores: ComputedResponseScore[];
   dimensions: ComputedDimensionScore[];
@@ -171,7 +192,20 @@ function computeLikertResults(
     }
 
     const rawValue = selectedOption.value;
-    const scoredValue = question.reverse_scored
+    const dimensionContributions =
+      dimensionContributionsByQuestionId?.get(question.id) ??
+      (question.dimension
+        ? [
+            {
+              dimension: question.dimension,
+              weight: question.weight,
+              reverseScored: question.reverse_scored,
+              sortOrder: question.question_order,
+            },
+          ]
+        : []);
+    const primaryContribution = dimensionContributions[0];
+    const scoredValue = primaryContribution?.reverseScored
       ? scaleBounds.min + scaleBounds.max - rawValue
       : rawValue;
 
@@ -181,17 +215,25 @@ function computeLikertResults(
       scoredValue,
     });
 
-    const dimensionScore = dimensionsByName.get(question.dimension) ?? {
-      dimension: question.dimension,
-      rawScore: 0,
-      scoredQuestionCount: 0,
-      sortOrder: question.question_order,
-    };
+    for (const contribution of dimensionContributions) {
+      const contributionScore = contribution.reverseScored
+        ? scaleBounds.min + scaleBounds.max - rawValue
+        : rawValue;
+      const dimensionScore = dimensionsByName.get(contribution.dimension) ?? {
+        dimension: contribution.dimension,
+        rawScore: 0,
+        scoredQuestionCount: 0,
+        sortOrder: contribution.sortOrder,
+      };
 
-    dimensionScore.rawScore = roundScore(dimensionScore.rawScore + scoredValue * question.weight);
-    dimensionScore.scoredQuestionCount += 1;
-    dimensionScore.sortOrder = Math.min(dimensionScore.sortOrder, question.question_order);
-    dimensionsByName.set(question.dimension, dimensionScore);
+      dimensionScore.rawScore = roundScore(
+        dimensionScore.rawScore + contributionScore * contribution.weight,
+      );
+      dimensionScore.scoredQuestionCount += 1;
+      dimensionScore.sortOrder = Math.min(dimensionScore.sortOrder, contribution.sortOrder);
+      dimensionsByName.set(contribution.dimension, dimensionScore);
+    }
+
     scoredResponseCount += 1;
   }
 
@@ -247,6 +289,35 @@ async function loadScoringInputs(testId: string, attemptId: string) {
 
   const questions = (questionsData ?? []) as QuestionRecord[];
   const questionIds = questions.map((question) => question.id);
+  const { data: testDimensionsData, error: testDimensionsError } = await supabase
+    .from("test_dimensions")
+    .select("id, code, display_order")
+    .eq("test_id", testId)
+    .eq("is_active", true)
+    .order("display_order", { ascending: true })
+    .order("code", { ascending: true });
+
+  if (testDimensionsError) {
+    throw new Error(`Failed to load test dimensions for scoring: ${testDimensionsError.message}`);
+  }
+
+  const testDimensions = (testDimensionsData ?? []) as TestDimensionRecord[];
+  const testDimensionIds = testDimensions.map((dimension) => dimension.id);
+  let questionDimensionMappings: QuestionDimensionMappingRecord[] = [];
+
+  if (questionIds.length > 0 && testDimensionIds.length > 0) {
+    const { data: mappingsData, error: mappingsError } = await supabase
+      .from("question_dimension_mappings")
+      .select("question_id, dimension_id, weight, reverse_scored")
+      .in("question_id", questionIds)
+      .in("dimension_id", testDimensionIds);
+
+    if (mappingsError) {
+      throw new Error(`Failed to load question dimension mappings: ${mappingsError.message}`);
+    }
+
+    questionDimensionMappings = (mappingsData ?? []) as QuestionDimensionMappingRecord[];
+  }
 
   const { data: answerOptionsData, error: answerOptionsError } = await supabase
     .from("answer_options")
@@ -270,9 +341,53 @@ async function loadScoringInputs(testId: string, attemptId: string) {
     supabase,
     test: testData as TestRecord,
     questions,
+    testDimensions,
+    questionDimensionMappings,
     answerOptions: (answerOptionsData ?? []) as AnswerOptionRecord[],
     responses: (responsesData ?? []) as ResponseRecord[],
   };
+}
+
+function buildMappingContributionsByQuestionId(
+  questions: QuestionRecord[],
+  testDimensions: TestDimensionRecord[],
+  questionDimensionMappings: QuestionDimensionMappingRecord[],
+): Map<string, QuestionDimensionContribution[]> | null {
+  if (questionDimensionMappings.length === 0) {
+    return null;
+  }
+
+  const sortOrderByQuestionId = new Map(
+    questions.map((question) => [question.id, question.question_order]),
+  );
+  const dimensionsById = new Map(testDimensions.map((dimension) => [dimension.id, dimension]));
+  const contributionsByQuestionId = new Map<string, QuestionDimensionContribution[]>();
+
+  for (const mapping of questionDimensionMappings) {
+    const dimension = dimensionsById.get(mapping.dimension_id);
+
+    if (!dimension) {
+      continue;
+    }
+
+    const contributions = contributionsByQuestionId.get(mapping.question_id) ?? [];
+    contributions.push({
+      dimension: dimension.code,
+      weight: mapping.weight,
+      reverseScored: mapping.reverse_scored,
+      sortOrder: sortOrderByQuestionId.get(mapping.question_id) ?? dimension.display_order,
+    });
+    contributionsByQuestionId.set(mapping.question_id, contributions);
+  }
+
+  for (const contributions of contributionsByQuestionId.values()) {
+    contributions.sort(
+      (left, right) =>
+        left.sortOrder - right.sortOrder || left.dimension.localeCompare(right.dimension),
+    );
+  }
+
+  return contributionsByQuestionId;
 }
 
 export async function calculateCompletedAssessmentResults(
@@ -295,6 +410,11 @@ export async function calculateCompletedAssessmentResults(
     scoringInputs.questions,
     scoringInputs.answerOptions,
     scoringInputs.responses,
+    buildMappingContributionsByQuestionId(
+      scoringInputs.questions,
+      scoringInputs.testDimensions,
+      scoringInputs.questionDimensionMappings,
+    ) ?? undefined,
   );
 
   return {
@@ -330,6 +450,11 @@ export async function persistCompletedAssessmentResults(
     scoringInputs.questions,
     scoringInputs.answerOptions,
     scoringInputs.responses,
+    buildMappingContributionsByQuestionId(
+      scoringInputs.questions,
+      scoringInputs.testDimensions,
+      scoringInputs.questionDimensionMappings,
+    ) ?? undefined,
   );
 
   const responsesById = new Map(scoringInputs.responses.map((response) => [response.id, response]));

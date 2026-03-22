@@ -4,7 +4,7 @@ const DIMENSION_DISPLAY_LABELS: Record<string, string> = {
   conscientiousness: "Savjesnost",
   emotional_stability: "Emocionalna stabilnost",
   neuroticism: "Emocionalna stabilnost",
-  intellect: "Otvorenost prema iskustvu",
+  intellect: "Intelekt / imaginacija",
   openness: "Otvorenost prema iskustvu",
   openness_to_experience: "Otvorenost prema iskustvu",
 };
@@ -14,6 +14,7 @@ const DIMENSION_HELPER_LABELS: Record<string, string> = {
   kooperativnost: "saradnja, obzirnost i odnos prema drugima",
   savjesnost: "organizacija, disciplina i odgovornost",
   "emocionalna stabilnost": "reakcija na stres, pritisak i neizvjesnost",
+  "intelekt / imaginacija": "odnos prema idejama, apstraktnom mišljenju i mašti",
   "otvorenost prema iskustvu": "odnos prema novim idejama, učenju i promjenama",
 };
 

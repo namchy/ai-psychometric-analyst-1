@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { ProtectedReportAutoRefresh } from "@/components/assessment/protected-report-auto-refresh";
 import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
@@ -35,6 +36,7 @@ export default async function CandidateAttemptReportPage({
   return (
     <main className="attempt-results-page stack-md">
       <section className="attempt-results-page__content">
+        <ProtectedReportAutoRefresh status={reportPageData.reportState.status} />
         <CompletedAssessmentSummary
           completedAt={attempt.completed_at}
           organizationName={attempt.organizations?.name ?? null}

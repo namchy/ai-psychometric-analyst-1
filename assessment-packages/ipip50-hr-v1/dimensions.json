@@ -1,0 +1,37 @@
+[
+  {
+    "code": "EXTRAVERSION",
+    "name": "Extraversion",
+    "description": "IPIP-50 lexical Big Five factor.",
+    "display_order": 1,
+    "is_active": true
+  },
+  {
+    "code": "AGREEABLENESS",
+    "name": "Agreeableness",
+    "description": "IPIP-50 lexical Big Five factor.",
+    "display_order": 2,
+    "is_active": true
+  },
+  {
+    "code": "CONSCIENTIOUSNESS",
+    "name": "Conscientiousness",
+    "description": "IPIP-50 lexical Big Five factor.",
+    "display_order": 3,
+    "is_active": true
+  },
+  {
+    "code": "EMOTIONAL_STABILITY",
+    "name": "Emotional Stability",
+    "description": "IPIP-50 lexical Big Five factor.",
+    "display_order": 4,
+    "is_active": true
+  },
+  {
+    "code": "INTELLECT",
+    "name": "Intellect / Imagination",
+    "description": "IPIP-50 lexical Big Five factor.",
+    "display_order": 5,
+    "is_active": true
+  }
+]

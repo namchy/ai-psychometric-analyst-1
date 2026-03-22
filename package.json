@@ -9,6 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
+    "bootstrap-local-demo": "bash scripts/bootstrap-local-demo.sh",
+    "import:assessment-package": "node --env-file=.env.local scripts/import-assessment-package.mjs",
     "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
     "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs"
   },
@@ -28,5 +30,3 @@
     "typescript": "^5.5.4"
   }
 }
-
-"process-report-jobs:prod": "node ./scripts/run-process-report-jobs.cjs"
