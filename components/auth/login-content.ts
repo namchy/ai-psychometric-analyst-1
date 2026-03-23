@@ -5,12 +5,12 @@ export const loginScreenContent = {
   heroTitleEmphasis: "za bolje odluke.",
   heroDescription:
     "Siguran prostor za strukturiranu procjenu, kompozitne profile i jasnije uvide o pojedincima i timovima.",
-  stat1Value: "Strukturirano",
-  stat1Label: "procjene sa jasnim tokom rada",
-  stat2Value: "Kompozitni profili",
-  stat2Label: "uvidi na nivou pojedinca i tima",
-  stat3Value: "Sigurno",
-  stat3Label: "kontrolisan pristup platformi",
+  stat1Value: "Jasna procjena",
+  stat1Label: "Vođen i pregledan proces procjene.",
+  stat2Value: "Profil sa kontekstom",
+  stat2Label: "Jasniji uvid u pojedince i timove.",
+  stat3Value: "Pouzdana platforma",
+  stat3Label: "Kontrolisan pristup i zaštićeni podaci.",
   welcomeTitle: "Pristup platformi",
   welcomeDescription:
     "Unesi e-mail adresu i lozinku koje si ranije dobio.",
