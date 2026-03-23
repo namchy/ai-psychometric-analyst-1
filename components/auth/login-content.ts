@@ -1,0 +1,36 @@
+export const loginScreenContent = {
+  brandName: "Deep Profile",
+  heroBadge: "People in the center. AI in the core.",
+  heroTitleLine1: "Jasnije procjene",
+  heroTitleEmphasis: "za bolje odluke.",
+  heroDescription:
+    "Siguran prostor za strukturiranu procjenu, kompozitne profile i jasnije uvide o pojedincima i timovima.",
+  stat1Value: "Strukturirano",
+  stat1Label: "procjene sa jasnim tokom rada",
+  stat2Value: "Kompozitni profili",
+  stat2Label: "uvidi na nivou pojedinca i tima",
+  stat3Value: "Sigurno",
+  stat3Label: "kontrolisan pristup platformi",
+  welcomeTitle: "Pristup platformi",
+  welcomeDescription:
+    "Unesi e-mail adresu i lozinku koje si ranije dobio.",
+  emailLabel: "E-mail",
+  passwordLabel: "Lozinka",
+  rememberLabel: "Ostani prijavljen na ovom uređaju",
+  forgotPasswordLabel: "Podrška za pristup",
+  primaryButtonLabel: "Prijavi se na platformu",
+  primaryButtonPendingLabel: "Prijava u toku...",
+  bottomHelperText: "Trebaš pristup platformi ili reset lozinke?",
+  bottomHelperLinkLabel: "Kontaktiraj podršku",
+  footerLegalText: "© 2026 Deep Profile. Siguran pristup procjeni za ovlaštene timove i kandidate.",
+  footerLink1: "Privatnost",
+  footerLink2: "Uslovi",
+  footerLink3: "Sigurnost",
+  forgotPasswordHref: "mailto:support@example.com?subject=Access%20assistance",
+  bottomHelperHref: "mailto:support@example.com?subject=Workspace%20access",
+  footerLink1Href: "#",
+  footerLink2Href: "#",
+  footerLink3Href: "#",
+} as const;
+
+export type LoginScreenContent = typeof loginScreenContent;
