@@ -211,131 +211,6 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="postcss.config.js">
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-</file>
-
-<file path="tailwind.config.ts">
-import type { Config } from "tailwindcss";
-
-const config: Config = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
-  corePlugins: {
-    preflight: false,
-  },
-  theme: {
-    extend: {
-      colors: {
-        "surface-tint": "#29667b",
-        "outline-variant": "#8bb8d4",
-        "inverse-surface": "#00101a",
-        "tertiary-container": "#fda18a",
-        tertiary: "#934a38",
-        "secondary-dim": "#2a5a5f",
-        "tertiary-fixed-dim": "#ee947d",
-        primary: "#29667b",
-        "tertiary-fixed": "#fda18a",
-        "primary-dim": "#195a6f",
-        "primary-container": "#abe5fe",
-        "primary-fixed": "#abe5fe",
-        secondary: "#37666b",
-        "secondary-fixed": "#c8faff",
-        "secondary-fixed-dim": "#baebf0",
-        "primary-fixed-dim": "#9dd7f0",
-      },
-      fontFamily: {
-        headline: ["var(--font-manrope)", "Manrope", "sans-serif"],
-        body: ["var(--font-manrope)", "Manrope", "sans-serif"],
-        label: ["var(--font-manrope)", "Manrope", "sans-serif"],
-      },
-      borderRadius: {
-        DEFAULT: "0.25rem",
-        lg: "0.5rem",
-        xl: "0.75rem",
-        full: "9999px",
-      },
-    },
-  },
-};
-
-export default config;
-</file>
-
-<file path="app/(protected)/app/attempts/[attemptId]/report/error.tsx">
-"use client";
-
-type CandidateAttemptReportErrorProps = {
-  error: Error & { digest?: string };
-  reset: () => void;
-};
-
-export default function CandidateAttemptReportError({
-  error,
-  reset,
-}: CandidateAttemptReportErrorProps) {
-  return (
-    <main className="attempt-results-page stack-md">
-      <section className="attempt-results-page__content">
-        <section className="card stack-sm">
-          <h1>Izvjestaj trenutno nije moguce otvoriti</h1>
-          <p>
-            Doslo je do greske prilikom ucitavanja rezultata za ovaj pokusaj. Pokusaj ponovo
-            ucitati stranicu.
-          </p>
-          {error.digest ? (
-            <p className="results-report__section-note">Referenca greske: {error.digest}</p>
-          ) : null}
-          <div>
-            <button type="button" className="button-secondary" onClick={reset}>
-              Pokusaj ponovo
-            </button>
-          </div>
-        </section>
-      </section>
-    </main>
-  );
-}
-</file>
-
-<file path="app/(protected)/app/attempts/[attemptId]/report/loading.tsx">
-export default function CandidateAttemptReportLoading() {
-  return (
-    <main className="attempt-results-page stack-md">
-      <section className="attempt-results-page__content">
-        <section className="assessment-completion-state">
-          <div className="assessment-completion-state__hero stack-sm">
-            <h2>Ucitavamo izvjestaj</h2>
-            <p className="assessment-completion-state__description">
-              Pripremamo bodovane rezultate i pregled dimenzija za ovaj zavrseni pokusaj.
-            </p>
-          </div>
-          <div aria-hidden="true" className="assessment-completion-state__indicator">
-            <span className="assessment-completion-state__indicator-orbit">
-              <span className="assessment-completion-state__indicator-core" />
-            </span>
-            <span className="assessment-completion-state__indicator-bar" />
-          </div>
-          <p className="assessment-completion-state__status">
-            Ovo obicno traje samo nekoliko trenutaka.
-          </p>
-        </section>
-      </section>
-    </main>
-  );
-}
-</file>
-
 <file path="app/(protected)/hr/page.tsx">
 import Link from "next/link";
 import { logout } from "@/app/actions/auth";
@@ -1438,711 +1313,6 @@ export function ProtectedReportAutoRefresh({
   }, [router, status]);
 
   return null;
-}
-</file>
-
-<file path="components/auth/login-content.ts">
-export const loginScreenContent = {
-  brandName: "Deep Profile",
-  heroBadge: "People in the center. AI in the core.",
-  heroTitleLine1: "Jasnije procjene",
-  heroTitleEmphasis: "za bolje odluke.",
-  heroDescription:
-    "Siguran prostor za strukturiranu procjenu, kompozitne profile i jasnije uvide o pojedincima i timovima.",
-  stat1Value: "Jasna procjena",
-  stat1Label: "Vođen i pregledan proces procjene.",
-  stat2Value: "Profil sa kontekstom",
-  stat2Label: "Jasniji uvid u pojedince i timove.",
-  stat3Value: "Pouzdana platforma",
-  stat3Label: "Kontrolisan pristup i zaštićeni podaci.",
-  welcomeTitle: "Pristup platformi",
-  welcomeDescription:
-    "Unesi e-mail adresu i lozinku koje si ranije dobio.",
-  emailLabel: "E-mail",
-  passwordLabel: "Lozinka",
-  rememberLabel: "Ostani prijavljen na ovom uređaju",
-  forgotPasswordLabel: "Podrška za pristup",
-  primaryButtonLabel: "Prijavi se na platformu",
-  primaryButtonPendingLabel: "Prijava u toku...",
-  bottomHelperText: "Trebaš pristup platformi ili reset lozinke?",
-  bottomHelperLinkLabel: "Kontaktiraj podršku",
-  footerLegalText: "© 2026 Deep Profile. Siguran pristup procjeni za ovlaštene timove i kandidate.",
-  footerLink1: "Privatnost",
-  footerLink2: "Uslovi",
-  footerLink3: "Sigurnost",
-  forgotPasswordHref: "mailto:support@example.com?subject=Access%20assistance",
-  bottomHelperHref: "mailto:support@example.com?subject=Workspace%20access",
-  footerLink1Href: "#",
-  footerLink2Href: "#",
-  footerLink3Href: "#",
-} as const;
-
-export type LoginScreenContent = typeof loginScreenContent;
-</file>
-
-<file path="components/dashboard/candidate-dashboard.tsx">
-import Link from "next/link";
-import { logout } from "@/app/actions/auth";
-
-type DashboardIconName =
-  | "psychology"
-  | "work_history"
-  | "insights"
-  | "groups"
-  | "grid_view"
-  | "schedule"
-  | "task_alt"
-  | "trending_up"
-  | "biotech"
-  | "account_balance"
-  | "hub"
-  | "search"
-  | "notifications"
-  | "settings"
-  | "arrow_right";
-
-export type CandidateAssessmentCard = {
-  title: string;
-  description: string;
-  status: "Dostupan" | "Nije započet";
-  duration: string;
-  secondaryMeta: string;
-  icon: DashboardIconName;
-  secondaryIcon: DashboardIconName;
-  iconBgClassName: string;
-  iconColorClassName: string;
-  href?: string;
-  ctaLabel: string;
-  disabled?: boolean;
-};
-
-type CandidateDashboardViewProps = {
-  assessments: CandidateAssessmentCard[];
-  userEmail: string;
-  userName?: string | null;
-  showHrLink: boolean;
-  hasLinkedParticipant: boolean;
-};
-
-const KPI_CARDS: Array<{
-  label: string;
-  value: string;
-  accent?: boolean;
-  status?: boolean;
-}> = [
-  { label: "Završeni testovi", value: "12" },
-  { label: "Ukupno vrijeme", value: "4.5h" },
-  { label: "Prosječni rezultat", value: "88%", accent: true },
-  { label: "Status profila", value: "Aktivan", status: true },
-];
-
-const PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
-
-function DashboardIcon({ name, className }: { name: DashboardIconName; className?: string }) {
-  const props = {
-    "aria-hidden": true,
-    className,
-    fill: "none",
-    stroke: "currentColor",
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    strokeWidth: 1.8,
-    viewBox: "0 0 24 24",
-  };
-
-  switch (name) {
-    case "psychology":
-      return (
-        <svg {...props}>
-          <path d="M12 3a6 6 0 0 0-6 6c0 2.5 1.2 3.8 2.5 5.1 1.1 1.1 1.5 2 1.5 3.9" />
-          <path d="M12 3a6 6 0 0 1 6 6c0 2.5-1.2 3.8-2.5 5.1-1.1 1.1-1.5 2-1.5 3.9" />
-          <path d="M9 21h6" />
-          <path d="M10 17h4" />
-          <path d="M10.5 8.5c.6-1 2.2-1.2 3-.3.8.8.6 2.3-.3 3l-1.2 1" />
-        </svg>
-      );
-    case "work_history":
-      return (
-        <svg {...props}>
-          <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7" />
-          <rect x="4" y="7" width="16" height="12" rx="2" />
-          <path d="M4 12h16" />
-          <path d="M10 15h4" />
-        </svg>
-      );
-    case "insights":
-      return (
-        <svg {...props}>
-          <path d="M5 19V10" />
-          <path d="M12 19V5" />
-          <path d="M19 19v-8" />
-        </svg>
-      );
-    case "groups":
-      return (
-        <svg {...props}>
-          <path d="M16.5 20a3.5 3.5 0 0 0-7 0" />
-          <circle cx="13" cy="11" r="3" />
-          <path d="M3.5 20a3 3 0 0 1 4-2.82" />
-          <circle cx="7" cy="12" r="2.5" />
-        </svg>
-      );
-    case "grid_view":
-      return (
-        <svg {...props}>
-          <rect x="4" y="4" width="6" height="6" rx="1.2" />
-          <rect x="14" y="4" width="6" height="6" rx="1.2" />
-          <rect x="4" y="14" width="6" height="6" rx="1.2" />
-          <rect x="14" y="14" width="6" height="6" rx="1.2" />
-        </svg>
-      );
-    case "schedule":
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 8v4l2.5 2.5" />
-        </svg>
-      );
-    case "task_alt":
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="8" />
-          <path d="m8.5 12 2.2 2.2 4.8-4.8" />
-        </svg>
-      );
-    case "trending_up":
-      return (
-        <svg {...props}>
-          <path d="M5 16 10 11l3 3 6-6" />
-          <path d="M14 8h5v5" />
-        </svg>
-      );
-    case "biotech":
-      return (
-        <svg {...props}>
-          <path d="M9 3v6" />
-          <path d="M15 3v6" />
-          <path d="M8 9h8" />
-          <path d="M8 9v4a4 4 0 0 0 8 0V9" />
-          <path d="M10 17h4" />
-          <path d="M9 21h6" />
-        </svg>
-      );
-    case "account_balance":
-      return (
-        <svg {...props}>
-          <path d="M4 9h16" />
-          <path d="M6 9v7" />
-          <path d="M12 9v7" />
-          <path d="M18 9v7" />
-          <path d="M3 20h18" />
-          <path d="m12 4 8 4H4l8-4Z" />
-        </svg>
-      );
-    case "hub":
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="2.2" />
-          <circle cx="6" cy="7" r="2" />
-          <circle cx="18" cy="7" r="2" />
-          <circle cx="18" cy="17" r="2" />
-          <path d="M8 8.2 10.4 10" />
-          <path d="M14 10 16 8.2" />
-          <path d="M14 14l2 1.8" />
-        </svg>
-      );
-    case "search":
-      return (
-        <svg {...props}>
-          <circle cx="11" cy="11" r="6.5" />
-          <path d="m16 16 4 4" />
-        </svg>
-      );
-    case "notifications":
-      return (
-        <svg {...props}>
-          <path d="M6 15h12" />
-          <path d="M8 15V11a4 4 0 1 1 8 0v4" />
-          <path d="M10 18a2 2 0 0 0 4 0" />
-        </svg>
-      );
-    case "settings":
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="2.8" />
-          <path d="M12 4.5v1.3" />
-          <path d="M12 18.2v1.3" />
-          <path d="m6.7 6.7.9.9" />
-          <path d="m16.4 16.4.9.9" />
-          <path d="M4.5 12h1.3" />
-          <path d="M18.2 12h1.3" />
-          <path d="m6.7 17.3.9-.9" />
-          <path d="m16.4 7.6.9-.9" />
-        </svg>
-      );
-    case "arrow_right":
-      return (
-        <svg {...props}>
-          <path d="M5 12h14" />
-          <path d="m13 7 5 5-5 5" />
-        </svg>
-      );
-    default:
-      return null;
-  }
-}
-
-function getIconTileClassName(iconBgClassName: string): string {
-  switch (iconBgClassName) {
-    case "assessment-card__icon-tile--primary":
-      return "bg-primary/10";
-    case "assessment-card__icon-tile--tertiary":
-      return "bg-tertiary/10";
-    case "assessment-card__icon-tile--cyan":
-      return "bg-primary-container/10";
-    case "assessment-card__icon-tile--secondary":
-      return "bg-secondary/10";
-    case "assessment-card__icon-tile--coral":
-      return "bg-tertiary-fixed/10";
-    default:
-      return "bg-white/5";
-  }
-}
-
-function getIconColorClassName(iconColorClassName: string): string {
-  switch (iconColorClassName) {
-    case "assessment-card__icon-color--teal":
-      return "text-primary-fixed";
-    case "assessment-card__icon-color--coral-muted":
-      return "text-tertiary-fixed-dim";
-    case "assessment-card__icon-color--cyan":
-      return "text-secondary-fixed";
-    case "assessment-card__icon-color--aqua":
-      return "text-secondary-fixed-dim";
-    case "assessment-card__icon-color--coral":
-      return "text-tertiary-fixed";
-    default:
-      return "text-white";
-  }
-}
-
-function TopNav({
-  userEmail,
-  userName,
-}: {
-  userEmail: string;
-  userName?: string | null;
-}) {
-  const initialsSource = userName?.trim() || userEmail;
-  const initials = initialsSource
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-
-  return (
-    <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-[#00101a]/80 shadow-[0_18px_44px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-      <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-12">
-        <div className="flex min-w-0 items-center gap-6 lg:gap-10">
-          <Link
-            href="/app"
-            className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-white transition-opacity hover:opacity-90 sm:text-xl"
-          >
-            Deep Profile
-          </Link>
-
-          <nav aria-label="Primary" className="hidden items-center gap-2 lg:flex">
-            {PRIMARY_NAV_ITEMS.map((item) => (
-              <span
-                key={item}
-                className={
-                  item === "Testovi"
-                    ? "rounded-full border border-teal-400/20 bg-teal-500/10 px-3 py-1.5 text-sm font-semibold text-teal-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                    : "rounded-full px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors duration-200 hover:bg-white/[0.03] hover:text-slate-100"
-                }
-              >
-                {item}
-              </span>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
-          <button
-            aria-label="Settings"
-            className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-slate-400 shadow-none transition-all duration-200 hover:border-white/10 hover:bg-white/[0.04] hover:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            type="button"
-          >
-            <DashboardIcon className="h-5 w-5" name="settings" />
-          </button>
-
-          <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-xs font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <span>{initials || "LU"}</span>
-          </div>
-
-          <form action={logout} className="hidden md:block">
-            <button
-              className="min-h-0 rounded-full border border-outline-variant/20 bg-transparent px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-300 shadow-none transition-all duration-200 hover:border-primary/40 hover:bg-white/[0.04] hover:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              type="submit"
-            >
-              Odjava
-            </button>
-          </form>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function DashboardHeader() {
-  return (
-    <section className="w-full rounded-[1.75rem] border border-white/10 bg-[#03141c]/70 p-6 shadow-[0_18px_48px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-7">
-      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-300/80">
-        Assessment workspace
-      </p>
-      <h1 className="mt-3 font-headline text-3xl font-extrabold tracking-[-0.045em] text-white sm:text-4xl">
-        Dostupni testovi
-      </h1>
-      <p className="mt-2 max-w-2xl font-body text-sm leading-6 text-slate-400 sm:text-[15px]">
-        Pokrenite aktivne procjene i odvojeno pregledajte testove koji još nisu dostupni.
-      </p>
-    </section>
-  );
-}
-
-function WelcomeOverviewCard({
-  userEmail,
-  userName,
-}: {
-  userEmail: string;
-  userName?: string | null;
-}) {
-  const firstName = userName?.trim()?.split(/\s+/)[0];
-
-  return (
-    <section className="glass-card rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(10,32,40,0.92),rgba(3,18,26,0.9))] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:p-7">
-      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-300/75">
-        Overview
-      </p>
-      <h2 className="mt-3 font-headline text-[1.75rem] font-bold tracking-[-0.04em] text-white">
-        {firstName ? `Dobrodošao nazad, ${firstName}` : "Dobrodošao nazad"}
-      </h2>
-      <p className="mt-3 font-body text-sm leading-7 text-slate-300/90">
-        Tvoj kandidat profil je spreman za rad. Ovdje imaš brz pregled statusa naloga i aktivnih
-        procjena.
-      </p>
-      <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Account
-        </p>
-        <p className="mt-2 truncate text-sm font-medium text-white">{userEmail}</p>
-        {userName ? <p className="mt-1 text-sm text-slate-400">{userName}</p> : null}
-      </div>
-    </section>
-  );
-}
-
-function QuickActionCard() {
-  return (
-    <section className="glass-card rounded-[1.5rem] border border-white/10 bg-[#041720]/80 p-6 shadow-[0_20px_44px_rgba(0,0,0,0.2)]">
-      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-300/80">
-        Quick action
-      </p>
-      <h2 className="mt-3 font-headline text-xl font-bold tracking-[-0.03em] text-white">
-        Generate Insights Report
-      </h2>
-      <p className="mt-2 font-body text-sm leading-6 text-slate-400">
-        CTA ostaje pripremljen za izvještaje, bez nove backend logike u ovoj iteraciji.
-      </p>
-      <button
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-300/75"
-        disabled
-        type="button"
-      >
-        <span>Insights uskoro</span>
-        <DashboardIcon className="h-4 w-4" name="arrow_right" />
-      </button>
-    </section>
-  );
-}
-
-function AssessmentSection({
-  title,
-  description,
-  assessments,
-  muted = false,
-  hideSectionHeader = false,
-}: {
-  title: string;
-  description: string;
-  assessments: CandidateAssessmentCard[];
-  muted?: boolean;
-  hideSectionHeader?: boolean;
-}) {
-  if (assessments.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className={muted ? "mt-8" : "mt-6"}>
-      {!hideSectionHeader ? (
-        <div className="mb-4 flex flex-col gap-1">
-          <h2 className="font-headline text-2xl font-bold tracking-[-0.03em] text-white">{title}</h2>
-          <p className="font-body text-sm leading-6 text-slate-400">{description}</p>
-        </div>
-      ) : null}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
-        {assessments.map((assessment) => (
-          <AssessmentCard assessment={assessment} key={assessment.title} muted={muted} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function AssessmentCard({
-  assessment,
-  muted = false,
-}: {
-  assessment: CandidateAssessmentCard;
-  muted?: boolean;
-}) {
-  const iconTileClassName = getIconTileClassName(assessment.iconBgClassName);
-  const iconColorClassName = getIconColorClassName(assessment.iconColorClassName);
-  const isAvailable = !assessment.disabled && Boolean(assessment.href);
-  const badgeClassName =
-    isAvailable && !muted
-      ? "border border-teal-400/20 bg-teal-500/10 text-teal-300"
-      : "border border-white/8 bg-white/[0.04] text-slate-400";
-  const cardClassName = muted
-    ? "glass-card border-white/8 bg-[#04131b]/75 hover:border-white/10 hover:shadow-[0_16px_34px_rgba(0,0,0,0.16)]"
-    : "glass-card border-white/12 bg-[#051822]/88 hover:border-teal-500/20 hover:shadow-[0_22px_44px_rgba(0,0,0,0.22)]";
-  const descriptionClassName = muted ? "text-slate-500" : "text-slate-400";
-  const metaClassName = muted ? "text-slate-400/75" : "text-slate-300/85";
-
-  return (
-    <article
-      className={`group flex h-full flex-col rounded-[1.5rem] border p-4 transition-all duration-300 hover:-translate-y-0.5 sm:p-5 ${cardClassName}`}
-    >
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div
-          className={`rounded-2xl p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${iconTileClassName} ${muted ? "opacity-75" : ""}`}
-        >
-          <DashboardIcon className={`h-6 w-6 ${iconColorClassName} sm:h-7 sm:w-7`} name={assessment.icon} />
-        </div>
-        <span
-          className={`inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] ${badgeClassName}`}
-        >
-          {assessment.status}
-        </span>
-      </div>
-
-      <div className="flex flex-1 flex-col">
-        <h3 className={`font-headline text-[1.35rem] font-bold tracking-[-0.03em] ${muted ? "text-slate-200" : "text-white"}`}>
-          {assessment.title}
-        </h3>
-        <p className={`mt-2 min-h-0 font-body text-sm leading-6 ${descriptionClassName}`}>
-          {assessment.description}
-        </p>
-
-        <div className="mb-4 mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-3">
-          <span className={`inline-flex items-center gap-2 text-xs font-medium ${metaClassName}`}>
-            <DashboardIcon className="h-4 w-4 text-slate-500/90" name="schedule" />
-            {assessment.duration}
-          </span>
-          <span className={`inline-flex items-center gap-2 text-xs font-medium ${metaClassName}`}>
-            <DashboardIcon className="h-4 w-4 text-slate-500/90" name={assessment.secondaryIcon} />
-            {assessment.secondaryMeta}
-          </span>
-        </div>
-      </div>
-
-      {!isAvailable ? (
-        <button
-          className="mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-2.5 text-sm font-bold uppercase tracking-[0.16em] text-slate-400/80 opacity-90"
-          disabled
-          type="button"
-        >
-          <span>{assessment.ctaLabel}</span>
-          <DashboardIcon className="h-4 w-4" name="arrow_right" />
-        </button>
-      ) : (
-        <Link
-          className="btn-teal-gradient mt-auto flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0"
-          href={assessment.href!}
-        >
-          <span>{assessment.ctaLabel}</span>
-          <DashboardIcon className="h-4 w-4" name="arrow_right" />
-        </Link>
-      )}
-    </article>
-  );
-}
-
-function DashboardStatCard({
-  label,
-  value,
-  accent,
-  status,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  status?: boolean;
-}) {
-  return (
-    <article className="glass-card rounded-2xl p-5 sm:p-6">
-      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-      {status ? (
-        <p className="mt-3 inline-flex items-center gap-2.5 text-xl font-bold text-white sm:text-2xl">
-          <span className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(34,197,94,0.14)]" />
-          {value}
-        </p>
-      ) : (
-        <p
-          className={`mt-3 text-[2rem] font-extrabold tracking-[-0.04em] sm:text-[2.15rem] ${accent ? "text-teal-300" : "text-white"}`}
-        >
-          {value}
-        </p>
-      )}
-    </article>
-  );
-}
-
-function DashboardFooter({
-  showHrLink,
-}: {
-  showHrLink: boolean;
-}) {
-  return (
-    <footer className="border-t border-white/8">
-      <div className="flex w-full flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-12">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
-          <p className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500">
-            © 2024 Luminescent. All rights reserved.
-          </p>
-          {showHrLink ? (
-            <Link
-              className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
-              href="/hr"
-            >
-              HR Workspace
-            </Link>
-          ) : null}
-        </div>
-
-        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a
-            className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
-            href="/"
-          >
-            Privacy Policy
-          </a>
-          <a
-            className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
-            href="/"
-          >
-            Terms of Service
-          </a>
-          <a
-            className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
-            href="/"
-          >
-            Security
-          </a>
-        </nav>
-      </div>
-    </footer>
-  );
-}
-
-function EmptyState() {
-  return (
-    <section className="glass-card rounded-xl p-8 md:p-10">
-      <h2 className="font-headline text-2xl font-bold tracking-tight text-white">
-        Kandidat profil još nije povezan
-      </h2>
-      <p className="mt-4 max-w-2xl font-body text-sm leading-7 text-slate-400">
-        Ovaj nalog trenutno nema povezan kandidat profil, pa procjene još nisu dostupne.
-      </p>
-      <p className="mt-2 max-w-2xl font-body text-sm leading-7 text-slate-400">
-        Dok se povezivanje ne završi, ovdje se neće prikazati dostupni testovi ni izvještaji.
-      </p>
-    </section>
-  );
-}
-
-export function CandidateDashboardView({
-  assessments,
-  userEmail,
-  userName,
-  showHrLink,
-  hasLinkedParticipant,
-}: CandidateDashboardViewProps) {
-  const availableAssessments = assessments.filter(
-    (assessment) => !assessment.disabled && Boolean(assessment.href),
-  );
-  const unavailableAssessments = assessments.filter(
-    (assessment) => assessment.disabled || !assessment.href,
-  );
-
-  return (
-    <div className="candidate-dashboard-page--shell bg-mesh min-h-screen font-body text-white">
-      <TopNav userEmail={userEmail} userName={userName} />
-
-      <main className="w-full px-4 pb-14 pt-12 sm:px-6 sm:pb-16 sm:pt-14 lg:px-12 lg:pt-14">
-        {hasLinkedParticipant ? (
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
-            <aside className="w-full space-y-5">
-              <WelcomeOverviewCard userEmail={userEmail} userName={userName} />
-
-              <section aria-label="Dashboard overview" className="grid grid-cols-2 gap-4">
-                {KPI_CARDS.map((card) => (
-                  <DashboardStatCard
-                    accent={card.accent}
-                    key={card.label}
-                    label={card.label}
-                    status={card.status}
-                    value={card.value}
-                  />
-                ))}
-              </section>
-
-              <QuickActionCard />
-            </aside>
-
-            <section aria-label="Assessments" className="min-w-0 w-full">
-              <div className="space-y-6">
-                <DashboardHeader />
-                {availableAssessments.length > 0 ? (
-    <AssessmentSection
-      title="Dostupni testovi"
-      description="Aktivne procjene koje možeš odmah otvoriti i završiti."
-      assessments={availableAssessments}
-      hideSectionHeader
-    />
-                ) : null}
-              </div>
-
-              <AssessmentSection
-                title="Ostali testovi"
-                description="Ove procjene još nisu otključane za tvoj profil."
-                assessments={unavailableAssessments}
-                muted
-              />
-            </section>
-          </div>
-        ) : (
-          <EmptyState />
-        )}
-      </main>
-
-      <DashboardFooter showHrLink={showHrLink} />
-    </div>
-  );
 }
 </file>
 
@@ -10356,6 +9526,15 @@ const nextConfig = {};
 module.exports = nextConfig;
 </file>
 
+<file path="postcss.config.js">
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+</file>
+
 <file path="README.md">
 # Supabase CLI
 
@@ -10536,6 +9715,58 @@ go run . help
 ```
 </file>
 
+<file path="tailwind.config.ts">
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  corePlugins: {
+    preflight: false,
+  },
+  theme: {
+    extend: {
+      colors: {
+        "surface-tint": "#29667b",
+        "outline-variant": "#8bb8d4",
+        "inverse-surface": "#00101a",
+        "tertiary-container": "#fda18a",
+        tertiary: "#934a38",
+        "secondary-dim": "#2a5a5f",
+        "tertiary-fixed-dim": "#ee947d",
+        primary: "#29667b",
+        "tertiary-fixed": "#fda18a",
+        "primary-dim": "#195a6f",
+        "primary-container": "#abe5fe",
+        "primary-fixed": "#abe5fe",
+        secondary: "#37666b",
+        "secondary-fixed": "#c8faff",
+        "secondary-fixed-dim": "#baebf0",
+        "primary-fixed-dim": "#9dd7f0",
+      },
+      fontFamily: {
+        headline: ["var(--font-manrope)", "Manrope", "sans-serif"],
+        body: ["var(--font-manrope)", "Manrope", "sans-serif"],
+        label: ["var(--font-manrope)", "Manrope", "sans-serif"],
+      },
+      borderRadius: {
+        DEFAULT: "0.25rem",
+        lg: "0.5rem",
+        xl: "0.75rem",
+        full: "9999px",
+      },
+    },
+  },
+};
+
+export default config;
+</file>
+
 <file path="tsconfig.json">
 {
   "compilerOptions": {
@@ -10599,413 +9830,64 @@ approvals:
     - npm run lint
 </file>
 
-<file path="app/(protected)/app/attempts/[attemptId]/report/page.tsx">
-import { notFound, redirect } from "next/navigation";
-import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
-import { ProtectedReportAutoRefresh } from "@/components/assessment/protected-report-auto-refresh";
-import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+<file path="app/(protected)/app/attempts/[attemptId]/report/error.tsx">
+"use client";
 
-type CandidateAttemptReportPageProps = {
-  params: {
-    attemptId: string;
-  };
+type CandidateAttemptReportErrorProps = {
+  error: Error & { digest?: string };
+  reset: () => void;
 };
 
-export const dynamic = "force-dynamic";
-
-export default async function CandidateAttemptReportPage({
-  params,
-}: CandidateAttemptReportPageProps) {
-  const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
-
-  if (!attempt) {
-    notFound();
-  }
-
-  if (attempt.status !== "completed") {
-    redirect(
-      attempt.lifecycle === "in_progress"
-        ? `/app/attempts/${attempt.id}/run`
-        : `/app/attempts/${attempt.id}`,
-    );
-  }
-
-  const reportPageData = await loadProtectedAttemptReportPageData(attempt);
-
+export default function CandidateAttemptReportError({
+  error,
+  reset,
+}: CandidateAttemptReportErrorProps) {
   return (
-    <main className="attempt-results-page stack-md">
+    <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
       <section className="attempt-results-page__content">
-        <ProtectedReportAutoRefresh status={reportPageData.reportState.status} />
-        <CompletedAssessmentSummary
-          completedAt={attempt.completed_at}
-          organizationName={attempt.organizations?.name ?? null}
-          participantName={attempt.participants?.full_name ?? null}
-          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
-          results={reportPageData.results}
-          reportState={reportPageData.report}
-        />
-      </section>
-    </main>
-  );
-}
-</file>
-
-<file path="app/(protected)/app/attempts/[attemptId]/run/page.tsx">
-import { notFound, redirect } from "next/navigation";
-import { setProtectedAttemptLocale } from "@/app/actions/assessment";
-import { AssessmentForm } from "@/components/assessment/assessment-form";
-import {
-  getAssessmentLocaleLabel,
-  type AssessmentLocale,
-} from "@/lib/assessment/locale";
-import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
-
-type CandidateAttemptRunPageProps = {
-  params: {
-    attemptId: string;
-  };
-  searchParams?: Record<string, string | string[] | undefined>;
-};
-
-function getLocaleErrorMessage(rawError: string | string[] | undefined): string | null {
-  const error = Array.isArray(rawError) ? rawError[0] : rawError;
-
-  switch (error) {
-    case "locale-locked":
-      return "Jezik testa se može promijeniti samo prije prvog odgovora.";
-    case "locale-update-failed":
-      return "Promjena jezika trenutno nije uspjela. Pokušajte ponovo.";
-    default:
-      return null;
-  }
-}
-
-function LocaleButton({
-  attemptId,
-  locale,
-}: {
-  attemptId: string;
-  locale: AssessmentLocale;
-}) {
-  return (
-    <form action={setProtectedAttemptLocale}>
-      <input type="hidden" name="attemptId" value={attemptId} />
-      <input type="hidden" name="locale" value={locale} />
-      <input type="hidden" name="returnPath" value={`/app/attempts/${attemptId}/run`} />
-      <button className="button-secondary" type="submit">
-        {getAssessmentLocaleLabel(locale)}
-      </button>
-    </form>
-  );
-}
-
-export const dynamic = "force-dynamic";
-
-export default async function CandidateAttemptRunPage({
-  params,
-  searchParams,
-}: CandidateAttemptRunPageProps) {
-  const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
-
-  if (!attempt) {
-    notFound();
-  }
-
-  if (attempt.status === "completed") {
-    redirect(`/app/attempts/${attempt.id}/report`);
-  }
-
-  if (attempt.status === "abandoned") {
-    redirect(`/app/attempts/${attempt.id}`);
-  }
-
-  const runPageData = await loadProtectedAttemptRunPageData(attempt);
-  const localeErrorMessage = getLocaleErrorMessage(searchParams?.error);
-
-  if (runPageData.questions.length === 0) {
-    return (
-      <main className="stack-md">
         <section className="card stack-sm">
-          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena"}</h1>
-          <p>Pitanja za ovu procjenu trenutno nisu dostupna.</p>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="assessment-run-page stack-md">
-      {attempt.lifecycle === "not_started" ? (
-        <section className="card stack-sm">
-          <h1>Odaberite jezik testa</h1>
-          <p>Trenutni jezik: {getAssessmentLocaleLabel(attempt.locale)}.</p>
-          <p>Odabrani jezik vrijedi za cijeli attempt i može se mijenjati samo prije prvog odgovora.</p>
-          {localeErrorMessage ? (
-            <p className="status-message status-message--danger">{localeErrorMessage}</p>
+          <h1>Izvjestaj trenutno nije moguce otvoriti</h1>
+          <p>
+            Doslo je do greske prilikom ucitavanja rezultata za ovaj pokusaj. Pokusaj ponovo
+            ucitati stranicu.
+          </p>
+          {error.digest ? (
+            <p className="results-report__section-note">Referenca greske: {error.digest}</p>
           ) : null}
-          <div className="dashboard-links">
-            <LocaleButton attemptId={attempt.id} locale="bs" />
-            <LocaleButton attemptId={attempt.id} locale="hr" />
+          <div>
+            <button type="button" className="button-secondary" onClick={reset}>
+              Pokusaj ponovo
+            </button>
           </div>
         </section>
-      ) : null}
-
-      <section className="assessment-run-shell">
-        <AssessmentForm
-          executionMode="protected"
-          layoutMode="step"
-          completionRedirectPath={`/app/attempts/${attempt.id}/report`}
-          assessmentDisplayName={runPageData.assessmentName}
-          participantDisplayName={runPageData.participantName}
-          testId={attempt.test_id}
-          locale={attempt.locale}
-          questions={runPageData.questions}
-          answerOptionsByQuestionId={runPageData.answerOptionsByQuestionId}
-          initialAttemptId={runPageData.resumeState.attemptId}
-          initialAttemptStatus={runPageData.resumeState.attemptStatus}
-          initialCompletedAt={runPageData.resumeState.completedAt}
-          initialSelections={runPageData.resumeState.selections}
-          initialResults={runPageData.results}
-          initialReport={runPageData.report}
-        />
       </section>
     </main>
   );
 }
 </file>
 
-<file path="app/(protected)/app/attempts/[attemptId]/page.tsx">
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
-import {
-  getCandidateAttemptForUser,
-  getCandidateAttemptQuestionCount,
-} from "@/lib/candidate/attempts";
-
-type CandidateAttemptIntroPageProps = {
-  params: {
-    attemptId: string;
-  };
-};
-
-function formatEstimatedDuration(
-  durationMinutes: number | null,
-  questionCount: number,
-): string | null {
-  if (durationMinutes && durationMinutes > 0) {
-    return `${durationMinutes} minuta`;
-  }
-
-  if (questionCount <= 0) {
-    return null;
-  }
-
-  const minimum = Math.max(5, Math.floor(questionCount / 7));
-  const maximum = Math.max(minimum + 1, Math.ceil(questionCount / 5));
-  return `oko ${minimum} do ${maximum} minuta`;
-}
-
-function getAssessmentTitle(name: string | null | undefined, slug: string | null | undefined): string {
-  const normalizedName = name?.trim();
-
-  if (normalizedName && /ličnost/i.test(normalizedName)) {
-    return normalizedName;
-  }
-
-  if (slug?.startsWith("ipip")) {
-    return "Procjena ličnosti";
-  }
-
-  return normalizedName ?? slug ?? "Procjena";
-}
-
-function getAssessmentDescription(description: string | null | undefined): string {
-  if (description?.trim()) {
-    return description;
-  }
-
-  return "Ova procjena pruža strukturiran uvid u tvoje obrasce ponašanja, načine reagovanja i lične tendencije kroz niz kratkih tvrdnji.";
-}
-
-function getResponseScaleLabel(testSlug: string | null | undefined): string {
-  if (testSlug?.startsWith("ipip")) {
-    return "Odgovori na skali od 1 do 5";
-  }
-
-  return "Kratke tvrdnje sa ponuđenom skalom odgovora";
-}
-
-function getIntroAction(
-  attemptId: string,
-  lifecycle: "in_progress" | "not_started" | "completed" | "abandoned",
-) {
-  switch (lifecycle) {
-    case "in_progress":
-      return {
-        href: `/app/attempts/${attemptId}/run`,
-        label: "Nastavi procjenu",
-      };
-    case "completed":
-      return {
-        href: `/app/attempts/${attemptId}/report`,
-        label: "Pogledaj izvještaj",
-      };
-    case "abandoned":
-      return {
-        href: "/app",
-        label: "Nazad na početak",
-      };
-    default:
-      return {
-        href: `/app/attempts/${attemptId}/run`,
-        label: "Započni procjenu",
-      };
-  }
-}
-
-export const dynamic = "force-dynamic";
-
-export default async function CandidateAttemptIntroPage({
-  params,
-}: CandidateAttemptIntroPageProps) {
-  const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
-
-  if (!attempt) {
-    notFound();
-  }
-
-  const questionCount = await getCandidateAttemptQuestionCount(attempt.test_id);
-  const estimatedDuration = formatEstimatedDuration(
-    attempt.tests?.duration_minutes ?? null,
-    questionCount,
-  );
-  const action = getIntroAction(attempt.id, attempt.lifecycle);
-  const assessmentTitle = getAssessmentTitle(attempt.tests?.name, attempt.tests?.slug);
-  const assessmentDescription = getAssessmentDescription(attempt.tests?.description);
-  const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
-
+<file path="app/(protected)/app/attempts/[attemptId]/report/loading.tsx">
+export default function CandidateAttemptReportLoading() {
   return (
-    <main className="candidate-intro stack-md">
-      <section className="candidate-intro__hero card stack-sm">
-        <div className="stack-sm">
-          <div className="stack-xs">
-            <p className="assessment-eyebrow">
-              {attempt.lifecycle === "completed"
-                ? "Procjena završena"
-                : attempt.lifecycle === "in_progress"
-                  ? "Procjena je u toku"
-                  : "Spremno za početak"}
+    <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+      <section className="attempt-results-page__content">
+        <section className="assessment-completion-state">
+          <div className="assessment-completion-state__hero stack-sm">
+            <h2>Ucitavamo izvjestaj</h2>
+            <p className="assessment-completion-state__description">
+              Pripremamo bodovane rezultate i pregled dimenzija za ovaj zavrseni pokusaj.
             </p>
-            <h1>{assessmentTitle}</h1>
-            <p className="candidate-intro__lead">{assessmentDescription}</p>
           </div>
-
-          <dl className="candidate-intro__meta" aria-label="Osnovne informacije o procjeni">
-            <div className="candidate-intro__meta-item">
-              <dt>Broj pitanja</dt>
-              <dd>{questionCount > 0 ? `${questionCount} pitanja` : "Biće prikazano pri početku"}</dd>
-            </div>
-            {estimatedDuration ? (
-              <div className="candidate-intro__meta-item">
-                <dt>Procijenjeno trajanje</dt>
-                <dd>{estimatedDuration}</dd>
-              </div>
-            ) : null}
-            <div className="candidate-intro__meta-item">
-              <dt>Format odgovora</dt>
-              <dd>{responseScaleLabel}</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
-
-      <section className="candidate-intro__section card stack-sm">
-        <div className="candidate-intro__section-heading stack-xs">
-          <p className="assessment-eyebrow">Šta možeš očekivati</p>
-          <h2>Kako izgleda procjena</h2>
-        </div>
-        <p>
-          Tokom procjene označavaš u kojoj mjeri te pojedine tvrdnje opisuju. Nema tačnih ni
-          netačnih odgovora. Najkorisnije je da odgovaraš iskreno i spontano, prema tome kako inače
-          funkcionišeš.
-        </p>
-      </section>
-
-      <section className="candidate-intro__section card stack-sm">
-        <div className="candidate-intro__section-heading stack-xs">
-          <p className="assessment-eyebrow">Kako će rezultati biti prikazani</p>
-          <h2>Šta dobijaš na kraju</h2>
-        </div>
-        <p>
-          Na kraju ćeš dobiti izvještaj sa glavnim uvidima o tvojim ličnim obrascima i načinu
-          funkcionisanja. Rezultati služe kao strukturiran uvid, a ne kao konačna ocjena tvoje
-          vrijednosti ili sposobnosti.
-        </p>
-      </section>
-
-      <section className="candidate-intro__section card stack-sm">
-        <div className="candidate-intro__section-heading stack-xs">
-          <p className="assessment-eyebrow">Na čemu se procjena zasniva</p>
-          <h2>Metodološka osnova</h2>
-        </div>
-        <p>
-          Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se
-          često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom
-          kontekstu.
-        </p>
-      </section>
-
-      <section className="candidate-intro__section card stack-sm">
-        <div className="candidate-intro__section-heading stack-xs">
-          <p className="assessment-eyebrow">Prije nego počneš</p>
-          <h2>Kratke smjernice</h2>
-        </div>
-        <ul className="candidate-intro__checklist">
-          <li>Odvoji nekoliko minuta bez prekida.</li>
-          <li>Odgovaraj iskreno.</li>
-          <li>Nemoj previše analizirati svaku tvrdnju.</li>
-          <li>Ako je omogućeno, procjenu možeš nastaviti kasnije.</li>
-        </ul>
-      </section>
-
-      <section className="candidate-intro__section card stack-sm">
-        <div className="candidate-intro__section-heading stack-xs">
-          <p className="assessment-eyebrow">Povjerljivost i upotreba rezultata</p>
-          <h2>Kako se odgovori koriste</h2>
-        </div>
-        <p>
-          Tvoji odgovori i rezultati koriste se u okviru procesa procjene za koji je ova aplikacija
-          namijenjena. Izvještaj je oblikovan tako da pruži strukturiran i smislen pregled rezultata
-          relevantnim učesnicima procesa.
-        </p>
-      </section>
-
-      <section className="candidate-intro__cta card stack-sm">
-        {attempt.lifecycle === "completed" ? (
-          <p>Tvoja procjena je završena i izvještaj je spreman za pregled.</p>
-        ) : attempt.lifecycle === "abandoned" ? (
-          <p>Ova procjena trenutno nije otvorena za nastavak. Vrati se na početni ekran za naredni korak.</p>
-        ) : attempt.lifecycle === "in_progress" ? (
-          <p>Sačuvali smo tvoj dosadašnji napredak, pa možeš nastaviti tamo gdje si stao.</p>
-        ) : (
-          <p>Kada budeš spreman, možeš započeti procjenu i proći kroz pitanja svojim tempom.</p>
-        )}
-        <div>
-          <Link className="candidate-home__link" href={action.href}>
-            {action.label}
-          </Link>
-        </div>
-        <p className="candidate-intro__cta-note">
-          Po završetku procjene dobit ćeš personalizovani izvještaj sa glavnim uvidima.
-        </p>
+          <div aria-hidden="true" className="assessment-completion-state__indicator">
+            <span className="assessment-completion-state__indicator-orbit">
+              <span className="assessment-completion-state__indicator-core" />
+            </span>
+            <span className="assessment-completion-state__indicator-bar" />
+          </div>
+          <p className="assessment-completion-state__status">
+            Ovo obicno traje samo nekoliko trenutaka.
+          </p>
+        </section>
       </section>
     </main>
   );
@@ -11827,6 +10709,45 @@ export default function RootLayout({ children }: RootLayoutProps) {
     "notes": "HR completed assessment report for ipip50-hr-v1. Produces the canonical detailed report v1 JSON shape with neutral operational wording controlled by locale input."
   }
 ]
+</file>
+
+<file path="components/auth/login-content.ts">
+export const loginScreenContent = {
+  brandName: "Deep Profile",
+  heroBadge: "People in the center. AI in the core.",
+  heroTitleLine1: "Jasnije procjene",
+  heroTitleEmphasis: "za bolje odluke.",
+  heroDescription:
+    "Siguran prostor za strukturiranu procjenu, kompozitne profile i jasnije uvide o pojedincima i timovima.",
+  stat1Value: "Jasna procjena",
+  stat1Label: "Vođen i pregledan proces procjene.",
+  stat2Value: "Profil sa kontekstom",
+  stat2Label: "Jasniji uvid u pojedince i timove.",
+  stat3Value: "Pouzdana platforma",
+  stat3Label: "Kontrolisan pristup i zaštićeni podaci.",
+  welcomeTitle: "Pristup platformi",
+  welcomeDescription:
+    "Unesi e-mail adresu i lozinku koje si ranije dobio.",
+  emailLabel: "E-mail",
+  passwordLabel: "Lozinka",
+  rememberLabel: "Ostani prijavljen na ovom uređaju",
+  forgotPasswordLabel: "Podrška za pristup",
+  primaryButtonLabel: "Prijavi se na platformu",
+  primaryButtonPendingLabel: "Prijava u toku...",
+  bottomHelperText: "Trebaš pristup platformi ili reset lozinke?",
+  bottomHelperLinkLabel: "Kontaktiraj podršku",
+  footerLegalText: "© 2026 Deep Profile. Siguran pristup procjeni za ovlaštene timove i kandidate.",
+  footerLink1: "Privatnost",
+  footerLink2: "Uslovi",
+  footerLink3: "Sigurnost",
+  forgotPasswordHref: "mailto:support@example.com?subject=Access%20assistance",
+  bottomHelperHref: "mailto:support@example.com?subject=Workspace%20access",
+  footerLink1Href: "#",
+  footerLink2Href: "#",
+  footerLink3Href: "#",
+} as const;
+
+export type LoginScreenContent = typeof loginScreenContent;
 </file>
 
 <file path="lib/assessment/protected-attempts.ts">
@@ -13458,6 +12379,1085 @@ select
 from public.attempt_reports
 where attempt_id = '9ecdc825-c723-490d-9320-0924cdca59f1'
 order by audience;
+</file>
+
+<file path="app/(protected)/app/attempts/[attemptId]/report/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { ProtectedReportAutoRefresh } from "@/components/assessment/protected-report-auto-refresh";
+import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+
+type CandidateAttemptReportPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function CandidateAttemptReportPage({
+  params,
+}: CandidateAttemptReportPageProps) {
+  const user = await requireAuthenticatedUser();
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status !== "completed") {
+    redirect(
+      attempt.lifecycle === "in_progress"
+        ? `/app/attempts/${attempt.id}/run`
+        : `/app/attempts/${attempt.id}`,
+    );
+  }
+
+  const reportPageData = await loadProtectedAttemptReportPageData(attempt);
+
+  return (
+    <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+      <section className="attempt-results-page__content">
+        <ProtectedReportAutoRefresh status={reportPageData.reportState.status} />
+        <CompletedAssessmentSummary
+          completedAt={attempt.completed_at}
+          organizationName={attempt.organizations?.name ?? null}
+          participantName={attempt.participants?.full_name ?? null}
+          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
+          results={reportPageData.results}
+          reportState={reportPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/(protected)/app/attempts/[attemptId]/run/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { setProtectedAttemptLocale } from "@/app/actions/assessment";
+import { AssessmentForm } from "@/components/assessment/assessment-form";
+import {
+  getAssessmentLocaleLabel,
+  type AssessmentLocale,
+} from "@/lib/assessment/locale";
+import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+
+type CandidateAttemptRunPageProps = {
+  params: {
+    attemptId: string;
+  };
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+function getLocaleErrorMessage(rawError: string | string[] | undefined): string | null {
+  const error = Array.isArray(rawError) ? rawError[0] : rawError;
+
+  switch (error) {
+    case "locale-locked":
+      return "Jezik testa se može promijeniti samo prije prvog odgovora.";
+    case "locale-update-failed":
+      return "Promjena jezika trenutno nije uspjela. Pokušajte ponovo.";
+    default:
+      return null;
+  }
+}
+
+function LocaleButton({
+  attemptId,
+  locale,
+}: {
+  attemptId: string;
+  locale: AssessmentLocale;
+}) {
+  return (
+    <form action={setProtectedAttemptLocale}>
+      <input type="hidden" name="attemptId" value={attemptId} />
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="returnPath" value={`/app/attempts/${attemptId}/run`} />
+      <button className="button-secondary" type="submit">
+        {getAssessmentLocaleLabel(locale)}
+      </button>
+    </form>
+  );
+}
+
+export const dynamic = "force-dynamic";
+
+export default async function CandidateAttemptRunPage({
+  params,
+  searchParams,
+}: CandidateAttemptRunPageProps) {
+  const user = await requireAuthenticatedUser();
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status === "completed") {
+    redirect(`/app/attempts/${attempt.id}/report`);
+  }
+
+  if (attempt.status === "abandoned") {
+    redirect(`/app/attempts/${attempt.id}`);
+  }
+
+  const runPageData = await loadProtectedAttemptRunPageData(attempt);
+  const localeErrorMessage = getLocaleErrorMessage(searchParams?.error);
+
+  if (runPageData.questions.length === 0) {
+    return (
+      <main className="stack-md mx-auto w-full max-w-7xl px-4">
+        <section className="card stack-sm">
+          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena"}</h1>
+          <p>Pitanja za ovu procjenu trenutno nisu dostupna.</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="assessment-run-page stack-md mx-auto w-full max-w-7xl px-4">
+      {attempt.lifecycle === "not_started" ? (
+        <section className="card stack-sm">
+          <h1>Odaberite jezik testa</h1>
+          <p>Trenutni jezik: {getAssessmentLocaleLabel(attempt.locale)}.</p>
+          <p>Odabrani jezik vrijedi za cijeli attempt i može se mijenjati samo prije prvog odgovora.</p>
+          {localeErrorMessage ? (
+            <p className="status-message status-message--danger">{localeErrorMessage}</p>
+          ) : null}
+          <div className="dashboard-links">
+            <LocaleButton attemptId={attempt.id} locale="bs" />
+            <LocaleButton attemptId={attempt.id} locale="hr" />
+          </div>
+        </section>
+      ) : null}
+
+      <section className="assessment-run-shell">
+        <AssessmentForm
+          executionMode="protected"
+          layoutMode="step"
+          completionRedirectPath={`/app/attempts/${attempt.id}/report`}
+          assessmentDisplayName={runPageData.assessmentName}
+          participantDisplayName={runPageData.participantName}
+          testId={attempt.test_id}
+          locale={attempt.locale}
+          questions={runPageData.questions}
+          answerOptionsByQuestionId={runPageData.answerOptionsByQuestionId}
+          initialAttemptId={runPageData.resumeState.attemptId}
+          initialAttemptStatus={runPageData.resumeState.attemptStatus}
+          initialCompletedAt={runPageData.resumeState.completedAt}
+          initialSelections={runPageData.resumeState.selections}
+          initialResults={runPageData.results}
+          initialReport={runPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/(protected)/app/attempts/[attemptId]/page.tsx">
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import {
+  getCandidateAttemptForUser,
+  getCandidateAttemptQuestionCount,
+} from "@/lib/candidate/attempts";
+
+type CandidateAttemptIntroPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+function formatEstimatedDuration(
+  durationMinutes: number | null,
+  questionCount: number,
+): string | null {
+  if (durationMinutes && durationMinutes > 0) {
+    return `${durationMinutes} minuta`;
+  }
+
+  if (questionCount <= 0) {
+    return null;
+  }
+
+  const minimum = Math.max(5, Math.floor(questionCount / 7));
+  const maximum = Math.max(minimum + 1, Math.ceil(questionCount / 5));
+  return `oko ${minimum} do ${maximum} minuta`;
+}
+
+function getAssessmentTitle(name: string | null | undefined, slug: string | null | undefined): string {
+  const normalizedName = name?.trim();
+
+  if (normalizedName && /ličnost/i.test(normalizedName)) {
+    return normalizedName;
+  }
+
+  if (slug?.startsWith("ipip")) {
+    return "Procjena ličnosti";
+  }
+
+  return normalizedName ?? slug ?? "Procjena";
+}
+
+function getAssessmentDescription(description: string | null | undefined): string {
+  if (description?.trim()) {
+    return description;
+  }
+
+  return "Ova procjena pruža strukturiran uvid u tvoje obrasce ponašanja, načine reagovanja i lične tendencije kroz niz kratkih tvrdnji.";
+}
+
+function getResponseScaleLabel(testSlug: string | null | undefined): string {
+  if (testSlug?.startsWith("ipip")) {
+    return "Odgovori na skali od 1 do 5";
+  }
+
+  return "Kratke tvrdnje sa ponuđenom skalom odgovora";
+}
+
+function getIntroAction(
+  attemptId: string,
+  lifecycle: "in_progress" | "not_started" | "completed" | "abandoned",
+) {
+  switch (lifecycle) {
+    case "in_progress":
+      return {
+        href: `/app/attempts/${attemptId}/run`,
+        label: "Nastavi procjenu",
+      };
+    case "completed":
+      return {
+        href: `/app/attempts/${attemptId}/report`,
+        label: "Pogledaj izvještaj",
+      };
+    case "abandoned":
+      return {
+        href: "/app",
+        label: "Nazad na početak",
+      };
+    default:
+      return {
+        href: `/app/attempts/${attemptId}/run`,
+        label: "Započni procjenu",
+      };
+  }
+}
+
+export const dynamic = "force-dynamic";
+
+export default async function CandidateAttemptIntroPage({
+  params,
+}: CandidateAttemptIntroPageProps) {
+  const user = await requireAuthenticatedUser();
+  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  const questionCount = await getCandidateAttemptQuestionCount(attempt.test_id);
+  const estimatedDuration = formatEstimatedDuration(
+    attempt.tests?.duration_minutes ?? null,
+    questionCount,
+  );
+  const action = getIntroAction(attempt.id, attempt.lifecycle);
+  const assessmentTitle = getAssessmentTitle(attempt.tests?.name, attempt.tests?.slug);
+  const assessmentDescription = getAssessmentDescription(attempt.tests?.description);
+  const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
+
+  return (
+    <main className="candidate-intro stack-md mx-auto w-full max-w-5xl px-4">
+      <section className="candidate-intro__hero card stack-sm">
+        <div className="stack-sm">
+          <div className="stack-xs">
+            <p className="assessment-eyebrow">
+              {attempt.lifecycle === "completed"
+                ? "Procjena završena"
+                : attempt.lifecycle === "in_progress"
+                  ? "Procjena je u toku"
+                  : "Spremno za početak"}
+            </p>
+            <h1>{assessmentTitle}</h1>
+            <p className="candidate-intro__lead">{assessmentDescription}</p>
+          </div>
+
+          <dl className="candidate-intro__meta" aria-label="Osnovne informacije o procjeni">
+            <div className="candidate-intro__meta-item">
+              <dt>Broj pitanja</dt>
+              <dd>{questionCount > 0 ? `${questionCount} pitanja` : "Biće prikazano pri početku"}</dd>
+            </div>
+            {estimatedDuration ? (
+              <div className="candidate-intro__meta-item">
+                <dt>Procijenjeno trajanje</dt>
+                <dd>{estimatedDuration}</dd>
+              </div>
+            ) : null}
+            <div className="candidate-intro__meta-item">
+              <dt>Format odgovora</dt>
+              <dd>{responseScaleLabel}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Šta možeš očekivati</p>
+          <h2>Kako izgleda procjena</h2>
+        </div>
+        <p>
+          Tokom procjene označavaš u kojoj mjeri te pojedine tvrdnje opisuju. Nema tačnih ni
+          netačnih odgovora. Najkorisnije je da odgovaraš iskreno i spontano, prema tome kako inače
+          funkcionišeš.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Kako će rezultati biti prikazani</p>
+          <h2>Šta dobijaš na kraju</h2>
+        </div>
+        <p>
+          Na kraju ćeš dobiti izvještaj sa glavnim uvidima o tvojim ličnim obrascima i načinu
+          funkcionisanja. Rezultati služe kao strukturiran uvid, a ne kao konačna ocjena tvoje
+          vrijednosti ili sposobnosti.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Na čemu se procjena zasniva</p>
+          <h2>Metodološka osnova</h2>
+        </div>
+        <p>
+          Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se
+          često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom
+          kontekstu.
+        </p>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Prije nego počneš</p>
+          <h2>Kratke smjernice</h2>
+        </div>
+        <ul className="candidate-intro__checklist">
+          <li>Odvoji nekoliko minuta bez prekida.</li>
+          <li>Odgovaraj iskreno.</li>
+          <li>Nemoj previše analizirati svaku tvrdnju.</li>
+          <li>Ako je omogućeno, procjenu možeš nastaviti kasnije.</li>
+        </ul>
+      </section>
+
+      <section className="candidate-intro__section card stack-sm">
+        <div className="candidate-intro__section-heading stack-xs">
+          <p className="assessment-eyebrow">Povjerljivost i upotreba rezultata</p>
+          <h2>Kako se odgovori koriste</h2>
+        </div>
+        <p>
+          Tvoji odgovori i rezultati koriste se u okviru procesa procjene za koji je ova aplikacija
+          namijenjena. Izvještaj je oblikovan tako da pruži strukturiran i smislen pregled rezultata
+          relevantnim učesnicima procesa.
+        </p>
+      </section>
+
+      <section className="candidate-intro__cta card stack-sm">
+        {attempt.lifecycle === "completed" ? (
+          <p>Tvoja procjena je završena i izvještaj je spreman za pregled.</p>
+        ) : attempt.lifecycle === "abandoned" ? (
+          <p>Ova procjena trenutno nije otvorena za nastavak. Vrati se na početni ekran za naredni korak.</p>
+        ) : attempt.lifecycle === "in_progress" ? (
+          <p>Sačuvali smo tvoj dosadašnji napredak, pa možeš nastaviti tamo gdje si stao.</p>
+        ) : (
+          <p>Kada budeš spreman, možeš započeti procjenu i proći kroz pitanja svojim tempom.</p>
+        )}
+        <div>
+          <Link className="candidate-home__link" href={action.href}>
+            {action.label}
+          </Link>
+        </div>
+        <p className="candidate-intro__cta-note">
+          Po završetku procjene dobit ćeš personalizovani izvještaj sa glavnim uvidima.
+        </p>
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="components/dashboard/candidate-dashboard.tsx">
+import Link from "next/link";
+import { logout } from "@/app/actions/auth";
+
+type DashboardIconName =
+  | "psychology"
+  | "work_history"
+  | "insights"
+  | "groups"
+  | "grid_view"
+  | "schedule"
+  | "task_alt"
+  | "trending_up"
+  | "biotech"
+  | "account_balance"
+  | "hub"
+  | "search"
+  | "notifications"
+  | "settings"
+  | "arrow_right";
+
+export type CandidateAssessmentCard = {
+  title: string;
+  description: string;
+  status: "Dostupan" | "Nije započet";
+  duration: string;
+  secondaryMeta: string;
+  icon: DashboardIconName;
+  secondaryIcon: DashboardIconName;
+  iconBgClassName: string;
+  iconColorClassName: string;
+  href?: string;
+  ctaLabel: string;
+  disabled?: boolean;
+};
+
+type CandidateDashboardViewProps = {
+  assessments: CandidateAssessmentCard[];
+  userEmail: string;
+  userName?: string | null;
+  showHrLink: boolean;
+  hasLinkedParticipant: boolean;
+};
+
+const KPI_CARDS: Array<{
+  label: string;
+  value: string;
+  accent?: boolean;
+  status?: boolean;
+}> = [
+  { label: "Završeni testovi", value: "12" },
+  { label: "Ukupno vrijeme", value: "4.5h" },
+  { label: "Prosječni rezultat", value: "88%", accent: true },
+  { label: "Status profila", value: "Aktivan", status: true },
+];
+
+const PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
+
+function DashboardIcon({ name, className }: { name: DashboardIconName; className?: string }) {
+  const props = {
+    "aria-hidden": true,
+    className,
+    fill: "none",
+    stroke: "currentColor",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    strokeWidth: 1.8,
+    viewBox: "0 0 24 24",
+  };
+
+  switch (name) {
+    case "psychology":
+      return (
+        <svg {...props}>
+          <path d="M12 3a6 6 0 0 0-6 6c0 2.5 1.2 3.8 2.5 5.1 1.1 1.1 1.5 2 1.5 3.9" />
+          <path d="M12 3a6 6 0 0 1 6 6c0 2.5-1.2 3.8-2.5 5.1-1.1 1.1-1.5 2-1.5 3.9" />
+          <path d="M9 21h6" />
+          <path d="M10 17h4" />
+          <path d="M10.5 8.5c.6-1 2.2-1.2 3-.3.8.8.6 2.3-.3 3l-1.2 1" />
+        </svg>
+      );
+    case "work_history":
+      return (
+        <svg {...props}>
+          <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7" />
+          <rect x="4" y="7" width="16" height="12" rx="2" />
+          <path d="M4 12h16" />
+          <path d="M10 15h4" />
+        </svg>
+      );
+    case "insights":
+      return (
+        <svg {...props}>
+          <path d="M5 19V10" />
+          <path d="M12 19V5" />
+          <path d="M19 19v-8" />
+        </svg>
+      );
+    case "groups":
+      return (
+        <svg {...props}>
+          <path d="M16.5 20a3.5 3.5 0 0 0-7 0" />
+          <circle cx="13" cy="11" r="3" />
+          <path d="M3.5 20a3 3 0 0 1 4-2.82" />
+          <circle cx="7" cy="12" r="2.5" />
+        </svg>
+      );
+    case "grid_view":
+      return (
+        <svg {...props}>
+          <rect x="4" y="4" width="6" height="6" rx="1.2" />
+          <rect x="14" y="4" width="6" height="6" rx="1.2" />
+          <rect x="4" y="14" width="6" height="6" rx="1.2" />
+          <rect x="14" y="14" width="6" height="6" rx="1.2" />
+        </svg>
+      );
+    case "schedule":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l2.5 2.5" />
+        </svg>
+      );
+    case "task_alt":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="m8.5 12 2.2 2.2 4.8-4.8" />
+        </svg>
+      );
+    case "trending_up":
+      return (
+        <svg {...props}>
+          <path d="M5 16 10 11l3 3 6-6" />
+          <path d="M14 8h5v5" />
+        </svg>
+      );
+    case "biotech":
+      return (
+        <svg {...props}>
+          <path d="M9 3v6" />
+          <path d="M15 3v6" />
+          <path d="M8 9h8" />
+          <path d="M8 9v4a4 4 0 0 0 8 0V9" />
+          <path d="M10 17h4" />
+          <path d="M9 21h6" />
+        </svg>
+      );
+    case "account_balance":
+      return (
+        <svg {...props}>
+          <path d="M4 9h16" />
+          <path d="M6 9v7" />
+          <path d="M12 9v7" />
+          <path d="M18 9v7" />
+          <path d="M3 20h18" />
+          <path d="m12 4 8 4H4l8-4Z" />
+        </svg>
+      );
+    case "hub":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="2.2" />
+          <circle cx="6" cy="7" r="2" />
+          <circle cx="18" cy="7" r="2" />
+          <circle cx="18" cy="17" r="2" />
+          <path d="M8 8.2 10.4 10" />
+          <path d="M14 10 16 8.2" />
+          <path d="M14 14l2 1.8" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...props}>
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="m16 16 4 4" />
+        </svg>
+      );
+    case "notifications":
+      return (
+        <svg {...props}>
+          <path d="M6 15h12" />
+          <path d="M8 15V11a4 4 0 1 1 8 0v4" />
+          <path d="M10 18a2 2 0 0 0 4 0" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="2.8" />
+          <path d="M12 4.5v1.3" />
+          <path d="M12 18.2v1.3" />
+          <path d="m6.7 6.7.9.9" />
+          <path d="m16.4 16.4.9.9" />
+          <path d="M4.5 12h1.3" />
+          <path d="M18.2 12h1.3" />
+          <path d="m6.7 17.3.9-.9" />
+          <path d="m16.4 7.6.9-.9" />
+        </svg>
+      );
+    case "arrow_right":
+      return (
+        <svg {...props}>
+          <path d="M5 12h14" />
+          <path d="m13 7 5 5-5 5" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function getIconTileClassName(iconBgClassName: string): string {
+  switch (iconBgClassName) {
+    case "assessment-card__icon-tile--primary":
+      return "bg-primary/10";
+    case "assessment-card__icon-tile--tertiary":
+      return "bg-tertiary/10";
+    case "assessment-card__icon-tile--cyan":
+      return "bg-primary-container/10";
+    case "assessment-card__icon-tile--secondary":
+      return "bg-secondary/10";
+    case "assessment-card__icon-tile--coral":
+      return "bg-tertiary-fixed/10";
+    default:
+      return "bg-white/5";
+  }
+}
+
+function getIconColorClassName(iconColorClassName: string): string {
+  switch (iconColorClassName) {
+    case "assessment-card__icon-color--teal":
+      return "text-primary-fixed";
+    case "assessment-card__icon-color--coral-muted":
+      return "text-tertiary-fixed-dim";
+    case "assessment-card__icon-color--cyan":
+      return "text-secondary-fixed";
+    case "assessment-card__icon-color--aqua":
+      return "text-secondary-fixed-dim";
+    case "assessment-card__icon-color--coral":
+      return "text-tertiary-fixed";
+    default:
+      return "text-white";
+  }
+}
+
+function TopNav({
+  userEmail,
+  userName,
+}: {
+  userEmail: string;
+  userName?: string | null;
+}) {
+  const initialsSource = userName?.trim() || userEmail;
+  const initials = initialsSource
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+  return (
+    <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-[#00101a]/80 shadow-[0_18px_44px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-full items-center justify-between px-4 sm:px-6 lg:px-12">
+        <div className="flex min-w-0 items-center gap-6 lg:gap-10">
+          <Link
+            href="/app"
+            className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-white transition-opacity hover:opacity-90 sm:text-xl"
+          >
+            Deep Profile
+          </Link>
+
+          <nav aria-label="Primary" className="hidden items-center gap-2 lg:flex">
+            {PRIMARY_NAV_ITEMS.map((item) => (
+              <span
+                key={item}
+                className={
+                  item === "Testovi"
+                    ? "rounded-full border border-teal-400/20 bg-teal-500/10 px-3 py-1.5 text-sm font-semibold text-teal-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    : "rounded-full px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors duration-200 hover:bg-white/[0.03] hover:text-slate-100"
+                }
+              >
+                {item}
+              </span>
+            ))}
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
+          <button
+            aria-label="Settings"
+            className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-slate-400 shadow-none transition-all duration-200 hover:border-white/10 hover:bg-white/[0.04] hover:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            type="button"
+          >
+            <DashboardIcon className="h-5 w-5" name="settings" />
+          </button>
+
+          <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-xs font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <span>{initials || "LU"}</span>
+          </div>
+
+          <form action={logout} className="hidden md:block">
+            <button
+              className="min-h-0 rounded-full border border-outline-variant/20 bg-transparent px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-300 shadow-none transition-all duration-200 hover:border-primary/40 hover:bg-white/[0.04] hover:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              type="submit"
+            >
+              Odjava
+            </button>
+          </form>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function DashboardHeader() {
+  return (
+    <section className="w-full rounded-[1.75rem] border border-white/10 bg-[#03141c]/70 p-6 shadow-[0_18px_48px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-7">
+      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-300/80">
+        Assessment workspace
+      </p>
+      <h1 className="mt-3 font-headline text-3xl font-extrabold tracking-[-0.045em] text-white sm:text-4xl">
+        Dostupni testovi
+      </h1>
+      <p className="mt-2 max-w-2xl font-body text-sm leading-6 text-slate-400 sm:text-[15px]">
+        Pokrenite aktivne procjene i odvojeno pregledajte testove koji još nisu dostupni.
+      </p>
+    </section>
+  );
+}
+
+function WelcomeOverviewCard({
+  userEmail,
+  userName,
+}: {
+  userEmail: string;
+  userName?: string | null;
+}) {
+  const firstName = userName?.trim()?.split(/\s+/)[0];
+
+  return (
+    <section className="glass-card rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(10,32,40,0.92),rgba(3,18,26,0.9))] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:p-7">
+      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-300/75">
+        Overview
+      </p>
+      <h2 className="mt-3 font-headline text-[1.75rem] font-bold tracking-[-0.04em] text-white">
+        {firstName ? `Dobrodošao nazad, ${firstName}` : "Dobrodošao nazad"}
+      </h2>
+      <p className="mt-3 font-body text-sm leading-7 text-slate-300/90">
+        Tvoj kandidat profil je spreman za rad. Ovdje imaš brz pregled statusa naloga i aktivnih
+        procjena.
+      </p>
+      <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Account
+        </p>
+        <p className="mt-2 truncate text-sm font-medium text-white">{userEmail}</p>
+        {userName ? <p className="mt-1 text-sm text-slate-400">{userName}</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function QuickActionCard() {
+  return (
+    <section className="glass-card rounded-[1.5rem] border border-white/10 bg-[#041720]/80 p-6 shadow-[0_20px_44px_rgba(0,0,0,0.2)]">
+      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-300/80">
+        Quick action
+      </p>
+      <h2 className="mt-3 font-headline text-xl font-bold tracking-[-0.03em] text-white">
+        Generate Insights Report
+      </h2>
+      <p className="mt-2 font-body text-sm leading-6 text-slate-400">
+        CTA ostaje pripremljen za izvještaje, bez nove backend logike u ovoj iteraciji.
+      </p>
+      <button
+        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-300/75"
+        disabled
+        type="button"
+      >
+        <span>Insights uskoro</span>
+        <DashboardIcon className="h-4 w-4" name="arrow_right" />
+      </button>
+    </section>
+  );
+}
+
+function AssessmentSection({
+  title,
+  description,
+  assessments,
+  muted = false,
+  hideSectionHeader = false,
+}: {
+  title: string;
+  description: string;
+  assessments: CandidateAssessmentCard[];
+  muted?: boolean;
+  hideSectionHeader?: boolean;
+}) {
+  if (assessments.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className={muted ? "mt-8" : "mt-6"}>
+      {!hideSectionHeader ? (
+        <div className="mb-4 flex flex-col gap-1">
+          <h2 className="font-headline text-2xl font-bold tracking-[-0.03em] text-white">{title}</h2>
+          <p className="font-body text-sm leading-6 text-slate-400">{description}</p>
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
+        {assessments.map((assessment) => (
+          <AssessmentCard assessment={assessment} key={assessment.title} muted={muted} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AssessmentCard({
+  assessment,
+  muted = false,
+}: {
+  assessment: CandidateAssessmentCard;
+  muted?: boolean;
+}) {
+  const iconTileClassName = getIconTileClassName(assessment.iconBgClassName);
+  const iconColorClassName = getIconColorClassName(assessment.iconColorClassName);
+  const isAvailable = !assessment.disabled && Boolean(assessment.href);
+  const badgeClassName =
+    isAvailable && !muted
+      ? "border border-teal-400/20 bg-teal-500/10 text-teal-300"
+      : "border border-white/8 bg-white/[0.04] text-slate-400";
+  const cardClassName = muted
+    ? "glass-card border-white/8 bg-[#04131b]/75 hover:border-white/10 hover:shadow-[0_16px_34px_rgba(0,0,0,0.16)]"
+    : "glass-card border-white/12 bg-[#051822]/88 hover:border-teal-500/20 hover:shadow-[0_22px_44px_rgba(0,0,0,0.22)]";
+  const descriptionClassName = muted ? "text-slate-500" : "text-slate-400";
+  const metaClassName = muted ? "text-slate-400/75" : "text-slate-300/85";
+
+  return (
+    <article
+      className={`group flex h-full flex-col rounded-[1.5rem] border p-4 transition-all duration-300 hover:-translate-y-0.5 sm:p-5 ${cardClassName}`}
+    >
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div
+          className={`rounded-2xl p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${iconTileClassName} ${muted ? "opacity-75" : ""}`}
+        >
+          <DashboardIcon className={`h-6 w-6 ${iconColorClassName} sm:h-7 sm:w-7`} name={assessment.icon} />
+        </div>
+        <span
+          className={`inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] ${badgeClassName}`}
+        >
+          {assessment.status}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col">
+        <h3 className={`font-headline text-[1.35rem] font-bold tracking-[-0.03em] ${muted ? "text-slate-200" : "text-white"}`}>
+          {assessment.title}
+        </h3>
+        <p className={`mt-2 min-h-0 font-body text-sm leading-6 ${descriptionClassName}`}>
+          {assessment.description}
+        </p>
+
+        <div className="mb-4 mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-3">
+          <span className={`inline-flex items-center gap-2 text-xs font-medium ${metaClassName}`}>
+            <DashboardIcon className="h-4 w-4 text-slate-500/90" name="schedule" />
+            {assessment.duration}
+          </span>
+          <span className={`inline-flex items-center gap-2 text-xs font-medium ${metaClassName}`}>
+            <DashboardIcon className="h-4 w-4 text-slate-500/90" name={assessment.secondaryIcon} />
+            {assessment.secondaryMeta}
+          </span>
+        </div>
+      </div>
+
+      {!isAvailable ? (
+        <button
+          className="mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-2.5 text-sm font-bold uppercase tracking-[0.16em] text-slate-400/80 opacity-90"
+          disabled
+          type="button"
+        >
+          <span>{assessment.ctaLabel}</span>
+          <DashboardIcon className="h-4 w-4" name="arrow_right" />
+        </button>
+      ) : (
+        <Link
+          className="btn-teal-gradient mt-auto flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0"
+          href={assessment.href!}
+        >
+          <span>{assessment.ctaLabel}</span>
+          <DashboardIcon className="h-4 w-4" name="arrow_right" />
+        </Link>
+      )}
+    </article>
+  );
+}
+
+function DashboardStatCard({
+  label,
+  value,
+  accent,
+  status,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  status?: boolean;
+}) {
+  return (
+    <article className="glass-card rounded-2xl p-5 sm:p-6">
+      <p className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+      {status ? (
+        <p className="mt-3 inline-flex items-center gap-2.5 text-xl font-bold text-white sm:text-2xl">
+          <span className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(34,197,94,0.14)]" />
+          {value}
+        </p>
+      ) : (
+        <p
+          className={`mt-3 text-[2rem] font-extrabold tracking-[-0.04em] sm:text-[2.15rem] ${accent ? "text-teal-300" : "text-white"}`}
+        >
+          {value}
+        </p>
+      )}
+    </article>
+  );
+}
+
+function DashboardFooter({
+  showHrLink,
+}: {
+  showHrLink: boolean;
+}) {
+  return (
+    <footer className="border-t border-white/8">
+      <div className="flex w-full flex-col gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-12">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
+          <p className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500">
+            © 2024 Luminescent. All rights reserved.
+          </p>
+          {showHrLink ? (
+            <Link
+              className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
+              href="/hr"
+            >
+              HR Workspace
+            </Link>
+          ) : null}
+        </div>
+
+        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <a
+            className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
+            href="/"
+          >
+            Privacy Policy
+          </a>
+          <a
+            className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
+            href="/"
+          >
+            Terms of Service
+          </a>
+          <a
+            className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-500 transition-colors duration-200 hover:text-teal-300"
+            href="/"
+          >
+            Security
+          </a>
+        </nav>
+      </div>
+    </footer>
+  );
+}
+
+function EmptyState() {
+  return (
+    <section className="glass-card rounded-xl p-8 md:p-10">
+      <h2 className="font-headline text-2xl font-bold tracking-tight text-white">
+        Kandidat profil još nije povezan
+      </h2>
+      <p className="mt-4 max-w-2xl font-body text-sm leading-7 text-slate-400">
+        Ovaj nalog trenutno nema povezan kandidat profil, pa procjene još nisu dostupne.
+      </p>
+      <p className="mt-2 max-w-2xl font-body text-sm leading-7 text-slate-400">
+        Dok se povezivanje ne završi, ovdje se neće prikazati dostupni testovi ni izvještaji.
+      </p>
+    </section>
+  );
+}
+
+export function CandidateDashboardView({
+  assessments,
+  userEmail,
+  userName,
+  showHrLink,
+  hasLinkedParticipant,
+}: CandidateDashboardViewProps) {
+  const availableAssessments = assessments.filter(
+    (assessment) => !assessment.disabled && Boolean(assessment.href),
+  );
+  const unavailableAssessments = assessments.filter(
+    (assessment) => assessment.disabled || !assessment.href,
+  );
+
+  return (
+    <div className="candidate-dashboard-page--shell bg-mesh min-h-screen font-body text-white">
+      <TopNav userEmail={userEmail} userName={userName} />
+
+      <main className="w-full max-w-full px-6 lg:px-12 pb-14 pt-24">
+        {hasLinkedParticipant ? (
+          <div className="grid grid-cols-1 gap-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
+            <aside className="w-full space-y-5 lg:top-24">
+              <WelcomeOverviewCard userEmail={userEmail} userName={userName} />
+
+              <section aria-label="Dashboard overview" className="grid grid-cols-2 gap-4">
+                {KPI_CARDS.map((card) => (
+                  <DashboardStatCard
+                    accent={card.accent}
+                    key={card.label}
+                    label={card.label}
+                    status={card.status}
+                    value={card.value}
+                  />
+                ))}
+              </section>
+
+              <QuickActionCard />
+            </aside>
+
+            <section aria-label="Assessments" className="min-w-0 w-full">
+              <div className="space-y-6">
+                <DashboardHeader />
+                {availableAssessments.length > 0 ? (
+    <AssessmentSection
+      title="Dostupni testovi"
+      description="Aktivne procjene koje možeš odmah otvoriti i završiti."
+      assessments={availableAssessments}
+      hideSectionHeader
+    />
+                ) : null}
+              </div>
+
+              <AssessmentSection
+                title="Ostali testovi"
+                description="Ove procjene još nisu otključane za tvoj profil."
+                assessments={unavailableAssessments}
+                muted
+              />
+            </section>
+          </div>
+        ) : (
+          <EmptyState />
+        )}
+      </main>
+
+      <DashboardFooter showHrLink={showHrLink} />
+    </div>
+  );
+}
 </file>
 
 <file path="lib/assessment/report-config.ts">
@@ -15276,369 +15276,6 @@ export default async function CandidateAppEntryPage() {
 }
 </file>
 
-<file path="app/login/page.tsx">
-import { LoginForm } from "@/components/auth/login-form";
-import { loginScreenContent } from "@/components/auth/login-content";
-import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
-import { getAuthenticatedUser } from "@/lib/auth/session";
-import { redirect } from "next/navigation";
-
-export const dynamic = "force-dynamic";
-
-const heroStats = [
-  {
-    value: loginScreenContent.stat1Value,
-    label: loginScreenContent.stat1Label,
-  },
-  {
-    value: loginScreenContent.stat2Value,
-    label: loginScreenContent.stat2Label,
-  },
-  {
-    value: loginScreenContent.stat3Value,
-    label: loginScreenContent.stat3Label,
-  },
-] as const;
-
-export default async function LoginPage() {
-  const user = await getAuthenticatedUser();
-
-  if (user) {
-    redirect(await getPostLoginRedirectPathForUserId(user.id));
-  }
-
-  return (
-    <div className="login-experience min-h-screen w-screen overflow-x-hidden bg-[#f5faff] font-body text-[#00374d]">
-      <div className="flex min-h-screen w-full flex-col">
-        <main className="m-0 flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden lg:flex-row">
-          <section className="relative hidden flex-col justify-between bg-[linear-gradient(135deg,#00101a_0%,#00374d_100%)] px-16 py-16 lg:flex lg:w-1/2 xl:px-20 xl:py-20">
-            <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
-              <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary-container blur-[120px]" />
-              <div className="absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-tertiary blur-[100px]" />
-            </div>
-
-            <div className="relative z-10 flex w-full flex-1 flex-col justify-between">
-              <div className="mx-auto w-full max-w-[620px]">
-                <p className="font-headline text-[22px] leading-none font-extrabold tracking-[-0.03em] text-[#abe5fe]">
-                  {loginScreenContent.brandName}
-                </p>
-
-                <div className="mt-8">
-                  <h1 className="font-headline text-[64px] font-extrabold leading-[1.02] tracking-[-0.045em] text-white">
-                    <span className="block">{loginScreenContent.heroTitleLine1}</span>
-                    <span className="block text-[#abe5fe]">
-                      {loginScreenContent.heroTitleEmphasis}
-                    </span>
-                  </h1>
-                  <p className="mt-8 font-body text-[20px] font-light leading-[1.75] tracking-[-0.01em] text-white/78">
-                    {loginScreenContent.heroDescription}
-                  </p>
-                </div>
-
-                <div
-                  className="mt-14 flex w-full flex-row gap-4"
-                  aria-label="Ključne prednosti platforme"
-                >
-                  {heroStats.map((stat) => (
-                    <div
-                      className="min-h-[124px] min-w-0 flex-1 rounded-[22px] border border-white/[0.03] bg-white/[0.04] px-5 py-4 shadow-none backdrop-blur-[6px]"
-                      key={stat.label}
-                    >
-                      <p className="mb-2 font-headline text-[15px] font-semibold leading-6 text-white/92">
-                        {stat.value}
-                      </p>
-                      <p className="font-body text-[13px] font-normal leading-6 text-white/68">
-                        {stat.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mx-auto mt-12 flex w-full max-w-[620px] items-center gap-4">
-                <div className="h-[4px] w-[44px] rounded-full bg-[#ee947d]" />
-                <span className="font-label text-[12px] leading-none font-semibold uppercase tracking-[0.22em] text-[#8bb8d4]">
-                  {loginScreenContent.heroBadge}
-                </span>
-              </div>
-            </div>
-          </section>
-
-          <section className="relative flex w-full items-center justify-center bg-[#f5faff] px-8 py-16 md:px-12 xl:px-16 lg:w-1/2">
-            <div className="absolute left-8 top-8 lg:hidden">
-              <span className="font-headline text-xl font-bold tracking-tight text-[#00374d]">
-                {loginScreenContent.brandName}
-              </span>
-            </div>
-
-            <div className="w-full max-w-[520px] lg:pt-10 xl:pt-14">
-              <header className="mb-12">
-                <h2 className="font-headline text-[48px] leading-[1.05] font-extrabold tracking-[-0.04em] text-[#00374d]">
-                  {loginScreenContent.welcomeTitle}
-                </h2>
-                <p className="mt-4 max-w-[420px] font-body text-[18px] font-normal leading-[1.6] text-[#37647d]">
-                  {loginScreenContent.welcomeDescription}
-                </p>
-              </header>
-
-              <LoginForm content={loginScreenContent} />
-            </div>
-          </section>
-        </main>
-
-        <footer className="w-full shrink-0 border-t border-[#8bb8d4]/10 bg-[#e9f5ff]">
-          <div className="flex flex-col items-center justify-between gap-4 px-10 py-7 md:flex-row xl:px-12">
-            <p className="text-center font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/65 md:text-left">
-              {loginScreenContent.footerLegalText}
-            </p>
-            <nav className="flex items-center gap-8" aria-label="Legal">
-              <a
-                className="font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/90 transition-colors hover:text-[#29667b] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
-                href={loginScreenContent.footerLink1Href}
-              >
-                {loginScreenContent.footerLink1}
-              </a>
-              <a
-                className="font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/90 transition-colors hover:text-[#29667b] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
-                href={loginScreenContent.footerLink2Href}
-              >
-                {loginScreenContent.footerLink2}
-              </a>
-              <a
-                className="font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/90 transition-colors hover:text-[#29667b] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
-                href={loginScreenContent.footerLink3Href}
-              >
-                {loginScreenContent.footerLink3}
-              </a>
-            </nav>
-          </div>
-        </footer>
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="components/auth/login-form.tsx">
-"use client";
-
-import type { LoginScreenContent } from "@/components/auth/login-content";
-import { loginWithPassword } from "@/app/actions/auth";
-import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
-
-function getDesktopLoginMessage(message: string) {
-  switch (message) {
-    case "Email and password are required.":
-      return "E-mail i lozinka su obavezni.";
-    case "Invalid email or password.":
-      return "E-mail ili lozinka nisu ispravni.";
-    default:
-      return message;
-  }
-}
-
-type LoginFormProps = {
-  content: LoginScreenContent;
-};
-
-function MailIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-      <path
-        d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-      <path
-        d="m5.5 8.5 5.58 4.18a1.56 1.56 0 0 0 1.84 0L18.5 8.5"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-      <path
-        d="M7.75 10V8.25a4.25 4.25 0 1 1 8.5 0V10"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-      <rect
-        x="5"
-        y="10"
-        width="14"
-        height="10"
-        rx="2.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
-
-export function LoginForm({ content }: LoginFormProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
-  const [rememberDevice, setRememberDevice] = useState(true);
-  const rememberId = useId();
-  const inputClassName =
-    "block h-[56px] w-full appearance-none rounded-[18px] border border-[#8bb8d4]/30 bg-[#e9f5ff] font-body text-[17px] font-medium leading-[1.15] text-[#00374d] shadow-none outline-none ring-0 transition-all duration-200 placeholder:text-[#54809a]/78 focus:border-[#8bb8d4]/45 focus:outline-none focus:ring-2 focus:ring-[#abe5fe]";
-  const labelClassName =
-    "mb-3 ml-1 block font-label text-[11px] leading-none font-bold uppercase tracking-[0.22em] text-[#37647d]";
-
-  return (
-    <form
-      className="space-y-0"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const email = String(formData.get("email") ?? "");
-        const password = String(formData.get("password") ?? "");
-
-        startTransition(async () => {
-          const result = await loginWithPassword({ email, password });
-
-          if (!result.ok) {
-            setMessage(result.message);
-            return;
-          }
-
-          setMessage(null);
-          router.push(result.redirectPath);
-          router.refresh();
-        });
-      }}
-    >
-      <div className="space-y-6">
-        <label className="block" htmlFor="email">
-          <span className={labelClassName}>{content.emailLabel}</span>
-          <span className="relative block">
-            <span className="pointer-events-none absolute left-6 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-[#54809a]">
-              <MailIcon />
-            </span>
-            <input
-              className={inputClassName}
-              id="email"
-              name="email"
-              type="email"
-              placeholder="name@company.com"
-              autoComplete="email"
-              style={{ paddingLeft: "76px", paddingRight: "84px" }}
-              required
-            />
-          </span>
-        </label>
-
-        <label className="block" htmlFor="password">
-          <span className={labelClassName}>{content.passwordLabel}</span>
-          <span className="relative block">
-            <span className="pointer-events-none absolute left-6 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-[#54809a]">
-              <LockIcon />
-            </span>
-            <input
-              className={inputClassName}
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              style={{ paddingLeft: "76px", paddingRight: "84px" }}
-              required
-            />
-          </span>
-        </label>
-      </div>
-
-      <div className="mt-6 border-b border-[#8bb8d4]/25 pb-6">
-        <div className="flex items-start gap-3">
-        <label
-          className="inline-flex cursor-pointer items-start gap-3"
-          htmlFor={rememberId}
-        >
-          <input
-            className="peer sr-only"
-            id={rememberId}
-            type="checkbox"
-            checked={rememberDevice}
-            onChange={(event) => setRememberDevice(event.target.checked)}
-          />
-          <span
-            className={
-              rememberDevice
-                ? "mt-[2px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#29667b] bg-[#29667b] text-white transition-all duration-200"
-                : "mt-[2px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#6f9ab2] bg-[#eef6fb] text-[#6f9ab2] transition-all duration-200"
-            }
-          >
-            {rememberDevice ? (
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 16 16"
-                className="h-3.5 w-3.5"
-              >
-                <path
-                  d="M3.5 8.5 6.5 11.5 12.5 5.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                />
-              </svg>
-            ) : null}
-          </span>
-          <span className="text-[15px] font-medium leading-6 text-[#37647d]">
-            {content.rememberLabel}
-          </span>
-        </label>
-        </div>
-      </div>
-
-      <div className="pt-6">
-        <button
-          className="h-[64px] w-full rounded-full bg-[linear-gradient(90deg,#29667b_0%,#195a6f_100%)] font-label text-[15px] font-bold uppercase leading-none tracking-[0.20em] text-white shadow-[0_12px_30px_rgba(41,102,123,0.18)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_16px_36px_rgba(41,102,123,0.24)] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0 active:translate-y-0 active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
-          type="submit"
-          disabled={isPending}
-        >
-          {isPending ? content.primaryButtonPendingLabel : content.primaryButtonLabel}
-        </button>
-        {message ? (
-          <p className="status-message status-message--danger rounded-[1.5rem] border border-[#fda18a]/40 bg-[#fef1ed] px-4 py-3 text-sm text-[#70030f]">
-            {getDesktopLoginMessage(message)}
-          </p>
-        ) : null}
-
-        <div className="mx-auto mt-5 max-w-[360px] text-center">
-          <p className="font-body text-[15px] leading-7 text-[#37647d]">
-            {content.bottomHelperText}{" "}
-            <a
-              className="font-bold text-[#934a38] underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
-              href={content.bottomHelperHref}
-            >
-              {content.bottomHelperLinkLabel}
-            </a>
-          </p>
-        </div>
-      </div>
-    </form>
-  );
-}
-</file>
-
 <file path="lib/assessment/report-provider-helpers.ts">
 import "server-only";
 
@@ -16547,354 +16184,222 @@ try {
 }
 </file>
 
-<file path="app/(protected)/dashboard/attempts/[attemptId]/run/page.tsx">
-import { notFound, redirect } from "next/navigation";
-import { AssessmentForm } from "@/components/assessment/assessment-form";
-import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
-import {
-  getActiveOrganizationForUser,
-  getAttemptForOrganization,
-} from "@/lib/b2b/organizations";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
+<file path="components/auth/login-form.tsx">
+"use client";
 
-type ProtectedAttemptRunPageProps = {
-  params: {
-    attemptId: string;
-  };
+import type { LoginScreenContent } from "@/components/auth/login-content";
+import { loginWithPassword } from "@/app/actions/auth";
+import { useRouter } from "next/navigation";
+import { useId, useState, useTransition } from "react";
+
+function getDesktopLoginMessage(message: string) {
+  switch (message) {
+    case "Email and password are required.":
+      return "E-mail i lozinka su obavezni.";
+    case "Invalid email or password.":
+      return "E-mail ili lozinka nisu ispravni.";
+    default:
+      return message;
+  }
+}
+
+type LoginFormProps = {
+  content: LoginScreenContent;
 };
 
-export const dynamic = "force-dynamic";
-
-export default async function ProtectedAttemptRunPage({
-  params,
-}: ProtectedAttemptRunPageProps) {
-  const user = await requireAuthenticatedUser();
-  const organization = await getActiveOrganizationForUser(user.id);
-
-  if (!organization) {
-    notFound();
-  }
-
-  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
-
-  if (!attempt) {
-    notFound();
-  }
-
-  if (attempt.status === "completed") {
-    redirect(`/dashboard/attempts/${attempt.id}`);
-  }
-
-  const runPageData = await loadProtectedAttemptRunPageData(attempt);
-
-  if (runPageData.questions.length === 0) {
-    return (
-      <main className="stack-md">
-        <section className="card stack-sm">
-          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Assessment"}</h1>
-          <p>No questions are available for this test yet.</p>
-        </section>
-      </main>
-    );
-  }
-
+function MailIcon() {
   return (
-    <main className="assessment-run-page stack-md">
-      <section className="assessment-run-shell">
-        <AssessmentForm
-          executionMode="protected"
-          layoutMode="step"
-          completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
-          assessmentDisplayName={runPageData.assessmentName}
-          participantDisplayName={runPageData.participantName}
-          testId={attempt.test_id}
-          locale={attempt.locale}
-          questions={runPageData.questions}
-          answerOptionsByQuestionId={runPageData.answerOptionsByQuestionId}
-          initialAttemptId={runPageData.resumeState.attemptId}
-          initialAttemptStatus={runPageData.resumeState.attemptStatus}
-          initialCompletedAt={runPageData.resumeState.completedAt}
-          initialSelections={runPageData.resumeState.selections}
-          initialResults={runPageData.results}
-          initialReport={runPageData.report}
-        />
-      </section>
-    </main>
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <path
+        d="m5.5 8.5 5.58 4.18a1.56 1.56 0 0 0 1.84 0L18.5 8.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+    </svg>
   );
 }
-</file>
 
-<file path="app/(protected)/dashboard/page.tsx">
-import Link from "next/link";
-import { createB2BAttempt } from "@/app/actions/assessment";
-import { logout } from "@/app/actions/auth";
-import {
-  getActiveOrganizationForUser,
-  getAttemptsForOrganization,
-  getMembershipsForUser,
-  getParticipantsForOrganization,
-  type MembershipSummary,
-} from "@/lib/b2b/organizations";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
-
-const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
-
-type DashboardPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
-};
-
-function getOrganizationName(membership: MembershipSummary): string {
-  return membership.organization?.name ?? "Unknown organization";
+function LockIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        d="M7.75 10V8.25a4.25 4.25 0 1 1 8.5 0V10"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <rect
+        x="5"
+        y="10"
+        width="14"
+        height="10"
+        rx="2.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
 }
 
-function getDashboardMessage(rawError: string | string[] | undefined): string | null {
-  const error = Array.isArray(rawError) ? rawError[0] : rawError;
-
-  switch (error) {
-    case "missing-participant":
-      return "Select a participant before creating an attempt.";
-    case "no-active-organization":
-      return "No active organization is available for this user.";
-    case "participant-not-found":
-      return "The selected participant was not found in the active organization.";
-    case "test-not-found":
-      return "The configured test slug could not be resolved.";
-    case "create-attempt-failed":
-      return "Unable to create the attempt right now. Please try again.";
-    default:
-      return null;
-  }
-}
-
-function getDashboardSuccessMessage(
-  rawSuccess: string | string[] | undefined,
-  rawAttemptId: string | string[] | undefined,
-): string | null {
-  const success = Array.isArray(rawSuccess) ? rawSuccess[0] : rawSuccess;
-  const attemptId = Array.isArray(rawAttemptId) ? rawAttemptId[0] : rawAttemptId;
-
-  switch (success) {
-    case "attempt-created":
-      return attemptId
-        ? `Assessment ${getAttemptLabel(attemptId)} was created successfully. The candidate can now access it from their app workspace.`
-        : "Assessment was created successfully. The candidate can now access it from their app workspace.";
-    default:
-      return null;
-  }
-}
-
-function formatTimestamp(value: string | null): string {
-  if (!value) {
-    return "N/A";
-  }
-
-  return new Date(value).toLocaleString();
-}
-
-function getAttemptLabel(attemptId: string): string {
-  return attemptId.length > 8 ? `${attemptId.slice(0, 8)}...` : attemptId;
-}
-
-export const dynamic = "force-dynamic";
-
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const user = await requireAuthenticatedUser();
-  const [memberships, activeOrganization] = await Promise.all([
-    getMembershipsForUser(user.id),
-    getActiveOrganizationForUser(user.id),
-  ]);
-  const [participants, attempts] = activeOrganization
-    ? await Promise.all([
-        getParticipantsForOrganization(activeOrganization.id),
-        getAttemptsForOrganization(activeOrganization.id),
-      ])
-    : [[], []];
-  const message = getDashboardMessage(searchParams?.error);
-  const successMessage = getDashboardSuccessMessage(searchParams?.success, searchParams?.attemptId);
+export function LoginForm({ content }: LoginFormProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+  const [rememberDevice, setRememberDevice] = useState(true);
+  const rememberId = useId();
+  const inputClassName =
+    "block h-[56px] w-full appearance-none rounded-[18px] border border-[#8bb8d4]/30 bg-[#e9f5ff] font-body text-[17px] font-medium leading-[1.15] text-[#00374d] shadow-none outline-none ring-0 transition-all duration-200 placeholder:text-[#54809a]/78 focus:border-[#8bb8d4]/45 focus:outline-none focus:ring-2 focus:ring-[#abe5fe]";
+  const labelClassName =
+    "mb-3 ml-1 block font-label text-[11px] leading-none font-bold uppercase tracking-[0.22em] text-[#37647d]";
 
   return (
-    <main className="app-shell dashboard-page stack-lg">
-      <section className="dashboard-hero card stack-md">
-        <div className="stack-md">
-          <div className="stack-xs">
-            <p className="eyebrow">HR Dashboard</p>
-            <h1>Assessment operations</h1>
-            <p className="page-lead">
-              Create attempts, monitor participant activity, and keep the current assessment workflow moving.
-            </p>
-          </div>
+    <form
+      className="space-y-0"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        const email = String(formData.get("email") ?? "");
+        const password = String(formData.get("password") ?? "");
 
-          <div className="dashboard-hero__meta">
-            <div className="dashboard-meta-card">
-              <span className="dashboard-meta-card__label">Signed in as</span>
-              <p>{user.email ?? user.id}</p>
-            </div>
-            <div className="dashboard-meta-card">
-              <span className="dashboard-meta-card__label">Active organization</span>
-              <p>{activeOrganization ? activeOrganization.name : "No active organization"}</p>
-            </div>
-            {activeOrganization ? (
-              <div className="dashboard-meta-card">
-                <span className="dashboard-meta-card__label">Current B2B test</span>
-                <p>
-                  <code>{DEFAULT_B2B_TEST_SLUG}</code>
-                </p>
-              </div>
+        startTransition(async () => {
+          const result = await loginWithPassword({ email, password });
+
+          if (!result.ok) {
+            setMessage(result.message);
+            return;
+          }
+
+          setMessage(null);
+          router.push(result.redirectPath);
+          router.refresh();
+        });
+      }}
+    >
+      <div className="space-y-6">
+        <label className="block" htmlFor="email">
+          <span className={labelClassName}>{content.emailLabel}</span>
+          <span className="relative block">
+            <span className="pointer-events-none absolute left-6 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-[#54809a]">
+              <MailIcon />
+            </span>
+            <input
+              className={inputClassName}
+              id="email"
+              name="email"
+              type="email"
+              placeholder="name@company.com"
+              autoComplete="email"
+              style={{ paddingLeft: "76px", paddingRight: "84px" }}
+              required
+            />
+          </span>
+        </label>
+
+        <label className="block" htmlFor="password">
+          <span className={labelClassName}>{content.passwordLabel}</span>
+          <span className="relative block">
+            <span className="pointer-events-none absolute left-6 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-[#54809a]">
+              <LockIcon />
+            </span>
+            <input
+              className={inputClassName}
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              style={{ paddingLeft: "76px", paddingRight: "84px" }}
+              required
+            />
+          </span>
+        </label>
+      </div>
+
+      <div className="mt-6 border-b border-[#8bb8d4]/25 pb-6">
+        <div className="flex items-start gap-3">
+        <label
+          className="inline-flex cursor-pointer items-start gap-3"
+          htmlFor={rememberId}
+        >
+          <input
+            className="peer sr-only"
+            id={rememberId}
+            type="checkbox"
+            checked={rememberDevice}
+            onChange={(event) => setRememberDevice(event.target.checked)}
+          />
+          <span
+            className={
+              rememberDevice
+                ? "mt-[2px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#29667b] bg-[#29667b] text-white transition-all duration-200"
+                : "mt-[2px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#6f9ab2] bg-[#eef6fb] text-[#6f9ab2] transition-all duration-200"
+            }
+          >
+            {rememberDevice ? (
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="h-3.5 w-3.5"
+              >
+                <path
+                  d="M3.5 8.5 6.5 11.5 12.5 5.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                />
+              </svg>
             ) : null}
-          </div>
-
-          {memberships.length > 1 ? (
-            <p className="dashboard-note">
-              TODO: add an explicit organization switcher when multi-org selection becomes necessary.
-            </p>
-          ) : null}
-          {message ? <p className="status-message status-message--danger">{message}</p> : null}
-          {successMessage ? <p className="status-message status-message--success">{successMessage}</p> : null}
+          </span>
+          <span className="text-[15px] font-medium leading-6 text-[#37647d]">
+            {content.rememberLabel}
+          </span>
+        </label>
         </div>
+      </div>
 
-        <form action={logout}>
-          <button className="button-secondary" type="submit">
-            Sign out
-          </button>
-        </form>
-      </section>
+      <div className="pt-6">
+        <button
+          className="h-[64px] w-full rounded-full bg-[linear-gradient(90deg,#29667b_0%,#195a6f_100%)] font-label text-[15px] font-bold uppercase leading-none tracking-[0.20em] text-white shadow-[0_12px_30px_rgba(41,102,123,0.18)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_16px_36px_rgba(41,102,123,0.24)] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0 active:translate-y-0 active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
+          type="submit"
+          disabled={isPending}
+        >
+          {isPending ? content.primaryButtonPendingLabel : content.primaryButtonLabel}
+        </button>
+        {message ? (
+          <p className="status-message status-message--danger rounded-[1.5rem] border border-[#fda18a]/40 bg-[#fef1ed] px-4 py-3 text-sm text-[#70030f]">
+            {getDesktopLoginMessage(message)}
+          </p>
+        ) : null}
 
-      <section className="card stack-md">
-        <div className="section-heading">
-          <div>
-            <h2>Memberships</h2>
-            <p>Organization access and role context for the signed-in account.</p>
-          </div>
+        <div className="mx-auto mt-5 max-w-[360px] text-center">
+          <p className="font-body text-[15px] leading-7 text-[#37647d]">
+            {content.bottomHelperText}{" "}
+            <a
+              className="font-bold text-[#934a38] underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
+              href={content.bottomHelperHref}
+            >
+              {content.bottomHelperLinkLabel}
+            </a>
+          </p>
         </div>
-
-        {memberships.length === 0 ? (
-          <div className="empty-state">
-            <p>No organization memberships found for this user yet.</p>
-          </div>
-        ) : (
-          <ul className="data-list">
-            {memberships.map((membership) => (
-              <li key={membership.id} className="data-list__item">
-                <div className="data-list__row">
-                  <div className="stack-xs">
-                    <h3>{getOrganizationName(membership)}</h3>
-                    <p>
-                      {membership.role} · {membership.status}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="card stack-md">
-        <div className="section-heading">
-          <div>
-            <h2>Participants</h2>
-            <p>Launch the active IPIP-50 assessment for participants in the current organization.</p>
-          </div>
-        </div>
-
-        {!activeOrganization ? (
-          <div className="empty-state">
-            <p>This user does not have an active organization yet, so no B2B attempts can be created.</p>
-          </div>
-        ) : participants.length === 0 ? (
-          <div className="empty-state">
-            <p>No active participants found for {activeOrganization.name}.</p>
-          </div>
-        ) : (
-          <ul className="data-list">
-            {participants.map((participant) => (
-              <li key={participant.id} className="data-list__item">
-                <div className="data-list__row data-list__row--split">
-                  <div className="stack-xs">
-                    <h3>{participant.full_name}</h3>
-                    <p>{participant.email}</p>
-                    <p>
-                      {participant.participant_type} {participant.user_id ? "· linked user" : "· no linked user"}
-                    </p>
-                  </div>
-                  <form action={createB2BAttempt}>
-                    <input type="hidden" name="participantId" value={participant.id} />
-                    <input type="hidden" name="testSlug" value={DEFAULT_B2B_TEST_SLUG} />
-                    <button className="button-primary" type="submit">
-                      Create IPIP-50 attempt
-                    </button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="card stack-md">
-        <div className="section-heading">
-          <div>
-            <h2>Attempts</h2>
-            <p>Recent assessment activity across the active organization.</p>
-          </div>
-        </div>
-
-        {!activeOrganization ? (
-          <div className="empty-state">
-            <p>
-              This user does not have an active organization yet, so no organization-scoped attempts are available.
-            </p>
-          </div>
-        ) : attempts.length === 0 ? (
-          <div className="empty-state stack-xs">
-            <p>No attempts exist for {activeOrganization.name} yet.</p>
-            <p>Create the first attempt for a participant above to start the protected assessment flow.</p>
-          </div>
-        ) : (
-          <ul className="data-list">
-            {attempts.map((attempt) => {
-              const detailHref = `/dashboard/attempts/${attempt.id}`;
-              const continueHref = `${detailHref}/run`;
-              const participantName = attempt.participants?.full_name ?? attempt.participant_id ?? "Unknown participant";
-              const participantEmail = attempt.participants?.email ?? "N/A";
-              const testLabel = attempt.tests?.name ?? attempt.tests?.slug ?? "Unknown test";
-              const activityLabel =
-                attempt.status === "completed"
-                  ? `Completed ${formatTimestamp(attempt.completed_at)}`
-                  : `Started ${formatTimestamp(attempt.started_at)}`;
-
-              return (
-                <li key={attempt.id} className="data-list__item">
-                  <div className="data-list__row">
-                    <div className="stack-xs">
-                      <h3>{participantName}</h3>
-                      <p>{participantEmail}</p>
-                    </div>
-                    <p className="data-list__meta">{attempt.status}</p>
-                  </div>
-                  <div className="stack-xs">
-                    <p>
-                      Attempt {getAttemptLabel(attempt.id)} · {testLabel}
-                    </p>
-                    <p>{activityLabel}</p>
-                    {attempt.user_id ? <p>Owner: {attempt.user_id}</p> : null}
-                    <p className="dashboard-links">
-                      <Link href={detailHref}>Open attempt</Link>
-                      <span aria-hidden="true">·</span>
-                      {attempt.status === "completed" ? (
-                        <Link href={detailHref}>View results</Link>
-                      ) : (
-                        <Link href={continueHref}>Continue assessment</Link>
-                      )}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </main>
+      </div>
+    </form>
   );
 }
 </file>
@@ -17433,6 +16938,501 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
+</file>
+
+<file path="app/(protected)/dashboard/attempts/[attemptId]/run/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { AssessmentForm } from "@/components/assessment/assessment-form";
+import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
+import {
+  getActiveOrganizationForUser,
+  getAttemptForOrganization,
+} from "@/lib/b2b/organizations";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+
+type ProtectedAttemptRunPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function ProtectedAttemptRunPage({
+  params,
+}: ProtectedAttemptRunPageProps) {
+  const user = await requireAuthenticatedUser();
+  const organization = await getActiveOrganizationForUser(user.id);
+
+  if (!organization) {
+    notFound();
+  }
+
+  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status === "completed") {
+    redirect(`/dashboard/attempts/${attempt.id}`);
+  }
+
+  const runPageData = await loadProtectedAttemptRunPageData(attempt);
+
+  if (runPageData.questions.length === 0) {
+    return (
+      <main className="stack-md mx-auto w-full max-w-7xl px-4">
+        <section className="card stack-sm">
+          <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Assessment"}</h1>
+          <p>No questions are available for this test yet.</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="assessment-run-page stack-md mx-auto w-full max-w-7xl px-4">
+      <section className="assessment-run-shell">
+        <AssessmentForm
+          executionMode="protected"
+          layoutMode="step"
+          completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
+          assessmentDisplayName={runPageData.assessmentName}
+          participantDisplayName={runPageData.participantName}
+          testId={attempt.test_id}
+          locale={attempt.locale}
+          questions={runPageData.questions}
+          answerOptionsByQuestionId={runPageData.answerOptionsByQuestionId}
+          initialAttemptId={runPageData.resumeState.attemptId}
+          initialAttemptStatus={runPageData.resumeState.attemptStatus}
+          initialCompletedAt={runPageData.resumeState.completedAt}
+          initialSelections={runPageData.resumeState.selections}
+          initialResults={runPageData.results}
+          initialReport={runPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/(protected)/dashboard/page.tsx">
+import Link from "next/link";
+import { createB2BAttempt } from "@/app/actions/assessment";
+import { logout } from "@/app/actions/auth";
+import {
+  getActiveOrganizationForUser,
+  getAttemptsForOrganization,
+  getMembershipsForUser,
+  getParticipantsForOrganization,
+  type MembershipSummary,
+} from "@/lib/b2b/organizations";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+
+const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
+
+type DashboardPageProps = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+function getOrganizationName(membership: MembershipSummary): string {
+  return membership.organization?.name ?? "Unknown organization";
+}
+
+function getDashboardMessage(rawError: string | string[] | undefined): string | null {
+  const error = Array.isArray(rawError) ? rawError[0] : rawError;
+
+  switch (error) {
+    case "missing-participant":
+      return "Select a participant before creating an attempt.";
+    case "no-active-organization":
+      return "No active organization is available for this user.";
+    case "participant-not-found":
+      return "The selected participant was not found in the active organization.";
+    case "test-not-found":
+      return "The configured test slug could not be resolved.";
+    case "create-attempt-failed":
+      return "Unable to create the attempt right now. Please try again.";
+    default:
+      return null;
+  }
+}
+
+function getDashboardSuccessMessage(
+  rawSuccess: string | string[] | undefined,
+  rawAttemptId: string | string[] | undefined,
+): string | null {
+  const success = Array.isArray(rawSuccess) ? rawSuccess[0] : rawSuccess;
+  const attemptId = Array.isArray(rawAttemptId) ? rawAttemptId[0] : rawAttemptId;
+
+  switch (success) {
+    case "attempt-created":
+      return attemptId
+        ? `Assessment ${getAttemptLabel(attemptId)} was created successfully. The candidate can now access it from their app workspace.`
+        : "Assessment was created successfully. The candidate can now access it from their app workspace.";
+    default:
+      return null;
+  }
+}
+
+function formatTimestamp(value: string | null): string {
+  if (!value) {
+    return "N/A";
+  }
+
+  return new Date(value).toLocaleString();
+}
+
+function getAttemptLabel(attemptId: string): string {
+  return attemptId.length > 8 ? `${attemptId.slice(0, 8)}...` : attemptId;
+}
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const user = await requireAuthenticatedUser();
+  const [memberships, activeOrganization] = await Promise.all([
+    getMembershipsForUser(user.id),
+    getActiveOrganizationForUser(user.id),
+  ]);
+  const [participants, attempts] = activeOrganization
+    ? await Promise.all([
+        getParticipantsForOrganization(activeOrganization.id),
+        getAttemptsForOrganization(activeOrganization.id),
+      ])
+    : [[], []];
+  const message = getDashboardMessage(searchParams?.error);
+  const successMessage = getDashboardSuccessMessage(searchParams?.success, searchParams?.attemptId);
+
+  return (
+    <main className="stack-lg mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="dashboard-hero card stack-md">
+        <div className="stack-md">
+          <div className="stack-xs">
+            <p className="eyebrow">HR Dashboard</p>
+            <h1>Assessment operations</h1>
+            <p className="page-lead">
+              Create attempts, monitor participant activity, and keep the current assessment workflow moving.
+            </p>
+          </div>
+
+          <div className="dashboard-hero__meta">
+            <div className="dashboard-meta-card">
+              <span className="dashboard-meta-card__label">Signed in as</span>
+              <p>{user.email ?? user.id}</p>
+            </div>
+            <div className="dashboard-meta-card">
+              <span className="dashboard-meta-card__label">Active organization</span>
+              <p>{activeOrganization ? activeOrganization.name : "No active organization"}</p>
+            </div>
+            {activeOrganization ? (
+              <div className="dashboard-meta-card">
+                <span className="dashboard-meta-card__label">Current B2B test</span>
+                <p>
+                  <code>{DEFAULT_B2B_TEST_SLUG}</code>
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          {memberships.length > 1 ? (
+            <p className="dashboard-note">
+              TODO: add an explicit organization switcher when multi-org selection becomes necessary.
+            </p>
+          ) : null}
+          {message ? <p className="status-message status-message--danger">{message}</p> : null}
+          {successMessage ? <p className="status-message status-message--success">{successMessage}</p> : null}
+        </div>
+
+        <form action={logout}>
+          <button className="button-secondary" type="submit">
+            Sign out
+          </button>
+        </form>
+      </section>
+
+      <section className="card stack-md">
+        <div className="section-heading">
+          <div>
+            <h2>Memberships</h2>
+            <p>Organization access and role context for the signed-in account.</p>
+          </div>
+        </div>
+
+        {memberships.length === 0 ? (
+          <div className="empty-state">
+            <p>No organization memberships found for this user yet.</p>
+          </div>
+        ) : (
+          <ul className="data-list">
+            {memberships.map((membership) => (
+              <li key={membership.id} className="data-list__item">
+                <div className="data-list__row">
+                  <div className="stack-xs">
+                    <h3>{getOrganizationName(membership)}</h3>
+                    <p>
+                      {membership.role} · {membership.status}
+                    </p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card stack-md">
+        <div className="section-heading">
+          <div>
+            <h2>Participants</h2>
+            <p>Launch the active IPIP-50 assessment for participants in the current organization.</p>
+          </div>
+        </div>
+
+        {!activeOrganization ? (
+          <div className="empty-state">
+            <p>This user does not have an active organization yet, so no B2B attempts can be created.</p>
+          </div>
+        ) : participants.length === 0 ? (
+          <div className="empty-state">
+            <p>No active participants found for {activeOrganization.name}.</p>
+          </div>
+        ) : (
+          <ul className="data-list">
+            {participants.map((participant) => (
+              <li key={participant.id} className="data-list__item">
+                <div className="data-list__row data-list__row--split">
+                  <div className="stack-xs">
+                    <h3>{participant.full_name}</h3>
+                    <p>{participant.email}</p>
+                    <p>
+                      {participant.participant_type} {participant.user_id ? "· linked user" : "· no linked user"}
+                    </p>
+                  </div>
+                  <form action={createB2BAttempt}>
+                    <input type="hidden" name="participantId" value={participant.id} />
+                    <input type="hidden" name="testSlug" value={DEFAULT_B2B_TEST_SLUG} />
+                    <button className="button-primary" type="submit">
+                      Create IPIP-50 attempt
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card stack-md">
+        <div className="section-heading">
+          <div>
+            <h2>Attempts</h2>
+            <p>Recent assessment activity across the active organization.</p>
+          </div>
+        </div>
+
+        {!activeOrganization ? (
+          <div className="empty-state">
+            <p>
+              This user does not have an active organization yet, so no organization-scoped attempts are available.
+            </p>
+          </div>
+        ) : attempts.length === 0 ? (
+          <div className="empty-state stack-xs">
+            <p>No attempts exist for {activeOrganization.name} yet.</p>
+            <p>Create the first attempt for a participant above to start the protected assessment flow.</p>
+          </div>
+        ) : (
+          <ul className="data-list">
+            {attempts.map((attempt) => {
+              const detailHref = `/dashboard/attempts/${attempt.id}`;
+              const continueHref = `${detailHref}/run`;
+              const participantName = attempt.participants?.full_name ?? attempt.participant_id ?? "Unknown participant";
+              const participantEmail = attempt.participants?.email ?? "N/A";
+              const testLabel = attempt.tests?.name ?? attempt.tests?.slug ?? "Unknown test";
+              const activityLabel =
+                attempt.status === "completed"
+                  ? `Completed ${formatTimestamp(attempt.completed_at)}`
+                  : `Started ${formatTimestamp(attempt.started_at)}`;
+
+              return (
+                <li key={attempt.id} className="data-list__item">
+                  <div className="data-list__row">
+                    <div className="stack-xs">
+                      <h3>{participantName}</h3>
+                      <p>{participantEmail}</p>
+                    </div>
+                    <p className="data-list__meta">{attempt.status}</p>
+                  </div>
+                  <div className="stack-xs">
+                    <p>
+                      Attempt {getAttemptLabel(attempt.id)} · {testLabel}
+                    </p>
+                    <p>{activityLabel}</p>
+                    {attempt.user_id ? <p>Owner: {attempt.user_id}</p> : null}
+                    <p className="dashboard-links">
+                      <Link href={detailHref}>Open attempt</Link>
+                      <span aria-hidden="true">·</span>
+                      {attempt.status === "completed" ? (
+                        <Link href={detailHref}>View results</Link>
+                      ) : (
+                        <Link href={continueHref}>Continue assessment</Link>
+                      )}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+    </main>
+  );
+}
+</file>
+
+<file path="app/login/page.tsx">
+import { LoginForm } from "@/components/auth/login-form";
+import { loginScreenContent } from "@/components/auth/login-content";
+import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
+import { getAuthenticatedUser } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+const heroStats = [
+  {
+    value: loginScreenContent.stat1Value,
+    label: loginScreenContent.stat1Label,
+  },
+  {
+    value: loginScreenContent.stat2Value,
+    label: loginScreenContent.stat2Label,
+  },
+  {
+    value: loginScreenContent.stat3Value,
+    label: loginScreenContent.stat3Label,
+  },
+] as const;
+
+export default async function LoginPage() {
+  const user = await getAuthenticatedUser();
+
+  if (user) {
+    redirect(await getPostLoginRedirectPathForUserId(user.id));
+  }
+
+  return (
+    <div className="login-experience min-h-screen w-screen overflow-x-hidden bg-[#f5faff] font-body text-[#00374d]">
+      <div className="flex min-h-screen w-full flex-col">
+        <main className="m-0 flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden lg:flex-row">
+          <section className="relative hidden flex-col justify-between bg-[linear-gradient(135deg,#00101a_0%,#00374d_100%)] px-16 py-16 lg:flex lg:w-1/2 xl:px-20 xl:py-20">
+            <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
+              <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary-container blur-[120px]" />
+              <div className="absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-tertiary blur-[100px]" />
+            </div>
+
+            <div className="relative z-10 flex w-full flex-1 flex-col justify-between">
+              <div className="mx-auto w-full max-w-[620px]">
+                <p className="font-headline text-[22px] leading-none font-extrabold tracking-[-0.03em] text-[#abe5fe]">
+                  {loginScreenContent.brandName}
+                </p>
+
+                <div className="mt-8">
+                  <h1 className="font-headline text-[64px] font-extrabold leading-[1.02] tracking-[-0.045em] text-white">
+                    <span className="block">{loginScreenContent.heroTitleLine1}</span>
+                    <span className="block text-[#abe5fe]">
+                      {loginScreenContent.heroTitleEmphasis}
+                    </span>
+                  </h1>
+                  <p className="mt-8 font-body text-[20px] font-light leading-[1.75] tracking-[-0.01em] text-white/78">
+                    {loginScreenContent.heroDescription}
+                  </p>
+                </div>
+
+                <div
+                  className="mt-14 flex w-full flex-row gap-4"
+                  aria-label="Ključne prednosti platforme"
+                >
+                  {heroStats.map((stat) => (
+                    <div
+                      className="min-h-[124px] min-w-0 flex-1 rounded-[22px] border border-white/[0.03] bg-white/[0.04] px-5 py-4 shadow-none backdrop-blur-[6px]"
+                      key={stat.label}
+                    >
+                      <p className="mb-2 font-headline text-[15px] font-semibold leading-6 text-white/92">
+                        {stat.value}
+                      </p>
+                      <p className="font-body text-[13px] font-normal leading-6 text-white/68">
+                        {stat.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mx-auto mt-12 flex w-full max-w-[620px] items-center gap-4">
+                <div className="h-[4px] w-[44px] rounded-full bg-[#ee947d]" />
+                <span className="font-label text-[12px] leading-none font-semibold uppercase tracking-[0.22em] text-[#8bb8d4]">
+                  {loginScreenContent.heroBadge}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section className="relative flex w-full items-center justify-center bg-[#f5faff] px-8 py-16 md:px-12 xl:px-16 lg:w-1/2">
+            <div className="absolute left-8 top-8 lg:hidden">
+              <span className="font-headline text-xl font-bold tracking-tight text-[#00374d]">
+                {loginScreenContent.brandName}
+              </span>
+            </div>
+
+            <div className="mx-auto w-full max-w-md lg:pt-10 xl:pt-14">
+              <header className="mb-12">
+                <h2 className="font-headline text-[48px] leading-[1.05] font-extrabold tracking-[-0.04em] text-[#00374d]">
+                  {loginScreenContent.welcomeTitle}
+                </h2>
+                <p className="mt-4 max-w-[420px] font-body text-[18px] font-normal leading-[1.6] text-[#37647d]">
+                  {loginScreenContent.welcomeDescription}
+                </p>
+              </header>
+
+              <LoginForm content={loginScreenContent} />
+            </div>
+          </section>
+        </main>
+
+        <footer className="w-full shrink-0 border-t border-[#8bb8d4]/10 bg-[#e9f5ff]">
+          <div className="flex flex-col items-center justify-between gap-4 px-10 py-7 md:flex-row xl:px-12">
+            <p className="text-center font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/65 md:text-left">
+              {loginScreenContent.footerLegalText}
+            </p>
+            <nav className="flex items-center gap-8" aria-label="Legal">
+              <a
+                className="font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/90 transition-colors hover:text-[#29667b] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
+                href={loginScreenContent.footerLink1Href}
+              >
+                {loginScreenContent.footerLink1}
+              </a>
+              <a
+                className="font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/90 transition-colors hover:text-[#29667b] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
+                href={loginScreenContent.footerLink2Href}
+              >
+                {loginScreenContent.footerLink2}
+              </a>
+              <a
+                className="font-label text-[11px] leading-none font-bold uppercase tracking-[0.20em] text-[#37647d]/90 transition-colors hover:text-[#29667b] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
+                href={loginScreenContent.footerLink3Href}
+              >
+                {loginScreenContent.footerLink3}
+              </a>
+            </nav>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
 </file>
 
 <file path="scripts/verify-completion-flow.mjs">
@@ -18148,100 +18148,6 @@ main().catch((error) => {
 });
 </file>
 
-<file path="package.json">
-{
-  "name": "ai-psychometric-analyst-hr-v1",
-  "private": true,
-  "version": "0.1.0",
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
-    "bootstrap-local-demo": "bash scripts/bootstrap-local-demo.sh",
-    "import:assessment-package": "node --env-file=.env.local scripts/import-assessment-package.mjs",
-    "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
-    "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs",
-    "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
-    "next": "^14.2.5",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.14.11",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "autoprefixer": "^10.4.27",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.5",
-    "postcss": "^8.5.8",
-    "supabase": "^2.76.8",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.5.4"
-  }
-}
-</file>
-
-<file path="app/(protected)/dashboard/attempts/[attemptId]/page.tsx">
-import { notFound, redirect } from "next/navigation";
-import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
-import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
-import {
-  getActiveOrganizationForUser,
-  getAttemptForOrganization,
-} from "@/lib/b2b/organizations";
-import { requireAuthenticatedUser } from "@/lib/auth/session";
-
-type AttemptDetailPageProps = {
-  params: {
-    attemptId: string;
-  };
-};
-
-export const dynamic = "force-dynamic";
-
-export default async function AttemptDetailPage({ params }: AttemptDetailPageProps) {
-  const user = await requireAuthenticatedUser();
-  const organization = await getActiveOrganizationForUser(user.id);
-
-  if (!organization) {
-    notFound();
-  }
-
-  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
-
-  if (!attempt) {
-    notFound();
-  }
-
-  if (attempt.status !== "completed") {
-    redirect(`/dashboard/attempts/${attempt.id}/run`);
-  }
-
-  const reportPageData = await loadProtectedAttemptReportPageData(attempt);
-
-  return (
-    <main className="attempt-results-page stack-md">
-      <section className="attempt-results-page__content">
-        <CompletedAssessmentSummary
-          completedAt={attempt.completed_at}
-          organizationName={attempt.organizations?.name ?? organization.name}
-          participantName={attempt.participants?.full_name ?? null}
-          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
-          results={reportPageData.results}
-          reportState={reportPageData.report}
-        />
-      </section>
-    </main>
-  );
-}
-</file>
-
 <file path="lib/assessment/reports.ts">
 import "server-only";
 
@@ -18786,6 +18692,100 @@ export async function persistCompletedAssessmentReport(
 
 export type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
 export type { CompletedAssessmentReport as CompletedAssessmentReportSnapshot } from "@/lib/assessment/report-providers";
+</file>
+
+<file path="package.json">
+{
+  "name": "ai-psychometric-analyst-hr-v1",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
+    "bootstrap-local-demo": "bash scripts/bootstrap-local-demo.sh",
+    "import:assessment-package": "node --env-file=.env.local scripts/import-assessment-package.mjs",
+    "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
+    "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs",
+    "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "next": "^14.2.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.5",
+    "postcss": "^8.5.8",
+    "supabase": "^2.76.8",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.5.4"
+  }
+}
+</file>
+
+<file path="app/(protected)/dashboard/attempts/[attemptId]/page.tsx">
+import { notFound, redirect } from "next/navigation";
+import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
+import {
+  getActiveOrganizationForUser,
+  getAttemptForOrganization,
+} from "@/lib/b2b/organizations";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+
+type AttemptDetailPageProps = {
+  params: {
+    attemptId: string;
+  };
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function AttemptDetailPage({ params }: AttemptDetailPageProps) {
+  const user = await requireAuthenticatedUser();
+  const organization = await getActiveOrganizationForUser(user.id);
+
+  if (!organization) {
+    notFound();
+  }
+
+  const attempt = await getAttemptForOrganization(organization.id, params.attemptId);
+
+  if (!attempt) {
+    notFound();
+  }
+
+  if (attempt.status !== "completed") {
+    redirect(`/dashboard/attempts/${attempt.id}/run`);
+  }
+
+  const reportPageData = await loadProtectedAttemptReportPageData(attempt);
+
+  return (
+    <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+      <section className="attempt-results-page__content">
+        <CompletedAssessmentSummary
+          completedAt={attempt.completed_at}
+          organizationName={attempt.organizations?.name ?? organization.name}
+          participantName={attempt.participants?.full_name ?? null}
+          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
+          results={reportPageData.results}
+          reportState={reportPageData.report}
+        />
+      </section>
+    </main>
+  );
+}
 </file>
 
 <file path="components/assessment/completed-assessment-summary.tsx">
@@ -21052,7 +21052,6 @@ body:has(.login-experience) {
 
 body {
   margin: 0;
-  padding: var(--space-6);
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
@@ -21060,11 +21059,6 @@ body {
     radial-gradient(circle at top, rgba(232, 243, 247, 0.6) 0%, rgba(247, 248, 250, 0) 28%),
     linear-gradient(180deg, #fbfcfd 0%, var(--page-bg) 100%);
   color: var(--text);
-}
-
-main {
-  width: min(100%, var(--content-narrow));
-  margin: 0 auto;
 }
 
 a {
@@ -21285,12 +21279,6 @@ button:disabled {
   color: var(--accent);
 }
 
-.candidate-home,
-.candidate-intro {
-  max-width: 52rem;
-  margin: 0 auto;
-}
-
 .candidate-home__hero,
 .candidate-intro__hero {
   padding: clamp(1.35rem, 3vw, 2.4rem);
@@ -21487,8 +21475,6 @@ button:disabled {
 }
 
 .assessment-run-page {
-  max-width: 82rem;
-  margin: 0 auto;
   padding: clamp(1rem, 2vw, 1.5rem);
   border-radius: 36px;
   background:
@@ -22100,12 +22086,6 @@ button:disabled {
   font-size: 0.95rem;
 }
 
-.attempt-results-page {
-  max-width: 46rem;
-  width: 100%;
-  margin: 0 auto;
-}
-
 .results-report__hero-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -22616,10 +22596,6 @@ button:disabled {
     font-family: var(--font-manrope), var(--font-sans);
   }
 
-  .attempt-results-page {
-    max-width: 72rem;
-  }
-
   .attempt-results-page__content {
     width: 100%;
   }
@@ -22832,7 +22808,6 @@ button:disabled {
   }
 
   .assessment-run-page {
-    max-width: 86rem;
     padding: 1.6rem;
     border-radius: 40px;
     background:
@@ -23321,10 +23296,6 @@ button:disabled {
 }
 
 @media (min-width: 1024px) {
-  .attempt-results-page {
-    max-width: 76rem;
-  }
-
   .results-report {
     --results-report-content-width: 57rem;
     gap: 2.1rem;
@@ -23539,10 +23510,6 @@ button:disabled {
 }
 
 @media (min-width: 1280px) {
-  .attempt-results-page {
-    max-width: 80rem;
-  }
-
   .results-report__hero {
     grid-template-columns: minmax(0, 1fr);
     padding: 3rem 3.05rem;
@@ -23596,9 +23563,6 @@ button:disabled {
   .candidate-home,
   .candidate-intro,
   .assessment-run-page {
-    width: min(100%, 70rem);
-    max-width: 70rem;
-    margin: 0 auto;
   }
 
   .auth-shell {
@@ -24272,10 +24236,6 @@ button:disabled {
     color: #41515f;
   }
 
-  .attempt-results-page {
-    max-width: 70rem;
-  }
-
   .results-report {
     --results-report-content-width: 70rem;
     gap: 32px;
@@ -24746,7 +24706,6 @@ button:disabled {
     font-size: clamp(1.8rem, 8vw, 2.35rem);
   }
 
-  .attempt-results-page__shell,
   .results-report__hero,
   .results-panel,
   .results-dimension-card {
@@ -24940,11 +24899,6 @@ button:disabled {
   }
 }
 
-.app-shell {
-  width: min(100%, var(--content-base));
-  margin: 0 auto;
-}
-
 .page-lead {
   max-width: 44rem;
   font-size: 1rem;
@@ -25104,10 +25058,6 @@ button:disabled {
   color: var(--text-soft);
 }
 
-.dashboard-page {
-  width: min(100%, var(--content-wide));
-}
-
 .dashboard-hero {
   display: flex;
   align-items: flex-start;
@@ -25155,11 +25105,6 @@ button:disabled {
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-}
-
-.candidate-home,
-.candidate-intro {
-  max-width: 64rem;
 }
 
 .candidate-home__hero,
@@ -25315,7 +25260,6 @@ button:disabled {
   }
 
   .candidate-home {
-    width: min(100%, 1120px);
     padding-top: 40px;
     padding-bottom: 40px;
     gap: 24px;
@@ -26377,11 +26321,6 @@ body:has(.candidate-dashboard-page--shell) {
   box-shadow: 0 4px 20px rgba(41, 102, 123, 0.3);
 }
 
-.candidate-dashboard-page--shell {
-  width: min(100%, 1720px);
-  padding: 112px 32px 64px;
-}
-
 .candidate-dashboard-page,
 .candidate-dashboard-page :where(h1, h2, p, span, a, button, input) {
   font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -26914,10 +26853,6 @@ body:has(.candidate-dashboard-page--shell) {
 
   .top-nav__signout {
     display: none;
-  }
-
-  .candidate-dashboard-page--shell {
-    padding: 96px 16px 48px;
   }
 
   .candidate-dashboard__header {
