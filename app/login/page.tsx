@@ -92,7 +92,7 @@ export default async function LoginPage() {
               </span>
             </div>
 
-            <div className="w-full max-w-[520px] lg:pt-10 xl:pt-14">
+            <div className="mx-auto w-full max-w-md lg:pt-10 xl:pt-14">
               <header className="mb-12">
                 <h2 className="font-headline text-[48px] leading-[1.05] font-extrabold tracking-[-0.04em] text-[#00374d]">
                   {loginScreenContent.welcomeTitle}

@@ -74,7 +74,7 @@ export default async function CandidateAttemptRunPage({
 
   if (runPageData.questions.length === 0) {
     return (
-      <main className="stack-md">
+      <main className="stack-md mx-auto w-full max-w-7xl px-4">
         <section className="card stack-sm">
           <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena"}</h1>
           <p>Pitanja za ovu procjenu trenutno nisu dostupna.</p>
@@ -84,7 +84,7 @@ export default async function CandidateAttemptRunPage({
   }
 
   return (
-    <main className="assessment-run-page stack-md">
+    <main className="assessment-run-page stack-md mx-auto w-full max-w-7xl px-4">
       {attempt.lifecycle === "not_started" ? (
         <section className="card stack-sm">
           <h1>Odaberite jezik testa</h1>

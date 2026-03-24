@@ -80,7 +80,6 @@ body:has(.login-experience) {
 
 body {
   margin: 0;
-  padding: var(--space-6);
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
@@ -308,12 +307,6 @@ button:disabled {
   color: var(--accent);
 }
 
-.candidate-home,
-.candidate-intro {
-  max-width: 52rem;
-  margin: 0 auto;
-}
-
 .candidate-home__hero,
 .candidate-intro__hero {
   padding: clamp(1.35rem, 3vw, 2.4rem);
@@ -510,8 +503,6 @@ button:disabled {
 }
 
 .assessment-run-page {
-  max-width: 82rem;
-  margin: 0 auto;
   padding: clamp(1rem, 2vw, 1.5rem);
   border-radius: 36px;
   background:
@@ -1123,12 +1114,6 @@ button:disabled {
   font-size: 0.95rem;
 }
 
-.attempt-results-page {
-  max-width: 46rem;
-  width: 100%;
-  margin: 0 auto;
-}
-
 .results-report__hero-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1639,10 +1624,6 @@ button:disabled {
     font-family: var(--font-manrope), var(--font-sans);
   }
 
-  .attempt-results-page {
-    max-width: 72rem;
-  }
-
   .attempt-results-page__content {
     width: 100%;
   }
@@ -1855,7 +1836,6 @@ button:disabled {
   }
 
   .assessment-run-page {
-    max-width: 86rem;
     padding: 1.6rem;
     border-radius: 40px;
     background:
@@ -2344,10 +2324,6 @@ button:disabled {
 }
 
 @media (min-width: 1024px) {
-  .attempt-results-page {
-    max-width: 76rem;
-  }
-
   .results-report {
     --results-report-content-width: 57rem;
     gap: 2.1rem;
@@ -2562,10 +2538,6 @@ button:disabled {
 }
 
 @media (min-width: 1280px) {
-  .attempt-results-page {
-    max-width: 80rem;
-  }
-
   .results-report__hero {
     grid-template-columns: minmax(0, 1fr);
     padding: 3rem 3.05rem;
@@ -2619,9 +2591,6 @@ button:disabled {
   .candidate-home,
   .candidate-intro,
   .assessment-run-page {
-    width: min(100%, 70rem);
-    max-width: 70rem;
-    margin: 0 auto;
   }
 
   .auth-shell {
@@ -3295,10 +3264,6 @@ button:disabled {
     color: #41515f;
   }
 
-  .attempt-results-page {
-    max-width: 70rem;
-  }
-
   .results-report {
     --results-report-content-width: 70rem;
     gap: 32px;
@@ -3769,7 +3734,6 @@ button:disabled {
     font-size: clamp(1.8rem, 8vw, 2.35rem);
   }
 
-  .attempt-results-page__shell,
   .results-report__hero,
   .results-panel,
   .results-dimension-card {
@@ -3963,11 +3927,6 @@ button:disabled {
   }
 }
 
-.app-shell {
-  width: min(100%, var(--content-base));
-  margin: 0 auto;
-}
-
 .page-lead {
   max-width: 44rem;
   font-size: 1rem;
@@ -4127,10 +4086,6 @@ button:disabled {
   color: var(--text-soft);
 }
 
-.dashboard-page {
-  width: min(100%, var(--content-wide));
-}
-
 .dashboard-hero {
   display: flex;
   align-items: flex-start;
@@ -4178,11 +4133,6 @@ button:disabled {
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-}
-
-.candidate-home,
-.candidate-intro {
-  max-width: 64rem;
 }
 
 .candidate-home__hero,
@@ -4338,7 +4288,6 @@ button:disabled {
   }
 
   .candidate-home {
-    width: min(100%, 1120px);
     padding-top: 40px;
     padding-bottom: 40px;
     gap: 24px;
@@ -5400,11 +5349,6 @@ body:has(.candidate-dashboard-page--shell) {
   box-shadow: 0 4px 20px rgba(41, 102, 123, 0.3);
 }
 
-.candidate-dashboard-page--shell {
-  width: 100%;
-  padding: 0 32px 64px;
-}
-
 .candidate-dashboard-page,
 .candidate-dashboard-page :where(h1, h2, p, span, a, button, input) {
   font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -5937,10 +5881,6 @@ body:has(.candidate-dashboard-page--shell) {
 
   .top-nav__signout {
     display: none;
-  }
-
-  .candidate-dashboard-page--shell {
-    padding: 96px 16px 48px;
   }
 
   .candidate-dashboard__header {

@@ -10,7 +10,7 @@ export default function CandidateAttemptReportError({
   reset,
 }: CandidateAttemptReportErrorProps) {
   return (
-    <main className="attempt-results-page stack-md">
+    <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
       <section className="attempt-results-page__content">
         <section className="card stack-sm">
           <h1>Izvjestaj trenutno nije moguce otvoriti</h1>

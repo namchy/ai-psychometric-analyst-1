@@ -610,7 +610,7 @@ export function CandidateDashboardView({
     <div className="candidate-dashboard-page--shell bg-mesh min-h-screen font-body text-white">
       <TopNav userEmail={userEmail} userName={userName} />
 
-      <main className="w-full px-6 lg:px-12 pb-14 pt-24">
+      <main className="w-full max-w-full px-6 lg:px-12 pb-14 pt-24">
         {hasLinkedParticipant ? (
           <div className="grid grid-cols-1 gap-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
             <aside className="w-full space-y-5 lg:top-24">

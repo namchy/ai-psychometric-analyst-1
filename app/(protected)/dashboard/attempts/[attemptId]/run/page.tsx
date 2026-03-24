@@ -39,7 +39,7 @@ export default async function ProtectedAttemptRunPage({
 
   if (runPageData.questions.length === 0) {
     return (
-      <main className="stack-md">
+      <main className="stack-md mx-auto w-full max-w-7xl px-4">
         <section className="card stack-sm">
           <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Assessment"}</h1>
           <p>No questions are available for this test yet.</p>
@@ -49,7 +49,7 @@ export default async function ProtectedAttemptRunPage({
   }
 
   return (
-    <main className="assessment-run-page stack-md">
+    <main className="assessment-run-page stack-md mx-auto w-full max-w-7xl px-4">
       <section className="assessment-run-shell">
         <AssessmentForm
           executionMode="protected"

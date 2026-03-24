@@ -1,6 +1,6 @@
 export default function CandidateAttemptReportLoading() {
   return (
-    <main className="attempt-results-page stack-md">
+    <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
       <section className="attempt-results-page__content">
         <section className="assessment-completion-state">
           <div className="assessment-completion-state__hero stack-sm">

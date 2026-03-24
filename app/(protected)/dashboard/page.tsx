@@ -86,7 +86,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const successMessage = getDashboardSuccessMessage(searchParams?.success, searchParams?.attemptId);
 
   return (
-    <main className="app-shell dashboard-page stack-lg">
+    <main className="stack-lg mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
       <section className="dashboard-hero card stack-md">
         <div className="stack-md">
           <div className="stack-xs">

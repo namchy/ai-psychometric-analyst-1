@@ -110,7 +110,7 @@ export default async function CandidateAttemptIntroPage({
   const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
 
   return (
-    <main className="candidate-intro stack-md">
+    <main className="candidate-intro stack-md mx-auto w-full max-w-5xl px-4">
       <section className="candidate-intro__hero card stack-sm">
         <div className="stack-sm">
           <div className="stack-xs">
