@@ -48,6 +48,7 @@ export type CandidateAssessmentCard = {
 };
 
 type CandidateDashboardViewProps = {
+  userId?: string | null;
   userEmail: string;
   userName?: string | null;
   showHrLink: boolean;
@@ -173,6 +174,12 @@ function getLatestAttemptForTestByStatus(
   const matchingAttempts = attempts.filter(
     (attempt) => attempt.test_id === testId && attempt.status === status,
   );
+  console.log("--- DEBUG: DASHBOARD DATA ---", {
+    ukupnoIzBaze: attempts?.length,
+    statusiSvihPokušaja: attempts?.map((a) => a.status),
+    prikazanoNaEkranu: matchingAttempts?.length,
+    vidiLi_InProgress: attempts?.some((a) => a.status === "in_progress"),
+  });
 
   if (matchingAttempts.length === 0) {
     return null;
@@ -761,12 +768,14 @@ function AssessmentSection({
   title,
   description,
   assessments,
+  linkedOrganizationId,
   muted = false,
   hideSectionHeader = false,
 }: {
   title: string;
   description: string;
   assessments: CandidateAssessmentCard[];
+  linkedOrganizationId?: string | null;
   muted?: boolean;
   hideSectionHeader?: boolean;
 }) {
@@ -784,7 +793,12 @@ function AssessmentSection({
       ) : null}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
         {assessments.map((assessment) => (
-          <AssessmentCard assessment={assessment} key={assessment.title} muted={muted} />
+          <AssessmentCard
+            assessment={assessment}
+            key={assessment.title}
+            linkedOrganizationId={linkedOrganizationId}
+            muted={muted}
+          />
         ))}
       </div>
     </section>
@@ -793,9 +807,11 @@ function AssessmentSection({
 
 function AssessmentCard({
   assessment,
+  linkedOrganizationId,
   muted = false,
 }: {
   assessment: CandidateAssessmentCard;
+  linkedOrganizationId?: string | null;
   muted?: boolean;
 }) {
   const router = useRouter();
@@ -839,7 +855,10 @@ function AssessmentCard({
     setIsCreatingAttempt(true);
 
     try {
-      const attemptId = await createAssessmentAttempt(assessment.testId);
+      const attemptId = await createAssessmentAttempt(
+        assessment.testId,
+        linkedOrganizationId ?? undefined,
+      );
       router.push(`/app/attempts/${attemptId}/run`);
     } catch {
       alert("Greška pri kreiranju pokušaja. Molimo pokušajte ponovo.");
@@ -1102,6 +1121,7 @@ function EmptyState() {
 }
 
 export function CandidateDashboardView({
+  userId,
   userEmail,
   userName,
   showHrLink,
@@ -1143,12 +1163,13 @@ export function CandidateDashboardView({
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
+        const activeUserId = user?.id ?? userId ?? null;
 
-        if (userError) {
+        if (userError && !activeUserId) {
           throw new Error(userError.message);
         }
 
-        if (!user) {
+        if (!activeUserId) {
           throw new Error("Authenticated user is required.");
         }
 
@@ -1168,12 +1189,21 @@ export function CandidateDashboardView({
             .select(
               "id, test_id, status, created_at, updated_at, completed_at, total_time_seconds, tests(id, slug, name, category, description, status, scoring_method, duration_minutes, is_active)",
             )
+            .eq("user_id", activeUserId)
             .order("created_at", { ascending: false }),
           supabase
             .from("organization_test_access")
             .select("organization_id, test_id")
             .eq("organization_id", organizationId),
         ]);
+        console.log("--- RAW DB RESPONSES ---", {
+          testsCount: testsData?.length,
+          attemptsCount: attemptsData?.length,
+          accessCount: accessData?.length,
+          testsError,
+          attemptsError,
+          accessError,
+        });
 
         if (testsError) {
           throw new Error(testsError.message);
@@ -1280,6 +1310,7 @@ export function CandidateDashboardView({
         setTotalHours(formatTotalHours(totalTimeSeconds));
         setAverageScore(formatAverageScore(normalizedAverage));
       } catch (error) {
+        console.error("--- DASHBOARD FATAL ERROR ---", error);
         if (isCancelled) {
           return;
         }
@@ -1368,6 +1399,7 @@ export function CandidateDashboardView({
                     title="Dostupni testovi"
                     description="Aktivne procjene koje možeš odmah otvoriti i završiti."
                     assessments={availableAssessments}
+                    linkedOrganizationId={linkedOrganizationId}
                     hideSectionHeader
                   />
                 ) : null}
@@ -1378,6 +1410,7 @@ export function CandidateDashboardView({
                   title="Ostali testovi"
                   description="Ove procjene još nisu otključane za tvoj profil."
                   assessments={unavailableAssessments}
+                  linkedOrganizationId={linkedOrganizationId}
                   muted
                 />
               ) : null}
