@@ -39,6 +39,7 @@ type CandidateAttemptRow = {
   status: "in_progress" | "completed" | "abandoned";
   started_at: string;
   completed_at: string | null;
+  total_time_seconds: number | null;
   tests: CandidateAttemptRelation<CandidateAttemptTestSummary>;
   participants: CandidateAttemptRelation<CandidateAttemptParticipantSummary>;
   organizations: CandidateAttemptRelation<CandidateAttemptOrganizationSummary>;
@@ -65,6 +66,7 @@ export type CandidateAttemptSummary = {
   lifecycle: CandidateAttemptLifecycle;
   started_at: string;
   completed_at: string | null;
+  total_time_seconds: number | null;
   responseCount: number;
   tests: CandidateAttemptTestSummary | null;
   participants: CandidateAttemptParticipantSummary | null;
@@ -185,7 +187,7 @@ async function getCandidateAttemptsForParticipantId(
   const { data, error } = await supabase
     .from("attempts")
     .select(
-      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, total_time_seconds, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
     )
     .eq("participant_id", participantId)
     .order("started_at", { ascending: false })

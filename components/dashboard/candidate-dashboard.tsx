@@ -47,13 +47,23 @@ export type CandidateAssessmentCard = {
   disabled?: boolean;
 };
 
+export type CandidateDashboardInitialAttempt = {
+  id: string;
+  test_id: string;
+  status: DashboardAttemptStatus;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  total_time_seconds: number | null;
+};
+
 type CandidateDashboardViewProps = {
-  userId?: string | null;
   userEmail: string;
   userName?: string | null;
   showHrLink: boolean;
   hasLinkedParticipant: boolean;
   linkedOrganizationId?: string | null;
+  initialAttempts: CandidateDashboardInitialAttempt[];
 };
 
 type DashboardAttemptStatus = "in_progress" | "completed" | "abandoned";
@@ -157,14 +167,6 @@ const ROADMAP_TESTS = [
     category: "personality" as const,
   },
 ] as const;
-
-function normalizeRelation<T>(value: DashboardRelation<T>): T | null {
-  if (!value) {
-    return null;
-  }
-
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
 
 function getLatestAttemptForTestByStatus(
   testId: string,
@@ -343,6 +345,15 @@ function buildAssessmentCardsFromTests(
   }));
 
   return [...databaseCards, ...roadmapCards];
+}
+
+function mapInitialAttemptsToDashboardAttempts(
+  attempts: CandidateDashboardInitialAttempt[],
+): DashboardAttemptRow[] {
+  return attempts.map((attempt) => ({
+    ...attempt,
+    tests: null,
+  }));
 }
 
 function DashboardIcon({ name, className }: { name: DashboardIconName; className?: string }) {
@@ -1121,12 +1132,12 @@ function EmptyState() {
 }
 
 export function CandidateDashboardView({
-  userId,
   userEmail,
   userName,
   showHrLink,
   hasLinkedParticipant,
   linkedOrganizationId,
+  initialAttempts,
 }: CandidateDashboardViewProps) {
   const [isLoading, setIsLoading] = useState(hasLinkedParticipant);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1159,23 +1170,11 @@ export function CandidateDashboardView({
 
       try {
         const supabase = getSupabaseBrowserClient();
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-        const activeUserId = user?.id ?? userId ?? null;
-
-        if (userError && !activeUserId) {
-          throw new Error(userError.message);
-        }
-
-        if (!activeUserId) {
-          throw new Error("Authenticated user is required.");
-        }
+        const mappedAttempts = mapInitialAttemptsToDashboardAttempts(initialAttempts);
+        const attemptIds = mappedAttempts.map((attempt) => attempt.id);
 
         const [
           { data: testsData, error: testsError },
-          { data: attemptsData, error: attemptsError },
           { data: accessData, error: accessError },
         ] = await Promise.all([
           supabase
@@ -1185,23 +1184,15 @@ export function CandidateDashboardView({
             )
             .order("created_at", { ascending: true }),
           supabase
-            .from("attempts")
-            .select(
-              "id, test_id, status, created_at, updated_at, completed_at, total_time_seconds, tests(id, slug, name, category, description, status, scoring_method, duration_minutes, is_active)",
-            )
-            .eq("user_id", activeUserId)
-            .order("created_at", { ascending: false }),
-          supabase
             .from("organization_test_access")
             .select("organization_id, test_id")
             .eq("organization_id", organizationId),
         ]);
         console.log("--- RAW DB RESPONSES ---", {
           testsCount: testsData?.length,
-          attemptsCount: attemptsData?.length,
+          attemptsCount: mappedAttempts.length,
           accessCount: accessData?.length,
           testsError,
-          attemptsError,
           accessError,
         });
 
@@ -1209,19 +1200,9 @@ export function CandidateDashboardView({
           throw new Error(testsError.message);
         }
 
-        if (attemptsError) {
-          throw new Error(attemptsError.message);
-        }
-
         if (accessError) {
           throw new Error(accessError.message);
         }
-
-        const mappedAttempts = ((attemptsData ?? []) as DashboardAttemptRow[]).map((attempt) => ({
-          ...attempt,
-          tests: normalizeRelation(attempt.tests),
-        }));
-        const attemptIds = mappedAttempts.map((attempt) => attempt.id);
 
         let dimensionScoreRows: DashboardDimensionScoreRow[] = [];
         let responseRows: DashboardResponseRow[] = [];
@@ -1328,7 +1309,7 @@ export function CandidateDashboardView({
     return () => {
       isCancelled = true;
     };
-  }, [hasLinkedParticipant, linkedOrganizationId]);
+  }, [hasLinkedParticipant, initialAttempts, linkedOrganizationId]);
 
   const availableAssessments = liveAssessments.filter(
     (assessment) => assessment.accessState === "paid",
