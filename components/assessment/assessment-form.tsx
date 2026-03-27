@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   completeProtectedAssessmentAttempt,
   completeAssessmentAttempt,
@@ -45,6 +45,7 @@ type AssessmentFormProps = {
 type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
 type SaveStatus = "idle" | "saving" | "saved" | "completing" | "completed" | "error";
 type ProtectedCompletionUiPhase = "processing" | "redirecting" | null;
+const MANUAL_SAVE_SUCCESS_DURATION_MS = 1600;
 
 type ProtectedCompletionUiContent = {
   eyebrow: string;
@@ -202,7 +203,9 @@ export function AssessmentForm({
     useState<ProtectedCompletionUiPhase>(null);
   const [stepValidationMessage, setStepValidationMessage] = useState<string | null>(null);
   const requestInFlightRef = useRef(false);
+  const manualSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const effectiveSelections = getEffectiveSelections(initialSelections, selections);
+  const [showManualSaveSuccess, setShowManualSaveSuccess] = useState(false);
 
   const isCompleted = attemptStatus === "completed";
   const isBusy = saveStatus === "saving" || saveStatus === "completing";
@@ -223,6 +226,34 @@ export function AssessmentForm({
   const progressPercent =
     questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
   const isInteractionLocked = isBusy || requestInFlightRef.current;
+
+  function clearManualSaveSuccessFeedback() {
+    if (manualSaveResetTimeoutRef.current) {
+      clearTimeout(manualSaveResetTimeoutRef.current);
+      manualSaveResetTimeoutRef.current = null;
+    }
+
+    setShowManualSaveSuccess(false);
+  }
+
+  function showManualSaveSuccessFeedback() {
+    clearManualSaveSuccessFeedback();
+    setShowManualSaveSuccess(true);
+    manualSaveResetTimeoutRef.current = setTimeout(() => {
+      setShowManualSaveSuccess(false);
+      manualSaveResetTimeoutRef.current = null;
+    }, MANUAL_SAVE_SUCCESS_DURATION_MS);
+  }
+
+  useEffect(() => () => {
+    if (manualSaveResetTimeoutRef.current) {
+      clearTimeout(manualSaveResetTimeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    clearManualSaveSuccessFeedback();
+  }, [currentQuestionIndex, currentQuestion?.id]);
 
   async function persistSelections(
     nextSelections: SelectionState,
@@ -270,9 +301,12 @@ export function AssessmentForm({
   }
 
   async function handleSave() {
-    await persistSelections(selections, {
-      successMessage: "Progress saved.",
-    });
+    clearManualSaveSuccessFeedback();
+    const didSave = await persistSelections(selections);
+
+    if (didSave) {
+      showManualSaveSuccessFeedback();
+    }
   }
 
   async function handleComplete() {
@@ -365,6 +399,7 @@ export function AssessmentForm({
       return;
     }
 
+    clearManualSaveSuccessFeedback();
     setCurrentQuestionIndex((currentIndex) => Math.max(currentIndex - 1, 0));
     setStepValidationMessage(null);
   }
@@ -637,13 +672,9 @@ export function AssessmentForm({
               </p>
             ) : null}
 
-            {saveMessage ? (
+            {saveStatus === "error" && saveMessage ? (
               <p
-                className={`assessment-inline-message ${
-                  saveStatus === "error"
-                    ? "assessment-inline-message--error"
-                    : "assessment-inline-message--success"
-                }`}
+                className="assessment-inline-message assessment-inline-message--error"
               >
                 {saveMessage}
               </p>
@@ -672,7 +703,11 @@ export function AssessmentForm({
                   onClick={handleSave}
                   disabled={isInteractionLocked}
                 >
-                  {saveStatus === "saving" ? "Sačuvavanje..." : "Sačuvaj"}
+                  {saveStatus === "saving"
+                    ? "Čuvanje..."
+                    : showManualSaveSuccess
+                      ? "Sačuvano"
+                      : "Sačuvaj"}
                 </button>
               ) : null}
 
@@ -801,7 +836,7 @@ export function AssessmentForm({
         </>
       ) : null}
 
-      {saveMessage ? <p>{saveMessage}</p> : null}
+      {saveStatus === "error" && saveMessage ? <p>{saveMessage}</p> : null}
     </>
   );
 }
