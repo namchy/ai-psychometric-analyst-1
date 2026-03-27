@@ -431,10 +431,17 @@ export function AssessmentForm({
   if (isStepLayout && !isCompleted && currentQuestion) {
     const options = answerOptionsByQuestionId[currentQuestion.id] ?? [];
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
+    const hasValidCurrentAnswer = isQuestionAnswered(
+      currentQuestion.question_type,
+      currentSelection,
+    );
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const shouldAutoAdvance = isLikertQuestion && !isLastQuestion;
-    const shouldShowContinueButton = !shouldAutoAdvance;
-    const stepActionsClassName = shouldShowContinueButton
+    const shouldShowFinishButton = isLastQuestion && hasValidCurrentAnswer;
+    const shouldShowContinueButton = !isLastQuestion && !shouldAutoAdvance;
+    const shouldShowSaveButton = !shouldShowFinishButton;
+    const shouldShowPrimaryButton = shouldShowContinueButton || shouldShowFinishButton;
+    const stepActionsClassName = shouldShowPrimaryButton
       ? "assessment-step-actions"
       : "assessment-step-actions assessment-step-actions--compact";
 
@@ -527,7 +534,7 @@ export function AssessmentForm({
                                 name={currentQuestion.id}
                                 checked={isSelected}
                                 onClick={() => {
-                                  if (isSelected) {
+                                  if (isSelected && !isLastQuestion) {
                                     void handleSingleChoiceStepConfirmation();
                                   }
                                 }}
@@ -604,7 +611,7 @@ export function AssessmentForm({
                             name={currentQuestion.id}
                             checked={currentSelection === option.id}
                             onClick={() => {
-                              if (currentSelection === option.id) {
+                              if (currentSelection === option.id && !isLastQuestion) {
                                 void handleSingleChoiceStepConfirmation();
                               }
                             }}
@@ -658,16 +665,18 @@ export function AssessmentForm({
                 Nazad
               </button>
 
-              <button
-                className="button-secondary assessment-step-actions__button assessment-step-actions__button--save"
-                type="button"
-                onClick={handleSave}
-                disabled={isInteractionLocked}
-              >
-                {saveStatus === "saving" ? "Sačuvavanje..." : "Sačuvaj"}
-              </button>
+              {shouldShowSaveButton ? (
+                <button
+                  className="button-secondary assessment-step-actions__button assessment-step-actions__button--save"
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isInteractionLocked}
+                >
+                  {saveStatus === "saving" ? "Sačuvavanje..." : "Sačuvaj"}
+                </button>
+              ) : null}
 
-              {shouldShowContinueButton ? (
+              {shouldShowPrimaryButton ? (
                 <button
                   className="assessment-step-actions__button assessment-step-actions__button--primary"
                   type="button"
@@ -676,7 +685,7 @@ export function AssessmentForm({
                 >
                   {saveStatus === "completing"
                     ? "Završavanje..."
-                    : isLastQuestion
+                    : shouldShowFinishButton
                       ? "Završi procjenu"
                       : "Nastavi"}
                 </button>
