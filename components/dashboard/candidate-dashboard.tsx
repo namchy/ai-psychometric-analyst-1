@@ -51,6 +51,7 @@ export type CandidateDashboardInitialAttempt = {
   id: string;
   test_id: string;
   status: DashboardAttemptStatus;
+  responseCount: number;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -90,6 +91,7 @@ type DashboardAttemptRow = {
   id: string;
   test_id: string;
   status: DashboardAttemptStatus;
+  responseCount: number;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -100,10 +102,6 @@ type DashboardAttemptRow = {
 type DashboardDimensionScoreRow = {
   attempt_id: string;
   normalized_score: number | string | null;
-};
-
-type DashboardResponseRow = {
-  attempt_id: string;
 };
 
 type DashboardQuestionRow = {
@@ -276,7 +274,6 @@ function buildAssessmentCardsFromTests(
   tests: DashboardTestRow[],
   attempts: DashboardAttemptRow[],
   accessRows: DashboardOrganizationTestAccessRow[],
-  responseCountsByAttemptId: Map<string, number>,
   questionCountsByTestId: Map<string, number>,
 ): CandidateAssessmentCard[] {
   const accessibleTestIds = new Set(accessRows.map((row) => row.test_id));
@@ -314,7 +311,8 @@ function buildAssessmentCardsFromTests(
     return {
       testId: test.id,
       attemptId,
-      answeredQuestions: attemptId ? (responseCountsByAttemptId.get(attemptId) ?? 0) : undefined,
+      answeredQuestions:
+        inProgressAttempt?.responseCount ?? completedAttempt?.responseCount ?? undefined,
       totalQuestions: questionCountsByTestId.get(test.id) ?? 0,
       updatedAt: inProgressAttempt?.updated_at ?? completedAttempt?.updated_at,
       title: test.name,
@@ -1205,20 +1203,6 @@ export function CandidateDashboardView({
         }
 
         let dimensionScoreRows: DashboardDimensionScoreRow[] = [];
-        let responseRows: DashboardResponseRow[] = [];
-
-        if (attemptIds.length > 0) {
-          const { data: responsesData, error: responsesError } = await supabase
-            .from("responses")
-            .select("attempt_id")
-            .in("attempt_id", attemptIds);
-
-          if (responsesError) {
-            throw new Error(responsesError.message);
-          }
-
-          responseRows = (responsesData ?? []) as DashboardResponseRow[];
-        }
 
         const testIds = ((testsData ?? []) as DashboardTestRow[]).map((test) => test.id);
         let questionRows: DashboardQuestionRow[] = [];
@@ -1263,10 +1247,6 @@ export function CandidateDashboardView({
           normalizedScores.length > 0
             ? normalizedScores.reduce((sum, score) => sum + score, 0) / normalizedScores.length
             : 0;
-        const responseCountsByAttemptId = responseRows.reduce((counts, response) => {
-          counts.set(response.attempt_id, (counts.get(response.attempt_id) ?? 0) + 1);
-          return counts;
-        }, new Map<string, number>());
         const questionCountsByTestId = questionRows.reduce((counts, question) => {
           counts.set(question.test_id, (counts.get(question.test_id) ?? 0) + 1);
           return counts;
@@ -1281,7 +1261,6 @@ export function CandidateDashboardView({
             (testsData ?? []) as DashboardTestRow[],
             mappedAttempts,
             (accessData ?? []) as DashboardOrganizationTestAccessRow[],
-            responseCountsByAttemptId,
             questionCountsByTestId,
           ),
         );

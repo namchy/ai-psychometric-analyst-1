@@ -65,7 +65,8 @@ export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(SUPABASE_ACCESS_TOKEN_COOKIE_NAME)?.value ?? null;
   const refreshToken = request.cookies.get(SUPABASE_REFRESH_TOKEN_COOKIE_NAME)?.value ?? null;
   const pathname = request.nextUrl.pathname;
-  const isProtectedRoute = pathname.startsWith("/dashboard");
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/app");
   const isLoginRoute = pathname === "/login";
 
   if (!isProtectedRoute && !isLoginRoute) {
@@ -119,5 +120,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/app/:path*", "/login"],
 };

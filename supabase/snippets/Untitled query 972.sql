@@ -1,18 +1,13 @@
--- Dodajemo standardne audit kolone u attempts tabelu
-ALTER TABLE public.attempts 
-ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now(),
-ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
-
--- Opcionalno: Trigger za automatsko ažuriranje updated_at (Solo dev pro-tip)
-CREATE OR REPLACE FUNCTION update_modified_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_attempts_modtime
-    BEFORE UPDATE ON public.attempts
-    FOR EACH ROW
-    EXECUTE PROCEDURE update_modified_column();
+select
+  id,
+  test_id,
+  user_id,
+  participant_id,
+  organization_id,
+  status,
+  created_at,
+  updated_at
+from public.attempts
+where participant_id = '522a6d61-79c1-4ed0-a8d9-3d962537c8b7'::uuid
+   or user_id = 'df1779f4-63f0-44ff-8bdd-e576aca17e26'::uuid
+order by created_at desc;

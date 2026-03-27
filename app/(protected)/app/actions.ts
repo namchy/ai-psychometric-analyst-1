@@ -16,15 +16,21 @@ type ParticipantRow = {
   id: string;
 };
 
-export async function createAssessmentAttempt(testId: string): Promise<string> {
+export async function createAssessmentAttempt(
+  testId: string,
+  orgId?: string,
+): Promise<string> {
   const normalizedTestId = testId.trim();
+  const normalizedOrgId = orgId?.trim();
 
   if (!normalizedTestId) {
     throw new Error("Test id is required.");
   }
 
   const user = await requireAuthenticatedUserForAction();
-  const organization = await getActiveOrganizationForUser(user.id);
+  const organization = normalizedOrgId
+    ? { id: normalizedOrgId }
+    : await getActiveOrganizationForUser(user.id);
 
   if (!organization) {
     throw new Error("Active organization is required.");

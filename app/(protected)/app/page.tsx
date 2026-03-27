@@ -20,6 +20,7 @@ export default async function CandidateAppEntryPage() {
     id: attempt.id,
     test_id: attempt.test_id,
     status: attempt.status,
+    responseCount: attempt.responseCount,
     created_at: attempt.started_at,
     updated_at: attempt.completed_at ?? attempt.started_at,
     completed_at: attempt.completed_at,
