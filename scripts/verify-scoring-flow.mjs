@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
 const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 const HEALTH_URL = `${APP_URL}/api/health`;
-const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const TARGET_TEST_SLUG = process.env.VERIFY_TEST_SLUG ?? "ipip50-hr-v1";
 const SCORING_CASES = [
   { code: "E01", optionIndex: 4, expectedRaw: 5, expectedScored: 5, dimension: "Ekstraverzija" },
   { code: "A01", optionIndex: 3, expectedRaw: 4, expectedScored: 2, dimension: "Kooperativnost" },
@@ -86,15 +86,12 @@ async function main() {
   const { data: activeTest, error: activeTestError } = await supabase
     .from("tests")
     .select("id, slug")
+    .eq("slug", TARGET_TEST_SLUG)
     .eq("is_active", true)
     .maybeSingle();
 
   if (activeTestError || !activeTest) {
-    fail(`Unable to load active test: ${activeTestError?.message ?? "Unknown error"}`);
-  }
-
-  if (activeTest.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
-    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
+    fail(`Unable to load active test ${TARGET_TEST_SLUG}: ${activeTestError?.message ?? "Unknown error"}`);
   }
 
   const { data: questions, error: questionsError } = await supabase
@@ -252,7 +249,7 @@ async function main() {
   console.log("- completed attempt results are derived server-side from persisted single_choice responses");
   console.log("- response raw_value and scored_value are persisted for likert_sum items");
   console.log("- dimension_scores are persisted for completed attempts and remain stable on reload");
-  console.log("- no unscored response branch is exercised for the active ipip50-hr-v1 dataset");
+  console.log(`- no unscored response branch is exercised for the active ${TARGET_TEST_SLUG} dataset`);
 }
 
 main().catch((error) => {

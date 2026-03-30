@@ -5,7 +5,7 @@ import { encodeReply } from "next/dist/compiled/react-server-dom-webpack/client.
 
 const APP_URL = process.env.APP_URL ?? "http://127.0.0.1:3100";
 const HEALTH_URL = `${APP_URL}/api/health`;
-const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const TARGET_TEST_SLUG = process.env.VERIFY_TEST_SLUG ?? "ipip50-hr-v1";
 const ACCESS_COOKIE_NAME = "sb-access-token";
 const REFRESH_COOKIE_NAME = "sb-refresh-token";
 const PROTECTED_RUN_CHUNK_PATHS = [
@@ -239,15 +239,12 @@ async function loadActiveTest(supabase) {
   const { data, error } = await supabase
     .from("tests")
     .select("id, slug")
+    .eq("slug", TARGET_TEST_SLUG)
     .eq("is_active", true)
     .maybeSingle();
 
   if (error || !data) {
-    fail(`Unable to load active test: ${error?.message ?? "Unknown error"}`);
-  }
-
-  if (data.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
-    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${data.slug}.`);
+    fail(`Unable to load active test ${TARGET_TEST_SLUG}: ${error?.message ?? "Unknown error"}`);
   }
 
   return data;

@@ -89,6 +89,8 @@ export async function getActiveTest(): Promise<ActiveTest | null> {
     .from("tests")
     .select("id, slug, name, description")
     .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) {

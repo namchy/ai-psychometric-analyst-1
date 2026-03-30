@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const TARGET_TEST_SLUG = process.env.VERIFY_TEST_SLUG ?? "ipip50-hr-v1";
 const EXPECTED_QUESTION_COUNT = 50;
 const EXPECTED_OPTION_VALUES = [1, 2, 3, 4, 5];
 const SUPPORTED_SCORING_METHODS = new Set(["likert_sum"]);
@@ -25,36 +25,30 @@ try {
   }
 
   const supabase = createClient(url, publishableKey);
-  const { data: activeTests, error: activeTestError } = await supabase
+  const { data: targetTest, error: targetTestError } = await supabase
     .from("tests")
-    .select("id, slug, name, scoring_method")
-    .eq("is_active", true);
+    .select("id, slug, name, scoring_method, is_active")
+    .eq("slug", TARGET_TEST_SLUG)
+    .maybeSingle();
 
-  if (activeTestError) {
-    fail(`Supabase query failed: ${activeTestError.message}`);
+  if (targetTestError) {
+    fail(`Supabase query failed: ${targetTestError.message}`);
   }
 
+  assert(Boolean(targetTest), `No test found for slug ${TARGET_TEST_SLUG}.`);
   assert(
-    (activeTests?.length ?? 0) === 1,
-    `Expected exactly 1 active test, received ${activeTests?.length ?? 0}.`,
-  );
-
-  const [activeTest] = activeTests ?? [];
-
-  assert(Boolean(activeTest), "No active test found.");
-  assert(
-    activeTest.slug === EXPECTED_ACTIVE_TEST_SLUG,
-    `Expected active test slug ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`,
+    targetTest.is_active === true,
+    `Expected ${TARGET_TEST_SLUG} to be active.`,
   );
   assert(
-    SUPPORTED_SCORING_METHODS.has(activeTest.scoring_method),
-    `Unsupported active test scoring method: ${activeTest.scoring_method}.`,
+    SUPPORTED_SCORING_METHODS.has(targetTest.scoring_method),
+    `Unsupported scoring method for ${TARGET_TEST_SLUG}: ${targetTest.scoring_method}.`,
   );
 
   const { data: questions, error: questionsError } = await supabase
     .from("questions")
     .select("id, code, question_type")
-    .eq("test_id", activeTest.id)
+    .eq("test_id", targetTest.id)
     .eq("is_active", true)
     .order("question_order", { ascending: true });
 
@@ -62,14 +56,14 @@ try {
     fail(`Question verification failed: ${questionsError.message}`);
   }
 
-  assert((questions?.length ?? 0) > 0, "Active test has no active questions.");
+  assert((questions?.length ?? 0) > 0, `${TARGET_TEST_SLUG} has no active questions.`);
   assert(
     (questions?.length ?? 0) === EXPECTED_QUESTION_COUNT,
     `Expected ${EXPECTED_QUESTION_COUNT} active questions, received ${questions?.length ?? 0}.`,
   );
   assert(
     (questions ?? []).every((question) => question.question_type === "single_choice"),
-    "Expected all active questions to be single_choice for ipip50-hr-v1.",
+    `Expected all active questions to be single_choice for ${TARGET_TEST_SLUG}.`,
   );
 
   const questionIds = (questions ?? []).map((question) => question.id);
@@ -84,7 +78,7 @@ try {
     fail(`Answer option verification failed: ${answerOptionsError.message}`);
   }
 
-  assert((answerOptions?.length ?? 0) > 0, "Active test has no answer options.");
+  assert((answerOptions?.length ?? 0) > 0, `${TARGET_TEST_SLUG} has no answer options.`);
 
   const optionsByQuestionId = (answerOptions ?? []).reduce((groupedOptions, option) => {
     const questionOptions = groupedOptions.get(option.question_id) ?? [];
@@ -108,8 +102,8 @@ try {
   }
 
   console.log("Supabase read checks passed.");
-  console.log("Active test:", activeTest.slug);
-  console.log("Active test scoring method:", activeTest.scoring_method);
+  console.log("Verified test:", targetTest.slug);
+  console.log("Verified test scoring method:", targetTest.scoring_method);
   console.log("Verified question count:", questions.length);
 
   if (!serviceRoleKey) {
@@ -125,7 +119,7 @@ try {
 
   const { data: attemptData, error: attemptError } = await adminSupabase
     .from("attempts")
-    .insert({ test_id: activeTest.id })
+    .insert({ test_id: targetTest.id })
     .select("id")
     .single();
 

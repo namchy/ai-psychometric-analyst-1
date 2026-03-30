@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 const APP_URL = process.env.APP_URL ?? "http://localhost:3100";
 const ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 const HEALTH_URL = `${APP_URL}/api/health`;
-const EXPECTED_ACTIVE_TEST_SLUG = "ipip50-hr-v1";
+const TARGET_TEST_SLUG = process.env.VERIFY_TEST_SLUG ?? "ipip50-hr-v1";
 const COMPLETION_CODE = "E01";
 
 function fail(message) {
@@ -195,15 +195,12 @@ async function main() {
   const { data: activeTest, error: activeTestError } = await supabase
     .from("tests")
     .select("id, slug")
+    .eq("slug", TARGET_TEST_SLUG)
     .eq("is_active", true)
     .maybeSingle();
 
   if (activeTestError || !activeTest) {
-    fail(`Unable to load active test: ${activeTestError?.message ?? "Unknown error"}`);
-  }
-
-  if (activeTest.slug !== EXPECTED_ACTIVE_TEST_SLUG) {
-    fail(`Expected active test ${EXPECTED_ACTIVE_TEST_SLUG}, received ${activeTest.slug}.`);
+    fail(`Unable to load active test ${TARGET_TEST_SLUG}: ${activeTestError?.message ?? "Unknown error"}`);
   }
 
   const { requiredQuestions, answerOptionsByQuestionId } = await loadRequiredQuestionsWithOptions(
