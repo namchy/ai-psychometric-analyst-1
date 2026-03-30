@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus_Jakarta_Sans } from "next/font/google";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   saveProtectedAssessmentProgress,
   saveAssessmentProgress,
 } from "@/app/actions/assessment";
+import { logout } from "@/app/actions/auth";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState, isQuestionAnswered } from "@/lib/assessment/completion";
@@ -29,6 +31,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
 });
+
+const RUN_PAGE_PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
 
 type AssessmentFormProps = {
   executionMode?: "public" | "protected";
@@ -176,38 +180,98 @@ function AssessmentDashboardSkinStyles() {
         font-family: ${plusJakartaSans.style.fontFamily};
       }
 
-      .assessment-run-page--dashboard-skin .assessment-run-hero {
+      .assessment-run-page--dashboard-skin .run-form-hero {
+        position: relative;
+        overflow: hidden;
         border: 1px solid rgba(203, 213, 225, 0.78);
+        border-radius: 1.75rem;
+        padding: 1.5rem;
         background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(243, 249, 249, 0.97) 58%, rgba(246, 242, 255, 0.95));
         box-shadow: 0 28px 60px rgba(15, 23, 42, 0.1);
       }
 
-      .assessment-run-page--dashboard-skin .assessment-run-hero::before {
+      @media (min-width: 640px) {
+        .assessment-run-page--dashboard-skin .run-form-hero {
+          padding: 1.75rem;
+        }
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero::before {
         background:
           radial-gradient(circle, rgba(20, 184, 166, 0.16), transparent 65%);
         opacity: 1;
       }
 
-      .assessment-run-page--dashboard-skin .assessment-run-hero__intro h1,
+      .assessment-run-page--dashboard-skin .run-form-hero__content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__intro {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      @media (min-width: 1024px) {
+        .assessment-run-page--dashboard-skin .run-form-hero__intro {
+          grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+          gap: 1.5rem;
+          align-items: start;
+        }
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__identity {
+        max-width: 100%;
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__title-group {
+        display: grid;
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__intro h1,
       .assessment-run-page--dashboard-skin .assessment-step-card__header h3 {
         font-family: ${plusJakartaSans.style.fontFamily};
         color: rgb(2, 6, 23);
-        letter-spacing: -0.04em;
+        letter-spacing: -0.05em;
       }
 
-      .assessment-run-page--dashboard-skin .assessment-run-hero__title-group {
+      .assessment-run-page--dashboard-skin .run-form-hero__title-group {
         position: relative;
-        gap: 1.05rem;
-        padding-top: 0.75rem;
+        gap: 0;
+        padding-top: 0;
       }
 
-      .assessment-run-page--dashboard-skin .assessment-run-hero__title-group::before {
-        content: none;
-        display: block;
-        width: 4.5rem;
+      .assessment-run-page--dashboard-skin .run-form-hero__top-line {
+        pointer-events: none;
+        position: absolute;
+        inset-inline: 1.5rem;
+        top: 0;
         height: 1px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, rgba(20, 184, 166, 0.68), rgba(167, 139, 250, 0.22));
+        background: linear-gradient(90deg, transparent, rgba(203, 213, 225, 0.8), transparent);
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__eyebrow {
+        margin: 0;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(17, 94, 89, 0.9);
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__intro h1 {
+        margin: 0.75rem 0 0;
+        max-width: 42rem;
+        font-size: 1.875rem;
+        font-weight: 800;
+        line-height: 1.05;
+        color: rgb(2, 6, 23);
+      }
+
+      @media (min-width: 640px) {
+        .assessment-run-page--dashboard-skin .run-form-hero__intro h1 {
+          font-size: 2.25rem;
+        }
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header h3 {
@@ -218,11 +282,15 @@ function AssessmentDashboardSkinStyles() {
         max-width: 100%;
       }
 
-      .assessment-run-page--dashboard-skin .assessment-run-hero__participant {
+      .assessment-run-page--dashboard-skin .run-form-hero__participant {
+        margin: 0.5rem 0 0;
+        max-width: 42rem;
+        font-size: 15px;
+        line-height: 1.75;
         color: rgb(71, 85, 105);
       }
 
-      .assessment-run-page--dashboard-skin .assessment-step-layout {
+      .assessment-run-page--dashboard-skin .assessment-completion-state__hero > * + * {
         margin-top: 0.75rem;
       }
 
@@ -266,6 +334,10 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header {
         margin-bottom: 1.35rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__header > * + * {
+        margin-top: 1rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__question-region {
@@ -547,6 +619,103 @@ function AssessmentDashboardSkinStyles() {
         color: rgb(13, 148, 136);
       }
     `}</style>
+  );
+}
+
+function getRunPageTopBarInitials(userName?: string | null, userEmail?: string | null) {
+  const source = userName?.trim() || userEmail?.trim() || "Deep Profile";
+
+  return source
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+export function RunPageTopBar({
+  userEmail,
+  userName,
+}: {
+  userEmail: string;
+  userName?: string | null;
+}) {
+  const initials = getRunPageTopBarInitials(userName, userEmail);
+
+  return (
+    <header className="fixed top-0 z-50 w-full border-b border-slate-300/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.94),rgba(243,247,251,0.9))] shadow-[0_16px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-200/70 to-transparent"
+      />
+      <div className="mx-auto flex h-16 w-full max-w-full items-center justify-between px-4 sm:px-6 lg:px-12">
+        <div className="flex min-w-0 items-center gap-6 lg:gap-10">
+          <Link
+            href="/app"
+            className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
+          >
+            Deep Profile
+          </Link>
+
+          <nav aria-label="Primary" className="hidden items-center gap-2 lg:flex">
+            {RUN_PAGE_PRIMARY_NAV_ITEMS.map((item) => (
+              <span
+                key={item}
+                className={
+                  item === "Testovi"
+                    ? "rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                    : "rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors duration-200 hover:bg-white hover:text-slate-900"
+                }
+              >
+                {item}
+              </span>
+            ))}
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
+          <button
+            aria-label="Settings"
+            className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-slate-500 shadow-none transition-all duration-200 hover:border-slate-200 hover:bg-white hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.8"
+              viewBox="0 0 24 24"
+            >
+              <circle cx="12" cy="12" r="2.8" />
+              <path d="M12 4.5v1.3" />
+              <path d="M12 18.2v1.3" />
+              <path d="m6.7 6.7.9.9" />
+              <path d="m16.4 16.4.9.9" />
+              <path d="M4.5 12h1.3" />
+              <path d="M18.2 12h1.3" />
+              <path d="m6.7 17.3.9-.9" />
+              <path d="m16.4 7.6.9-.9" />
+            </svg>
+          </button>
+
+          <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-teal-500 to-violet-400 text-xs font-bold text-white shadow-[0_10px_24px_rgba(20,184,166,0.22)]">
+            <span>{initials || "DP"}</span>
+          </div>
+
+          <form action={logout} className="hidden md:block">
+            <button
+              className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              type="submit"
+            >
+              Odjava
+            </button>
+          </form>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -833,7 +1002,7 @@ export function AssessmentForm({
           className={`${plusJakartaSans.className} assessment-completion-state assessment-run-page--dashboard-skin`}
           role="status"
         >
-          <div className="assessment-completion-state__hero stack-sm">
+          <div className="assessment-completion-state__hero">
             <p className="assessment-eyebrow">{completionUi.eyebrow}</p>
             <h2>{completionUi.title}</h2>
             <p className="assessment-completion-state__description">{completionUi.description}</p>
@@ -872,16 +1041,18 @@ export function AssessmentForm({
       : "assessment-step-actions assessment-step-actions--compact";
 
     return (
-      <div className={`${plusJakartaSans.className} assessment-run assessment-run-page--dashboard-skin stack-md`}>
-        <AssessmentDashboardSkinStyles />
-        <section className="assessment-run-hero">
-          <div className="assessment-run-hero__content">
-            <div className="assessment-run-hero__intro">
-              <div className="assessment-run-hero__identity stack-sm">
-                <div className="assessment-run-hero__title-group">
+      <div className={`${plusJakartaSans.className} run-form-layout assessment-run-page--dashboard-skin grid gap-6`}>
+          <AssessmentDashboardSkinStyles />
+          <section className="run-form-hero">
+          <div aria-hidden="true" className="run-form-hero__top-line" />
+          <div className="run-form-hero__content">
+            <div className="run-form-hero__intro">
+              <div className="run-form-hero__identity">
+                <div className="run-form-hero__title-group">
+                  <p className="run-form-hero__eyebrow">Procjena</p>
                   <h1>{assessmentDisplayName ?? "Procjena"}</h1>
                   {participantDisplayName ? (
-                    <p className="assessment-run-hero__participant">{participantDisplayName}</p>
+                    <p className="run-form-hero__participant">{participantDisplayName}</p>
                   ) : null}
                 </div>
               </div>
@@ -907,13 +1078,13 @@ export function AssessmentForm({
               </div>
             </div>
           </div>
-        </section>
+          </section>
 
-        <div className="assessment-step-layout">
+          <div className="assessment-step-layout">
           <section className="assessment-step-card">
-            <div className="assessment-step-card__header stack-md">
+            <div className="assessment-step-card__header">
               <div
-                className={`assessment-step-card__question-region stack-sm${
+                className={`assessment-step-card__question-region${
                   isLikertQuestion ? " assessment-step-card__question-region--stable" : ""
                 }`}
               >
@@ -1081,7 +1252,7 @@ export function AssessmentForm({
             <div className="assessment-step-layout__actions-row">
               <div className="assessment-step-layout__actions-secondary">
                 <button
-                  className="button-secondary assessment-step-actions__button assessment-step-actions__button--ghost assessment-step-actions__button--dashboard-return"
+                  className="assessment-step-actions__button assessment-step-actions__button--ghost assessment-step-actions__button--dashboard-return"
                   type="button"
                   onClick={() => router.push("/app")}
                 >
@@ -1091,7 +1262,7 @@ export function AssessmentForm({
 
               <div className={`assessment-step-layout__actions-primary ${stepActionsClassName}`}>
                 <button
-                  className="button-secondary assessment-step-actions__button assessment-step-actions__button--ghost"
+                  className="assessment-step-actions__button assessment-step-actions__button--ghost"
                   type="button"
                   onClick={handleBack}
                   disabled={isInteractionLocked || currentQuestionIndex === 0}
@@ -1101,7 +1272,7 @@ export function AssessmentForm({
 
                 {shouldShowSaveButton ? (
                   <button
-                    className="button-secondary assessment-step-actions__button assessment-step-actions__button--save"
+                    className="assessment-step-actions__button assessment-step-actions__button--save"
                     type="button"
                     onClick={handleSave}
                     disabled={isInteractionLocked}
@@ -1131,7 +1302,7 @@ export function AssessmentForm({
               </div>
             </div>
           </div>
-        </div>
+          </div>
       </div>
     );
   }
