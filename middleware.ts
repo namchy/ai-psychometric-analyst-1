@@ -57,14 +57,8 @@ function getLoginUrl(request: NextRequest) {
   return new URL("/login", request.url);
 }
 
-function getAppUrl(request: NextRequest) {
-  return new URL("/app", request.url);
-}
-
-function getLegacyDashboardRedirectUrl(request: NextRequest) {
-  const url = request.nextUrl.clone();
-  url.pathname = "/app";
-  return url;
+function getDashboardUrl(request: NextRequest) {
+  return new URL("/dashboard", request.url);
 }
 
 export async function middleware(request: NextRequest) {
@@ -93,11 +87,7 @@ export async function middleware(request: NextRequest) {
 
     if (!error && data.user) {
       if (isLoginRoute) {
-        return NextResponse.redirect(getAppUrl(request));
-      }
-
-      if (isLegacyDashboardRoute) {
-        return NextResponse.redirect(getLegacyDashboardRedirectUrl(request));
+        return NextResponse.redirect(getDashboardUrl(request));
       }
 
       return NextResponse.next();
@@ -123,9 +113,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = isLoginRoute
-    ? NextResponse.redirect(getAppUrl(request))
-    : isLegacyDashboardRoute
-      ? NextResponse.redirect(getLegacyDashboardRedirectUrl(request))
+    ? NextResponse.redirect(getDashboardUrl(request))
     : NextResponse.next();
 
   persistSessionCookies(response, data.session);
