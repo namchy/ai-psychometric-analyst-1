@@ -1,10 +1,13 @@
 import "server-only";
 
 import {
-  formatDetailedReportValidationErrors,
-  validateDetailedReportV1,
-} from "@/lib/assessment/detailed-report-v1";
-import type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
+  getIpcPromptContract,
+  isIpcTestSlug,
+} from "@/lib/assessment/ipc-report-contract";
+import {
+  type RuntimeCompletedAssessmentReport,
+  validateRuntimeCompletedAssessmentReport,
+} from "@/lib/assessment/report-providers";
 import {
   buildCompletedAssessmentReportRequest,
   generateCompletedAssessmentReport,
@@ -76,7 +79,7 @@ type ReportJobFailure = {
 type ReportJobSuccess = {
   status: "ready";
   reportId: string;
-  snapshot: CompletedAssessmentReport;
+  snapshot: RuntimeCompletedAssessmentReport;
 };
 
 type ReportJobFailureResult = {
@@ -368,7 +371,9 @@ async function loadPromptVersionForJob(
       audience: job.audience,
       sourceType: job.source_type,
       generatorType: job.generator_type,
-      promptKey: REPORT_PROMPT_KEY,
+      promptKey: isIpcTestSlug(job.test_slug)
+        ? getIpcPromptContract(job.audience).promptKey
+        : REPORT_PROMPT_KEY,
     }, {
       locale,
     });
@@ -427,7 +432,7 @@ async function freezeProcessingReportMetadata(
 
 async function completeReportJob(
   reportId: string,
-  reportSnapshot: CompletedAssessmentReport,
+  reportSnapshot: RuntimeCompletedAssessmentReport,
   metadata: {
     modelName: string | null;
     generatorVersion: string | null;
@@ -438,7 +443,7 @@ async function completeReportJob(
     async () =>
       await supabase.rpc("complete_report_job", {
         p_report_id: reportId,
-        p_report_snapshot: reportSnapshot,
+        p_report_snapshot: reportSnapshot as unknown,
         p_model_name: metadata.modelName,
         p_generator_version: metadata.generatorVersion,
       }),
@@ -489,7 +494,7 @@ async function loadRuntimeConfigForJob(job: ClaimedReportJob) {
 }
 
 async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
-  snapshot: CompletedAssessmentReport;
+  snapshot: RuntimeCompletedAssessmentReport;
   modelName: string | null;
 }> {
   const attemptContext = await loadAttemptContext(job.attempt_id);
@@ -550,15 +555,18 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   console.info("Report snapshot normalization succeeded", {
     reportId: job.id,
     attemptId: job.attempt_id,
-    dimensionCount: generationResult.report.dimension_insights.length,
+    reportFamily: isIpcTestSlug(job.test_slug) ? "ipip_ipc" : "big_five",
   });
 
-  const validationResult = validateDetailedReportV1(generationResult.report);
+  const validationResult = validateRuntimeCompletedAssessmentReport(generationResult.report, {
+    testSlug: job.test_slug,
+    audience: job.audience,
+  });
 
   if (!validationResult.ok) {
     throw new ReportJobError(
       "PARSE_ERROR",
-      `Generated report failed schema validation: ${formatDetailedReportValidationErrors(validationResult.errors)}`,
+      `Generated report failed schema validation: ${validationResult.reason}`,
     );
   }
 

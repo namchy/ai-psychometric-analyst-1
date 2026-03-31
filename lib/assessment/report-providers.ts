@@ -6,7 +6,22 @@ import type {
   DetailedReportDimensionCode,
   DetailedReportScoreBand,
 } from "@/lib/assessment/detailed-report-v1";
-import { validateDetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
+import {
+  detailedReportV1OpenAiSchema,
+  validateDetailedReportV1,
+} from "@/lib/assessment/detailed-report-v1";
+import {
+  getIpcPromptContract,
+  isIpcTestSlug,
+  type IpcReportAudience,
+  type IpcReportPromptInput,
+} from "@/lib/assessment/ipc-report-contract";
+import {
+  formatIpcReportValidationErrors,
+  validateIpcHrReportV1,
+  validateIpcParticipantReportV1,
+  type IpcCompletedAssessmentReport,
+} from "@/lib/assessment/ipc-report-v1";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type { ScoringMethod } from "@/lib/assessment/types";
@@ -20,6 +35,9 @@ export type AttemptReportStatus =
   | "unavailable";
 
 export type CompletedAssessmentReport = DetailedReportV1;
+export type RuntimeCompletedAssessmentReport =
+  | CompletedAssessmentReport
+  | IpcCompletedAssessmentReport;
 
 export type CompletedAssessmentReportRequest = {
   attemptId: string;
@@ -58,19 +76,31 @@ export type AiReportPromptInput = {
   };
 };
 
+export type ReportPromptInput = AiReportPromptInput | IpcReportPromptInput;
+
+export type ReportContractDescriptor = {
+  family: "big_five" | "ipip_ipc";
+  reportType: string;
+  sourceType: string;
+  promptKey: string;
+  schemaName: string;
+  outputSchemaJson: Record<string, unknown>;
+};
+
 export type PreparedReportGenerationInput = {
   attemptId: string;
   testSlug: string;
   promptVersion: string;
   promptVersionId: string | null;
   promptTemplate: ActivePromptVersion | null;
-  promptInput: AiReportPromptInput;
+  promptInput: ReportPromptInput;
+  reportContract: ReportContractDescriptor;
 };
 
 export type ReportProviderResult =
   | {
       ok: true;
-      report: CompletedAssessmentReport;
+      report: RuntimeCompletedAssessmentReport;
     }
   | {
       ok: false;
@@ -84,6 +114,76 @@ export type ReportProvider = {
 
 export function isCompletedAssessmentReport(value: unknown): value is CompletedAssessmentReport {
   return validateDetailedReportV1(value).ok;
+}
+
+export function resolveReportContract(
+  testSlug: string,
+  audience: IpcReportAudience,
+): ReportContractDescriptor {
+  if (isIpcTestSlug(testSlug)) {
+    const contract = getIpcPromptContract(audience);
+
+    return {
+      family: "ipip_ipc",
+      reportType: contract.reportType,
+      sourceType: contract.sourceType,
+      promptKey: contract.promptKey,
+      schemaName: contract.schemaId,
+      outputSchemaJson: contract.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
+  return {
+    family: "big_five",
+    reportType: "individual",
+    sourceType: "single_test",
+    promptKey: "completed_assessment_report",
+    schemaName: "detailed_report_v1",
+    outputSchemaJson: detailedReportV1OpenAiSchema as Record<string, unknown>,
+  };
+}
+
+export function validateRuntimeCompletedAssessmentReport(
+  value: unknown,
+  context: {
+    testSlug: string;
+    audience: "participant" | "hr";
+  },
+):
+  | { ok: true; value: RuntimeCompletedAssessmentReport }
+  | { ok: false; reason: string } {
+  if (isIpcTestSlug(context.testSlug)) {
+    const validationResult =
+      context.audience === "participant"
+        ? validateIpcParticipantReportV1(value)
+        : validateIpcHrReportV1(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: formatIpcReportValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  const validationResult = validateDetailedReportV1(value);
+
+  if (!validationResult.ok) {
+    return {
+      ok: false,
+      reason: validationResult.errors.map((error) => `${error.path || "<root>"}: ${error.message}`).join(" | "),
+    };
+  }
+
+  return {
+    ok: true,
+    value: validationResult.value,
+  };
 }
 
 export function isAttemptReportStatus(value: unknown): value is AttemptReportStatus {

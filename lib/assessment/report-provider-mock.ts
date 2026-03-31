@@ -6,22 +6,28 @@ import {
   type DetailedReportDimensionCode,
   type DetailedReportScoreBand,
 } from "@/lib/assessment/detailed-report-v1";
+import {
+  formatIpcReportValidationErrors,
+  validateIpcHrReportV1,
+  validateIpcParticipantReportV1,
+} from "@/lib/assessment/ipc-report-v1";
 import type {
-  CompletedAssessmentReport,
+  AiReportPromptInput,
   PreparedReportGenerationInput,
   ReportProvider,
+  RuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
 
 function getPrimaryDimensions(
-  input: PreparedReportGenerationInput,
+  promptInput: AiReportPromptInput,
 ): DetailedReportDimensionCode[] {
-  return input.promptInput.deterministic_summary.dimensions_ranked.slice(0, 3);
+  return promptInput.deterministic_summary.dimensions_ranked.slice(0, 3);
 }
 
 function getLowestDimensions(
-  input: PreparedReportGenerationInput,
+  promptInput: AiReportPromptInput,
 ): DetailedReportDimensionCode[] {
-  return [...input.promptInput.deterministic_summary.dimensions_ranked].reverse().slice(0, 3);
+  return [...promptInput.deterministic_summary.dimensions_ranked].reverse().slice(0, 3);
 }
 
 function getDimensionInsightCopy(
@@ -205,17 +211,182 @@ function getHrRecommendationAction(
   return `U razvojnom razgovoru otvorite konkretne primjere saradnje, komunikacije i podrške koji mogu proširiti raspon ponašanja u oblasti ${dimensionLabel.toLowerCase()}.`;
 }
 
-function buildMockReport(input: PreparedReportGenerationInput): CompletedAssessmentReport {
-  const highestDimension = input.promptInput.deterministic_summary.highest_dimension;
-  const lowestDimension = input.promptInput.deterministic_summary.lowest_dimension;
-  const primaryDimensions = getPrimaryDimensions(input);
-  const lowestDimensions = getLowestDimensions(input);
+function buildIpcMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
+  if ("dimension_scores" in input.promptInput) {
+    throw new Error("IPC mock report requires IPC prompt input.");
+  }
+
+  if (!input.promptInput.derived.dominantOctant || !input.promptInput.derived.secondaryOctant) {
+    throw new Error("IPC mock report requires dominant and secondary octants.");
+  }
+
+  if (input.promptInput.audience === "participant") {
+    const report = {
+      report_title: "Tvoj IPC razvojni izvještaj",
+      report_subtitle: `Pregled interpersonalnog stila i saradnje za ${input.testSlug}.`,
+      summary: {
+        headline:
+          input.promptInput.derived.primaryDisc === null
+            ? "Tvoj interpersonalni stil djeluje uravnoteženo bez jedne potpuno dominantne DISC oznake."
+            : `Najizraženiji signal tvog interpersonalnog stila trenutno je ${input.promptInput.derived.primaryDisc}.`,
+        overview:
+          "Ovaj izvještaj opisuje vjerovatne obrasce komunikacije, saradnje i razvojnog fokusa na osnovu IPC oktanata i izvedenih osa topline i dominantnosti.",
+      },
+      style_snapshot: {
+        primary_disc: input.promptInput.derived.primaryDisc,
+        dominant_octant: input.promptInput.derived.dominantOctant,
+        secondary_octant: input.promptInput.derived.secondaryOctant,
+      },
+      strengths_in_collaboration: [
+        {
+          title: "1. Saradnički ritam",
+          description: "Vjerovatno donosiš prepoznatljiv interpersonalni ritam koji drugima olakšava da procijene kako pristupaš zajedničkom radu.",
+        },
+        {
+          title: "2. Komunikacijska prepoznatljivost",
+          description: "Tvoj stil komunikacije vjerovatno ima dovoljno dosljednosti da drugi lakše razumiju kako ulaziš u kontakt, inicijativu i usklađivanje.",
+        },
+        {
+          title: "3. Razvojna upotrebljivost",
+          description: "Rezultat daje konkretne signale koje možeš pretvoriti u male, praktične eksperimente u saradnji i svakodnevnoj komunikaciji.",
+        },
+      ],
+      watchouts: [
+        {
+          title: "1. Pretjerano oslanjanje na dominantni stil",
+          description: "Kada se previše osloniš na svoj prirodni stil, drugi mogu dobiti manje prostora nego što situacija traži.",
+        },
+        {
+          title: "2. Suviše usko čitanje profila",
+          description: "Vrijedi paziti da rezultat ne čitaš kao fiksnu etiketu, nego kao signal za svjesnije biranje ponašanja u kontekstu.",
+        },
+      ],
+      development_recommendations: [
+        {
+          title: "1. Provjera utiska",
+          description: "Prati kako tvoj dominantni stil utiče na druge u stvarnim razgovorima i zajedničkom radu.",
+          action: "U jednoj sedmici pitaj dvije osobe kako doživljavaju tvoj stil saradnje u praksi.",
+        },
+        {
+          title: "2. Proširenje repertoara",
+          description: "Najveći razvojni pomak obično dolazi iz namjernog širenja ponašanja van automatskog obrasca.",
+          action: "Uvedi jedan mali interpersonalni eksperiment koji nije tvoj podrazumijevani prvi izbor.",
+        },
+        {
+          title: "3. Situaciona fleksibilnost",
+          description: "Razvoj nije u potiskivanju tvog stila, nego u boljem prilagođavanju situaciji i potrebama drugih.",
+          action: "Prije važnog razgovora kratko odredi koji ton, tempo i nivo direktnosti će toj situaciji najviše pomoći.",
+        },
+      ],
+      disclaimer:
+        "Ovaj izvještaj je razvojni, ne-klinički pregled interpersonalnog stila. Ne daje dijagnozu, ne potvrđuje zaštićene osobine i ne predstavlja preporuku za zapošljavanje ili konačnu istinu o osobi.",
+    };
+
+    const validationResult = validateIpcParticipantReportV1(report);
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `Mock IPC participant report failed validation: ${formatIpcReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  const report = {
+    report_title: "IPC HR pregled interpersonalnog stila",
+    report_subtitle: "Operativni pregled komunikacije, saradnje i uticaja bez hiring presuda.",
+    summary: {
+      headline:
+        input.promptInput.derived.primaryDisc === null
+          ? "Profil djeluje uravnoteženo bez jedne potpuno dominantne DISC oznake."
+          : `Najizraženiji signal interpersonalnog stila trenutno je ${input.promptInput.derived.primaryDisc}.`,
+      overview:
+        "Ovaj izvještaj koristi IPC oktante i izvedene ose dominantnosti i topline kako bi opisao vjerovatne obrasce komunikacije, saradnje i rukovođenja uticajem u radnom kontekstu.",
+    },
+    style_snapshot: {
+      primary_disc: input.promptInput.derived.primaryDisc,
+      dominant_octant: input.promptInput.derived.dominantOctant,
+      secondary_octant: input.promptInput.derived.secondaryOctant,
+      dominance: input.promptInput.derived.dominance,
+      warmth: input.promptInput.derived.warmth,
+    },
+    communication_style: {
+      summary:
+        "Komunikacijski stil vjerovatno prati dominantni interpersonalni obrazac i relativni odnos topline i direktivnosti.",
+      manager_notes:
+        "Koristan je jasan dogovor oko tona, nivoa direktnosti i načina povratne informacije koji podržavaju saradnju bez pojednostavljivanja osobe.",
+    },
+    collaboration_style: {
+      summary:
+        "Saradnički stil vjerovatno pokazuje prepoznatljiv ritam uključivanja, usklađivanja i zauzimanja prostora u grupi.",
+      manager_notes:
+        "Vrijedi posmatrati kako osoba ulazi u zajednički rad, koliko prostora uzima i kako reaguje na različite ritmove tima.",
+    },
+    leadership_and_influence: {
+      summary:
+        "Obrazac uticaja vjerovatno zavisi od kombinacije dominantnosti, topline i najuočljivijih IPC oktanata.",
+      manager_notes:
+        "Najkorisnije je pratiti kroz koje situacije osoba utiče na druge i kada joj više odgovara direktniji, a kada odnosniji pristup.",
+    },
+    team_watchouts: [
+      {
+        title: "1. Jednostrano čitanje stila",
+        description: "Previše kruto tumačenje dominantnog stila može suziti prostor za razvoj i previđanje konteksta.",
+      },
+      {
+        title: "2. Nepodudaran ritam saradnje",
+        description: "U nekim timovima se može pojaviti trenje ako očekivani ton i tempo saradnje nisu rano eksplicitno usklađeni.",
+      },
+    ],
+    onboarding_or_management_recommendations: [
+      {
+        title: "1. Rani check-in o saradnji",
+        description: "Rano usaglašavanje interpersonalnih očekivanja obično smanjuje pogrešna tumačenja stila.",
+        action: "U prvim sedmicama uvedite kratak check-in o komunikaciji, tempu i načinu davanja feedbacka.",
+      },
+      {
+        title: "2. Jasna pravila timske interakcije",
+        description: "Osobi pomaže kada zna kako tim očekuje uključivanje, neslaganje i donošenje odluka.",
+        action: "Eksplicitno definišite kako tim vodi raspravu, traži pomoć i zatvara neslaganja.",
+      },
+      {
+        title: "3. Razvoj situacione fleksibilnosti",
+        description: "Najveći razvojni dobitak obično dolazi iz širenja repertoara, a ne iz potiskivanja osnovnog stila.",
+        action: "Dogovorite jedan razvojni fokus kojim osoba svjesno proširuje stil komunikacije ili saradnje u realnom radu.",
+      },
+    ],
+    disclaimer:
+      "Ovaj izvještaj je profesionalni razvojni pregled interpersonalnog stila. Ne predstavlja dijagnozu, ne potvrđuje zaštićene osobine i ne daje hiring odluku ili konačnu istinu o osobi.",
+  };
+
+  const validationResult = validateIpcHrReportV1(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock IPC HR report failed validation: ${formatIpcReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
+function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
+  if (!("dimension_scores" in input.promptInput)) {
+    return buildIpcMockReport(input);
+  }
+
+  const promptInput = input.promptInput;
+  const highestDimension = promptInput.deterministic_summary.highest_dimension;
+  const lowestDimension = promptInput.deterministic_summary.lowest_dimension;
+  const primaryDimensions = getPrimaryDimensions(promptInput);
+  const lowestDimensions = getLowestDimensions(promptInput);
 
   const dimensionsByCode = new Map(
-    input.promptInput.dimension_scores.map((dimension) => [dimension.dimension_code, dimension]),
+    promptInput.dimension_scores.map((dimension) => [dimension.dimension_code, dimension]),
   );
 
-  const dimensionInsights = input.promptInput.dimension_scores.map((dimension) => {
+  const dimensionInsights = promptInput.dimension_scores.map((dimension) => {
     const insightCopy = getDimensionInsightCopy(dimension.dimension_code, dimension.score_band);
 
     return {
@@ -294,7 +465,7 @@ function buildMockReport(input: PreparedReportGenerationInput): CompletedAssessm
       ? "Sažetak vjerovatnih obrazaca rada, saradnje i razvoja."
       : `Razvojni pregled obrasca rezultata za ${input.testSlug}.`;
 
-  const report: CompletedAssessmentReport = {
+  const report = {
     report_title: titleByAudience,
     report_subtitle: subtitleByAudience,
     summary: {

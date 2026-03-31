@@ -11,6 +11,7 @@ import type { ScoringMethod } from "@/lib/assessment/types";
 export const IPC_REPORT_TYPE = "individual";
 export const IPC_REPORT_SOURCE_TYPE = "single_test";
 export const IPC_TEST_FAMILY = "ipip_ipc";
+export const IPC_TEST_SLUG = "ipip-ipc-v1";
 export const IPC_PARTICIPANT_PROMPT_KEY = "ipc_participant_report_v1";
 export const IPC_HR_PROMPT_KEY = "ipc_hr_report_v1";
 
@@ -109,6 +110,10 @@ export const IPC_REPORT_CONTRACTS: Record<IpcReportAudience, IpcPromptContractDe
   participant: IPC_PARTICIPANT_REPORT_CONTRACT,
   hr: IPC_HR_REPORT_CONTRACT,
 };
+
+export function isIpcTestSlug(testSlug: string): boolean {
+  return testSlug === IPC_TEST_SLUG;
+}
 
 export function getIpcPromptContract(
   audience: IpcReportAudience,

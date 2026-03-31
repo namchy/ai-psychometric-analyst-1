@@ -1,17 +1,12 @@
 import "server-only";
 
-import {
-  detailedReportV1OpenAiSchema,
-  formatDetailedReportValidationErrors,
-  normalizeDetailedReportV1,
-  validateDetailedReportV1,
-} from "@/lib/assessment/detailed-report-v1";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type {
-  CompletedAssessmentReport,
   PreparedReportGenerationInput,
   ReportProvider,
+  RuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
+import { validateRuntimeCompletedAssessmentReport } from "@/lib/assessment/report-providers";
 
 type OpenAiProviderOptions = {
   apiKey: string | null;
@@ -23,18 +18,36 @@ type ErrorWithCause = Error & {
   cause?: unknown;
 };
 
-function buildDefaultSystemPrompt(promptVersion: string): string {
-  return [
-    `You generate completed assessment reports. Prompt version: ${promptVersion}.`,
+function buildDefaultSystemPrompt(input: PreparedReportGenerationInput): string {
+  const baseLines = [
+    `You generate completed assessment reports. Prompt version: ${input.promptVersion}.`,
     "Return only JSON that matches the supplied JSON schema exactly.",
     "Use only the provided deterministic scoring input.",
     "Do not infer raw scores, hidden traits, diagnoses, or hiring decisions.",
     "Do not use clinical language, protected-trait inferences, IQ claims, or absolute statements.",
-    "Treat Emotional Stability and Intellect as non-clinical Big Five dimensions only.",
-  ].join(" ");
+  ];
+
+  if (input.reportContract.family === "big_five") {
+    baseLines.push(
+      "Treat Emotional Stability and Intellect as non-clinical Big Five dimensions only.",
+    );
+  }
+
+  return baseLines.join(" ");
 }
 
 function buildDimensionHintText(input: PreparedReportGenerationInput): string {
+  if (!("dimension_scores" in input.promptInput)) {
+    return [
+      `dominance=${input.promptInput.derived.dominance}`,
+      `warmth=${input.promptInput.derived.warmth}`,
+      `primary_disc=${input.promptInput.derived.primaryDisc}`,
+      `dominant_octant=${input.promptInput.derived.dominantOctant}`,
+      `secondary_octant=${input.promptInput.derived.secondaryOctant}`,
+      `raw_octants=${JSON.stringify(input.promptInput.rawOctants)}`,
+    ].join(" | ");
+  }
+
   return input.promptInput.dimension_scores
     .map(
       (dimension) =>
@@ -44,6 +57,42 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
 }
 
 function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
+  if (!("dimension_scores" in input.promptInput)) {
+    return JSON.stringify({
+      instructions: {
+        output_contract: "Return one IPC report in the exact schema.",
+        audience_behavior:
+          input.promptInput.audience === "participant"
+            ? "Use developmental, clear, supportive language focused on interpersonal style, collaboration, communication, and growth without heavy HR wording."
+            : "Use neutral, operational, professional language focused on communication style, collaboration, leadership and influence, team watchouts, and onboarding or management recommendations without hiring judgments or clinical language.",
+        locale_rule:
+          "Write all narrative text in the locale requested in input.locale. Do not hardcode a different language.",
+        list_sizes:
+          input.promptInput.audience === "participant"
+            ? {
+                strengths_in_collaboration: 3,
+                watchouts: 2,
+                development_recommendations: 3,
+              }
+            : {
+                team_watchouts: 2,
+                onboarding_or_management_recommendations: 3,
+              },
+        style_snapshot_rule:
+          "Use the provided IPC raw octants and derived block. Do not invent different octants, DISC values, dominance values, or warmth values.",
+        guardrails: [
+          "Do not diagnose or use clinical language.",
+          "Do not give hire/no-hire recommendations.",
+          "Do not infer protected traits.",
+          "Do not treat the report as final truth about the person.",
+          "Do not use absolute statements such as always, never, or definitely proves.",
+        ],
+        ipc_hint_text: buildDimensionHintText(input),
+      },
+      input: input.promptInput,
+    });
+  }
+
   return JSON.stringify({
     instructions: {
       output_contract: "Return one completed assessment report in the exact schema.",
@@ -76,7 +125,7 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
 }
 
 function buildSystemPrompt(input: PreparedReportGenerationInput): string {
-  return input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input.promptVersion);
+  return input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input);
 }
 
 function applyPromptTemplate(
@@ -108,25 +157,31 @@ function buildUserPrompt(input: PreparedReportGenerationInput): string {
   return applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
 }
 
-function resolveOpenAiResponseFormatSchema(): Record<string, unknown> {
-  return detailedReportV1OpenAiSchema as Record<string, unknown>;
-}
-
 function parseStructuredContent(content: string): unknown {
   return JSON.parse(content) as unknown;
 }
 
-function normalizeStructuredReport(content: unknown): CompletedAssessmentReport {
-  return normalizeDetailedReportV1(content);
+function resolveOpenAiResponseFormatSchemaForInput(
+  input: PreparedReportGenerationInput,
+): Record<string, unknown> {
+  return input.reportContract.outputSchemaJson;
 }
 
-function validateStructuredReport(report: CompletedAssessmentReport): CompletedAssessmentReport {
-  const validationResult = validateDetailedReportV1(report);
+function validateStructuredReport(
+  report: unknown,
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const validationResult = validateRuntimeCompletedAssessmentReport(report, {
+    testSlug: input.testSlug,
+    audience: input.promptInput.audience,
+  });
 
   if (!validationResult.ok) {
-    throw new Error(
-      `OpenAI response JSON failed detailed report validation: ${formatDetailedReportValidationErrors(validationResult.errors)}`,
-    );
+    const validationPrefix =
+      input.reportContract.family === "ipip_ipc"
+        ? "OpenAI response JSON failed IPC report validation"
+        : "OpenAI response JSON failed detailed report validation";
+    throw new Error(`${validationPrefix}: ${validationResult.reason}`);
   }
 
   return validationResult.value;
@@ -135,7 +190,7 @@ function validateStructuredReport(report: CompletedAssessmentReport): CompletedA
 async function requestOpenAiReport(
   input: PreparedReportGenerationInput,
   options: OpenAiProviderOptions,
-): Promise<CompletedAssessmentReport> {
+): Promise<RuntimeCompletedAssessmentReport> {
   if (!options.apiKey) {
     throw new Error("Missing required env var: OPENAI_API_KEY");
   }
@@ -175,9 +230,9 @@ async function requestOpenAiReport(
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "detailed_report_v1",
+            name: input.reportContract.schemaName,
             strict: true,
-            schema: resolveOpenAiResponseFormatSchema(),
+            schema: resolveOpenAiResponseFormatSchemaForInput(input),
           },
         },
         messages: [
@@ -215,15 +270,14 @@ async function requestOpenAiReport(
     }
 
     const parsed = parseStructuredContent(content);
-    const normalized = normalizeStructuredReport(parsed);
-    const validated = validateStructuredReport(normalized);
+    const validated = validateStructuredReport(parsed, input);
 
     console.info("OpenAI report generation succeeded", {
       attemptId: input.attemptId,
       testSlug: input.testSlug,
       model: options.model,
       timeoutMs,
-      dimensionCount: validated.dimension_insights.length,
+      reportFamily: input.reportContract.family,
     });
 
     return validated;

@@ -13,10 +13,11 @@ import type {
   CompletedAssessmentReport,
   CompletedAssessmentReportRequest,
   ReportGeneratorType,
+  RuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
 import {
   isAttemptReportStatus,
-  isCompletedAssessmentReport,
+  validateRuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import { calculateCompletedAssessmentResults } from "@/lib/assessment/scoring";
@@ -27,6 +28,7 @@ type AttemptReportRow = {
   id: string;
   attempt_id: string;
   test_slug: string;
+  audience: "participant" | "hr";
   generator_type: ReportGeneratorType | null;
   generated_at: string;
   completed_at: string | null;
@@ -81,7 +83,7 @@ export type CompletedAssessmentReportState =
 type ReportGenerationResult =
   | {
       status: "ready";
-      report: CompletedAssessmentReport;
+      report: RuntimeCompletedAssessmentReport;
     }
   | {
       status: "unavailable";
@@ -261,7 +263,7 @@ async function loadPersistedReportSnapshot(
   const { data, error } = await supabase
     .from("attempt_reports")
     .select(
-      "id, attempt_id, test_slug, generator_type, generated_at, completed_at, report_status, failure_code, failure_reason, report_snapshot",
+      "id, attempt_id, test_slug, audience, generator_type, generated_at, completed_at, report_status, failure_code, failure_reason, report_snapshot",
     )
     .eq("attempt_id", attemptId)
     .order("generated_at", { ascending: false })
@@ -283,20 +285,25 @@ async function loadPersistedReportSnapshot(
   }
 
   if (row.report_status === "ready") {
-    if (!isCompletedAssessmentReport(row.report_snapshot)) {
+    const validationResult = validateRuntimeCompletedAssessmentReport(row.report_snapshot, {
+      testSlug: row.test_slug,
+      audience: row.audience,
+    });
+
+    if (!validationResult.ok) {
       return {
         status: "failed",
         generatorType: row.generator_type,
         generatedAt: row.generated_at,
         completedAt: row.completed_at,
         failureCode: "invalid_report_snapshot",
-        failureReason: "Persisted report snapshot does not match the current detailed report contract.",
+        failureReason: "Persisted report snapshot does not match the current report contract.",
       };
     }
 
     return {
       status: "ready",
-      report: row.report_snapshot,
+      report: validationResult.value as unknown as CompletedAssessmentReport,
     };
   }
 
@@ -326,7 +333,7 @@ async function loadPersistedParticipantReportSnapshot(
   const { data, error } = await supabase
     .from("attempt_reports")
     .select(
-      "id, attempt_id, test_slug, generator_type, generated_at, completed_at, report_status, failure_code, failure_reason, report_snapshot",
+      "id, attempt_id, test_slug, audience, generator_type, generated_at, completed_at, report_status, failure_code, failure_reason, report_snapshot",
     )
     // attempt_reports is no longer 1:1 with attempts, so participant UI must filter the
     // full artifact identity and never read HR artifacts for the same attempt.
@@ -351,20 +358,25 @@ async function loadPersistedParticipantReportSnapshot(
   }
 
   if (row.report_status === "ready") {
-    if (!isCompletedAssessmentReport(row.report_snapshot)) {
+    const validationResult = validateRuntimeCompletedAssessmentReport(row.report_snapshot, {
+      testSlug: row.test_slug,
+      audience: row.audience,
+    });
+
+    if (!validationResult.ok) {
       return {
         status: "failed",
         generatorType: row.generator_type,
         generatedAt: row.generated_at,
         completedAt: row.completed_at,
         failureCode: "invalid_report_snapshot",
-        failureReason: "Persisted report snapshot does not match the current detailed report contract.",
+        failureReason: "Persisted report snapshot does not match the current report contract.",
       };
     }
 
     return {
       status: "ready",
-      report: row.report_snapshot,
+      report: validationResult.value as unknown as CompletedAssessmentReport,
     };
   }
 
@@ -504,7 +516,7 @@ export async function persistCompletedAssessmentReport(
           report_status: "ready",
           failure_code: null,
           failure_reason: null,
-          report_snapshot: generationResult.report,
+          report_snapshot: generationResult.report as unknown,
         }
       : {
           attempt_id: attemptId,
@@ -526,7 +538,10 @@ export async function persistCompletedAssessmentReport(
   }
 
   if (generationResult.status === "ready") {
-    return generationResult;
+    return {
+      status: "ready",
+      report: generationResult.report as unknown as CompletedAssessmentReport,
+    };
   }
 
   return {
