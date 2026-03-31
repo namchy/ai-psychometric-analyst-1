@@ -45,6 +45,23 @@ function assertKeys(value, label, keys) {
   }
 }
 
+function detectPackageMode({ dimensions, items, options, locales, prompts }) {
+  const hasNoContentCatalog =
+    dimensions.length === 0 &&
+    items.length === 0 &&
+    options.length === 0 &&
+    locales.bs.questions.length === 0 &&
+    locales.hr.questions.length === 0 &&
+    locales.bs.options.length === 0 &&
+    locales.hr.options.length === 0;
+
+  if (hasNoContentCatalog && prompts.length > 0) {
+    return "prompt_runtime_bootstrap";
+  }
+
+  return "full_assessment_or_partial_content";
+}
+
 export async function loadAssessmentPackage(packageDirArg) {
   const packageDir = path.resolve(packageDirArg);
 
@@ -200,6 +217,13 @@ export async function loadAssessmentPackage(packageDirArg) {
     options,
     prompts,
     locales,
+    packageMode: detectPackageMode({
+      dimensions,
+      items,
+      options,
+      prompts,
+      locales,
+    }),
   };
 }
 
@@ -210,7 +234,7 @@ async function main() {
     fail("Usage: node scripts/validate-assessment-package.mjs <package-directory>");
   }
 
-  const { packageDir, test, dimensions, items, options, prompts, locales } =
+  const { packageDir, test, dimensions, items, options, prompts, locales, packageMode } =
     await loadAssessmentPackage(packageDirArg);
 
   console.log(
@@ -218,6 +242,7 @@ async function main() {
       {
         packageDir,
         slug: test.slug,
+        packageMode,
         dimensions: dimensions.length,
         items: items.length,
         options: options.length,
@@ -239,6 +264,12 @@ async function main() {
       2,
     ),
   );
+
+  if (packageMode === "prompt_runtime_bootstrap") {
+    console.warn(
+      `[validate-assessment-package] ${test.slug} is a prompt/runtime bootstrap package, not a full assessment content package.`,
+    );
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

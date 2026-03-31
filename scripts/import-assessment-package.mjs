@@ -102,11 +102,19 @@ async function main() {
   console.info("Assessment package validated.", {
     packageDir: packageData.packageDir,
     slug: packageData.test.slug,
+    packageMode: packageData.packageMode,
   });
+
+  if (packageData.packageMode === "prompt_runtime_bootstrap") {
+    console.warn(
+      `Importing ${packageData.test.slug} as a prompt/runtime bootstrap package. Assessment content catalogs are intentionally empty in this phase.`,
+    );
+  }
 
   console.info("Calling import_assessment_package RPC.", {
     packageDir: packageData.packageDir,
     slug: packageData.test.slug,
+    packageMode: packageData.packageMode,
   });
 
   const result = await importAssessmentPackageViaRpc(supabase, payload);

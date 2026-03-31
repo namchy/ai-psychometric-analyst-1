@@ -18,6 +18,19 @@ Each package folder is named by test slug, for example `ipip50-hr-v1/`.
 - `locales/bs/prompts.json`
 - `locales/hr/prompts.json`
 
+## Prompt Bootstrap Packages
+
+In exceptional cases a package may exist primarily to import prompt/runtime setup before the full assessment content is ready.
+
+That pattern is allowed only as a temporary bootstrap step when all of the following are true:
+
+- the package README explicitly says it is prompt/runtime-only
+- `dimensions.json`, `items.json`, and `options.json` are intentionally empty
+- localized `questions.json` and `options.json` are intentionally empty
+- prompt definitions are the real target of the import
+
+When this pattern is used, treat the package as a bootstrap artifact, not as evidence that the assessment content itself is implemented.
+
 ## Naming Conventions
 
 - Test slug: lowercase kebab-case, stable across environments, for example `ipip50-hr-v1`
