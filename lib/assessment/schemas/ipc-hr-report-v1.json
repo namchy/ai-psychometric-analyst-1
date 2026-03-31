@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-profile.local/schemas/ipc-hr-report-v1.json",
+  "title": "IPC HR Report v1",
+  "description": "Canonical schema for IPIP-IPC HR reports in AI Psychometric Analyst for HR v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_title",
+    "report_subtitle",
+    "summary",
+    "style_snapshot",
+    "communication_style",
+    "collaboration_style",
+    "leadership_and_influence",
+    "team_watchouts",
+    "onboarding_or_management_recommendations",
+    "disclaimer"
+  ],
+  "properties": {
+    "report_title": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "report_subtitle": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "style_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_disc",
+        "dominant_octant",
+        "secondary_octant",
+        "dominance",
+        "warmth"
+      ],
+      "properties": {
+        "primary_disc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "D",
+            "I",
+            "S",
+            "C",
+            null
+          ]
+        },
+        "dominant_octant": {
+          "$ref": "#/$defs/ipcOctant"
+        },
+        "secondary_octant": {
+          "$ref": "#/$defs/ipcOctant"
+        },
+        "dominance": {
+          "type": "number"
+        },
+        "warmth": {
+          "type": "number"
+        }
+      }
+    },
+    "communication_style": {
+      "$ref": "#/$defs/managerSection"
+    },
+    "collaboration_style": {
+      "$ref": "#/$defs/managerSection"
+    },
+    "leadership_and_influence": {
+      "$ref": "#/$defs/managerSection"
+    },
+    "team_watchouts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "$ref": "#/$defs/titleDescriptionItem"
+      }
+    },
+    "onboarding_or_management_recommendations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/developmentRecommendationItem"
+      }
+    },
+    "disclaimer": {
+      "$ref": "#/$defs/nonEmptyString"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ipcOctant": {
+      "type": "string",
+      "enum": [
+        "PA",
+        "BC",
+        "DE",
+        "FG",
+        "HI",
+        "JK",
+        "LM",
+        "NO"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headline",
+        "overview"
+      ],
+      "properties": {
+        "headline": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "overview": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "titleDescriptionItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "description"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "developmentRecommendationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "description",
+        "action"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "action": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "managerSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "manager_notes"
+      ],
+      "properties": {
+        "summary": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "manager_notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    }
+  }
+}

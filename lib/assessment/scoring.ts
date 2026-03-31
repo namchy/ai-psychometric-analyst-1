@@ -8,6 +8,7 @@ type AttemptRecord = {
 
 type TestRecord = {
   id: string;
+  slug: string;
   scoring_method: ScoringMethod;
 };
 
@@ -70,6 +71,23 @@ export type CompletedAssessmentResults = {
   dimensions: CompletedAssessmentResultDimension[];
   scoredResponseCount: number;
   unscoredResponses: CompletedAssessmentUnscoredResponse[];
+  derived?: CompletedAssessmentDerivedResults;
+};
+
+export type IpcOctantCode = "PA" | "BC" | "DE" | "FG" | "HI" | "JK" | "LM" | "NO";
+
+export type IpcPrimaryDisc = "D" | "I" | "S" | "C" | null;
+
+export type IpcDerivedResults = {
+  dominance: number;
+  warmth: number;
+  primaryDisc: IpcPrimaryDisc;
+  dominantOctant: IpcOctantCode | null;
+  secondaryOctant: IpcOctantCode | null;
+};
+
+export type CompletedAssessmentDerivedResults = {
+  ipc: IpcDerivedResults;
 };
 
 type ComputedResponseScore = {
@@ -94,6 +112,122 @@ type QuestionDimensionContribution = {
 
 function roundScore(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+const IPC_TEST_SLUG = "ipip-ipc-v1";
+const IPC_OCTANT_ORDER: IpcOctantCode[] = ["PA", "BC", "DE", "FG", "HI", "JK", "LM", "NO"];
+
+function isIpcTestSlug(testSlug: string): boolean {
+  return testSlug === IPC_TEST_SLUG;
+}
+
+function getDimensionScoreByCode(
+  dimensions: CompletedAssessmentResultDimension[],
+): Map<string, CompletedAssessmentResultDimension> {
+  return new Map(dimensions.map((dimension) => [dimension.dimension, dimension]));
+}
+
+function getIpcOctantRawScore(
+  dimensionsByCode: Map<string, CompletedAssessmentResultDimension>,
+  octant: IpcOctantCode,
+): number {
+  return dimensionsByCode.get(octant)?.rawScore ?? 0;
+}
+
+function getIpcPrimaryDisc(dominance: number, warmth: number): IpcPrimaryDisc {
+  if (dominance === 0 && warmth === 0) {
+    return null;
+  }
+
+  if (dominance > 0 && warmth < 0) {
+    return "D";
+  }
+
+  if (dominance > 0 && warmth > 0) {
+    return "I";
+  }
+
+  if (dominance < 0 && warmth > 0) {
+    return "S";
+  }
+
+  if (dominance < 0 && warmth < 0) {
+    return "C";
+  }
+
+  return null;
+}
+
+function getTopIpcOctants(
+  dimensionsByCode: Map<string, CompletedAssessmentResultDimension>,
+): Pick<IpcDerivedResults, "dominantOctant" | "secondaryOctant"> {
+  const rankedOctants = [...IPC_OCTANT_ORDER].sort((left, right) => {
+    return (
+      getIpcOctantRawScore(dimensionsByCode, right) - getIpcOctantRawScore(dimensionsByCode, left) ||
+      IPC_OCTANT_ORDER.indexOf(left) - IPC_OCTANT_ORDER.indexOf(right)
+    );
+  });
+
+  return {
+    dominantOctant: rankedOctants[0] ?? null,
+    secondaryOctant: rankedOctants[1] ?? null,
+  };
+}
+
+function calculateIpcDerivedResults(
+  dimensions: CompletedAssessmentResultDimension[],
+): IpcDerivedResults {
+  const dimensionsByCode = getDimensionScoreByCode(dimensions);
+  const PA = getIpcOctantRawScore(dimensionsByCode, "PA");
+  const BC = getIpcOctantRawScore(dimensionsByCode, "BC");
+  const DE = getIpcOctantRawScore(dimensionsByCode, "DE");
+  const FG = getIpcOctantRawScore(dimensionsByCode, "FG");
+  const HI = getIpcOctantRawScore(dimensionsByCode, "HI");
+  const JK = getIpcOctantRawScore(dimensionsByCode, "JK");
+  const LM = getIpcOctantRawScore(dimensionsByCode, "LM");
+  const NO = getIpcOctantRawScore(dimensionsByCode, "NO");
+
+  const dominance = roundScore(PA - HI + 0.707 * (BC + NO - FG - JK));
+  const warmth = roundScore(LM - DE + 0.707 * (NO + JK - BC - FG));
+  const { dominantOctant, secondaryOctant } = getTopIpcOctants(dimensionsByCode);
+
+  return {
+    dominance,
+    warmth,
+    primaryDisc: getIpcPrimaryDisc(dominance, warmth),
+    dominantOctant,
+    secondaryOctant,
+  };
+}
+
+function buildCompletedAssessmentResults(
+  attemptId: string,
+  scoringMethod: ScoringMethod,
+  testSlug: string,
+  computedResults: {
+    dimensions: ComputedDimensionScore[];
+    scoredResponseCount: number;
+    unscoredResponses: CompletedAssessmentUnscoredResponse[];
+  },
+): CompletedAssessmentResults {
+  const dimensions = computedResults.dimensions.map((dimension) => ({
+    dimension: dimension.dimension,
+    rawScore: dimension.rawScore,
+    scoredQuestionCount: dimension.scoredQuestionCount,
+  }));
+
+  return {
+    attemptId,
+    scoringMethod,
+    dimensions,
+    scoredResponseCount: computedResults.scoredResponseCount,
+    unscoredResponses: computedResults.unscoredResponses,
+    derived: isIpcTestSlug(testSlug)
+      ? {
+          ipc: calculateIpcDerivedResults(dimensions),
+        }
+      : undefined,
+  };
 }
 
 function valuesEqual(left: number | null, right: number | null): boolean {
@@ -267,7 +401,7 @@ async function loadScoringInputs(testId: string, attemptId: string) {
 
   const { data: testData, error: testError } = await supabase
     .from("tests")
-    .select("id, scoring_method")
+    .select("id, slug, scoring_method")
     .eq("id", testId)
     .single();
 
@@ -417,17 +551,12 @@ export async function calculateCompletedAssessmentResults(
     ) ?? undefined,
   );
 
-  return {
+  return buildCompletedAssessmentResults(
     attemptId,
-    scoringMethod: scoringInputs.test.scoring_method,
-    dimensions: computedResults.dimensions.map((dimension) => ({
-      dimension: dimension.dimension,
-      rawScore: dimension.rawScore,
-      scoredQuestionCount: dimension.scoredQuestionCount,
-    })),
-    scoredResponseCount: computedResults.scoredResponseCount,
-    unscoredResponses: computedResults.unscoredResponses,
-  };
+    scoringInputs.test.scoring_method,
+    scoringInputs.test.slug,
+    computedResults,
+  );
 }
 
 export async function persistCompletedAssessmentResults(
@@ -513,15 +642,10 @@ export async function persistCompletedAssessmentResults(
     }
   }
 
-  return {
+  return buildCompletedAssessmentResults(
     attemptId,
-    scoringMethod: scoringInputs.test.scoring_method,
-    dimensions: computedResults.dimensions.map((dimension) => ({
-      dimension: dimension.dimension,
-      rawScore: dimension.rawScore,
-      scoredQuestionCount: dimension.scoredQuestionCount,
-    })),
-    scoredResponseCount: computedResults.scoredResponseCount,
-    unscoredResponses: computedResults.unscoredResponses,
-  };
+    scoringInputs.test.scoring_method,
+    scoringInputs.test.slug,
+    computedResults,
+  );
 }
