@@ -57,15 +57,14 @@ function getLoginUrl(request: NextRequest) {
   return new URL("/login", request.url);
 }
 
-function getDashboardUrl(request: NextRequest) {
-  return new URL("/dashboard", request.url);
+function getHomeUrl(request: NextRequest) {
+  return new URL("/", request.url);
 }
 
 export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(SUPABASE_ACCESS_TOKEN_COOKIE_NAME)?.value ?? null;
   const refreshToken = request.cookies.get(SUPABASE_REFRESH_TOKEN_COOKIE_NAME)?.value ?? null;
   const pathname = request.nextUrl.pathname;
-  const isLegacyDashboardRoute = pathname === "/dashboard";
   const isProtectedRoute =
     pathname.startsWith("/dashboard") || pathname.startsWith("/app");
   const isLoginRoute = pathname === "/login";
@@ -87,7 +86,7 @@ export async function middleware(request: NextRequest) {
 
     if (!error && data.user) {
       if (isLoginRoute) {
-        return NextResponse.redirect(getDashboardUrl(request));
+        return NextResponse.redirect(getHomeUrl(request));
       }
 
       return NextResponse.next();
@@ -113,7 +112,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = isLoginRoute
-    ? NextResponse.redirect(getDashboardUrl(request))
+    ? NextResponse.redirect(getHomeUrl(request))
     : NextResponse.next();
 
   persistSessionCookies(response, data.session);
