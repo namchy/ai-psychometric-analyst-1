@@ -1,0 +1,58 @@
+[
+  {
+    "code": "PA",
+    "name": "Assured-Dominant",
+    "description": "Assured-Dominant",
+    "display_order": 1,
+    "is_active": true
+  },
+  {
+    "code": "BC",
+    "name": "Arrogant-Calculating",
+    "description": "Arrogant-Calculating",
+    "display_order": 2,
+    "is_active": true
+  },
+  {
+    "code": "DE",
+    "name": "Cold-Hearted",
+    "description": "Cold-Hearted",
+    "display_order": 3,
+    "is_active": true
+  },
+  {
+    "code": "FG",
+    "name": "Aloof-Introverted",
+    "description": "Aloof-Introverted",
+    "display_order": 4,
+    "is_active": true
+  },
+  {
+    "code": "HI",
+    "name": "Unassured-Submissive",
+    "description": "Unassured-Submissive",
+    "display_order": 5,
+    "is_active": true
+  },
+  {
+    "code": "JK",
+    "name": "Unassuming-Ingenuous",
+    "description": "Unassuming-Ingenuous",
+    "display_order": 6,
+    "is_active": true
+  },
+  {
+    "code": "LM",
+    "name": "Warm-Agreeable",
+    "description": "Warm-Agreeable",
+    "display_order": 7,
+    "is_active": true
+  },
+  {
+    "code": "NO",
+    "name": "Gregarious-Extraverted",
+    "description": "Gregarious-Extraverted",
+    "display_order": 8,
+    "is_active": true
+  }
+]

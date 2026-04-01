@@ -1,0 +1,218 @@
+IPC Canonical Implementation Spec v1
+1. Svrha
+Ovaj dokument zaklju?ava minimalni canonical IPC set za Deep Profile v1 tako da development može nastaviti bez lutanja.
+Spec pokriva:
+? identitet testa
+? item bank logiku
+? oktante
+? scoring model za app v1
+? lokalizacijski status
+? šta je zatvoreno
+? šta ostaje otvoreno
+Ovo je implementation spec, ne akademski paper.
+
+2. Status odluka
+Zatvoreno
+? test koji uvodimo je IPIP-IPC
+? koristimo 32-item version
+? test ima 8 oktanata
+? svaki oktant ima 4 stavke
+? sve stavke su pozitivno klju?ene
+? za v1 nema reverse scoringa
+? response skala je Likert 1–5
+? za Deep Profile app v1 koristimo operational scoring:
+? raw suma po oktantima
+? derived ose Dominacija i Toplina
+? heuristi?ki DISC prikaz za business interpretaciju
+Otvoreno
+? formalna, službeno standardizirana B/H/S verzija instrumenta nije potvr?ena
+? B/H/S wording treba tretirati kao operational translation / stru?nu adaptaciju, ne kao formalno standardiziran instrument
+? za budu?e psihometrijski strože izdanje mogu?e je uvesti standardizaciju oktant skora prije ra?unanja osa
+
+3. Canonical source-of-truth pravilo
+3.1. Primarni source-of-truth
+Za strukturu instrumenta, item raspored i keyed logiku primarni oslonac je:
+? izvještaj 1 (?ato), jer eksplicitno razlikuje:
+? IPIP autoritativni engleski izvor
+? IPIP-hostovan srpski prevod
+? ?injenicu da prevod nije formalno verifikovan od IPIP projekta
+3.2. Sekundarni source-of-truth
+Za B/H/S formulacije i interpretativne opise koristimo:
+? izvještaj 2 (Džemo) kao pomo?ni radni sloj
+3.3. Product truth
+Za Deep Profile v1 vrijedi:
+? english/IPIP structure = canonical
+? B/H/S wording = operational app localization v1
+? ne tvrdimo da imamo službeno standardiziranu B/H/S psihometrijsku formu
+
+4. Identitet testa
+test_slug        = ipip-ipc-v1
+test_family      = ipip_ipc
+scientific_model = interpersonal_circumplex
+category         = behavioral
+scoring_method   = likert_sum
+item_count       = 32
+dimension_count  = 8
+response_scale   = 1..5
+reverse_scoring  = no
+
+5. Oktanti
+Canonical redoslijed oktanata za sistem, scoring i UI:
+1. PA
+2. BC
+3. DE
+4. FG
+5. HI
+6. JK
+7. LM
+8. NO
+Nazivi oktanata:
+? PA = Assured-Dominant / Samouvjeren-Dominantan
+? BC = Arrogant-Calculating / Arogantan-Sra?unat
+? DE = Cold-Hearted / Hladan-Bezosje?ajan
+? FG = Aloof-Introverted / Povu?eno-Introvertiran
+? HI = Unassured-Submissive / Nesigurno-Submisivan
+? JK = Unassuming-Ingenuous / Skroman-Iskren
+? LM = Warm-Agreeable / Srda?an-Ugodan
+? NO = Gregarious-Extraverted / Društven-Ekstravertiran
+
+6. Response skala
+Za v1 koristimo 5-stepenu Likert skalu.
+Preporu?eni bosanski labeli:
+1 = Uopšte nije ta?no
+2 = Uglavnom nije ta?no
+3 = Nisam siguran/na
+4 = Uglavnom je ta?no
+5 = Potpuno je ta?no
+Napomena: originalni IPIP stil je “Very inaccurate” do “Very accurate”; ovo je operativna B/H/S adaptacija za app v1.
+
+7. Item bank, canonical draft za v1
+Ispod je operational item bank v1 koji možete koristiti za content package, uz jasnu napomenu da je B/H/S wording operational localization.
+7.1. Tabela stavki
+item_nooctantitem_text_v1_bhsreverse_scored1FGTih sam u društvu nepoznatih ljudi.false2HIGovorim tiho.false3JKToleriram mnogo toga od drugih.false4LMZanimaju me ljudi.false5NOOsje?am se ugodno u društvu ljudi.false6PAZahtijevam da budem u središtu pažnje.false7BCSvojim kritikama “režem” druge ljude.false8DEVjerujem da bi se ljudi trebali sami snalaziti.false9FGVrlo sam zatvorena i privatna osoba.false10HIPuštam druge da završe ono što govore.false11JKPrihva?am stvari onako kako dolaze.false12LMUmirujem i ohrabrujem druge ljude.false13NOPrvi zapo?injem razgovore.false14PAJa sam onaj koji najviše pri?a.false15BC?esto proturje?im drugima.false16DENe nasjedam na tužne pri?e.false17FGNe pri?am puno.false18HIRijetko se hvalim svojim postignu?ima.false19JKTu?e potrebe stavljam ispred svojih.false20LMRaspitujem se za dobrobit drugih ljudi.false21NORazgovaram s mnogo razli?itih ljudi na zabavama.false22PAGovorim glasno.false23BCOtresit sam prema ljudima.false24DENe posve?ujem puno pažnje tu?im stvarima.false25FGImam malo toga za re?i.false26HINe volim biti u središtu pažnje.false27JKRijetko iskrivljujem istinu.false28LMDobro se slažem s drugima.false29NOVolim velike zabave.false30PATražim pažnju.false31BCImam “oštar jezik”.false32DENe zanimaju me tu?i problemi.falseOvaj raspored je uskla?en sa izvještajem 1 i izvještajem 2 u pogledu item-to-octant strukture.
+
+8. Canonical scoring model za Deep Profile v1
+8.1. Oktant sume
+S_PA = i6 + i14 + i22 + i30
+S_BC = i7 + i15 + i23 + i31
+S_DE = i8 + i16 + i24 + i32
+S_FG = i1 + i9 + i17 + i25
+S_HI = i2 + i10 + i18 + i26
+S_JK = i3 + i11 + i19 + i27
+S_LM = i4 + i12 + i20 + i28
+S_NO = i5 + i13 + i21 + i29
+Raspon po oktantu:
+? minimum = 4
+? maksimum = 20
+8.2. Reverse scoring
+Za v1:
+reverse_scoring = none
+Sve stavke su + keyed.
+
+9. Derived scoring za app v1
+Ovdje je važna metodološka odluka.
+9.1. Nau?no stroža originalna forma
+Izvještaj 1 jasno kaže da originalni rad koristi:
+? standardizirane oktant scoreove Zi
+? geometrijske formule sa 0.3 * ?(Zi * sin/cos ?i)
+9.2. Operational app v1 forma
+Za Deep Profile v1 koristimo prakti?nu operational derived formu iz raw oktanata, jer:
+? nemamo još normativni referentni uzorak
+? scoring sloj je ve? tako postavljen
+? dovoljno je dobar za v1 product use
+Dakle, za app v1:
+Dominacija = (PA - HI) + 0.707 * (NO + BC - FG - JK)
+Toplina    = (LM - DE) + 0.707 * (NO + JK - BC - FG)
+Ovo je uskla?eno sa prakti?nim formulama iz izvještaja 2 i kompatibilno s ve? izgra?enim scoring contractom.
+9.3. Product note
+U internim dokumentima treba pisati:
+Deep Profile IPC v1 koristi operational derived scoring iz raw oktant suma. To je produktna aproksimacija interpersonalnog položaja, a ne puna normativna standardizacija originalnog instrumenta.
+
+10. DISC mapping pravilo za v1
+DISC se koristi kao:
+? business-friendly prevod
+? sekundarni interpretativni sloj
+? ne kao formalna mjernja ekvivalencija
+10.1. Kvadranti
+dominance > 0 and warmth < 0 => D
+dominance > 0 and warmth > 0 => I
+dominance < 0 and warmth > 0 => S
+dominance < 0 and warmth < 0 => C
+To je u skladu s geometrijskom logikom oba izvještaja, uz napomenu da je DISC mapping heuristi?ki i interpretativan.
+10.2. Ograni?enje
+Treba eksplicitno navesti:
+? IPIP-IPC i DISC nisu isti test
+? mapping je poslovni most, ne formalna psihometrijska ekvivalencija
+
+11. Package implementation rules
+Za puni assessment-packages/ipip-ipc-v1 vrijede ova pravila:
+11.1. dimensions.json
+Ta?no 8 dimenzija:
+? PA
+? BC
+? DE
+? FG
+? HI
+? JK
+? LM
+? NO
+Sve:
+? is_active = true
+? display_order po canonical redoslijedu
+11.2. items.json
+Ta?no 32 itema:
+? question_type = single_choice
+? is_required = true
+? is_active = true
+? question_order = 1..32
+? svaki item ima ta?no jedan oktant mapping
+? reverse_scored = false
+11.3. options.json
+5 Likert opcija:
+? vrijednosti 1..5
+? dosljedno postoje?em package formatu
+11.4. Lokalizacije
+Za v1:
+? bs verzija koristi operational wording iz ovog speca
+? hr može ostati isti wording ili blago prilago?en, ali to treba svjesno odlu?iti
+
+12. Interpretativni sloj za report
+Za v1 je dozvoljeno generisati:
+? interpersonalni stil
+? komunikacijski stil
+? saradnju
+? odnos prema uticaju / prisutnosti
+? timske watchouts
+? onboarding preporuke
+Nije dozvoljeno:
+? klini?ko etiketiranje
+? kona?ni sud o osobi
+? hiring presuda
+? tvrdnja da IPC daje kompletnu li?nost
+Ovo je u skladu s oba izvještaja i ve? postoje?im report contractom.
+
+13. Šta je ovim spec-om zatvoreno
+Zatvoreno
+? slug testa
+? family
+? 8 oktanata
+? 32 stavke
+? item-to-octant mapping
+? Likert 1–5
+? nema reverse scoringa
+? raw scoring po oktantima
+? operational derived scoring za app v1
+? heuristi?ki DISC mapping za poslovnu interpretaciju
+Otvoreno
+? formalna B/H/S standardizacija instrumenta
+? eventualna normativna standardizacija oktant skora
+? da li kasnije uvodimo stroži geometrijski Zi model
+? kona?no jezi?ko uskla?ivanje izme?u bosanske i hrvatske lokalizacije
+
+14. Kona?ni zaklju?ak
+Da, nakon ova dva izvještaja imate dovoljno informacija da nastavite razvoj IPC modula bez blokade.
+Ta?nije:
+? imate dovoljno za canonical implementation v1
+? nemate još dovoljno za tvrdnju da imate potpuno standardiziranu B/H/S nau?nu verziju bez rezerve
+Ali to ne blokira app development.
+

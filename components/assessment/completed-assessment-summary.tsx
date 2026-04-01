@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 
+import type { DetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
+import type { AssessmentLocale } from "@/lib/assessment/locale";
+import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
 import {
   formatDimensionLabel,
+  formatIpcOctantLabel,
+  formatIpcPrimaryDiscLabel,
+  formatIpcStaticLabel,
+  formatIpcStyleMetricLabel,
   formatScoreLabel,
   getDimensionHelperLabel,
+  normalizeIpcUiLocale,
 } from "@/lib/assessment/result-display";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 
 type CompletedAssessmentSummaryProps = {
   completedAt?: string | null;
+  locale?: AssessmentLocale | null;
   organizationName?: string | null;
   participantName?: string | null;
   testName?: string | null;
@@ -48,14 +57,119 @@ type ReportDimensionSnapshot = {
   development_focus: string;
 };
 
-function getReportDimensionsByKey(
+type ReportRendererSelection =
+  | { kind: "big_five_participant_v1"; report: DetailedReportV1 }
+  | { kind: "big_five_hr_v1"; report: DetailedReportV1 }
+  | { kind: "ipc_participant_v1"; report: IpcParticipantReportV1 }
+  | { kind: "ipc_hr_v1"; report: IpcHrReportV1 }
+  | { kind: "shape_mismatch"; message: string }
+  | { kind: "unsupported_signal"; message: string }
+  | { kind: "none" };
+
+function isBigFiveReport(report: unknown): report is DetailedReportV1 {
+  return (
+    Boolean(report) &&
+    typeof report === "object" &&
+    Array.isArray((report as DetailedReportV1).strengths) &&
+    Array.isArray((report as DetailedReportV1).blind_spots) &&
+    Array.isArray((report as DetailedReportV1).dimension_insights)
+  );
+}
+
+function isIpcParticipantReport(report: unknown): report is IpcParticipantReportV1 {
+  return (
+    Boolean(report) &&
+    typeof report === "object" &&
+    Array.isArray((report as IpcParticipantReportV1).strengths_in_collaboration) &&
+    Array.isArray((report as IpcParticipantReportV1).watchouts)
+  );
+}
+
+function isIpcHrReport(report: unknown): report is IpcHrReportV1 {
+  return (
+    Boolean(report) &&
+    typeof report === "object" &&
+    "communication_style" in (report as IpcHrReportV1) &&
+    "collaboration_style" in (report as IpcHrReportV1) &&
+    "leadership_and_influence" in (report as IpcHrReportV1)
+  );
+}
+
+function renderReportFallbackCard(title: string, body: string) {
+  return (
+    <section className="results-report__section results-report__status results-report__panel card stack-sm">
+      <div className="results-report__section-heading">
+        <h3>{title}</h3>
+      </div>
+      <p className="results-report__section-body">{body}</p>
+    </section>
+  );
+}
+
+function selectReportRenderer(
   reportState: CompletedAssessmentReportState | null,
-): Map<string, ReportDimensionSnapshot> {
+): ReportRendererSelection {
   if (reportState?.status !== "ready") {
+    return { kind: "none" };
+  }
+
+  if (!reportState.reportRenderFormat) {
+    return {
+      kind: "unsupported_signal",
+      message:
+        "Ready report nema podržan report render format za trenutnu family/audience/version kombinaciju.",
+    };
+  }
+
+  switch (reportState.reportRenderFormat) {
+    case "big_five_participant_v1":
+      return isBigFiveReport(reportState.report)
+        ? { kind: "big_five_participant_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava Big Five participant izvještaj, ali snapshot shape ne odgovara tom rendereru.",
+          };
+    case "big_five_hr_v1":
+      return isBigFiveReport(reportState.report)
+        ? { kind: "big_five_hr_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava Big Five HR izvještaj, ali snapshot shape ne odgovara tom rendereru.",
+          };
+    case "ipc_participant_v1":
+      return isIpcParticipantReport(reportState.report)
+        ? { kind: "ipc_participant_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava IPC participant izvještaj, ali snapshot shape ne odgovara participant rendereru.",
+          };
+    case "ipc_hr_v1":
+      return isIpcHrReport(reportState.report)
+        ? { kind: "ipc_hr_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava IPC HR izvještaj, ali snapshot shape ne odgovara HR rendereru.",
+          };
+    default:
+      return {
+        kind: "unsupported_signal",
+        message: "Ready report render format trenutno nema podržan renderer u ovoj verziji aplikacije.",
+      };
+  }
+}
+
+function getReportDimensionsByKey(
+  report: DetailedReportV1 | null,
+): Map<string, ReportDimensionSnapshot> {
+  if (!report) {
     return new Map();
   }
 
-  return reportState.report.dimension_insights.reduce((dimensionsByKey, dimension) => {
+  return report.dimension_insights.reduce((dimensionsByKey, dimension) => {
     if (!dimension.dimension_code || dimensionsByKey.has(dimension.dimension_code)) {
       return dimensionsByKey;
     }
@@ -518,18 +632,18 @@ function formatCompletedAt(value?: string | null): string {
 }
 
 function getTopInsights(
-  reportState: CompletedAssessmentReportState | null,
+  report: DetailedReportV1 | null,
   dimensions: DimensionViewModel[],
 ): string[] {
-  if (reportState?.status !== "ready") {
+  if (!report) {
     return [];
   }
 
   const candidates = [
-    ...reportState.report.strengths.map((item) => item.description),
-    ...reportState.report.blind_spots.map((item) => item.description),
-    ...reportState.report.development_recommendations.map((item) => item.description),
-    ...reportState.report.dimension_insights.map((item) => item.work_style),
+    ...report.strengths.map((item) => item.description),
+    ...report.blind_spots.map((item) => item.description),
+    ...report.development_recommendations.map((item) => item.description),
+    ...report.dimension_insights.map((item) => item.work_style),
     ...dimensions.map((dimension) => dimension.shortInterpretation),
   ];
 
@@ -544,17 +658,17 @@ function getTopInsights(
 }
 
 function getConclusion(
-  reportState: CompletedAssessmentReportState | null,
+  report: DetailedReportV1 | null,
   dimensions: DimensionViewModel[],
 ): string[] {
-  if (reportState?.status !== "ready") {
+  if (!report) {
     return [];
   }
 
   const highest = dimensions[0];
   const lowest = dimensions[dimensions.length - 1];
   const summaryLead =
-    splitIntoSentences(toSecondPersonSingular(reportState.report.summary.headline))[0] ?? null;
+    splitIntoSentences(toSecondPersonSingular(report.summary.headline))[0] ?? null;
   const firstParagraph = [
     summaryLead,
     highest ? `${highest.label} se kod tebe najviše ističe.` : null,
@@ -564,21 +678,19 @@ function getConclusion(
   ]
     .filter((sentence): sentence is string => Boolean(sentence))
     .join(" ");
-  const secondParagraph = toSecondPersonSingular(
-    reportState.report.summary.overview,
-  );
+  const secondParagraph = toSecondPersonSingular(report.summary.overview);
 
   return [firstParagraph, secondParagraph].filter(Boolean);
 }
 
 function getRecommendations(
-  reportState: CompletedAssessmentReportState | null,
+  report: DetailedReportV1 | null,
 ): Array<{ title: string; description: string; action: string }> {
-  if (reportState?.status !== "ready") {
+  if (!report) {
     return [];
   }
 
-  return reportState.report.development_recommendations.slice(0, 3);
+  return report.development_recommendations.slice(0, 3);
 }
 
 function formatRecommendation(item: {
@@ -592,8 +704,229 @@ function formatRecommendation(item: {
   };
 }
 
+function formatIpcNumericMetric(value: number): string {
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+
+  return value.toFixed(2);
+}
+
+function IpcStyleSnapshotList({
+  locale,
+  primaryDisc,
+  dominantOctant,
+  secondaryOctant,
+  dominance,
+  warmth,
+}: {
+  locale: ReturnType<typeof normalizeIpcUiLocale>;
+  primaryDisc: string | null;
+  dominantOctant: string | null;
+  secondaryOctant: string | null;
+  dominance?: number;
+  warmth?: number;
+}) {
+  return (
+    <dl className="results-report__hero-meta">
+      <div className="results-report__hero-meta-item">
+        <dt>{formatIpcStyleMetricLabel("primary_disc", locale)}</dt>
+        <dd>{formatIpcPrimaryDiscLabel(primaryDisc, locale)}</dd>
+      </div>
+      <div className="results-report__hero-meta-item">
+        <dt>{formatIpcStyleMetricLabel("dominant_octant", locale)}</dt>
+        <dd>{formatIpcOctantLabel(dominantOctant, locale)}</dd>
+      </div>
+      <div className="results-report__hero-meta-item">
+        <dt>{formatIpcStyleMetricLabel("secondary_octant", locale)}</dt>
+        <dd>{formatIpcOctantLabel(secondaryOctant, locale)}</dd>
+      </div>
+      {typeof dominance === "number" ? (
+        <div className="results-report__hero-meta-item">
+          <dt>{formatIpcStyleMetricLabel("dominance", locale)}</dt>
+          <dd>{formatIpcNumericMetric(dominance)}</dd>
+        </div>
+      ) : null}
+      {typeof warmth === "number" ? (
+        <div className="results-report__hero-meta-item">
+          <dt>{formatIpcStyleMetricLabel("warmth", locale)}</dt>
+          <dd>{formatIpcNumericMetric(warmth)}</dd>
+        </div>
+      ) : null}
+    </dl>
+  );
+}
+
+function IpcParticipantReportSections({
+  locale,
+  report,
+}: {
+  locale: ReturnType<typeof normalizeIpcUiLocale>;
+  report: IpcParticipantReportV1;
+}) {
+  return (
+    <div className="results-report__closing stack-md">
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <p className="results-report__section-kicker">{formatIpcStaticLabel("report", locale)}</p>
+          <h3>{report.report_title}</h3>
+          <p className="results-report__section-body">{report.report_subtitle}</p>
+        </div>
+        <div className="stack-xs">
+          <p><strong>{report.summary.headline}</strong></p>
+          <p>{report.summary.overview}</p>
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("style_snapshot", locale)}</h3>
+        </div>
+        <IpcStyleSnapshotList
+          locale={locale}
+          primaryDisc={report.style_snapshot.primary_disc}
+          dominantOctant={report.style_snapshot.dominant_octant}
+          secondaryOctant={report.style_snapshot.secondary_octant}
+        />
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("strengths_in_collaboration", locale)}</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.strengths_in_collaboration.map((item) => (
+            <li key={item.title}>
+              <strong>{item.title}:</strong> {item.description}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("participant_watchouts", locale)}</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.watchouts.map((item) => (
+            <li key={item.title}>
+              <strong>{item.title}:</strong> {item.description}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("development_recommendations", locale)}</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.development_recommendations.map((item) => (
+            <li key={item.title}>
+              <strong>{item.title}:</strong> {item.description} {item.action}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p className="results-report__disclaimer">{report.disclaimer}</p>
+    </div>
+  );
+}
+
+function IpcHrReportSections({
+  locale,
+  report,
+}: {
+  locale: ReturnType<typeof normalizeIpcUiLocale>;
+  report: IpcHrReportV1;
+}) {
+  return (
+    <div className="results-report__closing stack-md">
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <p className="results-report__section-kicker">{formatIpcStaticLabel("hr_report", locale)}</p>
+          <h3>{report.report_title}</h3>
+          <p className="results-report__section-body">{report.report_subtitle}</p>
+        </div>
+        <div className="stack-xs">
+          <p><strong>{report.summary.headline}</strong></p>
+          <p>{report.summary.overview}</p>
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("style_snapshot", locale)}</h3>
+        </div>
+        <IpcStyleSnapshotList
+          locale={locale}
+          primaryDisc={report.style_snapshot.primary_disc}
+          dominantOctant={report.style_snapshot.dominant_octant}
+          secondaryOctant={report.style_snapshot.secondary_octant}
+          dominance={report.style_snapshot.dominance}
+          warmth={report.style_snapshot.warmth}
+        />
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("communication_style", locale)}</h3>
+        </div>
+        <p><strong>{report.communication_style.summary}</strong></p>
+        <p>{report.communication_style.manager_notes}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("collaboration_style", locale)}</h3>
+        </div>
+        <p><strong>{report.collaboration_style.summary}</strong></p>
+        <p>{report.collaboration_style.manager_notes}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("leadership_and_influence", locale)}</h3>
+        </div>
+        <p><strong>{report.leadership_and_influence.summary}</strong></p>
+        <p>{report.leadership_and_influence.manager_notes}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("team_watchouts", locale)}</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.team_watchouts.map((item) => (
+            <li key={item.title}>
+              <strong>{item.title}:</strong> {item.description}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{formatIpcStaticLabel("onboarding_or_management_recommendations", locale)}</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.onboarding_or_management_recommendations.map((item) => (
+            <li key={item.title}>
+              <strong>{item.title}:</strong> {item.description} {item.action}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p className="results-report__disclaimer">{report.disclaimer}</p>
+    </div>
+  );
+}
+
 export function CompletedAssessmentSummary({
   completedAt,
+  locale,
   organizationName,
   participantName,
   testName,
@@ -602,13 +935,24 @@ export function CompletedAssessmentSummary({
 }: CompletedAssessmentSummaryProps) {
   const [expandedDimension, setExpandedDimension] = useState<string | null>(null);
   const hasResults = results !== null;
+  const ipcUiLocale = normalizeIpcUiLocale(locale);
+  const reportRenderer = selectReportRenderer(reportState);
+  const bigFiveParticipantReport =
+    reportRenderer.kind === "big_five_participant_v1" ? reportRenderer.report : null;
+  const bigFiveHrReport = reportRenderer.kind === "big_five_hr_v1" ? reportRenderer.report : null;
+  const bigFiveReport = bigFiveParticipantReport ?? bigFiveHrReport;
+  const ipcParticipantReport =
+    reportRenderer.kind === "ipc_participant_v1" ? reportRenderer.report : null;
+  const ipcHrReport = reportRenderer.kind === "ipc_hr_v1" ? reportRenderer.report : null;
+  const shouldShowGenericDimensionCards = Boolean(results) && Boolean(bigFiveParticipantReport);
+  const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport);
 
   const maxRawScore =
     results && results.dimensions.length > 0
       ? Math.max(...results.dimensions.map((dimension) => dimension.rawScore), 0)
       : 0;
 
-  const reportDimensionsByKey = getReportDimensionsByKey(reportState);
+  const reportDimensionsByKey = getReportDimensionsByKey(bigFiveReport);
 
   const dimensionCards: DimensionViewModel[] =
     results?.dimensions.map((dimension, index, dimensions) => {
@@ -630,9 +974,9 @@ export function CompletedAssessmentSummary({
       };
     }) ?? [];
 
-  const topInsights = getTopInsights(reportState, dimensionCards);
-  const conclusionParagraphs = getConclusion(reportState, dimensionCards);
-  const recommendations = getRecommendations(reportState);
+  const topInsights = getTopInsights(bigFiveReport, dimensionCards);
+  const conclusionParagraphs = getConclusion(bigFiveReport, dimensionCards);
+  const recommendations = getRecommendations(bigFiveReport);
   const scoreRangeLabel = maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
   const hasScoredDimensions = dimensionCards.length > 0;
@@ -643,6 +987,12 @@ export function CompletedAssessmentSummary({
   const shouldShowNarrativeFailed =
     reportState?.status === "failed" || reportState?.status === "unavailable";
   const shouldShowResultsUnavailable = !hasResults;
+  const shouldShowReadyReportShapeMismatch = reportRenderer.kind === "shape_mismatch";
+  const shouldShowUnsupportedReadySignal = reportRenderer.kind === "unsupported_signal";
+  const readyReportShapeMismatchMessage =
+    reportRenderer.kind === "shape_mismatch" ? reportRenderer.message : null;
+  const unsupportedReadySignalMessage =
+    reportRenderer.kind === "unsupported_signal" ? reportRenderer.message : null;
 
   return (
     <div className="results-report stack-md">
@@ -673,10 +1023,10 @@ export function CompletedAssessmentSummary({
           </div>
         </div>
 
-        {topInsights.length > 0 ? (
-          <section
-            className="results-report__hero-insights results-report__hero-insights--mobile"
-            aria-label="Top insights"
+      {bigFiveReport && topInsights.length > 0 ? (
+        <section
+          className="results-report__hero-insights results-report__hero-insights--mobile"
+          aria-label="Top insights"
           >
             <p className="results-report__hero-label">Top uvidi</p>
             <ul className="results-insight-list">
@@ -688,7 +1038,7 @@ export function CompletedAssessmentSummary({
         ) : null}
       </section>
 
-      {topInsights.length > 0 ? (
+      {bigFiveReport && topInsights.length > 0 ? (
         <section
           className="results-report__section results-report__section--insights results-report__panel card stack-sm"
           aria-label="Top insights"
@@ -741,6 +1091,22 @@ export function CompletedAssessmentSummary({
         </section>
       ) : null}
 
+      {shouldShowReadyReportShapeMismatch ? (
+        renderReportFallbackCard(
+          "Format izvještaja nije usklađen sa rendererom",
+          readyReportShapeMismatchMessage ??
+            "Ready report signal postoji, ali snapshot shape ne odgovara očekivanom rendereru.",
+        )
+      ) : null}
+
+      {shouldShowUnsupportedReadySignal ? (
+        renderReportFallbackCard(
+          "Format izvještaja trenutno nije podržan za prikaz",
+          unsupportedReadySignalMessage ??
+            "Ready report signal trenutno nema podržan renderer u ovoj verziji aplikacije.",
+        )
+      ) : null}
+
       {results ? (
         <>
           <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
@@ -772,7 +1138,7 @@ export function CompletedAssessmentSummary({
             )}
           </section>
 
-          {hasScoredDimensions ? (
+          {shouldShowGenericDimensionCards && hasScoredDimensions ? (
             <section className="results-report__section results-report__section--dimensions stack-sm">
               <div className="results-report__section-heading">
                 <h3>Dimenzije</h3>
@@ -877,7 +1243,7 @@ export function CompletedAssessmentSummary({
         </>
       ) : null}
 
-      {reportState?.status === "ready" ? (
+      {bigFiveParticipantReport ? (
         <div className="results-report__closing stack-md">
           <section className="results-report__section results-report__section--conclusion results-report__panel card stack-sm">
             <div className="results-report__section-heading">
@@ -916,9 +1282,22 @@ export function CompletedAssessmentSummary({
         </div>
       ) : null}
 
-      {reportState?.status === "ready" ? (
-        <p className="results-report__disclaimer">{reportState.report.disclaimer}</p>
+      {shouldShowBigFiveHrFallbackCard ? (
+        renderReportFallbackCard(
+          "Big Five HR prikaz još nije dostupan",
+          "Render format za Big Five HR je prepoznat, ali zaseban HR layout još nije podržan u ovoj verziji aplikacije.",
+        )
       ) : null}
+
+      {ipcParticipantReport ? (
+        <IpcParticipantReportSections locale={ipcUiLocale} report={ipcParticipantReport} />
+      ) : null}
+
+      {ipcHrReport ? (
+        <IpcHrReportSections locale={ipcUiLocale} report={ipcHrReport} />
+      ) : null}
+
+      {bigFiveReport ? <p className="results-report__disclaimer">{bigFiveReport.disclaimer}</p> : null}
 
     </div>
   );

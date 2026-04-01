@@ -1312,6 +1312,7 @@ export function AssessmentForm({
       {isCompleted ? (
         <CompletedAssessmentSummary
           completedAt={completedAt}
+          locale={locale}
           results={results}
           reportState={reportState}
         />

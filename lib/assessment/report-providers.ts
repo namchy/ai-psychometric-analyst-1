@@ -27,6 +27,14 @@ import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type { ScoringMethod } from "@/lib/assessment/types";
 
 export type ReportGeneratorType = "mock" | "openai";
+export type ReportFamily = "big_five" | "ipc";
+export type ReportAudience = "participant" | "hr";
+export type ReportVersion = "v1";
+export type ReportRenderFormat =
+  | "big_five_participant_v1"
+  | "big_five_hr_v1"
+  | "ipc_participant_v1"
+  | "ipc_hr_v1";
 export type AttemptReportStatus =
   | "queued"
   | "processing"
@@ -34,16 +42,17 @@ export type AttemptReportStatus =
   | "failed"
   | "unavailable";
 
-export type CompletedAssessmentReport = DetailedReportV1;
+export type BigFiveCompletedAssessmentReport = DetailedReportV1;
 export type RuntimeCompletedAssessmentReport =
-  | CompletedAssessmentReport
+  | BigFiveCompletedAssessmentReport
   | IpcCompletedAssessmentReport;
+export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
 
 export type CompletedAssessmentReportRequest = {
   attemptId: string;
   testId: string;
   testSlug: string;
-  audience: "participant" | "hr";
+  audience: ReportAudience;
   locale: AssessmentLocale;
   scoringMethod: ScoringMethod;
   promptVersion: string;
@@ -79,7 +88,7 @@ export type AiReportPromptInput = {
 export type ReportPromptInput = AiReportPromptInput | IpcReportPromptInput;
 
 export type ReportContractDescriptor = {
-  family: "big_five" | "ipip_ipc";
+  family: ReportFamily;
   reportType: string;
   sourceType: string;
   promptKey: string;
@@ -113,7 +122,11 @@ export type ReportProvider = {
 };
 
 export function isCompletedAssessmentReport(value: unknown): value is CompletedAssessmentReport {
-  return validateDetailedReportV1(value).ok;
+  return (
+    validateDetailedReportV1(value).ok ||
+    validateIpcParticipantReportV1(value).ok ||
+    validateIpcHrReportV1(value).ok
+  );
 }
 
 export function resolveReportContract(
@@ -124,7 +137,7 @@ export function resolveReportContract(
     const contract = getIpcPromptContract(audience);
 
     return {
-      family: "ipip_ipc",
+      family: "ipc",
       reportType: contract.reportType,
       sourceType: contract.sourceType,
       promptKey: contract.promptKey,
@@ -143,11 +156,62 @@ export function resolveReportContract(
   };
 }
 
+export function resolveReportFamily(testSlug: string): ReportFamily {
+  return isIpcTestSlug(testSlug) ? "ipc" : "big_five";
+}
+
+export function resolveReportSignal(context: {
+  testSlug: string;
+  audience: ReportAudience;
+}): {
+  reportFamily: ReportFamily;
+  reportAudience: ReportAudience;
+  reportVersion: ReportVersion;
+  reportRenderFormat: ReportRenderFormat | null;
+} {
+  const reportFamily = resolveReportFamily(context.testSlug);
+  const reportAudience = context.audience;
+  const reportVersion = "v1" as const;
+  const reportRenderFormat = resolveReportRenderFormat({
+    reportFamily,
+    reportAudience,
+    reportVersion,
+  });
+
+  return {
+    reportFamily,
+    reportAudience,
+    reportVersion,
+    reportRenderFormat,
+  };
+}
+
+export function resolveReportRenderFormat(context: {
+  reportFamily: ReportFamily;
+  reportAudience: ReportAudience;
+  reportVersion: ReportVersion;
+}): ReportRenderFormat | null {
+  const key = `${context.reportFamily}:${context.reportAudience}:${context.reportVersion}`;
+
+  switch (key) {
+    case "big_five:participant:v1":
+      return "big_five_participant_v1";
+    case "big_five:hr:v1":
+      return "big_five_hr_v1";
+    case "ipc:participant:v1":
+      return "ipc_participant_v1";
+    case "ipc:hr:v1":
+      return "ipc_hr_v1";
+    default:
+      return null;
+  }
+}
+
 export function validateRuntimeCompletedAssessmentReport(
   value: unknown,
   context: {
     testSlug: string;
-    audience: "participant" | "hr";
+    audience: ReportAudience;
   },
 ):
   | { ok: true; value: RuntimeCompletedAssessmentReport }

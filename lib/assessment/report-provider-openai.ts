@@ -178,7 +178,7 @@ function validateStructuredReport(
 
   if (!validationResult.ok) {
     const validationPrefix =
-      input.reportContract.family === "ipip_ipc"
+      input.reportContract.family === "ipc"
         ? "OpenAI response JSON failed IPC report validation"
         : "OpenAI response JSON failed detailed report validation";
     throw new Error(`${validationPrefix}: ${validationResult.reason}`);

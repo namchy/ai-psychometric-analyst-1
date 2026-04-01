@@ -43,6 +43,7 @@ export default async function CandidateAttemptReportPage({
         <ProtectedReportAutoRefresh status={reportPageData.reportState.status} />
         <CompletedAssessmentSummary
           completedAt={attempt.completed_at}
+          locale={attempt.locale}
           organizationName={attempt.organizations?.name ?? null}
           participantName={attempt.participants?.full_name ?? null}
           testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}

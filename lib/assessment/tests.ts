@@ -83,6 +83,15 @@ export type AssessmentResumeState = {
   selections: AssessmentSelectionsInput;
 };
 
+export type TestRunReadiness = {
+  isReady: boolean;
+  activeQuestionCount: number;
+};
+
+export function isTestReadyForRun(activeQuestionCount: number): boolean {
+  return activeQuestionCount > 0;
+}
+
 export async function getActiveTest(): Promise<ActiveTest | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
@@ -155,6 +164,26 @@ export async function getQuestionsForTest(
     ...question,
     text: localizedTextByQuestionId.get(question.id) ?? question.text,
   }));
+}
+
+export async function getTestRunReadiness(testId: string): Promise<TestRunReadiness> {
+  const supabase = createSupabaseAdminClient();
+  const { count, error } = await supabase
+    .from("questions")
+    .select("id", { count: "exact", head: true })
+    .eq("test_id", testId)
+    .eq("is_active", true);
+
+  if (error) {
+    throw new Error(`Failed to load test readiness: ${error.message}`);
+  }
+
+  const activeQuestionCount = count ?? 0;
+
+  return {
+    isReady: isTestReadyForRun(activeQuestionCount),
+    activeQuestionCount,
+  };
 }
 
 export async function getAnswerOptionsForQuestions(

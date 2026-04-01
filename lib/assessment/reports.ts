@@ -10,13 +10,17 @@ import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import { getActiveReportRuntimeConfig } from "@/lib/assessment/report-runtime-config";
 import type {
   AttemptReportStatus,
-  CompletedAssessmentReport,
   CompletedAssessmentReportRequest,
+  ReportAudience,
+  ReportFamily,
   ReportGeneratorType,
+  ReportRenderFormat,
+  ReportVersion,
   RuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
 import {
   isAttemptReportStatus,
+  resolveReportSignal,
   validateRuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
@@ -71,7 +75,11 @@ export type CompletedAssessmentReportState =
     } & AttemptReportLifecycleState
   | {
       status: "ready";
-      report: CompletedAssessmentReport;
+      reportFamily: ReportFamily;
+      reportAudience: ReportAudience;
+      reportVersion: ReportVersion;
+      reportRenderFormat: ReportRenderFormat | null;
+      report: RuntimeCompletedAssessmentReport;
     }
   | {
       status: "failed" | "unavailable";
@@ -109,6 +117,23 @@ function resolveAiReportConfig(overrides?: ReportGenerationOverrides): AiReportC
     ...baseConfig,
     ...overrides,
     promptVersion: overrides?.promptVersion ?? baseConfig.promptVersion,
+  };
+}
+
+function buildReadyCompletedAssessmentReportState(context: {
+  testSlug: string;
+  audience: ReportAudience;
+  report: RuntimeCompletedAssessmentReport;
+}): Extract<CompletedAssessmentReportState, { status: "ready" }> {
+  const resolvedSignal = resolveReportSignal({
+    testSlug: context.testSlug,
+    audience: context.audience,
+  });
+
+  return {
+    status: "ready",
+    ...resolvedSignal,
+    report: context.report,
   };
 }
 
@@ -301,10 +326,11 @@ async function loadPersistedReportSnapshot(
       };
     }
 
-    return {
-      status: "ready",
-      report: validationResult.value as unknown as CompletedAssessmentReport,
-    };
+    return buildReadyCompletedAssessmentReportState({
+      testSlug: row.test_slug,
+      audience: row.audience,
+      report: validationResult.value,
+    });
   }
 
   if (row.report_status === "queued" || row.report_status === "processing") {
@@ -374,10 +400,11 @@ async function loadPersistedParticipantReportSnapshot(
       };
     }
 
-    return {
-      status: "ready",
-      report: validationResult.value as unknown as CompletedAssessmentReport,
-    };
+    return buildReadyCompletedAssessmentReportState({
+      testSlug: row.test_slug,
+      audience: row.audience,
+      report: validationResult.value,
+    });
   }
 
   if (row.report_status === "queued" || row.report_status === "processing") {
@@ -538,10 +565,11 @@ export async function persistCompletedAssessmentReport(
   }
 
   if (generationResult.status === "ready") {
-    return {
-      status: "ready",
-      report: generationResult.report as unknown as CompletedAssessmentReport,
-    };
+    return buildReadyCompletedAssessmentReportState({
+      testSlug: context.test.slug,
+      audience: "participant",
+      report: generationResult.report,
+    });
   }
 
   return {
@@ -554,5 +582,7 @@ export async function persistCompletedAssessmentReport(
   };
 }
 
-export type { CompletedAssessmentReport } from "@/lib/assessment/report-providers";
-export type { CompletedAssessmentReport as CompletedAssessmentReportSnapshot } from "@/lib/assessment/report-providers";
+export type {
+  RuntimeCompletedAssessmentReport as CompletedAssessmentReport,
+  RuntimeCompletedAssessmentReport as CompletedAssessmentReportSnapshot,
+} from "@/lib/assessment/report-providers";

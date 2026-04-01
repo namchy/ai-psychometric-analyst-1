@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
+import { getTestRunReadiness } from "@/lib/assessment/tests";
 import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -64,6 +65,12 @@ export async function createAssessmentAttempt(
 
   if (!(participantRow as ParticipantRow | null)) {
     throw new Error("Active participant is required.");
+  }
+
+  const readiness = await getTestRunReadiness(normalizedTestId);
+
+  if (!readiness.isReady) {
+    throw new Error("Assessment is not available for candidates yet.");
   }
 
   const participantId = (participantRow as ParticipantRow).id;

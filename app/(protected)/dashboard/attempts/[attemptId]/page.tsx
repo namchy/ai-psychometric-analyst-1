@@ -40,6 +40,7 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
       <section className="attempt-results-page__content">
         <CompletedAssessmentSummary
           completedAt={attempt.completed_at}
+          locale={attempt.locale}
           organizationName={attempt.organizations?.name ?? organization.name}
           participantName={attempt.participants?.full_name ?? null}
           testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}

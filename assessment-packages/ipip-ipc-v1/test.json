@@ -1,12 +1,12 @@
 {
   "slug": "ipip-ipc-v1",
-  "name": "IPIP-IPC v1",
-  "category": "personality",
+  "name": "IPIP-IPC",
+  "category": "behavioral",
   "scoring_method": "likert_sum",
   "version": "v1",
   "status": "active",
   "is_active": true,
   "intended_use": "hr_assessment",
   "report_family": "individual",
-  "description": "Prompt/runtime bootstrap package za IPIP-IPC v1. Ovaj package trenutno služi za test-specific prompt rows i runtime hookup, a ne predstavlja puni assessment content package."
+  "description": "Canonical Deep Profile v1 IPIP-IPC assessment package. English/IPIP structure is canonical. B/H/S wording is operational app localization v1 and is not a formally standardized B/H/S psychometric form."
 }

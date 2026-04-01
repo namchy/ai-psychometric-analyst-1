@@ -11,5 +11,9 @@ export function getAssessmentDisplayName(
     return "Big Five upitnik ličnosti (IPIP-50)";
   }
 
+  if (normalizedName.includes("ipip-ipc") || normalizedSlug.includes("ipip-ipc")) {
+    return "IPC procjena interpersonalnog stila";
+  }
+
   return input?.name ?? input?.slug ?? "Procjena";
 }

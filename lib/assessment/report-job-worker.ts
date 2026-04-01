@@ -555,7 +555,7 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   console.info("Report snapshot normalization succeeded", {
     reportId: job.id,
     attemptId: job.attempt_id,
-    reportFamily: isIpcTestSlug(job.test_slug) ? "ipip_ipc" : "big_five",
+    reportFamily: isIpcTestSlug(job.test_slug) ? "ipc" : "big_five",
   });
 
   const validationResult = validateRuntimeCompletedAssessmentReport(generationResult.report, {

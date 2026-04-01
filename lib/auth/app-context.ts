@@ -23,7 +23,7 @@ export function getRecommendedAppAreaRedirectPath(
 ): "/hr" | "/app" | "/dashboard" {
   switch (context.recommendedAppArea) {
     case "hr":
-      return "/hr";
+      return "/dashboard";
     case "app":
       return "/app";
     default:

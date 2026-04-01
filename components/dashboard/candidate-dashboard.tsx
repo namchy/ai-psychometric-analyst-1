@@ -52,6 +52,7 @@ export type CandidateAssessmentCard = {
   href?: string;
   ctaLabel: string;
   disabled?: boolean;
+  availabilityNote?: string;
 };
 
 export type CandidateDashboardInitialAttempt = {
@@ -223,6 +224,27 @@ function formatAverageScore(value: number): string {
   return `${Math.round(value)}%`;
 }
 
+function formatProcjenaCount(count: number): string {
+  const absoluteCount = Math.abs(count);
+  const lastTwoDigits = absoluteCount % 100;
+
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return "procjena";
+  }
+
+  const lastDigit = absoluteCount % 10;
+
+  if (lastDigit === 1) {
+    return "procjena";
+  }
+
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return "procjene";
+  }
+
+  return "procjena";
+}
+
 function formatDurationLabel(durationMinutes: number | null): string {
   if (!durationMinutes || durationMinutes <= 0) {
     return "Vrijeme uskoro";
@@ -282,6 +304,8 @@ function buildAssessmentCardsFromTests(
     const inProgressAttempt = getLatestAttemptForTestByStatus(test.id, "in_progress", attempts);
     const completedAttempt = getLatestAttemptForTestByStatus(test.id, "completed", attempts);
     const visuals = getCategoryVisuals(test.category);
+    const totalQuestions = questionCountsByTestId.get(test.id) ?? 0;
+    const isReadyForRun = totalQuestions > 0;
     const hasPaidAccess =
       test.is_active && test.status === "active" && accessibleTestIds.has(test.id);
 
@@ -290,6 +314,7 @@ function buildAssessmentCardsFromTests(
     let ctaKind: CandidateAssessmentCard["ctaKind"] = hasPaidAccess ? "start" : "upgrade";
     let ctaLabel = hasPaidAccess ? "Započni procjenu" : "Upgrade to Access";
     let disabled = !hasPaidAccess;
+    let availabilityNote: string | undefined;
 
     if (inProgressAttempt) {
       attemptId = inProgressAttempt.id;
@@ -304,9 +329,16 @@ function buildAssessmentCardsFromTests(
       ctaLabel = "Vidi rezultate";
       disabled = false;
     } else if (hasPaidAccess) {
-      ctaKind = "start";
-      ctaLabel = "Započni procjenu";
-      disabled = false;
+      if (isReadyForRun) {
+        ctaKind = "start";
+        ctaLabel = "Započni procjenu";
+        disabled = false;
+      } else {
+        ctaKind = "start";
+        ctaLabel = "Trenutno nije dostupno";
+        disabled = true;
+        availabilityNote = "Test još nije spreman za pokretanje.";
+      }
     }
 
     return {
@@ -314,7 +346,7 @@ function buildAssessmentCardsFromTests(
       attemptId,
       answeredQuestions:
         inProgressAttempt?.responseCount ?? completedAttempt?.responseCount ?? undefined,
-      totalQuestions: questionCountsByTestId.get(test.id) ?? 0,
+      totalQuestions,
       updatedAt: inProgressAttempt?.updated_at ?? completedAttempt?.updated_at,
       title: test.name,
       description: test.description?.trim() || "Opis testa će biti dostupan uskoro.",
@@ -326,6 +358,7 @@ function buildAssessmentCardsFromTests(
       href,
       ctaLabel,
       disabled,
+      availabilityNote,
       ...visuals,
     };
   });
@@ -645,13 +678,14 @@ function DashboardHeader() {
 }
 
 function WelcomeOverviewCard({
-  userEmail,
-  userName,
+  totalAssigned,
+  completedCount,
 }: {
-  userEmail: string;
-  userName?: string | null;
+  totalAssigned: number;
+  completedCount: number;
 }) {
-  const firstName = userName?.trim()?.split(/\s+/)[0];
+  const remainingCount = Math.max(totalAssigned - completedCount, 0);
+  const progressPercent = totalAssigned > 0 ? Math.min((completedCount / totalAssigned) * 100, 100) : 0;
 
   return (
     <section className="relative overflow-hidden rounded-[1.75rem] border border-slate-300/90 bg-[linear-gradient(160deg,rgba(255,255,255,1),rgba(243,248,249,0.99)_62%,rgba(246,242,255,0.97))] p-6 shadow-[0_30px_58px_rgba(15,23,42,0.12)] sm:p-7">
@@ -667,19 +701,21 @@ function WelcomeOverviewCard({
         Overview
       </p>
       <h2 className="relative mt-3 font-headline text-[1.9rem] font-bold tracking-[-0.045em] text-slate-950">
-        {firstName ? `Dobrodošao nazad, ${firstName}` : "Dobrodošao nazad"}
+        Tvoj napredak
       </h2>
-      <p className="relative mt-3 font-body text-[15px] leading-7 text-slate-700">
-        Tvoj kandidat profil je spreman za rad. Ovdje imaš brz pregled statusa naloga i aktivnih
-        procjena.
+      <p className="relative mt-4 text-sm font-semibold text-slate-900">
+        Završeno: {completedCount} {formatProcjenaCount(completedCount)}
       </p>
-      <div className="relative mt-6 rounded-2xl border border-slate-300/90 bg-white p-4 shadow-[0_14px_24px_rgba(15,23,42,0.06)]">
-        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Account
-        </p>
-        <p className="mt-2 truncate text-sm font-semibold text-slate-950">{userEmail}</p>
-        {userName ? <p className="mt-1 text-sm text-slate-700">{userName}</p> : null}
+      <div className="relative mt-4 h-2.5 overflow-hidden rounded-full bg-slate-200/90">
+        <div
+          aria-hidden="true"
+          className="h-full rounded-full bg-teal-600 transition-all duration-500"
+          style={{ width: `${progressPercent}%` }}
+        />
       </div>
+      <p className="relative mt-4 text-sm font-semibold text-slate-700">
+        Preostalo: {remainingCount} {formatProcjenaCount(remainingCount)}
+      </p>
     </section>
   );
 }
@@ -1010,14 +1046,19 @@ function AssessmentCard({
           {renderActionIcon()}
         </button>
       ) : !isInteractive ? (
-        <button
-          className="mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-100 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-500 opacity-90"
-          disabled
-          type="button"
-        >
-          <span>{assessment.ctaLabel}</span>
-          <DashboardIcon className="h-4 w-4" name="arrow_right" />
-        </button>
+        <div className="mt-auto stack-xs">
+          <button
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-100 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-500 opacity-90"
+            disabled
+            type="button"
+          >
+            <span>{assessment.ctaLabel}</span>
+            <DashboardIcon className="h-4 w-4" name="arrow_right" />
+          </button>
+          {assessment.availabilityNote ? (
+            <p className="text-xs text-slate-600">{assessment.availabilityNote}</p>
+          ) : null}
+        </div>
       ) : (
         <button
           className={`mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 ${primary ? "sm:text-[13px]" : ""}`}
@@ -1361,7 +1402,10 @@ export function CandidateDashboardView({
                 <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-600">
                   Korisnički profil
                 </p>
-                <WelcomeOverviewCard userEmail={userEmail} userName={userName} />
+                <WelcomeOverviewCard
+                  completedCount={completedAttempts}
+                  totalAssigned={totalPaidTestsCount}
+                />
 
                 <section aria-label="Dashboard overview" className="grid grid-cols-2 gap-4">
                   {KPI_CARDS.map((card) => (

@@ -345,7 +345,9 @@ function validateHrStyleSnapshot(
     ),
   );
 
-  validateParticipantStyleSnapshot(value, path, errors);
+  validatePrimaryDisc(value.primary_disc, `${path}.primary_disc`, errors);
+  validateOctant(value.dominant_octant, `${path}.dominant_octant`, errors);
+  validateOctant(value.secondary_octant, `${path}.secondary_octant`, errors);
 
   if (typeof value.dominance !== "number") {
     errors.push({ path: `${path}.dominance`, message: "Expected a number." });

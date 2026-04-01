@@ -1,0 +1,290 @@
+[
+  {
+    "code": "FG01",
+    "text": "Tih sam u društvu nepoznatih ljudi.",
+    "question_type": "single_choice",
+    "question_order": 1,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "FG", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "HI01",
+    "text": "Govorim tiho.",
+    "question_type": "single_choice",
+    "question_order": 2,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "HI", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "JK01",
+    "text": "Toleriram mnogo toga od drugih.",
+    "question_type": "single_choice",
+    "question_order": 3,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "JK", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "LM01",
+    "text": "Zanimaju me ljudi.",
+    "question_type": "single_choice",
+    "question_order": 4,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "LM", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "NO01",
+    "text": "Osjećam se ugodno u društvu ljudi.",
+    "question_type": "single_choice",
+    "question_order": 5,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "NO", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "PA01",
+    "text": "Zahtijevam da budem u središtu pažnje.",
+    "question_type": "single_choice",
+    "question_order": 6,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "PA", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "BC01",
+    "text": "Svojim kritikama “režem” druge ljude.",
+    "question_type": "single_choice",
+    "question_order": 7,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "BC", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "DE01",
+    "text": "Vjerujem da bi se ljudi trebali sami snalaziti.",
+    "question_type": "single_choice",
+    "question_order": 8,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "DE", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "FG02",
+    "text": "Vrlo sam zatvorena i privatna osoba.",
+    "question_type": "single_choice",
+    "question_order": 9,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "FG", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "HI02",
+    "text": "Puštam druge da završe ono što govore.",
+    "question_type": "single_choice",
+    "question_order": 10,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "HI", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "JK02",
+    "text": "Prihvaćam stvari onako kako dolaze.",
+    "question_type": "single_choice",
+    "question_order": 11,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "JK", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "LM02",
+    "text": "Umirujem i ohrabrujem druge ljude.",
+    "question_type": "single_choice",
+    "question_order": 12,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "LM", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "NO02",
+    "text": "Prvi započinjem razgovore.",
+    "question_type": "single_choice",
+    "question_order": 13,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "NO", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "PA02",
+    "text": "Ja sam onaj koji najviše priča.",
+    "question_type": "single_choice",
+    "question_order": 14,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "PA", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "BC02",
+    "text": "Često proturječim drugima.",
+    "question_type": "single_choice",
+    "question_order": 15,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "BC", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "DE02",
+    "text": "Ne nasjedam na tužne priče.",
+    "question_type": "single_choice",
+    "question_order": 16,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "DE", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "FG03",
+    "text": "Ne pričam puno.",
+    "question_type": "single_choice",
+    "question_order": 17,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "FG", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "HI03",
+    "text": "Rijetko se hvalim svojim postignućima.",
+    "question_type": "single_choice",
+    "question_order": 18,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "HI", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "JK03",
+    "text": "Tuđe potrebe stavljam ispred svojih.",
+    "question_type": "single_choice",
+    "question_order": 19,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "JK", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "LM03",
+    "text": "Raspitujem se za dobrobit drugih ljudi.",
+    "question_type": "single_choice",
+    "question_order": 20,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "LM", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "NO03",
+    "text": "Razgovaram s mnogo različitih ljudi na zabavama.",
+    "question_type": "single_choice",
+    "question_order": 21,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "NO", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "PA03",
+    "text": "Govorim glasno.",
+    "question_type": "single_choice",
+    "question_order": 22,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "PA", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "BC03",
+    "text": "Otresit sam prema ljudima.",
+    "question_type": "single_choice",
+    "question_order": 23,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "BC", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "DE03",
+    "text": "Ne posvećujem puno pažnje tuđim stvarima.",
+    "question_type": "single_choice",
+    "question_order": 24,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "DE", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "FG04",
+    "text": "Imam malo toga za reći.",
+    "question_type": "single_choice",
+    "question_order": 25,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "FG", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "HI04",
+    "text": "Ne volim biti u središtu pažnje.",
+    "question_type": "single_choice",
+    "question_order": 26,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "HI", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "JK04",
+    "text": "Rijetko iskrivljujem istinu.",
+    "question_type": "single_choice",
+    "question_order": 27,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "JK", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "LM04",
+    "text": "Dobro se slažem s drugima.",
+    "question_type": "single_choice",
+    "question_order": 28,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "LM", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "NO04",
+    "text": "Volim velike zabave.",
+    "question_type": "single_choice",
+    "question_order": 29,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "NO", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "PA04",
+    "text": "Tražim pažnju.",
+    "question_type": "single_choice",
+    "question_order": 30,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "PA", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "BC04",
+    "text": "Imam “oštar jezik”.",
+    "question_type": "single_choice",
+    "question_order": 31,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "BC", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "DE04",
+    "text": "Ne zanimaju me tuđi problemi.",
+    "question_type": "single_choice",
+    "question_order": 32,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "DE", "weight": 1, "reverse_scored": false }]
+  }
+]

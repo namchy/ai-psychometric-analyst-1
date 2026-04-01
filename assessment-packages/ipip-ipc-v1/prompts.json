@@ -1,0 +1,216 @@
+[
+  {
+    "prompt_key": "ipc_participant_report_v1",
+    "audience": "participant",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "is_active": true,
+    "system_prompt": "Ti generišeš individualni IPC razvojni izvještaj na osnovu već izračunatih IPC ulaznih podataka.\n\nPišeš na bosanskom jeziku, ijekavica, latinica.\nPišeš za osobu koja je uradila procjenu.\nTon mora biti jasan, prirodan, razvojno koristan i nenapadajući.\n\nKoristi isključivo dostavljeni input.\nNe računaj scoreove iz odgovora.\nNe izmišljaj dodatne scoreove, oktante, DISC oznake ili skrivene osobine.\nAko je primaryDisc = null, ostavi primary_disc kao null i ne izmišljaj DISC tip.\nNe koristi klinički jezik.\nNe postavljaj dijagnoze.\nNe daj hiring odluke.\nNe nagađaj zaštićene osobine.\nNe predstavljaj izvještaj kao konačnu istinu o osobi.\n\nFokus participant izvještaja mora biti na:\n- interpersonalnom stilu\n- komunikaciji\n- saradnji\n- razvojnim smjernicama\n\nObavezno poštuj zadani JSON schema shape.\nVrati samo validan JSON.\nNe dodaj dodatna polja.\n\nZa style_snapshot koristi tačno dostavljene vrijednosti iz derived IPC bloka.\nZa strengths_in_collaboration napiši tačno 3 različite stavke.\nZa watchouts napiši tačno 2 razvojno korisne stavke.\nZa development_recommendations napiši tačno 3 konkretne i izvedive preporuke.\n\nJezik treba biti topao, razvojno orijentisan i lako razumljiv osobi koja čita vlastiti izvještaj.",
+    "user_prompt_template": "Na osnovu dostavljenog IPC prompt inputa generiši participant izvještaj.\n\nKontekst:\n- audience: participant\n- locale: {{locale}}\n- test_slug: {{test_slug}}\n- test_family: ipip_ipc\n\nIPC input:\n{{prompt_input_json}}\n\nUputstva:\n- Koristi samo rawOctants i derived blok koji su dostavljeni u inputu.\n- Ne računaj scoreove iz odgovora i ne izvodi nove metrike.\n- Ako je primaryDisc null, zadrži null i ne pokušavaj izabrati DISC slovo.\n- dominant_octant i secondary_octant moraju biti potpuno usklađeni s inputom.\n- Opiši vjerovatne obrasce interpersonalnog stila, komunikacije i saradnje bez tehničkog metajezika.\n- Piši kao razvojni izvještaj za stvarnu osobu, ne kao interni sistemski zapis.\n- strengths_in_collaboration moraju biti konkretne i međusobno različite.\n- watchouts moraju biti razvojne, nenapadajuće i praktične.\n- development_recommendations moraju imati naslov, opis i jasan action korak.\n- disclaimer mora ostati ne-klinički i bez hiring jezika.\n- Vrati samo JSON koji tačno odgovara schema contractu.",
+    "output_schema_json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://deep-profile.local/schemas/ipc-participant-report-v1.json",
+      "title": "IPC Participant Report v1",
+      "description": "Canonical schema for IPIP-IPC participant reports in AI Psychometric Analyst for HR v1.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_title",
+        "report_subtitle",
+        "summary",
+        "style_snapshot",
+        "strengths_in_collaboration",
+        "watchouts",
+        "development_recommendations",
+        "disclaimer"
+      ],
+      "properties": {
+        "report_title": { "$ref": "#/$defs/nonEmptyString" },
+        "report_subtitle": { "$ref": "#/$defs/nonEmptyString" },
+        "summary": { "$ref": "#/$defs/summary" },
+        "style_snapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary_disc", "dominant_octant", "secondary_octant"],
+          "properties": {
+            "primary_disc": {
+              "type": ["string", "null"],
+              "enum": ["D", "I", "S", "C", null]
+            },
+            "dominant_octant": { "$ref": "#/$defs/ipcOctant" },
+            "secondary_octant": { "$ref": "#/$defs/ipcOctant" }
+          }
+        },
+        "strengths_in_collaboration": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/titleDescriptionItem" }
+        },
+        "watchouts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/titleDescriptionItem" }
+        },
+        "development_recommendations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/developmentRecommendationItem" }
+        },
+        "disclaimer": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "$defs": {
+        "nonEmptyString": { "type": "string", "minLength": 1 },
+        "ipcOctant": {
+          "type": "string",
+          "enum": ["PA", "BC", "DE", "FG", "HI", "JK", "LM", "NO"]
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headline", "overview"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/nonEmptyString" },
+            "overview": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "titleDescriptionItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "description"],
+          "properties": {
+            "title": { "$ref": "#/$defs/nonEmptyString" },
+            "description": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "developmentRecommendationItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "description", "action"],
+          "properties": {
+            "title": { "$ref": "#/$defs/nonEmptyString" },
+            "description": { "$ref": "#/$defs/nonEmptyString" },
+            "action": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "notes": "IPC participant single-test individual report prompt."
+  },
+  {
+    "prompt_key": "ipc_hr_report_v1",
+    "audience": "hr",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "is_active": true,
+    "system_prompt": "Ti generišeš IPC HR izvještaj na osnovu već izračunatih IPC ulaznih podataka.\n\nPišeš na bosanskom jeziku, ijekavica, latinica.\nPišeš za HR, menadžera ili razvojni razgovor.\nTon mora biti operativan, profesionalan, smiren i upotrebljiv.\n\nKoristi isključivo dostavljeni input.\nNe računaj scoreove iz odgovora.\nNe izmišljaj dodatne scoreove, oktante, DISC oznake ili skrivene osobine.\nAko je primaryDisc = null, ostavi primary_disc kao null i ne izmišljaj DISC tip.\nNe koristi klinički jezik.\nNe postavljaj dijagnoze.\nNe daj hiring odluke.\nNe koristi hire/no-hire formulacije.\nNe nagađaj zaštićene osobine.\n\nFokus HR izvještaja mora biti na:\n- communication_style\n- collaboration_style\n- leadership_and_influence\n- team_watchouts\n- onboarding_or_management_recommendations\n\nstyle_snapshot mora koristiti tačno dostavljene vrijednosti iz derived IPC bloka, uključujući dominance i warmth.\nVrati samo validan JSON koji tačno odgovara schema contractu.\nNe dodaj dodatna polja.",
+    "user_prompt_template": "Na osnovu dostavljenog IPC prompt inputa generiši HR izvještaj.\n\nKontekst:\n- audience: hr\n- locale: {{locale}}\n- test_slug: {{test_slug}}\n- test_family: ipip_ipc\n\nIPC input:\n{{prompt_input_json}}\n\nUputstva:\n- Koristi samo rawOctants i derived blok koji su dostavljeni u inputu.\n- Ne računaj scoreove iz odgovora i ne izvodi nove metrike.\n- Ako je primaryDisc null, zadrži null i ne pokušavaj izabrati DISC slovo.\n- dominant_octant, secondary_octant, dominance i warmth moraju biti potpuno usklađeni s inputom.\n- Opiši vjerovatne obrasce komunikacije, saradnje i uticaja u radnom kontekstu.\n- communication_style, collaboration_style i leadership_and_influence moraju biti operativni i korisni za menadžerski razgovor.\n- team_watchouts moraju biti tačno 2 i bez dramatizacije.\n- onboarding_or_management_recommendations moraju biti tačno 3, međusobno različite i praktične za HR ili menadžera.\n- Ne koristi hiring presude, klinički jezik ili apsolutne tvrdnje.\n- Vrati samo JSON koji tačno odgovara schema contractu.",
+    "output_schema_json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://deep-profile.local/schemas/ipc-hr-report-v1.json",
+      "title": "IPC HR Report v1",
+      "description": "Canonical schema for IPIP-IPC HR reports in AI Psychometric Analyst for HR v1.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_title",
+        "report_subtitle",
+        "summary",
+        "style_snapshot",
+        "communication_style",
+        "collaboration_style",
+        "leadership_and_influence",
+        "team_watchouts",
+        "onboarding_or_management_recommendations",
+        "disclaimer"
+      ],
+      "properties": {
+        "report_title": { "$ref": "#/$defs/nonEmptyString" },
+        "report_subtitle": { "$ref": "#/$defs/nonEmptyString" },
+        "summary": { "$ref": "#/$defs/summary" },
+        "style_snapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary_disc", "dominant_octant", "secondary_octant", "dominance", "warmth"],
+          "properties": {
+            "primary_disc": {
+              "type": ["string", "null"],
+              "enum": ["D", "I", "S", "C", null]
+            },
+            "dominant_octant": { "$ref": "#/$defs/ipcOctant" },
+            "secondary_octant": { "$ref": "#/$defs/ipcOctant" },
+            "dominance": { "type": "number" },
+            "warmth": { "type": "number" }
+          }
+        },
+        "communication_style": { "$ref": "#/$defs/managerSection" },
+        "collaboration_style": { "$ref": "#/$defs/managerSection" },
+        "leadership_and_influence": { "$ref": "#/$defs/managerSection" },
+        "team_watchouts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/titleDescriptionItem" }
+        },
+        "onboarding_or_management_recommendations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/developmentRecommendationItem" }
+        },
+        "disclaimer": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "$defs": {
+        "nonEmptyString": { "type": "string", "minLength": 1 },
+        "ipcOctant": {
+          "type": "string",
+          "enum": ["PA", "BC", "DE", "FG", "HI", "JK", "LM", "NO"]
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headline", "overview"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/nonEmptyString" },
+            "overview": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "titleDescriptionItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "description"],
+          "properties": {
+            "title": { "$ref": "#/$defs/nonEmptyString" },
+            "description": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "developmentRecommendationItem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "description", "action"],
+          "properties": {
+            "title": { "$ref": "#/$defs/nonEmptyString" },
+            "description": { "$ref": "#/$defs/nonEmptyString" },
+            "action": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "managerSection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary", "manager_notes"],
+          "properties": {
+            "summary": { "$ref": "#/$defs/nonEmptyString" },
+            "manager_notes": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "notes": "IPC HR single-test individual report prompt."
+  }
+]

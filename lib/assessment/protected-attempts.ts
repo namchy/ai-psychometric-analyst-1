@@ -33,7 +33,26 @@ export type ProtectedAttemptReportState =
   | { status: "queued" }
   | { status: "processing"; startedAt?: string | null }
   | { status: "failed"; failureCode?: string | null; failureReason?: string | null }
-  | { status: "ready"; report: CompletedAssessmentReportSnapshot };
+  | {
+      status: "ready";
+      reportFamily: Extract<
+        CompletedAssessmentReportState,
+        { status: "ready" }
+      >["reportFamily"];
+      reportAudience: Extract<
+        CompletedAssessmentReportState,
+        { status: "ready" }
+      >["reportAudience"];
+      reportVersion: Extract<
+        CompletedAssessmentReportState,
+        { status: "ready" }
+      >["reportVersion"];
+      reportRenderFormat: Extract<
+        CompletedAssessmentReportState,
+        { status: "ready" }
+      >["reportRenderFormat"];
+      report: CompletedAssessmentReportSnapshot;
+    };
 
 function normalizeProtectedAttemptReportState(
   reportState: CompletedAssessmentReportState | null,
@@ -45,6 +64,10 @@ function normalizeProtectedAttemptReportState(
   if (reportState.status === "ready") {
     return {
       status: "ready",
+      reportFamily: reportState.reportFamily,
+      reportAudience: reportState.reportAudience,
+      reportVersion: reportState.reportVersion,
+      reportRenderFormat: reportState.reportRenderFormat,
       report: reportState.report,
     };
   }

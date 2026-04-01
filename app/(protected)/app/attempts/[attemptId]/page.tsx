@@ -12,6 +12,10 @@ type CandidateAttemptIntroPageProps = {
   };
 };
 
+function isIpcAssessmentSlug(slug: string | null | undefined): boolean {
+  return slug === "ipip-ipc-v1";
+}
+
 function formatEstimatedDuration(
   durationMinutes: number | null,
   questionCount: number,
@@ -34,6 +38,10 @@ function getAssessmentTitle(name: string | null | undefined, slug: string | null
 
   if (normalizedName && /ličnost/i.test(normalizedName)) {
     return normalizedName;
+  }
+
+  if (isIpcAssessmentSlug(slug)) {
+    return "Procjena interpersonalnog stila";
   }
 
   if (slug?.startsWith("ipip")) {
@@ -108,6 +116,9 @@ export default async function CandidateAttemptIntroPage({
   const assessmentTitle = getAssessmentTitle(attempt.tests?.name, attempt.tests?.slug);
   const assessmentDescription = getAssessmentDescription(attempt.tests?.description);
   const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
+  const methodologyDescription = isIpcAssessmentSlug(attempt.tests?.slug)
+    ? "Procjena se oslanja na IPC interpersonalni okvir i fokusira se na obrasce interpersonalnog stila, saradnje i načina na koji osoba zauzima prostor u odnosima."
+    : "Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom kontekstu.";
 
   return (
     <main className="candidate-intro stack-md mx-auto w-full max-w-5xl px-4">
@@ -173,11 +184,7 @@ export default async function CandidateAttemptIntroPage({
           <p className="assessment-eyebrow">Na čemu se procjena zasniva</p>
           <h2>Metodološka osnova</h2>
         </div>
-        <p>
-          Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se
-          često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom
-          kontekstu.
-        </p>
+        <p>{methodologyDescription}</p>
       </section>
 
       <section className="candidate-intro__section card stack-sm">

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { setProtectedAttemptLocale } from "@/app/actions/assessment";
 import { AssessmentForm, RunPageTopBar } from "@/components/assessment/assessment-form";
@@ -81,8 +82,17 @@ export default async function CandidateAttemptRunPage({
         />
         <main className="run-page-frame mx-auto w-full max-w-[70rem] px-4 pt-48 sm:px-6 lg:px-12">
           <section className="card stack-sm">
-            <h1>{attempt.tests?.name ?? attempt.tests?.slug ?? "Procjena"}</h1>
-            <p>Pitanja za ovu procjenu trenutno nisu dostupna.</p>
+            <h1>Test trenutno nije dostupan za pokretanje</h1>
+            <p>
+              Ova procjena još nije spremna za candidate run flow jer pitanja trenutno nisu
+              dostupna.
+            </p>
+            <p>Vratite se na pregled testova i pokušajte ponovo kada test bude aktiviran.</p>
+            <div>
+              <Link className="candidate-home__link" href="/app">
+                Nazad na testove
+              </Link>
+            </div>
           </section>
         </main>
       </>
