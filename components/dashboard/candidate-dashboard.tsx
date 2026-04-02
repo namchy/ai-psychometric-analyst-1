@@ -7,6 +7,22 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { useRouter } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 import { createAssessmentAttempt } from "@/app/(protected)/app/actions";
+import {
+  DASHBOARD_CONTENT_GRID_CLASS_NAME,
+  DASHBOARD_MAIN_CLASS_NAME,
+  DASHBOARD_PAGE_SHELL_CLASS_NAME,
+  DASHBOARD_PRIMARY_COLUMN_CLASS_NAME,
+  DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME,
+  DASHBOARD_SIDEBAR_CLASS_NAME,
+  DASHBOARD_SIDEBAR_STACK_CLASS_NAME,
+  DashboardActionRow,
+  DashboardCompactMetaItem,
+  DashboardCompactMetaRow,
+  DashboardInfoCardShell,
+  DashboardSectionHeader,
+  DashboardSectionShell,
+  DashboardStatusBadge,
+} from "@/components/dashboard/primitives";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -651,7 +667,7 @@ function TopNav({
 
 function DashboardHeader() {
   return (
-    <section className="relative w-full overflow-hidden rounded-[1.75rem] border border-slate-300/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(243,249,249,0.97)_58%,rgba(246,242,255,0.95))] p-6 shadow-[0_28px_60px_rgba(15,23,42,0.12)] sm:p-7">
+    <DashboardSectionShell className="w-full">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-10 top-0 h-32 w-32 rounded-full bg-teal-100/55 blur-3xl"
@@ -664,16 +680,16 @@ function DashboardHeader() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-slate-300/80 to-transparent"
       />
-      <p className="relative font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-800/90">
-        Assessment workspace
-      </p>
-      <h1 className="relative mt-3 font-headline text-3xl font-extrabold tracking-[-0.05em] text-slate-950 sm:text-4xl">
-        Dostupni testovi
-      </h1>
-      <p className="relative mt-2 max-w-2xl font-body text-[15px] leading-7 text-slate-700">
-        Pokrenite aktivne procjene i odvojeno pregledajte testove koji još nisu dostupni.
-      </p>
-    </section>
+      <DashboardSectionHeader
+        className="relative"
+        eyebrow="Assessment workspace"
+        eyebrowClassName="text-teal-800/90"
+        title="Dostupni testovi"
+        titleClassName="mt-3 text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
+        description="Pokrenite aktivne procjene i odvojeno pregledajte testove koji još nisu dostupni."
+        descriptionClassName="mt-2 max-w-2xl"
+      />
+    </DashboardSectionShell>
   );
 }
 
@@ -688,7 +704,7 @@ function WelcomeOverviewCard({
   const progressPercent = totalAssigned > 0 ? Math.min((completedCount / totalAssigned) * 100, 100) : 0;
 
   return (
-    <section className="relative overflow-hidden rounded-[1.75rem] border border-slate-300/90 bg-[linear-gradient(160deg,rgba(255,255,255,1),rgba(243,248,249,0.99)_62%,rgba(246,242,255,0.97))] p-6 shadow-[0_30px_58px_rgba(15,23,42,0.12)] sm:p-7">
+    <DashboardSectionShell className="border-slate-300/90 bg-[linear-gradient(160deg,rgba(255,255,255,1),rgba(243,248,249,0.99)_62%,rgba(246,242,255,0.97))] shadow-[0_30px_58px_rgba(15,23,42,0.12)]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white to-transparent"
@@ -697,12 +713,13 @@ function WelcomeOverviewCard({
         aria-hidden="true"
         className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-teal-100/50 blur-3xl"
       />
-      <p className="relative font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-800/90">
-        Overview
-      </p>
-      <h2 className="relative mt-3 font-headline text-[1.9rem] font-bold tracking-[-0.045em] text-slate-950">
-        Tvoj napredak
-      </h2>
+      <DashboardSectionHeader
+        className="relative"
+        eyebrow="Overview"
+        eyebrowClassName="text-teal-800/90"
+        title="Tvoj napredak"
+        titleClassName="mt-3 text-[1.9rem] tracking-[-0.045em]"
+      />
       <p className="relative mt-4 text-sm font-semibold text-slate-900">
         Završeno: {completedCount} {formatProcjenaCount(completedCount)}
       </p>
@@ -716,7 +733,7 @@ function WelcomeOverviewCard({
       <p className="relative mt-4 text-sm font-semibold text-slate-700">
         Preostalo: {remainingCount} {formatProcjenaCount(remainingCount)}
       </p>
-    </section>
+    </DashboardSectionShell>
   );
 }
 
@@ -728,17 +745,18 @@ function QuickActionCard({
   title?: string;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[1.75rem] border border-slate-300/90 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,244,255,0.97))] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.1)]">
+    <DashboardSectionShell className="border-slate-300/90 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,244,255,0.97))] shadow-[0_24px_48px_rgba(15,23,42,0.1)] sm:p-6">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-violet-50/70 to-transparent"
       />
-      <p className="relative font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-700">
-        Quick action
-      </p>
-      <h2 className="relative mt-3 font-headline text-xl font-bold tracking-[-0.035em] text-slate-950">
-        Initialize AI Analyst
-      </h2>
+      <DashboardSectionHeader
+        className="relative"
+        eyebrow="Quick action"
+        eyebrowClassName="text-violet-700"
+        title="Initialize AI Analyst"
+        titleClassName="mt-3 text-xl"
+      />
       <p className="relative mt-2 font-body text-sm leading-6 text-slate-700">
         CTA ostaje pripremljen za izvještaje, bez nove backend logike u ovoj iteraciji.
       </p>
@@ -747,16 +765,18 @@ function QuickActionCard({
           Izvještaj će biti dostupan kada završiš kompletnu bateriju testova.
         </p>
       </div>
-      <button
-        className={`relative mt-5 flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] transition-all ${disabled ? "border-slate-300 bg-slate-100 text-slate-400 opacity-85" : "border-violet-300 bg-white text-violet-800 shadow-[0_12px_24px_rgba(76,29,149,0.08)] hover:border-violet-400 hover:bg-violet-50"}`}
-        disabled={disabled}
-        title={title}
-        type="button"
-      >
-        <span>Initialize AI Analyst</span>
-        <DashboardIcon className="h-4 w-4" name="arrow_right" />
-      </button>
-    </section>
+      <DashboardActionRow className="relative mt-5">
+        <button
+          className={`flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] transition-all ${disabled ? "border-slate-300 bg-slate-100 text-slate-400 opacity-85" : "border-violet-300 bg-white text-violet-800 shadow-[0_12px_24px_rgba(76,29,149,0.08)] hover:border-violet-400 hover:bg-violet-50"}`}
+          disabled={disabled}
+          title={title}
+          type="button"
+        >
+          <span>Initialize AI Analyst</span>
+          <DashboardIcon className="h-4 w-4" name="arrow_right" />
+        </button>
+      </DashboardActionRow>
+    </DashboardSectionShell>
   );
 }
 
@@ -861,10 +881,7 @@ function AssessmentSection({
   return (
     <section className={muted ? "mt-10" : "mt-6"}>
       {!hideSectionHeader ? (
-        <div className="mb-5 flex flex-col gap-1.5">
-          <h2 className="font-headline text-2xl font-bold tracking-[-0.035em] text-slate-950">{title}</h2>
-          <p className="font-body text-[15px] leading-7 text-slate-700">{description}</p>
-        </div>
+        <DashboardSectionHeader className="mb-5" title={title} description={description} />
       ) : null}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
         {assessments.map((assessment) => (
@@ -907,8 +924,8 @@ function AssessmentCard({
     Boolean(assessment.testId);
   const badgeClassName =
     isPaid && !muted
-      ? "border border-teal-300 bg-teal-50 text-teal-800"
-      : "border border-slate-300 bg-slate-100 text-slate-600";
+      ? "border-teal-300 bg-teal-50 text-teal-800"
+      : "border-slate-300 bg-slate-100 text-slate-600";
   const cardClassName = muted
     ? "border-slate-300/80 bg-white/82 shadow-[0_16px_27px_rgba(15,23,42,0.06)] hover:border-slate-400/70 hover:shadow-[0_20px_31px_rgba(15,23,42,0.08)]"
     : assessment.accessState === "upgrade"
@@ -980,11 +997,13 @@ function AssessmentCard({
         >
           <DashboardIcon className={`h-6 w-6 ${iconColorClassName} sm:h-7 sm:w-7`} name={assessment.icon} />
         </div>
-        <span
-          className={`inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] ${primary ? "shadow-[0_8px_18px_rgba(20,184,166,0.12)]" : ""} ${badgeClassName}`}
+        <DashboardStatusBadge
+          className={badgeClassName}
+          emphasized={primary}
+          tone="neutral"
         >
           {assessment.status}
-        </span>
+        </DashboardStatusBadge>
       </div>
 
       <div className="flex flex-1 flex-col">
@@ -995,16 +1014,18 @@ function AssessmentCard({
           {assessment.description}
         </p>
 
-        <div className={`mb-4 mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t pt-3 ${primary ? "border-slate-300" : muted ? "border-slate-300" : "border-slate-200"}`}>
-          <span className={`inline-flex items-center gap-2 text-xs font-medium ${muted ? "text-slate-700" : metaClassName}`}>
+        <DashboardCompactMetaRow
+          className={primary ? "border-slate-300" : muted ? "border-slate-300" : "border-slate-200"}
+        >
+          <DashboardCompactMetaItem className={muted ? "text-slate-700" : metaClassName}>
             <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-slate-500" : "text-slate-400"}`} name="schedule" />
             {assessment.duration}
-          </span>
-          <span className={`inline-flex items-center gap-2 text-xs font-medium ${muted ? "text-slate-700" : metaClassName}`}>
+          </DashboardCompactMetaItem>
+          <DashboardCompactMetaItem className={muted ? "text-slate-700" : metaClassName}>
             <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-slate-500" : "text-slate-400"}`} name={assessment.secondaryIcon} />
             {assessment.secondaryMeta}
-          </span>
-        </div>
+          </DashboardCompactMetaItem>
+        </DashboardCompactMetaRow>
 
         {assessment.ctaKind === "resume" ? (
           <div className="mb-4">
@@ -1034,19 +1055,21 @@ function AssessmentCard({
       </div>
 
       {canCreateAttempt ? (
-        <button
-          className={`mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 disabled:cursor-wait disabled:opacity-80 ${primary ? "sm:text-[13px]" : ""}`}
-          disabled={isCreatingAttempt}
-          onClick={() => {
-            void handleCreateAttempt();
-          }}
-          type="button"
-        >
-          <span>{isCreatingAttempt ? "Učitavam..." : assessment.ctaLabel}</span>
-          {renderActionIcon()}
-        </button>
+        <DashboardActionRow>
+          <button
+            className={`flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 disabled:cursor-wait disabled:opacity-80 ${primary ? "sm:text-[13px]" : ""}`}
+            disabled={isCreatingAttempt}
+            onClick={() => {
+              void handleCreateAttempt();
+            }}
+            type="button"
+          >
+            <span>{isCreatingAttempt ? "Učitavam..." : assessment.ctaLabel}</span>
+            {renderActionIcon()}
+          </button>
+        </DashboardActionRow>
       ) : !isInteractive ? (
-        <div className="mt-auto stack-xs">
+        <DashboardActionRow className="stack-xs">
           <button
             className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-100 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-500 opacity-90"
             disabled
@@ -1058,16 +1081,18 @@ function AssessmentCard({
           {assessment.availabilityNote ? (
             <p className="text-xs text-slate-600">{assessment.availabilityNote}</p>
           ) : null}
-        </div>
+        </DashboardActionRow>
       ) : (
-        <button
-          className={`mt-auto flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 ${primary ? "sm:text-[13px]" : ""}`}
-          onClick={handleNavigate}
-          type="button"
-        >
-          <span>{assessment.ctaLabel}</span>
-          {renderActionIcon()}
-        </button>
+        <DashboardActionRow>
+          <button
+            className={`flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 ${primary ? "sm:text-[13px]" : ""}`}
+            onClick={handleNavigate}
+            type="button"
+          >
+            <span>{assessment.ctaLabel}</span>
+            {renderActionIcon()}
+          </button>
+        </DashboardActionRow>
       )}
     </article>
   );
@@ -1110,7 +1135,7 @@ function DashboardStatCard({
   status?: boolean;
 }) {
   return (
-    <article className="rounded-[1.5rem] border border-slate-300/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6">
+    <DashboardInfoCardShell>
       <div className="flex items-start justify-between gap-4">
         <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500/85">
           {label}
@@ -1137,7 +1162,7 @@ function DashboardStatCard({
           {value}
         </p>
       )}
-    </article>
+    </DashboardInfoCardShell>
   );
 }
 
@@ -1380,7 +1405,7 @@ export function CandidateDashboardView({
 
   return (
     <div
-      className={`${plusJakartaSans.className} ${plusJakartaSans.variable} candidate-dashboard-page--shell min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.07),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.08),_transparent_22%),linear-gradient(180deg,#f4f7fb_0%,#edf2f7_48%,#e8eef4_100%)] text-slate-900`}
+      className={`${plusJakartaSans.className} ${plusJakartaSans.variable} ${DASHBOARD_PAGE_SHELL_CLASS_NAME}`}
       style={
         {
           "--font-manrope": "var(--font-plus-jakarta-sans)",
@@ -1391,14 +1416,14 @@ export function CandidateDashboardView({
     >
       <TopNav userEmail={userEmail} userName={userName} />
 
-      <main className="w-full max-w-full px-6 lg:px-12 pb-14 pt-24">
+      <main className={DASHBOARD_MAIN_CLASS_NAME}>
         {hasLinkedParticipant ? (
           isLoading && !loadError ? (
             <DashboardSkeleton />
           ) : (
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
-            <div className="lg:h-full lg:border-r lg:border-slate-300/80 lg:pr-12">
-              <aside className="w-full space-y-5 lg:top-24">
+          <div className={DASHBOARD_CONTENT_GRID_CLASS_NAME}>
+            <div className={DASHBOARD_SIDEBAR_CLASS_NAME}>
+              <aside className={DASHBOARD_SIDEBAR_STACK_CLASS_NAME}>
                 <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-600">
                   Korisnički profil
                 </p>
@@ -1427,8 +1452,8 @@ export function CandidateDashboardView({
               </aside>
             </div>
 
-            <section aria-label="Assessments" className="min-w-0 w-full">
-              <div className="space-y-6">
+            <section aria-label="Assessments" className={DASHBOARD_PRIMARY_COLUMN_CLASS_NAME}>
+              <div className={DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME}>
                 <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-teal-800/80">
                   Dostupne procjene
                 </p>

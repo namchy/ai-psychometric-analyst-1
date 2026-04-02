@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Styling guardrails
+ * - Keep this file limited to tokens, reset, element defaults, and truly shared primitives.
+ * - Do not add new screen-specific or route-specific selectors here.
+ * - For new UI work, prefer component-level Tailwind/classes or colocated styles.
+ * - Legacy screen-specific selectors remain below for migration safety and should not be expanded.
+ */
+
+/* Global/Base Layer: tokens */
 :root {
   font-family: var(--font-inter), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: light;
@@ -50,6 +59,7 @@
     linear-gradient(135deg, #08121b 0%, #0d1721 42%, #101b26 100%);
 }
 
+/* Global/Base Layer: document defaults and reset */
 html {
   font-family: var(--font-sans);
 }
@@ -68,6 +78,10 @@ body {
   min-height: 100%;
 }
 
+/*
+ * Legacy screen exception: login shell currently drives page background from within the route tree.
+ * Keep this stable for now, but do not extend this pattern to additional screens.
+ */
 html:has(.login-experience),
 body:has(.login-experience) {
   min-height: 100dvh;
@@ -146,6 +160,7 @@ code {
   font-size: 0.875rem;
 }
 
+/* Global/Base Layer: shared primitives used across multiple screens */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -257,6 +272,7 @@ button:disabled {
   width: 100%;
 }
 
+/* Shared utility classes only. Keep utilities generic and screen-agnostic. */
 @layer utilities {
   .bg-mesh {
     background-color: #00101a;
@@ -284,6 +300,7 @@ button:disabled {
   }
 }
 
+/* Global accessibility primitive */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -296,6 +313,12 @@ button:disabled {
   border: 0;
 }
 
+/*
+ * Legacy Screen-Specific Layer
+ * These selectors style existing candidate, assessment, results, auth, and dashboard screens.
+ * Keep them for stability during migration, but do not add new screen-specific rules to globals.css.
+ * Any new shared primitive should use a generic name and stay near the shared section above.
+ */
 .assessment-eyebrow,
 .eyebrow {
   margin: 0;
@@ -3927,6 +3950,11 @@ button:disabled {
   }
 }
 
+/*
+ * Shared UI primitives for forms/dashboard surfaces.
+ * This is the preferred place for future generic primitives that are reused across screens.
+ * Do not place route-specific selectors in this section.
+ */
 .page-lead {
   max-width: 44rem;
   font-size: 1rem;
@@ -5312,20 +5340,6 @@ button:disabled {
     flex-direction: column;
     align-items: flex-start;
   }
-}
-
-html:has(.candidate-dashboard-page--shell),
-body:has(.candidate-dashboard-page--shell) {
-  min-height: 100dvh;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(41, 102, 123, 0.15), transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(147, 74, 56, 0.05), transparent 50%),
-    radial-gradient(circle at 50% 0%, rgba(171, 229, 254, 0.05), transparent 50%),
-    #00101a;
-}
-
-body:has(.candidate-dashboard-page--shell) {
-  padding: 0;
 }
 
 .bg-mesh {
