@@ -29,6 +29,12 @@ export type ParticipantSummary = {
   created_at: string;
 };
 
+export type OrganizationAvailableTestSummary = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
 export type OrganizationScopedAttemptSummary = {
   id: string;
   test_id: string;
@@ -65,6 +71,14 @@ type MembershipRow = {
   organizations:
     | OrganizationSummary
     | OrganizationSummary[]
+    | null;
+};
+
+type OrganizationTestAccessRow = {
+  test_id: string;
+  tests:
+    | OrganizationAvailableTestSummary
+    | OrganizationAvailableTestSummary[]
     | null;
 };
 
@@ -177,6 +191,26 @@ export async function getParticipantForOrganization(
   }
 
   return (data as ParticipantSummary | null) ?? null;
+}
+
+export async function getAvailableTestsForOrganization(
+  organizationId: string,
+): Promise<OrganizationAvailableTestSummary[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("organization_test_access")
+    .select("test_id, tests(id, slug, name)")
+    .eq("organization_id", organizationId)
+    .order("test_id", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load organization test access: ${error.message}`);
+  }
+
+  return ((data ?? []) as OrganizationTestAccessRow[])
+    .map((row) => normalizeAttemptRelation(row.tests))
+    .filter((test): test is OrganizationAvailableTestSummary => !!test)
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 export async function getLinkedParticipantForUser(
