@@ -38,6 +38,7 @@ DEMO_ORGANIZATION_NAME="Xonix"
 DEMO_HR_EMAIL="hr1@nesto.com"
 DEMO_CANDIDATE_EMAIL="user1@nesto.com"
 DEMO_CANDIDATE_FULL_NAME="User 1"
+RESET_DEMO_PASSWORDS="${RESET_DEMO_PASSWORDS:-false}"
 
 ORG_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); (async()=>{const {data,error}=await s.from("organizations").select("id").eq("slug","xonix").maybeSingle(); if(error) throw new Error(error.message); console.log(data?.id ?? "");})().catch((e)=>{console.error(e.message); process.exit(1);});')"
 ORG_ACTION="reused"
@@ -50,20 +51,26 @@ else
 fi
 
 HR_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.listUsers({page:1,perPage:200}).then(({data,error})=>{if(error) throw new Error(error.message); const user=data.users.find((entry)=>entry.email?.toLowerCase()==="hr1@nesto.com"); console.log(user?.id ?? "");}).catch((e)=>{console.error(e.message); process.exit(1);});')"
-HR_USER_ACTION="reused"
+HR_USER_ACTION="reused_without_password_reset"
 
 if [ -n "$HR_USER_ID" ]; then
-  HR_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.updateUserById("'"$HR_USER_ID"'",{email_confirm:true,password:process.env.LOCAL_DEMO_HR_PASSWORD}).then(({data,error})=>{if(error) throw new Error(error.message); console.log(data.user.id);}).catch((e)=>{console.error(e.message); process.exit(1);});')"
+  if [ "$RESET_DEMO_PASSWORDS" = "true" ]; then
+    HR_USER_ACTION="reused_with_password_reset"
+    HR_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.updateUserById("'"$HR_USER_ID"'",{email_confirm:true,password:process.env.LOCAL_DEMO_HR_PASSWORD}).then(({data,error})=>{if(error) throw new Error(error.message); console.log(data.user.id);}).catch((e)=>{console.error(e.message); process.exit(1);});')"
+  fi
 else
   HR_USER_ACTION="created"
   HR_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.createUser({email:"hr1@nesto.com",password:process.env.LOCAL_DEMO_HR_PASSWORD,email_confirm:true}).then(({data,error})=>{if(error) throw new Error(error.message); console.log(data.user.id);}).catch((e)=>{console.error(e.message); process.exit(1);});')"
 fi
 
 CANDIDATE_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.listUsers({page:1,perPage:200}).then(({data,error})=>{if(error) throw new Error(error.message); const user=data.users.find((entry)=>entry.email?.toLowerCase()==="user1@nesto.com"); console.log(user?.id ?? "");}).catch((e)=>{console.error(e.message); process.exit(1);});')"
-CANDIDATE_USER_ACTION="reused"
+CANDIDATE_USER_ACTION="reused_without_password_reset"
 
 if [ -n "$CANDIDATE_USER_ID" ]; then
-  CANDIDATE_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.updateUserById("'"$CANDIDATE_USER_ID"'",{email_confirm:true,password:process.env.LOCAL_DEMO_CANDIDATE_PASSWORD}).then(({data,error})=>{if(error) throw new Error(error.message); console.log(data.user.id);}).catch((e)=>{console.error(e.message); process.exit(1);});')"
+  if [ "$RESET_DEMO_PASSWORDS" = "true" ]; then
+    CANDIDATE_USER_ACTION="reused_with_password_reset"
+    CANDIDATE_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.updateUserById("'"$CANDIDATE_USER_ID"'",{email_confirm:true,password:process.env.LOCAL_DEMO_CANDIDATE_PASSWORD}).then(({data,error})=>{if(error) throw new Error(error.message); console.log(data.user.id);}).catch((e)=>{console.error(e.message); process.exit(1);});')"
+  fi
 else
   CANDIDATE_USER_ACTION="created"
   CANDIDATE_USER_ID="$(run_node_retry 'const {createClient}=require("@supabase/supabase-js"); const s=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{autoRefreshToken:false,persistSession:false}}); s.auth.admin.createUser({email:"user1@nesto.com",password:process.env.LOCAL_DEMO_CANDIDATE_PASSWORD,email_confirm:true}).then(({data,error})=>{if(error) throw new Error(error.message); console.log(data.user.id);}).catch((e)=>{console.error(e.message); process.exit(1);});')"
@@ -108,3 +115,13 @@ printf '  "candidateUser": { "id": "%s", "email": "%s", "action": "%s" },\n' "$C
 printf '  "membership": { "id": "%s", "action": "%s" },\n' "$MEMBERSHIP_ID" "$MEMBERSHIP_ACTION"
 printf '  "participant": { "id": "%s", "email": "%s", "full_name": "%s", "action": "%s" }\n' "$PARTICIPANT_ID" "$DEMO_CANDIDATE_EMAIL" "$DEMO_CANDIDATE_FULL_NAME" "$PARTICIPANT_ACTION"
 printf '}\n'
+
+if [ "$RESET_DEMO_PASSWORDS" = "true" ]; then
+  printf '\n'
+  printf 'WARNING: Existing demo user passwords were reset because RESET_DEMO_PASSWORDS=true.\n'
+  printf '  %s -> %s\n' "$DEMO_HR_EMAIL" "$LOCAL_DEMO_HR_PASSWORD"
+  printf '  %s -> %s\n' "$DEMO_CANDIDATE_EMAIL" "$LOCAL_DEMO_CANDIDATE_PASSWORD"
+else
+  printf '\n'
+  printf 'Existing demo user passwords were not changed. Set RESET_DEMO_PASSWORDS=true to reset them explicitly.\n'
+fi
