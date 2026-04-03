@@ -1,6 +1,5 @@
 "use client";
 
-import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -26,11 +25,6 @@ import type {
   AttemptStatus,
 } from "@/lib/assessment/types";
 import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
-});
 
 const RUN_PAGE_PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
 
@@ -177,7 +171,7 @@ function AssessmentDashboardSkinStyles() {
     <style jsx global>{`
       .assessment-run-page--dashboard-skin,
       .assessment-run-page--dashboard-skin :where(h1, h2, h3, h4, p, span, label, legend, button, input, textarea) {
-        font-family: ${plusJakartaSans.style.fontFamily};
+        font-family: var(--font-sans);
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero {
@@ -230,7 +224,7 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .run-form-hero__intro h1,
       .assessment-run-page--dashboard-skin .assessment-step-card__header h3 {
-        font-family: ${plusJakartaSans.style.fontFamily};
+        font-family: var(--font-sans);
         color: rgb(2, 6, 23);
         letter-spacing: -0.05em;
       }
@@ -999,7 +993,7 @@ export function AssessmentForm({
         <section
           aria-live="polite"
           aria-busy="true"
-          className={`${plusJakartaSans.className} assessment-completion-state assessment-run-page--dashboard-skin`}
+          className="assessment-completion-state assessment-run-page--dashboard-skin"
           role="status"
         >
           <div className="assessment-completion-state__hero">
@@ -1041,7 +1035,7 @@ export function AssessmentForm({
       : "assessment-step-actions assessment-step-actions--compact";
 
     return (
-      <div className={`${plusJakartaSans.className} run-form-layout assessment-run-page--dashboard-skin grid gap-6`}>
+      <div className="run-form-layout assessment-run-page--dashboard-skin grid gap-6">
           <AssessmentDashboardSkinStyles />
           <section className="run-form-hero">
           <div aria-hidden="true" className="run-form-hero__top-line" />

@@ -1,12 +1,13 @@
 "use client";
 
+import type { HTMLAttributes } from "react";
 import { useEffect, useRef, type ReactNode } from "react";
 
-type SingleOpenPanelGroupProps = {
+type SingleOpenPanelGroupProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
 };
 
-export function SingleOpenPanelGroup({ children }: SingleOpenPanelGroupProps) {
+export function SingleOpenPanelGroup({ children, className, ...props }: SingleOpenPanelGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,5 +55,9 @@ export function SingleOpenPanelGroup({ children }: SingleOpenPanelGroupProps) {
     };
   }, []);
 
-  return <div ref={containerRef}>{children}</div>;
+  return (
+    <div ref={containerRef} className={className} {...props}>
+      {children}
+    </div>
+  );
 }

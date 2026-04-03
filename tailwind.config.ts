@@ -32,9 +32,9 @@ const config: Config = {
         "primary-fixed-dim": "#9dd7f0",
       },
       fontFamily: {
-        headline: ["var(--font-manrope)", "Manrope", "sans-serif"],
-        body: ["var(--font-manrope)", "Manrope", "sans-serif"],
-        label: ["var(--font-manrope)", "Manrope", "sans-serif"],
+        headline: ["var(--font-sans)"],
+        body: ["var(--font-sans)"],
+        label: ["var(--font-sans)"],
       },
       borderRadius: {
         DEFAULT: "0.25rem",

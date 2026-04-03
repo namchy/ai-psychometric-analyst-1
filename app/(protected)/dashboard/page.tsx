@@ -2,8 +2,12 @@ import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import { createAssessmentAttempt, createParticipant } from "@/app/actions/participants";
 import {
-  DASHBOARD_MAIN_CLASS_NAME,
-  DASHBOARD_PAGE_SHELL_CLASS_NAME,
+  AuthenticatedAppFooterShell,
+  AuthenticatedAppHeaderShell,
+  AuthenticatedAppMainContent,
+  AuthenticatedAppPageShell,
+} from "@/components/app/authenticated-app-chrome";
+import {
   DashboardActionRow,
   DashboardCompactMetaItem,
   DashboardCompactMetaRow,
@@ -31,6 +35,66 @@ import { requireAuthenticatedUser } from "@/lib/auth/session";
 type DashboardPageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
 };
+
+function HrDashboardHeader() {
+  return (
+    <AuthenticatedAppHeaderShell>
+      <div className="flex min-w-0 items-center gap-4">
+        <Link
+          href="/dashboard"
+          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
+        >
+          Deep Profile
+        </Link>
+        <span className="hidden rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] lg:inline-flex">
+          HR Workspace
+        </span>
+      </div>
+
+      <form action={logout} className="shrink-0">
+        <button
+          className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+          type="submit"
+        >
+          Sign out
+        </button>
+      </form>
+    </AuthenticatedAppHeaderShell>
+  );
+}
+
+function HrDashboardFooter() {
+  return (
+    <AuthenticatedAppFooterShell>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
+        <p className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600">
+          © 2026 <strong>RE:SELEKCIJA</strong>. All rights reserved.
+        </p>
+      </div>
+
+      <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <a
+          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
+          href="/"
+        >
+          Privacy Policy
+        </a>
+        <a
+          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
+          href="/"
+        >
+          Terms of Service
+        </a>
+        <a
+          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
+          href="/"
+        >
+          Security
+        </a>
+      </nav>
+    </AuthenticatedAppFooterShell>
+  );
+}
 
 function getStatusBadgeClassName(status: string): string {
   switch (status) {
@@ -151,10 +215,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   );
 
   return (
-    <main
-      className={`${DASHBOARD_PAGE_SHELL_CLASS_NAME} ${DASHBOARD_MAIN_CLASS_NAME} mx-auto max-w-[88rem] space-y-6 px-4 pt-6 sm:px-6 lg:px-10`}
-    >
-      <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
+    <AuthenticatedAppPageShell>
+      <HrDashboardHeader />
+
+      <AuthenticatedAppMainContent className="mx-auto max-w-[88rem] px-4 sm:px-6 lg:px-10">
+        <div className="space-y-16">
+        <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -right-10 top-0 h-32 w-32 rounded-full bg-teal-100/55 blur-3xl"
@@ -229,215 +295,221 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             ) : null}
           </div>
 
-          <form action={logout} className="shrink-0">
-            <button
-              className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              type="submit"
-            >
-              Sign out
-            </button>
-          </form>
         </div>
-      </DashboardSectionShell>
+        </DashboardSectionShell>
 
-      <DashboardInfoCardShell className="space-y-5 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
-        <SingleOpenPanelGroup>
-          <DashboardSectionHeader
-            eyebrow="Participant workspace"
-            eyebrowClassName="text-teal-800/80"
-            title="Participants"
-            description="Participant records and their latest assessment state in the active organization."
-            className="gap-2"
-            descriptionClassName="mt-2 max-w-3xl"
-          />
+        <div className="space-y-6">
+        <DashboardInfoCardShell className="shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+        <section aria-labelledby="participants-section-heading" className="space-y-5" data-participants-section-shell>
+          <div data-participants-section-header>
+            <DashboardSectionHeader
+              eyebrow="Participant workspace"
+              eyebrowClassName="text-teal-800/80"
+              title={<span id="participants-section-heading">Participants</span>}
+              description="Participant records and their latest assessment state in the active organization."
+              className="gap-2"
+              descriptionClassName="mt-2 max-w-3xl"
+            />
+          </div>
 
-          {activeOrganization ? (
-            <details
-              className="group rounded-[1.35rem] border border-slate-200/90 bg-white/80 shadow-[0_14px_30px_rgba(15,23,42,0.05)]"
-              data-single-open-panel
-              open={shouldOpenCreateParticipantPanel}
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[1.35rem] px-5 py-4 text-left text-sm font-semibold text-slate-900 transition-colors duration-200 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                <span className="inline-flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-teal-200 bg-teal-50 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
-                    New
-                  </span>
-                  <span>
-                    <span className="block text-[15px] font-semibold leading-6">Create participant</span>
-                    <span className="block text-xs font-medium text-slate-500">
-                      Add a participant record to the active organization.
-                    </span>
-                  </span>
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                  Expand
-                </span>
-              </summary>
-              <form action={createParticipant} className="space-y-4 border-t border-slate-200/90 px-5 py-5">
-                <div className="space-y-2">
-                  <label htmlFor="participant-full-name">Full name</label>
-                  <input id="participant-full-name" name="fullName" type="text" required />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="participant-email">Email</label>
-                  <input id="participant-email" name="email" type="email" required />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="participant-type">Participant type</label>
-                  <select id="participant-type" name="participantType" defaultValue="candidate" required>
-                    <option value="candidate">candidate</option>
-                    <option value="employee">employee</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="participant-status">Status</label>
-                  <select id="participant-status" name="status" defaultValue="active" required>
-                    <option value="active">active</option>
-                    <option value="inactive">inactive</option>
-                  </select>
-                </div>
-                {searchParams?.error === "create-participant-failed" && createParticipantDetails ? (
-                  <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
-                    {createParticipantDetails}
-                  </p>
-                ) : null}
-                <DashboardActionRow className="flex items-center justify-end pt-1">
-                  <button
-                    className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25"
-                    type="submit"
-                  >
-                    Create participant
-                  </button>
-                </DashboardActionRow>
-              </form>
-            </details>
-          ) : null}
-
-          {!activeOrganization ? (
-            <div className="rounded-[1.35rem] border border-slate-200 bg-white/72 px-5 py-5 text-sm leading-6 text-slate-600">
-              <p>
-                This user does not have an active organization yet, so no participant records are available.
-              </p>
-            </div>
-          ) : participants.length === 0 ? (
-            <div className="rounded-[1.35rem] border border-slate-200 bg-white/72 px-5 py-5 text-sm leading-6 text-slate-600">
-              <p>No active participants found for {activeOrganization.name}.</p>
-            </div>
-          ) : (
-            <ul className="grid list-none gap-4 p-0">
-              {participants.map((participant) => {
-                const latestAttempt = latestAttemptByParticipantId.get(participant.id);
-
-                return (
-                  <li
-                    key={participant.id}
-                    className="list-none"
-                  >
-                    <DashboardInfoCardShell className="h-full rounded-[1.35rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,250,251,0.97))] shadow-[0_18px_34px_rgba(15,23,42,0.06)]">
-                    <div className="space-y-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="space-y-2">
-                          <h3 className="font-headline text-[1.35rem] font-bold tracking-[-0.04em] text-slate-950">
-                            {participant.full_name}
-                          </h3>
-                          <p className="text-sm leading-6 text-slate-600">{participant.email}</p>
-                        </div>
-                        <DashboardStatusBadge className={getStatusBadgeClassName(participant.status)}>
-                          {participant.status}
-                        </DashboardStatusBadge>
-                      </div>
-
-                      <DashboardCompactMetaRow>
-                        <DashboardCompactMetaItem className="text-slate-700">
-                          {participant.participant_type} ·{" "}
-                          {participant.user_id ? "Linked user" : "No linked user"}
-                        </DashboardCompactMetaItem>
-                        <DashboardCompactMetaItem className="text-slate-700">
-                          {latestAttempt ? `Last attempt: ${latestAttempt.status}` : "No attempts"}
-                        </DashboardCompactMetaItem>
-                      </DashboardCompactMetaRow>
-
-                      <details
-                        className="group rounded-[1.2rem] border border-slate-200/90 bg-white/80 shadow-[0_12px_28px_rgba(15,23,42,0.04)]"
-                        data-single-open-panel
-                        open={openAttemptFor === participant.id}
-                      >
-                        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[1.2rem] px-4 py-4 text-left [&::-webkit-details-marker]:hidden">
+          <div
+            className="px-4 pt-8"
+            data-participants-section-body
+          >
+              <SingleOpenPanelGroup className="space-y-5">
+                {activeOrganization ? (
+                  <div data-participants-create-panel-area>
+                    <details
+                      className="group rounded-[1.35rem] border border-slate-200/90 bg-white/80 shadow-[0_14px_30px_rgba(15,23,42,0.05)]"
+                      data-single-open-panel
+                      open={shouldOpenCreateParticipantPanel}
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[1.35rem] px-5 py-4 text-left text-sm font-semibold text-slate-900 transition-colors duration-200 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                        <span className="inline-flex items-center gap-3">
+                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-teal-200 bg-teal-50 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
+                            New
+                          </span>
                           <span>
-                            <span className="block text-sm font-semibold text-slate-900">
-                              Create assessment attempt
-                            </span>
+                            <span className="block text-[15px] font-semibold leading-6">Create participant</span>
                             <span className="block text-xs font-medium text-slate-500">
-                              Assign a test and locale for this participant.
+                              Add a participant record to the active organization.
                             </span>
                           </span>
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                            Expand
-                          </span>
-                        </summary>
-                        <form
-                          action={createAssessmentAttempt}
-                          className="space-y-4 border-t border-slate-200/90 px-4 py-4"
-                        >
-                          <input type="hidden" name="participantId" value={participant.id} />
-                          <div className="space-y-2">
-                            <label htmlFor={`attempt-test-${participant.id}`}>Test</label>
-                            <select id={`attempt-test-${participant.id}`} name="testId" required>
-                              <option value="">Select a test</option>
-                              {availableTests.map((test) => (
-                                <option key={test.id} value={test.id}>
-                                  {test.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="space-y-2">
-                            <label htmlFor={`attempt-locale-${participant.id}`}>Locale</label>
-                            <select
-                              id={`attempt-locale-${participant.id}`}
-                              name="locale"
-                              defaultValue={DEFAULT_ASSESSMENT_LOCALE}
-                              required
-                            >
-                              {SUPPORTED_ASSESSMENT_LOCALES.map((locale) => (
-                                <option key={locale} value={locale}>
-                                  {getAssessmentLocaleLabel(locale)}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          {openAttemptFor === participant.id && message ? (
-                            <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
-                              {createAttemptDetails ?? message}
-                            </p>
-                          ) : null}
-                          <DashboardActionRow className="flex items-center justify-end">
-                            <button
-                              className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
-                              type="submit"
-                              disabled={availableTests.length === 0}
-                            >
-                              Create assessment attempt
-                            </button>
-                          </DashboardActionRow>
-                          {availableTests.length === 0 ? (
-                            <p className="text-sm leading-6 text-slate-600">
-                              No available tests are assigned to the active organization.
-                            </p>
-                          ) : null}
-                        </form>
-                      </details>
-                    </div>
-                    </DashboardInfoCardShell>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </SingleOpenPanelGroup>
-      </DashboardInfoCardShell>
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                          Expand
+                        </span>
+                      </summary>
+                      <form action={createParticipant} className="space-y-4 border-t border-slate-200/90 px-5 py-5">
+                        <div className="space-y-2">
+                          <label htmlFor="participant-full-name">Full name</label>
+                          <input id="participant-full-name" name="fullName" type="text" required />
+                        </div>
+                        <div className="space-y-2">
+                          <label htmlFor="participant-email">Email</label>
+                          <input id="participant-email" name="email" type="email" required />
+                        </div>
+                        <div className="space-y-2">
+                          <label htmlFor="participant-type">Participant type</label>
+                          <select id="participant-type" name="participantType" defaultValue="candidate" required>
+                            <option value="candidate">candidate</option>
+                            <option value="employee">employee</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label htmlFor="participant-status">Status</label>
+                          <select id="participant-status" name="status" defaultValue="active" required>
+                            <option value="active">active</option>
+                            <option value="inactive">inactive</option>
+                          </select>
+                        </div>
+                        {searchParams?.error === "create-participant-failed" && createParticipantDetails ? (
+                          <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
+                            {createParticipantDetails}
+                          </p>
+                        ) : null}
+                        <DashboardActionRow className="flex items-center justify-end pt-1">
+                          <button
+                            className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25"
+                            type="submit"
+                          >
+                            Create participant
+                          </button>
+                        </DashboardActionRow>
+                      </form>
+                    </details>
+                  </div>
+                ) : null}
 
-      <DashboardInfoCardShell className="space-y-5 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+                {!activeOrganization ? (
+                  <div className="rounded-[1.35rem] border border-slate-200 bg-white/72 px-5 py-5 text-sm leading-6 text-slate-600">
+                    <p>
+                      This user does not have an active organization yet, so no participant records are available.
+                    </p>
+                  </div>
+                ) : participants.length === 0 ? (
+                  <div className="rounded-[1.35rem] border border-slate-200 bg-white/72 px-5 py-5 text-sm leading-6 text-slate-600">
+                    <p>No active participants found for {activeOrganization.name}.</p>
+                  </div>
+                ) : (
+                  <div data-participants-cards-list>
+                    <ul className="grid list-none gap-4 p-0">
+                      {participants.map((participant) => {
+                        const latestAttempt = latestAttemptByParticipantId.get(participant.id);
+
+                        return (
+                          <li
+                            key={participant.id}
+                            className="list-none"
+                          >
+                            <DashboardInfoCardShell className="h-full rounded-[1.35rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,250,251,0.97))] shadow-[0_18px_34px_rgba(15,23,42,0.06)]">
+                              <div className="space-y-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="space-y-2">
+                                    <h3 className="font-headline text-[1.35rem] font-bold tracking-[-0.04em] text-slate-950">
+                                      {participant.full_name}
+                                    </h3>
+                                    <p className="text-sm leading-6 text-slate-600">{participant.email}</p>
+                                  </div>
+                                  <DashboardStatusBadge className={getStatusBadgeClassName(participant.status)}>
+                                    {participant.status}
+                                  </DashboardStatusBadge>
+                                </div>
+
+                                <DashboardCompactMetaRow>
+                                  <DashboardCompactMetaItem className="text-slate-700">
+                                    {participant.participant_type} ·{" "}
+                                    {participant.user_id ? "Linked user" : "No linked user"}
+                                  </DashboardCompactMetaItem>
+                                  <DashboardCompactMetaItem className="text-slate-700">
+                                    {latestAttempt ? `Last attempt: ${latestAttempt.status}` : "No attempts"}
+                                  </DashboardCompactMetaItem>
+                                </DashboardCompactMetaRow>
+
+                                <details
+                                  className="group rounded-[1.2rem] border border-slate-200/90 bg-white/80 shadow-[0_12px_28px_rgba(15,23,42,0.04)]"
+                                  data-single-open-panel
+                                  open={openAttemptFor === participant.id}
+                                >
+                                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[1.2rem] px-4 py-4 text-left [&::-webkit-details-marker]:hidden">
+                                    <span>
+                                      <span className="block text-sm font-semibold text-slate-900">
+                                        Create assessment attempt
+                                      </span>
+                                      <span className="block text-xs font-medium text-slate-500">
+                                        Assign a test and locale for this participant.
+                                      </span>
+                                    </span>
+                                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                                      Expand
+                                    </span>
+                                  </summary>
+                                  <form
+                                    action={createAssessmentAttempt}
+                                    className="space-y-4 border-t border-slate-200/90 px-4 py-4"
+                                  >
+                                    <input type="hidden" name="participantId" value={participant.id} />
+                                    <div className="space-y-2">
+                                      <label htmlFor={`attempt-test-${participant.id}`}>Test</label>
+                                      <select id={`attempt-test-${participant.id}`} name="testId" required>
+                                        <option value="">Select a test</option>
+                                        {availableTests.map((test) => (
+                                          <option key={test.id} value={test.id}>
+                                            {test.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label htmlFor={`attempt-locale-${participant.id}`}>Locale</label>
+                                      <select
+                                        id={`attempt-locale-${participant.id}`}
+                                        name="locale"
+                                        defaultValue={DEFAULT_ASSESSMENT_LOCALE}
+                                        required
+                                      >
+                                        {SUPPORTED_ASSESSMENT_LOCALES.map((locale) => (
+                                          <option key={locale} value={locale}>
+                                            {getAssessmentLocaleLabel(locale)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    {openAttemptFor === participant.id && message ? (
+                                      <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
+                                        {createAttemptDetails ?? message}
+                                      </p>
+                                    ) : null}
+                                    <DashboardActionRow className="flex items-center justify-end">
+                                      <button
+                                        className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+                                        type="submit"
+                                        disabled={availableTests.length === 0}
+                                      >
+                                        Create assessment attempt
+                                      </button>
+                                    </DashboardActionRow>
+                                    {availableTests.length === 0 ? (
+                                      <p className="text-sm leading-6 text-slate-600">
+                                        No available tests are assigned to the active organization.
+                                      </p>
+                                    ) : null}
+                                  </form>
+                                </details>
+                              </div>
+                            </DashboardInfoCardShell>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </SingleOpenPanelGroup>
+          </div>
+        </section>
+        </DashboardInfoCardShell>
+
+        <DashboardInfoCardShell className="space-y-5 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
         <DashboardSectionHeader
           eyebrow="Activity stream"
           eyebrowClassName="text-teal-800/80"
@@ -510,9 +582,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             })}
           </ul>
         )}
-      </DashboardInfoCardShell>
+        </DashboardInfoCardShell>
 
-      <DashboardInfoCardShell className="space-y-5 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
+        <DashboardInfoCardShell className="space-y-5 shadow-[0_20px_40px_rgba(15,23,42,0.08)]">
         <DashboardSectionHeader
           eyebrow="Access context"
           eyebrowClassName="text-teal-800/80"
@@ -552,7 +624,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             ))}
           </ul>
         )}
-      </DashboardInfoCardShell>
-    </main>
+        </DashboardInfoCardShell>
+        </div>
+        </div>
+      </AuthenticatedAppMainContent>
+
+      <HrDashboardFooter />
+    </AuthenticatedAppPageShell>
   );
 }

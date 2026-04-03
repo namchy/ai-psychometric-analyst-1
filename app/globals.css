@@ -12,9 +12,13 @@
 
 /* Global/Base Layer: tokens */
 :root {
-  font-family: var(--font-inter), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    var(--font-plus-jakarta-sans), "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   color-scheme: light;
-  --font-sans: var(--font-inter), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans:
+    var(--font-plus-jakarta-sans), "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   --color-bg: #f7f8fa;
   --page-bg: #f7f8fa;
   --surface: #ffffff;
@@ -1644,7 +1648,7 @@ button:disabled {
   .assessment-run-page :where(h1, h2, h3, h4, p, span, label, legend, button, input, textarea),
   .attempt-results-page,
   .attempt-results-page :where(h1, h2, h3, h4, h5, p, span, dt, dd, li, button) {
-    font-family: var(--font-manrope), var(--font-sans);
+    font-family: var(--font-sans);
   }
 
   .attempt-results-page__content {
@@ -2598,8 +2602,7 @@ button:disabled {
   .assessment-run-page :where(h1, h2, h3, h4, p, span, label, legend, button, input, textarea),
   .attempt-results-page,
   .attempt-results-page :where(h1, h2, h3, h4, h5, p, span, dt, dd, li, button) {
-    font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-      "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
   }
 
   .auth-shell,
@@ -2809,8 +2812,7 @@ button:disabled {
   .candidate-home__hero h1,
   .candidate-intro__hero h1 {
     max-width: 12ch;
-    font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system,
-      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
     font-size: 52px;
     line-height: 0.98;
     font-weight: 800;
@@ -2823,8 +2825,7 @@ button:disabled {
   .candidate-intro__section h2,
   .assessment-completion-state__hero h2,
   .results-report__section-heading h3 {
-    font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system,
-      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
     font-size: 32px;
     line-height: 1.08;
     font-weight: 800;
@@ -3000,8 +3001,7 @@ button:disabled {
 
   .assessment-run-hero__intro h1 {
     max-width: 12ch;
-    font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system,
-      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--font-sans);
     font-size: 52px;
     line-height: 0.98;
     font-weight: 800;
@@ -4295,8 +4295,7 @@ button:disabled {
   .auth-shell__form-wrap--login input,
   .auth-shell__form-wrap--login button,
   .auth-shell__note {
-    font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-      sans-serif;
+    font-family: var(--font-sans);
   }
 
   .auth-copy-mobile {
@@ -4323,8 +4322,7 @@ button:disabled {
 
   .candidate-home,
   .candidate-home :where(h1, h2, h3, p, span, a, button) {
-    font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-      sans-serif;
+    font-family: var(--font-sans);
   }
 
   .candidate-home__hero {
@@ -4787,7 +4785,7 @@ button:disabled {
 
 .login-experience__shell,
 .login-experience__shell :where(h1, h2, p, span, label, a, button, input) {
-  font-family: var(--font-manrope), var(--font-sans);
+  font-family: var(--font-sans);
 }
 
 .login-experience__shell {
@@ -5365,8 +5363,7 @@ button:disabled {
 
 .candidate-dashboard-page,
 .candidate-dashboard-page :where(h1, h2, p, span, a, button, input) {
-  font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans);
 }
 
 .top-nav {

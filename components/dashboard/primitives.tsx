@@ -31,7 +31,7 @@ export function DashboardSectionShell({
   return (
     <section
       className={joinClassNames(
-        "relative overflow-hidden rounded-[1.75rem] border border-slate-300/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(243,249,249,0.97)_58%,rgba(246,242,255,0.95))] p-6 shadow-[0_28px_60px_rgba(15,23,42,0.12)] sm:p-7",
+        "relative overflow-hidden rounded-[1.75rem] border border-slate-300/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(243,249,249,0.97)_58%,rgba(246,242,255,0.95))] p-5 shadow-[0_28px_60px_rgba(15,23,42,0.12)] sm:p-6",
         className,
       )}
       {...props}
@@ -49,7 +49,7 @@ export function DashboardInfoCardShell({
   return (
     <article
       className={joinClassNames(
-        "rounded-[1.5rem] border border-slate-300/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6",
+        "rounded-[1.5rem] border border-slate-300/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-4 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-5",
         className,
       )}
       {...props}
@@ -147,13 +147,13 @@ export function DashboardStatusBadge({
 }) {
   const toneClassName =
     tone === "success"
-      ? "border border-teal-300 bg-teal-50 text-teal-800"
-      : "border border-slate-300 bg-slate-100 text-slate-600";
+      ? "border border-teal-300/90 bg-teal-100 text-teal-900"
+      : "border border-slate-300/95 bg-slate-100 text-slate-700";
 
   return (
     <span
       className={joinClassNames(
-        "inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em]",
+        "inline-flex min-h-8 items-center rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] leading-none",
         emphasized && "shadow-[0_8px_18px_rgba(20,184,166,0.12)]",
         toneClassName,
         className,
