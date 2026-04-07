@@ -166,6 +166,26 @@ function getIpipNeo120ScoreBand(averageScore: number): IpipNeo120ParticipantRepo
   return "lower";
 }
 
+function requireIpipNeo120FacetLabel(facetCode: IpipNeo120FacetCode): string {
+  const label = getIpipNeo120FacetLabel(facetCode);
+
+  if (!label) {
+    throw new Error(`Missing canonical IPIP-NEO-120 facet label for code ${facetCode}`);
+  }
+
+  return label;
+}
+
+function requireIpipNeo120DomainLabel(domainCode: IpipNeo120DomainCode): string {
+  const label = getIpipNeo120DomainLabel(domainCode);
+
+  if (!label) {
+    throw new Error(`Missing canonical IPIP-NEO-120 domain label for code ${domainCode}`);
+  }
+
+  return label;
+}
+
 function buildIpipNeo120ParticipantPromptInput(
   input: CompletedAssessmentReportRequest,
 ): IpipNeo120ParticipantReportPromptInput {
@@ -203,7 +223,7 @@ function buildIpipNeo120ParticipantPromptInput(
 
       return {
         facet_code: facetCode,
-        label: getIpipNeo120FacetLabel(facetCode) ?? facetCode,
+        label: requireIpipNeo120FacetLabel(facetCode),
         score: score?.averageScore ?? 0,
         band: getIpipNeo120ScoreBand(score?.averageScore ?? 0),
       };
@@ -220,7 +240,7 @@ function buildIpipNeo120ParticipantPromptInput(
 
     return {
       domain_code: domainCode,
-      label: getIpipNeo120DomainLabel(domainCode) ?? domainCode,
+      label: requireIpipNeo120DomainLabel(domainCode),
       score: averageScore,
       band: getIpipNeo120ScoreBand(averageScore),
       subdimensions,
