@@ -19,6 +19,7 @@
   ],
   "properties": {
     "contract_version": {
+      "type": "string",
       "const": "ipip_neo_120_participant_v1"
     },
     "test": {
@@ -26,9 +27,9 @@
       "additionalProperties": false,
       "required": ["slug", "name", "locale"],
       "properties": {
-        "slug": { "const": "ipip-neo-120-v1" },
+        "slug": { "type": "string", "const": "ipip-neo-120-v1" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
-        "locale": { "const": "bs" }
+        "locale": { "type": "string", "const": "bs" }
       }
     },
     "meta": {
@@ -36,7 +37,7 @@
       "additionalProperties": false,
       "required": ["report_type", "generated_at", "scale_hint"],
       "properties": {
-        "report_type": { "const": "participant" },
+        "report_type": { "type": "string", "const": "participant" },
         "generated_at": { "$ref": "#/$defs/nonEmptyString" },
         "scale_hint": {
           "type": "object",
@@ -45,7 +46,7 @@
           "properties": {
             "min": { "type": "number" },
             "max": { "type": "number" },
-            "display_mode": { "const": "visual_with_discreet_numeric_support" }
+            "display_mode": { "type": "string", "const": "visual_with_discreet_numeric_support" }
           }
         }
       }
