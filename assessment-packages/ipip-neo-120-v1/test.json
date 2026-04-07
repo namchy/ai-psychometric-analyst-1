@@ -1,0 +1,12 @@
+{
+  "slug": "ipip-neo-120-v1",
+  "name": "IPIP-NEO-120",
+  "category": "personality",
+  "scoring_method": "likert_sum",
+  "version": "v1",
+  "status": "draft",
+  "is_active": false,
+  "intended_use": "hr_assessment",
+  "report_family": "individual",
+  "description": "Canonical Deep Profile v1 IPIP-NEO-120 assessment package with 120 items, 30 facets and 5 Big Five domains, prepared for bosanski localization and future composite batch compatibility."
+}

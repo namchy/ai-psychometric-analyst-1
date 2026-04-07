@@ -1,0 +1,1802 @@
+[
+  {
+    "code": "N101",
+    "text": "Worry about things.",
+    "question_type": "single_choice",
+    "question_order": 1,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANXIETY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E101",
+    "text": "Make friends easily.",
+    "question_type": "single_choice",
+    "question_order": 2,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "FRIENDLINESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O101",
+    "text": "Have a vivid imagination.",
+    "question_type": "single_choice",
+    "question_order": 3,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMAGINATION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A101",
+    "text": "Trust others.",
+    "question_type": "single_choice",
+    "question_order": 4,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TRUST",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "C101",
+    "text": "Complete tasks successfully.",
+    "question_type": "single_choice",
+    "question_order": 5,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_EFFICACY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N201",
+    "text": "Get angry easily.",
+    "question_type": "single_choice",
+    "question_order": 6,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANGER",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E201",
+    "text": "Love large parties.",
+    "question_type": "single_choice",
+    "question_order": 7,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "GREGARIOUSNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O201",
+    "text": "Believe in the importance of art.",
+    "question_type": "single_choice",
+    "question_order": 8,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ARTISTIC_INTERESTS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A201",
+    "text": "Use others for my own ends.",
+    "question_type": "single_choice",
+    "question_order": 9,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MORALITY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C201",
+    "text": "Like to tidy up.",
+    "question_type": "single_choice",
+    "question_order": 10,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ORDERLINESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N301",
+    "text": "Often feel blue.",
+    "question_type": "single_choice",
+    "question_order": 11,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DEPRESSION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E301",
+    "text": "Take charge.",
+    "question_type": "single_choice",
+    "question_order": 12,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ASSERTIVENESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O301",
+    "text": "Experience my emotions intensely.",
+    "question_type": "single_choice",
+    "question_order": 13,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EMOTIONALITY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A301",
+    "text": "Love to help others.",
+    "question_type": "single_choice",
+    "question_order": 14,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ALTRUISM",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "C301",
+    "text": "Keep my promises.",
+    "question_type": "single_choice",
+    "question_order": 15,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DUTIFULNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N401",
+    "text": "Find it difficult to approach others.",
+    "question_type": "single_choice",
+    "question_order": 16,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_CONSCIOUSNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E401",
+    "text": "Am always busy.",
+    "question_type": "single_choice",
+    "question_order": 17,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACTIVITY_LEVEL",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O401",
+    "text": "Prefer variety to routine.",
+    "question_type": "single_choice",
+    "question_order": 18,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ADVENTUROUSNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A401",
+    "text": "Love a good fight.",
+    "question_type": "single_choice",
+    "question_order": 19,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "COOPERATION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C401",
+    "text": "Work hard.",
+    "question_type": "single_choice",
+    "question_order": 20,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACHIEVEMENT_STRIVING",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N501",
+    "text": "Go on binges.",
+    "question_type": "single_choice",
+    "question_order": 21,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMMODERATION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E501",
+    "text": "Love excitement.",
+    "question_type": "single_choice",
+    "question_order": 22,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EXCITEMENT_SEEKING",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O501",
+    "text": "Love to read challenging material.",
+    "question_type": "single_choice",
+    "question_order": 23,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "INTELLECT",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A501",
+    "text": "Believe that I am better than others.",
+    "question_type": "single_choice",
+    "question_order": 24,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MODESTY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C501",
+    "text": "Am always prepared.",
+    "question_type": "single_choice",
+    "question_order": 25,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_DISCIPLINE",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N601",
+    "text": "Panic easily.",
+    "question_type": "single_choice",
+    "question_order": 26,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "VULNERABILITY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E601",
+    "text": "Radiate joy.",
+    "question_type": "single_choice",
+    "question_order": 27,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CHEERFULNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O601",
+    "text": "Tend to vote for liberal political candidates.",
+    "question_type": "single_choice",
+    "question_order": 28,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LIBERALISM",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A601",
+    "text": "Sympathize with the homeless.",
+    "question_type": "single_choice",
+    "question_order": 29,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SYMPATHY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "C601",
+    "text": "Jump into things without thinking.",
+    "question_type": "single_choice",
+    "question_order": 30,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CAUTIOUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N102",
+    "text": "Fear for the worst.",
+    "question_type": "single_choice",
+    "question_order": 31,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANXIETY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E102",
+    "text": "Feel comfortable around people.",
+    "question_type": "single_choice",
+    "question_order": 32,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "FRIENDLINESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O102",
+    "text": "Enjoy wild flights of fantasy.",
+    "question_type": "single_choice",
+    "question_order": 33,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMAGINATION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A102",
+    "text": "Believe that others have good intentions.",
+    "question_type": "single_choice",
+    "question_order": 34,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TRUST",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "C102",
+    "text": "Excel in what I do.",
+    "question_type": "single_choice",
+    "question_order": 35,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_EFFICACY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N202",
+    "text": "Get irritated easily.",
+    "question_type": "single_choice",
+    "question_order": 36,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANGER",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E202",
+    "text": "Talk to a lot of different people at parties.",
+    "question_type": "single_choice",
+    "question_order": 37,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "GREGARIOUSNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O202",
+    "text": "See beauty in things that others might not notice.",
+    "question_type": "single_choice",
+    "question_order": 38,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ARTISTIC_INTERESTS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A202",
+    "text": "Cheat to get ahead.",
+    "question_type": "single_choice",
+    "question_order": 39,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MORALITY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C202",
+    "text": "Often forget to put things back in their proper place.",
+    "question_type": "single_choice",
+    "question_order": 40,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ORDERLINESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N302",
+    "text": "Dislike myself.",
+    "question_type": "single_choice",
+    "question_order": 41,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DEPRESSION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E302",
+    "text": "Try to lead others.",
+    "question_type": "single_choice",
+    "question_order": 42,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ASSERTIVENESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O302",
+    "text": "Feel others' emotions.",
+    "question_type": "single_choice",
+    "question_order": 43,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EMOTIONALITY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A302",
+    "text": "Am concerned about others.",
+    "question_type": "single_choice",
+    "question_order": 44,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ALTRUISM",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "C302",
+    "text": "Tell the truth.",
+    "question_type": "single_choice",
+    "question_order": 45,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DUTIFULNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N402",
+    "text": "Am afraid to draw attention to myself.",
+    "question_type": "single_choice",
+    "question_order": 46,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_CONSCIOUSNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E402",
+    "text": "Am always on the go.",
+    "question_type": "single_choice",
+    "question_order": 47,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACTIVITY_LEVEL",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O402",
+    "text": "Prefer to stick with things that I know.",
+    "question_type": "single_choice",
+    "question_order": 48,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ADVENTUROUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A402",
+    "text": "Yell at people.",
+    "question_type": "single_choice",
+    "question_order": 49,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "COOPERATION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C402",
+    "text": "Do more than what's expected of me.",
+    "question_type": "single_choice",
+    "question_order": 50,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACHIEVEMENT_STRIVING",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N502",
+    "text": "Rarely overindulge.",
+    "question_type": "single_choice",
+    "question_order": 51,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMMODERATION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "E502",
+    "text": "Seek adventure.",
+    "question_type": "single_choice",
+    "question_order": 52,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EXCITEMENT_SEEKING",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O502",
+    "text": "Avoid philosophical discussions.",
+    "question_type": "single_choice",
+    "question_order": 53,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "INTELLECT",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A502",
+    "text": "Think highly of myself.",
+    "question_type": "single_choice",
+    "question_order": 54,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MODESTY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C502",
+    "text": "Carry out my plans.",
+    "question_type": "single_choice",
+    "question_order": 55,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_DISCIPLINE",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N602",
+    "text": "Become overwhelmed by events.",
+    "question_type": "single_choice",
+    "question_order": 56,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "VULNERABILITY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E602",
+    "text": "Have a lot of fun.",
+    "question_type": "single_choice",
+    "question_order": 57,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CHEERFULNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O602",
+    "text": "Believe that there is no absolute right and wrong.",
+    "question_type": "single_choice",
+    "question_order": 58,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LIBERALISM",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A602",
+    "text": "Feel sympathy for those who are worse off than myself.",
+    "question_type": "single_choice",
+    "question_order": 59,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SYMPATHY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "C602",
+    "text": "Make rash decisions.",
+    "question_type": "single_choice",
+    "question_order": 60,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CAUTIOUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N103",
+    "text": "Am afraid of many things.",
+    "question_type": "single_choice",
+    "question_order": 61,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANXIETY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E103",
+    "text": "Avoid contacts with others.",
+    "question_type": "single_choice",
+    "question_order": 62,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "FRIENDLINESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "O103",
+    "text": "Love to daydream.",
+    "question_type": "single_choice",
+    "question_order": 63,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMAGINATION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A103",
+    "text": "Trust what people say.",
+    "question_type": "single_choice",
+    "question_order": 64,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TRUST",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "C103",
+    "text": "Handle tasks smoothly.",
+    "question_type": "single_choice",
+    "question_order": 65,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_EFFICACY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N203",
+    "text": "Lose my temper.",
+    "question_type": "single_choice",
+    "question_order": 66,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANGER",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E203",
+    "text": "Prefer to be alone.",
+    "question_type": "single_choice",
+    "question_order": 67,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "GREGARIOUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "O203",
+    "text": "Do not like poetry.",
+    "question_type": "single_choice",
+    "question_order": 68,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ARTISTIC_INTERESTS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A203",
+    "text": "Take advantage of others.",
+    "question_type": "single_choice",
+    "question_order": 69,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MORALITY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C203",
+    "text": "Leave a mess in my room.",
+    "question_type": "single_choice",
+    "question_order": 70,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ORDERLINESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N303",
+    "text": "Am often down in the dumps.",
+    "question_type": "single_choice",
+    "question_order": 71,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DEPRESSION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E303",
+    "text": "Take control of things.",
+    "question_type": "single_choice",
+    "question_order": 72,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ASSERTIVENESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O303",
+    "text": "Rarely notice my emotional reactions.",
+    "question_type": "single_choice",
+    "question_order": 73,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EMOTIONALITY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A303",
+    "text": "Am indifferent to the feelings of others.",
+    "question_type": "single_choice",
+    "question_order": 74,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ALTRUISM",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C303",
+    "text": "Break rules.",
+    "question_type": "single_choice",
+    "question_order": 75,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DUTIFULNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N403",
+    "text": "Only feel comfortable with friends.",
+    "question_type": "single_choice",
+    "question_order": 76,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_CONSCIOUSNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E403",
+    "text": "Do a lot in my spare time.",
+    "question_type": "single_choice",
+    "question_order": 77,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACTIVITY_LEVEL",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O403",
+    "text": "Dislike changes.",
+    "question_type": "single_choice",
+    "question_order": 78,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ADVENTUROUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A403",
+    "text": "Insult people.",
+    "question_type": "single_choice",
+    "question_order": 79,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "COOPERATION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C403",
+    "text": "Do just enough work to get by.",
+    "question_type": "single_choice",
+    "question_order": 80,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACHIEVEMENT_STRIVING",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N503",
+    "text": "Easily resist temptations.",
+    "question_type": "single_choice",
+    "question_order": 81,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMMODERATION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "E503",
+    "text": "Enjoy being reckless.",
+    "question_type": "single_choice",
+    "question_order": 82,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EXCITEMENT_SEEKING",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O503",
+    "text": "Have difficulty understanding abstract ideas.",
+    "question_type": "single_choice",
+    "question_order": 83,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "INTELLECT",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A503",
+    "text": "Have a high opinion of myself.",
+    "question_type": "single_choice",
+    "question_order": 84,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MODESTY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C503",
+    "text": "Waste my time.",
+    "question_type": "single_choice",
+    "question_order": 85,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_DISCIPLINE",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N603",
+    "text": "Feel that I'm unable to deal with things.",
+    "question_type": "single_choice",
+    "question_order": 86,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "VULNERABILITY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E603",
+    "text": "Love life.",
+    "question_type": "single_choice",
+    "question_order": 87,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CHEERFULNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O603",
+    "text": "Tend to vote for conservative political candidates.",
+    "question_type": "single_choice",
+    "question_order": 88,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LIBERALISM",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A603",
+    "text": "Am not interested in other people's problems.",
+    "question_type": "single_choice",
+    "question_order": 89,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SYMPATHY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C603",
+    "text": "Rush into things.",
+    "question_type": "single_choice",
+    "question_order": 90,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CAUTIOUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N104",
+    "text": "Get stressed out easily.",
+    "question_type": "single_choice",
+    "question_order": 91,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANXIETY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "E104",
+    "text": "Keep others at a distance.",
+    "question_type": "single_choice",
+    "question_order": 92,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "FRIENDLINESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "O104",
+    "text": "Like to get lost in thought.",
+    "question_type": "single_choice",
+    "question_order": 93,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMAGINATION",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "A104",
+    "text": "Distrust people.",
+    "question_type": "single_choice",
+    "question_order": 94,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TRUST",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C104",
+    "text": "Know how to get things done.",
+    "question_type": "single_choice",
+    "question_order": 95,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_EFFICACY",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "N204",
+    "text": "Am not easily annoyed.",
+    "question_type": "single_choice",
+    "question_order": 96,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ANGER",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "E204",
+    "text": "Avoid crowds.",
+    "question_type": "single_choice",
+    "question_order": 97,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "GREGARIOUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "O204",
+    "text": "Do not enjoy going to art museums.",
+    "question_type": "single_choice",
+    "question_order": 98,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ARTISTIC_INTERESTS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A204",
+    "text": "Obstruct others' plans.",
+    "question_type": "single_choice",
+    "question_order": 99,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MORALITY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C204",
+    "text": "Leave my belongings around.",
+    "question_type": "single_choice",
+    "question_order": 100,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ORDERLINESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N304",
+    "text": "Feel comfortable with myself.",
+    "question_type": "single_choice",
+    "question_order": 101,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DEPRESSION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "E304",
+    "text": "Wait for others to lead the way.",
+    "question_type": "single_choice",
+    "question_order": 102,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ASSERTIVENESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "O304",
+    "text": "Don't understand people who get emotional.",
+    "question_type": "single_choice",
+    "question_order": 103,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EMOTIONALITY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A304",
+    "text": "Take no time for others.",
+    "question_type": "single_choice",
+    "question_order": 104,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ALTRUISM",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C304",
+    "text": "Break my promises.",
+    "question_type": "single_choice",
+    "question_order": 105,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "DUTIFULNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N404",
+    "text": "Am not bothered by difficult social situations.",
+    "question_type": "single_choice",
+    "question_order": 106,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_CONSCIOUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "E404",
+    "text": "Like to take it easy.",
+    "question_type": "single_choice",
+    "question_order": 107,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACTIVITY_LEVEL",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "O404",
+    "text": "Am attached to conventional ways.",
+    "question_type": "single_choice",
+    "question_order": 108,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ADVENTUROUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A404",
+    "text": "Get back at others.",
+    "question_type": "single_choice",
+    "question_order": 109,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "COOPERATION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C404",
+    "text": "Put little time and effort into my work.",
+    "question_type": "single_choice",
+    "question_order": 110,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "ACHIEVEMENT_STRIVING",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N504",
+    "text": "Am able to control my cravings.",
+    "question_type": "single_choice",
+    "question_order": 111,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "IMMODERATION",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "E504",
+    "text": "Act wild and crazy.",
+    "question_type": "single_choice",
+    "question_order": 112,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "EXCITEMENT_SEEKING",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O504",
+    "text": "Am not interested in theoretical discussions.",
+    "question_type": "single_choice",
+    "question_order": 113,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "INTELLECT",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A504",
+    "text": "Boast about my virtues.",
+    "question_type": "single_choice",
+    "question_order": 114,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "MODESTY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C504",
+    "text": "Have difficulty starting tasks.",
+    "question_type": "single_choice",
+    "question_order": 115,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SELF_DISCIPLINE",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "N604",
+    "text": "Remain calm under pressure.",
+    "question_type": "single_choice",
+    "question_order": 116,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "VULNERABILITY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "E604",
+    "text": "Look at the bright side of life.",
+    "question_type": "single_choice",
+    "question_order": 117,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CHEERFULNESS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ]
+  },
+  {
+    "code": "O604",
+    "text": "Believe that we should be tough on crime.",
+    "question_type": "single_choice",
+    "question_order": 118,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LIBERALISM",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "A604",
+    "text": "Try not to think about the needy.",
+    "question_type": "single_choice",
+    "question_order": 119,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "SYMPATHY",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  },
+  {
+    "code": "C604",
+    "text": "Act without thinking.",
+    "question_type": "single_choice",
+    "question_order": 120,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "CAUTIOUSNESS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ]
+  }
+]

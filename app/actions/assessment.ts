@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import {
   loadAssessmentCompletionState,
 } from "@/lib/assessment/completion-server";
@@ -125,6 +126,16 @@ type PersistAssessmentSelectionsOptions = {
 };
 
 const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
+
+function revalidateAttemptPaths(attemptId: string) {
+  revalidatePath("/app");
+  revalidatePath(`/app/attempts/${attemptId}`);
+  revalidatePath(`/app/attempts/${attemptId}/run`);
+  revalidatePath(`/app/attempts/${attemptId}/report`);
+  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/attempts/${attemptId}`);
+  revalidatePath(`/dashboard/attempts/${attemptId}/run`);
+}
 
 function isStringArray(value: AssessmentSelectionValue): value is string[] {
   return Array.isArray(value);
@@ -596,6 +607,8 @@ export async function saveAssessmentProgress(
       return result;
     }
 
+    revalidateAttemptPaths(result.attemptId);
+
     return {
       ok: true,
       attemptId: result.attemptId,
@@ -627,6 +640,8 @@ export async function saveProtectedAssessmentProgress(
     if (!result.ok) {
       return result;
     }
+
+    revalidateAttemptPaths(result.attemptId);
 
     return {
       ok: true,
@@ -740,6 +755,8 @@ export async function setProtectedAttemptLocale(formData: FormData) {
     redirect(`${returnPath || `/app/attempts/${attemptId}/run`}?error=locale-update-failed`);
   }
 
+  revalidateAttemptPaths(attemptId);
+
   redirect(returnPath || `/app/attempts/${attemptId}/run`);
 }
 
@@ -811,6 +828,8 @@ export async function completeAssessmentAttempt(
       sameSite: "lax",
       path: "/",
     });
+
+    revalidateAttemptPaths(persistResult.attemptId);
 
     return {
       ok: true,
@@ -905,6 +924,8 @@ export async function completeProtectedAssessmentAttempt(
       generatedAt: new Date().toISOString(),
       completedAt: null,
     };
+
+    revalidateAttemptPaths(persistResult.attemptId);
 
     return {
       ok: true,

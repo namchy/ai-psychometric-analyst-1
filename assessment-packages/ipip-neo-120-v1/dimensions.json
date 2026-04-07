@@ -1,0 +1,212 @@
+[
+  {
+    "code": "ANXIETY",
+    "name": "Anxiety",
+    "description": "Facet of Neuroticism.",
+    "display_order": 1,
+    "is_active": true
+  },
+  {
+    "code": "ANGER",
+    "name": "Anger",
+    "description": "Facet of Neuroticism.",
+    "display_order": 2,
+    "is_active": true
+  },
+  {
+    "code": "DEPRESSION",
+    "name": "Depression",
+    "description": "Facet of Neuroticism.",
+    "display_order": 3,
+    "is_active": true
+  },
+  {
+    "code": "SELF_CONSCIOUSNESS",
+    "name": "Self-Consciousness",
+    "description": "Facet of Neuroticism.",
+    "display_order": 4,
+    "is_active": true
+  },
+  {
+    "code": "IMMODERATION",
+    "name": "Immoderation",
+    "description": "Facet of Neuroticism.",
+    "display_order": 5,
+    "is_active": true
+  },
+  {
+    "code": "VULNERABILITY",
+    "name": "Vulnerability",
+    "description": "Facet of Neuroticism.",
+    "display_order": 6,
+    "is_active": true
+  },
+  {
+    "code": "FRIENDLINESS",
+    "name": "Friendliness",
+    "description": "Facet of Extraversion.",
+    "display_order": 7,
+    "is_active": true
+  },
+  {
+    "code": "GREGARIOUSNESS",
+    "name": "Gregariousness",
+    "description": "Facet of Extraversion.",
+    "display_order": 8,
+    "is_active": true
+  },
+  {
+    "code": "ASSERTIVENESS",
+    "name": "Assertiveness",
+    "description": "Facet of Extraversion.",
+    "display_order": 9,
+    "is_active": true
+  },
+  {
+    "code": "ACTIVITY_LEVEL",
+    "name": "Activity Level",
+    "description": "Facet of Extraversion.",
+    "display_order": 10,
+    "is_active": true
+  },
+  {
+    "code": "EXCITEMENT_SEEKING",
+    "name": "Excitement Seeking",
+    "description": "Facet of Extraversion.",
+    "display_order": 11,
+    "is_active": true
+  },
+  {
+    "code": "CHEERFULNESS",
+    "name": "Cheerfulness",
+    "description": "Facet of Extraversion.",
+    "display_order": 12,
+    "is_active": true
+  },
+  {
+    "code": "IMAGINATION",
+    "name": "Imagination",
+    "description": "Facet of Openness.",
+    "display_order": 13,
+    "is_active": true
+  },
+  {
+    "code": "ARTISTIC_INTERESTS",
+    "name": "Artistic Interests",
+    "description": "Facet of Openness.",
+    "display_order": 14,
+    "is_active": true
+  },
+  {
+    "code": "EMOTIONALITY",
+    "name": "Emotionality",
+    "description": "Facet of Openness.",
+    "display_order": 15,
+    "is_active": true
+  },
+  {
+    "code": "ADVENTUROUSNESS",
+    "name": "Adventurousness",
+    "description": "Facet of Openness.",
+    "display_order": 16,
+    "is_active": true
+  },
+  {
+    "code": "INTELLECT",
+    "name": "Intellect",
+    "description": "Facet of Openness.",
+    "display_order": 17,
+    "is_active": true
+  },
+  {
+    "code": "LIBERALISM",
+    "name": "Liberalism",
+    "description": "Facet of Openness.",
+    "display_order": 18,
+    "is_active": true
+  },
+  {
+    "code": "TRUST",
+    "name": "Trust",
+    "description": "Facet of Agreeableness.",
+    "display_order": 19,
+    "is_active": true
+  },
+  {
+    "code": "MORALITY",
+    "name": "Morality",
+    "description": "Facet of Agreeableness.",
+    "display_order": 20,
+    "is_active": true
+  },
+  {
+    "code": "ALTRUISM",
+    "name": "Altruism",
+    "description": "Facet of Agreeableness.",
+    "display_order": 21,
+    "is_active": true
+  },
+  {
+    "code": "COOPERATION",
+    "name": "Cooperation",
+    "description": "Facet of Agreeableness.",
+    "display_order": 22,
+    "is_active": true
+  },
+  {
+    "code": "MODESTY",
+    "name": "Modesty",
+    "description": "Facet of Agreeableness.",
+    "display_order": 23,
+    "is_active": true
+  },
+  {
+    "code": "SYMPATHY",
+    "name": "Sympathy",
+    "description": "Facet of Agreeableness.",
+    "display_order": 24,
+    "is_active": true
+  },
+  {
+    "code": "SELF_EFFICACY",
+    "name": "Self-Efficacy",
+    "description": "Facet of Conscientiousness.",
+    "display_order": 25,
+    "is_active": true
+  },
+  {
+    "code": "ORDERLINESS",
+    "name": "Orderliness",
+    "description": "Facet of Conscientiousness.",
+    "display_order": 26,
+    "is_active": true
+  },
+  {
+    "code": "DUTIFULNESS",
+    "name": "Dutifulness",
+    "description": "Facet of Conscientiousness.",
+    "display_order": 27,
+    "is_active": true
+  },
+  {
+    "code": "ACHIEVEMENT_STRIVING",
+    "name": "Achievement Striving",
+    "description": "Facet of Conscientiousness.",
+    "display_order": 28,
+    "is_active": true
+  },
+  {
+    "code": "SELF_DISCIPLINE",
+    "name": "Self-Discipline",
+    "description": "Facet of Conscientiousness.",
+    "display_order": 29,
+    "is_active": true
+  },
+  {
+    "code": "CAUTIOUSNESS",
+    "name": "Cautiousness",
+    "description": "Facet of Conscientiousness.",
+    "display_order": 30,
+    "is_active": true
+  }
+]

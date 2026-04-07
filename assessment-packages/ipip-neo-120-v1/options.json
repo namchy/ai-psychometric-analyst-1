@@ -1,0 +1,32 @@
+[
+  {
+    "code": "SD",
+    "label": "Uopšte nije tačno",
+    "value": 1,
+    "option_order": 1
+  },
+  {
+    "code": "D",
+    "label": "Uglavnom nije tačno",
+    "value": 2,
+    "option_order": 2
+  },
+  {
+    "code": "N",
+    "label": "Ni tačno ni netačno",
+    "value": 3,
+    "option_order": 3
+  },
+  {
+    "code": "A",
+    "label": "Uglavnom je tačno",
+    "value": 4,
+    "option_order": 4
+  },
+  {
+    "code": "SA",
+    "label": "Potpuno je tačno",
+    "value": 5,
+    "option_order": 5
+  }
+]

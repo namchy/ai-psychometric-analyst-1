@@ -1,0 +1,482 @@
+[
+  {
+    "code": "N101",
+    "text": "Brinem se oko stvari."
+  },
+  {
+    "code": "E101",
+    "text": "Lako sklapam prijateljstva."
+  },
+  {
+    "code": "O101",
+    "text": "Imam živu maštu."
+  },
+  {
+    "code": "A101",
+    "text": "Vjerujem drugima."
+  },
+  {
+    "code": "C101",
+    "text": "Uspješno završavam zadatke."
+  },
+  {
+    "code": "N201",
+    "text": "Lako se naljutim."
+  },
+  {
+    "code": "E201",
+    "text": "Volim velike zabave."
+  },
+  {
+    "code": "O201",
+    "text": "Vjerujem u važnost umjetnosti."
+  },
+  {
+    "code": "A201",
+    "text": "Koristim druge za vlastite ciljeve."
+  },
+  {
+    "code": "C201",
+    "text": "Volim pospremati."
+  },
+  {
+    "code": "N301",
+    "text": "Često sam potišten/a."
+  },
+  {
+    "code": "E301",
+    "text": "Preuzimam vodstvo."
+  },
+  {
+    "code": "O301",
+    "text": "Svoja osjećanja doživljavam intenzivno."
+  },
+  {
+    "code": "A301",
+    "text": "Volim pomagati drugima."
+  },
+  {
+    "code": "C301",
+    "text": "Držim svoja obećanja."
+  },
+  {
+    "code": "N401",
+    "text": "Teško mi je prići drugima."
+  },
+  {
+    "code": "E401",
+    "text": "Uvijek sam zauzet/a."
+  },
+  {
+    "code": "O401",
+    "text": "Više volim raznolikost nego rutinu."
+  },
+  {
+    "code": "A401",
+    "text": "Volim dobar sukob."
+  },
+  {
+    "code": "C401",
+    "text": "Naporno radim."
+  },
+  {
+    "code": "N501",
+    "text": "Prepuštam se pretjerivanju."
+  },
+  {
+    "code": "E501",
+    "text": "Volim uzbuđenje."
+  },
+  {
+    "code": "O501",
+    "text": "Volim čitati zahtjevno štivo."
+  },
+  {
+    "code": "A501",
+    "text": "Vjerujem da sam bolji/a od drugih."
+  },
+  {
+    "code": "C501",
+    "text": "Uvijek sam spreman/na."
+  },
+  {
+    "code": "N601",
+    "text": "Lako paničim."
+  },
+  {
+    "code": "E601",
+    "text": "Zračim radošću."
+  },
+  {
+    "code": "O601",
+    "text": "Sklon/a sam glasati za liberalne političke kandidate."
+  },
+  {
+    "code": "A601",
+    "text": "Saosjećam s beskućnicima."
+  },
+  {
+    "code": "C601",
+    "text": "Upuštam se u stvari bez razmišljanja."
+  },
+  {
+    "code": "N102",
+    "text": "Plašim se najgoreg."
+  },
+  {
+    "code": "E102",
+    "text": "Osjećam se ugodno među ljudima."
+  },
+  {
+    "code": "O102",
+    "text": "Uživam u bujnim letovima mašte."
+  },
+  {
+    "code": "A102",
+    "text": "Vjerujem da drugi imaju dobre namjere."
+  },
+  {
+    "code": "C102",
+    "text": "Ističem se u onome što radim."
+  },
+  {
+    "code": "N202",
+    "text": "Lako se iznerviram."
+  },
+  {
+    "code": "E202",
+    "text": "Na zabavama razgovaram s mnogo različitih ljudi."
+  },
+  {
+    "code": "O202",
+    "text": "Vidim ljepotu u stvarima koje drugi možda ne primjećuju."
+  },
+  {
+    "code": "A202",
+    "text": "Varam da bih napredovao/la."
+  },
+  {
+    "code": "C202",
+    "text": "Često zaboravim vratiti stvari na njihovo mjesto."
+  },
+  {
+    "code": "N302",
+    "text": "Ne sviđam se sam/a sebi."
+  },
+  {
+    "code": "E302",
+    "text": "Pokušavam voditi druge."
+  },
+  {
+    "code": "O302",
+    "text": "Osjećam emocije drugih ljudi."
+  },
+  {
+    "code": "A302",
+    "text": "Brinem se za druge."
+  },
+  {
+    "code": "C302",
+    "text": "Govorim istinu."
+  },
+  {
+    "code": "N402",
+    "text": "Bojim se skrenuti pažnju na sebe."
+  },
+  {
+    "code": "E402",
+    "text": "Uvijek sam u pokretu."
+  },
+  {
+    "code": "O402",
+    "text": "Radije se držim onoga što poznajem."
+  },
+  {
+    "code": "A402",
+    "text": "Vičem na ljude."
+  },
+  {
+    "code": "C402",
+    "text": "Radim više nego što se od mene očekuje."
+  },
+  {
+    "code": "N502",
+    "text": "Rijetko pretjerujem."
+  },
+  {
+    "code": "E502",
+    "text": "Tražim avanturu."
+  },
+  {
+    "code": "O502",
+    "text": "Izbjegavam filozofske rasprave."
+  },
+  {
+    "code": "A502",
+    "text": "Imam visoko mišljenje o sebi."
+  },
+  {
+    "code": "C502",
+    "text": "Sprovodim svoje planove."
+  },
+  {
+    "code": "N602",
+    "text": "Događaji me lako preplave."
+  },
+  {
+    "code": "E602",
+    "text": "Mnogo se zabavljam."
+  },
+  {
+    "code": "O602",
+    "text": "Vjerujem da ne postoji apsolutno ispravno i pogrešno."
+  },
+  {
+    "code": "A602",
+    "text": "Saosjećam s onima kojima je gore nego meni."
+  },
+  {
+    "code": "C602",
+    "text": "Donosim ishitrene odluke."
+  },
+  {
+    "code": "N103",
+    "text": "Bojim se mnogih stvari."
+  },
+  {
+    "code": "E103",
+    "text": "Izbjegavam kontakte s drugima."
+  },
+  {
+    "code": "O103",
+    "text": "Volim sanjariti."
+  },
+  {
+    "code": "A103",
+    "text": "Vjerujem onome što ljudi kažu."
+  },
+  {
+    "code": "C103",
+    "text": "Glatko obavljam zadatke."
+  },
+  {
+    "code": "N203",
+    "text": "Gubim živce."
+  },
+  {
+    "code": "E203",
+    "text": "Radije sam sam/a."
+  },
+  {
+    "code": "O203",
+    "text": "Ne volim poeziju."
+  },
+  {
+    "code": "A203",
+    "text": "Iskorištavam druge."
+  },
+  {
+    "code": "C203",
+    "text": "Ostavljam nered u svojoj sobi."
+  },
+  {
+    "code": "N303",
+    "text": "Često sam u lošem raspoloženju."
+  },
+  {
+    "code": "E303",
+    "text": "Preuzimam kontrolu nad stvarima."
+  },
+  {
+    "code": "O303",
+    "text": "Rijetko primjećujem svoje emocionalne reakcije."
+  },
+  {
+    "code": "A303",
+    "text": "Ravnodušan/na sam prema osjećanjima drugih."
+  },
+  {
+    "code": "C303",
+    "text": "Kršim pravila."
+  },
+  {
+    "code": "N403",
+    "text": "Ugodno se osjećam samo s prijateljima."
+  },
+  {
+    "code": "E403",
+    "text": "Mnogo toga radim u slobodno vrijeme."
+  },
+  {
+    "code": "O403",
+    "text": "Ne volim promjene."
+  },
+  {
+    "code": "A403",
+    "text": "Vrijeđam ljude."
+  },
+  {
+    "code": "C403",
+    "text": "Radim tek onoliko koliko je potrebno da prođem."
+  },
+  {
+    "code": "N503",
+    "text": "Lako odolijevam iskušenjima."
+  },
+  {
+    "code": "E503",
+    "text": "Uživam biti nepromišljen/a."
+  },
+  {
+    "code": "O503",
+    "text": "Teško razumijem apstraktne ideje."
+  },
+  {
+    "code": "A503",
+    "text": "Imam vrlo visoko mišljenje o sebi."
+  },
+  {
+    "code": "C503",
+    "text": "Traćim svoje vrijeme."
+  },
+  {
+    "code": "N603",
+    "text": "Osjećam da se ne mogu nositi sa stvarima."
+  },
+  {
+    "code": "E603",
+    "text": "Volim život."
+  },
+  {
+    "code": "O603",
+    "text": "Sklon/a sam glasati za konzervativne političke kandidate."
+  },
+  {
+    "code": "A603",
+    "text": "Nisam zainteresovan/a za probleme drugih ljudi."
+  },
+  {
+    "code": "C603",
+    "text": "Srljam u stvari."
+  },
+  {
+    "code": "N104",
+    "text": "Lako se izložim stresu."
+  },
+  {
+    "code": "E104",
+    "text": "Držim druge na odstojanju."
+  },
+  {
+    "code": "O104",
+    "text": "Volim se izgubiti u mislima."
+  },
+  {
+    "code": "A104",
+    "text": "Nepovjerljiv/a sam prema ljudima."
+  },
+  {
+    "code": "C104",
+    "text": "Znam kako završiti stvari."
+  },
+  {
+    "code": "N204",
+    "text": "Nije me lako iznervirati."
+  },
+  {
+    "code": "E204",
+    "text": "Izbjegavam gužve."
+  },
+  {
+    "code": "O204",
+    "text": "Ne uživam u odlascima u muzeje umjetnosti."
+  },
+  {
+    "code": "A204",
+    "text": "Opstruiram planove drugih."
+  },
+  {
+    "code": "C204",
+    "text": "Ostavljam svoje stvari unaokolo."
+  },
+  {
+    "code": "N304",
+    "text": "Osjećam se ugodno sa sobom."
+  },
+  {
+    "code": "E304",
+    "text": "Čekam da drugi povedu."
+  },
+  {
+    "code": "O304",
+    "text": "Ne razumijem ljude koji postanu emotivni."
+  },
+  {
+    "code": "A304",
+    "text": "Ne odvajam vrijeme za druge."
+  },
+  {
+    "code": "C304",
+    "text": "Kršim svoja obećanja."
+  },
+  {
+    "code": "N404",
+    "text": "Ne smetaju mi teške društvene situacije."
+  },
+  {
+    "code": "E404",
+    "text": "Volim ići laganije kroz stvari."
+  },
+  {
+    "code": "O404",
+    "text": "Vezan/a sam za konvencionalne načine."
+  },
+  {
+    "code": "A404",
+    "text": "Vraćam drugima milo za drago."
+  },
+  {
+    "code": "C404",
+    "text": "U svoj posao ulažem malo vremena i truda."
+  },
+  {
+    "code": "N504",
+    "text": "Mogu kontrolisati svoje žudnje."
+  },
+  {
+    "code": "E504",
+    "text": "Ponašam se divlje i ludo."
+  },
+  {
+    "code": "O504",
+    "text": "Nisam zainteresovan/a za teorijske rasprave."
+  },
+  {
+    "code": "A504",
+    "text": "Hvalim se svojim vrlinama."
+  },
+  {
+    "code": "C504",
+    "text": "Teško mi je početi zadatke."
+  },
+  {
+    "code": "N604",
+    "text": "Ostajem miran/na pod pritiskom."
+  },
+  {
+    "code": "E604",
+    "text": "Gledam vedriju stranu života."
+  },
+  {
+    "code": "O604",
+    "text": "Vjerujem da prema kriminalu treba biti strog."
+  },
+  {
+    "code": "A604",
+    "text": "Pokušavam ne misliti na one kojima treba pomoć."
+  },
+  {
+    "code": "C604",
+    "text": "Djelujem bez razmišljanja."
+  }
+]
