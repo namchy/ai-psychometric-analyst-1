@@ -78,6 +78,17 @@ function getEffectiveSelections(
   };
 }
 
+function getQuestionSelectionDelta(
+  initialSelections: AssessmentSelectionsInput,
+  selections: SelectionState,
+  questionId: string,
+): Record<string, AssessmentSelectionValue> {
+  const effectiveSelections = getEffectiveSelections(initialSelections, selections);
+  const selection = effectiveSelections[questionId];
+
+  return selection === undefined ? {} : { [questionId]: selection };
+}
+
 function resetSaveFeedback(
   setSaveStatus: (status: SaveStatus) => void,
   setSaveMessage: (message: string | null) => void,
@@ -809,6 +820,7 @@ export function AssessmentForm({
   async function persistSelections(
     nextSelections: SelectionState,
     options?: {
+      selections?: AssessmentSelectionsInput;
       successMessage?: string | null;
     },
   ): Promise<boolean> {
@@ -825,7 +837,8 @@ export function AssessmentForm({
         attemptId,
         testId,
         locale,
-        selections: getEffectiveSelections(initialSelections, nextSelections),
+        selections:
+          options?.selections ?? getEffectiveSelections(initialSelections, nextSelections),
       });
 
       if (!result.ok) {
@@ -853,7 +866,12 @@ export function AssessmentForm({
 
   async function handleSave() {
     clearManualSaveSuccessFeedback();
-    const didSave = await persistSelections(selections);
+    const didSave = await persistSelections(selections, {
+      selections:
+        isStepLayout && currentQuestion
+          ? getQuestionSelectionDelta(initialSelections, selections, currentQuestion.id)
+          : getEffectiveSelections(initialSelections, selections),
+    });
 
     if (didSave) {
       showManualSaveSuccessFeedback();
@@ -928,7 +946,9 @@ export function AssessmentForm({
 
     const nextSelections = updateSelection(currentQuestion.id, optionId);
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
-    const didSave = await persistSelections(nextSelections);
+    const didSave = await persistSelections(nextSelections, {
+      selections: getQuestionSelectionDelta(initialSelections, nextSelections, currentQuestion.id),
+    });
 
     if (!didSave || isLastQuestion) {
       return;

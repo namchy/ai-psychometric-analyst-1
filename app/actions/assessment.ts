@@ -127,7 +127,12 @@ type PersistAssessmentSelectionsOptions = {
 
 const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
 
-function revalidateAttemptPaths(attemptId: string) {
+function revalidateAttemptRunPaths(attemptId: string) {
+  revalidatePath(`/app/attempts/${attemptId}/run`);
+  revalidatePath(`/dashboard/attempts/${attemptId}/run`);
+}
+
+function revalidateAttemptAllPaths(attemptId: string) {
   revalidatePath("/app");
   revalidatePath(`/app/attempts/${attemptId}`);
   revalidatePath(`/app/attempts/${attemptId}/run`);
@@ -241,20 +246,6 @@ async function persistAssessmentSelections(
   }
 
   const supabase = createSupabaseAdminClient();
-
-  const { data: existingTest, error: testError } = await supabase
-    .from("tests")
-    .select("id")
-    .eq("id", input.testId)
-    .maybeSingle();
-
-  if (testError) {
-    return { ok: false, message: "Unable to validate test." };
-  }
-
-  if (!existingTest) {
-    return { ok: false, message: "Test not found." };
-  }
 
   const selectionEntries = Object.entries(input.selections);
   const questionIds = selectionEntries.map(([questionId]) => questionId);
@@ -380,6 +371,7 @@ async function persistAssessmentSelections(
   }
 
   let nextAttemptId = input.attemptId;
+  let protectedAttempt: AttemptRecord & { test_id: string } | null = null;
 
   if (options.requireProtectedOwnership && !nextAttemptId) {
     return {
@@ -399,14 +391,24 @@ async function persistAssessmentSelections(
           message: "This assessment attempt is not available for the current user.",
         };
       }
+
+       protectedAttempt = ownedAttempt as AttemptRecord & { test_id: string };
     }
 
-    const { data: existingAttemptData, error: existingAttemptError } = await supabase
-      .from("attempts")
-      .select("id, status, completed_at")
-      .eq("id", nextAttemptId)
-      .eq("test_id", input.testId)
-      .maybeSingle();
+    let existingAttemptData: AttemptRecord | null = protectedAttempt;
+    let existingAttemptError: { message: string } | null = null;
+
+    if (!existingAttemptData) {
+      const attemptLookup = await supabase
+        .from("attempts")
+        .select("id, status, completed_at")
+        .eq("id", nextAttemptId)
+        .eq("test_id", input.testId)
+        .maybeSingle();
+
+      existingAttemptData = attemptLookup.data as AttemptRecord | null;
+      existingAttemptError = attemptLookup.error;
+    }
 
     if (existingAttemptError) {
       return { ok: false, message: "Unable to validate attempt." };
@@ -415,7 +417,7 @@ async function persistAssessmentSelections(
     if (!existingAttemptData) {
       nextAttemptId = null;
     } else {
-      const attempt = existingAttemptData as AttemptRecord;
+      const attempt = existingAttemptData;
 
       if (attempt.status === "completed") {
         return {
@@ -607,7 +609,7 @@ export async function saveAssessmentProgress(
       return result;
     }
 
-    revalidateAttemptPaths(result.attemptId);
+    revalidateAttemptRunPaths(result.attemptId);
 
     return {
       ok: true,
@@ -641,7 +643,7 @@ export async function saveProtectedAssessmentProgress(
       return result;
     }
 
-    revalidateAttemptPaths(result.attemptId);
+    revalidateAttemptRunPaths(result.attemptId);
 
     return {
       ok: true,
@@ -755,7 +757,7 @@ export async function setProtectedAttemptLocale(formData: FormData) {
     redirect(`${returnPath || `/app/attempts/${attemptId}/run`}?error=locale-update-failed`);
   }
 
-  revalidateAttemptPaths(attemptId);
+  revalidateAttemptRunPaths(attemptId);
 
   redirect(returnPath || `/app/attempts/${attemptId}/run`);
 }
@@ -829,7 +831,7 @@ export async function completeAssessmentAttempt(
       path: "/",
     });
 
-    revalidateAttemptPaths(persistResult.attemptId);
+    revalidateAttemptAllPaths(persistResult.attemptId);
 
     return {
       ok: true,
@@ -925,7 +927,7 @@ export async function completeProtectedAssessmentAttempt(
       completedAt: null,
     };
 
-    revalidateAttemptPaths(persistResult.attemptId);
+    revalidateAttemptAllPaths(persistResult.attemptId);
 
     return {
       ok: true,

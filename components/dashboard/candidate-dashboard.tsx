@@ -89,6 +89,7 @@ type CandidateDashboardViewProps = {
 };
 
 type DashboardAttemptStatus = "in_progress" | "completed" | "abandoned";
+type DashboardAttemptLifecycle = "in_progress" | "not_started" | "completed" | "abandoned";
 
 type DashboardTestCategory = "personality" | "behavioral" | "cognitive";
 
@@ -187,22 +188,54 @@ const ROADMAP_TESTS = [
   },
 ] as const;
 
-function getLatestAttemptForTestByStatus(
+function getDashboardAttemptLifecycle(
+  attempt: Pick<DashboardAttemptRow, "status" | "responseCount">,
+): DashboardAttemptLifecycle {
+  if (attempt.status === "completed") {
+    return "completed";
+  }
+
+  if (attempt.status === "abandoned") {
+    return "abandoned";
+  }
+
+  return attempt.responseCount > 0 ? "in_progress" : "not_started";
+}
+
+function getAttemptLifecyclePriority(lifecycle: DashboardAttemptLifecycle): number {
+  switch (lifecycle) {
+    case "in_progress":
+      return 0;
+    case "not_started":
+      return 1;
+    case "completed":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function getPrimaryAttemptForTest(
   testId: string,
-  status: DashboardAttemptStatus,
   attempts: DashboardAttemptRow[],
 ): DashboardAttemptRow | null {
-  const matchingAttempts = attempts.filter(
-    (attempt) => attempt.test_id === testId && attempt.status === status,
-  );
+  const matchingAttempts = attempts.filter((attempt) => attempt.test_id === testId);
 
   if (matchingAttempts.length === 0) {
     return null;
   }
 
-  return [...matchingAttempts].sort(
-    (left, right) => Date.parse(right.created_at) - Date.parse(left.created_at),
-  )[0] ?? null;
+  return [...matchingAttempts].sort((left, right) => {
+    const priorityDifference =
+      getAttemptLifecyclePriority(getDashboardAttemptLifecycle(left)) -
+      getAttemptLifecyclePriority(getDashboardAttemptLifecycle(right));
+
+    if (priorityDifference !== 0) {
+      return priorityDifference;
+    }
+
+    return Date.parse(right.created_at) - Date.parse(left.created_at);
+  })[0] ?? null;
 }
 
 function formatRelativeActivity(timestamp: string): string {
@@ -314,8 +347,10 @@ function buildAssessmentCardsFromTests(
 ): CandidateAssessmentCard[] {
   const accessibleTestIds = new Set(accessRows.map((row) => row.test_id));
   const databaseCards: CandidateAssessmentCard[] = tests.map((test) => {
-    const inProgressAttempt = getLatestAttemptForTestByStatus(test.id, "in_progress", attempts);
-    const completedAttempt = getLatestAttemptForTestByStatus(test.id, "completed", attempts);
+    const primaryAttempt = getPrimaryAttemptForTest(test.id, attempts);
+    const primaryAttemptLifecycle = primaryAttempt
+      ? getDashboardAttemptLifecycle(primaryAttempt)
+      : null;
     const visuals = getCategoryVisuals(test.category);
     const totalQuestions = questionCountsByTestId.get(test.id) ?? 0;
     const isReadyForRun = totalQuestions > 0;
@@ -329,15 +364,21 @@ function buildAssessmentCardsFromTests(
     let disabled = !hasPaidAccess;
     let availabilityNote: string | undefined;
 
-    if (inProgressAttempt) {
-      attemptId = inProgressAttempt.id;
-      href = `/app/attempts/${inProgressAttempt.id}/run`;
+    if (primaryAttempt && primaryAttemptLifecycle === "in_progress") {
+      attemptId = primaryAttempt.id;
+      href = `/app/attempts/${primaryAttempt.id}/run`;
       ctaKind = "resume";
       ctaLabel = "Nastavi procjenu";
       disabled = false;
-    } else if (completedAttempt) {
-      attemptId = completedAttempt.id;
-      href = `/app/attempts/${completedAttempt.id}/report`;
+    } else if (primaryAttempt && primaryAttemptLifecycle === "not_started") {
+      attemptId = primaryAttempt.id;
+      href = `/app/attempts/${primaryAttempt.id}/run`;
+      ctaKind = "start";
+      ctaLabel = "Započni procjenu";
+      disabled = false;
+    } else if (primaryAttempt && primaryAttemptLifecycle === "completed") {
+      attemptId = primaryAttempt.id;
+      href = `/app/attempts/${primaryAttempt.id}/report`;
       ctaKind = "report";
       ctaLabel = "Vidi rezultate";
       disabled = false;
@@ -357,10 +398,9 @@ function buildAssessmentCardsFromTests(
     return {
       testId: test.id,
       attemptId,
-      answeredQuestions:
-        inProgressAttempt?.responseCount ?? completedAttempt?.responseCount ?? undefined,
+      answeredQuestions: primaryAttempt?.responseCount,
       totalQuestions,
-      updatedAt: inProgressAttempt?.updated_at ?? completedAttempt?.updated_at,
+      updatedAt: primaryAttempt?.updated_at,
       title: test.name,
       description: test.description?.trim() || "Opis testa će biti dostupan uskoro.",
       accessState: hasPaidAccess ? "paid" : "upgrade",
