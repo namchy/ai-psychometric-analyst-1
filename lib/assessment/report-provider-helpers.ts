@@ -7,6 +7,23 @@ import {
   normalizeDimensionCode,
 } from "@/lib/assessment/detailed-report-v1";
 import {
+  getIpipNeo120DomainLabel,
+  getIpipNeo120FacetDomainCode,
+  getIpipNeo120FacetLabel,
+  IPIP_NEO_120_DOMAIN_ORDER,
+  IPIP_NEO_120_FACETS_BY_DOMAIN,
+  IPIP_NEO_120_TEST_FAMILY,
+  isIpipNeo120TestSlug,
+  type IpipNeo120DomainCode,
+  type IpipNeo120FacetCode,
+} from "@/lib/assessment/ipip-neo-120-labels";
+import {
+  type IpipNeo120ParticipantPromptDomain,
+  type IpipNeo120ParticipantReportPromptInput,
+  type IpipNeo120ParticipantPromptSubdimension,
+  type IpipNeo120ParticipantReportBand,
+} from "@/lib/assessment/ipip-neo-120-report-contract";
+import {
   IPC_TEST_FAMILY,
   isIpcTestSlug,
   type IpcRawOctantScores,
@@ -137,9 +154,120 @@ export function buildIpcReportPromptInput(
   };
 }
 
+function getIpipNeo120ScoreBand(averageScore: number): IpipNeo120ParticipantReportBand {
+  if (averageScore >= 3.67) {
+    return "higher";
+  }
+
+  if (averageScore >= 2.34) {
+    return "balanced";
+  }
+
+  return "lower";
+}
+
+function buildIpipNeo120ParticipantPromptInput(
+  input: CompletedAssessmentReportRequest,
+): IpipNeo120ParticipantReportPromptInput {
+  const facetScores = new Map<
+    IpipNeo120FacetCode,
+    {
+      rawScore: number;
+      scoredQuestionCount: number;
+      averageScore: number;
+      domainCode: IpipNeo120DomainCode;
+    }
+  >();
+
+  for (const dimension of input.results.dimensions) {
+    const facetCode = dimension.dimension.trim().toUpperCase() as IpipNeo120FacetCode;
+    const facetLabel = getIpipNeo120FacetLabel(facetCode);
+    const domainCode = getIpipNeo120FacetDomainCode(facetCode);
+
+    if (!facetLabel || !domainCode) {
+      continue;
+    }
+
+    facetScores.set(facetCode, {
+      rawScore: dimension.rawScore,
+      scoredQuestionCount: dimension.scoredQuestionCount,
+      averageScore: getAverageScore(dimension.rawScore, dimension.scoredQuestionCount),
+      domainCode,
+    });
+  }
+
+  const domains: IpipNeo120ParticipantPromptDomain[] = IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+    const facetCodes = IPIP_NEO_120_FACETS_BY_DOMAIN[domainCode];
+    const subdimensions: IpipNeo120ParticipantPromptSubdimension[] = facetCodes.map((facetCode) => {
+      const score = facetScores.get(facetCode);
+
+      return {
+        facet_code: facetCode,
+        label: getIpipNeo120FacetLabel(facetCode) ?? facetCode,
+        score: score?.averageScore ?? 0,
+        band: getIpipNeo120ScoreBand(score?.averageScore ?? 0),
+      };
+    });
+    const totalRawScore = facetCodes.reduce(
+      (sum, facetCode) => sum + (facetScores.get(facetCode)?.rawScore ?? 0),
+      0,
+    );
+    const totalQuestionCount = facetCodes.reduce(
+      (sum, facetCode) => sum + (facetScores.get(facetCode)?.scoredQuestionCount ?? 0),
+      0,
+    );
+    const averageScore = getAverageScore(totalRawScore, totalQuestionCount);
+
+    return {
+      domain_code: domainCode,
+      label: getIpipNeo120DomainLabel(domainCode) ?? domainCode,
+      score: averageScore,
+      band: getIpipNeo120ScoreBand(averageScore),
+      subdimensions,
+    };
+  });
+
+  const rankedDomains = [...domains]
+    .sort((left, right) => right.score - left.score || left.domain_code.localeCompare(right.domain_code))
+    .map((domain) => domain.domain_code);
+  const topSubdimensions = [...facetScores.entries()]
+    .sort((left, right) => right[1].averageScore - left[1].averageScore || left[0].localeCompare(right[0]))
+    .slice(0, 5)
+    .map(([facetCode]) => facetCode);
+
+  return {
+    attempt_id: input.attemptId,
+    test_id: input.testId,
+    test_slug: "ipip-neo-120-v1",
+    test_name: input.testName ?? input.testSlug,
+    test_family: IPIP_NEO_120_TEST_FAMILY,
+    audience: "participant",
+    locale: input.locale,
+    scoring_method: input.scoringMethod,
+    prompt_version: input.promptVersion,
+    scored_response_count: input.results.scoredResponseCount,
+    scale_hint: {
+      min: 1,
+      max: 5,
+      display_mode: "visual_with_discreet_numeric_support",
+    },
+    domains,
+    deterministic_summary: {
+      highest_domain: rankedDomains[0] ?? null,
+      lowest_domain: rankedDomains[rankedDomains.length - 1] ?? null,
+      ranked_domains: rankedDomains,
+      top_subdimensions: topSubdimensions,
+    },
+  };
+}
+
 export function buildReportPromptInput(
   input: CompletedAssessmentReportRequest,
 ): ReportPromptInput {
+  if (isIpipNeo120TestSlug(input.testSlug) && input.audience === "participant") {
+    return buildIpipNeo120ParticipantPromptInput(input);
+  }
+
   return isIpcTestSlug(input.testSlug)
     ? buildIpcReportPromptInput(input)
     : buildAiReportPromptInput(input);

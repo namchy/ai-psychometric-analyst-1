@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { DetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
+import type { IpipNeo120ParticipantReportV1 } from "@/lib/assessment/ipip-neo-120-report-v1";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
@@ -58,6 +59,7 @@ type ReportDimensionSnapshot = {
 };
 
 type ReportRendererSelection =
+  | { kind: "ipip_neo_120_participant_v1"; report: IpipNeo120ParticipantReportV1 }
   | { kind: "big_five_participant_v1"; report: DetailedReportV1 }
   | { kind: "big_five_hr_v1"; report: DetailedReportV1 }
   | { kind: "ipc_participant_v1"; report: IpcParticipantReportV1 }
@@ -73,6 +75,16 @@ function isBigFiveReport(report: unknown): report is DetailedReportV1 {
     Array.isArray((report as DetailedReportV1).strengths) &&
     Array.isArray((report as DetailedReportV1).blind_spots) &&
     Array.isArray((report as DetailedReportV1).dimension_insights)
+  );
+}
+
+function isIpipNeo120ParticipantReport(report: unknown): report is IpipNeo120ParticipantReportV1 {
+  return (
+    Boolean(report) &&
+    typeof report === "object" &&
+    (report as IpipNeo120ParticipantReportV1).contract_version ===
+      "ipip_neo_120_participant_v1" &&
+    Array.isArray((report as IpipNeo120ParticipantReportV1).domains)
   );
 }
 
@@ -122,6 +134,14 @@ function selectReportRenderer(
   }
 
   switch (reportState.reportRenderFormat) {
+    case "ipip_neo_120_participant_v1":
+      return isIpipNeo120ParticipantReport(reportState.report)
+        ? { kind: "ipip_neo_120_participant_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava IPIP-NEO-120 participant izvještaj, ali snapshot shape ne odgovara tom rendereru.",
+          };
     case "big_five_participant_v1":
       return isBigFiveReport(reportState.report)
         ? { kind: "big_five_participant_v1", report: reportState.report }
@@ -712,6 +732,215 @@ function formatIpcNumericMetric(value: number): string {
   return value.toFixed(2);
 }
 
+function formatDiscreetScore(value: number): string {
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+
+  return value.toFixed(2);
+}
+
+function getVisualScoreWidth(value: number, min: number, max: number): number {
+  if (max <= min) {
+    return 0;
+  }
+
+  const normalized = ((value - min) / (max - min)) * 100;
+  return Math.min(100, Math.max(normalized, 0));
+}
+
+function formatNeoBandLabel(band: "lower" | "balanced" | "higher"): string {
+  switch (band) {
+    case "higher":
+      return "Više izraženo";
+    case "balanced":
+      return "Uravnoteženo";
+    default:
+      return "Niže izraženo";
+  }
+}
+
+function IpipNeo120ScoreBar({
+  label,
+  score,
+  min,
+  max,
+}: {
+  label: string;
+  score: number;
+  min: number;
+  max: number;
+}) {
+  const width = getVisualScoreWidth(score, min, max);
+
+  return (
+    <div
+      className="results-score-overview__bar"
+      role="img"
+      aria-label={`${label} skor ${formatDiscreetScore(score)}`}
+    >
+      <span style={{ width: `${Math.max(width, 10)}%` }} />
+    </div>
+  );
+}
+
+function IpipNeo120ParticipantReportSections({
+  report,
+}: {
+  report: IpipNeo120ParticipantReportV1;
+}) {
+  const scaleMin = report.meta.scale_hint.min;
+  const scaleMax = report.meta.scale_hint.max;
+
+  return (
+    <div className="results-report__closing stack-md">
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <p className="results-report__section-kicker">Participant izvještaj</p>
+          <h3>{report.summary.headline}</h3>
+        </div>
+        <p>{report.summary.overview}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Dominantni razvojni signali</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.dominant_signals.map((signal) => (
+            <li key={signal}>{signal}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__section--dimensions stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Domene</h3>
+          <p className="results-report__section-note">
+            Primarni sloj izvještaja. Vizualni prikaz koristi skalu {scaleMin}–{scaleMax} uz diskretan broj.
+          </p>
+        </div>
+
+        <ol className="results-dimension-list">
+          {report.domains.map((domain) => (
+            <li key={domain.domain_code} className="results-dimension-card">
+              <div className="results-dimension-card__header">
+                <div className="results-dimension-card__title">
+                  <h4>{domain.label}</h4>
+                  <p className="results-dimension-card__helper">{formatNeoBandLabel(domain.band)}</p>
+                </div>
+                <div className="results-dimension-card__score">
+                  <span className="results-dimension-card__score-value">
+                    {formatDiscreetScore(domain.score)}
+                  </span>
+                </div>
+              </div>
+
+              <IpipNeo120ScoreBar
+                label={domain.label}
+                score={domain.score}
+                min={scaleMin}
+                max={scaleMax}
+              />
+
+              <p className="results-dimension-card__summary">{domain.summary}</p>
+
+              <section className="results-dimension-card__details stack-xs">
+                <div className="results-dimension-card__detail-block">
+                  <h5>Snage</h5>
+                  <ul className="results-bullet-list">
+                    {domain.strengths.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="results-dimension-card__detail-block">
+                  <h5>Tačke opreza</h5>
+                  <ul className="results-bullet-list">
+                    {domain.watchouts.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="results-dimension-card__detail-block">
+                  <h5>Razvojni fokus</h5>
+                  <p>{domain.development_tip}</p>
+                </div>
+
+                <div className="results-dimension-card__detail-block">
+                  <h5>Poddimenzije</h5>
+                  <ol className="results-score-overview" aria-label={`Poddimenzije za ${domain.label}`}>
+                    {domain.subdimensions.map((subdimension) => (
+                      <li key={subdimension.facet_code} className="results-score-overview__item">
+                        <div className="results-score-overview__header">
+                          <strong>{subdimension.label}</strong>
+                          <span>{formatDiscreetScore(subdimension.score)}</span>
+                        </div>
+                        <IpipNeo120ScoreBar
+                          label={subdimension.label}
+                          score={subdimension.score}
+                          min={scaleMin}
+                          max={scaleMax}
+                        />
+                        <p className="results-dimension-card__helper">
+                          {formatNeoBandLabel(subdimension.band)}
+                        </p>
+                        <p className="results-dimension-card__summary">{subdimension.summary}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </section>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Snage</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.strengths.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Tačke opreza</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.watchouts.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Preporuke za razvoj</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.development_recommendations.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Interpretacijska napomena</h3>
+        </div>
+        <p>{report.interpretation_note}</p>
+      </section>
+    </div>
+  );
+}
+
 function IpcStyleSnapshotList({
   locale,
   primaryDisc,
@@ -937,6 +1166,8 @@ export function CompletedAssessmentSummary({
   const hasResults = results !== null;
   const ipcUiLocale = normalizeIpcUiLocale(locale);
   const reportRenderer = selectReportRenderer(reportState);
+  const ipipNeo120ParticipantReport =
+    reportRenderer.kind === "ipip_neo_120_participant_v1" ? reportRenderer.report : null;
   const bigFiveParticipantReport =
     reportRenderer.kind === "big_five_participant_v1" ? reportRenderer.report : null;
   const bigFiveHrReport = reportRenderer.kind === "big_five_hr_v1" ? reportRenderer.report : null;
@@ -944,8 +1175,10 @@ export function CompletedAssessmentSummary({
   const ipcParticipantReport =
     reportRenderer.kind === "ipc_participant_v1" ? reportRenderer.report : null;
   const ipcHrReport = reportRenderer.kind === "ipc_hr_v1" ? reportRenderer.report : null;
-  const shouldShowGenericDimensionCards = Boolean(results) && Boolean(bigFiveParticipantReport);
+  const shouldShowGenericDimensionCards =
+    Boolean(results) && Boolean(bigFiveParticipantReport) && !ipipNeo120ParticipantReport;
   const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport);
+  const shouldShowRawResultsPreview = !ipipNeo120ParticipantReport;
 
   const maxRawScore =
     results && results.dimensions.length > 0
@@ -1058,11 +1291,12 @@ export function CompletedAssessmentSummary({
       {shouldShowNarrativePending ? (
         <section className="results-report__section results-report__status results-report__panel card stack-sm">
           <div className="results-report__section-heading">
-            <h3>Izvještaj se priprema</h3>
+            <h3>Interpretativni izvještaj se priprema</h3>
           </div>
           <p className="results-report__section-body">
-            Tvoj izvještaj je zaprimljen i trenutno se obrađuje. Ova stranica će se osvježavati
-            automatski čim izvještaj bude spreman.
+            Tvoj detaljni narativni izvještaj je zaprimljen i trenutno se obrađuje. Preliminarni
+            pregled bodovanja dostupan je ispod, a stranica će se osvježavati automatski čim puni
+            izvještaj bude spreman.
           </p>
         </section>
       ) : null}
@@ -1107,7 +1341,7 @@ export function CompletedAssessmentSummary({
         )
       ) : null}
 
-      {results ? (
+      {results && shouldShowRawResultsPreview ? (
         <>
           <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
             <div className="results-report__section-heading">
@@ -1287,6 +1521,10 @@ export function CompletedAssessmentSummary({
           "Big Five HR prikaz još nije dostupan",
           "Render format za Big Five HR je prepoznat, ali zaseban HR layout još nije podržan u ovoj verziji aplikacije.",
         )
+      ) : null}
+
+      {ipipNeo120ParticipantReport ? (
+        <IpipNeo120ParticipantReportSections report={ipipNeo120ParticipantReport} />
       ) : null}
 
       {ipcParticipantReport ? (

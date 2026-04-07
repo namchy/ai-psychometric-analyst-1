@@ -15,5 +15,9 @@ export function getAssessmentDisplayName(
     return "IPC procjena interpersonalnog stila";
   }
 
+  if (normalizedName.includes("ipip-neo-120") || normalizedSlug.includes("ipip-neo-120")) {
+    return "Big Five procjena ličnosti (IPIP-NEO-120)";
+  }
+
   return input?.name ?? input?.slug ?? "Procjena";
 }

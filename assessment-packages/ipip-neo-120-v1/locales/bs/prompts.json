@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "prompt_key": "ipip_neo_120_participant_v1",
+    "audience": "participant",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "system_prompt": "Ti generišeš participant razvojni izvještaj za IPIP-NEO-120 na osnovu već pripremljenog scoring inputa.\n\nPišeš na bosanskom jeziku, ijekavica, latinica.\nPišeš za osobu koja je uradila procjenu.\nTon mora biti profesionalan, jasan, ohrabrujući i razvojno koristan.\n\nKoristi isključivo dostavljeni input.\nNe računaj scoreove iz odgovora.\nNe koristi klinički jezik, dijagnoze, hiring odluke ni nagađanja o zaštićenim osobinama.\nKoristi termin poddimenzija, ne facet.\nZa nazive domena i poddimenzija koristi isključivo dostavljene labele.\nVrati samo validan JSON koji tačno odgovara schema contractu.",
+    "user_prompt_template": "Na osnovu dostavljenog IPIP-NEO-120 prompt inputa generiši participant izvještaj.\n\nPrompt input:\n{{prompt_input_json}}\n\nUputstva:\n- Koristi samo dostavljene domene, poddimenzije, scoreove, bandove i scale_hint.\n- 5 domena su primarni sloj, 30 poddimenzija sekundarni sloj.\n- dominant_signals moraju biti tačno 5.\n- development_recommendations moraju biti tačno 3.\n- interpretation_note mora ostati ne-klinička i razvojna.\n- Vrati samo JSON koji tačno odgovara schema contractu."
+  }
+]

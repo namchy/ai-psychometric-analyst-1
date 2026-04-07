@@ -7,16 +7,179 @@ import {
   type DetailedReportScoreBand,
 } from "@/lib/assessment/detailed-report-v1";
 import {
+  IPIP_NEO_120_DOMAIN_ORDER,
+  type IpipNeo120DomainCode,
+} from "@/lib/assessment/ipip-neo-120-labels";
+import {
+  formatIpipNeo120ReportValidationErrors,
+  type IpipNeo120ParticipantReportV1,
+  validateIpipNeo120ParticipantReportV1,
+} from "@/lib/assessment/ipip-neo-120-report-v1";
+import type { IpcReportPromptInput } from "@/lib/assessment/ipc-report-contract";
+import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
   validateIpcParticipantReportV1,
 } from "@/lib/assessment/ipc-report-v1";
+import type { IpipNeo120ParticipantReportPromptInput } from "@/lib/assessment/ipip-neo-120-report-contract";
 import type {
   AiReportPromptInput,
   PreparedReportGenerationInput,
   ReportProvider,
   RuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
+
+function getNeoBandCopy(band: "lower" | "balanced" | "higher") {
+  switch (band) {
+    case "higher":
+      return {
+        summaryLead: "izraženiji razvojni signal",
+        strengthLead: "Ova domena ti vjerovatno daje prirodniju razvojnu prednost",
+        watchoutLead: "Vrijedi paziti da se jače izražena tendencija ne pretvori u pretjerivanje",
+      };
+    case "balanced":
+      return {
+        summaryLead: "uravnotežen razvojni signal",
+        strengthLead: "Ova domena ti vjerovatno daje dobar balans između fleksibilnosti i stabilnosti",
+        watchoutLead: "Vrijedi pratiti kako se ova uravnoteženost mijenja pod različitim pritiskom ili kontekstom",
+      };
+    default:
+      return {
+        summaryLead: "tiši razvojni signal",
+        strengthLead: "Ova domena može biti korisna kada je koristiš svjesno i situaciono",
+        watchoutLead: "Vrijedi paziti da tiša tendencija ne ostane bez podrške onda kada situacija traži više ove energije",
+      };
+  }
+}
+
+function getNeoDomainNarrative(domainLabel: string, band: "lower" | "balanced" | "higher") {
+  const copy = getNeoBandCopy(band);
+
+  return {
+    summary: `${domainLabel} se kod tebe trenutno pokazuje kao ${copy.summaryLead}.`,
+    strengths: [
+      `${copy.strengthLead} u oblasti ${domainLabel.toLowerCase()}.`,
+      `Kada ovu domenu koristiš svjesno, lakše usklađuješ svoj stil s onim što situacija traži u oblasti ${domainLabel.toLowerCase()}.`,
+    ],
+    watchouts: [
+      `${copy.watchoutLead} u oblasti ${domainLabel.toLowerCase()}.`,
+      `Korisno je povremeno provjeriti kako drugi doživljavaju tvoj ritam i pristup u oblasti ${domainLabel.toLowerCase()}.`,
+    ],
+  };
+}
+
+function buildIpipNeo120MockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput;
+
+  if (!("domains" in promptInput)) {
+    throw new Error("IPIP-NEO-120 mock report requires neo prompt input.");
+  }
+
+  const neoPromptInput = promptInput as IpipNeo120ParticipantReportPromptInput;
+  const rankedDomains = [...neoPromptInput.domains]
+    .sort((left, right) => right.score - left.score || left.domain_code.localeCompare(right.domain_code));
+  const topDomain = rankedDomains[0] ?? null;
+  const lowDomain = rankedDomains[rankedDomains.length - 1] ?? null;
+  const topFacets = neoPromptInput.domains
+    .flatMap((domain) =>
+      domain.subdimensions.map((subdimension) => ({
+        ...subdimension,
+        domain_label: domain.label,
+      })),
+    )
+    .sort((left, right) => right.score - left.score || left.facet_code.localeCompare(right.facet_code))
+    .slice(0, 5);
+
+  const report = {
+    contract_version: "ipip_neo_120_participant_v1",
+    test: {
+      slug: "ipip-neo-120-v1",
+      name: neoPromptInput.test_name,
+      locale: "bs",
+    },
+    meta: {
+      report_type: "participant",
+      generated_at: new Date().toISOString(),
+      scale_hint: neoPromptInput.scale_hint,
+    },
+    summary: {
+      headline: topDomain
+        ? `${topDomain.label} trenutno daje najprepoznatljiviji ton tvom profilu.`
+        : "Profil daje uravnotežen pregled bez jednog dominantnog signala.",
+      overview:
+        lowDomain && topDomain && lowDomain.domain_code !== topDomain.domain_code
+          ? `Najizraženiji sloj vidi se u domeni ${topDomain.label.toLowerCase()}, dok domena ${lowDomain.label.toLowerCase()} djeluje kao mirniji razvojni prostor.`
+          : "Ovaj izvještaj koristi već izračunate rezultate kako bi opisao 5 domena i 30 poddimenzija kao razvojni pregled, bez apsolutnih zaključaka.",
+    },
+    dominant_signals: topFacets.map(
+      (facet) =>
+        `${facet.label} se posebno ističe unutar domene ${facet.domain_label.toLowerCase()}.`,
+    ) as [string, string, string, string, string],
+    domains: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+      const domain = neoPromptInput.domains.find(
+        (item: IpipNeo120ParticipantReportPromptInput["domains"][number]) =>
+          item.domain_code === domainCode,
+      );
+
+      if (!domain) {
+        throw new Error(`Missing neo prompt domain ${domainCode}.`);
+      }
+
+      const narrative = getNeoDomainNarrative(domain.label, domain.band);
+
+      return {
+        domain_code: domain.domain_code,
+        label: domain.label,
+        score: domain.score,
+        band: domain.band,
+        summary: narrative.summary,
+        strengths: narrative.strengths,
+        watchouts: narrative.watchouts,
+        development_tip: `Odaberi jednu malu sedmičnu praksu kojom ćeš svjesnije razvijati oblast ${domain.label.toLowerCase()}.`,
+        subdimensions: domain.subdimensions.map((subdimension) => ({
+          facet_code: subdimension.facet_code,
+          label: subdimension.label,
+          score: subdimension.score,
+          band: subdimension.band,
+          summary: `${subdimension.label} se trenutno pokazuje kao ${getNeoBandCopy(subdimension.band).summaryLead}.`,
+        })),
+      };
+    }) as IpipNeo120ParticipantReportV1["domains"],
+    strengths: [
+      topDomain
+        ? `${topDomain.label} ti trenutno daje najviše razvojnog oslonca.`
+        : "Profil pokazuje nekoliko stabilnih razvojnih oslonaca.",
+      "Profil je dovoljno detaljan da možeš razlikovati šire domene od finijih poddimenzija.",
+      "Rezultate možeš koristiti kao osnovu za male, praktične razvojne eksperimente.",
+    ],
+    watchouts: [
+      "Rezultat je najkorisnije čitati kao razvojni signal, a ne kao fiksnu etiketu.",
+      "Vrijedi pratiti kako se isti obrazac mijenja kroz kontekst, opterećenje i ulogu.",
+      lowDomain
+        ? `Domena ${lowDomain.label.toLowerCase()} traži nešto svjesniju pažnju i praksu.`
+        : "Mirnije oblasti profila vrijedi periodično provjeravati kroz praksu.",
+    ],
+    development_recommendations: [
+      "Odaberi jednu domenu i jednu poddimenziju koje želiš svjesno pratiti tokom naredne sedmice.",
+      "Traži kratak feedback od jedne osobe o tome kako tvoj stil djeluje u stvarnoj saradnji.",
+      "Razvoj mjeri kroz male promjene u ponašanju, a ne kroz pokušaj da promijeniš cijeli profil odjednom.",
+    ],
+    interpretation_note:
+      "Ovaj izvještaj je razvojna interpretacija već izračunatih rezultata za 5 domena i 30 poddimenzija. Ne predstavlja dijagnozu, ne daje hiring odluke i ne opisuje tvoju ličnost kao konačnu ili nepromjenjivu.",
+  };
+
+  const validationResult = validateIpipNeo120ParticipantReportV1(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock IPIP-NEO-120 participant report failed validation: ${formatIpipNeo120ReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
 
 function getPrimaryDimensions(
   promptInput: AiReportPromptInput,
@@ -212,30 +375,34 @@ function getHrRecommendationAction(
 }
 
 function buildIpcMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
-  if ("dimension_scores" in input.promptInput) {
+  const promptInput = input.promptInput;
+
+  if ("dimension_scores" in promptInput || "domains" in promptInput) {
     throw new Error("IPC mock report requires IPC prompt input.");
   }
 
-  if (!input.promptInput.derived.dominantOctant || !input.promptInput.derived.secondaryOctant) {
+  const ipcPromptInput = promptInput as IpcReportPromptInput;
+
+  if (!ipcPromptInput.derived.dominantOctant || !ipcPromptInput.derived.secondaryOctant) {
     throw new Error("IPC mock report requires dominant and secondary octants.");
   }
 
-  if (input.promptInput.audience === "participant") {
+  if (ipcPromptInput.audience === "participant") {
     const report = {
       report_title: "Tvoj IPC razvojni izvještaj",
       report_subtitle: `Pregled interpersonalnog stila i saradnje za ${input.testSlug}.`,
       summary: {
         headline:
-          input.promptInput.derived.primaryDisc === null
+          ipcPromptInput.derived.primaryDisc === null
             ? "Tvoj interpersonalni stil djeluje uravnoteženo bez jedne potpuno dominantne DISC oznake."
-            : `Najizraženiji signal tvog interpersonalnog stila trenutno je ${input.promptInput.derived.primaryDisc}.`,
+            : `Najizraženiji signal tvog interpersonalnog stila trenutno je ${ipcPromptInput.derived.primaryDisc}.`,
         overview:
           "Ovaj izvještaj opisuje vjerovatne obrasce komunikacije, saradnje i razvojnog fokusa na osnovu IPC oktanata i izvedenih osa topline i dominantnosti.",
       },
       style_snapshot: {
-        primary_disc: input.promptInput.derived.primaryDisc,
-        dominant_octant: input.promptInput.derived.dominantOctant,
-        secondary_octant: input.promptInput.derived.secondaryOctant,
+        primary_disc: ipcPromptInput.derived.primaryDisc,
+        dominant_octant: ipcPromptInput.derived.dominantOctant,
+        secondary_octant: ipcPromptInput.derived.secondaryOctant,
       },
       strengths_in_collaboration: [
         {
@@ -298,18 +465,18 @@ function buildIpcMockReport(input: PreparedReportGenerationInput): RuntimeComple
     report_subtitle: "Operativni pregled komunikacije, saradnje i uticaja bez hiring presuda.",
     summary: {
       headline:
-        input.promptInput.derived.primaryDisc === null
+        ipcPromptInput.derived.primaryDisc === null
           ? "Profil djeluje uravnoteženo bez jedne potpuno dominantne DISC oznake."
-          : `Najizraženiji signal interpersonalnog stila trenutno je ${input.promptInput.derived.primaryDisc}.`,
+          : `Najizraženiji signal interpersonalnog stila trenutno je ${ipcPromptInput.derived.primaryDisc}.`,
       overview:
         "Ovaj izvještaj koristi IPC oktante i izvedene ose dominantnosti i topline kako bi opisao vjerovatne obrasce komunikacije, saradnje i rukovođenja uticajem u radnom kontekstu.",
     },
     style_snapshot: {
-      primary_disc: input.promptInput.derived.primaryDisc,
-      dominant_octant: input.promptInput.derived.dominantOctant,
-      secondary_octant: input.promptInput.derived.secondaryOctant,
-      dominance: input.promptInput.derived.dominance,
-      warmth: input.promptInput.derived.warmth,
+      primary_disc: ipcPromptInput.derived.primaryDisc,
+      dominant_octant: ipcPromptInput.derived.dominantOctant,
+      secondary_octant: ipcPromptInput.derived.secondaryOctant,
+      dominance: ipcPromptInput.derived.dominance,
+      warmth: ipcPromptInput.derived.warmth,
     },
     communication_style: {
       summary:
@@ -372,6 +539,10 @@ function buildIpcMockReport(input: PreparedReportGenerationInput): RuntimeComple
 }
 
 function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
+  if ("domains" in input.promptInput) {
+    return buildIpipNeo120MockReport(input);
+  }
+
   if (!("dimension_scores" in input.promptInput)) {
     return buildIpcMockReport(input);
   }

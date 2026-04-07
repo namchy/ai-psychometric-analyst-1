@@ -13,7 +13,8 @@
     "import:assessment-package": "node --env-file=.env.local scripts/import-assessment-package.mjs",
     "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
     "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs",
-    "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs"
+    "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs",
+    "test:ipip-neo-120-report": "node scripts/test-ipip-neo-120-participant-report.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

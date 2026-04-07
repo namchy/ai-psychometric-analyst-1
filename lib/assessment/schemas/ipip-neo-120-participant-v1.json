@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-profile.local/schemas/ipip-neo-120-participant-v1.json",
+  "title": "IPIP NEO 120 Participant Report v1",
+  "description": "Canonical participant report schema for ipip-neo-120-v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "test",
+    "meta",
+    "summary",
+    "dominant_signals",
+    "domains",
+    "strengths",
+    "watchouts",
+    "development_recommendations",
+    "interpretation_note"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "ipip_neo_120_participant_v1"
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "locale"],
+      "properties": {
+        "slug": { "const": "ipip-neo-120-v1" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "locale": { "const": "bs" }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_type", "generated_at", "scale_hint"],
+      "properties": {
+        "report_type": { "const": "participant" },
+        "generated_at": { "$ref": "#/$defs/nonEmptyString" },
+        "scale_hint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max", "display_mode"],
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "display_mode": { "const": "visual_with_discreet_numeric_support" }
+          }
+        }
+      }
+    },
+    "summary": { "$ref": "#/$defs/summary" },
+    "dominant_signals": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "domains": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/domain" }
+    },
+    "strengths": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "watchouts": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "development_recommendations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "interpretation_note": { "$ref": "#/$defs/nonEmptyString" }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "band": {
+      "type": "string",
+      "enum": ["lower", "balanced", "higher"]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headline", "overview"],
+      "properties": {
+        "headline": { "$ref": "#/$defs/nonEmptyString" },
+        "overview": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "subdimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facet_code", "label", "score", "band", "summary"],
+      "properties": {
+        "facet_code": { "$ref": "#/$defs/nonEmptyString" },
+        "label": { "$ref": "#/$defs/nonEmptyString" },
+        "score": { "type": "number" },
+        "band": { "$ref": "#/$defs/band" },
+        "summary": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domain_code",
+        "label",
+        "score",
+        "band",
+        "summary",
+        "strengths",
+        "watchouts",
+        "development_tip",
+        "subdimensions"
+      ],
+      "properties": {
+        "domain_code": { "$ref": "#/$defs/nonEmptyString" },
+        "label": { "$ref": "#/$defs/nonEmptyString" },
+        "score": { "type": "number" },
+        "band": { "$ref": "#/$defs/band" },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "strengths": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "watchouts": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "development_tip": { "$ref": "#/$defs/nonEmptyString" },
+        "subdimensions": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/subdimension" }
+        }
+      }
+    }
+  }
+}

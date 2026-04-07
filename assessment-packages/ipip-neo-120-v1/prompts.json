@@ -1,1 +1,166 @@
-[]
+[
+  {
+    "prompt_key": "ipip_neo_120_participant_v1",
+    "audience": "participant",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "is_active": true,
+    "system_prompt": "Ti generišeš participant razvojni izvještaj za IPIP-NEO-120 na osnovu već pripremljenog scoring inputa.\n\nPišeš na bosanskom jeziku, ijekavica, latinica.\nPišeš za osobu koja je uradila procjenu.\nTon mora biti profesionalan, jasan, ohrabrujući i razvojno koristan.\n\nKoristi isključivo dostavljeni input.\nNe računaj scoreove iz odgovora.\nNe izmišljaj dodatne osobine, skrivene profile ili hiring zaključke.\nNe koristi klinički jezik.\nNe postavljaj dijagnoze.\nNe nagađaj zaštićene osobine.\nNe predstavljaj izvještaj kao konačnu istinu o osobi.\n\nStruktura mora imati:\n- summary\n- dominant_signals: tačno 5\n- domains: tačno 5 domena kao primarni sloj\n- subdimensions: tačno 6 poddimenzija u svakoj domeni kao sekundarni sloj\n- strengths\n- watchouts\n- development_recommendations: tačno 3\n- interpretation_note\n\nKoristi termin poddimenzija, ne facet.\nZa nazive domena i poddimenzija koristi isključivo dostavljene labele.\nVrati samo validan JSON koji tačno odgovara schema contractu.",
+    "user_prompt_template": "Na osnovu dostavljenog IPIP-NEO-120 prompt inputa generiši participant izvještaj.\n\nKontekst:\n- audience: participant\n- locale: {{locale}}\n- test_slug: {{test_slug}}\n- test_family: ipip_neo_120\n\nPrompt input:\n{{prompt_input_json}}\n\nUputstva:\n- Koristi samo dostavljene domene, poddimenzije, scoreove, bandove i scale_hint.\n- Ne računaj ništa iz odgovora i ne izvodi nove scoreove.\n- 5 domena su primarni interpretativni sloj.\n- 30 poddimenzija su sekundarni interpretativni sloj.\n- dominant_signals moraju biti tačno 5, razvojno korisni i međusobno različiti.\n- Svaka domena mora imati summary, najmanje 2 strengths, najmanje 2 watchouts, development_tip i tačno 6 poddimenzija.\n- development_recommendations moraju biti tačno 3, konkretne i izvedive.\n- interpretation_note mora ostati ne-klinička, bez dijagnoza i bez hiring jezika.\n- Vrati samo JSON koji tačno odgovara schema contractu.",
+    "output_schema_json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://deep-profile.local/schemas/ipip-neo-120-participant-v1.json",
+      "title": "IPIP NEO 120 Participant Report v1",
+      "description": "Canonical participant report schema for ipip-neo-120-v1.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "test",
+        "meta",
+        "summary",
+        "dominant_signals",
+        "domains",
+        "strengths",
+        "watchouts",
+        "development_recommendations",
+        "interpretation_note"
+      ],
+      "properties": {
+        "contract_version": { "const": "ipip_neo_120_participant_v1" },
+        "test": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["slug", "name", "locale"],
+          "properties": {
+            "slug": { "const": "ipip-neo-120-v1" },
+            "name": { "$ref": "#/$defs/nonEmptyString" },
+            "locale": { "const": "bs" }
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["report_type", "generated_at", "scale_hint"],
+          "properties": {
+            "report_type": { "const": "participant" },
+            "generated_at": { "$ref": "#/$defs/nonEmptyString" },
+            "scale_hint": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["min", "max", "display_mode"],
+              "properties": {
+                "min": { "type": "number" },
+                "max": { "type": "number" },
+                "display_mode": { "const": "visual_with_discreet_numeric_support" }
+              }
+            }
+          }
+        },
+        "summary": { "$ref": "#/$defs/summary" },
+        "dominant_signals": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "domains": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/domain" }
+        },
+        "strengths": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "watchouts": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "development_recommendations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "interpretation_note": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "$defs": {
+        "nonEmptyString": {
+          "type": "string",
+          "minLength": 1
+        },
+        "band": {
+          "type": "string",
+          "enum": ["lower", "balanced", "higher"]
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headline", "overview"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/nonEmptyString" },
+            "overview": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "subdimension": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["facet_code", "label", "score", "band", "summary"],
+          "properties": {
+            "facet_code": { "$ref": "#/$defs/nonEmptyString" },
+            "label": { "$ref": "#/$defs/nonEmptyString" },
+            "score": { "type": "number" },
+            "band": { "$ref": "#/$defs/band" },
+            "summary": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "domain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "domain_code",
+            "label",
+            "score",
+            "band",
+            "summary",
+            "strengths",
+            "watchouts",
+            "development_tip",
+            "subdimensions"
+          ],
+          "properties": {
+            "domain_code": { "$ref": "#/$defs/nonEmptyString" },
+            "label": { "$ref": "#/$defs/nonEmptyString" },
+            "score": { "type": "number" },
+            "band": { "$ref": "#/$defs/band" },
+            "summary": { "$ref": "#/$defs/nonEmptyString" },
+            "strengths": {
+              "type": "array",
+              "minItems": 2,
+              "items": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            "watchouts": {
+              "type": "array",
+              "minItems": 2,
+              "items": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            "development_tip": { "$ref": "#/$defs/nonEmptyString" },
+            "subdimensions": {
+              "type": "array",
+              "minItems": 6,
+              "maxItems": 6,
+              "items": { "$ref": "#/$defs/subdimension" }
+            }
+          }
+        }
+      }
+    },
+    "notes": "IPIP-NEO-120 participant single-test report prompt."
+  }
+]

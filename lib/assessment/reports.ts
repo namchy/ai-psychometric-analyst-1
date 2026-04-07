@@ -54,6 +54,7 @@ type AttemptRecord = {
 type TestRecord = {
   id: string;
   slug: string;
+  name: string | null;
   scoring_method: ScoringMethod;
 };
 
@@ -225,7 +226,7 @@ async function loadReportContext(testId: string, attemptId: string): Promise<Loa
 
   const { data: testData, error: testError } = await supabase
     .from("tests")
-    .select("id, slug, scoring_method")
+    .select("id, slug, name, scoring_method")
     .eq("id", testId)
     .maybeSingle();
 
@@ -266,6 +267,7 @@ export async function buildCompletedAssessmentReportRequest(
     attemptId,
     testId,
     testSlug: context.test.slug,
+    testName: context.test.name,
     audience: options?.audience ?? "participant",
     locale: options?.locale ?? "bs",
     scoringMethod: context.test.scoring_method,

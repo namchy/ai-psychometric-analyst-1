@@ -1,3 +1,8 @@
+import {
+  getIpipNeo120DomainLabel,
+  getIpipNeo120FacetLabel,
+} from "@/lib/assessment/ipip-neo-120-labels";
+
 export type IpcUiLocale = "bs" | "en";
 
 type IpcStaticLabelKey =
@@ -113,6 +118,17 @@ const DIMENSION_HELPER_LABELS: Record<string, string> = {
 export function formatDimensionLabel(dimensionKey: string): string {
   const rawKey = dimensionKey.trim();
   const normalizedKey = rawKey.toLowerCase();
+  const neoDomainLabel = getIpipNeo120DomainLabel(rawKey);
+
+  if (neoDomainLabel) {
+    return neoDomainLabel;
+  }
+
+  const neoFacetLabel = getIpipNeo120FacetLabel(rawKey);
+
+  if (neoFacetLabel) {
+    return neoFacetLabel;
+  }
 
   if (DIMENSION_DISPLAY_LABELS[rawKey]) {
     return DIMENSION_DISPLAY_LABELS[rawKey];

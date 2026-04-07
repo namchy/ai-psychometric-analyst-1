@@ -37,6 +37,20 @@ function buildDefaultSystemPrompt(input: PreparedReportGenerationInput): string 
 }
 
 function buildDimensionHintText(input: PreparedReportGenerationInput): string {
+  if ("domains" in input.promptInput) {
+    return input.promptInput.domains
+      .map(
+        (domain) =>
+          `${domain.domain_code} (${domain.label}): score=${domain.score}, band=${domain.band}, subdimensions=${domain.subdimensions
+            .map(
+              (subdimension) =>
+                `${subdimension.facet_code} (${subdimension.label})=${subdimension.score}/${subdimension.band}`,
+            )
+            .join(", ")}`,
+      )
+      .join(" | ");
+  }
+
   if (!("dimension_scores" in input.promptInput)) {
     return [
       `dominance=${input.promptInput.derived.dominance}`,
@@ -57,6 +71,36 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
 }
 
 function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
+  if ("domains" in input.promptInput) {
+    return JSON.stringify({
+      instructions: {
+        output_contract: "Return one participant report in the exact schema.",
+        audience_behavior:
+          "Write in bosanski, ijekavica, latinica, for the participant who completed the assessment. Keep the tone professional, clear, encouraging, and non-clinical.",
+        structure_rules: [
+          "Use 5 dominant_signals.",
+          "Use 5 domains as the primary layer.",
+          "Each domain must contain exactly 6 poddimenzije as the secondary layer.",
+          "Use exactly 3 development_recommendations.",
+          "Include one interpretation_note.",
+        ],
+        source_rule:
+          "Use only the provided scoring input. Do not calculate from raw answers and do not invent extra traits or hiring conclusions.",
+        terminology_rule:
+          "Use the provided labels and the term poddimenzija, not facet.",
+        guardrails: [
+          "Do not diagnose or use clinical language.",
+          "Do not give hire/no-hire recommendations.",
+          "Do not infer protected traits.",
+          "Do not treat the report as final truth about the person.",
+          "Do not use absolute statements such as always, never, or definitely proves.",
+        ],
+        dimension_hint_text: buildDimensionHintText(input),
+      },
+      input: input.promptInput,
+    });
+  }
+
   if (!("dimension_scores" in input.promptInput)) {
     return JSON.stringify({
       instructions: {
@@ -136,6 +180,8 @@ function applyPromptTemplate(
   const replacements = new Map<string, string>([
     ["{{prompt_version}}", promptTemplate.version],
     ["{{prompt_version_id}}", promptTemplate.id],
+    ["{{locale}}", input.promptInput.locale],
+    ["{{test_slug}}", input.testSlug],
     ["{{dimension_hint_text}}", buildDimensionHintText(input)],
     ["{{prompt_input_json}}", JSON.stringify(input.promptInput)],
   ]);

@@ -10,6 +10,16 @@ import {
   detailedReportV1OpenAiSchema,
   validateDetailedReportV1,
 } from "@/lib/assessment/detailed-report-v1";
+import { isIpipNeo120TestSlug } from "@/lib/assessment/ipip-neo-120-labels";
+import {
+  IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT,
+  type IpipNeo120ParticipantReportPromptInput,
+} from "@/lib/assessment/ipip-neo-120-report-contract";
+import {
+  formatIpipNeo120ReportValidationErrors,
+  validateIpipNeo120ParticipantReportV1,
+  type IpipNeo120ParticipantReportV1,
+} from "@/lib/assessment/ipip-neo-120-report-v1";
 import {
   getIpcPromptContract,
   isIpcTestSlug,
@@ -31,6 +41,7 @@ export type ReportFamily = "big_five" | "ipc";
 export type ReportAudience = "participant" | "hr";
 export type ReportVersion = "v1";
 export type ReportRenderFormat =
+  | "ipip_neo_120_participant_v1"
   | "big_five_participant_v1"
   | "big_five_hr_v1"
   | "ipc_participant_v1"
@@ -45,6 +56,7 @@ export type AttemptReportStatus =
 export type BigFiveCompletedAssessmentReport = DetailedReportV1;
 export type RuntimeCompletedAssessmentReport =
   | BigFiveCompletedAssessmentReport
+  | IpipNeo120ParticipantReportV1
   | IpcCompletedAssessmentReport;
 export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
 
@@ -56,6 +68,7 @@ export type CompletedAssessmentReportRequest = {
   locale: AssessmentLocale;
   scoringMethod: ScoringMethod;
   promptVersion: string;
+  testName?: string | null;
   results: CompletedAssessmentResults;
 };
 
@@ -85,7 +98,10 @@ export type AiReportPromptInput = {
   };
 };
 
-export type ReportPromptInput = AiReportPromptInput | IpcReportPromptInput;
+export type ReportPromptInput =
+  | AiReportPromptInput
+  | IpipNeo120ParticipantReportPromptInput
+  | IpcReportPromptInput;
 
 export type ReportContractDescriptor = {
   family: ReportFamily;
@@ -124,6 +140,7 @@ export type ReportProvider = {
 export function isCompletedAssessmentReport(value: unknown): value is CompletedAssessmentReport {
   return (
     validateDetailedReportV1(value).ok ||
+    validateIpipNeo120ParticipantReportV1(value).ok ||
     validateIpcParticipantReportV1(value).ok ||
     validateIpcHrReportV1(value).ok
   );
@@ -133,6 +150,18 @@ export function resolveReportContract(
   testSlug: string,
   audience: IpcReportAudience,
 ): ReportContractDescriptor {
+  if (isIpipNeo120TestSlug(testSlug) && audience === "participant") {
+    return {
+      family: "big_five",
+      reportType: IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.reportType,
+      sourceType: IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.sourceType,
+      promptKey: IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.promptKey,
+      schemaName: IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.schemaId,
+      outputSchemaJson:
+        IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
   if (isIpcTestSlug(testSlug)) {
     const contract = getIpcPromptContract(audience);
 
@@ -172,11 +201,14 @@ export function resolveReportSignal(context: {
   const reportFamily = resolveReportFamily(context.testSlug);
   const reportAudience = context.audience;
   const reportVersion = "v1" as const;
-  const reportRenderFormat = resolveReportRenderFormat({
-    reportFamily,
-    reportAudience,
-    reportVersion,
-  });
+  const reportRenderFormat =
+    isIpipNeo120TestSlug(context.testSlug) && context.audience === "participant"
+      ? "ipip_neo_120_participant_v1"
+      : resolveReportRenderFormat({
+          reportFamily,
+          reportAudience,
+          reportVersion,
+        });
 
   return {
     reportFamily,
@@ -213,9 +245,25 @@ export function validateRuntimeCompletedAssessmentReport(
     testSlug: string;
     audience: ReportAudience;
   },
-):
+): 
   | { ok: true; value: RuntimeCompletedAssessmentReport }
   | { ok: false; reason: string } {
+  if (isIpipNeo120TestSlug(context.testSlug) && context.audience === "participant") {
+    const validationResult = validateIpipNeo120ParticipantReportV1(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: formatIpipNeo120ReportValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
   if (isIpcTestSlug(context.testSlug)) {
     const validationResult =
       context.audience === "participant"
