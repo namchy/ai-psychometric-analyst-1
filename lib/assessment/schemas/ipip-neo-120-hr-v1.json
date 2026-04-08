@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ipip-neo-120-hr-v1",
+  "title": "IPIP-NEO-120 HR Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "test",
+    "meta",
+    "headline",
+    "executive_summary",
+    "workplace_signals",
+    "domains",
+    "collaboration_style",
+    "communication_style",
+    "leadership_and_influence",
+    "team_watchouts",
+    "onboarding_or_management_recommendations",
+    "interpretation_note"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "ipip_neo_120_hr_v1"
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "name"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "ipip_neo_120"
+        },
+        "name": {
+          "type": "string",
+          "const": "IPIP-NEO-120"
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "audience"],
+      "properties": {
+        "language": {
+          "type": "string",
+          "const": "bs"
+        },
+        "audience": {
+          "type": "string",
+          "const": "hr"
+        }
+      }
+    },
+    "headline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "executive_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workplace_signals": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "domains": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "label",
+          "score_band",
+          "summary",
+          "workplace_strengths",
+          "workplace_watchouts",
+          "management_notes",
+          "facets"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["N", "E", "O", "A", "C"]
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "score_band": {
+            "type": "string",
+            "enum": ["low", "moderate", "high"]
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workplace_strengths": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "workplace_watchouts": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "management_notes": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "facets": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["code", "label", "score_band", "summary"],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "score_band": {
+                  "type": "string",
+                  "enum": ["low", "moderate", "high"]
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "collaboration_style": {
+      "type": "string",
+      "minLength": 1
+    },
+    "communication_style": {
+      "type": "string",
+      "minLength": 1
+    },
+    "leadership_and_influence": {
+      "type": "string",
+      "minLength": 1
+    },
+    "team_watchouts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "onboarding_or_management_recommendations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "interpretation_note": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

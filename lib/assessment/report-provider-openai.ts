@@ -1,12 +1,20 @@
 import "server-only";
 
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
+import {
+  formatIpipNeo120ReportValidationErrors,
+  validateIpipNeo120HrReportV1,
+  validateIpipNeo120ParticipantReportV1,
+} from "@/lib/assessment/ipip-neo-120-report-v1";
 import type {
   PreparedReportGenerationInput,
   ReportProvider,
+  ReportPromptInput,
   RuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
-import { validateRuntimeCompletedAssessmentReport } from "@/lib/assessment/report-providers";
+import {
+  validateRuntimeCompletedAssessmentReport,
+} from "@/lib/assessment/report-providers";
 
 type OpenAiProviderOptions = {
   apiKey: string | null;
@@ -17,6 +25,18 @@ type OpenAiProviderOptions = {
 type ErrorWithCause = Error & {
   cause?: unknown;
 };
+
+function isIpipNeo120ParticipantPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is Extract<ReportPromptInput, { audience: "participant"; domains: unknown[] }> {
+  return "domains" in promptInput && promptInput.audience === "participant";
+}
+
+function isIpipNeo120HrPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is Extract<ReportPromptInput, { audience: "hr"; domains: unknown[] }> {
+  return "domains" in promptInput && promptInput.audience === "hr";
+}
 
 function buildDefaultSystemPrompt(input: PreparedReportGenerationInput): string {
   const baseLines = [
@@ -37,7 +57,7 @@ function buildDefaultSystemPrompt(input: PreparedReportGenerationInput): string 
 }
 
 function buildDimensionHintText(input: PreparedReportGenerationInput): string {
-  if ("domains" in input.promptInput) {
+  if (isIpipNeo120ParticipantPromptInput(input.promptInput)) {
     return input.promptInput.domains
       .map(
         (domain) =>
@@ -45,6 +65,20 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
             .map(
               (subdimension) =>
                 `${subdimension.facet_code} (${subdimension.label})=${subdimension.score}/${subdimension.band}`,
+            )
+            .join(", ")}`,
+      )
+      .join(" | ");
+  }
+
+  if (isIpipNeo120HrPromptInput(input.promptInput)) {
+    return input.promptInput.domains
+      .map(
+        (domain) =>
+          `${domain.domain_code} (${domain.label}): score=${domain.score}, score_band=${domain.score_band}, facets=${domain.facets
+            .map(
+              (facet) =>
+                `${facet.facet_code} (${facet.label})=${facet.score}/${facet.score_band}`,
             )
             .join(", ")}`,
       )
@@ -71,7 +105,7 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
 }
 
 function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
-  if ("domains" in input.promptInput) {
+  if (isIpipNeo120ParticipantPromptInput(input.promptInput)) {
     return JSON.stringify({
       instructions: {
         output_contract: "Return one participant report in the exact schema.",
@@ -88,6 +122,36 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
           "Use only the provided scoring input. Do not calculate from raw answers and do not invent extra traits or hiring conclusions.",
         terminology_rule:
           "Use the provided labels and the term poddimenzija, not facet.",
+        guardrails: [
+          "Do not diagnose or use clinical language.",
+          "Do not give hire/no-hire recommendations.",
+          "Do not infer protected traits.",
+          "Do not treat the report as final truth about the person.",
+          "Do not use absolute statements such as always, never, or definitely proves.",
+        ],
+        dimension_hint_text: buildDimensionHintText(input),
+      },
+      input: input.promptInput,
+    });
+  }
+
+  if (isIpipNeo120HrPromptInput(input.promptInput)) {
+    return JSON.stringify({
+      instructions: {
+        output_contract: "Return one HR report in the exact schema.",
+        audience_behavior:
+          "Write in bosanski, ijekavica, latinica, for HR and hiring stakeholders. Keep the tone neutral, operational, workplace-oriented, and non-clinical.",
+        structure_rules: [
+          "Use 5 workplace_signals.",
+          "Use exactly 5 domains with one entry for each of N, E, O, A, and C.",
+          "Each domain must contain exactly 6 facets.",
+          "Each domain must contain exactly 2 workplace_strengths, 2 workplace_watchouts, and 2 management_notes.",
+          "Use exactly 3 team_watchouts and exactly 3 onboarding_or_management_recommendations.",
+        ],
+        source_rule:
+          "Use only the provided deterministic scoring input. Do not calculate from raw answers and do not invent extra dimensions, metrics, or hiring decisions.",
+        terminology_rule:
+          "Use the provided domain and facet labels and stay within workplace interpretation.",
         guardrails: [
           "Do not diagnose or use clinical language.",
           "Do not give hire/no-hire recommendations.",
@@ -217,6 +281,30 @@ function validateStructuredReport(
   report: unknown,
   input: PreparedReportGenerationInput,
 ): RuntimeCompletedAssessmentReport {
+  if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120ParticipantPromptInput(input.promptInput)) {
+    const validationResult = validateIpipNeo120ParticipantReportV1(report);
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed IPIP-NEO-120 participant report validation: ${formatIpipNeo120ReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120HrPromptInput(input.promptInput)) {
+    const validationResult = validateIpipNeo120HrReportV1(report);
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed IPIP-NEO-120 HR report validation: ${formatIpipNeo120ReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
   const validationResult = validateRuntimeCompletedAssessmentReport(report, {
     testSlug: input.testSlug,
     audience: input.promptInput.audience,

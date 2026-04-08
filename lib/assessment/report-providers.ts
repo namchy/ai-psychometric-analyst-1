@@ -12,12 +12,16 @@ import {
 } from "@/lib/assessment/detailed-report-v1";
 import { isIpipNeo120TestSlug } from "@/lib/assessment/ipip-neo-120-labels";
 import {
+  IPIP_NEO_120_HR_REPORT_CONTRACT,
   IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT,
+  type IpipNeo120HrReportPromptInput,
   type IpipNeo120ParticipantReportPromptInput,
 } from "@/lib/assessment/ipip-neo-120-report-contract";
 import {
   formatIpipNeo120ReportValidationErrors,
+  validateIpipNeo120HrReportV1,
   validateIpipNeo120ParticipantReportV1,
+  type IpipNeo120HrReportV1,
   type IpipNeo120ParticipantReportV1,
 } from "@/lib/assessment/ipip-neo-120-report-v1";
 import {
@@ -56,6 +60,7 @@ export type AttemptReportStatus =
 export type BigFiveCompletedAssessmentReport = DetailedReportV1;
 export type RuntimeCompletedAssessmentReport =
   | BigFiveCompletedAssessmentReport
+  | IpipNeo120HrReportV1
   | IpipNeo120ParticipantReportV1
   | IpcCompletedAssessmentReport;
 export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
@@ -100,6 +105,7 @@ export type AiReportPromptInput = {
 
 export type ReportPromptInput =
   | AiReportPromptInput
+  | IpipNeo120HrReportPromptInput
   | IpipNeo120ParticipantReportPromptInput
   | IpcReportPromptInput;
 
@@ -140,6 +146,7 @@ export type ReportProvider = {
 export function isCompletedAssessmentReport(value: unknown): value is CompletedAssessmentReport {
   return (
     validateDetailedReportV1(value).ok ||
+    validateIpipNeo120HrReportV1(value).ok ||
     validateIpipNeo120ParticipantReportV1(value).ok ||
     validateIpcParticipantReportV1(value).ok ||
     validateIpcHrReportV1(value).ok
@@ -159,6 +166,18 @@ export function resolveReportContract(
       schemaName: IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.schemaId,
       outputSchemaJson:
         IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
+  if (isIpipNeo120TestSlug(testSlug) && audience === "hr") {
+    return {
+      family: "big_five",
+      reportType: IPIP_NEO_120_HR_REPORT_CONTRACT.reportType,
+      sourceType: IPIP_NEO_120_HR_REPORT_CONTRACT.sourceType,
+      promptKey: IPIP_NEO_120_HR_REPORT_CONTRACT.promptKey,
+      schemaName: IPIP_NEO_120_HR_REPORT_CONTRACT.schemaId,
+      outputSchemaJson:
+        IPIP_NEO_120_HR_REPORT_CONTRACT.outputSchemaJson as Record<string, unknown>,
     };
   }
 
@@ -250,6 +269,22 @@ export function validateRuntimeCompletedAssessmentReport(
   | { ok: false; reason: string } {
   if (isIpipNeo120TestSlug(context.testSlug) && context.audience === "participant") {
     const validationResult = validateIpipNeo120ParticipantReportV1(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: formatIpipNeo120ReportValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isIpipNeo120TestSlug(context.testSlug) && context.audience === "hr") {
+    const validationResult = validateIpipNeo120HrReportV1(value);
 
     if (!validationResult.ok) {
       return {

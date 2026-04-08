@@ -3,7 +3,10 @@
 import { useState } from "react";
 
 import type { DetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
-import type { IpipNeo120ParticipantReportV1 } from "@/lib/assessment/ipip-neo-120-report-v1";
+import type {
+  IpipNeo120HrReportV1,
+  IpipNeo120ParticipantReportV1,
+} from "@/lib/assessment/ipip-neo-120-report-v1";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
@@ -59,6 +62,7 @@ type ReportDimensionSnapshot = {
 };
 
 type ReportRendererSelection =
+  | { kind: "ipip_neo_120_hr_v1"; report: IpipNeo120HrReportV1 }
   | { kind: "ipip_neo_120_participant_v1"; report: IpipNeo120ParticipantReportV1 }
   | { kind: "big_five_participant_v1"; report: DetailedReportV1 }
   | { kind: "big_five_hr_v1"; report: DetailedReportV1 }
@@ -85,6 +89,16 @@ function isIpipNeo120ParticipantReport(report: unknown): report is IpipNeo120Par
     (report as IpipNeo120ParticipantReportV1).contract_version ===
       "ipip_neo_120_participant_v1" &&
     Array.isArray((report as IpipNeo120ParticipantReportV1).domains)
+  );
+}
+
+function isIpipNeo120HrReport(report: unknown): report is IpipNeo120HrReportV1 {
+  return (
+    Boolean(report) &&
+    typeof report === "object" &&
+    (report as IpipNeo120HrReportV1).contract_version === "ipip_neo_120_hr_v1" &&
+    Array.isArray((report as IpipNeo120HrReportV1).domains) &&
+    Array.isArray((report as IpipNeo120HrReportV1).workplace_signals)
   );
 }
 
@@ -151,6 +165,10 @@ function selectReportRenderer(
               "Report render format označava Big Five participant izvještaj, ali snapshot shape ne odgovara tom rendereru.",
           };
     case "big_five_hr_v1":
+      if (isIpipNeo120HrReport(reportState.report)) {
+        return { kind: "ipip_neo_120_hr_v1", report: reportState.report };
+      }
+
       return isBigFiveReport(reportState.report)
         ? { kind: "big_five_hr_v1", report: reportState.report }
         : {
@@ -760,6 +778,17 @@ function formatNeoBandLabel(band: "lower" | "balanced" | "higher"): string {
   }
 }
 
+function formatNeoHrBandLabel(band: "low" | "moderate" | "high"): string {
+  switch (band) {
+    case "high":
+      return "Visoko izraženo";
+    case "moderate":
+      return "Umjereno izraženo";
+    default:
+      return "Niže izraženo";
+  }
+}
+
 function IpipNeo120ScoreBar({
   label,
   score,
@@ -926,6 +955,150 @@ function IpipNeo120ParticipantReportSections({
         </div>
         <ul className="results-bullet-list">
           {report.development_recommendations.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Interpretacijska napomena</h3>
+        </div>
+        <p>{report.interpretation_note}</p>
+      </section>
+    </div>
+  );
+}
+
+function IpipNeo120HrReportSections({
+  report,
+}: {
+  report: IpipNeo120HrReportV1;
+}) {
+  return (
+    <div className="results-report__closing stack-md">
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <p className="results-report__section-kicker">HR izvještaj</p>
+          <h3>{report.headline}</h3>
+        </div>
+        <p>{report.executive_summary}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Ključni workplace signali</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.workplace_signals.map((signal) => (
+            <li key={signal}>{signal}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__section--dimensions stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Domene</h3>
+        </div>
+
+        <ol className="results-dimension-list">
+          {report.domains.map((domain) => (
+            <li key={domain.code} className="results-dimension-card">
+              <div className="results-dimension-card__header">
+                <div className="results-dimension-card__title">
+                  <h4>{domain.label}</h4>
+                  <p className="results-dimension-card__helper">{formatNeoHrBandLabel(domain.score_band)}</p>
+                </div>
+              </div>
+
+              <p className="results-dimension-card__summary">{domain.summary}</p>
+
+              <section className="results-dimension-card__details stack-xs">
+                <div className="results-dimension-card__detail-block">
+                  <h5>Snage u radnom kontekstu</h5>
+                  <ul className="results-bullet-list">
+                    {domain.workplace_strengths.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="results-dimension-card__detail-block">
+                  <h5>Tačke opreza u radnom kontekstu</h5>
+                  <ul className="results-bullet-list">
+                    {domain.workplace_watchouts.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="results-dimension-card__detail-block">
+                  <h5>Napomene za upravljanje</h5>
+                  <ul className="results-bullet-list">
+                    {domain.management_notes.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="results-dimension-card__detail-block">
+                  <h5>Facete</h5>
+                  <ol className="results-score-overview" aria-label={`Facete za ${domain.label}`}>
+                    {domain.facets.map((facet) => (
+                      <li key={facet.code} className="results-score-overview__item">
+                        <div className="results-score-overview__header">
+                          <strong>{facet.label}</strong>
+                          <span>{formatNeoHrBandLabel(facet.score_band)}</span>
+                        </div>
+                        <p className="results-dimension-card__summary">{facet.summary}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </section>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Stil saradnje</h3>
+        </div>
+        <p>{report.collaboration_style}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Stil komunikacije</h3>
+        </div>
+        <p>{report.communication_style}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Leadership i uticaj</h3>
+        </div>
+        <p>{report.leadership_and_influence}</p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Timske tačke opreza</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.team_watchouts.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Preporuke za onboarding i upravljanje</h3>
+        </div>
+        <ul className="results-bullet-list">
+          {report.onboarding_or_management_recommendations.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -1168,6 +1341,8 @@ export function CompletedAssessmentSummary({
   const reportRenderer = selectReportRenderer(reportState);
   const ipipNeo120ParticipantReport =
     reportRenderer.kind === "ipip_neo_120_participant_v1" ? reportRenderer.report : null;
+  const ipipNeo120HrReport =
+    reportRenderer.kind === "ipip_neo_120_hr_v1" ? reportRenderer.report : null;
   const bigFiveParticipantReport =
     reportRenderer.kind === "big_five_participant_v1" ? reportRenderer.report : null;
   const bigFiveHrReport = reportRenderer.kind === "big_five_hr_v1" ? reportRenderer.report : null;
@@ -1177,8 +1352,8 @@ export function CompletedAssessmentSummary({
   const ipcHrReport = reportRenderer.kind === "ipc_hr_v1" ? reportRenderer.report : null;
   const shouldShowGenericDimensionCards =
     Boolean(results) && Boolean(bigFiveParticipantReport) && !ipipNeo120ParticipantReport;
-  const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport);
-  const shouldShowRawResultsPreview = !ipipNeo120ParticipantReport;
+  const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport) && !ipipNeo120HrReport;
+  const shouldShowRawResultsPreview = !ipipNeo120ParticipantReport && !ipipNeo120HrReport;
 
   const maxRawScore =
     results && results.dimensions.length > 0
@@ -1525,6 +1700,10 @@ export function CompletedAssessmentSummary({
 
       {ipipNeo120ParticipantReport ? (
         <IpipNeo120ParticipantReportSections report={ipipNeo120ParticipantReport} />
+      ) : null}
+
+      {ipipNeo120HrReport ? (
+        <IpipNeo120HrReportSections report={ipipNeo120HrReport} />
       ) : null}
 
       {ipcParticipantReport ? (

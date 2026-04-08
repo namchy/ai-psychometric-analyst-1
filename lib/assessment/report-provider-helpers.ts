@@ -18,6 +18,10 @@ import {
   type IpipNeo120FacetCode,
 } from "@/lib/assessment/ipip-neo-120-labels";
 import {
+  type IpipNeo120HrPromptDomain,
+  type IpipNeo120HrPromptFacet,
+  type IpipNeo120HrReportBand,
+  type IpipNeo120HrReportPromptInput,
   type IpipNeo120ParticipantPromptDomain,
   type IpipNeo120ParticipantReportPromptInput,
   type IpipNeo120ParticipantPromptSubdimension,
@@ -166,6 +170,18 @@ function getIpipNeo120ScoreBand(averageScore: number): IpipNeo120ParticipantRepo
   return "lower";
 }
 
+function getIpipNeo120HrScoreBand(averageScore: number): IpipNeo120HrReportBand {
+  if (averageScore >= 3.67) {
+    return "high";
+  }
+
+  if (averageScore >= 2.34) {
+    return "moderate";
+  }
+
+  return "low";
+}
+
 function requireIpipNeo120FacetLabel(facetCode: IpipNeo120FacetCode): string {
   const label = getIpipNeo120FacetLabel(facetCode);
 
@@ -281,11 +297,147 @@ function buildIpipNeo120ParticipantPromptInput(
   };
 }
 
+function buildIpipNeo120HrPromptInput(
+  input: CompletedAssessmentReportRequest,
+): IpipNeo120HrReportPromptInput {
+  const facetScores = new Map<
+    IpipNeo120FacetCode,
+    {
+      rawScore: number;
+      scoredQuestionCount: number;
+      averageScore: number;
+      domainCode: IpipNeo120DomainCode;
+    }
+  >();
+
+  for (const dimension of input.results.dimensions) {
+    const facetCode = dimension.dimension.trim().toUpperCase() as IpipNeo120FacetCode;
+    const facetLabel = getIpipNeo120FacetLabel(facetCode);
+    const domainCode = getIpipNeo120FacetDomainCode(facetCode);
+
+    if (!facetLabel || !domainCode) {
+      if (!facetLabel) {
+        throw new Error(`unknown IPIP-NEO-120 HR facet code ${facetCode}`);
+      }
+
+      throw new Error(`unknown IPIP-NEO-120 HR domain code for facet ${facetCode}`);
+    }
+
+    facetScores.set(facetCode, {
+      rawScore: dimension.rawScore,
+      scoredQuestionCount: dimension.scoredQuestionCount,
+      averageScore: getAverageScore(dimension.rawScore, dimension.scoredQuestionCount),
+      domainCode,
+    });
+  }
+
+  const domains: IpipNeo120HrPromptDomain[] = IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+    const facetCodes = IPIP_NEO_120_FACETS_BY_DOMAIN[domainCode];
+    const missingFacetCodes = facetCodes.filter((facetCode) => !facetScores.has(facetCode));
+
+    if (missingFacetCodes.length > 0) {
+      throw new Error(
+        `missing complete facet set for domain ${domainCode}: missing expected IPIP-NEO-120 HR facet score for ${missingFacetCodes.join(", ")}`,
+      );
+    }
+
+    const facets: IpipNeo120HrPromptFacet[] = facetCodes.map((facetCode) => {
+      const score = facetScores.get(facetCode);
+
+      if (!score) {
+        throw new Error(`missing expected IPIP-NEO-120 HR facet score for ${facetCode}`);
+      }
+
+      return {
+        facet_code: facetCode,
+        label: requireIpipNeo120FacetLabel(facetCode),
+        score: score.averageScore,
+        score_band: getIpipNeo120HrScoreBand(score.averageScore),
+      };
+    });
+
+    if (facets.length !== 6) {
+      throw new Error(
+        `missing complete facet set for domain ${domainCode}: expected 6 valid facets, received ${facets.length}`,
+      );
+    }
+
+    const totalRawScore = facetCodes.reduce(
+      (sum, facetCode) => {
+        const facetScore = facetScores.get(facetCode);
+
+        if (!facetScore) {
+          throw new Error(`missing expected IPIP-NEO-120 HR facet score for ${facetCode}`);
+        }
+
+        return sum + facetScore.rawScore;
+      },
+      0,
+    );
+    const totalQuestionCount = facetCodes.reduce(
+      (sum, facetCode) => {
+        const facetScore = facetScores.get(facetCode);
+
+        if (!facetScore) {
+          throw new Error(`missing expected IPIP-NEO-120 HR facet score for ${facetCode}`);
+        }
+
+        return sum + facetScore.scoredQuestionCount;
+      },
+      0,
+    );
+    const averageScore = getAverageScore(totalRawScore, totalQuestionCount);
+
+    return {
+      domain_code: domainCode,
+      label: requireIpipNeo120DomainLabel(domainCode),
+      score: averageScore,
+      score_band: getIpipNeo120HrScoreBand(averageScore),
+      facets,
+    };
+  });
+
+  const rankedDomains = [...domains]
+    .sort((left, right) => right.score - left.score || left.domain_code.localeCompare(right.domain_code))
+    .map((domain) => domain.domain_code);
+  const topFacets = [...facetScores.entries()]
+    .sort((left, right) => right[1].averageScore - left[1].averageScore || left[0].localeCompare(right[0]))
+    .slice(0, 5)
+    .map(([facetCode]) => facetCode);
+
+  return {
+    attempt_id: input.attemptId,
+    test_id: input.testId,
+    test_slug: "ipip-neo-120-v1",
+    test_name: input.testName ?? input.testSlug,
+    test_family: IPIP_NEO_120_TEST_FAMILY,
+    audience: "hr",
+    locale: input.locale,
+    scoring_method: input.scoringMethod,
+    prompt_version: input.promptVersion,
+    scored_response_count: input.results.scoredResponseCount,
+    scale_hint: {
+      min: 1,
+      max: 5,
+      display_mode: "visual_with_discreet_numeric_support",
+    },
+    domains,
+    deterministic_summary: {
+      highest_domain: rankedDomains[0] ?? null,
+      lowest_domain: rankedDomains[rankedDomains.length - 1] ?? null,
+      ranked_domains: rankedDomains,
+      top_facets: topFacets,
+    },
+  };
+}
+
 export function buildReportPromptInput(
   input: CompletedAssessmentReportRequest,
 ): ReportPromptInput {
-  if (isIpipNeo120TestSlug(input.testSlug) && input.audience === "participant") {
-    return buildIpipNeo120ParticipantPromptInput(input);
+  if (isIpipNeo120TestSlug(input.testSlug)) {
+    return input.audience === "participant"
+      ? buildIpipNeo120ParticipantPromptInput(input)
+      : buildIpipNeo120HrPromptInput(input);
   }
 
   return isIpcTestSlug(input.testSlug)

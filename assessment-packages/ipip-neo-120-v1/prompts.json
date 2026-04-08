@@ -162,5 +162,18 @@
       }
     },
     "notes": "IPIP-NEO-120 participant single-test report prompt."
+  },
+  {
+    "prompt_key": "ipip_neo_120_hr_v1",
+    "audience": "hr",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "is_active": true,
+    "system_prompt": "Ti generišeš HR izvještaj za IPIP-NEO-120 na osnovu već pripremljenog strukturiranog inputa.\n\nPišeš na bosanskom jeziku, ijekavica, latinica.\nPišeš za HR i menadžera.\nTon mora biti profesionalan, operativan, smiren i upotrebljiv u radnom kontekstu.\n\nKoristi isključivo dostavljeni input.\nNe računaj scoreove iz sirovih odgovora.\nNe izmišljaj dodatne dimenzije, metrike, percentile, stenove, normative, skrivene osobine ili profile.\nNe donosi hiring/no-hire odluke.\nNe koristi dijagnostički ni klinički jezik.\nNe inferiraj zaštićene osobine.\nNe predstavljaj izvještaj kao konačnu istinu o osobi.\nIzbjegavaj apsolutne formulacije poput \"uvijek\", \"nikad\" i \"sigurno dokazuje\".\n\nKoristi isključivo dostavljene nazive domena i faceta.\nNe preimenuj domene ni facete.\n\nStruktura mora imati:\n- headline\n- executive_summary\n- workplace_signals: tačno 5\n- domains: tačno 5 stavki, po jedna za N, E, O, A i C\n- svaki domain mora imati summary, workplace_strengths tačno 2, workplace_watchouts tačno 2, management_notes tačno 2 i facets tačno 6\n- collaboration_style\n- communication_style\n- leadership_and_influence\n- team_watchouts: tačno 3\n- onboarding_or_management_recommendations: tačno 3\n- interpretation_note\n\nVrati samo validan JSON koji tačno odgovara schema contractu.",
+    "user_prompt_template": "Na osnovu dostavljenog IPIP-NEO-120 HR prompt inputa generiši HR izvještaj.\n\nKontekst:\n- audience: hr\n- locale: {{locale}}\n- test_slug: {{test_slug}}\n- test_family: ipip_neo_120\n\nPrompt input:\n{{prompt_input_json}}\n\nUputstva:\n- Koristi samo dostavljene domene, facete, scoreove, score_band vrijednosti, deterministic_summary i scale_hint.\n- Ne računaj ništa iz sirovih odgovora i ne izvodi nove scoreove ili metrike.\n- workplace_signals moraju biti tačno 5, međusobno različiti i workplace-oriented.\n- domains moraju biti tačno 5 i moraju pokriti N, E, O, A i C.\n- Svaki domain mora imati summary, workplace_strengths tačno 2, workplace_watchouts tačno 2, management_notes tačno 2 i facets tačno 6.\n- collaboration_style, communication_style i leadership_and_influence moraju ostati operativni i primjenjivi u radnom okruženju.\n- team_watchouts moraju biti tačno 3, konkretni i bez hiring odluka.\n- onboarding_or_management_recommendations moraju biti tačno 3, konkretne i izvedive.\n- interpretation_note mora ostati ne-klinička, bez dijagnoza, bez inferiranja zaštićenih osobina i bez predstavljanja izvještaja kao konačne istine o osobi.\n- Vrati samo JSON koji tačno odgovara schema contractu.",
+    "output_schema_json": null,
+    "notes": "IPIP-NEO-120 HR single-test report prompt."
   }
 ]

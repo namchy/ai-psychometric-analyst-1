@@ -1,3 +1,4 @@
+import ipipNeo120HrSchemaJson from "@/lib/assessment/schemas/ipip-neo-120-hr-v1.json";
 import ipipNeo120ParticipantSchemaJson from "@/lib/assessment/schemas/ipip-neo-120-participant-v1.json";
 import {
   IPIP_NEO_120_DOMAIN_ORDER,
@@ -40,6 +41,28 @@ type Domain = {
   subdimensions: Subdimension[];
 };
 
+type HrBand = "low" | "moderate" | "high";
+
+type IpipNeo120HrDomainCode = "N" | "E" | "O" | "A" | "C";
+
+type HrFacet = {
+  code: string;
+  label: string;
+  score_band: HrBand;
+  summary: string;
+};
+
+type HrDomain = {
+  code: IpipNeo120HrDomainCode;
+  label: string;
+  score_band: HrBand;
+  summary: string;
+  workplace_strengths: [string, string];
+  workplace_watchouts: [string, string];
+  management_notes: [string, string];
+  facets: [HrFacet, HrFacet, HrFacet, HrFacet, HrFacet, HrFacet];
+};
+
 export type IpipNeo120ParticipantReportV1 = {
   contract_version: "ipip_neo_120_participant_v1";
   test: {
@@ -66,6 +89,29 @@ export type IpipNeo120ParticipantReportV1 = {
 };
 
 export const ipipNeo120ParticipantReportV1Schema = ipipNeo120ParticipantSchemaJson;
+export const ipipNeo120HrReportV1Schema = ipipNeo120HrSchemaJson;
+
+export type IpipNeo120HrReportV1 = {
+  contract_version: "ipip_neo_120_hr_v1";
+  test: {
+    code: "ipip_neo_120";
+    name: "IPIP-NEO-120";
+  };
+  meta: {
+    language: "bs";
+    audience: "hr";
+  };
+  headline: string;
+  executive_summary: string;
+  workplace_signals: [string, string, string, string, string];
+  domains: [HrDomain, HrDomain, HrDomain, HrDomain, HrDomain];
+  collaboration_style: string;
+  communication_style: string;
+  leadership_and_influence: string;
+  team_watchouts: [string, string, string];
+  onboarding_or_management_recommendations: [string, string, string];
+  interpretation_note: string;
+};
 
 function isNonArrayObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -131,6 +177,166 @@ function validateNumber(value: unknown, path: string, errors: ValidationError[])
 
   errors.push({ path, message: "Expected a finite number." });
   return false;
+}
+
+function prefixValidationErrors(
+  errors: ValidationError[],
+  prefix: string,
+): ValidationError[] {
+  return errors.map((error) => ({
+    ...error,
+    message: error.message.startsWith(prefix) ? error.message : `${prefix}${error.message}`,
+  }));
+}
+
+function validateExactStringArrayLength(
+  value: unknown,
+  path: string,
+  expectedLength: number,
+  errors: ValidationError[],
+): value is string[] {
+  if (!Array.isArray(value) || value.length !== expectedLength) {
+    errors.push({
+      path,
+      message: `Expected exactly ${expectedLength} non-empty string item(s).`,
+    });
+    return false;
+  }
+
+  value.forEach((item, index) => {
+    validateNonEmptyString(item, `${path}[${index}]`, errors);
+  });
+
+  return true;
+}
+
+function validateHrBand(value: unknown, path: string, errors: ValidationError[]): value is HrBand {
+  if (value === "low" || value === "moderate" || value === "high") {
+    return true;
+  }
+
+  errors.push({
+    path,
+    message: 'HR report: Expected one of "low", "moderate", or "high".',
+  });
+  return false;
+}
+
+function validateHrFacet(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): value is HrFacet {
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
+  }
+
+  errors.push(...validateExactKeys(value, ["code", "label", "score_band", "summary"], path));
+  const codeOk = validateNonEmptyString(value.code, `${path}.code`, errors);
+  const labelOk = validateNonEmptyString(value.label, `${path}.label`, errors);
+  const bandOk = validateHrBand(value.score_band, `${path}.score_band`, errors);
+  const summaryOk = validateNonEmptyString(value.summary, `${path}.summary`, errors);
+
+  return codeOk && labelOk && bandOk && summaryOk;
+}
+
+function validateHrDomain(
+  value: unknown,
+  path: string,
+  seenDomainCodes: Set<IpipNeo120HrDomainCode>,
+  errors: ValidationError[],
+): value is HrDomain {
+  const allowedCodes = ["N", "E", "O", "A", "C"] satisfies IpipNeo120HrDomainCode[];
+
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
+  }
+
+  errors.push(
+    ...validateExactKeys(
+      value,
+      [
+        "code",
+        "label",
+        "score_band",
+        "summary",
+        "workplace_strengths",
+        "workplace_watchouts",
+        "management_notes",
+        "facets",
+      ],
+      path,
+    ),
+  );
+
+  const codeOk = validateNonEmptyString(value.code, `${path}.code`, errors);
+
+  if (typeof value.code === "string") {
+    if (!allowedCodes.includes(value.code as IpipNeo120HrDomainCode)) {
+      errors.push({
+        path: `${path}.code`,
+        message: 'HR report: Expected one of "N", "E", "O", "A", or "C".',
+      });
+    } else if (seenDomainCodes.has(value.code as IpipNeo120HrDomainCode)) {
+      errors.push({
+        path: `${path}.code`,
+        message: `HR report: Duplicate domain code "${value.code}".`,
+      });
+    } else {
+      seenDomainCodes.add(value.code as IpipNeo120HrDomainCode);
+    }
+  }
+
+  const labelOk = validateNonEmptyString(value.label, `${path}.label`, errors);
+  const bandOk = validateHrBand(value.score_band, `${path}.score_band`, errors);
+  const summaryOk = validateNonEmptyString(value.summary, `${path}.summary`, errors);
+  const strengthsOk = validateExactStringArrayLength(
+    value.workplace_strengths,
+    `${path}.workplace_strengths`,
+    2,
+    errors,
+  );
+  const watchoutsOk = validateExactStringArrayLength(
+    value.workplace_watchouts,
+    `${path}.workplace_watchouts`,
+    2,
+    errors,
+  );
+  const managementNotesOk = validateExactStringArrayLength(
+    value.management_notes,
+    `${path}.management_notes`,
+    2,
+    errors,
+  );
+
+  let facetsOk = true;
+
+  if (!Array.isArray(value.facets) || value.facets.length !== 6) {
+    errors.push({
+      path: `${path}.facets`,
+      message: "HR report: Expected exactly 6 facets.",
+    });
+    facetsOk = false;
+  } else {
+    value.facets.forEach((facet, facetIndex) => {
+      if (!validateHrFacet(facet, `${path}.facets[${facetIndex}]`, errors)) {
+        facetsOk = false;
+      }
+    });
+  }
+
+  return (
+    codeOk &&
+    labelOk &&
+    bandOk &&
+    summaryOk &&
+    strengthsOk &&
+    watchoutsOk &&
+    managementNotesOk &&
+    facetsOk
+  );
 }
 
 function normalizeStringList(value: unknown): string[] {
@@ -481,6 +687,164 @@ export function validateIpipNeo120ParticipantReportV1(value: unknown):
 
   if (errors.length > 0) {
     return { ok: false, errors };
+  }
+
+  return { ok: true, value: normalized };
+}
+
+export function normalizeIpipNeo120HrReportV1(value: unknown): IpipNeo120HrReportV1 {
+  const report = value as Partial<IpipNeo120HrReportV1>;
+
+  return {
+    contract_version: "ipip_neo_120_hr_v1",
+    test: {
+      code: "ipip_neo_120",
+      name: "IPIP-NEO-120",
+    },
+    meta: {
+      language: "bs",
+      audience: "hr",
+    },
+    headline: normalizeTextField(report.headline),
+    executive_summary: normalizeTextField(report.executive_summary),
+    workplace_signals: normalizeStringList(report.workplace_signals).slice(0, 5) as IpipNeo120HrReportV1["workplace_signals"],
+    domains: (Array.isArray(report.domains) ? report.domains : []).map((domain) => ({
+      code: typeof domain?.code === "string" ? (domain.code as IpipNeo120HrDomainCode) : "N",
+      label: normalizeTextField(domain?.label),
+      score_band: domain?.score_band as HrBand,
+      summary: normalizeTextField(domain?.summary),
+      workplace_strengths: normalizeStringList(domain?.workplace_strengths).slice(0, 2) as HrDomain["workplace_strengths"],
+      workplace_watchouts: normalizeStringList(domain?.workplace_watchouts).slice(0, 2) as HrDomain["workplace_watchouts"],
+      management_notes: normalizeStringList(domain?.management_notes).slice(0, 2) as HrDomain["management_notes"],
+      facets: (Array.isArray(domain?.facets) ? domain.facets : []).map((facet) => ({
+        code: normalizeTextField(facet?.code),
+        label: normalizeTextField(facet?.label),
+        score_band: facet?.score_band as HrBand,
+        summary: normalizeTextField(facet?.summary),
+      })) as HrDomain["facets"],
+    })) as IpipNeo120HrReportV1["domains"],
+    collaboration_style: normalizeTextField(report.collaboration_style),
+    communication_style: normalizeTextField(report.communication_style),
+    leadership_and_influence: normalizeTextField(report.leadership_and_influence),
+    team_watchouts: normalizeStringList(report.team_watchouts).slice(0, 3) as IpipNeo120HrReportV1["team_watchouts"],
+    onboarding_or_management_recommendations: normalizeStringList(
+      report.onboarding_or_management_recommendations,
+    ).slice(0, 3) as IpipNeo120HrReportV1["onboarding_or_management_recommendations"],
+    interpretation_note: normalizeTextField(report.interpretation_note),
+  };
+}
+
+export function validateIpipNeo120HrReportV1(value: unknown):
+  | { ok: true; value: IpipNeo120HrReportV1 }
+  | { ok: false; errors: ValidationError[] } {
+  const normalized = normalizeIpipNeo120HrReportV1(value);
+  const errors: ValidationError[] = [];
+
+  if (!isNonArrayObject(value)) {
+    return {
+      ok: false,
+      errors: [{ path: "", message: "HR report: Expected a report object." }],
+    };
+  }
+
+  errors.push(
+    ...validateExactKeys(
+      value,
+      [
+        "contract_version",
+        "test",
+        "meta",
+        "headline",
+        "executive_summary",
+        "workplace_signals",
+        "domains",
+        "collaboration_style",
+        "communication_style",
+        "leadership_and_influence",
+        "team_watchouts",
+        "onboarding_or_management_recommendations",
+        "interpretation_note",
+      ],
+      "",
+    ),
+  );
+
+  if (value.contract_version !== "ipip_neo_120_hr_v1") {
+    errors.push({
+      path: "contract_version",
+      message: 'HR report: Expected "ipip_neo_120_hr_v1".',
+    });
+  }
+
+  if (!isNonArrayObject(value.test)) {
+    errors.push({ path: "test", message: "HR report: Expected an object." });
+  } else {
+    errors.push(...validateExactKeys(value.test, ["code", "name"], "test"));
+
+    if (value.test.code !== "ipip_neo_120") {
+      errors.push({ path: "test.code", message: 'HR report: Expected "ipip_neo_120".' });
+    }
+
+    if (value.test.name !== "IPIP-NEO-120") {
+      errors.push({ path: "test.name", message: 'HR report: Expected "IPIP-NEO-120".' });
+    }
+  }
+
+  if (!isNonArrayObject(value.meta)) {
+    errors.push({ path: "meta", message: "HR report: Expected an object." });
+  } else {
+    errors.push(...validateExactKeys(value.meta, ["language", "audience"], "meta"));
+
+    if (value.meta.language !== "bs") {
+      errors.push({ path: "meta.language", message: 'HR report: Expected "bs".' });
+    }
+
+    if (value.meta.audience !== "hr") {
+      errors.push({ path: "meta.audience", message: 'HR report: Expected "hr".' });
+    }
+  }
+
+  validateNonEmptyString(normalized.headline, "headline", errors);
+  validateNonEmptyString(normalized.executive_summary, "executive_summary", errors);
+  validateExactStringArrayLength(value.workplace_signals, "workplace_signals", 5, errors);
+
+  const seenDomainCodes = new Set<IpipNeo120HrDomainCode>();
+
+  if (!Array.isArray(value.domains) || value.domains.length !== 5) {
+    errors.push({
+      path: "domains",
+      message: "HR report: Expected exactly 5 domains.",
+    });
+  } else {
+    value.domains.forEach((domain, index) => {
+      validateHrDomain(domain, `domains[${index}]`, seenDomainCodes, errors);
+    });
+
+    const expectedCodes = ["N", "E", "O", "A", "C"] satisfies IpipNeo120HrDomainCode[];
+    const missingCodes = expectedCodes.filter((code) => !seenDomainCodes.has(code));
+
+    if (missingCodes.length > 0) {
+      errors.push({
+        path: "domains",
+        message: `HR report: Missing domain code(s): ${missingCodes.join(", ")}.`,
+      });
+    }
+  }
+
+  validateNonEmptyString(normalized.collaboration_style, "collaboration_style", errors);
+  validateNonEmptyString(normalized.communication_style, "communication_style", errors);
+  validateNonEmptyString(normalized.leadership_and_influence, "leadership_and_influence", errors);
+  validateExactStringArrayLength(value.team_watchouts, "team_watchouts", 3, errors);
+  validateExactStringArrayLength(
+    value.onboarding_or_management_recommendations,
+    "onboarding_or_management_recommendations",
+    3,
+    errors,
+  );
+  validateNonEmptyString(normalized.interpretation_note, "interpretation_note", errors);
+
+  if (errors.length > 0) {
+    return { ok: false, errors: prefixValidationErrors(errors, "HR report: ") };
   }
 
   return { ok: true, value: normalized };
