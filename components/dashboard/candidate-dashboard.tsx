@@ -53,7 +53,7 @@ export type CandidateAssessmentCard = {
   updatedAt?: string;
   title: string;
   description: string;
-  status: "Dostupan" | "Nije započet";
+  status: "Dostupan" | "Nije započet" | "U pripremi";
   accessState: "paid" | "upgrade" | "roadmap";
   ctaKind: "start" | "resume" | "report" | "upgrade" | "roadmap";
   duration: string;
@@ -135,6 +135,28 @@ type DashboardOrganizationTestAccessRow = {
   test_id: string;
 };
 
+const CURATED_BATTERY_TESTS = [
+  {
+    key: "ipip-neo-120",
+    title: "IPIP-NEO-120",
+    description: "Tvoj pristup radu, saradnji i situacijama.",
+    category: "personality" as const,
+  },
+  {
+    key: "icar",
+    title: "ICAR",
+    description: "Način razmišljanja i rješavanja zadataka.",
+    category: "cognitive" as const,
+  },
+  {
+    key: "riasec",
+    title: "RIASEC",
+    description: "Tvoja interesovanja i prirodne radne sklonosti.",
+    category: "behavioral" as const,
+    metaLabel: "Interesovanja",
+  },
+] as const;
+
 const KPI_CARDS: Array<{
   label: string;
   icon: DashboardIconName;
@@ -154,20 +176,6 @@ const KPI_CARDS: Array<{
     icon: "schedule",
     iconClassName: "text-purple-400",
     iconBgClassName: "bg-purple-400/10",
-  },
-  {
-    label: "Prosječni rezultat",
-    icon: "trending_up",
-    iconClassName: "text-teal-400",
-    iconBgClassName: "bg-teal-400/10",
-    accent: true,
-  },
-  {
-    label: "Status profila",
-    icon: "psychology",
-    iconClassName: "text-orange-400",
-    iconBgClassName: "bg-orange-400/10",
-    status: true,
   },
 ];
 
@@ -339,6 +347,25 @@ function getCategoryVisuals(category: DashboardTestCategory): Pick<
   }
 }
 
+function getCuratedBatteryTestKey(test: Pick<DashboardTestRow, "slug" | "name">): string | null {
+  const normalizedSlug = test.slug.trim().toLowerCase();
+  const normalizedName = test.name.trim().toLowerCase();
+
+  if (normalizedSlug.includes("ipip-neo-120") || normalizedName.includes("ipip-neo-120")) {
+    return "ipip-neo-120";
+  }
+
+  if (normalizedSlug.includes("icar") || normalizedName.includes("icar")) {
+    return "icar";
+  }
+
+  if (normalizedSlug.includes("riasec") || normalizedName.includes("riasec")) {
+    return "riasec";
+  }
+
+  return null;
+}
+
 function buildAssessmentCardsFromTests(
   tests: DashboardTestRow[],
   attempts: DashboardAttemptRow[],
@@ -350,6 +377,10 @@ function buildAssessmentCardsFromTests(
     const primaryAttempt = getPrimaryAttemptForTest(test.id, attempts);
     const primaryAttemptLifecycle = primaryAttempt
       ? getDashboardAttemptLifecycle(primaryAttempt)
+      : null;
+    const curatedBatteryKey = getCuratedBatteryTestKey(test);
+    const curatedBatteryConfig = curatedBatteryKey
+      ? CURATED_BATTERY_TESTS.find((entry) => entry.key === curatedBatteryKey) ?? null
       : null;
     const visuals = getCategoryVisuals(test.category);
     const totalQuestions = questionCountsByTestId.get(test.id) ?? 0;
@@ -401,19 +432,33 @@ function buildAssessmentCardsFromTests(
       answeredQuestions: primaryAttempt?.responseCount,
       totalQuestions,
       updatedAt: primaryAttempt?.updated_at,
-      title: test.name,
-      description: test.description?.trim() || "Opis testa će biti dostupan uskoro.",
+      title: curatedBatteryConfig?.title ?? test.name,
+      description:
+        curatedBatteryConfig?.description ??
+        test.description?.trim() ??
+        "Opis testa će biti dostupan uskoro.",
       accessState: hasPaidAccess ? "paid" : "upgrade",
       ctaKind,
       status: hasPaidAccess ? "Dostupan" : "Nije započet",
       duration: formatDurationLabel(test.duration_minutes),
-      secondaryMeta: getCategoryLabel(test.category),
+      secondaryMeta: curatedBatteryConfig?.metaLabel ?? getCategoryLabel(test.category),
       href,
       ctaLabel,
       disabled,
       availabilityNote,
       ...visuals,
     };
+  });
+  const curatedOrder = new Map(CURATED_BATTERY_TESTS.map((entry, index) => [entry.title, index]));
+  const sortedDatabaseCards = [...databaseCards].sort((left, right) => {
+    const leftOrder = curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY;
+    const rightOrder = curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY;
+
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+
+    return 0;
   });
 
   const roadmapCards: CandidateAssessmentCard[] = ROADMAP_TESTS.map((test) => ({
@@ -429,7 +474,34 @@ function buildAssessmentCardsFromTests(
     ...getCategoryVisuals(test.category),
   }));
 
-  return [...databaseCards, ...roadmapCards];
+  const curatedTitles = new Set(CURATED_BATTERY_TESTS.map((entry) => entry.title));
+  const missingCuratedCards: CandidateAssessmentCard[] = CURATED_BATTERY_TESTS
+    .filter((entry) => !sortedDatabaseCards.some((card) => card.title === entry.title))
+    .map((entry) => ({
+      title: entry.title,
+      description: entry.description,
+      accessState: "roadmap",
+      ctaKind: "roadmap",
+      status: "U pripremi",
+      duration: "Vrijeme uskoro",
+      secondaryMeta: entry.metaLabel ?? getCategoryLabel(entry.category),
+      ctaLabel: "Uskoro",
+      disabled: true,
+      ...getCategoryVisuals(entry.category),
+    }));
+  const batteryCards = [...sortedDatabaseCards.filter((card) => curatedTitles.has(card.title)), ...missingCuratedCards]
+    .sort((left, right) => {
+      const leftOrder = curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY;
+      const rightOrder = curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY;
+
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+
+      return 0;
+    });
+
+  return [...batteryCards, ...roadmapCards];
 }
 
 function mapInitialAttemptsToDashboardAttempts(
@@ -711,15 +783,20 @@ function DashboardHeader() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-slate-300/80 to-transparent"
       />
-      <DashboardSectionHeader
-        className="relative"
-        eyebrow="Assessment workspace"
-        eyebrowClassName="text-teal-800/90"
-        title="Dostupni testovi"
-        titleClassName="mt-3 text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
-        description="Pokrenite aktivne procjene i odvojeno pregledajte testove koji još nisu dostupni."
-        descriptionClassName="mt-2 max-w-2xl"
-      />
+      <div className="relative max-w-[36rem]">
+        <DashboardSectionHeader
+          className="gap-1"
+          eyebrow="Pregled"
+          eyebrowClassName="text-teal-800/90"
+          title="Integrisana procjena"
+          titleClassName="mt-2 text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
+          description="Tri komplementarna testa"
+          descriptionClassName="mt-1 max-w-xl"
+        />
+        <p className="mt-1 max-w-xl font-body text-[15px] leading-7 text-slate-700">
+          Završi sva tri testa kako bi dobio cjelovit profil, dublju analizu i jasniji uvid u svoje obrasce ponašanja, način razmišljanja i radni stil.
+        </p>
+      </div>
     </DashboardSectionShell>
   );
 }
@@ -746,7 +823,7 @@ function WelcomeOverviewCard({
       />
       <DashboardSectionHeader
         className="relative"
-        eyebrow="Overview"
+        eyebrow="PREGLED"
         eyebrowClassName="text-teal-800/90"
         title="Tvoj napredak"
         titleClassName="mt-3 text-[1.9rem] tracking-[-0.045em]"
@@ -783,29 +860,24 @@ function QuickActionCard({
       />
       <DashboardSectionHeader
         className="relative"
-        eyebrow="Quick action"
+        eyebrow="KOMPOZITNI IZVJEŠTAJ"
         eyebrowClassName="text-violet-700"
-        title="Initialize AI Analyst"
+        title="Pregled objedinjene analize"
         titleClassName="mt-3 text-xl"
       />
-      <p className="relative mt-2 font-body text-sm leading-6 text-slate-700">
-        CTA ostaje pripremljen za izvještaje, bez nove backend logike u ovoj iteraciji.
-      </p>
-      <div className="relative mt-4 rounded-2xl border border-violet-100 bg-white/70 px-4 py-3">
-        <p className="text-[11px] font-medium leading-5 text-slate-600">
-          Izvještaj će biti dostupan kada završiš kompletnu bateriju testova.
-        </p>
-      </div>
-      <DashboardActionRow className="relative mt-5">
+      <DashboardActionRow className="relative mt-6">
         <button
           className={`flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] transition-all ${disabled ? "border-slate-300 bg-slate-100 text-slate-400 opacity-85" : "border-violet-300 bg-white text-violet-800 shadow-[0_12px_24px_rgba(76,29,149,0.08)] hover:border-violet-400 hover:bg-violet-50"}`}
           disabled={disabled}
           title={title}
           type="button"
         >
-          <span>Initialize AI Analyst</span>
+          <span>Kompozitni izvještaj</span>
           <DashboardIcon className="h-4 w-4" name="arrow_right" />
         </button>
+        <p className="mx-auto mt-3 max-w-[28ch] text-center text-[11px] font-medium leading-5 text-slate-500">
+          Kompozitni izvještaj postaje dostupan nakon završetka sva tri testa.
+        </p>
       </DashboardActionRow>
     </DashboardSectionShell>
   );
@@ -944,6 +1016,7 @@ function AssessmentCard({
   const iconTileClassName = getIconTileClassName(assessment.iconBgClassName);
   const iconColorClassName = getIconColorClassName(assessment.iconColorClassName);
   const isPaid = assessment.accessState === "paid";
+  const isRoadmap = assessment.accessState === "roadmap";
   const isInteractive =
     isPaid &&
     !assessment.disabled &&
@@ -954,7 +1027,9 @@ function AssessmentCard({
     assessment.ctaKind === "start" &&
     Boolean(assessment.testId);
   const badgeClassName =
-    isPaid && !muted
+    isRoadmap
+      ? "border-violet-200/90 bg-violet-50 text-violet-900"
+      : isPaid && !muted
       ? "border-teal-300 bg-teal-50 text-teal-800"
       : "border-slate-300 bg-slate-100 text-slate-600";
   const cardClassName = muted
@@ -966,8 +1041,12 @@ function AssessmentCard({
         : primary
           ? "border-teal-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(240,249,248,0.98))] shadow-[0_30px_61px_rgba(15,23,42,0.14)] hover:border-teal-400 hover:shadow-[0_34px_65px_rgba(20,184,166,0.16)]"
           : "border-slate-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,250,251,0.98))] shadow-[0_20px_37px_rgba(15,23,42,0.09)] hover:border-teal-300 hover:shadow-[0_24px_42px_rgba(20,184,166,0.12)]";
-  const descriptionClassName = muted ? "text-slate-600" : "text-slate-700";
-  const metaClassName = muted ? "text-slate-700" : "text-slate-800";
+  const descriptionClassName = muted
+    ? "text-slate-600"
+    : isRoadmap
+      ? "text-slate-700/95"
+      : "text-slate-700";
+  const metaClassName = muted ? "text-slate-700" : isRoadmap ? "text-slate-700" : "text-slate-800";
   const answeredQuestions = assessment.answeredQuestions ?? 0;
   const totalQuestions = assessment.totalQuestions ?? 0;
   const progressPercent =
@@ -1024,7 +1103,7 @@ function AssessmentCard({
     >
       <div className="mb-4 flex items-start justify-between gap-4">
         <div
-          className={`rounded-[1.25rem] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ${primary ? "ring-1 ring-teal-200/80" : ""} ${iconTileClassName} ${muted ? "opacity-75" : ""}`}
+          className={`rounded-[1.25rem] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ${primary ? "ring-1 ring-teal-200/80" : isRoadmap ? "ring-1 ring-violet-100/90" : ""} ${iconTileClassName} ${muted ? "opacity-75" : isRoadmap ? "opacity-95" : ""}`}
         >
           <DashboardIcon className={`h-6 w-6 ${iconColorClassName} sm:h-7 sm:w-7`} name={assessment.icon} />
         </div>
@@ -1038,15 +1117,15 @@ function AssessmentCard({
       </div>
 
       <div className="flex flex-1 flex-col">
-        <h3 className={`font-headline font-bold tracking-[-0.04em] ${primary ? "text-[1.6rem]" : "text-[1.38rem]"} ${muted ? "text-slate-900" : "text-slate-950"}`}>
+        <h3 className={`font-headline font-bold tracking-[-0.04em] ${primary ? "text-[1.6rem]" : "text-[1.38rem]"} ${muted ? "text-slate-900" : isRoadmap ? "text-slate-900" : "text-slate-950"}`}>
           {assessment.title}
         </h3>
-        <p className={`mt-2 min-h-0 font-body ${primary ? "text-[15px] leading-7" : "text-sm leading-6"} ${muted ? "text-slate-600" : descriptionClassName}`}>
+        <p className={`mt-1.5 min-h-0 font-body ${primary ? "text-[15px] leading-7" : isRoadmap ? "text-sm leading-6" : "text-sm leading-6"} ${muted ? "text-slate-600" : descriptionClassName}`}>
           {assessment.description}
         </p>
 
         <DashboardCompactMetaRow
-          className={primary ? "border-slate-300" : muted ? "border-slate-300" : "border-slate-200"}
+          className={primary ? "border-slate-300" : muted ? "border-slate-300" : isRoadmap ? "mb-3 mt-3 gap-y-1.5 border-slate-200/90 pt-2.5" : "border-slate-200"}
         >
           <DashboardCompactMetaItem className={muted ? "text-slate-700" : metaClassName}>
             <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-slate-500" : "text-slate-400"}`} name="schedule" />
@@ -1100,14 +1179,16 @@ function AssessmentCard({
           </button>
         </DashboardActionRow>
       ) : !isInteractive ? (
-        <DashboardActionRow className="stack-xs">
+        <DashboardActionRow className={isRoadmap ? "mt-1" : "stack-xs"}>
           <button
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-100 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-500 opacity-90"
+            className={isRoadmap
+              ? "flex w-full items-center justify-center gap-2 rounded-full border border-violet-200/90 bg-violet-50/70 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] opacity-100"
+              : "flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-100 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-500 opacity-90"}
             disabled
             type="button"
           >
             <span>{assessment.ctaLabel}</span>
-            <DashboardIcon className="h-4 w-4" name="arrow_right" />
+            <DashboardIcon className={`h-4 w-4 ${isRoadmap ? "text-violet-500/80" : ""}`} name="arrow_right" />
           </button>
           {assessment.availabilityNote ? (
             <p className="text-xs text-slate-600">{assessment.availabilityNote}</p>
@@ -1188,7 +1269,7 @@ function DashboardStatCard({
         </p>
       ) : (
         <p
-          className={`mt-5 min-h-[3.1rem] text-[2.25rem] font-extrabold tracking-[-0.055em] leading-none sm:text-[2.45rem] ${accent ? "text-teal-700" : "text-slate-950"}`}
+          className={`mt-5 min-h-[3.1rem] text-center text-[2.25rem] font-extrabold tracking-[-0.055em] leading-none sm:text-[2.45rem] ${accent ? "text-teal-700" : "text-slate-950"}`}
         >
           {value}
         </p>
@@ -1411,11 +1492,9 @@ export function CandidateDashboardView({
     };
   }, [hasLinkedParticipant, initialAttempts, linkedOrganizationId]);
 
+  const curatedBatteryTitles = new Set(CURATED_BATTERY_TESTS.map((entry) => entry.title));
   const availableAssessments = liveAssessments.filter(
-    (assessment) => assessment.accessState === "paid",
-  );
-  const unavailableAssessments = liveAssessments.filter(
-    (assessment) => assessment.accessState !== "paid",
+    (assessment) => curatedBatteryTitles.has(assessment.title),
   );
   const isAiAnalystDisabled =
     !(completedAttempts === totalPaidTestsCount && totalPaidTestsCount > 1);
@@ -1428,8 +1507,6 @@ export function CandidateDashboardView({
   const kpiValues: Record<string, string> = {
     "Završeni testovi": loadError ? "N/A" : completedTestsCount,
     "Ukupno vrijeme": loadError ? "N/A" : totalHours,
-    "Prosječni rezultat": loadError ? "N/A" : averageScore,
-    "Status profila": "Aktivan",
   };
 
   return (
@@ -1475,12 +1552,14 @@ export function CandidateDashboardView({
               <section aria-label="Assessments" className={DASHBOARD_PRIMARY_COLUMN_CLASS_NAME}>
                 <div className={DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME}>
                   <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.22em] text-teal-800/80">
-                    Dostupne procjene
+                    TVOJA BATERIJA TESTOVA
                   </p>
-                  <DashboardHeader />
+                  <div className="!mt-5">
+                    <DashboardHeader />
+                  </div>
                   {availableAssessments.length > 0 ? (
                     <AssessmentSection
-                      title="Dostupni testovi"
+                      title="Tvoja baterija testova"
                       description="Aktivne procjene koje možeš odmah otvoriti i završiti."
                       assessments={availableAssessments}
                       linkedOrganizationId={linkedOrganizationId}
@@ -1488,16 +1567,6 @@ export function CandidateDashboardView({
                     />
                   ) : null}
                 </div>
-
-                {!isLoading || Boolean(loadError) ? (
-                  <AssessmentSection
-                    title="Ostali testovi"
-                    description="Ove procjene još nisu otključane za tvoj profil."
-                    assessments={unavailableAssessments}
-                    linkedOrganizationId={linkedOrganizationId}
-                    muted
-                  />
-                ) : null}
               </section>
             </div>
           )
