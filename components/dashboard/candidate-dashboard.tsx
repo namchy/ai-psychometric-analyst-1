@@ -145,24 +145,40 @@ type DashboardOrganizationTestAccessRow = {
   test_id: string;
 };
 
-const CURATED_BATTERY_TESTS = [
+type CuratedBatteryKey = "ipip-neo-120" | "icar" | "riasec";
+type CuratedBatteryTitle = "IPIP-NEO-120" | "ICAR" | "RIASEC";
+type CuratedBatteryConfig = {
+  key: CuratedBatteryKey;
+  title: CuratedBatteryTitle;
+  description: string;
+  category: DashboardTestCategory;
+  metaLabel: string;
+};
+
+function isCuratedBatteryTitle(value: string): value is CuratedBatteryTitle {
+  return value === "IPIP-NEO-120" || value === "ICAR" || value === "RIASEC";
+}
+
+const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
   {
     key: "ipip-neo-120",
     title: "IPIP-NEO-120",
     description: "Tvoj pristup radu, saradnji i situacijama.",
-    category: "personality" as const,
+    category: "personality",
+    metaLabel: "Ličnost",
   },
   {
     key: "icar",
     title: "ICAR",
     description: "Način razmišljanja i rješavanja zadataka.",
-    category: "cognitive" as const,
+    category: "cognitive",
+    metaLabel: "Kognitivni",
   },
   {
     key: "riasec",
     title: "RIASEC",
     description: "Tvoja interesovanja i prirodne radne sklonosti.",
-    category: "behavioral" as const,
+    category: "behavioral",
     metaLabel: "Interesovanja",
   },
 ] as const;
@@ -471,10 +487,16 @@ function buildAssessmentCardsFromTests(
       ...visuals,
     };
   });
-  const curatedOrder = new Map(CURATED_BATTERY_TESTS.map((entry, index) => [entry.title, index]));
+  const curatedOrder = new Map<CuratedBatteryTitle, number>(
+    CURATED_BATTERY_TESTS.map((entry, index) => [entry.title, index]),
+  );
   const sortedDatabaseCards = [...databaseCards].sort((left, right) => {
-    const leftOrder = curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY;
-    const rightOrder = curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY;
+    const leftOrder = isCuratedBatteryTitle(left.title)
+      ? curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY
+      : Number.POSITIVE_INFINITY;
+    const rightOrder = isCuratedBatteryTitle(right.title)
+      ? curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY
+      : Number.POSITIVE_INFINITY;
 
     if (leftOrder !== rightOrder) {
       return leftOrder - rightOrder;
@@ -496,7 +518,7 @@ function buildAssessmentCardsFromTests(
     ...getCategoryVisuals(test.category),
   }));
 
-  const curatedTitles = new Set(CURATED_BATTERY_TESTS.map((entry) => entry.title));
+  const curatedTitles = new Set<CuratedBatteryTitle>(CURATED_BATTERY_TESTS.map((entry) => entry.title));
   const missingCuratedCards: CandidateAssessmentCard[] = CURATED_BATTERY_TESTS
     .filter((entry) => !sortedDatabaseCards.some((card) => card.title === entry.title))
     .map((entry) => ({
@@ -508,15 +530,24 @@ function buildAssessmentCardsFromTests(
       duration: "Vrijeme uskoro",
       totalQuestions: CURATED_BATTERY_UI_FALLBACKS[entry.key].totalQuestions,
       answeredQuestions: 0,
-      secondaryMeta: entry.metaLabel ?? getCategoryLabel(entry.category),
+      secondaryMeta: entry.metaLabel,
       ctaLabel: "Započni procjenu",
       disabled: false,
       ...getCategoryVisuals(entry.category),
     }));
-  const batteryCards = [...sortedDatabaseCards.filter((card) => curatedTitles.has(card.title)), ...missingCuratedCards]
+  const batteryCards = [
+    ...sortedDatabaseCards.filter(
+      (card) => isCuratedBatteryTitle(card.title) && curatedTitles.has(card.title),
+    ),
+    ...missingCuratedCards,
+  ]
     .sort((left, right) => {
-      const leftOrder = curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY;
-      const rightOrder = curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY;
+      const leftOrder = isCuratedBatteryTitle(left.title)
+        ? curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY
+        : Number.POSITIVE_INFINITY;
+      const rightOrder = isCuratedBatteryTitle(right.title)
+        ? curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY
+        : Number.POSITIVE_INFINITY;
 
       if (leftOrder !== rightOrder) {
         return leftOrder - rightOrder;
@@ -1570,9 +1601,12 @@ export function CandidateDashboardView({
     };
   }, [hasLinkedParticipant, initialAttempts, linkedOrganizationId]);
 
-  const curatedBatteryTitles = new Set(CURATED_BATTERY_TESTS.map((entry) => entry.title));
+  const curatedBatteryTitles = new Set<CuratedBatteryTitle>(
+    CURATED_BATTERY_TESTS.map((entry) => entry.title),
+  );
   const availableAssessments = liveAssessments.filter(
-    (assessment) => curatedBatteryTitles.has(assessment.title),
+    (assessment) =>
+      isCuratedBatteryTitle(assessment.title) && curatedBatteryTitles.has(assessment.title),
   );
   const isAiAnalystDisabled =
     !(completedAttempts === totalPaidTestsCount && totalPaidTestsCount > 1);
