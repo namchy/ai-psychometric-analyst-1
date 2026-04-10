@@ -50,7 +50,9 @@ export type CandidateAssessmentCard = {
   attemptId?: string;
   answeredQuestions?: number;
   totalQuestions?: number;
-  updatedAt?: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  lastAnsweredAt?: string | null;
   title: string;
   description: string;
   status: "Dostupan" | "Nije započet" | "U pripremi";
@@ -73,6 +75,7 @@ export type CandidateDashboardInitialAttempt = {
   test_id: string;
   status: DashboardAttemptStatus;
   responseCount: number;
+  started_at?: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -114,9 +117,11 @@ type DashboardAttemptRow = {
   test_id: string;
   status: DashboardAttemptStatus;
   responseCount: number;
+  started_at?: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  last_answered_at?: string | null;
   total_time_seconds: number | null;
   tests: DashboardRelation<DashboardTestRow>;
 };
@@ -124,6 +129,11 @@ type DashboardAttemptRow = {
 type DashboardDimensionScoreRow = {
   attempt_id: string;
   normalized_score: number | string | null;
+};
+
+type DashboardResponseRow = {
+  attempt_id: string;
+  answered_at: string | null;
 };
 
 type DashboardQuestionRow = {
@@ -156,6 +166,12 @@ const CURATED_BATTERY_TESTS = [
     metaLabel: "Interesovanja",
   },
 ] as const;
+
+const CURATED_BATTERY_UI_FALLBACKS: Record<string, { totalQuestions: number }> = {
+  "ipip-neo-120": { totalQuestions: 120 },
+  icar: { totalQuestions: 16 },
+  riasec: { totalQuestions: 48 },
+};
 
 const KPI_CARDS: Array<{
   label: string;
@@ -246,28 +262,29 @@ function getPrimaryAttemptForTest(
   })[0] ?? null;
 }
 
-function formatRelativeActivity(timestamp: string): string {
-  const target = new Date(timestamp).getTime();
-
-  if (Number.isNaN(target)) {
-    return "upravo sada";
+function formatAttemptTimestamp(timestamp?: string | null): string | null {
+  if (!timestamp) {
+    return null;
   }
 
-  const diffMs = target - Date.now();
-  const diffMinutes = Math.round(diffMs / (1000 * 60));
-  const rtf = new Intl.RelativeTimeFormat("bs", { numeric: "auto" });
+  const date = new Date(timestamp);
 
-  if (Math.abs(diffMinutes) < 60) {
-    return rtf.format(diffMinutes, "minute");
+  if (Number.isNaN(date.getTime())) {
+    return null;
   }
 
-  const diffHours = Math.round(diffMinutes / 60);
-  if (Math.abs(diffHours) < 24) {
-    return rtf.format(diffHours, "hour");
-  }
+  const formattedDate = new Intl.DateTimeFormat("bs-BA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+  const formattedTime = new Intl.DateTimeFormat("bs-BA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 
-  const diffDays = Math.round(diffHours / 24);
-  return rtf.format(diffDays, "day");
+  return `${formattedDate} u ${formattedTime}`;
 }
 
 function formatTotalHours(totalSeconds: number): string {
@@ -382,8 +399,12 @@ function buildAssessmentCardsFromTests(
     const curatedBatteryConfig = curatedBatteryKey
       ? CURATED_BATTERY_TESTS.find((entry) => entry.key === curatedBatteryKey) ?? null
       : null;
+    const curatedBatteryFallback = curatedBatteryKey
+      ? CURATED_BATTERY_UI_FALLBACKS[curatedBatteryKey]
+      : null;
     const visuals = getCategoryVisuals(test.category);
-    const totalQuestions = questionCountsByTestId.get(test.id) ?? 0;
+    const totalQuestions =
+      questionCountsByTestId.get(test.id) ?? curatedBatteryFallback?.totalQuestions ?? 0;
     const isReadyForRun = totalQuestions > 0;
     const hasPaidAccess =
       test.is_active && test.status === "active" && accessibleTestIds.has(test.id);
@@ -420,9 +441,8 @@ function buildAssessmentCardsFromTests(
         disabled = false;
       } else {
         ctaKind = "start";
-        ctaLabel = "Trenutno nije dostupno";
-        disabled = true;
-        availabilityNote = "Test još nije spreman za pokretanje.";
+        ctaLabel = "Započni procjenu";
+        disabled = false;
       }
     }
 
@@ -431,7 +451,9 @@ function buildAssessmentCardsFromTests(
       attemptId,
       answeredQuestions: primaryAttempt?.responseCount,
       totalQuestions,
-      updatedAt: primaryAttempt?.updated_at,
+      startedAt: primaryAttempt?.started_at ?? primaryAttempt?.created_at ?? null,
+      completedAt: primaryAttempt?.completed_at ?? null,
+      lastAnsweredAt: primaryAttempt?.last_answered_at ?? null,
       title: curatedBatteryConfig?.title ?? test.name,
       description:
         curatedBatteryConfig?.description ??
@@ -480,13 +502,15 @@ function buildAssessmentCardsFromTests(
     .map((entry) => ({
       title: entry.title,
       description: entry.description,
-      accessState: "roadmap",
-      ctaKind: "roadmap",
-      status: "U pripremi",
+      accessState: "paid",
+      ctaKind: "start",
+      status: "Dostupan",
       duration: "Vrijeme uskoro",
+      totalQuestions: CURATED_BATTERY_UI_FALLBACKS[entry.key].totalQuestions,
+      answeredQuestions: 0,
       secondaryMeta: entry.metaLabel ?? getCategoryLabel(entry.category),
-      ctaLabel: "Uskoro",
-      disabled: true,
+      ctaLabel: "Započni procjenu",
+      disabled: false,
       ...getCategoryVisuals(entry.category),
     }));
   const batteryCards = [...sortedDatabaseCards.filter((card) => curatedTitles.has(card.title)), ...missingCuratedCards]
@@ -509,6 +533,8 @@ function mapInitialAttemptsToDashboardAttempts(
 ): DashboardAttemptRow[] {
   return attempts.map((attempt) => ({
     ...attempt,
+    started_at: attempt.started_at ?? attempt.created_at,
+    last_answered_at: null,
     tests: null,
   }));
 }
@@ -986,7 +1012,7 @@ function AssessmentSection({
       {!hideSectionHeader ? (
         <DashboardSectionHeader className="mb-5" title={title} description={description} />
       ) : null}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
         {assessments.map((assessment) => (
           <AssessmentCard
             assessment={assessment}
@@ -1051,7 +1077,13 @@ function AssessmentCard({
   const totalQuestions = assessment.totalQuestions ?? 0;
   const progressPercent =
     totalQuestions > 0 ? Math.min(100, Math.round((answeredQuestions / totalQuestions) * 100)) : 0;
-  const relativeActivity = assessment.updatedAt ? formatRelativeActivity(assessment.updatedAt) : null;
+  const startedAtLabel = formatAttemptTimestamp(assessment.startedAt);
+  const completedAtLabel = formatAttemptTimestamp(assessment.completedAt);
+  const lastAnsweredAtLabel = formatAttemptTimestamp(
+    assessment.lastAnsweredAt ?? assessment.startedAt ?? null,
+  );
+  const showsProgressScaffold =
+    assessment.ctaKind === "start" || assessment.ctaKind === "resume" || assessment.ctaKind === "report";
 
   async function handleCreateAttempt() {
     if (!assessment.testId || isCreatingAttempt) {
@@ -1120,12 +1152,12 @@ function AssessmentCard({
         <h3 className={`font-headline font-bold tracking-[-0.04em] ${primary ? "text-[1.6rem]" : "text-[1.38rem]"} ${muted ? "text-slate-900" : isRoadmap ? "text-slate-900" : "text-slate-950"}`}>
           {assessment.title}
         </h3>
-        <p className={`mt-1.5 min-h-0 font-body ${primary ? "text-[15px] leading-7" : isRoadmap ? "text-sm leading-6" : "text-sm leading-6"} ${muted ? "text-slate-600" : descriptionClassName}`}>
+        <p className={`mt-2 font-body ${primary ? "text-[15px] leading-7" : isRoadmap ? "text-sm leading-6" : "text-sm leading-6"} ${muted ? "text-slate-600" : descriptionClassName}`}>
           {assessment.description}
         </p>
 
         <DashboardCompactMetaRow
-          className={primary ? "border-slate-300" : muted ? "border-slate-300" : isRoadmap ? "mb-3 mt-3 gap-y-1.5 border-slate-200/90 pt-2.5" : "border-slate-200"}
+          className={primary ? "mt-4 border-slate-300" : muted ? "mt-4 border-slate-300" : isRoadmap ? "mb-3 mt-4 gap-y-1.5 border-slate-200/90 pt-2.5" : "mt-4 border-slate-200"}
         >
           <DashboardCompactMetaItem className={muted ? "text-slate-700" : metaClassName}>
             <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-slate-500" : "text-slate-400"}`} name="schedule" />
@@ -1137,35 +1169,52 @@ function AssessmentCard({
           </DashboardCompactMetaItem>
         </DashboardCompactMetaRow>
 
-        {assessment.ctaKind === "resume" ? (
-          <div className="mb-4">
+        {showsProgressScaffold ? (
+          <div className="mt-4">
             <p className="mb-2 text-xs text-slate-600">
               {answeredQuestions} / {totalQuestions} pitanja
             </p>
             <div className="h-2 overflow-hidden rounded-full bg-slate-200">
               <div
                 className="h-full rounded-full bg-teal-600 transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
+                style={{ width: `${assessment.ctaKind === "report" ? 100 : progressPercent}%` }}
               />
             </div>
-            {relativeActivity ? (
-              <p className="mt-2 text-[10px] italic text-slate-600">
-                Zadnja aktivnost: {relativeActivity}
-              </p>
-            ) : null}
-          </div>
-        ) : assessment.ctaKind === "report" ? (
-          <div className="mb-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-800">Završeno</p>
-            {relativeActivity ? (
-              <p className="mt-2 text-[10px] italic text-slate-600">Završeno: {relativeActivity}</p>
-            ) : null}
+            {assessment.ctaKind === "start" ? (
+              <p className="mt-2 text-[10px] italic text-slate-600">Još nije započeto</p>
+            ) : assessment.ctaKind === "resume" ? (
+              <>
+                {startedAtLabel ? (
+                  <p className="mt-2 text-[10px] italic text-slate-600">
+                    Započeto: {startedAtLabel}
+                  </p>
+                ) : null}
+                {lastAnsweredAtLabel ? (
+                  <p className="mt-1 text-[10px] italic text-slate-600">
+                    Zadnja aktivnost: {lastAnsweredAtLabel}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                {startedAtLabel ? (
+                  <p className="mt-2 text-[10px] italic text-slate-600">
+                    Započeto: {startedAtLabel}
+                  </p>
+                ) : null}
+                {completedAtLabel ? (
+                  <p className="mt-1 text-[10px] italic text-slate-600">
+                    Završeno: {completedAtLabel}
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
         ) : null}
       </div>
 
       {canCreateAttempt ? (
-        <DashboardActionRow>
+        <DashboardActionRow className="mt-auto pt-4">
           <button
             className={`flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 disabled:cursor-wait disabled:opacity-80 ${primary ? "sm:text-[13px]" : ""}`}
             disabled={isCreatingAttempt}
@@ -1179,7 +1228,7 @@ function AssessmentCard({
           </button>
         </DashboardActionRow>
       ) : !isInteractive ? (
-        <DashboardActionRow className={isRoadmap ? "mt-1" : "stack-xs"}>
+        <DashboardActionRow className={isRoadmap ? "mt-auto pt-4" : "mt-auto pt-4 stack-xs"}>
           <button
             className={isRoadmap
               ? "flex w-full items-center justify-center gap-2 rounded-full border border-violet-200/90 bg-violet-50/70 py-3 text-sm font-bold uppercase tracking-[0.16em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] opacity-100"
@@ -1195,7 +1244,7 @@ function AssessmentCard({
           ) : null}
         </DashboardActionRow>
       ) : (
-        <DashboardActionRow>
+        <DashboardActionRow className="mt-auto pt-4">
           <button
             className={`flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 ${primary ? "sm:text-[13px]" : ""}`}
             onClick={handleNavigate}
@@ -1405,6 +1454,7 @@ export function CandidateDashboardView({
         }
 
         let dimensionScoreRows: DashboardDimensionScoreRow[] = [];
+        let responseRows: DashboardResponseRow[] = [];
 
         const testIds = ((testsData ?? []) as DashboardTestRow[]).map((test) => test.id);
         let questionRows: DashboardQuestionRow[] = [];
@@ -1433,6 +1483,17 @@ export function CandidateDashboardView({
           }
 
           dimensionScoreRows = (dimensionScoresData ?? []) as DashboardDimensionScoreRow[];
+
+          const { data: responsesData, error: responsesError } = await supabase
+            .from("responses")
+            .select("attempt_id, answered_at")
+            .in("attempt_id", attemptIds);
+
+          if (responsesError) {
+            throw new Error(responsesError.message);
+          }
+
+          responseRows = (responsesData ?? []) as DashboardResponseRow[];
         }
 
         const completedCount = mappedAttempts.filter((attempt) => attempt.status === "completed").length;
@@ -1453,6 +1514,23 @@ export function CandidateDashboardView({
           counts.set(question.test_id, (counts.get(question.test_id) ?? 0) + 1);
           return counts;
         }, new Map<string, number>());
+        const lastAnsweredAtByAttemptId = responseRows.reduce((timestamps, response) => {
+          if (!response.answered_at) {
+            return timestamps;
+          }
+
+          const previousTimestamp = timestamps.get(response.attempt_id);
+
+          if (!previousTimestamp || Date.parse(response.answered_at) > Date.parse(previousTimestamp)) {
+            timestamps.set(response.attempt_id, response.answered_at);
+          }
+
+          return timestamps;
+        }, new Map<string, string>());
+        const attemptsWithActivity = mappedAttempts.map((attempt) => ({
+          ...attempt,
+          last_answered_at: lastAnsweredAtByAttemptId.get(attempt.id) ?? null,
+        }));
 
         if (isCancelled) {
           return;
@@ -1461,7 +1539,7 @@ export function CandidateDashboardView({
         setLiveAssessments(
           buildAssessmentCardsFromTests(
             (testsData ?? []) as DashboardTestRow[],
-            mappedAttempts,
+            attemptsWithActivity,
             (accessData ?? []) as DashboardOrganizationTestAccessRow[],
             questionCountsByTestId,
           ),
@@ -1508,7 +1586,6 @@ export function CandidateDashboardView({
     "Završeni testovi": loadError ? "N/A" : completedTestsCount,
     "Ukupno vrijeme": loadError ? "N/A" : totalHours,
   };
-
   return (
     <AuthenticatedAppPageShell>
       <TopNav userEmail={userEmail} userName={userName} />
@@ -1545,7 +1622,18 @@ export function CandidateDashboardView({
                     ))}
                   </section>
 
-                  <QuickActionCard disabled={isAiAnalystDisabled} title={aiAnalystTitle} />
+                  <DashboardInfoCardShell className="p-6">
+                    <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500/85">
+                      TVOJI KORACI
+                    </p>
+                    <h3 className="mt-3 font-headline text-[1.35rem] font-bold tracking-[-0.04em] text-slate-950">
+                      Kako nastaje tvoj profil
+                    </h3>
+                    <p className="mt-4 w-full max-w-none text-sm leading-7 text-slate-600">
+                      Svaki rezultat dodaje jedan dio slike. Objedinjeni pregled otkriva širi
+                      obrazac tvog rada, razmišljanja i interesa.
+                    </p>
+                  </DashboardInfoCardShell>
                 </aside>
               </div>
 
@@ -1566,6 +1654,9 @@ export function CandidateDashboardView({
                       hideSectionHeader
                     />
                   ) : null}
+                  <div className="mt-5">
+                    <QuickActionCard disabled={isAiAnalystDisabled} title={aiAnalystTitle} />
+                  </div>
                 </div>
               </section>
             </div>
