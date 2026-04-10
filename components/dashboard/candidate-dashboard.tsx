@@ -145,6 +145,8 @@ type DashboardOrganizationTestAccessRow = {
   test_id: string;
 };
 
+type CompositeReportState = "locked" | "pending" | "ready";
+
 type CuratedBatteryKey = "ipip-neo-120" | "icar" | "riasec";
 type CuratedBatteryTitle = "IPIP-NEO-120" | "ICAR" | "RIASEC";
 type CuratedBatteryConfig = {
@@ -289,18 +291,13 @@ function formatAttemptTimestamp(timestamp?: string | null): string | null {
     return null;
   }
 
-  const formattedDate = new Intl.DateTimeFormat("bs-BA", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-  const formattedTime = new Intl.DateTimeFormat("bs-BA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
 
-  return `${formattedDate} u ${formattedTime}`;
+  return `${day}.${month}.${year}. u ${hours}:${minutes}`;
 }
 
 function formatTotalHours(totalSeconds: number): string {
@@ -903,39 +900,96 @@ function WelcomeOverviewCard({
 }
 
 function QuickActionCard({
-  disabled,
+  completedCount,
+  state,
   title,
 }: {
-  disabled: boolean;
+  completedCount: number;
+  state: CompositeReportState;
   title?: string;
 }) {
+  const isLocked = state === "locked";
+  const isPending = state === "pending";
+  const isReady = state === "ready";
+  const remainingTests = Math.max(3 - completedCount, 0);
+  const helperText = isLocked
+    ? remainingTests === 1
+      ? "Završi preostali test da otključaš izvještaj."
+      : "Završi preostale testove da otključaš izvještaj."
+    : isPending
+      ? "Kompozitni izvještaj će uskoro biti dostupan."
+      : undefined;
+  const cardClassName = isReady
+    ? "mx-auto w-full max-w-[800px] border-teal-600/80 bg-teal-700 p-6 shadow-[0_24px_48px_rgba(13,148,136,0.18)] transition-colors duration-200 sm:p-7 md:p-8"
+    : isPending
+      ? "mx-auto w-full max-w-[800px] border-teal-300/80 bg-teal-100 p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8"
+      : "mx-auto w-full max-w-[800px] border-teal-400/90 bg-[#DDEFEA] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8";
+  const eyebrowClassName = isReady ? "text-white/80" : "text-violet-700";
+  const titleClassName = `mt-2 text-[1.375rem] leading-tight tracking-[-0.03em] ${
+    isReady ? "text-white" : "text-slate-950"
+  }`;
+  const descriptionClassName = isReady ? "mt-2 max-w-none text-white/80" : "mt-2 max-w-none";
+  const pillClassName = isReady
+    ? "border-white/15 bg-white/12 text-white"
+    : isPending
+      ? "border-teal-300 bg-teal-100/80 text-teal-900"
+      : "border-slate-300 bg-slate-100 text-slate-600";
+  const ctaClassName = isReady
+    ? "border-white/90 bg-white text-teal-800 shadow-[0_18px_36px_rgba(8,47,73,0.16)] hover:-translate-y-0.5 hover:bg-teal-50"
+    : isPending
+      ? "border-teal-200 bg-white/70 text-teal-800 opacity-90"
+      : "border-slate-300 bg-slate-100 text-slate-400 opacity-85";
+  const pillText = isReady ? "Dostupno" : isPending ? "U obradi" : `${completedCount}/3 završeno`;
+  const ctaText = isReady
+    ? "Otvori kompozitni izvještaj"
+    : isPending
+      ? "Izvještaj se priprema"
+      : "Dostupno nakon 3 testa";
+
   return (
-    <DashboardSectionShell className="border-slate-300/90 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,244,255,0.97))] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.1)] sm:p-7">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-violet-50/70 to-transparent"
-      />
-      <DashboardSectionHeader
-        className="relative gap-2"
-        eyebrow="KOMPOZITNI IZVJEŠTAJ"
-        eyebrowClassName="text-violet-700"
-        title="Pregled objedinjene analize"
-        titleClassName="mt-2 text-[1.375rem] leading-tight tracking-[-0.03em]"
-      />
-      <DashboardActionRow className="relative mt-7 flex flex-col items-stretch gap-4">
-        <button
-          className={`flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3.5 text-xs font-bold uppercase tracking-[0.16em] transition-all ${disabled ? "border-slate-300 bg-slate-100 text-slate-400 opacity-85" : "border-violet-300 bg-white text-violet-800 shadow-[0_12px_24px_rgba(76,29,149,0.08)] hover:border-violet-400 hover:bg-violet-50"}`}
-          disabled={disabled}
-          title={title}
-          type="button"
-        >
-          <span>Kompozitni izvještaj</span>
-          <DashboardIcon className="h-4 w-4" name="arrow_right" />
-        </button>
-        <p className="w-full text-center text-sm leading-6 text-slate-600 sm:whitespace-nowrap">
-          Kompozitni izvještaj postaje dostupan nakon završetka sva tri testa.
-        </p>
-      </DashboardActionRow>
+    <DashboardSectionShell className={cardClassName}>
+      <div className="relative grid gap-6 md:grid-cols-[minmax(0,1fr)_272px] md:items-start">
+        <div className="min-w-0">
+          <DashboardSectionHeader
+            className="gap-2"
+            eyebrow="KOMPOZITNI IZVJEŠTAJ"
+            eyebrowClassName={eyebrowClassName}
+            title="Objedinjena analiza"
+            titleClassName={titleClassName}
+            description={
+              <>
+                Objedinjuje rezultate sva tri testa u jedinstven,
+                <br className="hidden md:block" />
+                <span className="md:hidden"> </span>
+                dublji pregled tvog profila.
+              </>
+            }
+            descriptionClassName={descriptionClassName}
+          />
+          {helperText ? (
+            <p className={`mt-4 text-sm leading-6 ${isReady ? "text-white/80" : "text-slate-700"}`}>
+              {helperText}
+            </p>
+          ) : null}
+        </div>
+
+        <DashboardActionRow className="flex flex-col items-stretch gap-4 md:w-[272px] md:justify-self-end md:items-stretch md:self-stretch md:justify-between">
+          <span
+            className={`inline-flex items-center justify-center self-start rounded-full border px-3 py-1 text-[11px] font-label font-semibold uppercase tracking-[0.16em] md:self-end ${pillClassName}`}
+          >
+            {pillText}
+          </span>
+          <button
+            className={`flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3.5 text-xs font-bold uppercase tracking-[0.16em] transition-all ${ctaClassName}`}
+            disabled={!isReady}
+            title={title}
+            type="button"
+          >
+            <span>{ctaText}</span>
+            <DashboardIcon className="h-4 w-4" name="arrow_right" />
+          </button>
+        </DashboardActionRow>
+      </div>
     </DashboardSectionShell>
   );
 }
@@ -1110,9 +1164,6 @@ function AssessmentCard({
     totalQuestions > 0 ? Math.min(100, Math.round((answeredQuestions / totalQuestions) * 100)) : 0;
   const startedAtLabel = formatAttemptTimestamp(assessment.startedAt);
   const completedAtLabel = formatAttemptTimestamp(assessment.completedAt);
-  const lastAnsweredAtLabel = formatAttemptTimestamp(
-    assessment.lastAnsweredAt ?? assessment.startedAt ?? null,
-  );
   const showsProgressScaffold =
     assessment.ctaKind === "start" || assessment.ctaKind === "resume" || assessment.ctaKind === "report";
 
@@ -1218,11 +1269,6 @@ function AssessmentCard({
                 {startedAtLabel ? (
                   <p className="mt-2 text-[10px] italic text-slate-600">
                     Započeto: {startedAtLabel}
-                  </p>
-                ) : null}
-                {lastAnsweredAtLabel ? (
-                  <p className="mt-1 text-[10px] italic text-slate-600">
-                    Zadnja aktivnost: {lastAnsweredAtLabel}
                   </p>
                 ) : null}
               </>
@@ -1608,16 +1654,22 @@ export function CandidateDashboardView({
     (assessment) =>
       isCuratedBatteryTitle(assessment.title) && curatedBatteryTitles.has(assessment.title),
   );
-  const isAiAnalystDisabled =
-    !(completedAttempts === totalPaidTestsCount && totalPaidTestsCount > 1);
+  const totalBatteryTestsCount = CURATED_BATTERY_TESTS.length;
+  const completedBatteryCount = Math.min(
+    availableAssessments.filter((assessment) => Boolean(assessment.completedAt)).length,
+    totalBatteryTestsCount,
+  );
+  const compositeReportReady = false;
+  const compositeReportState: CompositeReportState =
+    completedBatteryCount < totalBatteryTestsCount ? "locked" : compositeReportReady ? "ready" : "pending";
   const aiAnalystTitle =
-    totalPaidTestsCount === 1
+    totalBatteryTestsCount === 1
       ? "Kompozitna analiza zahtijeva bateriju od minimalno 2 testa."
-      : completedAttempts < totalPaidTestsCount
-        ? `Završite sve dodijeljene testove (${completedAttempts} / ${totalPaidTestsCount}) za dubinsku analizu.`
+      : completedBatteryCount < totalBatteryTestsCount
+        ? `Završite sve dodijeljene testove (${completedBatteryCount} / ${totalBatteryTestsCount}) za dubinsku analizu.`
         : undefined;
   const kpiValues: Record<string, string> = {
-    "Završeni testovi": loadError ? "N/A" : completedTestsCount,
+    "Završeni testovi": loadError ? "N/A" : String(completedBatteryCount),
     "Ukupno vrijeme": loadError ? "N/A" : totalHours,
   };
   return (
@@ -1636,8 +1688,8 @@ export function CandidateDashboardView({
                     Korisnički profil
                   </p>
                   <WelcomeOverviewCard
-                    completedCount={completedAttempts}
-                    totalAssigned={totalPaidTestsCount}
+                    completedCount={completedBatteryCount}
+                    totalAssigned={totalBatteryTestsCount}
                   />
 
                   <section aria-label="Dashboard overview" className="grid grid-cols-2 gap-4">
@@ -1689,7 +1741,11 @@ export function CandidateDashboardView({
                     />
                   ) : null}
                   <div className="mt-5">
-                    <QuickActionCard disabled={isAiAnalystDisabled} title={aiAnalystTitle} />
+                    <QuickActionCard
+                      completedCount={completedBatteryCount}
+                      state={compositeReportState}
+                      title={aiAnalystTitle}
+                    />
                   </div>
                 </div>
               </section>
