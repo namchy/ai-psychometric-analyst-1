@@ -853,21 +853,21 @@ function QuickActionCard({
   title?: string;
 }) {
   return (
-    <DashboardSectionShell className="border-slate-300/90 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,244,255,0.97))] shadow-[0_24px_48px_rgba(15,23,42,0.1)] sm:p-6">
+    <DashboardSectionShell className="border-slate-300/90 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,244,255,0.97))] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.1)] sm:p-7">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-violet-50/70 to-transparent"
       />
       <DashboardSectionHeader
-        className="relative"
+        className="relative gap-2"
         eyebrow="KOMPOZITNI IZVJEŠTAJ"
         eyebrowClassName="text-violet-700"
         title="Pregled objedinjene analize"
-        titleClassName="mt-3 text-xl"
+        titleClassName="mt-2 text-[1.375rem] leading-tight tracking-[-0.03em]"
       />
-      <DashboardActionRow className="relative mt-6">
+      <DashboardActionRow className="relative mt-7 flex flex-col items-stretch gap-4">
         <button
-          className={`flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] transition-all ${disabled ? "border-slate-300 bg-slate-100 text-slate-400 opacity-85" : "border-violet-300 bg-white text-violet-800 shadow-[0_12px_24px_rgba(76,29,149,0.08)] hover:border-violet-400 hover:bg-violet-50"}`}
+          className={`flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3.5 text-xs font-bold uppercase tracking-[0.16em] transition-all ${disabled ? "border-slate-300 bg-slate-100 text-slate-400 opacity-85" : "border-violet-300 bg-white text-violet-800 shadow-[0_12px_24px_rgba(76,29,149,0.08)] hover:border-violet-400 hover:bg-violet-50"}`}
           disabled={disabled}
           title={title}
           type="button"
@@ -875,7 +875,7 @@ function QuickActionCard({
           <span>Kompozitni izvještaj</span>
           <DashboardIcon className="h-4 w-4" name="arrow_right" />
         </button>
-        <p className="mx-auto mt-3 max-w-[28ch] text-center text-[11px] font-medium leading-5 text-slate-500">
+        <p className="w-full text-center text-sm leading-6 text-slate-600 sm:whitespace-nowrap">
           Kompozitni izvještaj postaje dostupan nakon završetka sva tri testa.
         </p>
       </DashboardActionRow>
