@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { QuestionType, ScoringMethod } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -40,6 +42,7 @@ type AnswerOptionRecord = {
   id: string;
   question_id: string;
   value: number | null;
+  is_correct: boolean | null;
 };
 
 type ResponseRecord = {
@@ -49,6 +52,7 @@ type ResponseRecord = {
   answer_option_id: string | null;
   raw_value: number | null;
   scored_value: number | null;
+  text_value: string | null;
 };
 
 export type CompletedAssessmentResultDimension = {
@@ -62,7 +66,10 @@ export type CompletedAssessmentUnscoredResponse = {
   questionCode: string;
   questionText: string;
   questionType: QuestionType;
-  reason: "question_type_not_scoreable" | "missing_numeric_option_value";
+  reason:
+    | "question_type_not_scoreable"
+    | "missing_numeric_option_value"
+    | "missing_correct_answer";
 };
 
 export type CompletedAssessmentResults = {
@@ -86,8 +93,16 @@ export type IpcDerivedResults = {
   secondaryOctant: IpcOctantCode | null;
 };
 
+export type SafranV1DerivedResults = {
+  verbalScore: number;
+  figuralScore: number;
+  numericalSeriesScore: number;
+  cognitiveCompositeV1: number;
+};
+
 export type CompletedAssessmentDerivedResults = {
-  ipc: IpcDerivedResults;
+  ipc?: IpcDerivedResults;
+  safranV1?: SafranV1DerivedResults;
 };
 
 type ComputedResponseScore = {
@@ -115,10 +130,15 @@ function roundScore(value: number): number {
 }
 
 const IPC_TEST_SLUG = "ipip-ipc-v1";
+const SAFRAN_V1_TEST_SLUG = "safran_v1";
 const IPC_OCTANT_ORDER: IpcOctantCode[] = ["PA", "BC", "DE", "FG", "HI", "JK", "LM", "NO"];
 
 function isIpcTestSlug(testSlug: string): boolean {
   return testSlug === IPC_TEST_SLUG;
+}
+
+function isSafranV1TestSlug(testSlug: string): boolean {
+  return testSlug === SAFRAN_V1_TEST_SLUG;
 }
 
 function getDimensionScoreByCode(
@@ -226,7 +246,78 @@ function buildCompletedAssessmentResults(
       ? {
           ipc: calculateIpcDerivedResults(dimensions),
         }
-      : undefined,
+      : isSafranV1TestSlug(testSlug)
+        ? {
+            safranV1: buildSafranV1DerivedResults(dimensions),
+          }
+        : undefined,
+  };
+}
+
+export function normalizeSafranNumericAnswer(value: string): string {
+  return value.trim().replace(",", ".");
+}
+
+function parseSafranNumericAnswer(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = normalizeSafranNumericAnswer(value);
+
+  if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) {
+    return null;
+  }
+
+  return Number(normalized);
+}
+
+export function scoreSafranNumericAnswer(responseValue: string | null, correctValue: string | null): number {
+  const responseNumber = parseSafranNumericAnswer(responseValue);
+  const correctNumber = parseSafranNumericAnswer(correctValue);
+
+  if (responseNumber === null || correctNumber === null) {
+    return 0;
+  }
+
+  return Math.abs(responseNumber - correctNumber) < 1e-9 ? 1 : 0;
+}
+
+export function scoreSafranSingleChoiceAnswer(isCorrect: boolean | null | undefined): number {
+  return isCorrect === true ? 1 : 0;
+}
+
+export function buildSafranV1CompositeScores(subtestScores: {
+  VW: number;
+  VA: number;
+  FA: number;
+  FM: number;
+  NZ: number;
+}): SafranV1DerivedResults {
+  const verbalScore = subtestScores.VW + subtestScores.VA;
+  const figuralScore = subtestScores.FA + subtestScores.FM;
+  const numericalSeriesScore = subtestScores.NZ;
+
+  return {
+    verbalScore,
+    figuralScore,
+    numericalSeriesScore,
+    cognitiveCompositeV1: verbalScore + figuralScore + numericalSeriesScore,
+  };
+}
+
+function buildSafranV1DerivedResults(
+  dimensions: CompletedAssessmentResultDimension[],
+): SafranV1DerivedResults {
+  const scoreByDimension = new Map(
+    dimensions.map((dimension) => [dimension.dimension, dimension.rawScore]),
+  );
+
+  return {
+    verbalScore: scoreByDimension.get("verbal_score") ?? 0,
+    figuralScore: scoreByDimension.get("figural_score") ?? 0,
+    numericalSeriesScore: scoreByDimension.get("numerical_series_score") ?? 0,
+    cognitiveCompositeV1: scoreByDimension.get("cognitive_composite_v1") ?? 0,
   };
 }
 
@@ -379,6 +470,191 @@ function computeLikertResults(
   };
 }
 
+function getSafranSubtestCode(questionCode: string): "VW" | "VA" | "FA" | "FM" | "NZ" | null {
+  if (questionCode.startsWith("VW")) {
+    return "VW";
+  }
+
+  if (questionCode.startsWith("VA")) {
+    return "VA";
+  }
+
+  if (questionCode.startsWith("FA")) {
+    return "FA";
+  }
+
+  if (questionCode.startsWith("FM")) {
+    return "FM";
+  }
+
+  if (questionCode.startsWith("NZ")) {
+    return "NZ";
+  }
+
+  return null;
+}
+
+function getSafranV1CorrectAnswersByQuestionCode(): Map<string, string> {
+  const seedPath = path.resolve(process.cwd(), "safran_v1_seed.json");
+  const parsed = JSON.parse(fs.readFileSync(seedPath, "utf8")) as {
+    items?: Array<{
+      item_id?: unknown;
+      subtest_code?: unknown;
+      correct_answer_display?: unknown;
+    }>;
+  };
+  const correctAnswersByQuestionCode = new Map<string, string>();
+
+  for (const item of parsed.items ?? []) {
+    if (
+      typeof item.item_id === "string" &&
+      item.subtest_code === "NZ" &&
+      typeof item.correct_answer_display === "string"
+    ) {
+      correctAnswersByQuestionCode.set(item.item_id, item.correct_answer_display);
+    }
+  }
+
+  return correctAnswersByQuestionCode;
+}
+
+function buildComputedDimensionScore(
+  dimension: string,
+  rawScore: number,
+  scoredQuestionCount: number,
+  sortOrder: number,
+): ComputedDimensionScore {
+  return {
+    dimension,
+    rawScore: roundScore(rawScore),
+    scoredQuestionCount,
+    sortOrder,
+  };
+}
+
+function computeSafranV1Results(
+  questions: QuestionRecord[],
+  answerOptions: AnswerOptionRecord[],
+  responses: ResponseRecord[],
+): {
+  responseScores: ComputedResponseScore[];
+  dimensions: ComputedDimensionScore[];
+  scoredResponseCount: number;
+  unscoredResponses: CompletedAssessmentUnscoredResponse[];
+} {
+  const optionsById = new Map(answerOptions.map((option) => [option.id, option]));
+  const responsesByQuestionId = new Map(responses.map((response) => [response.question_id, response]));
+  const correctAnswersByQuestionCode = getSafranV1CorrectAnswersByQuestionCode();
+  const responseScores: ComputedResponseScore[] = [];
+  const unscoredResponses: CompletedAssessmentUnscoredResponse[] = [];
+  const subtestScores = {
+    VW: 0,
+    VA: 0,
+    FA: 0,
+    FM: 0,
+    NZ: 0,
+  };
+  const subtestCounts = {
+    VW: 0,
+    VA: 0,
+    FA: 0,
+    FM: 0,
+    NZ: 0,
+  };
+  let scoredResponseCount = 0;
+
+  for (const question of questions) {
+    const subtestCode = getSafranSubtestCode(question.code);
+    const response = responsesByQuestionId.get(question.id);
+
+    if (!subtestCode || !response) {
+      continue;
+    }
+
+    if (response.response_kind === "single_choice") {
+      const selectedOption = response.answer_option_id
+        ? optionsById.get(response.answer_option_id)
+        : null;
+      const score = scoreSafranSingleChoiceAnswer(selectedOption?.is_correct);
+
+      responseScores.push({
+        responseId: response.id,
+        rawValue: score,
+        scoredValue: score,
+      });
+      subtestScores[subtestCode] += score;
+      subtestCounts[subtestCode] += 1;
+      scoredResponseCount += 1;
+      continue;
+    }
+
+    if (response.response_kind === "text" && subtestCode === "NZ") {
+      const correctAnswer = correctAnswersByQuestionCode.get(question.code) ?? null;
+
+      if (!correctAnswer) {
+        responseScores.push({
+          responseId: response.id,
+          rawValue: null,
+          scoredValue: null,
+        });
+        unscoredResponses.push({
+          questionId: question.id,
+          questionCode: question.code,
+          questionText: question.text,
+          questionType: question.question_type,
+          reason: "missing_correct_answer",
+        });
+        continue;
+      }
+
+      const score = scoreSafranNumericAnswer(response.text_value, correctAnswer);
+
+      responseScores.push({
+        responseId: response.id,
+        rawValue: score,
+        scoredValue: score,
+      });
+      subtestScores.NZ += score;
+      subtestCounts.NZ += 1;
+      scoredResponseCount += 1;
+      continue;
+    }
+
+    responseScores.push({
+      responseId: response.id,
+      rawValue: null,
+      scoredValue: null,
+    });
+    unscoredResponses.push({
+      questionId: question.id,
+      questionCode: question.code,
+      questionText: question.text,
+      questionType: question.question_type,
+      reason: "question_type_not_scoreable",
+    });
+  }
+
+  const compositeScores = buildSafranV1CompositeScores(subtestScores);
+  const dimensions = [
+    buildComputedDimensionScore("verbal_score", compositeScores.verbalScore, subtestCounts.VW + subtestCounts.VA, 1),
+    buildComputedDimensionScore("figural_score", compositeScores.figuralScore, subtestCounts.FA + subtestCounts.FM, 2),
+    buildComputedDimensionScore("numerical_series_score", compositeScores.numericalSeriesScore, subtestCounts.NZ, 3),
+    buildComputedDimensionScore(
+      "cognitive_composite_v1",
+      compositeScores.cognitiveCompositeV1,
+      subtestCounts.VW + subtestCounts.VA + subtestCounts.FA + subtestCounts.FM + subtestCounts.NZ,
+      4,
+    ),
+  ];
+
+  return {
+    responseScores,
+    dimensions,
+    scoredResponseCount,
+    unscoredResponses,
+  };
+}
+
 async function loadScoringInputs(testId: string, attemptId: string) {
   const supabase = createSupabaseAdminClient();
 
@@ -455,7 +731,7 @@ async function loadScoringInputs(testId: string, attemptId: string) {
 
   const { data: answerOptionsData, error: answerOptionsError } = await supabase
     .from("answer_options")
-    .select("id, question_id, value")
+    .select("id, question_id, value, is_correct")
     .in("question_id", questionIds);
 
   if (answerOptionsError) {
@@ -464,7 +740,7 @@ async function loadScoringInputs(testId: string, attemptId: string) {
 
   const { data: responsesData, error: responsesError } = await supabase
     .from("responses")
-    .select("id, question_id, response_kind, answer_option_id, raw_value, scored_value")
+    .select("id, question_id, response_kind, answer_option_id, raw_value, scored_value, text_value")
     .eq("attempt_id", attemptId);
 
   if (responsesError) {
@@ -534,22 +810,31 @@ export async function calculateCompletedAssessmentResults(
     return null;
   }
 
-  if (scoringInputs.test.scoring_method !== "likert_sum") {
+  if (
+    scoringInputs.test.scoring_method !== "likert_sum" &&
+    !(isSafranV1TestSlug(scoringInputs.test.slug) && scoringInputs.test.scoring_method === "correct_answers")
+  ) {
     throw new Error(
       `Unsupported scoring method for MVP results flow: ${scoringInputs.test.scoring_method}`,
     );
   }
 
-  const computedResults = computeLikertResults(
-    scoringInputs.questions,
-    scoringInputs.answerOptions,
-    scoringInputs.responses,
-    buildMappingContributionsByQuestionId(
-      scoringInputs.questions,
-      scoringInputs.testDimensions,
-      scoringInputs.questionDimensionMappings,
-    ) ?? undefined,
-  );
+  const computedResults = isSafranV1TestSlug(scoringInputs.test.slug)
+    ? computeSafranV1Results(
+        scoringInputs.questions,
+        scoringInputs.answerOptions,
+        scoringInputs.responses,
+      )
+    : computeLikertResults(
+        scoringInputs.questions,
+        scoringInputs.answerOptions,
+        scoringInputs.responses,
+        buildMappingContributionsByQuestionId(
+          scoringInputs.questions,
+          scoringInputs.testDimensions,
+          scoringInputs.questionDimensionMappings,
+        ) ?? undefined,
+      );
 
   return buildCompletedAssessmentResults(
     attemptId,
@@ -569,22 +854,31 @@ export async function persistCompletedAssessmentResults(
     return null;
   }
 
-  if (scoringInputs.test.scoring_method !== "likert_sum") {
+  if (
+    scoringInputs.test.scoring_method !== "likert_sum" &&
+    !(isSafranV1TestSlug(scoringInputs.test.slug) && scoringInputs.test.scoring_method === "correct_answers")
+  ) {
     throw new Error(
       `Unsupported scoring method for MVP results flow: ${scoringInputs.test.scoring_method}`,
     );
   }
 
-  const computedResults = computeLikertResults(
-    scoringInputs.questions,
-    scoringInputs.answerOptions,
-    scoringInputs.responses,
-    buildMappingContributionsByQuestionId(
-      scoringInputs.questions,
-      scoringInputs.testDimensions,
-      scoringInputs.questionDimensionMappings,
-    ) ?? undefined,
-  );
+  const computedResults = isSafranV1TestSlug(scoringInputs.test.slug)
+    ? computeSafranV1Results(
+        scoringInputs.questions,
+        scoringInputs.answerOptions,
+        scoringInputs.responses,
+      )
+    : computeLikertResults(
+        scoringInputs.questions,
+        scoringInputs.answerOptions,
+        scoringInputs.responses,
+        buildMappingContributionsByQuestionId(
+          scoringInputs.questions,
+          scoringInputs.testDimensions,
+          scoringInputs.questionDimensionMappings,
+        ) ?? undefined,
+      );
 
   const responsesById = new Map(scoringInputs.responses.map((response) => [response.id, response]));
   const responseUpdates = computedResults.responseScores.filter((score) => {

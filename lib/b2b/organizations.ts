@@ -119,6 +119,13 @@ function normalizeAttemptRelation<T>(value: AttemptRelation<T>): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+function isLegacyIcarTest(test: OrganizationAvailableTestSummary): boolean {
+  const normalizedSlug = test.slug.toLowerCase();
+  const normalizedName = test.name.toLowerCase();
+
+  return normalizedSlug.includes("icar") || normalizedName.includes("icar");
+}
+
 export async function getMembershipsForUser(userId: string): Promise<MembershipSummary[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -210,6 +217,7 @@ export async function getAvailableTestsForOrganization(
   return ((data ?? []) as OrganizationTestAccessRow[])
     .map((row) => normalizeAttemptRelation(row.tests))
     .filter((test): test is OrganizationAvailableTestSummary => !!test)
+    .filter((test) => !isLegacyIcarTest(test))
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 

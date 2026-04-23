@@ -1,0 +1,2723 @@
+{
+  "assessment_code": "safran_v1",
+  "assessment_name": {
+    "bs": "SAFRAN V1",
+    "en": "SAFRAN V1"
+  },
+  "source_framework": "SAFRAN",
+  "version": "adapted_v1_without_nr",
+  "primary_locale": "bs",
+  "secondary_locales": [
+    "en"
+  ],
+  "future_locales": [
+    "hr",
+    "sr"
+  ],
+  "enabled_subtests": [
+    "VW",
+    "VA",
+    "FA",
+    "FM",
+    "NZ"
+  ],
+  "excluded_subtests": [
+    "NR"
+  ],
+  "practice_included_in_scored_seed": false,
+  "scoring_model": {
+    "verbal_score": [
+      "VW",
+      "VA"
+    ],
+    "figural_score": [
+      "FA",
+      "FM"
+    ],
+    "numerical_series_score": [
+      "NZ"
+    ],
+    "cognitive_composite_v1": [
+      "VW",
+      "VA",
+      "FA",
+      "FM",
+      "NZ"
+    ]
+  },
+  "items": [
+    {
+      "item_id": "VW01",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 1,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW01_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "proročanstvo",
+            "en": "prophecy"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW01_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "prognoza",
+            "en": "prognose"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW01_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "osvrt na prošlost",
+            "en": "retrospect"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VW01_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "predviđanje",
+            "en": "forecast"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "osvrt na prošlost",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW02",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 2,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW02_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "pukotina",
+            "en": "gap"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW02_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "procjep",
+            "en": "chink"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW02_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "spoj",
+            "en": "joint"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW02_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "ivica",
+            "en": "edge"
+          },
+          "image_path": null,
+          "is_correct": true
+        }
+      ],
+      "correct_answer_display": "ivica",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW03",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 3,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW03_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "crtež",
+            "en": "drawing"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW03_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "slika",
+            "en": "painting"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW03_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "skica",
+            "en": "sketch"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW03_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "fotografija",
+            "en": "photograph"
+          },
+          "image_path": null,
+          "is_correct": true
+        }
+      ],
+      "correct_answer_display": "fotografija",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW04",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 4,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW04_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "povodac",
+            "en": "leash"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW04_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "uže",
+            "en": "cord"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW04_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "elastika",
+            "en": "elastic"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VW04_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "konopac",
+            "en": "rope"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "elastika",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW05",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 5,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW05_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "truba",
+            "en": "trumpet"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW05_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "violina",
+            "en": "violin"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VW05_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "trombon",
+            "en": "trombone"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW05_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "fagot",
+            "en": "bassoon"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "violina",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW06",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 6,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW06_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "veš-mašina",
+            "en": "washing machine"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW06_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "mašina za suđe",
+            "en": "dish washer"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW06_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "aparat za kafu",
+            "en": "coffee machine"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW06_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "parna mašina",
+            "en": "steam engine"
+          },
+          "image_path": null,
+          "is_correct": true
+        }
+      ],
+      "correct_answer_display": "parna mašina",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW07",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 7,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW07_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "novela",
+            "en": "novella"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VW07_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "horska pjesma",
+            "en": "choral"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW07_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "arija",
+            "en": "aria"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW07_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "solo",
+            "en": "solo"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "novela",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW08",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 8,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW08_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "lopta",
+            "en": "ball"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW08_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "trougao",
+            "en": "triangle"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VW08_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "CD",
+            "en": "CD"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW08_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "krug",
+            "en": "circle"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "trougao",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VW09",
+      "subtest_code": "VW",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 9,
+      "section_order": 1,
+      "question": {
+        "bs": "Koja riječ ne pripada ostalima?",
+        "en": "Which word does not fit the others?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VW09_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "skela",
+            "en": "scaffold"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW09_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "nosiva konstrukcija",
+            "en": "skeleton"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW09_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "greda",
+            "en": "girder"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VW09_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "fasada",
+            "en": "shell"
+          },
+          "image_path": null,
+          "is_correct": true
+        }
+      ],
+      "correct_answer_display": "fasada",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA01",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 10,
+      "section_order": 2,
+      "question": {
+        "bs": "„Gusjenica“ se odnosi prema „leptiru“ kao „dijete“ prema ...?",
+        "en": "\"Caterpillar\" is to \"butterfly\" as \"child\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA01_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "embriju",
+            "en": "embryo"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA01_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "bebi",
+            "en": "baby"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA01_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "odrasloj osobi",
+            "en": "adult"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA01_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "sestri",
+            "en": "sister"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA01_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "dječaku",
+            "en": "boy"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "odrasloj osobi",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA02",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 11,
+      "section_order": 2,
+      "question": {
+        "bs": "„Knjiga“ se odnosi prema „polici“ kao „drvo“ prema ...?",
+        "en": "\"Book\" is to \"shelf\" as \"tree\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA02_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "listu",
+            "en": "leaf"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA02_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "grani",
+            "en": "branch"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA02_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "papiru",
+            "en": "paper"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA02_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "korijenu",
+            "en": "root"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA02_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "šumi",
+            "en": "forest"
+          },
+          "image_path": null,
+          "is_correct": true
+        }
+      ],
+      "correct_answer_display": "šumi",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA03",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 12,
+      "section_order": 2,
+      "question": {
+        "bs": "„Kompas“ se odnosi prema „jugu“ kao „sat“ prema ...?",
+        "en": "\"Compass\" is to \"south\" as \"Clock\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA03_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "dvanaest",
+            "en": "twelve"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA03_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "broju",
+            "en": "number"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA03_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "šest",
+            "en": "six"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA03_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "kazaljki",
+            "en": "hand"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA03_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "brojčaniku",
+            "en": "watch face"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "šest",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA04",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 13,
+      "section_order": 2,
+      "question": {
+        "bs": "„Rođendan“ se odnosi prema „godini“ kao „pun mjesec“ prema ...?",
+        "en": "\"Birthday\" is to \"year\" as \"full moon\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA04_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "danu",
+            "en": "day"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA04_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "mjesecu",
+            "en": "month"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA04_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "godini",
+            "en": "year"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA04_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "deceniji",
+            "en": "decade"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA04_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "mladom mjesecu",
+            "en": "new moon"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "mjesecu",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA05",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 14,
+      "section_order": 2,
+      "question": {
+        "bs": "„Monolog“ se odnosi prema „diskusiji“ kao „selfi“ prema ...?",
+        "en": "\"Monolouge\" is to \"discussion\" as \"selfie\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA05_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "grupnoj fotografiji",
+            "en": "group picture"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA05_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "uvećanju",
+            "en": "zoom"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA05_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "mobitelu",
+            "en": "cellphone / mobile phone"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA05_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "portretu",
+            "en": "portrait"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA05_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "krupnom planu",
+            "en": "close-up"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "grupnoj fotografiji",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA06",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 15,
+      "section_order": 2,
+      "question": {
+        "bs": "„Glas“ se odnosi prema „mikrofonu“ kao „instrument“ prema ...?",
+        "en": "\"Voice\" is to \"microphone\" as \"instrument\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA06_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "žici",
+            "en": "string"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA06_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "gitari",
+            "en": "guitar"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA06_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "bendu",
+            "en": "band"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA06_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "pojačalu",
+            "en": "amplifier"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA06_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "koncertu",
+            "en": "concert"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "pojačalu",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA07",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 16,
+      "section_order": 2,
+      "question": {
+        "bs": "„Pisaća mašina“ se odnosi prema „programu za obradu teksta“ kao „kočija“ prema ...?",
+        "en": "\"Typewriter\" is to \"text program\" as \"carriage\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA07_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "pješaku",
+            "en": "pedestrian"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA07_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "konju",
+            "en": "horse"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA07_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "biciklu",
+            "en": "bycicle"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA07_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "automobilu",
+            "en": "car"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA07_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "semaforu",
+            "en": "traffic lights"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "automobilu",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "VA08",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 17,
+      "section_order": 2,
+      "question": {
+        "bs": "„Zamka“ se odnosi prema „plijenu“ kao „mreža“ prema ...?",
+        "en": "\"Dream catcher\" is to \"nightmare\" as \"net\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA08_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "ribaru",
+            "en": "fisher"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA08_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "pauku",
+            "en": "spider"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA08_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "ribi",
+            "en": "fish"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA08_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "najlonu za pecanje",
+            "en": "fishing line"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA08_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "internetu",
+            "en": "internet"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "ribi",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": "cultural adaptation"
+    },
+    {
+      "item_id": "VA09",
+      "subtest_code": "VA",
+      "domain_code": "V",
+      "item_type": "text",
+      "renderer_type": "text_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 18,
+      "section_order": 2,
+      "question": {
+        "bs": "„Rijeka“ se odnosi prema „okeanu“ kao „knjiga“ prema ...?",
+        "en": "\"River\" is to \"ocean\" as \"book\" is to ...?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "VA09_opt_1",
+          "display_order": 1,
+          "text": {
+            "bs": "poglavlju",
+            "en": "chapter"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA09_opt_2",
+          "display_order": 2,
+          "text": {
+            "bs": "korici",
+            "en": "cover"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA09_opt_3",
+          "display_order": 3,
+          "text": {
+            "bs": "prologu",
+            "en": "prologue"
+          },
+          "image_path": null,
+          "is_correct": false
+        },
+        {
+          "option_id": "VA09_opt_4",
+          "display_order": 4,
+          "text": {
+            "bs": "epilogu",
+            "en": "epilogue"
+          },
+          "image_path": null,
+          "is_correct": true
+        },
+        {
+          "option_id": "VA09_opt_5",
+          "display_order": 5,
+          "text": {
+            "bs": "protagonistu",
+            "en": "protagonist"
+          },
+          "image_path": null,
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "epilogu",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "adapted_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA01",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 19,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA01/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FA01_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA01/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA01_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA01/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA01_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA01/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA01_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA01/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA01_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA01/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA02",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 20,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA02/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA02/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA02_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA02/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA02_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA02/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA02_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA02/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA02_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA02/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA02_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA02/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA03",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 21,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA03/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA03/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA03_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA03/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA03_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA03/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA03_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA03/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA03_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA03/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA03_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA03/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA04",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 22,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA04/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA04/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA04_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA04/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA04_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA04/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA04_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA04/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA04_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA04/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA04_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA04/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA05",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 23,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA05/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA05/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA05_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA05/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA05_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA05/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA05_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA05/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA05_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA05/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA05_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA05/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA06",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 24,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA06/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA06/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA06_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA06/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA06_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA06/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA06_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA06/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA06_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA06/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA06_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA06/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA07",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 25,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA07/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA07/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA07_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA07/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA07_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA07/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA07_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA07/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA07_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA07/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA07_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA07/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA08",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 26,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA08/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA08/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA08_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA08/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA08_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA08/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA08_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA08/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA08_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA08/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA08_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA08/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FA09",
+      "subtest_code": "FA",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 27,
+      "section_order": 3,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fa/FA09/stimulus.jpg",
+      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA09/stimulus_secondary.png",
+      "options": [
+        {
+          "option_id": "FA09_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA09/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FA09_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA09/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA09_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA09/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA09_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA09/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FA09_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fa/FA09/option_dis4.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM01",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 28,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM01/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM01_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM01/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM01_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM01/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM01_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM01/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM01_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM01/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM01_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM01/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM01_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM01/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM02",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 29,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM02/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM02_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM02/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM02_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM02/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM02_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM02/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM02_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM02/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM02_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM02/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM02_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM02/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM03",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 30,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM03/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM03_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM03/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM03_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM03/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM03_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM03/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM03_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM03/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM03_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM03/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM03_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM03/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM04",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 31,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM04/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM04_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM04/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM04_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM04/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM04_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM04/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM04_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM04/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM04_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM04/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM04_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM04/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM05",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 32,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM05/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM05_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM05/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM05_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM05/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM05_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM05/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM05_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM05/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM05_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM05/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM05_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM05/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM06",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 33,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM06/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM06_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM06/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM06_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM06/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM06_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM06/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM06_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM06/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM06_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM06/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM06_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM06/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM07",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 34,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM07/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM07_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM07/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM07_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM07/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM07_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM07/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM07_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM07/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM07_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM07/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM07_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM07/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM08",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 35,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM08/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM08_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM08/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM08_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM08/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM08_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM08/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM08_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM08/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM08_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM08/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM08_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM08/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "FM09",
+      "subtest_code": "FM",
+      "domain_code": "F",
+      "item_type": "image",
+      "renderer_type": "image_choice",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 36,
+      "section_order": 4,
+      "question": {
+        "bs": null,
+        "en": null
+      },
+      "stimulus_image_path": "/tests/safran/v1/fm/FM09/stimulus.jpg",
+      "stimulus_secondary_image_path": null,
+      "options": [
+        {
+          "option_id": "FM09_opt_correct",
+          "display_order": 1,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM09/option_correct.jpg",
+          "is_correct": true
+        },
+        {
+          "option_id": "FM09_opt_dis1",
+          "display_order": 2,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM09/option_dis1.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM09_opt_dis2",
+          "display_order": 3,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM09/option_dis2.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM09_opt_dis3",
+          "display_order": 4,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM09/option_dis3.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM09_opt_dis4",
+          "display_order": 5,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM09/option_dis4.jpg",
+          "is_correct": false
+        },
+        {
+          "option_id": "FM09_opt_dis5",
+          "display_order": 6,
+          "text": null,
+          "image_path": "/tests/safran/v1/fm/FM09/option_dis5.jpg",
+          "is_correct": false
+        }
+      ],
+      "correct_answer_display": "option_correct",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": true,
+      "input_format_rule": null,
+      "translation_status": "source_visual_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ01_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 37,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 12 16 15 19 18 ?",
+        "en": "Complete the row logically: 12 16 15 19 18 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "22",
+      "correct_answer_display": "22",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ02_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 38,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 12 10,5 9 7,5 6 ?",
+        "en": "Complete the row logically: 12 10.5 9 7.5 6 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "4.5",
+      "correct_answer_display": "4.5",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ03_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 39,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 17 20,5 13 16,5 9 ?",
+        "en": "Complete the row logically: 17 20.5 13 16.5 9 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "12.5",
+      "correct_answer_display": "12.5",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ04_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 40,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 2 3 5 8 12 ?",
+        "en": "Complete the row logically: 2 3 5 8 12 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "17",
+      "correct_answer_display": "17",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ05_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 41,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 4 8 7 14 13 26 ?",
+        "en": "Complete the row logically: 4 8 7 14 13 26 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "25",
+      "correct_answer_display": "25",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ06_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 42,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 48 39 31 24 18 13 ?",
+        "en": "Complete the row logically: 48 39 31 24 18 13 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "9",
+      "correct_answer_display": "9",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ07_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 43,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 3 9 6 18 15 45 ?",
+        "en": "Complete the row logically: 3 9 6 18 15 45 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "42",
+      "correct_answer_display": "42",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ08_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 44,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 10 16 4 10 2,5 ?",
+        "en": "Complete the row logically: 10 16 4 10 2.5 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "8.5",
+      "correct_answer_display": "8.5",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    },
+    {
+      "item_id": "NZ09_01",
+      "subtest_code": "NZ",
+      "domain_code": "N",
+      "item_type": "numeric",
+      "renderer_type": "numeric_input",
+      "is_scored": true,
+      "is_active_v1": true,
+      "display_order": 45,
+      "section_order": 5,
+      "question": {
+        "bs": "Logično dopuni niz: 3 6 8 24 27 108 ?",
+        "en": "Complete the row logically: 3 6 8 24 27 108 ?"
+      },
+      "stimulus_image_path": null,
+      "stimulus_secondary_image_path": null,
+      "options": [],
+      "correct_answer_raw": "112",
+      "correct_answer_display": "112",
+      "scoring_type": "binary",
+      "max_points": 1,
+      "shuffle_options_allowed": false,
+      "input_format_rule": "integer_or_decimal_comma_or_dot",
+      "translation_status": "translated_bs_v1",
+      "notes": ""
+    }
+  ]
+}

@@ -127,6 +127,10 @@ type PersistAssessmentSelectionsOptions = {
 
 const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
 
+function shouldGenerateCompletedAssessmentReport(results: CompletedAssessmentResults | null): boolean {
+  return results?.scoringMethod === "likert_sum";
+}
+
 function revalidateAttemptRunPaths(attemptId: string) {
   revalidatePath(`/app/attempts/${attemptId}/run`);
   revalidatePath(`/dashboard/attempts/${attemptId}/run`);
@@ -823,7 +827,9 @@ export async function completeAssessmentAttempt(
     }
 
     const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
-    const report = await persistCompletedAssessmentReport(input.testId, persistResult.attemptId);
+    const report = shouldGenerateCompletedAssessmentReport(results)
+      ? await persistCompletedAssessmentReport(input.testId, persistResult.attemptId)
+      : null;
 
     cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, persistResult.attemptId, {
       httpOnly: true,
@@ -919,13 +925,18 @@ export async function completeProtectedAssessmentAttempt(
     }
 
     const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
-    await enqueueCompletedAssessmentReports(persistResult.attemptId);
-    const report: CompletedAssessmentReportState = {
-      status: "queued",
-      generatorType: null,
-      generatedAt: new Date().toISOString(),
-      completedAt: null,
-    };
+    const report: CompletedAssessmentReportState | null = shouldGenerateCompletedAssessmentReport(results)
+      ? {
+          status: "queued",
+          generatorType: null,
+          generatedAt: new Date().toISOString(),
+          completedAt: null,
+        }
+      : null;
+
+    if (shouldGenerateCompletedAssessmentReport(results)) {
+      await enqueueCompletedAssessmentReports(persistResult.attemptId);
+    }
 
     revalidateAttemptAllPaths(persistResult.attemptId);
 

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import { ProtectedReportAutoRefresh } from "@/components/assessment/protected-report-auto-refresh";
 import { ReportBackButton } from "./report-back-button";
+import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
@@ -46,7 +47,7 @@ export default async function CandidateAttemptReportPage({
           locale={attempt.locale}
           organizationName={attempt.organizations?.name ?? null}
           participantName={attempt.participants?.full_name ?? null}
-          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
+          testName={getAssessmentDisplayName(attempt.tests)}
           results={reportPageData.results}
           reportState={reportPageData.report}
         />

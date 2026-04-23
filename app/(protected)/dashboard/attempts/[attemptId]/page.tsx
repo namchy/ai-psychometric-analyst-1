@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
 import {
   getActiveOrganizationForUser,
@@ -43,7 +44,7 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
           locale={attempt.locale}
           organizationName={attempt.organizations?.name ?? organization.name}
           participantName={attempt.participants?.full_name ?? null}
-          testName={attempt.tests?.name ?? attempt.tests?.slug ?? null}
+          testName={getAssessmentDisplayName(attempt.tests)}
           results={reportPageData.results}
           reportState={reportPageData.report}
         />

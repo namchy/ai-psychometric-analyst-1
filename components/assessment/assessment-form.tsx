@@ -153,7 +153,69 @@ function getStepCompletionValidationMessage(completionState: AssessmentCompletio
 }
 
 function isLikertScaleQuestion(question: TestQuestion, options: TestAnswerOption[]): boolean {
-  return question.question_type === "single_choice" && options.length === 5;
+  return (
+    question.question_type === "single_choice" &&
+    options.length === 5 &&
+    options.every((option) => typeof option.value === "number" && !option.image_path)
+  );
+}
+
+function isImageChoiceQuestion(question: TestQuestion, options: TestAnswerOption[]): boolean {
+  return (
+    question.renderer_type === "image_choice" ||
+    !!question.stimulus_image_path ||
+    !!question.stimulus_secondary_image_path ||
+    options.some((option) => !!option.image_path)
+  );
+}
+
+function getVisibleQuestionText(question: TestQuestion): string | null {
+  const text = question.text.trim();
+  const code = question.code.trim();
+
+  if (!text || text === code || /^[A-Z]{2}\d{2,}$/i.test(text)) {
+    return null;
+  }
+
+  return text;
+}
+
+function AssessmentStimulusImages({ question }: { question: TestQuestion }) {
+  const imagePaths = [
+    question.stimulus_image_path,
+    question.stimulus_secondary_image_path,
+  ].filter((imagePath): imagePath is string => !!imagePath);
+
+  if (imagePaths.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="assessment-stimulus-images">
+      {imagePaths.map((imagePath, index) => (
+        <img
+          key={imagePath}
+          alt={index === 0 ? "Stimulus" : "Dodatni stimulus"}
+          className="assessment-stimulus-images__image"
+          src={imagePath}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AssessmentOptionMedia({ option }: { option: TestAnswerOption }) {
+  if (!option.image_path) {
+    return null;
+  }
+
+  return (
+    <img
+      alt={`Opcija ${option.option_order}`}
+      className="assessment-option__image"
+      src={option.image_path}
+    />
+  );
 }
 
 function getProtectedCompletionUiContent(
@@ -524,11 +586,102 @@ function AssessmentDashboardSkinStyles() {
         color: rgb(30, 41, 59);
       }
 
-      .assessment-run-page--dashboard-skin .assessment-textarea {
+      .assessment-run-page--dashboard-skin .assessment-textarea,
+      .assessment-run-page--dashboard-skin .assessment-text-input {
         border-color: rgba(203, 213, 225, 0.88);
         border-radius: 1rem;
         background: rgba(255, 255, 255, 0.96);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-stimulus-images {
+        display: grid;
+        gap: 1rem;
+        margin: 1rem 0 0;
+        width: 100%;
+        max-width: 100%;
+      }
+
+      @media (min-width: 760px) {
+        .assessment-run-page--dashboard-skin .assessment-stimulus-images {
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-stimulus-images__image,
+      .assessment-run-page--dashboard-skin .assessment-option__image {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid rgb(226, 232, 240);
+        border-radius: 0.75rem;
+        background: rgb(255, 255, 255);
+        object-fit: contain;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-stimulus-images__image {
+        justify-self: center;
+        max-height: 22rem;
+        max-width: 100%;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-options--image {
+        grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+        gap: 1rem;
+        align-items: stretch;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-options--image > li {
+        min-width: 0;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-options--image .assessment-option {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        min-height: 12rem;
+        height: 100%;
+        padding: 0.85rem;
+        overflow: hidden;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-options--image .assessment-option input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-options--image .assessment-option__marker {
+        position: absolute;
+        top: 0.7rem;
+        left: 0.7rem;
+        z-index: 1;
+        min-width: 1.85rem;
+        min-height: 1.85rem;
+        box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.5);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-option__content {
+        display: grid;
+        width: 100%;
+        gap: 0.65rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-options--image .assessment-option__content {
+        place-items: center;
+        min-width: 0;
+        height: 100%;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-option__image {
+        height: 10rem;
+        max-height: none;
+        padding: 0.6rem;
+        object-fit: contain;
       }
 
       .assessment-run-page--dashboard-skin .assessment-inline-message {
@@ -1045,6 +1198,8 @@ export function AssessmentForm({
       currentSelection,
     );
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
+    const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
+    const visibleQuestionText = isImageQuestion ? getVisibleQuestionText(currentQuestion) : currentQuestion.text;
     const shouldAutoAdvance = isLikertQuestion && !isLastQuestion;
     const shouldShowFinishButton = isLastQuestion && hasValidCurrentAnswer;
     const shouldShowContinueButton = !isLastQuestion && !shouldAutoAdvance;
@@ -1103,22 +1258,37 @@ export function AssessmentForm({
                 }`}
               >
                 <p className="assessment-step-card__kicker">Pitanje {currentQuestionIndex + 1}</p>
-                <h3>{currentQuestion.text}</h3>
+                {visibleQuestionText ? <h3>{visibleQuestionText}</h3> : null}
+                <AssessmentStimulusImages question={currentQuestion} />
               </div>
             </div>
 
             <fieldset className="assessment-step-card__fieldset" disabled={isInteractionLocked}>
-              <legend className="sr-only">{currentQuestion.text}</legend>
+              <legend className="sr-only">
+                {visibleQuestionText ?? `Pitanje ${currentQuestionIndex + 1}`}
+              </legend>
 
               {currentQuestion.question_type === "text" ? (
-                <textarea
-                  className="assessment-textarea"
-                  value={typeof currentSelection === "string" ? currentSelection : ""}
-                  onChange={(event) => {
-                    updateSelection(currentQuestion.id, event.target.value);
-                  }}
-                  rows={4}
-                />
+                currentQuestion.renderer_type === "numeric_input" ? (
+                  <input
+                    className="assessment-text-input"
+                    inputMode="decimal"
+                    type="text"
+                    value={typeof currentSelection === "string" ? currentSelection : ""}
+                    onChange={(event) => {
+                      updateSelection(currentQuestion.id, event.target.value);
+                    }}
+                  />
+                ) : (
+                  <textarea
+                    className="assessment-textarea"
+                    value={typeof currentSelection === "string" ? currentSelection : ""}
+                    onChange={(event) => {
+                      updateSelection(currentQuestion.id, event.target.value);
+                    }}
+                    rows={4}
+                  />
+                )
               ) : isLikertQuestion ? (
                 <div className="assessment-likert">
                   <div className="assessment-likert__scale">
@@ -1166,7 +1336,9 @@ export function AssessmentForm({
                   </div>
                 </div>
               ) : options.length > 0 ? (
-                <ol className="assessment-options">
+                <ol
+                  className={`assessment-options${isImageQuestion ? " assessment-options--image" : ""}`}
+                >
                   {options.map((option) => {
                     const inputId = `${currentQuestion.id}-${option.option_order}`;
 
@@ -1203,7 +1375,14 @@ export function AssessmentForm({
                             <span className="assessment-option__marker">
                               {option.option_order}
                             </span>
-                            <span className="assessment-option__label">{option.label}</span>
+                            <span className="assessment-option__content">
+                              <AssessmentOptionMedia option={option} />
+                              {isImageQuestion ? (
+                                <span className="sr-only">{option.label}</span>
+                              ) : (
+                                <span className="assessment-option__label">{option.label}</span>
+                              )}
+                            </span>
                           </label>
                         </li>
                       );
@@ -1232,7 +1411,14 @@ export function AssessmentForm({
                             }}
                           />
                           <span className="assessment-option__marker">{option.option_order}</span>
-                          <span className="assessment-option__label">{option.label}</span>
+                          <span className="assessment-option__content">
+                            <AssessmentOptionMedia option={option} />
+                            {isImageQuestion ? (
+                              <span className="sr-only">{option.label}</span>
+                            ) : (
+                              <span className="assessment-option__label">{option.label}</span>
+                            )}
+                          </span>
                         </label>
                       </li>
                     );
@@ -1336,22 +1522,37 @@ export function AssessmentForm({
         {questions.map((question) => {
           const options = answerOptionsByQuestionId[question.id] ?? [];
           const selection = selections[question.id];
+          const isImageQuestion = isImageChoiceQuestion(question, options);
+          const visibleQuestionText = isImageQuestion ? getVisibleQuestionText(question) : question.text;
 
           return (
             <li key={question.id}>
               <fieldset disabled={isCompleted}>
-                <legend>{question.text}</legend>
+                <legend>{visibleQuestionText ?? "Pitanje"}</legend>
+                <AssessmentStimulusImages question={question} />
 
                 {question.question_type === "text" ? (
-                  <textarea
-                    value={typeof selection === "string" ? selection : ""}
-                    onChange={(event) => {
-                      updateSelection(question.id, event.target.value);
-                    }}
-                    rows={3}
-                  />
+                  question.renderer_type === "numeric_input" ? (
+                    <input
+                      className="assessment-text-input"
+                      inputMode="decimal"
+                      type="text"
+                      value={typeof selection === "string" ? selection : ""}
+                      onChange={(event) => {
+                        updateSelection(question.id, event.target.value);
+                      }}
+                    />
+                  ) : (
+                    <textarea
+                      value={typeof selection === "string" ? selection : ""}
+                      onChange={(event) => {
+                        updateSelection(question.id, event.target.value);
+                      }}
+                      rows={3}
+                    />
+                  )
                 ) : options.length > 0 ? (
-                  <ol>
+                  <ol className={isImageQuestion ? "assessment-options assessment-options--image" : undefined}>
                     {options.map((option) => {
                       const inputId = `${question.id}-${option.option_order}`;
 
@@ -1379,7 +1580,8 @@ export function AssessmentForm({
                                   updateSelection(question.id, nextOptionIds);
                                 }}
                               />
-                              {option.label}
+                              <AssessmentOptionMedia option={option} />
+                              {isImageQuestion ? <span className="sr-only">{option.label}</span> : option.label}
                             </label>
                           </li>
                         );
@@ -1397,7 +1599,8 @@ export function AssessmentForm({
                                 updateSelection(question.id, option.id);
                               }}
                             />
-                            {option.label}
+                            <AssessmentOptionMedia option={option} />
+                            {isImageQuestion ? <span className="sr-only">{option.label}</span> : option.label}
                           </label>
                         </li>
                       );

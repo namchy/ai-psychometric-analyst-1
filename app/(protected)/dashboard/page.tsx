@@ -22,6 +22,7 @@ import {
   SUPPORTED_ASSESSMENT_LOCALES,
   getAssessmentLocaleLabel,
 } from "@/lib/assessment/locale";
+import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import {
   getActiveOrganizationForUser,
   getAvailableTestsForOrganization,
@@ -455,7 +456,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                                         <option value="">Select a test</option>
                                         {availableTests.map((test) => (
                                           <option key={test.id} value={test.id}>
-                                            {test.name}
+                                            {getAssessmentDisplayName(test)}
                                           </option>
                                         ))}
                                       </select>

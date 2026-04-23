@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import {
   getCandidateAttemptForUser,
@@ -14,6 +15,10 @@ type CandidateAttemptIntroPageProps = {
 
 function isIpcAssessmentSlug(slug: string | null | undefined): boolean {
   return slug === "ipip-ipc-v1";
+}
+
+function isSafranAssessmentSlug(slug: string | null | undefined): boolean {
+  return slug === "safran_v1";
 }
 
 function formatEstimatedDuration(
@@ -34,6 +39,10 @@ function formatEstimatedDuration(
 }
 
 function getAssessmentTitle(name: string | null | undefined, slug: string | null | undefined): string {
+  if (isSafranAssessmentSlug(slug)) {
+    return "SAFRAN";
+  }
+
   const normalizedName = name?.trim();
 
   if (normalizedName && /ličnost/i.test(normalizedName)) {
@@ -48,10 +57,17 @@ function getAssessmentTitle(name: string | null | undefined, slug: string | null
     return "Procjena ličnosti";
   }
 
-  return normalizedName ?? slug ?? "Procjena";
+  return getAssessmentDisplayName({ name: normalizedName, slug });
 }
 
-function getAssessmentDescription(description: string | null | undefined): string {
+function getAssessmentDescription(
+  description: string | null | undefined,
+  slug: string | null | undefined,
+): string {
+  if (isSafranAssessmentSlug(slug)) {
+    return "Kognitivna procjena kroz verbalne, figuralne i numeričke zadatke.";
+  }
+
   if (description?.trim()) {
     return description;
   }
@@ -60,6 +76,10 @@ function getAssessmentDescription(description: string | null | undefined): strin
 }
 
 function getResponseScaleLabel(testSlug: string | null | undefined): string {
+  if (isSafranAssessmentSlug(testSlug)) {
+    return "Odabir odgovora i numerički unos";
+  }
+
   if (testSlug?.startsWith("ipip")) {
     return "Odgovori na skali od 1 do 5";
   }
@@ -114,11 +134,13 @@ export default async function CandidateAttemptIntroPage({
   );
   const action = getIntroAction(attempt.id, attempt.lifecycle);
   const assessmentTitle = getAssessmentTitle(attempt.tests?.name, attempt.tests?.slug);
-  const assessmentDescription = getAssessmentDescription(attempt.tests?.description);
+  const assessmentDescription = getAssessmentDescription(attempt.tests?.description, attempt.tests?.slug);
   const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
-  const methodologyDescription = isIpcAssessmentSlug(attempt.tests?.slug)
-    ? "Procjena se oslanja na IPC interpersonalni okvir i fokusira se na obrasce interpersonalnog stila, saradnje i načina na koji osoba zauzima prostor u odnosima."
-    : "Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom kontekstu.";
+  const methodologyDescription = isSafranAssessmentSlug(attempt.tests?.slug)
+    ? "Procjena se sastoji od verbalnih, figuralnih i numeričkih zadataka i daje preliminarni uvid u kognitivni rezultat."
+    : isIpcAssessmentSlug(attempt.tests?.slug)
+      ? "Procjena se oslanja na IPC interpersonalni okvir i fokusira se na obrasce interpersonalnog stila, saradnje i načina na koji osoba zauzima prostor u odnosima."
+      : "Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom kontekstu.";
 
   return (
     <main className="candidate-intro stack-md mx-auto w-full max-w-5xl px-4">
@@ -161,9 +183,9 @@ export default async function CandidateAttemptIntroPage({
           <h2>Kako izgleda procjena</h2>
         </div>
         <p>
-          Tokom procjene označavaš u kojoj mjeri te pojedine tvrdnje opisuju. Nema tačnih ni
-          netačnih odgovora. Najkorisnije je da odgovaraš iskreno i spontano, prema tome kako inače
-          funkcionišeš.
+          {isSafranAssessmentSlug(attempt.tests?.slug)
+            ? "Tokom procjene rješavaš kratke zadatke različitog formata. Kod nekih pitanja biraš odgovor, a kod numeričkih nizova upisuješ broj."
+            : "Tokom procjene označavaš u kojoj mjeri te pojedine tvrdnje opisuju. Nema tačnih ni netačnih odgovora. Najkorisnije je da odgovaraš iskreno i spontano, prema tome kako inače funkcionišeš."}
         </p>
       </section>
 
@@ -173,9 +195,9 @@ export default async function CandidateAttemptIntroPage({
           <h2>Šta dobijaš na kraju</h2>
         </div>
         <p>
-          Na kraju ćeš dobiti izvještaj sa glavnim uvidima o tvojim ličnim obrascima i načinu
-          funkcionisanja. Rezultati služe kao strukturiran uvid, a ne kao konačna ocjena tvoje
-          vrijednosti ili sposobnosti.
+          {isSafranAssessmentSlug(attempt.tests?.slug)
+            ? "Na kraju ćeš vidjeti preliminarne skorove za verbalni, figuralni i numerički dio, kao i ukupni kognitivni skor. Detaljni interpretativni izvještaj nije još uključen."
+            : "Na kraju ćeš dobiti izvještaj sa glavnim uvidima o tvojim ličnim obrascima i načinu funkcionisanja. Rezultati služe kao strukturiran uvid, a ne kao konačna ocjena tvoje vrijednosti ili sposobnosti."}
         </p>
       </section>
 
@@ -194,8 +216,17 @@ export default async function CandidateAttemptIntroPage({
         </div>
         <ul className="candidate-intro__checklist">
           <li>Odvoji nekoliko minuta bez prekida.</li>
-          <li>Odgovaraj iskreno.</li>
-          <li>Nemoj previše analizirati svaku tvrdnju.</li>
+          {isSafranAssessmentSlug(attempt.tests?.slug) ? (
+            <>
+              <li>Pažljivo pogledaj zadatak prije odabira odgovora.</li>
+              <li>Kod numeričkih pitanja upiši samo traženi broj.</li>
+            </>
+          ) : (
+            <>
+              <li>Odgovaraj iskreno.</li>
+              <li>Nemoj previše analizirati svaku tvrdnju.</li>
+            </>
+          )}
           <li>Ako je omogućeno, procjenu možeš nastaviti kasnije.</li>
         </ul>
       </section>
@@ -228,7 +259,9 @@ export default async function CandidateAttemptIntroPage({
           </Link>
         </div>
         <p className="candidate-intro__cta-note">
-          Po završetku procjene dobit ćeš personalizovani izvještaj sa glavnim uvidima.
+          {isSafranAssessmentSlug(attempt.tests?.slug)
+            ? "Po završetku procjene vidjet ćeš preliminarne SAFRAN skorove."
+            : "Po završetku procjene dobit ćeš personalizovani izvještaj sa glavnim uvidima."}
         </p>
       </section>
     </main>

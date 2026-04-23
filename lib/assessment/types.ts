@@ -36,6 +36,8 @@ export type Question = {
   weight: number;
   is_required: boolean;
   is_active: boolean;
+  stimulus_image_path: string | null;
+  stimulus_secondary_image_path: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +50,7 @@ export type AnswerOption = {
   value: number | null;
   option_order: number;
   is_correct: boolean | null;
+  image_path: string | null;
   created_at: string;
 };
 

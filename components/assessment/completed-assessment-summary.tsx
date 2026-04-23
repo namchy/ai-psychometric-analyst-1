@@ -758,6 +758,122 @@ function formatDiscreetScore(value: number): string {
   return value.toFixed(2);
 }
 
+function getResultScoreByDimension(
+  results: CompletedAssessmentResults,
+): Map<string, number> {
+  return new Map(
+    results.dimensions.map((dimension) => [dimension.dimension, dimension.rawScore]),
+  );
+}
+
+function isSafranV1Results(results: CompletedAssessmentResults | null): boolean {
+  return (
+    results?.scoringMethod === "correct_answers" &&
+    Boolean(results.derived?.safranV1) &&
+    results.dimensions.some((dimension) => dimension.dimension === "cognitive_composite_v1")
+  );
+}
+
+function getSafranScoreCards() {
+  return [
+    { key: "verbal_score", label: "Verbalni dio", emphasized: false },
+    { key: "figural_score", label: "Vizualni dio", emphasized: false },
+    { key: "numerical_series_score", label: "Numerički dio", emphasized: false },
+    {
+      key: "cognitive_composite_v1",
+      label: "Ukupni kognitivni kompozit",
+      emphasized: true,
+    },
+  ] as const;
+}
+
+function SafranV1ResultsSummary({
+  completedAt,
+  organizationName,
+  participantName,
+  testName,
+  results,
+}: {
+  completedAt?: string | null;
+  organizationName?: string | null;
+  participantName?: string | null;
+  testName?: string | null;
+  results: CompletedAssessmentResults | null;
+}) {
+  const scoreByDimension = results ? getResultScoreByDimension(results) : new Map<string, number>();
+  const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
+  const scoreCards = getSafranScoreCards();
+
+  return (
+    <div className="results-report results-report--safran stack-md">
+      <section className="results-report__hero">
+        <div className="results-report__hero-copy">
+          <p className="results-report__eyebrow">Rezultati procjene</p>
+          <h2>{testName ?? "SAFRAN"}</h2>
+          <p className="results-report__section-body">
+            Ovo je preliminarni rezultat kognitivnog testa. Detaljni interpretativni izvještaj
+            nije još uključen.
+          </p>
+
+          <div className="results-report__hero-meta-wrap">
+            <dl className="results-report__hero-meta">
+              {participantName ? (
+                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                  <dt>Korisnik</dt>
+                  <dd>{participantName}</dd>
+                </div>
+              ) : null}
+              {organizationName ? (
+                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                  <dt>Organizacija</dt>
+                  <dd>{organizationName}</dd>
+                </div>
+              ) : null}
+              <div className="results-report__hero-meta-item results-report__hero-meta-item--wide">
+                <dt>Završeno</dt>
+                <dd>{formatCompletedAt(completedAt)}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      {!results ? (
+        <section className="results-report__section results-report__status results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Rezultati trenutno nisu dostupni</h3>
+          </div>
+          <p className="results-report__section-body">
+            Pokušaj je završen, ali SAFRAN skorovi trenutno nisu dostupni za prikaz.
+          </p>
+        </section>
+      ) : (
+        <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Tvoji rezultati</h3>
+          </div>
+
+          <ol className="results-score-overview" aria-label="SAFRAN skorovi">
+            {scoreCards.map((scoreCard) => (
+              <li
+                key={scoreCard.key}
+                className={`results-score-overview__item${
+                  scoreCard.emphasized ? " results-score-overview__item--emphasized" : ""
+                }`}
+              >
+                <div className="results-score-overview__header">
+                  <strong>{scoreCard.label}</strong>
+                  <span>{formatDiscreetScore(scoreByDimension.get(scoreCard.key) ?? 0)}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+    </div>
+  );
+}
+
 function getVisualScoreWidth(value: number, min: number, max: number): number {
   if (max <= min) {
     return 0;
@@ -1401,6 +1517,18 @@ export function CompletedAssessmentSummary({
     reportRenderer.kind === "shape_mismatch" ? reportRenderer.message : null;
   const unsupportedReadySignalMessage =
     reportRenderer.kind === "unsupported_signal" ? reportRenderer.message : null;
+
+  if (isSafranV1Results(results) || results?.scoringMethod === "correct_answers") {
+    return (
+      <SafranV1ResultsSummary
+        completedAt={completedAt}
+        organizationName={organizationName}
+        participantName={participantName}
+        testName={testName}
+        results={results}
+      />
+    );
+  }
 
   return (
     <div className="results-report stack-md">

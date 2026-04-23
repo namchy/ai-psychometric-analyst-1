@@ -1,12 +1,21 @@
 "use server";
 
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
+import { getCandidateAssessmentAvailability } from "@/lib/assessment/availability";
 import { getTestRunReadiness } from "@/lib/assessment/tests";
 import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type OrganizationTestAccessRow = {
   test_id: string;
+};
+
+type AssessmentAccessTestRow = {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  is_active: boolean;
 };
 
 type CreatedAttemptRow = {
@@ -38,20 +47,46 @@ export async function createAssessmentAttempt(
   }
 
   const supabase = createSupabaseAdminClient();
-  const { data: accessRow, error: accessError } = await supabase
-    .from("organization_test_access")
-    .select("test_id")
-    .eq("organization_id", organization.id)
-    .eq("test_id", normalizedTestId)
-    .maybeSingle();
+  const [
+    { data: testRow, error: testError },
+    { data: accessRow, error: accessError },
+    readiness,
+  ] = await Promise.all([
+    supabase
+      .from("tests")
+      .select("id, slug, name, status, is_active")
+      .eq("id", normalizedTestId)
+      .maybeSingle(),
+    supabase
+      .from("organization_test_access")
+      .select("test_id")
+      .eq("organization_id", organization.id)
+      .eq("test_id", normalizedTestId)
+      .maybeSingle(),
+    getTestRunReadiness(normalizedTestId),
+  ]);
+
+  if (testError) {
+    throw new Error(`Failed to load assessment: ${testError.message}`);
+  }
+
+  if (!(testRow as AssessmentAccessTestRow | null)) {
+    throw new Error("Assessment was not found.");
+  }
 
   if (accessError) {
     throw new Error(`Failed to validate assessment access: ${accessError.message}`);
   }
 
-  if (!(accessRow as OrganizationTestAccessRow | null)) {
-    throw new Error("Assessment access not granted.");
-  }
+  const test = testRow as AssessmentAccessTestRow;
+  const availability = getCandidateAssessmentAvailability({
+    slug: test.slug,
+    name: test.name,
+    status: test.status,
+    isActive: test.is_active,
+    hasOrganizationAccess: Boolean(accessRow as OrganizationTestAccessRow | null),
+    activeQuestionCount: readiness.activeQuestionCount,
+  });
 
   const { data: participantRow, error: participantError } = await supabase
     .from("participants")
@@ -67,9 +102,7 @@ export async function createAssessmentAttempt(
     throw new Error("Active participant is required.");
   }
 
-  const readiness = await getTestRunReadiness(normalizedTestId);
-
-  if (!readiness.isReady) {
+  if (!availability.canStart) {
     throw new Error("Assessment is not available for candidates yet.");
   }
 

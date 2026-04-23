@@ -11,10 +11,12 @@
     "check:supabase": "node --env-file=.env.local scripts/check-supabase.mjs",
     "bootstrap-local-demo": "bash scripts/bootstrap-local-demo.sh",
     "import:assessment-package": "node --env-file=.env.local scripts/import-assessment-package.mjs",
+    "import:safran-v1": "node --env-file=.env.local scripts/run-import-safran-v1.cjs",
     "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
     "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs",
     "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs",
-    "test:ipip-neo-120-report": "node scripts/test-ipip-neo-120-participant-report.mjs"
+    "test:ipip-neo-120-report": "node scripts/test-ipip-neo-120-participant-report.mjs",
+    "test:safran-v1-scoring": "node scripts/test-safran-v1-scoring.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

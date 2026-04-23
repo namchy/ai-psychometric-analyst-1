@@ -27,13 +27,27 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ActiveTest = Pick<Test, "id" | "slug" | "name" | "description">;
+export type AssessmentQuestionRendererType =
+  | "text_choice"
+  | "image_choice"
+  | "numeric_input"
+  | "text_input";
 export type TestQuestion = Pick<
   Question,
-  "id" | "code" | "text" | "question_order" | "question_type" | "is_required"
->;
+  | "id"
+  | "code"
+  | "text"
+  | "question_order"
+  | "question_type"
+  | "is_required"
+  | "stimulus_image_path"
+  | "stimulus_secondary_image_path"
+> & {
+  renderer_type: AssessmentQuestionRendererType;
+};
 export type TestAnswerOption = Pick<
   AnswerOption,
-  "id" | "question_id" | "label" | "option_order"
+  "id" | "question_id" | "label" | "value" | "option_order" | "image_path"
 >;
 export const ASSESSMENT_ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 
@@ -65,6 +79,20 @@ type AnswerOptionLocalizationRow = {
 };
 
 const LOCALIZATION_QUERY_CHUNK_SIZE = 50;
+
+function getQuestionRendererType(
+  question: Pick<Question, "code" | "question_type" | "stimulus_image_path" | "stimulus_secondary_image_path">,
+): AssessmentQuestionRendererType {
+  if (question.question_type === "text") {
+    return question.code.startsWith("NZ") ? "numeric_input" : "text_input";
+  }
+
+  if (question.stimulus_image_path || question.stimulus_secondary_image_path) {
+    return "image_choice";
+  }
+
+  return "text_choice";
+}
 
 function chunkValues<T>(values: T[], chunkSize: number): T[][] {
   const chunks: T[][] = [];
@@ -116,7 +144,9 @@ export async function getQuestionsForTest(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("questions")
-    .select("id, code, text, question_order, question_type, is_required")
+    .select(
+      "id, code, text, question_order, question_type, is_required, stimulus_image_path, stimulus_secondary_image_path",
+    )
     .eq("test_id", testId)
     .eq("is_active", true)
     .order("question_order", { ascending: true });
@@ -125,7 +155,10 @@ export async function getQuestionsForTest(
     throw new Error(`Failed to load questions: ${error.message}`);
   }
 
-  const questions = (data ?? []) as TestQuestion[];
+  const questions = ((data ?? []) as Omit<TestQuestion, "renderer_type">[]).map((question) => ({
+    ...question,
+    renderer_type: getQuestionRendererType(question),
+  }));
 
   if (questions.length === 0 || !locale) {
     return questions;
@@ -197,7 +230,7 @@ export async function getAnswerOptionsForQuestions(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("answer_options")
-    .select("id, question_id, label, option_order")
+    .select("id, question_id, label, value, option_order, image_path")
     .in("question_id", questionIds)
     .order("option_order", { ascending: true });
 

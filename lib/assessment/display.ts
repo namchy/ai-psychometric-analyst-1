@@ -19,5 +19,9 @@ export function getAssessmentDisplayName(
     return "Big Five procjena ličnosti (IPIP-NEO-120)";
   }
 
+  if (normalizedName.includes("safran") || normalizedSlug.includes("safran")) {
+    return "SAFRAN";
+  }
+
   return input?.name ?? input?.slug ?? "Procjena";
 }

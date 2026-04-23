@@ -7,6 +7,11 @@ import { useRouter } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 import { createAssessmentAttempt } from "@/app/(protected)/app/actions";
 import {
+  getCandidateAssessmentAvailability,
+  getCandidateAssessmentCatalogKey,
+  type CandidateAssessmentCatalogKey,
+} from "@/lib/assessment/availability";
+import {
   AuthenticatedAppFooterShell,
   AuthenticatedAppHeaderShell,
   AuthenticatedAppMainContent,
@@ -26,6 +31,7 @@ import {
   DashboardSectionShell,
   DashboardStatusBadge,
 } from "@/components/dashboard/primitives";
+import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type DashboardIconName =
@@ -55,9 +61,9 @@ export type CandidateAssessmentCard = {
   lastAnsweredAt?: string | null;
   title: string;
   description: string;
-  status: "Dostupan" | "Nije započet" | "U pripremi";
-  accessState: "paid" | "upgrade" | "roadmap";
-  ctaKind: "start" | "resume" | "report" | "upgrade" | "roadmap";
+  status: "Nije započet" | "U toku" | "Završeno" | "U pripremi";
+  accessState: "paid" | "roadmap";
+  ctaKind: "start" | "resume" | "report" | "roadmap";
   duration: string;
   secondaryMeta: string;
   icon: DashboardIconName;
@@ -68,6 +74,18 @@ export type CandidateAssessmentCard = {
   ctaLabel: string;
   disabled?: boolean;
   availabilityNote?: string;
+};
+
+type CandidateAssessmentCtaState = Pick<
+  CandidateAssessmentCard,
+  "attemptId" | "ctaKind" | "ctaLabel" | "disabled" | "href" | "status"
+>;
+
+type CandidateAssessmentAvailabilityState = Pick<
+  CandidateAssessmentCard,
+  "accessState" | "disabled" | "status"
+> & {
+  canStart: boolean;
 };
 
 export type CandidateDashboardInitialAttempt = {
@@ -147,10 +165,9 @@ type DashboardOrganizationTestAccessRow = {
 
 type CompositeReportState = "locked" | "pending" | "ready";
 
-type CuratedBatteryKey = "ipip-neo-120" | "icar" | "riasec";
-type CuratedBatteryTitle = "IPIP-NEO-120" | "ICAR" | "RIASEC";
+type CuratedBatteryTitle = "IPIP-NEO-120" | "SAFRAN" | "RIASEC";
 type CuratedBatteryConfig = {
-  key: CuratedBatteryKey;
+  key: CandidateAssessmentCatalogKey;
   title: CuratedBatteryTitle;
   description: string;
   category: DashboardTestCategory;
@@ -158,7 +175,7 @@ type CuratedBatteryConfig = {
 };
 
 function isCuratedBatteryTitle(value: string): value is CuratedBatteryTitle {
-  return value === "IPIP-NEO-120" || value === "ICAR" || value === "RIASEC";
+  return value === "IPIP-NEO-120" || value === "SAFRAN" || value === "RIASEC";
 }
 
 const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
@@ -170,9 +187,9 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
     metaLabel: "Ličnost",
   },
   {
-    key: "icar",
-    title: "ICAR",
-    description: "Način razmišljanja i rješavanja zadataka.",
+    key: "safran",
+    title: "SAFRAN",
+    description: "Kognitivni zadaci za verbalno, figuralno i numeričko zaključivanje.",
     category: "cognitive",
     metaLabel: "Kognitivni",
   },
@@ -185,9 +202,9 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
   },
 ] as const;
 
-const CURATED_BATTERY_UI_FALLBACKS: Record<string, { totalQuestions: number }> = {
+const CURATED_BATTERY_UI_FALLBACKS: Record<CandidateAssessmentCatalogKey, { totalQuestions: number }> = {
   "ipip-neo-120": { totalQuestions: 120 },
-  icar: { totalQuestions: 16 },
+  safran: { totalQuestions: 45 },
   riasec: { totalQuestions: 48 },
 };
 
@@ -377,23 +394,90 @@ function getCategoryVisuals(category: DashboardTestCategory): Pick<
   }
 }
 
-function getCuratedBatteryTestKey(test: Pick<DashboardTestRow, "slug" | "name">): string | null {
-  const normalizedSlug = test.slug.trim().toLowerCase();
-  const normalizedName = test.name.trim().toLowerCase();
+function getAssessmentCardAvailabilityState({
+  accessibleTestIds,
+  test,
+  totalQuestions,
+}: {
+  accessibleTestIds: Set<string>;
+  test: DashboardTestRow;
+  totalQuestions: number;
+}): CandidateAssessmentAvailabilityState {
+  const availability = getCandidateAssessmentAvailability({
+    slug: test.slug,
+    name: test.name,
+    status: test.status,
+    isActive: test.is_active,
+    hasOrganizationAccess: accessibleTestIds.has(test.id),
+    activeQuestionCount: totalQuestions,
+  });
+  const isDisabledCandidateCard = availability.kind === "disabled" || !availability.canStart;
 
-  if (normalizedSlug.includes("ipip-neo-120") || normalizedName.includes("ipip-neo-120")) {
-    return "ipip-neo-120";
+  return {
+    accessState: isDisabledCandidateCard ? "roadmap" : "paid",
+    canStart: availability.canStart,
+    disabled: !availability.canStart,
+    status: "Nije započet",
+  };
+}
+
+function getAssessmentCardCtaState({
+  availability,
+  primaryAttempt,
+  primaryAttemptLifecycle,
+}: {
+  availability: CandidateAssessmentAvailabilityState;
+  primaryAttempt: DashboardAttemptRow | null;
+  primaryAttemptLifecycle: DashboardAttemptLifecycle | null;
+}): CandidateAssessmentCtaState {
+  if (!availability.canStart) {
+    return {
+      ctaKind: "roadmap",
+      ctaLabel: "Započni procjenu",
+      disabled: true,
+      status: availability.status,
+    };
   }
 
-  if (normalizedSlug.includes("icar") || normalizedName.includes("icar")) {
-    return "icar";
+  if (primaryAttempt && primaryAttemptLifecycle === "completed") {
+    return {
+      attemptId: primaryAttempt.id,
+      ctaKind: "report",
+      ctaLabel: "Pogledaj rezultate",
+      disabled: false,
+      href: `/app/attempts/${primaryAttempt.id}/report`,
+      status: "Završeno",
+    };
   }
 
-  if (normalizedSlug.includes("riasec") || normalizedName.includes("riasec")) {
-    return "riasec";
+  if (primaryAttempt && primaryAttemptLifecycle === "in_progress") {
+    return {
+      attemptId: primaryAttempt.id,
+      ctaKind: "resume",
+      ctaLabel: "Nastavi procjenu",
+      disabled: false,
+      href: `/app/attempts/${primaryAttempt.id}/run`,
+      status: "U toku",
+    };
   }
 
-  return null;
+  if (primaryAttempt && primaryAttemptLifecycle === "not_started") {
+    return {
+      attemptId: primaryAttempt.id,
+      ctaKind: "start",
+      ctaLabel: "Započni procjenu",
+      disabled: false,
+      href: `/app/attempts/${primaryAttempt.id}/run`,
+      status: "Nije započet",
+    };
+  }
+
+  return {
+    ctaKind: "start",
+    ctaLabel: "Započni procjenu",
+    disabled: false,
+    status: "Nije započet",
+  };
 }
 
 function buildAssessmentCardsFromTests(
@@ -408,7 +492,7 @@ function buildAssessmentCardsFromTests(
     const primaryAttemptLifecycle = primaryAttempt
       ? getDashboardAttemptLifecycle(primaryAttempt)
       : null;
-    const curatedBatteryKey = getCuratedBatteryTestKey(test);
+    const curatedBatteryKey = getCandidateAssessmentCatalogKey(test);
     const curatedBatteryConfig = curatedBatteryKey
       ? CURATED_BATTERY_TESTS.find((entry) => entry.key === curatedBatteryKey) ?? null
       : null;
@@ -418,68 +502,39 @@ function buildAssessmentCardsFromTests(
     const visuals = getCategoryVisuals(test.category);
     const totalQuestions =
       questionCountsByTestId.get(test.id) ?? curatedBatteryFallback?.totalQuestions ?? 0;
-    const isReadyForRun = totalQuestions > 0;
-    const hasPaidAccess =
-      test.is_active && test.status === "active" && accessibleTestIds.has(test.id);
-
-    let href: string | undefined;
-    let attemptId: string | undefined;
-    let ctaKind: CandidateAssessmentCard["ctaKind"] = hasPaidAccess ? "start" : "upgrade";
-    let ctaLabel = hasPaidAccess ? "Započni procjenu" : "Upgrade to Access";
-    let disabled = !hasPaidAccess;
+    const availabilityState = getAssessmentCardAvailabilityState({
+      accessibleTestIds,
+      test,
+      totalQuestions,
+    });
+    const ctaState = getAssessmentCardCtaState({
+      availability: availabilityState,
+      primaryAttempt,
+      primaryAttemptLifecycle,
+    });
     let availabilityNote: string | undefined;
-
-    if (primaryAttempt && primaryAttemptLifecycle === "in_progress") {
-      attemptId = primaryAttempt.id;
-      href = `/app/attempts/${primaryAttempt.id}/run`;
-      ctaKind = "resume";
-      ctaLabel = "Nastavi procjenu";
-      disabled = false;
-    } else if (primaryAttempt && primaryAttemptLifecycle === "not_started") {
-      attemptId = primaryAttempt.id;
-      href = `/app/attempts/${primaryAttempt.id}/run`;
-      ctaKind = "start";
-      ctaLabel = "Započni procjenu";
-      disabled = false;
-    } else if (primaryAttempt && primaryAttemptLifecycle === "completed") {
-      attemptId = primaryAttempt.id;
-      href = `/app/attempts/${primaryAttempt.id}/report`;
-      ctaKind = "report";
-      ctaLabel = "Vidi rezultate";
-      disabled = false;
-    } else if (hasPaidAccess) {
-      if (isReadyForRun) {
-        ctaKind = "start";
-        ctaLabel = "Započni procjenu";
-        disabled = false;
-      } else {
-        ctaKind = "start";
-        ctaLabel = "Započni procjenu";
-        disabled = false;
-      }
-    }
 
     return {
       testId: test.id,
-      attemptId,
+      attemptId: ctaState.attemptId,
       answeredQuestions: primaryAttempt?.responseCount,
       totalQuestions,
       startedAt: primaryAttempt?.started_at ?? primaryAttempt?.created_at ?? null,
       completedAt: primaryAttempt?.completed_at ?? null,
       lastAnsweredAt: primaryAttempt?.last_answered_at ?? null,
-      title: curatedBatteryConfig?.title ?? test.name,
+      title: curatedBatteryConfig?.title ?? getAssessmentDisplayName(test),
       description:
         curatedBatteryConfig?.description ??
         test.description?.trim() ??
         "Opis testa će biti dostupan uskoro.",
-      accessState: hasPaidAccess ? "paid" : "upgrade",
-      ctaKind,
-      status: hasPaidAccess ? "Dostupan" : "Nije započet",
+      accessState: availabilityState.accessState,
+      ctaKind: ctaState.ctaKind,
+      status: ctaState.status,
       duration: formatDurationLabel(test.duration_minutes),
       secondaryMeta: curatedBatteryConfig?.metaLabel ?? getCategoryLabel(test.category),
-      href,
-      ctaLabel,
-      disabled,
+      href: ctaState.href,
+      ctaLabel: ctaState.ctaLabel,
+      disabled: ctaState.disabled || availabilityState.disabled,
       availabilityNote,
       ...visuals,
     };
@@ -510,7 +565,7 @@ function buildAssessmentCardsFromTests(
     status: "Nije započet",
     duration: formatDurationLabel(test.durationMinutes),
     secondaryMeta: "U planu",
-    ctaLabel: "Uskoro",
+    ctaLabel: "Započni procjenu",
     disabled: true,
     ...getCategoryVisuals(test.category),
   }));
@@ -518,20 +573,32 @@ function buildAssessmentCardsFromTests(
   const curatedTitles = new Set<CuratedBatteryTitle>(CURATED_BATTERY_TESTS.map((entry) => entry.title));
   const missingCuratedCards: CandidateAssessmentCard[] = CURATED_BATTERY_TESTS
     .filter((entry) => !sortedDatabaseCards.some((card) => card.title === entry.title))
-    .map((entry) => ({
-      title: entry.title,
-      description: entry.description,
-      accessState: "paid",
-      ctaKind: "start",
-      status: "Dostupan",
-      duration: "Vrijeme uskoro",
-      totalQuestions: CURATED_BATTERY_UI_FALLBACKS[entry.key].totalQuestions,
-      answeredQuestions: 0,
-      secondaryMeta: entry.metaLabel,
-      ctaLabel: "Započni procjenu",
-      disabled: false,
-      ...getCategoryVisuals(entry.category),
-    }));
+    .map((entry) => {
+      const availability = getCandidateAssessmentAvailability({
+        slug: entry.key,
+        name: entry.title,
+        status: null,
+        isActive: false,
+        hasOrganizationAccess: false,
+        activeQuestionCount: 0,
+      });
+      const isAvailable = availability.canStart;
+
+      return {
+        title: entry.title,
+        description: entry.description,
+        accessState: isAvailable ? "paid" : "roadmap",
+        ctaKind: isAvailable ? "start" : "roadmap",
+        status: "Nije započet",
+        duration: "Vrijeme uskoro",
+        totalQuestions: CURATED_BATTERY_UI_FALLBACKS[entry.key].totalQuestions,
+        answeredQuestions: 0,
+        secondaryMeta: entry.metaLabel,
+        ctaLabel: "Započni procjenu",
+        disabled: !isAvailable,
+        ...getCategoryVisuals(entry.category),
+      };
+    });
   const batteryCards = [
     ...sortedDatabaseCards.filter(
       (card) => isCuratedBatteryTitle(card.title) && curatedTitles.has(card.title),
@@ -824,7 +891,7 @@ function TopNav({
 
 function DashboardHeader() {
   return (
-    <DashboardSectionShell className="w-full">
+    <DashboardSectionShell className="w-full border-white/60 bg-[#F5F8FB] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(148,163,184,0.16),0_3px_8px_rgba(148,163,184,0.08)]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-10 top-0 h-32 w-32 rounded-full bg-teal-100/55 blur-3xl"
@@ -866,7 +933,7 @@ function WelcomeOverviewCard({
   const progressPercent = totalAssigned > 0 ? Math.min((completedCount / totalAssigned) * 100, 100) : 0;
 
   return (
-    <DashboardSectionShell className="border-slate-300/90 bg-[linear-gradient(160deg,rgba(255,255,255,1),rgba(243,248,249,0.99)_62%,rgba(246,242,255,0.97))] shadow-[0_30px_58px_rgba(15,23,42,0.12)]">
+    <DashboardSectionShell className="border-white/60 bg-[#F3F7FA] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white to-transparent"
@@ -1144,14 +1211,12 @@ function AssessmentCard({
       ? "border-teal-300 bg-teal-50 text-teal-800"
       : "border-slate-300 bg-slate-100 text-slate-600";
   const cardClassName = muted
-    ? "border-slate-300/80 bg-white/82 shadow-[0_16px_27px_rgba(15,23,42,0.06)] hover:border-slate-400/70 hover:shadow-[0_20px_31px_rgba(15,23,42,0.08)]"
-    : assessment.accessState === "upgrade"
-      ? "border-slate-300/90 bg-slate-50"
-      : assessment.accessState === "roadmap"
+    ? "border-slate-200/80 bg-white shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-slate-300/80 hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]"
+    : assessment.accessState === "roadmap"
         ? "border-violet-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,255,0.98))] shadow-[0_18px_31px_rgba(76,29,149,0.06)]"
         : primary
           ? "border-teal-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(240,249,248,0.98))] shadow-[0_30px_61px_rgba(15,23,42,0.14)] hover:border-teal-400 hover:shadow-[0_34px_65px_rgba(20,184,166,0.16)]"
-          : "border-slate-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(246,250,251,0.98))] shadow-[0_20px_37px_rgba(15,23,42,0.09)] hover:border-teal-300 hover:shadow-[0_24px_42px_rgba(20,184,166,0.12)]";
+          : "border-slate-200/80 bg-white shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-teal-200/90 hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]";
   const descriptionClassName = muted
     ? "text-slate-600"
     : isRoadmap
@@ -1217,7 +1282,7 @@ function AssessmentCard({
     >
       <div className="mb-4 flex items-start justify-between gap-4">
         <div
-          className={`rounded-[1.25rem] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ${primary ? "ring-1 ring-teal-200/80" : isRoadmap ? "ring-1 ring-violet-100/90" : ""} ${iconTileClassName} ${muted ? "opacity-75" : isRoadmap ? "opacity-95" : ""}`}
+          className={`rounded-[1.25rem] border border-slate-200/70 bg-white p-3 shadow-[0_6px_14px_rgba(15,23,42,0.06)] ${primary ? "ring-1 ring-teal-200/80" : isRoadmap ? "ring-1 ring-violet-100/90" : ""} ${iconTileClassName} ${muted ? "opacity-75" : isRoadmap ? "opacity-95" : ""}`}
         >
           <DashboardIcon className={`h-6 w-6 ${iconColorClassName} sm:h-7 sm:w-7`} name={assessment.icon} />
         </div>
@@ -1373,13 +1438,13 @@ function DashboardStatCard({
   status?: boolean;
 }) {
   return (
-    <DashboardInfoCardShell>
+    <DashboardInfoCardShell className="border-white/60 bg-[#F3F7FA] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
       <div className="flex items-start justify-between gap-4">
         <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500/85">
           {label}
         </p>
         <span
-          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${iconBgClassName}`}
+          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-[#EDF3F7] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_6px_14px_rgba(148,163,184,0.14)] ${iconBgClassName}`}
         >
           <DashboardIcon className={`h-5 w-5 ${iconClassName}`} name={icon} />
         </span>
@@ -1540,7 +1605,8 @@ export function CandidateDashboardView({
           const { data: questionsData, error: questionsError } = await supabase
             .from("questions")
             .select("test_id")
-            .in("test_id", testIds);
+            .in("test_id", testIds)
+            .eq("is_active", true);
 
           if (questionsError) {
             throw new Error(questionsError.message);
@@ -1708,7 +1774,7 @@ export function CandidateDashboardView({
                     ))}
                   </section>
 
-                  <DashboardInfoCardShell className="p-6">
+                  <DashboardInfoCardShell className="border-white/60 bg-[#F3F7FA] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
                     <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500/85">
                       TVOJI KORACI
                     </p>
