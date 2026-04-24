@@ -1150,6 +1150,14 @@ export function AssessmentForm({
       return;
     }
 
+    const didSave = await persistSelections(selections, {
+      selections: getQuestionSelectionDelta(initialSelections, selections, currentQuestion.id),
+    });
+
+    if (!didSave) {
+      return;
+    }
+
     setCurrentQuestionIndex((currentIndex) => Math.min(currentIndex + 1, questions.length - 1));
   }
 
