@@ -63,6 +63,7 @@ export type Attempt = {
   locale: "bs" | "hr";
   status: AttemptStatus;
   started_at: string;
+  scored_started_at: string | null;
   completed_at: string | null;
   total_time_seconds: number | null;
   metadata: JsonObject;

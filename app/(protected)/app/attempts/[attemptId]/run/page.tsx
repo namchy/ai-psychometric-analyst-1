@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { setProtectedAttemptLocale } from "@/app/actions/assessment";
 import { AssessmentForm, RunPageTopBar } from "@/components/assessment/assessment-form";
+import { getSafranScoredRunHref } from "@/lib/assessment/attempt-lifecycle";
 import {
   getAssessmentLocaleLabel,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
 import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+import { getCandidateAttemptForUser, markAttemptScoredStarted } from "@/lib/candidate/attempts";
 
 type CandidateAttemptRunPageProps = {
   params: {
@@ -16,6 +17,10 @@ type CandidateAttemptRunPageProps = {
   };
   searchParams?: Record<string, string | string[] | undefined>;
 };
+
+function isSafranAssessmentSlug(slug: string | null | undefined): boolean {
+  return slug === "safran_v1";
+}
 
 function getLocaleErrorMessage(rawError: string | string[] | undefined): string | null {
   const error = Array.isArray(rawError) ? rawError[0] : rawError;
@@ -33,15 +38,17 @@ function getLocaleErrorMessage(rawError: string | string[] | undefined): string 
 function LocaleButton({
   attemptId,
   locale,
+  returnPath,
 }: {
   attemptId: string;
   locale: AssessmentLocale;
+  returnPath: string;
 }) {
   return (
     <form action={setProtectedAttemptLocale}>
       <input type="hidden" name="attemptId" value={attemptId} />
       <input type="hidden" name="locale" value={locale} />
-      <input type="hidden" name="returnPath" value={`/app/attempts/${attemptId}/run`} />
+      <input type="hidden" name="returnPath" value={returnPath} />
       <button className="button-secondary" type="submit">
         {getAssessmentLocaleLabel(locale)}
       </button>
@@ -56,7 +63,7 @@ export default async function CandidateAttemptRunPage({
   searchParams,
 }: CandidateAttemptRunPageProps) {
   const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+  let attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();
@@ -68,6 +75,38 @@ export default async function CandidateAttemptRunPage({
 
   if (attempt.status === "abandoned") {
     redirect(`/app/attempts/${attempt.id}`);
+  }
+
+  const runMode = Array.isArray(searchParams?.mode)
+    ? searchParams.mode[0]
+    : searchParams?.mode;
+  const isSafran = isSafranAssessmentSlug(attempt.tests?.slug);
+  const runReturnPath =
+    isSafran && runMode === "scored"
+      ? getSafranScoredRunHref(attempt.id)
+      : `/app/attempts/${attempt.id}/run`;
+
+  if (
+    attempt.lifecycle === "not_started" &&
+    isSafran &&
+    runMode !== "scored"
+  ) {
+    redirect(`/app/attempts/${attempt.id}`);
+  }
+
+  if (isSafran && attempt.scored_started_at && runMode !== "scored") {
+    redirect(getSafranScoredRunHref(attempt.id));
+  }
+
+  if (isSafran && runMode === "scored" && !attempt.scored_started_at) {
+    await markAttemptScoredStarted(attempt.id);
+    const refreshedAttempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+
+    if (!refreshedAttempt) {
+      notFound();
+    }
+
+    attempt = refreshedAttempt;
   }
 
   const runPageData = await loadProtectedAttemptRunPageData(attempt);
@@ -116,8 +155,8 @@ export default async function CandidateAttemptRunPage({
                 <p className="status-message status-message--danger">{localeErrorMessage}</p>
               ) : null}
               <div className="dashboard-links">
-                <LocaleButton attemptId={attempt.id} locale="bs" />
-                <LocaleButton attemptId={attempt.id} locale="hr" />
+                <LocaleButton attemptId={attempt.id} locale="bs" returnPath={runReturnPath} />
+                <LocaleButton attemptId={attempt.id} locale="hr" returnPath={runReturnPath} />
               </div>
             </section>
           ) : null}

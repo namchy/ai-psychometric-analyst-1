@@ -14,8 +14,12 @@
     "import:safran-v1": "node --env-file=.env.local scripts/run-import-safran-v1.cjs",
     "verify:candidate-flow": "node --env-file=.env.local scripts/verify-candidate-flow.mjs",
     "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs",
+    "test:attempt-lifecycle": "node scripts/test-attempt-lifecycle.cjs",
     "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs",
     "test:ipip-neo-120-report": "node scripts/test-ipip-neo-120-participant-report.mjs",
+    "test:safran-interpretation": "node scripts/test-safran-interpretation.cjs",
+    "test:safran-stimuli": "node --env-file=.env.local scripts/audit-safran-stimuli.cjs",
+    "test:standard-battery": "node scripts/test-standard-assessment-battery.cjs",
     "test:safran-v1-scoring": "node scripts/test-safran-v1-scoring.cjs"
   },
   "dependencies": {

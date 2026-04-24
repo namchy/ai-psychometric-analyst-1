@@ -21,6 +21,11 @@ import {
   normalizeIpcUiLocale,
 } from "@/lib/assessment/result-display";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
+import {
+  buildSafranCandidateInterpretation,
+  getSafranInterpretationFallbackText,
+  type SafranScoreKey,
+} from "@/lib/assessment/safran-interpretation";
 
 type CompletedAssessmentSummaryProps = {
   completedAt?: string | null;
@@ -777,14 +782,38 @@ function isSafranV1Results(results: CompletedAssessmentResults | null): boolean 
 function getSafranScoreCards() {
   return [
     { key: "verbal_score", label: "Verbalni dio", emphasized: false },
-    { key: "figural_score", label: "Vizualni dio", emphasized: false },
-    { key: "numerical_series_score", label: "Numerički dio", emphasized: false },
+    { key: "figural_score", label: "Figuralni dio", emphasized: false },
+    { key: "numerical_series_score", label: "Numerički nizovi", emphasized: false },
     {
       key: "cognitive_composite_v1",
-      label: "Ukupni kognitivni kompozit",
+      label: "Ukupni rezultat",
       emphasized: true,
     },
   ] as const;
+}
+
+function getSafranDisplayScore(
+  results: CompletedAssessmentResults | null,
+): Partial<Record<SafranScoreKey, number | null>> {
+  const derived = results?.derived?.safranV1;
+
+  return {
+    verbal_score: derived?.verbalScore ?? null,
+    figural_score: derived?.figuralScore ?? null,
+    numerical_series_score: derived?.numericalSeriesScore ?? null,
+    cognitive_composite_v1: derived?.cognitiveCompositeV1 ?? null,
+  };
+}
+
+function renderSafranInterpretationValue(
+  score: number | null | undefined,
+  maxPossible: number,
+): string {
+  if (typeof score !== "number" || !Number.isFinite(score)) {
+    return `-- / ${maxPossible}`;
+  }
+
+  return `${formatDiscreetScore(score)} / ${maxPossible}`;
 }
 
 function SafranV1ResultsSummary({
@@ -803,6 +832,29 @@ function SafranV1ResultsSummary({
   const scoreByDimension = results ? getResultScoreByDimension(results) : new Map<string, number>();
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
   const scoreCards = getSafranScoreCards();
+  const interpretationScores = getSafranDisplayScore(results);
+  const interpretation = buildSafranCandidateInterpretation(interpretationScores);
+  const overallScore = interpretationScores.cognitive_composite_v1;
+  const overallHasValue = typeof overallScore === "number" && Number.isFinite(overallScore);
+  const overallIsOutOfRange = overallHasValue && (overallScore < 0 || overallScore > 45);
+  const domainsByKey = new Map(interpretation.domains.map((domain) => [domain.scoreKey, domain]));
+  const interpretationSections = [
+    {
+      scoreKey: "verbal_score" as const,
+      domainLabelBs: "Verbalni dio",
+      maxPossible: 18,
+    },
+    {
+      scoreKey: "figural_score" as const,
+      domainLabelBs: "Figuralni dio",
+      maxPossible: 18,
+    },
+    {
+      scoreKey: "numerical_series_score" as const,
+      domainLabelBs: "Numerički nizovi",
+      maxPossible: 9,
+    },
+  ];
 
   return (
     <div className="results-report results-report--safran stack-md">
@@ -811,8 +863,7 @@ function SafranV1ResultsSummary({
           <p className="results-report__eyebrow">Rezultati procjene</p>
           <h2>{testName ?? "SAFRAN"}</h2>
           <p className="results-report__section-body">
-            Ovo je preliminarni rezultat kognitivnog testa. Detaljni interpretativni izvještaj
-            nije još uključen.
+            Rezultati su prikazani kroz sirove skorove i kratko tumačenje unutar ove procjene.
           </p>
 
           <div className="results-report__hero-meta-wrap">
@@ -848,27 +899,113 @@ function SafranV1ResultsSummary({
           </p>
         </section>
       ) : (
-        <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
-          <div className="results-report__section-heading">
-            <h3>Tvoji rezultati</h3>
-          </div>
+        <>
+          <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Tvoji rezultati</h3>
+            </div>
 
-          <ol className="results-score-overview" aria-label="SAFRAN skorovi">
-            {scoreCards.map((scoreCard) => (
-              <li
-                key={scoreCard.key}
-                className={`results-score-overview__item${
-                  scoreCard.emphasized ? " results-score-overview__item--emphasized" : ""
-                }`}
-              >
-                <div className="results-score-overview__header">
-                  <strong>{scoreCard.label}</strong>
-                  <span>{formatDiscreetScore(scoreByDimension.get(scoreCard.key) ?? 0)}</span>
+            <ol className="results-score-overview" aria-label="SAFRAN skorovi">
+              {scoreCards.map((scoreCard) => (
+                <li
+                  key={scoreCard.key}
+                  className={`results-score-overview__item${
+                    scoreCard.emphasized ? " results-score-overview__item--emphasized" : ""
+                  }`}
+                >
+                  <div className="results-score-overview__header">
+                    <strong>{scoreCard.label}</strong>
+                    <span>{formatDiscreetScore(scoreByDimension.get(scoreCard.key) ?? 0)}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="results-report__section results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Kratko tumačenje</h3>
+            </div>
+            <p className="results-report__section-body">{interpretation.introBs}</p>
+
+            <div className="stack-sm">
+              <article className="results-dimension-card">
+                <div className="results-dimension-card__header">
+                  <div className="results-dimension-card__title">
+                    <h4>Ukupni rezultat</h4>
+                  </div>
+                  <div className="results-dimension-card__score">
+                    <span className="results-dimension-card__score-value">
+                      {renderSafranInterpretationValue(overallScore, 45)}
+                    </span>
+                  </div>
                 </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+                <p className="results-dimension-card__helper">
+                  {interpretation.overall?.bandLabelBs ??
+                    getSafranInterpretationFallbackText({
+                      scoreKey: "cognitive_composite_v1",
+                      reason: overallIsOutOfRange ? "invalid_range" : "missing",
+                    })}
+                </p>
+                <p className="results-dimension-card__summary">
+                  {interpretation.overall?.textBs ??
+                    getSafranInterpretationFallbackText({
+                      scoreKey: "cognitive_composite_v1",
+                      reason: overallIsOutOfRange ? "invalid_range" : "missing",
+                    })}
+                </p>
+              </article>
+
+              {interpretationSections.map((section) => {
+                const domain = domainsByKey.get(section.scoreKey);
+                const score = interpretationScores[section.scoreKey];
+                const hasValue = typeof score === "number" && Number.isFinite(score);
+                const isOutOfRange =
+                  hasValue && (score < 0 || score > section.maxPossible);
+                const fallbackText = getSafranInterpretationFallbackText({
+                  scoreKey: section.scoreKey,
+                  reason: isOutOfRange ? "invalid_range" : "missing",
+                });
+
+                return (
+                  <article key={section.scoreKey} className="results-dimension-card">
+                    <div className="results-dimension-card__header">
+                      <div className="results-dimension-card__title">
+                        <h4>{section.domainLabelBs}</h4>
+                      </div>
+                      <div className="results-dimension-card__score">
+                        <span className="results-dimension-card__score-value">
+                          {renderSafranInterpretationValue(score, section.maxPossible)}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="results-dimension-card__helper">
+                      {domain?.bandLabelBs ?? fallbackText}
+                    </p>
+                    <p className="results-dimension-card__summary">
+                      {domain?.textBs ?? fallbackText}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+
+            {interpretation.relativeProfileBs ? (
+              <p className="results-report__section-body">{interpretation.relativeProfileBs}</p>
+            ) : null}
+          </section>
+
+          <section className="results-report__section results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Kako čitati ove rezultate</h3>
+            </div>
+            <ul className="results-insight-list">
+              {interpretation.limitationsBs.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
     </div>
   );

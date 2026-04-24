@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  getSafranScoredRunHref,
+  isSafranScoredStartedAttempt,
+} from "@/lib/assessment/attempt-lifecycle";
 import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import {
@@ -75,6 +79,13 @@ function getAssessmentDescription(
   return "Ova procjena pruža strukturiran uvid u tvoje obrasce ponašanja, načine reagovanja i lične tendencije kroz niz kratkih tvrdnji.";
 }
 
+function getSafranIntroAction(attemptId: string) {
+  return {
+    href: `/app/attempts/${attemptId}/practice`,
+    label: "Započni test",
+  };
+}
+
 function getResponseScaleLabel(testSlug: string | null | undefined): string {
   if (isSafranAssessmentSlug(testSlug)) {
     return "Odabir odgovora i numerički unos";
@@ -89,12 +100,15 @@ function getResponseScaleLabel(testSlug: string | null | undefined): string {
 
 function getIntroAction(
   attemptId: string,
+  testSlug: string | null | undefined,
   lifecycle: "in_progress" | "not_started" | "completed" | "abandoned",
 ) {
   switch (lifecycle) {
     case "in_progress":
       return {
-        href: `/app/attempts/${attemptId}/run`,
+        href: isSafranAssessmentSlug(testSlug)
+          ? getSafranScoredRunHref(attemptId)
+          : `/app/attempts/${attemptId}/run`,
         label: "Nastavi procjenu",
       };
     case "completed":
@@ -132,7 +146,7 @@ export default async function CandidateAttemptIntroPage({
     attempt.tests?.duration_minutes ?? null,
     questionCount,
   );
-  const action = getIntroAction(attempt.id, attempt.lifecycle);
+  const action = getIntroAction(attempt.id, attempt.tests?.slug, attempt.lifecycle);
   const assessmentTitle = getAssessmentTitle(attempt.tests?.name, attempt.tests?.slug);
   const assessmentDescription = getAssessmentDescription(attempt.tests?.description, attempt.tests?.slug);
   const responseScaleLabel = getResponseScaleLabel(attempt.tests?.slug);
@@ -141,6 +155,84 @@ export default async function CandidateAttemptIntroPage({
     : isIpcAssessmentSlug(attempt.tests?.slug)
       ? "Procjena se oslanja na IPC interpersonalni okvir i fokusira se na obrasce interpersonalnog stila, saradnje i načina na koji osoba zauzima prostor u odnosima."
       : "Procjena se oslanja na široko korišten okvir ličnosti poznat kao Big Five model, koji se često koristi za razumijevanje stabilnih obrazaca ličnosti u profesionalnom i razvojnom kontekstu.";
+
+  if (
+    isSafranAssessmentSlug(attempt.tests?.slug) &&
+    attempt.lifecycle === "not_started" &&
+    !isSafranScoredStartedAttempt({
+      testSlug: attempt.tests?.slug,
+      scoredStartedAt: attempt.scored_started_at,
+    })
+  ) {
+    const safranAction = getSafranIntroAction(attempt.id);
+
+    return (
+      <main className="candidate-intro stack-md mx-auto w-full max-w-5xl px-4">
+        <section className="candidate-intro__hero card stack-sm">
+          <div className="stack-sm">
+            <div className="stack-xs">
+              <p className="assessment-eyebrow">Spremno za početak</p>
+              <h1>SAFRAN</h1>
+              <p className="candidate-intro__lead">
+                Kognitivni test verbalnog, vizualnog i numeričkog zaključivanja
+              </p>
+            </div>
+
+            <dl className="candidate-intro__meta" aria-label="Osnovne informacije o testu">
+              <div className="candidate-intro__meta-item">
+                <dt>Broj pitanja</dt>
+                <dd>{questionCount > 0 ? `${questionCount} pitanja` : "Biće prikazano pri početku"}</dd>
+              </div>
+              {estimatedDuration ? (
+                <div className="candidate-intro__meta-item">
+                  <dt>Procijenjeno trajanje</dt>
+                  <dd>{estimatedDuration}</dd>
+                </div>
+              ) : null}
+              <div className="candidate-intro__meta-item">
+                <dt>Format odgovora</dt>
+                <dd>{responseScaleLabel}</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section className="candidate-intro__section card stack-sm">
+          <p>
+            Ovaj test procjenjuje način na koji prepoznaješ obrasce, povezuješ informacije i
+            donosiš zaključke kroz različite vrste zadataka.
+          </p>
+          <p>Test se sastoji od verbalnog, vizualnog i numeričkog dijela.</p>
+        </section>
+
+        <section className="candidate-intro__section card stack-sm">
+          <div className="candidate-intro__section-heading stack-xs">
+            <p className="assessment-eyebrow">Upute</p>
+            <h2>Prije nego počneš</h2>
+          </div>
+          <ul className="candidate-intro__checklist">
+            <li>Pažljivo pročitaj svaki zadatak prije nego odgovoriš.</li>
+            <li>Odgovaraj samostalno i bez žurbe.</li>
+            <li>Kod nekih zadataka biraš tačan odgovor, a kod nekih unosiš broj.</li>
+            <li>Po želji možeš koristiti papir za bilješke, ali nije obavezno.</li>
+            <li>
+              Odabrani jezik testa važi za cijeli pokušaj i može se promijeniti samo prije prvog
+              odgovora.
+            </li>
+          </ul>
+        </section>
+
+        <section className="candidate-intro__cta card stack-sm">
+          <p>Po završetku testa vidjet ćeš preliminarni prikaz svojih rezultata.</p>
+          <div>
+            <Link className="candidate-home__link" href={safranAction.href}>
+              {safranAction.label}
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="candidate-intro stack-md mx-auto w-full max-w-5xl px-4">

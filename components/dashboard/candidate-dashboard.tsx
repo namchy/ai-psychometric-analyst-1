@@ -12,6 +12,11 @@ import {
   type CandidateAssessmentCatalogKey,
 } from "@/lib/assessment/availability";
 import {
+  getAssessmentAttemptLifecycle,
+  getSafranScoredRunHref,
+  selectPrimaryAttemptForTest,
+} from "@/lib/assessment/attempt-lifecycle";
+import {
   AuthenticatedAppFooterShell,
   AuthenticatedAppHeaderShell,
   AuthenticatedAppMainContent,
@@ -53,6 +58,7 @@ type DashboardIconName =
 
 export type CandidateAssessmentCard = {
   testId?: string;
+  testSlug?: string;
   attemptId?: string;
   answeredQuestions?: number;
   totalQuestions?: number;
@@ -94,6 +100,7 @@ export type CandidateDashboardInitialAttempt = {
   status: DashboardAttemptStatus;
   responseCount: number;
   started_at?: string | null;
+  scored_started_at: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -136,6 +143,7 @@ type DashboardAttemptRow = {
   status: DashboardAttemptStatus;
   responseCount: number;
   started_at?: string | null;
+  scored_started_at: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -248,53 +256,26 @@ const ROADMAP_TESTS = [
 ] as const;
 
 function getDashboardAttemptLifecycle(
-  attempt: Pick<DashboardAttemptRow, "status" | "responseCount">,
+  attempt: Pick<DashboardAttemptRow, "status" | "responseCount" | "scored_started_at" | "tests">,
 ): DashboardAttemptLifecycle {
-  if (attempt.status === "completed") {
-    return "completed";
-  }
-
-  if (attempt.status === "abandoned") {
-    return "abandoned";
-  }
-
-  return attempt.responseCount > 0 ? "in_progress" : "not_started";
-}
-
-function getAttemptLifecyclePriority(lifecycle: DashboardAttemptLifecycle): number {
-  switch (lifecycle) {
-    case "in_progress":
-      return 0;
-    case "not_started":
-      return 1;
-    case "completed":
-      return 2;
-    default:
-      return 3;
-  }
+  return getAssessmentAttemptLifecycle({
+    status: attempt.status,
+    responseCount: attempt.responseCount,
+    testSlug: Array.isArray(attempt.tests) ? attempt.tests[0]?.slug : attempt.tests?.slug,
+    scoredStartedAt: attempt.scored_started_at,
+  });
 }
 
 function getPrimaryAttemptForTest(
   testId: string,
+  testSlug: string | null | undefined,
   attempts: DashboardAttemptRow[],
 ): DashboardAttemptRow | null {
-  const matchingAttempts = attempts.filter((attempt) => attempt.test_id === testId);
-
-  if (matchingAttempts.length === 0) {
-    return null;
-  }
-
-  return [...matchingAttempts].sort((left, right) => {
-    const priorityDifference =
-      getAttemptLifecyclePriority(getDashboardAttemptLifecycle(left)) -
-      getAttemptLifecyclePriority(getDashboardAttemptLifecycle(right));
-
-    if (priorityDifference !== 0) {
-      return priorityDifference;
-    }
-
-    return Date.parse(right.created_at) - Date.parse(left.created_at);
-  })[0] ?? null;
+  return selectPrimaryAttemptForTest({
+    attempts,
+    testId,
+    testSlug,
+  });
 }
 
 function formatAttemptTimestamp(timestamp?: string | null): string | null {
@@ -425,11 +406,15 @@ function getAssessmentCardCtaState({
   availability,
   primaryAttempt,
   primaryAttemptLifecycle,
+  testSlug,
 }: {
   availability: CandidateAssessmentAvailabilityState;
   primaryAttempt: DashboardAttemptRow | null;
   primaryAttemptLifecycle: DashboardAttemptLifecycle | null;
+  testSlug?: string | null;
 }): CandidateAssessmentCtaState {
+  const isSafran = testSlug === "safran_v1";
+
   if (!availability.canStart) {
     return {
       ctaKind: "roadmap",
@@ -456,7 +441,7 @@ function getAssessmentCardCtaState({
       ctaKind: "resume",
       ctaLabel: "Nastavi procjenu",
       disabled: false,
-      href: `/app/attempts/${primaryAttempt.id}/run`,
+      href: isSafran ? getSafranScoredRunHref(primaryAttempt.id) : `/app/attempts/${primaryAttempt.id}/run`,
       status: "U toku",
     };
   }
@@ -467,7 +452,7 @@ function getAssessmentCardCtaState({
       ctaKind: "start",
       ctaLabel: "Započni procjenu",
       disabled: false,
-      href: `/app/attempts/${primaryAttempt.id}/run`,
+      href: isSafran ? `/app/attempts/${primaryAttempt.id}` : `/app/attempts/${primaryAttempt.id}/run`,
       status: "Nije započet",
     };
   }
@@ -488,9 +473,14 @@ function buildAssessmentCardsFromTests(
 ): CandidateAssessmentCard[] {
   const accessibleTestIds = new Set(accessRows.map((row) => row.test_id));
   const databaseCards: CandidateAssessmentCard[] = tests.map((test) => {
-    const primaryAttempt = getPrimaryAttemptForTest(test.id, attempts);
+    const primaryAttempt = getPrimaryAttemptForTest(test.id, test.slug, attempts);
     const primaryAttemptLifecycle = primaryAttempt
-      ? getDashboardAttemptLifecycle(primaryAttempt)
+      ? getAssessmentAttemptLifecycle({
+          status: primaryAttempt.status,
+          responseCount: primaryAttempt.responseCount,
+          testSlug: test.slug,
+          scoredStartedAt: primaryAttempt.scored_started_at,
+        })
       : null;
     const curatedBatteryKey = getCandidateAssessmentCatalogKey(test);
     const curatedBatteryConfig = curatedBatteryKey
@@ -511,11 +501,13 @@ function buildAssessmentCardsFromTests(
       availability: availabilityState,
       primaryAttempt,
       primaryAttemptLifecycle,
+      testSlug: test.slug,
     });
     let availabilityNote: string | undefined;
 
     return {
       testId: test.id,
+      testSlug: test.slug,
       attemptId: ctaState.attemptId,
       answeredQuestions: primaryAttempt?.responseCount,
       totalQuestions,
@@ -587,6 +579,7 @@ function buildAssessmentCardsFromTests(
       return {
         title: entry.title,
         description: entry.description,
+        testSlug: undefined,
         accessState: isAvailable ? "paid" : "roadmap",
         ctaKind: isAvailable ? "start" : "roadmap",
         status: "Nije započet",
@@ -629,6 +622,7 @@ function mapInitialAttemptsToDashboardAttempts(
   return attempts.map((attempt) => ({
     ...attempt,
     started_at: attempt.started_at ?? attempt.created_at,
+    scored_started_at: attempt.scored_started_at,
     last_answered_at: null,
     tests: null,
   }));
@@ -1244,7 +1238,11 @@ function AssessmentCard({
         assessment.testId,
         linkedOrganizationId ?? undefined,
       );
-      router.push(`/app/attempts/${attemptId}/run`);
+      router.push(
+        assessment.testSlug === "safran_v1"
+          ? `/app/attempts/${attemptId}`
+          : `/app/attempts/${attemptId}/run`,
+      );
     } catch {
       alert("Greška pri kreiranju pokušaja. Molimo pokušajte ponovo.");
       setIsCreatingAttempt(false);

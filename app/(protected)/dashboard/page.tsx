@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { logout } from "@/app/actions/auth";
-import { createAssessmentAttempt, createParticipant } from "@/app/actions/participants";
+import { createParticipant, createStandardAssessmentBattery } from "@/app/actions/participants";
 import {
   AuthenticatedAppFooterShell,
   AuthenticatedAppHeaderShell,
@@ -22,10 +22,8 @@ import {
   SUPPORTED_ASSESSMENT_LOCALES,
   getAssessmentLocaleLabel,
 } from "@/lib/assessment/locale";
-import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import {
   getActiveOrganizationForUser,
-  getAvailableTestsForOrganization,
   getAttemptsForOrganization,
   getMembershipsForUser,
   getParticipantsForOrganization,
@@ -134,6 +132,10 @@ function getDashboardMessage(rawError: string | string[] | undefined): string | 
       return "Unable to create the participant right now. Please review the submitted data and try again.";
     case "attempt-participant-required":
       return "Participant is required for attempt creation.";
+    case "battery-no-runnable-tests":
+      return "Trenutno nema aktivnih testova spremnih za standardnu procjenu.";
+    case "battery-create-failed":
+      return "Nije moguće kreirati standardnu procjenu. Provjeri podatke i pokušaj ponovo.";
     case "attempt-test-required":
       return "Test is required.";
     case "participant-not-found":
@@ -153,12 +155,36 @@ function getDashboardSuccessMessage(
   rawSuccess: string | string[] | undefined,
 ): string | null {
   const success = Array.isArray(rawSuccess) ? rawSuccess[0] : rawSuccess;
+  if (success === "battery-created") {
+    return "Standardna procjena je kreirana.";
+  }
+
+  if (success === "battery-already-exists") {
+    return "Standardna procjena je već kreirana za ovog kandidata.";
+  }
+
   if (success === "attempt-created") {
     return "Assessment was created successfully.";
   }
 
   if (success === "participant-created") {
     return "Participant was created successfully.";
+  }
+
+  return null;
+}
+
+function getInlineBatterySuccessMessage(
+  rawSuccess: string | string[] | undefined,
+): string | null {
+  const success = Array.isArray(rawSuccess) ? rawSuccess[0] : rawSuccess;
+
+  if (success === "battery-created") {
+    return "Standardna procjena je kreirana.";
+  }
+
+  if (success === "battery-already-exists") {
+    return "Standardna procjena je već kreirana za ovog kandidata.";
   }
 
   return null;
@@ -184,15 +210,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getMembershipsForUser(user.id),
     getActiveOrganizationForUser(user.id),
   ]);
-  const [participants, attempts, availableTests] = activeOrganization
+  const [participants, attempts] = activeOrganization
     ? await Promise.all([
         getParticipantsForOrganization(activeOrganization.id),
         getAttemptsForOrganization(activeOrganization.id),
-        getAvailableTestsForOrganization(activeOrganization.id),
       ])
-    : [[], [], []];
+    : [[], []];
   const message = getDashboardMessage(searchParams?.error);
   const successMessage = getDashboardSuccessMessage(searchParams?.success);
+  const inlineBatterySuccessMessage = getInlineBatterySuccessMessage(searchParams?.success);
   const createParticipantDetails =
     typeof searchParams?.detail === "string" ? decodeURIComponent(searchParams.detail) : null;
   const shouldOpenCreateParticipantPanel =
@@ -204,7 +230,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const createAttemptDetails =
     typeof searchParams?.detail === "string" &&
     (searchParams?.error === "create-attempt-failed" ||
-      searchParams?.error === "attempt-test-access-check-failed")
+      searchParams?.error === "attempt-test-access-check-failed" ||
+      searchParams?.error === "battery-create-failed")
       ? decodeURIComponent(searchParams.detail)
       : null;
   const openAttemptFor =
@@ -433,12 +460,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                                   open={openAttemptFor === participant.id}
                                 >
                                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[1.2rem] px-4 py-4 text-left [&::-webkit-details-marker]:hidden">
-                                    <span>
+                                      <span>
                                       <span className="block text-sm font-semibold text-slate-900">
-                                        Create assessment attempt
+                                        Kreiraj standardnu procjenu
                                       </span>
                                       <span className="block text-xs font-medium text-slate-500">
-                                        Assign a test and locale for this participant.
+                                        Dodijeli kandidatu standardnu bateriju procjena.
                                       </span>
                                     </span>
                                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
@@ -446,23 +473,42 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                                     </span>
                                   </summary>
                                   <form
-                                    action={createAssessmentAttempt}
+                                    action={createStandardAssessmentBattery}
                                     className="space-y-4 border-t border-slate-200/90 px-4 py-4"
                                   >
                                     <input type="hidden" name="participantId" value={participant.id} />
-                                    <div className="space-y-2">
-                                      <label htmlFor={`attempt-test-${participant.id}`}>Test</label>
-                                      <select id={`attempt-test-${participant.id}`} name="testId" required>
-                                        <option value="">Select a test</option>
-                                        {availableTests.map((test) => (
-                                          <option key={test.id} value={test.id}>
-                                            {getAssessmentDisplayName(test)}
-                                          </option>
-                                        ))}
-                                      </select>
+                                    <div className="rounded-[1rem] border border-slate-200 bg-slate-50/70 px-4 py-4">
+                                      <p className="text-sm font-semibold text-slate-900">Standardna baterija</p>
+                                      <ul className="mt-3 space-y-3 text-sm text-slate-600">
+                                        <li className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <p className="font-medium text-slate-900">IPIP-NEO-120</p>
+                                          </div>
+                                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+                                            Dostupno
+                                          </span>
+                                        </li>
+                                        <li className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <p className="font-medium text-slate-900">SAFRAN</p>
+                                          </div>
+                                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+                                            Dostupno
+                                          </span>
+                                        </li>
+                                        <li className="flex items-start justify-between gap-4">
+                                          <div>
+                                            <p className="font-medium text-slate-900">RIASEC</p>
+                                            <p>Interesovanja i profesionalne preferencije.</p>
+                                          </div>
+                                          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
+                                            Uskoro
+                                          </span>
+                                        </li>
+                                      </ul>
                                     </div>
                                     <div className="space-y-2">
-                                      <label htmlFor={`attempt-locale-${participant.id}`}>Locale</label>
+                                      <label htmlFor={`attempt-locale-${participant.id}`}>Jezik</label>
                                       <select
                                         id={`attempt-locale-${participant.id}`}
                                         name="locale"
@@ -481,20 +527,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                                         {createAttemptDetails ?? message}
                                       </p>
                                     ) : null}
+                                    {openAttemptFor === participant.id && inlineBatterySuccessMessage ? (
+                                      <p className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-700">
+                                        {inlineBatterySuccessMessage}
+                                      </p>
+                                    ) : null}
                                     <DashboardActionRow className="flex items-center justify-end">
                                       <button
                                         className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
                                         type="submit"
-                                        disabled={availableTests.length === 0}
                                       >
-                                        Create assessment attempt
+                                        Kreiraj standardnu procjenu
                                       </button>
                                     </DashboardActionRow>
-                                    {availableTests.length === 0 ? (
-                                      <p className="text-sm leading-6 text-slate-600">
-                                        No available tests are assigned to the active organization.
-                                      </p>
-                                    ) : null}
                                   </form>
                                 </details>
                               </div>

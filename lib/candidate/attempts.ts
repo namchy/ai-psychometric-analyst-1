@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getAssessmentAttemptLifecycle, isSafranScoredStartedAttempt } from "@/lib/assessment/attempt-lifecycle";
 import { getQuestionsForTest } from "@/lib/assessment/tests";
 import {
   getLinkedParticipantForUser,
@@ -38,6 +39,7 @@ type CandidateAttemptRow = {
   participant_id: string | null;
   status: "in_progress" | "completed" | "abandoned";
   started_at: string;
+  scored_started_at: string | null;
   completed_at: string | null;
   total_time_seconds: number | null;
   tests: CandidateAttemptRelation<CandidateAttemptTestSummary>;
@@ -65,6 +67,7 @@ export type CandidateAttemptSummary = {
   status: "in_progress" | "completed" | "abandoned";
   lifecycle: CandidateAttemptLifecycle;
   started_at: string;
+  scored_started_at: string | null;
   completed_at: string | null;
   total_time_seconds: number | null;
   responseCount: number;
@@ -79,6 +82,10 @@ export type CandidateAttemptLookup = {
   primaryAttempt: CandidateAttemptSummary | null;
 };
 
+function isMissingScoredStartedAtColumnError(message: string | undefined): boolean {
+  return typeof message === "string" && message.includes("scored_started_at");
+}
+
 function normalizeRelation<T>(value: CandidateAttemptRelation<T>): T | null {
   if (!value) {
     return null;
@@ -87,19 +94,8 @@ function normalizeRelation<T>(value: CandidateAttemptRelation<T>): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-function getCandidateAttemptLifecycle(
-  attempt: Pick<CandidateAttemptSummary, "status" | "responseCount">,
-): CandidateAttemptLifecycle {
-  if (attempt.status === "completed") {
-    return "completed";
-  }
-
-  if (attempt.status === "abandoned") {
-    return "abandoned";
-  }
-
-  return attempt.responseCount > 0 ? "in_progress" : "not_started";
-}
+export { getAssessmentAttemptLifecycle as getCandidateAttemptLifecycle };
+export { isSafranScoredStartedAttempt };
 
 function getPrimaryAttemptPriority(lifecycle: CandidateAttemptLifecycle): number {
   switch (lifecycle) {
@@ -176,7 +172,12 @@ function mapCandidateAttemptSummary(
     organizations: normalizeRelation(attemptRow.organizations),
   };
 
-  attempt.lifecycle = getCandidateAttemptLifecycle(attempt);
+  attempt.lifecycle = getAssessmentAttemptLifecycle({
+    status: attempt.status,
+    responseCount: attempt.responseCount,
+    testSlug: attempt.tests?.slug,
+    scoredStartedAt: attempt.scored_started_at,
+  });
   return attempt;
 }
 
@@ -184,14 +185,31 @@ async function getCandidateAttemptsForParticipantId(
   participantId: string,
 ): Promise<CandidateAttemptSummary[]> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("attempts")
     .select(
-      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, total_time_seconds, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, scored_started_at, completed_at, total_time_seconds, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
     )
     .eq("participant_id", participantId)
     .order("started_at", { ascending: false })
     .order("id", { ascending: false });
+
+  if (error && isMissingScoredStartedAtColumnError(error.message)) {
+    const fallbackResult = await supabase
+      .from("attempts")
+      .select(
+        "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, total_time_seconds, tests(slug, name, description, duration_minutes), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      )
+      .eq("participant_id", participantId)
+      .order("started_at", { ascending: false })
+      .order("id", { ascending: false });
+
+    data = (fallbackResult.data ?? []).map((attempt) => ({
+      ...attempt,
+      scored_started_at: null,
+    }));
+    error = fallbackResult.error;
+  }
 
   if (error) {
     throw new Error(`Failed to load candidate attempts: ${error.message}`);
@@ -243,4 +261,22 @@ export async function getCandidateAttemptForUser(
 export async function getCandidateAttemptQuestionCount(testId: string): Promise<number> {
   const questions = await getQuestionsForTest(testId);
   return questions.length;
+}
+
+export async function markAttemptScoredStarted(attemptId: string): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("attempts")
+    .update({ scored_started_at: new Date().toISOString() })
+    .eq("id", attemptId)
+    .eq("status", "in_progress")
+    .is("scored_started_at", null);
+
+  if (error && isMissingScoredStartedAtColumnError(error.message)) {
+    return;
+  }
+
+  if (error) {
+    throw new Error(`Failed to mark scored attempt start: ${error.message}`);
+  }
 }

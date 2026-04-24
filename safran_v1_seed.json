@@ -1400,7 +1400,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA02/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA02/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA02_opt_correct",
@@ -1461,7 +1461,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA03/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA03/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA03_opt_correct",
@@ -1522,7 +1522,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA04/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA04/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA04_opt_correct",
@@ -1583,7 +1583,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA05/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA05/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA05_opt_correct",
@@ -1644,7 +1644,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA06/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA06/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA06_opt_correct",
@@ -1705,7 +1705,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA07/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA07/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA07_opt_correct",
@@ -1766,7 +1766,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA08/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA08/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA08_opt_correct",
@@ -1827,7 +1827,7 @@
         "en": null
       },
       "stimulus_image_path": "/tests/safran/v1/fa/FA09/stimulus.jpg",
-      "stimulus_secondary_image_path": "/tests/safran/v1/fa/FA09/stimulus_secondary.png",
+      "stimulus_secondary_image_path": null,
       "options": [
         {
           "option_id": "FA09_opt_correct",
