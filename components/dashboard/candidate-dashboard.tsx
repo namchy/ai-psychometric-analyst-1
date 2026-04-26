@@ -221,28 +221,6 @@ const CURATED_BATTERY_UI_FALLBACKS: Record<CandidateAssessmentCatalogKey, { tota
   riasec: { totalQuestions: 48 },
 };
 
-const KPI_CARDS: Array<{
-  label: string;
-  icon: DashboardIconName;
-  iconClassName: string;
-  iconBgClassName: string;
-  accent?: boolean;
-  status?: boolean;
-}> = [
-  {
-    label: "Završeni testovi",
-    icon: "task_alt",
-    iconClassName: "text-blue-400",
-    iconBgClassName: "bg-blue-400/10",
-  },
-  {
-    label: "Ukupno vrijeme",
-    icon: "schedule",
-    iconClassName: "text-purple-400",
-    iconBgClassName: "bg-purple-400/10",
-  },
-];
-
 const PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
 
 const ROADMAP_TESTS = [
@@ -976,46 +954,30 @@ function WelcomeOverviewCard({
 }
 
 function QuickActionCard({
-  completedCount,
   state,
   title,
 }: {
-  completedCount: number;
   state: CompositeReportState;
   title?: string;
 }) {
-  const isLocked = state === "locked";
   const isPending = state === "pending";
   const isReady = state === "ready";
-  const remainingTests = Math.max(3 - completedCount, 0);
-  const helperText = isLocked
-    ? remainingTests === 1
-      ? "Završi preostali test da otključaš izvještaj."
-      : "Završi preostale testove da otključaš izvještaj."
-    : isPending
-      ? "Kompozitni izvještaj će uskoro biti dostupan."
-      : undefined;
   const cardClassName = isReady
-    ? "mx-auto w-full max-w-[800px] border-[var(--dp-composite)]/20 bg-[linear-gradient(180deg,var(--dp-surface)_0%,var(--dp-surface-elevated)_72%,var(--dp-composite-soft)_100%)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.10)] transition-colors duration-200 sm:p-7 md:p-8"
+    ? "border-[var(--dp-border-strong)] bg-[var(--dp-surface)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_24px_rgba(15,23,42,0.07),0_2px_6px_rgba(15,23,42,0.04)] transition-colors duration-200"
     : isPending
-      ? "mx-auto w-full max-w-[800px] border-[var(--dp-composite)]/16 bg-[linear-gradient(180deg,var(--dp-surface)_0%,var(--dp-surface-elevated)_74%,var(--dp-composite-soft)_100%)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8"
-      : "mx-auto w-full max-w-[800px] border-[var(--dp-composite)]/12 bg-[linear-gradient(180deg,var(--dp-surface)_0%,var(--dp-surface-elevated)_76%,var(--dp-composite-soft)_100%)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8";
-  const eyebrowClassName = "text-[var(--dp-composite)]";
-  const titleClassName = `mt-2 text-[1.375rem] leading-tight tracking-[-0.03em] ${
+      ? "border-[var(--dp-border)] bg-[var(--dp-surface)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_22px_rgba(15,23,42,0.06),0_2px_6px_rgba(15,23,42,0.04)] transition-colors duration-200"
+      : "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_10px_22px_rgba(15,23,42,0.06),0_2px_6px_rgba(15,23,42,0.04)] transition-colors duration-200";
+  const eyebrowClassName =
+    "inline-flex w-fit self-start rounded-full bg-[var(--dp-composite)] px-2.5 py-1 text-[10px] font-label font-semibold uppercase tracking-[0.14em] text-white";
+  const titleClassName = `mt-2 text-[1.2rem] leading-tight tracking-[-0.03em] ${
     "text-[var(--dp-text)]"
   }`;
-  const descriptionClassName = "mt-2 max-w-none";
-  const pillClassName = isReady
-    ? "border-[var(--dp-composite)]/25 bg-[var(--dp-composite-soft)] text-[var(--dp-composite-contrast)]"
-    : isPending
-      ? "border-[var(--dp-composite)]/25 bg-[var(--dp-composite-soft)] text-[var(--dp-composite-contrast)]"
-      : "border-[var(--dp-composite)]/20 bg-[var(--dp-composite-soft)] text-[var(--dp-composite-contrast)]";
+  const descriptionClassName = "mt-2 max-w-none text-[13px] leading-6 text-[var(--dp-text-muted)]";
   const ctaClassName = isReady
     ? "border-[var(--dp-composite)]/22 bg-[var(--dp-surface)] text-[var(--dp-composite-contrast)] shadow-[0_18px_36px_rgba(8,47,73,0.12)] hover:-translate-y-0.5 hover:bg-[var(--dp-surface-elevated)]"
     : isPending
-      ? "border-[var(--dp-composite)]/18 bg-[var(--dp-surface)]/72 text-[var(--dp-composite-contrast)] opacity-90"
-      : "border-[var(--dp-composite)]/14 bg-[var(--dp-surface-elevated)] text-[var(--dp-text-soft)] opacity-90";
-  const pillText = isReady ? "Dostupno" : isPending ? "U obradi" : `${completedCount}/3 završeno`;
+      ? "border-[var(--dp-border)] bg-[var(--dp-surface)] text-[var(--dp-text-soft)] shadow-[0_6px_12px_rgba(15,23,42,0.03)] opacity-84"
+      : "border-[var(--dp-border)]/70 bg-[var(--dp-surface)] text-[var(--dp-text-muted)] shadow-[0_3px_8px_rgba(15,23,42,0.02)] opacity-82";
   const ctaText = isReady
     ? "Otvori kompozitni izvještaj"
     : isPending
@@ -1024,39 +986,19 @@ function QuickActionCard({
 
   return (
     <DashboardSectionShell className={cardClassName}>
-      <div className="relative grid gap-6 md:grid-cols-[minmax(0,1fr)_272px] md:items-start">
-        <div className="min-w-0">
-          <DashboardSectionHeader
-            className="gap-2"
-            eyebrow="KOMPOZITNI IZVJEŠTAJ"
-            eyebrowClassName={eyebrowClassName}
-            title="Objedinjena analiza"
-            titleClassName={titleClassName}
-            description={
-              <>
-                Objedinjuje rezultate sva tri testa u jedinstven,
-                <br className="hidden md:block" />
-                <span className="md:hidden"> </span>
-                dublji pregled tvog profila.
-              </>
-            }
-            descriptionClassName={descriptionClassName}
-          />
-          {helperText ? (
-            <p className="mt-4 text-sm leading-6 text-[var(--dp-text-muted)]">
-              {helperText}
-            </p>
-          ) : null}
-        </div>
-
-        <DashboardActionRow className="flex flex-col items-stretch gap-4 md:w-[272px] md:justify-self-end md:items-stretch md:self-stretch md:justify-between">
-          <span
-            className={`inline-flex items-center justify-center self-start rounded-full border px-3 py-1 text-[11px] font-label font-semibold uppercase tracking-[0.16em] md:self-end ${pillClassName}`}
-          >
-            {pillText}
-          </span>
+      <div className="relative">
+        <DashboardSectionHeader
+          className="gap-2"
+          eyebrow="KOMPOZITNI PROFIL"
+          eyebrowClassName={eyebrowClassName}
+          title="Objedinjena analiza"
+          titleClassName={titleClassName}
+          description="Svaki rezultat dodaje jedan dio slike. Kada završiš sva tri testa, otključavaš širi pregled svog rada, razmišljanja i interesa."
+          descriptionClassName={descriptionClassName}
+        />
+        <DashboardActionRow className="mt-8 flex flex-col items-start gap-3">
           <button
-            className={`flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3.5 text-xs font-bold uppercase tracking-[0.16em] transition-all ${ctaClassName}`}
+            className={`inline-flex w-fit max-w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.14em] transition-all ${ctaClassName}`}
             disabled={!isReady}
             title={title}
             type="button"
@@ -1457,57 +1399,6 @@ function LoaderCircle({ className }: { className?: string }) {
   );
 }
 
-function DashboardStatCard({
-  label,
-  value,
-  icon,
-  iconClassName,
-  iconBgClassName,
-  loading = false,
-  accent,
-  status,
-}: {
-  label: string;
-  value: string;
-  icon: DashboardIconName;
-  iconClassName: string;
-  iconBgClassName: string;
-  loading?: boolean;
-  accent?: boolean;
-  status?: boolean;
-}) {
-  return (
-    <DashboardInfoCardShell className="border-[var(--dp-border)] bg-[var(--dp-surface-tint)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
-      <div className="flex items-start justify-between gap-3">
-        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
-          {label}
-        </p>
-        <span
-          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_6px_14px_rgba(148,163,184,0.14)] ${iconBgClassName}`}
-        >
-          <DashboardIcon className={`h-[1.125rem] w-[1.125rem] ${iconClassName}`} name={icon} />
-        </span>
-      </div>
-      {loading && !status ? (
-        <div className="mt-4 flex min-h-[2.5rem] items-center">
-          <LoaderCircle className="h-7 w-7 animate-spin text-[var(--dp-text-soft)]" />
-        </div>
-      ) : status ? (
-        <p className="mt-3 inline-flex min-h-[2.35rem] items-center gap-2 text-[1.2rem] font-bold tracking-[-0.035em] text-[var(--dp-text)] sm:text-[1.35rem]">
-          <span className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(34,197,94,0.14)]" />
-          {value}
-        </p>
-      ) : (
-        <p
-          className={`mt-3 min-h-[2.35rem] text-center text-[1.72rem] font-extrabold tracking-[-0.055em] leading-none sm:text-[1.9rem] ${accent ? "text-[var(--dp-primary-hover)]" : "text-[var(--dp-text)]"}`}
-        >
-          {value}
-        </p>
-      )}
-    </DashboardInfoCardShell>
-  );
-}
-
 function DashboardFooter({
   showHrLink,
 }: {
@@ -1582,9 +1473,6 @@ export function CandidateDashboardView({
   const [liveAssessments, setLiveAssessments] = useState<CandidateAssessmentCard[]>([]);
   const [completedAttempts, setCompletedAttempts] = useState(0);
   const [totalPaidTestsCount, setTotalPaidTestsCount] = useState(0);
-  const [completedTestsCount, setCompletedTestsCount] = useState<string>("0");
-  const [totalHours, setTotalHours] = useState<string>("0.0h");
-  const [averageScore, setAverageScore] = useState<string>("0%");
 
   useEffect(() => {
     if (!hasLinkedParticipant) {
@@ -1728,9 +1616,6 @@ export function CandidateDashboardView({
         );
         setTotalPaidTestsCount((accessData ?? []).length);
         setCompletedAttempts(completedCount);
-        setCompletedTestsCount(String(completedCount));
-        setTotalHours(formatTotalHours(totalTimeSeconds));
-        setAverageScore(formatAverageScore(normalizedAverage));
       } catch (error) {
         console.error("--- DASHBOARD FATAL ERROR ---", error);
         if (isCancelled) {
@@ -1773,10 +1658,6 @@ export function CandidateDashboardView({
       : completedBatteryCount < totalBatteryTestsCount
         ? `Završite sve dodijeljene testove (${completedBatteryCount} / ${totalBatteryTestsCount}) za dubinsku analizu.`
         : undefined;
-  const kpiValues: Record<string, string> = {
-    "Završeni testovi": loadError ? "N/A" : String(completedBatteryCount),
-    "Ukupno vrijeme": loadError ? "N/A" : totalHours,
-  };
   return (
     <AuthenticatedAppPageShell className="bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.07),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.08),_transparent_22%),linear-gradient(180deg,var(--dp-bg)_0%,var(--dp-bg)_100%)]">
       <TopNav userEmail={userEmail} userName={userName} />
@@ -1797,34 +1678,10 @@ export function CandidateDashboardView({
                     totalAssigned={totalBatteryTestsCount}
                   />
 
-                  <section aria-label="Dashboard overview" className="grid grid-cols-2 gap-3">
-                    {KPI_CARDS.map((card) => (
-                      <DashboardStatCard
-                        accent={card.accent}
-                        icon={card.icon}
-                        iconBgClassName={card.iconBgClassName}
-                        iconClassName={card.iconClassName}
-                        key={card.label}
-                        label={card.label}
-                        loading={isLoading && !loadError}
-                        status={card.status}
-                        value={kpiValues[card.label] ?? "N/A"}
-                      />
-                    ))}
-                  </section>
-
-                  <DashboardInfoCardShell className="border-[var(--dp-border)] bg-[var(--dp-surface-tint)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
-                    <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
-                      TVOJI KORACI
-                    </p>
-                    <h3 className="mt-2.5 font-headline text-[1.2rem] font-bold tracking-[-0.04em] text-[var(--dp-text)]">
-                      Kako nastaje tvoj profil
-                    </h3>
-                    <p className="mt-3 w-full max-w-none text-[13px] leading-6 text-[var(--dp-text-muted)]">
-                      Svaki rezultat dodaje jedan dio slike. Objedinjeni pregled otkriva širi
-                      obrazac tvog rada, razmišljanja i interesa.
-                    </p>
-                  </DashboardInfoCardShell>
+                  <QuickActionCard
+                    state={compositeReportState}
+                    title={aiAnalystTitle}
+                  />
                 </aside>
               </div>
 
@@ -1845,13 +1702,6 @@ export function CandidateDashboardView({
                       hideSectionHeader
                     />
                   ) : null}
-                  <div className="mt-3">
-                    <QuickActionCard
-                      completedCount={completedBatteryCount}
-                      state={compositeReportState}
-                      title={aiAnalystTitle}
-                    />
-                  </div>
                 </div>
               </section>
             </div>
