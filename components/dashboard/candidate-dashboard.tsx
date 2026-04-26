@@ -933,7 +933,7 @@ function DashboardHeader() {
           eyebrow="Pregled"
           eyebrowClassName="text-[var(--dp-primary-hover)]"
           title="Integrisana procjena"
-          titleClassName="mt-1.5 text-[1.7rem] font-extrabold tracking-[-0.05em] leading-tight sm:text-[2.05rem]"
+          titleClassName="mt-1.5 text-[1.55rem] font-extrabold tracking-[-0.045em] leading-tight sm:text-[1.85rem]"
           description="Tri komplementarna testa"
           descriptionClassName="mt-0.5 max-w-xl"
         />
@@ -1032,7 +1032,7 @@ function QuickActionCard({
           description="Svaki rezultat dodaje jedan dio slike. Kada završiš sva tri testa, otključavaš širi pregled svog rada, razmišljanja i interesa."
           descriptionClassName={descriptionClassName}
         />
-        <DashboardActionRow className="mt-8 flex flex-col items-start gap-3">
+        <DashboardActionRow className="mt-10 flex flex-col items-center gap-3">
           <button
             className={`inline-flex w-fit max-w-full items-center justify-center rounded-full border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.14em] transition-none ${ctaClassName}`}
             disabled={!isReady}
