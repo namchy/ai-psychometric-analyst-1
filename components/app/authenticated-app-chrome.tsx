@@ -7,7 +7,8 @@ function joinClassNames(...values: Array<string | false | null | undefined>) {
 export const AUTHENTICATED_APP_PAGE_SHELL_CLASS_NAME =
   "min-h-[calc(100dvh+2rem)] overflow-x-clip bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.07),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.08),_transparent_22%),linear-gradient(180deg,#f4f7fb_0%,#edf2f7_48%,#e8eef4_100%)] text-slate-900 -m-4 flex flex-col sm:m-0 sm:min-h-screen";
 
-export const AUTHENTICATED_APP_MAIN_CLASS_NAME = "w-full max-w-full flex-1 px-6 pb-14 pt-[120px] lg:px-12";
+export const AUTHENTICATED_APP_MAIN_CLASS_NAME = "w-full max-w-full flex-1 px-6 pb-14 lg:px-12";
+export const AUTHENTICATED_APP_MAIN_TOP_PADDING_CLASS_NAME = "pt-[120px]";
 
 export function AuthenticatedAppPageShell({
   children,
@@ -52,10 +53,20 @@ export function AuthenticatedAppHeaderShell({
 export function AuthenticatedAppMainContent({
   children,
   className,
+  topPaddingClassName = AUTHENTICATED_APP_MAIN_TOP_PADDING_CLASS_NAME,
   ...props
-}: HTMLAttributes<HTMLElement>) {
+}: HTMLAttributes<HTMLElement> & {
+  topPaddingClassName?: string;
+}) {
   return (
-    <main className={joinClassNames(AUTHENTICATED_APP_MAIN_CLASS_NAME, className)} {...props}>
+    <main
+      className={joinClassNames(
+        AUTHENTICATED_APP_MAIN_CLASS_NAME,
+        topPaddingClassName,
+        className,
+      )}
+      {...props}
+    >
       {children}
     </main>
   );

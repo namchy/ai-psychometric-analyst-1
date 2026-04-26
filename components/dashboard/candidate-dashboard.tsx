@@ -1746,7 +1746,7 @@ export function CandidateDashboardView({
     <AuthenticatedAppPageShell>
       <TopNav userEmail={userEmail} userName={userName} />
 
-      <AuthenticatedAppMainContent className="pt-20">
+      <AuthenticatedAppMainContent topPaddingClassName="pt-20">
         {hasLinkedParticipant ? (
           isLoading && !loadError ? (
             <DashboardSkeleton />
