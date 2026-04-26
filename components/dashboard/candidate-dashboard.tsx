@@ -41,6 +41,9 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type DashboardIconName =
   | "psychology"
+  | "user_focus"
+  | "sigma"
+  | "equalizer"
   | "work_history"
   | "insights"
   | "groups"
@@ -336,21 +339,21 @@ function getCategoryVisuals(category: DashboardTestCategory): Pick<
   switch (category) {
     case "behavioral":
       return {
-        icon: "groups",
+        icon: "equalizer",
         secondaryIcon: "hub",
         iconBgClassName: "assessment-card__icon-tile--complete",
         iconColorClassName: "assessment-card__icon-color--complete",
       };
     case "cognitive":
       return {
-        icon: "insights",
+        icon: "sigma",
         secondaryIcon: "trending_up",
         iconBgClassName: "assessment-card__icon-tile--active",
         iconColorClassName: "assessment-card__icon-color--active",
       };
     default:
       return {
-        icon: "psychology",
+        icon: "user_focus",
         secondaryIcon: "task_alt",
         iconBgClassName: "assessment-card__icon-tile--start",
         iconColorClassName: "assessment-card__icon-color--start",
@@ -629,6 +632,39 @@ function DashboardIcon({ name, className }: { name: DashboardIconName; className
   };
 
   switch (name) {
+    case "user_focus":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="9" r="3" />
+          <path d="M6.5 20a5.5 5.5 0 0 1 11 0" />
+          <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8" />
+          <path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8" />
+          <path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16" />
+          <path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" />
+        </svg>
+      );
+    case "sigma":
+      return (
+        <svg {...props}>
+          <path d="M18.5 5H7l6 7-6 7h11.5" />
+          <path d="M7 5h11.5" />
+          <path d="M7 19h11.5" />
+        </svg>
+      );
+    case "equalizer":
+      return (
+        <svg {...props}>
+          <path d="M5 17h3" />
+          <path d="M5 13h3" />
+          <path d="M5 9h3" />
+          <path d="M11 17h3" />
+          <path d="M11 13h3" />
+          <path d="M17 17h3" />
+          <path d="M17 13h3" />
+          <path d="M17 9h3" />
+          <path d="M17 5h3" />
+        </svg>
+      );
     case "psychology":
       return (
         <svg {...props}>
