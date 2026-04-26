@@ -977,12 +977,12 @@ function QuickActionCard({
     ? "border-[var(--dp-composite)]/22 bg-[var(--dp-surface)] text-[var(--dp-composite-contrast)] shadow-[0_18px_36px_rgba(8,47,73,0.12)] hover:-translate-y-0.5 hover:bg-[var(--dp-surface-elevated)]"
     : isPending
       ? "border-[var(--dp-border)] bg-[var(--dp-surface)] text-[var(--dp-text-soft)] shadow-[0_6px_12px_rgba(15,23,42,0.03)] opacity-84"
-      : "border-[var(--dp-border)]/70 bg-[var(--dp-surface)] text-[var(--dp-text-muted)] shadow-[0_3px_8px_rgba(15,23,42,0.02)] opacity-82";
+      : "border-[var(--dp-border)]/80 bg-transparent text-[var(--dp-text-soft)] shadow-none opacity-100";
   const ctaText = isReady
     ? "Otvori kompozitni izvještaj"
     : isPending
       ? "Izvještaj se priprema"
-      : "Dostupno nakon 3 testa";
+      : "DOSTUPNO NAKON 3 TESTA";
 
   return (
     <DashboardSectionShell className={cardClassName}>
@@ -998,13 +998,12 @@ function QuickActionCard({
         />
         <DashboardActionRow className="mt-8 flex flex-col items-start gap-3">
           <button
-            className={`inline-flex w-fit max-w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.14em] transition-all ${ctaClassName}`}
+            className={`inline-flex w-fit max-w-full items-center justify-center rounded-full border px-4 py-2.5 text-xs font-bold uppercase tracking-[0.14em] transition-none ${ctaClassName}`}
             disabled={!isReady}
             title={title}
             type="button"
           >
             <span>{ctaText}</span>
-            <DashboardIcon className="h-4 w-4" name="arrow_right" />
           </button>
         </DashboardActionRow>
       </div>
