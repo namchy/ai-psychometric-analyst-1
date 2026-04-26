@@ -16,8 +16,11 @@ import {
   formatIpcPrimaryDiscLabel,
   formatIpcStaticLabel,
   formatIpcStyleMetricLabel,
+  formatMwmsScoreLabel,
   formatScoreLabel,
+  getMwmsScoreWidth,
   getDimensionHelperLabel,
+  isMwmsDimensionSet,
   normalizeIpcUiLocale,
 } from "@/lib/assessment/result-display";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
@@ -42,6 +45,7 @@ type DimensionViewModel = {
   label: string;
   helperLabel: string | null;
   score: number;
+  scoreLabel: string;
   averageScore: number;
   scoredQuestionCount: number;
   shortInterpretation: string;
@@ -1612,6 +1616,9 @@ export function CompletedAssessmentSummary({
     results && results.dimensions.length > 0
       ? Math.max(...results.dimensions.map((dimension) => dimension.rawScore), 0)
       : 0;
+  const isMwmsResults = results
+    ? isMwmsDimensionSet(results.dimensions.map((dimension) => dimension.dimension))
+    : false;
 
   const reportDimensionsByKey = getReportDimensionsByKey(bigFiveReport);
 
@@ -1622,14 +1629,21 @@ export function CompletedAssessmentSummary({
       return {
         key: dimension.dimension,
         label: formatDimensionLabel(dimension.dimension),
-        helperLabel: getDimensionHelperLabel(dimension.dimension),
+        helperLabel: isMwmsResults ? null : getDimensionHelperLabel(dimension.dimension),
         score: dimension.rawScore,
+        scoreLabel: isMwmsResults
+          ? formatMwmsScoreLabel(dimension.rawScore)
+          : formatScoreLabel(dimension.rawScore),
         averageScore: getAverageScore(dimension.rawScore, dimension.scoredQuestionCount),
         scoredQuestionCount: dimension.scoredQuestionCount,
         shortInterpretation:
           reportDimension?.summary ??
           "Detaljna interpretacija za ovu dimenziju trenutno nije dostupna.",
-        scoreWidth: maxRawScore > 0 ? Math.max((dimension.rawScore / maxRawScore) * 100, 10) : 0,
+        scoreWidth: isMwmsResults
+          ? getMwmsScoreWidth(dimension.rawScore)
+          : maxRawScore > 0
+            ? Math.max((dimension.rawScore / maxRawScore) * 100, 10)
+            : 0,
         rank: index,
         totalDimensions: dimensions.length,
       };
@@ -1638,7 +1652,7 @@ export function CompletedAssessmentSummary({
   const topInsights = getTopInsights(bigFiveReport, dimensionCards);
   const conclusionParagraphs = getConclusion(bigFiveReport, dimensionCards);
   const recommendations = getRecommendations(bigFiveReport);
-  const scoreRangeLabel = maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
+  const scoreRangeLabel = isMwmsResults ? "Skala 1–7" : maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
   const hasScoredDimensions = dimensionCards.length > 0;
   const shouldShowNarrativePending =
@@ -1795,7 +1809,7 @@ export function CompletedAssessmentSummary({
                   <li key={dimension.key} className="results-score-overview__item">
                     <div className="results-score-overview__header">
                       <strong>{dimension.label}</strong>
-                      <span>{formatScoreLabel(dimension.score)}</span>
+                      <span>{dimension.scoreLabel}</span>
                     </div>
                     <div
                       className="results-score-overview__bar"
@@ -1834,7 +1848,7 @@ export function CompletedAssessmentSummary({
                         </div>
                         <div className="results-dimension-card__score">
                           <span className="results-dimension-card__score-value">
-                            {formatScoreLabel(dimension.score)}
+                            {dimension.scoreLabel}
                           </span>
                         </div>
                       </div>

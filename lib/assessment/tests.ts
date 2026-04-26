@@ -20,6 +20,8 @@ import {
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
 import {
+  getAssessmentLocaleFallbacks,
+  getPreferredAssessmentLocaleRecord,
   normalizeAssessmentLocale,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
@@ -70,11 +72,13 @@ type ResumeAttemptRecord = {
 
 type QuestionLocalizationRow = {
   question_id: string;
+  locale: string;
   text: string;
 };
 
 type AnswerOptionLocalizationRow = {
   answer_option_id: string;
+  locale: string;
   label: string;
 };
 
@@ -164,6 +168,8 @@ export async function getQuestionsForTest(
     return questions;
   }
 
+  const localeFallbacks = getAssessmentLocaleFallbacks(locale);
+
   const localizationChunks = await Promise.all(
     chunkValues(
       questions.map((question) => question.id),
@@ -171,8 +177,8 @@ export async function getQuestionsForTest(
     ).map(async (questionIdsChunk) => {
       const { data: localizationData, error: localizationError } = await supabase
         .from("question_localizations")
-        .select("question_id, text")
-        .eq("locale", normalizeAssessmentLocale(locale))
+        .select("question_id, locale, text")
+        .in("locale", localeFallbacks)
         .in("question_id", questionIdsChunk);
 
       if (localizationError) {
@@ -189,13 +195,21 @@ export async function getQuestionsForTest(
     return questions;
   }
 
-  const localizedTextByQuestionId = new Map(
-    localizationData.map((entry) => [entry.question_id, entry.text]),
-  );
+  const localizedRowsByQuestionId = new Map<string, QuestionLocalizationRow[]>();
+
+  for (const entry of localizationData) {
+    const rows = localizedRowsByQuestionId.get(entry.question_id) ?? [];
+    rows.push(entry);
+    localizedRowsByQuestionId.set(entry.question_id, rows);
+  }
 
   return questions.map((question) => ({
     ...question,
-    text: localizedTextByQuestionId.get(question.id) ?? question.text,
+    text:
+      getPreferredAssessmentLocaleRecord(
+        localizedRowsByQuestionId.get(question.id) ?? [],
+        locale,
+      )?.text ?? question.text,
   }));
 }
 
@@ -241,6 +255,7 @@ export async function getAnswerOptionsForQuestions(
   const options = (data ?? []) as TestAnswerOption[];
 
   if (options.length > 0 && locale) {
+    const localeFallbacks = getAssessmentLocaleFallbacks(locale);
     const localizationChunks = await Promise.all(
       chunkValues(
         options.map((option) => option.id),
@@ -248,8 +263,8 @@ export async function getAnswerOptionsForQuestions(
       ).map(async (optionIdsChunk) => {
         const { data: localizationData, error: localizationError } = await supabase
           .from("answer_option_localizations")
-          .select("answer_option_id, label")
-          .eq("locale", normalizeAssessmentLocale(locale))
+          .select("answer_option_id, locale, label")
+          .in("locale", localeFallbacks)
           .in("answer_option_id", optionIdsChunk);
 
         if (localizationError) {
@@ -262,12 +277,20 @@ export async function getAnswerOptionsForQuestions(
       }),
     );
 
-    const localizedLabelByOptionId = new Map(
-      localizationChunks.flat().map((entry) => [entry.answer_option_id, entry.label]),
-    );
+    const localizedRowsByOptionId = new Map<string, AnswerOptionLocalizationRow[]>();
+
+    for (const entry of localizationChunks.flat()) {
+      const rows = localizedRowsByOptionId.get(entry.answer_option_id) ?? [];
+      rows.push(entry);
+      localizedRowsByOptionId.set(entry.answer_option_id, rows);
+    }
 
     for (const option of options) {
-      option.label = localizedLabelByOptionId.get(option.id) ?? option.label;
+      option.label =
+        getPreferredAssessmentLocaleRecord(
+          localizedRowsByOptionId.get(option.id) ?? [],
+          locale,
+        )?.label ?? option.label;
     }
   }
 

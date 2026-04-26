@@ -1,0 +1,173 @@
+[
+  {
+    "code": "MWMS_01",
+    "text": "Ne znam zašto radim ovaj posao, on je besmislen.",
+    "question_type": "single_choice",
+    "question_order": 1,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "amotivation", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_02",
+    "text": "Malo radim jer mislim da ovaj posao nije vrijedan truda.",
+    "question_type": "single_choice",
+    "question_order": 2,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "amotivation", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_03",
+    "text": "Ne znam; čini mi se da nisam u stanju upravljati zadacima na ovom poslu.",
+    "question_type": "single_choice",
+    "question_order": 3,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "amotivation", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_04",
+    "text": "Da bih dobio/la odobrenje drugih ljudi (npr. nadređenih, suradnika, obitelji, stranaka...).",
+    "question_type": "single_choice",
+    "question_order": 4,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "external_social", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_05",
+    "text": "Zato jer će me drugi ljudi više poštovati.",
+    "question_type": "single_choice",
+    "question_order": 5,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "external_social", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_06",
+    "text": "Da bi izbjegao/la kritike drugih ljudi.",
+    "question_type": "single_choice",
+    "question_order": 6,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "external_social", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_07",
+    "text": "Zato jer će me financijski nagraditi samo ako uložim dovoljno truda u svoj posao.",
+    "question_type": "single_choice",
+    "question_order": 7,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "external_material", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_08",
+    "text": "Zato jer mi drugi ljudi nude veću poslovnu sigurnost ako uložim trud.",
+    "question_type": "single_choice",
+    "question_order": 8,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "external_material", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_09",
+    "text": "Zato što riskiram gubitak posla ukoliko ne uložim dovoljno truda u njega.",
+    "question_type": "single_choice",
+    "question_order": 9,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "external_material", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_10",
+    "text": "Zato što moram sebi dokazati da to mogu.",
+    "question_type": "single_choice",
+    "question_order": 10,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "introjected", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_11",
+    "text": "Zato jer se zbog toga osjećam ponosnim/om na sebe.",
+    "question_type": "single_choice",
+    "question_order": 11,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "introjected", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_12",
+    "text": "Zato što ću se u suprotnome sramiti same/samoga sebe.",
+    "question_type": "single_choice",
+    "question_order": 12,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "introjected", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_13",
+    "text": "Zato što ću se u suprotnome osjećati loše.",
+    "question_type": "single_choice",
+    "question_order": 13,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "introjected", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_14",
+    "text": "Zato što osobno smatram važnim ulagati trud u posao koji radim.",
+    "question_type": "single_choice",
+    "question_order": 14,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "identified", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_15",
+    "text": "Zato što je ulaganje truda u posao u skladu s mojim osobnim vrijednostima.",
+    "question_type": "single_choice",
+    "question_order": 15,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "identified", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_16",
+    "text": "Zato što ulaganje truda u posao koji radim ima osobno značenje za mene.",
+    "question_type": "single_choice",
+    "question_order": 16,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "identified", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_17",
+    "text": "Zato jer se zabavljam radeći svoj posao.",
+    "question_type": "single_choice",
+    "question_order": 17,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "intrinsic", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_18",
+    "text": "Zato što mi je uzbudljivo ono što radim na svom poslu.",
+    "question_type": "single_choice",
+    "question_order": 18,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "intrinsic", "weight": 1, "reverse_scored": false }]
+  },
+  {
+    "code": "MWMS_19",
+    "text": "Zato što je posao koji radim zanimljiv.",
+    "question_type": "single_choice",
+    "question_order": 19,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [{ "dimension_code": "intrinsic", "weight": 1, "reverse_scored": false }]
+  }
+]

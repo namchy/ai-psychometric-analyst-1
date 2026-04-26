@@ -3,7 +3,7 @@ import { normalizeAssessmentLocale, type AssessmentLocale } from "./locale";
 export const STANDARD_ASSESSMENT_BATTERY_SLUGS = [
   "ipip-neo-120-v1",
   "safran_v1",
-  "riasec",
+  "mwms_v1",
 ] as const;
 
 export type StandardBatteryTestRow = {

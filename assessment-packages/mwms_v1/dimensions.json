@@ -1,0 +1,44 @@
+[
+  {
+    "code": "amotivation",
+    "name": "Amotivacija",
+    "description": "Dimenzija koja se odnosi na izostanak jasnog razloga, smisla ili osjećaja sposobnosti za ulaganje truda u posao.",
+    "display_order": 1,
+    "is_active": true
+  },
+  {
+    "code": "external_social",
+    "name": "Ekstrinzična motivacija — socijalna",
+    "description": "Dimenzija koja se odnosi na motivaciju povezanu s odobravanjem, poštovanjem ili izbjegavanjem kritike drugih ljudi.",
+    "display_order": 2,
+    "is_active": true
+  },
+  {
+    "code": "external_material",
+    "name": "Ekstrinzična motivacija — materijalna",
+    "description": "Dimenzija koja se odnosi na motivaciju povezanu s finansijskom nagradom, sigurnošću posla ili izbjegavanjem gubitka posla.",
+    "display_order": 3,
+    "is_active": true
+  },
+  {
+    "code": "introjected",
+    "name": "Introjecirana motivacija",
+    "description": "Dimenzija koja se odnosi na unutrašnji pritisak, dokazivanje sebi, ponos, stid ili osjećaj lošeg stanja ako se trud ne uloži.",
+    "display_order": 4,
+    "is_active": true
+  },
+  {
+    "code": "identified",
+    "name": "Identificirana motivacija",
+    "description": "Dimenzija koja se odnosi na ulaganje truda jer osoba posao smatra važnim, vrijednosno usklađenim ili lično značajnim.",
+    "display_order": 5,
+    "is_active": true
+  },
+  {
+    "code": "intrinsic",
+    "name": "Intrinzična motivacija",
+    "description": "Dimenzija koja se odnosi na ulaganje truda jer je posao sam po sebi zanimljiv, uzbudljiv ili ugodan.",
+    "display_order": 6,
+    "is_active": true
+  }
+]

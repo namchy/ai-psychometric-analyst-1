@@ -11,12 +11,23 @@ Each package folder is named by test slug, for example `ipip50-hr-v1/`.
 - `items.json`: question catalog plus `question_dimension_mappings` intent and legacy fallback `questions.text`
 - `options.json`: answer options plus legacy fallback `answer_options.label`
 - `prompts.json`: prompt templates plus legacy fallback `prompt_versions.system_prompt` and `user_prompt_template`
-- `locales/bs/questions.json`
-- `locales/hr/questions.json`
-- `locales/bs/options.json`
-- `locales/hr/options.json`
-- `locales/bs/prompts.json`
-- `locales/hr/prompts.json`
+- `locales/<locale>/questions.json`
+- `locales/<locale>/options.json`
+- `locales/<locale>/prompts.json`
+
+Product assessment jezici su:
+
+- `bs` = Bosanski
+- `hr` = Hrvatski
+- `sr` = Srpski
+- `en` = Engleski
+
+Bosanski (`bs`) je default i fallback locale.
+
+`BHS` nije product locale. Makedonski nije dio trenutnog scope-a.
+
+Ako se u postojećim podacima pojave BCP-47 varijante kao `bs-Latn-BA`, `hr-Latn-HR` ili
+`sr-Cyrl-RS`, runtime ih normalizuje na product kodove `bs`, `hr` i `sr`.
 
 ## Prompt Bootstrap Packages
 

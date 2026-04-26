@@ -1,0 +1,21 @@
+[
+  { "code": "MWMS_01", "text": "Ne znam zašto radim ovaj posao, on je besmislen." },
+  { "code": "MWMS_02", "text": "Malo radim jer mislim da ovaj posao nije vrijedan truda." },
+  { "code": "MWMS_03", "text": "Ne znam; čini mi se da nisam u stanju upravljati zadacima na ovom poslu." },
+  { "code": "MWMS_04", "text": "Da bih dobio/la odobrenje drugih ljudi (npr. nadređenih, suradnika, obitelji, stranaka...)." },
+  { "code": "MWMS_05", "text": "Zato jer će me drugi ljudi više poštovati." },
+  { "code": "MWMS_06", "text": "Da bi izbjegao/la kritike drugih ljudi." },
+  { "code": "MWMS_07", "text": "Zato jer će me financijski nagraditi samo ako uložim dovoljno truda u svoj posao." },
+  { "code": "MWMS_08", "text": "Zato jer mi drugi ljudi nude veću poslovnu sigurnost ako uložim trud." },
+  { "code": "MWMS_09", "text": "Zato što riskiram gubitak posla ukoliko ne uložim dovoljno truda u njega." },
+  { "code": "MWMS_10", "text": "Zato što moram sebi dokazati da to mogu." },
+  { "code": "MWMS_11", "text": "Zato jer se zbog toga osjećam ponosnim/om na sebe." },
+  { "code": "MWMS_12", "text": "Zato što ću se u suprotnome sramiti same/samoga sebe." },
+  { "code": "MWMS_13", "text": "Zato što ću se u suprotnome osjećati loše." },
+  { "code": "MWMS_14", "text": "Zato što osobno smatram važnim ulagati trud u posao koji radim." },
+  { "code": "MWMS_15", "text": "Zato što je ulaganje truda u posao u skladu s mojim osobnim vrijednostima." },
+  { "code": "MWMS_16", "text": "Zato što ulaganje truda u posao koji radim ima osobno značenje za mene." },
+  { "code": "MWMS_17", "text": "Zato jer se zabavljam radeći svoj posao." },
+  { "code": "MWMS_18", "text": "Zato što mi je uzbudljivo ono što radim na svom poslu." },
+  { "code": "MWMS_19", "text": "Zato što je posao koji radim zanimljiv." }
+]

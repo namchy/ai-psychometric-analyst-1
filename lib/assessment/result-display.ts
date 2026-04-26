@@ -2,6 +2,10 @@ import {
   getIpipNeo120DomainLabel,
   getIpipNeo120FacetLabel,
 } from "@/lib/assessment/ipip-neo-120-labels";
+import {
+  MWMS_DIMENSION_CODES,
+  type MwmsDimensionCode,
+} from "@/lib/assessment/mwms-scoring";
 
 export type IpcUiLocale = "bs" | "en";
 
@@ -115,9 +119,23 @@ const DIMENSION_HELPER_LABELS: Record<string, string> = {
   "no oktant": "jedan od IPC interpersonalnih oktanata",
 };
 
+const MWMS_DIMENSION_LABELS: Record<MwmsDimensionCode, string> = {
+  amotivation: "Amotivacija",
+  external_social: "Ekstrinzična motivacija — socijalna",
+  external_material: "Ekstrinzična motivacija — materijalna",
+  introjected: "Introjecirana motivacija",
+  identified: "Identificirana motivacija",
+  intrinsic: "Intrinzična motivacija",
+};
+
 export function formatDimensionLabel(dimensionKey: string): string {
   const rawKey = dimensionKey.trim();
   const normalizedKey = rawKey.toLowerCase();
+
+  if (isMwmsDimensionCode(rawKey)) {
+    return MWMS_DIMENSION_LABELS[rawKey];
+  }
+
   const neoDomainLabel = getIpipNeo120DomainLabel(rawKey);
 
   if (neoDomainLabel) {
@@ -160,6 +178,33 @@ export function formatScoreLabel(score: number): string {
   }
 
   return `${score} bodova`;
+}
+
+export function isMwmsDimensionCode(value: string): value is MwmsDimensionCode {
+  return MWMS_DIMENSION_CODES.includes(value as MwmsDimensionCode);
+}
+
+export function isMwmsDimensionSet(dimensionKeys: string[]): boolean {
+  if (dimensionKeys.length !== MWMS_DIMENSION_CODES.length) {
+    return false;
+  }
+
+  const uniqueKeys = new Set(dimensionKeys);
+
+  return (
+    uniqueKeys.size === MWMS_DIMENSION_CODES.length &&
+    MWMS_DIMENSION_CODES.every((dimensionCode) => uniqueKeys.has(dimensionCode))
+  );
+}
+
+export function formatMwmsScoreLabel(score: number): string {
+  const roundedScore = Math.round(score * 100) / 100;
+  return `${roundedScore.toFixed(2)} / 7`;
+}
+
+export function getMwmsScoreWidth(score: number): number {
+  const percentage = ((score - 1) / 6) * 100;
+  return Math.min(100, Math.max(0, percentage));
 }
 
 export function getDimensionHelperLabel(dimensionKey: string): string | null {

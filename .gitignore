@@ -16,3 +16,4 @@ tsconfig.tsbuildinfo
 /playwright/.cache/
 /playwright/.auth/
 repomix-output.xml
+db_backups/

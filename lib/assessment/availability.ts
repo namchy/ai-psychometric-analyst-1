@@ -1,4 +1,4 @@
-export type CandidateAssessmentCatalogKey = "ipip-neo-120" | "safran" | "riasec";
+export type CandidateAssessmentCatalogKey = "ipip-neo-120" | "safran" | "mwms" | "riasec";
 
 export type CandidateAssessmentAvailabilityKind =
   | "core"
@@ -29,10 +29,7 @@ export type CandidateAssessmentAvailability = {
     | "missing_organization_access";
 };
 
-const CORE_BATTERY_KEYS = new Set<CandidateAssessmentCatalogKey>([
-  "ipip-neo-120",
-  "safran",
-]);
+const CORE_BATTERY_KEYS = new Set<CandidateAssessmentCatalogKey>(["ipip-neo-120", "safran", "mwms"]);
 
 function normalizeValue(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
@@ -50,6 +47,10 @@ export function getCandidateAssessmentCatalogKey(
 
   if (normalizedSlug.includes("safran") || normalizedName.includes("safran")) {
     return "safran";
+  }
+
+  if (normalizedSlug.includes("mwms") || normalizedName.includes("motivacije")) {
+    return "mwms";
   }
 
   if (normalizedSlug.includes("riasec") || normalizedName.includes("riasec")) {

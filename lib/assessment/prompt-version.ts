@@ -1,7 +1,8 @@
 import "server-only";
 
 import {
-  normalizeAssessmentLocale,
+  getAssessmentLocaleFallbacks,
+  getPreferredAssessmentLocaleRecord,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
 import type { ReportGeneratorType } from "@/lib/assessment/report-providers";
@@ -26,6 +27,7 @@ type ActivePromptVersionRow = {
 };
 
 type PromptVersionLocalizationRow = {
+  locale: string;
   system_prompt: string;
   user_prompt_template: string;
 };
@@ -133,10 +135,9 @@ export async function getActivePromptVersion(
 
   const { data: localizationData, error: localizationError } = await supabase
     .from("prompt_version_localizations")
-    .select("system_prompt, user_prompt_template")
+    .select("locale, system_prompt, user_prompt_template")
     .eq("prompt_version_id", promptVersion.id)
-    .eq("locale", normalizeAssessmentLocale(options.locale))
-    .maybeSingle();
+    .in("locale", getAssessmentLocaleFallbacks(options.locale));
 
   if (localizationError) {
     throw new Error(
@@ -144,7 +145,10 @@ export async function getActivePromptVersion(
     );
   }
 
-  const localization = localizationData as PromptVersionLocalizationRow | null;
+  const localization = getPreferredAssessmentLocaleRecord(
+    (localizationData ?? []) as PromptVersionLocalizationRow[],
+    options.locale,
+  );
 
   if (!localization) {
     return promptVersion;

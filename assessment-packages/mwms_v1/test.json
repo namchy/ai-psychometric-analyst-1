@@ -1,0 +1,25 @@
+{
+  "slug": "mwms_v1",
+  "name": "Procjena radne motivacije",
+  "category": "behavioral",
+  "scoring_method": "likert_sum",
+  "version": "v1",
+  "status": "active",
+  "is_active": true,
+  "intended_use": "hr_assessment",
+  "report_family": "mwms",
+  "description": "Procjena radne motivacije pomaže razumjeti koji izvori motivacije su izraženiji u radnom kontekstu. Rezultati se koriste kao profilni uvid za razumijevanje angažmana, intervjuisanje, onboarding i razvoj, a ne kao samostalna odluka o zapošljavanju.",
+  "default_locale": "bs",
+  "supported_locales": ["bs", "hr"],
+  "metadata": {
+    "instrument": "MWMS",
+    "version": "v1",
+    "type": "likert_self_report",
+    "item_count": 19,
+    "response_scale": "likert_1_7",
+    "legal_status": "pending_approval",
+    "activation_policy": "Do not activate until legal approval is confirmed.",
+    "product_category": "motivation",
+    "scoring_profile": "mwms_profile"
+  }
+}

@@ -2,18 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
-const REQUIRED_FILES = [
+const REQUIRED_ROOT_FILES = [
   "test.json",
   "dimensions.json",
   "items.json",
   "options.json",
   "prompts.json",
-  "locales/bs/questions.json",
-  "locales/hr/questions.json",
-  "locales/bs/options.json",
-  "locales/hr/options.json",
-  "locales/bs/prompts.json",
-  "locales/hr/prompts.json",
 ];
 
 function fail(message) {
@@ -45,15 +39,60 @@ function assertKeys(value, label, keys) {
   }
 }
 
+async function loadLocaleCatalogs(packageDir) {
+  const localesDir = path.join(packageDir, "locales");
+  let localeEntries;
+
+  try {
+    localeEntries = await fs.readdir(localesDir, { withFileTypes: true });
+  } catch {
+    fail(`Missing required package directory: ${localesDir}`);
+  }
+
+  const localeNames = localeEntries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+
+  if (localeNames.length === 0) {
+    fail(`Package must include at least one locale directory in ${localesDir}.`);
+  }
+
+  const locales = {};
+
+  for (const locale of localeNames) {
+    const localeDir = path.join(localesDir, locale);
+    const requiredLocaleFiles = ["questions.json", "options.json", "prompts.json"];
+
+    for (const fileName of requiredLocaleFiles) {
+      const fullPath = path.join(localeDir, fileName);
+
+      try {
+        await fs.access(fullPath);
+      } catch {
+        fail(`Missing required locale file: ${fullPath}`);
+      }
+    }
+
+    locales[locale] = {
+      questions: await readJson(path.join(localeDir, "questions.json")),
+      options: await readJson(path.join(localeDir, "options.json")),
+      prompts: await readJson(path.join(localeDir, "prompts.json")),
+    };
+  }
+
+  return locales;
+}
+
 function detectPackageMode({ dimensions, items, options, locales, prompts }) {
   const hasNoContentCatalog =
     dimensions.length === 0 &&
     items.length === 0 &&
     options.length === 0 &&
-    locales.bs.questions.length === 0 &&
-    locales.hr.questions.length === 0 &&
-    locales.bs.options.length === 0 &&
-    locales.hr.options.length === 0;
+    Object.values(locales).every(
+      (localeCatalog) =>
+        localeCatalog.questions.length === 0 && localeCatalog.options.length === 0,
+    );
 
   if (hasNoContentCatalog && prompts.length > 0) {
     return "prompt_runtime_bootstrap";
@@ -65,7 +104,7 @@ function detectPackageMode({ dimensions, items, options, locales, prompts }) {
 export async function loadAssessmentPackage(packageDirArg) {
   const packageDir = path.resolve(packageDirArg);
 
-  for (const fileName of REQUIRED_FILES) {
+  for (const fileName of REQUIRED_ROOT_FILES) {
     const fullPath = path.join(packageDir, fileName);
 
     try {
@@ -80,18 +119,7 @@ export async function loadAssessmentPackage(packageDirArg) {
   const items = await readJson(path.join(packageDir, "items.json"));
   const options = await readJson(path.join(packageDir, "options.json"));
   const prompts = await readJson(path.join(packageDir, "prompts.json"));
-  const locales = {
-    bs: {
-      questions: await readJson(path.join(packageDir, "locales/bs/questions.json")),
-      options: await readJson(path.join(packageDir, "locales/bs/options.json")),
-      prompts: await readJson(path.join(packageDir, "locales/bs/prompts.json")),
-    },
-    hr: {
-      questions: await readJson(path.join(packageDir, "locales/hr/questions.json")),
-      options: await readJson(path.join(packageDir, "locales/hr/options.json")),
-      prompts: await readJson(path.join(packageDir, "locales/hr/prompts.json")),
-    },
-  };
+  const locales = await loadLocaleCatalogs(packageDir);
 
   assertObject(test, "test.json");
   assertKeys(test, "test.json", [
@@ -111,12 +139,12 @@ export async function loadAssessmentPackage(packageDirArg) {
   assertArray(items, "items.json");
   assertArray(options, "options.json");
   assertArray(prompts, "prompts.json");
-  assertArray(locales.bs.questions, "locales/bs/questions.json");
-  assertArray(locales.hr.questions, "locales/hr/questions.json");
-  assertArray(locales.bs.options, "locales/bs/options.json");
-  assertArray(locales.hr.options, "locales/hr/options.json");
-  assertArray(locales.bs.prompts, "locales/bs/prompts.json");
-  assertArray(locales.hr.prompts, "locales/hr/prompts.json");
+
+  for (const [locale, localeCatalog] of Object.entries(locales)) {
+    assertArray(localeCatalog.questions, `locales/${locale}/questions.json`);
+    assertArray(localeCatalog.options, `locales/${locale}/options.json`);
+    assertArray(localeCatalog.prompts, `locales/${locale}/prompts.json`);
+  }
 
   for (const [index, dimension] of dimensions.entries()) {
     assertObject(dimension, `dimensions.json[${index}]`);
@@ -179,10 +207,10 @@ export async function loadAssessmentPackage(packageDirArg) {
     ]);
   }
 
-  for (const locale of ["bs", "hr"]) {
-    const localizedQuestions = locales[locale].questions;
-    const localizedOptions = locales[locale].options;
-    const localizedPrompts = locales[locale].prompts;
+  for (const [locale, localeCatalog] of Object.entries(locales)) {
+    const localizedQuestions = localeCatalog.questions;
+    const localizedOptions = localeCatalog.options;
+    const localizedPrompts = localeCatalog.prompts;
 
     for (const [index, item] of localizedQuestions.entries()) {
       assertObject(item, `locales/${locale}/questions.json[${index}]`);
@@ -247,18 +275,16 @@ async function main() {
         items: items.length,
         options: options.length,
         prompts: prompts.length,
-        locales: {
-          bs: {
-            questions: locales.bs.questions.length,
-            options: locales.bs.options.length,
-            prompts: locales.bs.prompts.length,
-          },
-          hr: {
-            questions: locales.hr.questions.length,
-            options: locales.hr.options.length,
-            prompts: locales.hr.prompts.length,
-          },
-        },
+        locales: Object.fromEntries(
+          Object.entries(locales).map(([locale, localeCatalog]) => [
+            locale,
+            {
+              questions: localeCatalog.questions.length,
+              options: localeCatalog.options.length,
+              prompts: localeCatalog.prompts.length,
+            },
+          ]),
+        ),
       },
       null,
       2,

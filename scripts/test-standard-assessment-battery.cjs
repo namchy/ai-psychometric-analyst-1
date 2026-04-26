@@ -70,7 +70,7 @@ const PARTICIPANT_USER_ID = "user-1";
 assert.deepEqual(STANDARD_ASSESSMENT_BATTERY_SLUGS, [
   "ipip-neo-120-v1",
   "safran_v1",
-  "riasec",
+  "mwms_v1",
 ]);
 
 const availableTests = [
@@ -89,8 +89,8 @@ const availableTests = [
     hasOrganizationAccess: false,
   },
   {
-    id: "test-riasec",
-    slug: "riasec",
+    id: "test-mwms",
+    slug: "mwms_v1",
     status: "active",
     is_active: true,
     hasOrganizationAccess: false,
@@ -99,7 +99,7 @@ const availableTests = [
 
 const initialPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
   existingAttempts: [],
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
@@ -113,7 +113,7 @@ assert.equal(initialPlan.locale, "bs");
 assert.deepEqual(initialPlan.attemptIdsToAbandon, []);
 assert.deepEqual(
   initialPlan.runnableTests.map((test) => test.slug),
-  ["ipip-neo-120-v1", "safran_v1"],
+  ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
 );
 assert.deepEqual(
   initialPlan.attemptsToInsert.map((attempt) => ({
@@ -144,12 +144,21 @@ assert.deepEqual(
       status: "in_progress",
       started_at: STARTED_AT,
     },
+    {
+      organization_id: ORGANIZATION_ID,
+      participant_id: PARTICIPANT_ID,
+      test_id: "test-mwms",
+      locale: "bs",
+      user_id: PARTICIPANT_USER_ID,
+      status: "in_progress",
+      started_at: STARTED_AT,
+    },
   ],
 );
 
 const replacementRoundPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
   existingAttempts: [
     { id: "attempt-ipip-1", test_id: "test-ipip", status: "in_progress" },
     { id: "attempt-safran-completed", test_id: "test-safran", status: "completed" },
@@ -166,17 +175,17 @@ assert.equal(replacementRoundPlan.locale, "hr");
 assert.deepEqual(replacementRoundPlan.attemptIdsToAbandon, ["attempt-ipip-1"]);
 assert.deepEqual(
   replacementRoundPlan.attemptsToInsert.map((attempt) => attempt.test_id),
-  ["test-ipip", "test-safran"],
+  ["test-ipip", "test-safran", "test-mwms"],
 );
 
 const multipleInProgressPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
   existingAttempts: [
     { id: "attempt-ipip-1", test_id: "test-ipip", status: "in_progress" },
     { id: "attempt-ipip-2", test_id: "test-ipip", status: "in_progress" },
     { id: "attempt-safran-completed", test_id: "test-safran", status: "completed" },
-    { id: "attempt-riasec-1", test_id: "test-riasec", status: "in_progress" },
+    { id: "attempt-mwms-1", test_id: "test-mwms", status: "in_progress" },
   ],
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
@@ -188,10 +197,11 @@ const multipleInProgressPlan = planStandardAssessmentBatteryCreation({
 assert.deepEqual(multipleInProgressPlan.attemptIdsToAbandon, [
   "attempt-ipip-1",
   "attempt-ipip-2",
+  "attempt-mwms-1",
 ]);
 assert.deepEqual(
   multipleInProgressPlan.attemptsToInsert.map((attempt) => attempt.test_id),
-  ["test-ipip", "test-safran"],
+  ["test-ipip", "test-safran", "test-mwms"],
 );
 
 const noRunnablePlan = planStandardAssessmentBatteryCreation({

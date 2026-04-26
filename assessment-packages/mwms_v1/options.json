@@ -1,0 +1,9 @@
+[
+  { "code": "MWMS_LIKERT_1", "label": "Nimalo", "value": 1, "option_order": 1 },
+  { "code": "MWMS_LIKERT_2", "label": "U vrlo maloj mjeri", "value": 2, "option_order": 2 },
+  { "code": "MWMS_LIKERT_3", "label": "U maloj mjeri", "value": 3, "option_order": 3 },
+  { "code": "MWMS_LIKERT_4", "label": "Djelimično", "value": 4, "option_order": 4 },
+  { "code": "MWMS_LIKERT_5", "label": "U značajnoj mjeri", "value": 5, "option_order": 5 },
+  { "code": "MWMS_LIKERT_6", "label": "U velikoj mjeri", "value": 6, "option_order": 6 },
+  { "code": "MWMS_LIKERT_7", "label": "Potpuno", "value": 7, "option_order": 7 }
+]

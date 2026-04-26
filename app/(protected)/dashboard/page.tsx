@@ -21,6 +21,7 @@ import {
   DEFAULT_ASSESSMENT_LOCALE,
   SUPPORTED_ASSESSMENT_LOCALES,
   getAssessmentLocaleLabel,
+  toLegacyAssessmentLocale,
 } from "@/lib/assessment/locale";
 import {
   getActiveOrganizationForUser,
@@ -509,12 +510,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                                     </div>
                                     <div className="space-y-2">
                                       <label htmlFor={`attempt-locale-${participant.id}`}>Jezik</label>
-                                      <select
-                                        id={`attempt-locale-${participant.id}`}
-                                        name="locale"
-                                        defaultValue={DEFAULT_ASSESSMENT_LOCALE}
-                                        required
-                                      >
+                                        <select
+                                          id={`attempt-locale-${participant.id}`}
+                                          name="locale"
+                                          defaultValue={toLegacyAssessmentLocale(
+                                            DEFAULT_ASSESSMENT_LOCALE,
+                                          )}
+                                          required
+                                        >
                                         {SUPPORTED_ASSESSMENT_LOCALES.map((locale) => (
                                           <option key={locale} value={locale}>
                                             {getAssessmentLocaleLabel(locale)}

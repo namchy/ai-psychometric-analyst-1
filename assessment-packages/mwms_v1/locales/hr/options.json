@@ -1,0 +1,9 @@
+[
+  { "option_order": 1, "label": "Nimalo" },
+  { "option_order": 2, "label": "U vrlo maloj mjeri" },
+  { "option_order": 3, "label": "U maloj mjeri" },
+  { "option_order": 4, "label": "Djelimično" },
+  { "option_order": 5, "label": "U značajnoj mjeri" },
+  { "option_order": 6, "label": "U velikoj mjeri" },
+  { "option_order": 7, "label": "Potpuno" }
+]

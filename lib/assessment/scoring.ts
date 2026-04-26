@@ -1,5 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  MWMS_DIMENSION_CODES,
+  MWMS_DIMENSION_ITEM_CODES,
+  type MwmsDimensionCode,
+} from "@/lib/assessment/mwms-scoring";
+import { writeMwmsAttemptDimensionScores } from "@/lib/assessment/mwms-attempt-scoring";
 import type { QuestionType, ScoringMethod } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -118,6 +124,11 @@ type ComputedDimensionScore = {
   sortOrder: number;
 };
 
+type PersistedDimensionScoreRecord = {
+  dimension: string;
+  raw_score: number | null;
+};
+
 type QuestionDimensionContribution = {
   dimension: string;
   weight: number;
@@ -131,6 +142,7 @@ function roundScore(value: number): number {
 
 const IPC_TEST_SLUG = "ipip-ipc-v1";
 const SAFRAN_V1_TEST_SLUG = "safran_v1";
+const MWMS_V1_TEST_SLUG = "mwms_v1";
 const IPC_OCTANT_ORDER: IpcOctantCode[] = ["PA", "BC", "DE", "FG", "HI", "JK", "LM", "NO"];
 
 function isIpcTestSlug(testSlug: string): boolean {
@@ -139,6 +151,10 @@ function isIpcTestSlug(testSlug: string): boolean {
 
 function isSafranV1TestSlug(testSlug: string): boolean {
   return testSlug === SAFRAN_V1_TEST_SLUG;
+}
+
+function isMwmsV1TestSlug(testSlug: string): boolean {
+  return testSlug === MWMS_V1_TEST_SLUG;
 }
 
 function getDimensionScoreByCode(
@@ -252,6 +268,32 @@ function buildCompletedAssessmentResults(
           }
         : undefined,
   };
+}
+
+export function buildMwmsComputedDimensionsFromPersistedScores(
+  persistedRows: PersistedDimensionScoreRecord[],
+): ComputedDimensionScore[] | null {
+  const scoreByDimension = new Map(
+    persistedRows
+      .filter(
+        (row): row is PersistedDimensionScoreRecord & { dimension: MwmsDimensionCode; raw_score: number } =>
+          MWMS_DIMENSION_CODES.includes(row.dimension as MwmsDimensionCode) &&
+          typeof row.raw_score === "number" &&
+          Number.isFinite(row.raw_score),
+      )
+      .map((row) => [row.dimension, row.raw_score]),
+  );
+
+  if (!MWMS_DIMENSION_CODES.every((dimensionCode) => scoreByDimension.has(dimensionCode))) {
+    return null;
+  }
+
+  return MWMS_DIMENSION_CODES.map((dimensionCode, index) => ({
+    dimension: dimensionCode,
+    rawScore: roundScore(scoreByDimension.get(dimensionCode) ?? 0),
+    scoredQuestionCount: MWMS_DIMENSION_ITEM_CODES[dimensionCode].length,
+    sortOrder: index + 1,
+  }));
 }
 
 export function normalizeSafranNumericAnswer(value: string): string {
@@ -758,6 +800,25 @@ async function loadScoringInputs(testId: string, attemptId: string) {
   };
 }
 
+async function loadPersistedMwmsDimensionScores(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  attemptId: string,
+): Promise<ComputedDimensionScore[] | null> {
+  const { data, error } = await supabase
+    .from("dimension_scores")
+    .select("dimension, raw_score")
+    .eq("attempt_id", attemptId)
+    .in("dimension", [...MWMS_DIMENSION_CODES]);
+
+  if (error) {
+    throw new Error(`Failed to load persisted MWMS dimension scores: ${error.message}`);
+  }
+
+  return buildMwmsComputedDimensionsFromPersistedScores(
+    (data ?? []) as PersistedDimensionScoreRecord[],
+  );
+}
+
 function buildMappingContributionsByQuestionId(
   questions: QuestionRecord[],
   testDimensions: TestDimensionRecord[],
@@ -836,11 +897,21 @@ export async function calculateCompletedAssessmentResults(
         ) ?? undefined,
       );
 
+  const resultsForDisplay =
+    isMwmsV1TestSlug(scoringInputs.test.slug)
+      ? {
+          ...computedResults,
+          dimensions:
+            (await loadPersistedMwmsDimensionScores(scoringInputs.supabase, attemptId)) ??
+            computedResults.dimensions,
+        }
+      : computedResults;
+
   return buildCompletedAssessmentResults(
     attemptId,
     scoringInputs.test.scoring_method,
     scoringInputs.test.slug,
-    computedResults,
+    resultsForDisplay,
   );
 }
 
@@ -908,21 +979,51 @@ export async function persistCompletedAssessmentResults(
     }
   }
 
-  const { error: deleteScoresError } = await scoringInputs.supabase
+  await persistCompletedAssessmentDimensionScores({
+    supabase: scoringInputs.supabase,
+    attemptId,
+    testSlug: scoringInputs.test.slug,
+    computedDimensions: computedResults.dimensions,
+  });
+
+  return buildCompletedAssessmentResults(
+    attemptId,
+    scoringInputs.test.scoring_method,
+    scoringInputs.test.slug,
+    computedResults,
+  );
+}
+
+export async function persistCompletedAssessmentDimensionScores(input: {
+  supabase: ReturnType<typeof createSupabaseAdminClient>;
+  attemptId: string;
+  testSlug: string;
+  computedDimensions: CompletedAssessmentResultDimension[];
+  persistMwmsDimensionScores?: typeof writeMwmsAttemptDimensionScores;
+}): Promise<void> {
+  if (isMwmsV1TestSlug(input.testSlug)) {
+    await (input.persistMwmsDimensionScores ?? writeMwmsAttemptDimensionScores)(
+      input.supabase,
+      input.attemptId,
+    );
+    return;
+  }
+
+  const { error: deleteScoresError } = await input.supabase
     .from("dimension_scores")
     .delete()
-    .eq("attempt_id", attemptId);
+    .eq("attempt_id", input.attemptId);
 
   if (deleteScoresError) {
     throw new Error(`Failed to replace dimension scores: ${deleteScoresError.message}`);
   }
 
-  if (computedResults.dimensions.length > 0) {
-    const { error: insertScoresError } = await scoringInputs.supabase
+  if (input.computedDimensions.length > 0) {
+    const { error: insertScoresError } = await input.supabase
       .from("dimension_scores")
       .insert(
-        computedResults.dimensions.map((dimension) => ({
-          attempt_id: attemptId,
+        input.computedDimensions.map((dimension) => ({
+          attempt_id: input.attemptId,
           dimension: dimension.dimension,
           raw_score: dimension.rawScore,
           normalized_score: null,
@@ -935,11 +1036,4 @@ export async function persistCompletedAssessmentResults(
       throw new Error(`Failed to persist dimension scores: ${insertScoresError.message}`);
     }
   }
-
-  return buildCompletedAssessmentResults(
-    attemptId,
-    scoringInputs.test.scoring_method,
-    scoringInputs.test.slug,
-    computedResults,
-  );
 }

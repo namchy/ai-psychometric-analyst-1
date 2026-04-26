@@ -1,3 +1,5 @@
+import type { AssessmentLocale } from "@/lib/assessment/locale";
+
 export type TestCategory = "personality" | "behavioral" | "cognitive";
 export type TestStatus = "draft" | "active" | "archived";
 export type ScoringMethod = "likert_sum" | "correct_answers" | "weighted_correct";
@@ -60,7 +62,7 @@ export type Attempt = {
   organization_id: string | null;
   participant_id: string | null;
   test_id: string;
-  locale: "bs" | "hr";
+  locale: AssessmentLocale;
   status: AttemptStatus;
   started_at: string;
   scored_started_at: string | null;

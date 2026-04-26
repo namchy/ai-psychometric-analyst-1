@@ -17,7 +17,7 @@ import {
 } from "@/lib/assessment/reports";
 import { getAiReportConfig, normalizeAiReportModel } from "@/lib/assessment/report-config";
 import {
-  normalizeAssessmentLocale,
+  toLegacyAssessmentLocale,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
 import {
@@ -320,7 +320,7 @@ async function loadAttemptContext(attemptId: string): Promise<{
 
   return {
     testId: attempt.test_id,
-    locale: normalizeAssessmentLocale(attempt.locale),
+    locale: toLegacyAssessmentLocale(attempt.locale),
   };
 }
 

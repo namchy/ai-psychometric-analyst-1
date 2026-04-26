@@ -173,7 +173,7 @@ type DashboardOrganizationTestAccessRow = {
 
 type CompositeReportState = "locked" | "pending" | "ready";
 
-type CuratedBatteryTitle = "IPIP-NEO-120" | "SAFRAN" | "RIASEC";
+type CuratedBatteryTitle = "IPIP-NEO-120" | "SAFRAN" | "Procjena radne motivacije";
 type CuratedBatteryConfig = {
   key: CandidateAssessmentCatalogKey;
   title: CuratedBatteryTitle;
@@ -183,7 +183,7 @@ type CuratedBatteryConfig = {
 };
 
 function isCuratedBatteryTitle(value: string): value is CuratedBatteryTitle {
-  return value === "IPIP-NEO-120" || value === "SAFRAN" || value === "RIASEC";
+  return value === "IPIP-NEO-120" || value === "SAFRAN" || value === "Procjena radne motivacije";
 }
 
 const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
@@ -202,17 +202,18 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
     metaLabel: "Kognitivni",
   },
   {
-    key: "riasec",
-    title: "RIASEC",
-    description: "Tvoja interesovanja i prirodne radne sklonosti.",
+    key: "mwms",
+    title: "Procjena radne motivacije",
+    description: "Tvoji izvori motivacije i način na koji ulažeš trud u radnom kontekstu.",
     category: "behavioral",
-    metaLabel: "Interesovanja",
+    metaLabel: "Motivacija",
   },
 ] as const;
 
 const CURATED_BATTERY_UI_FALLBACKS: Record<CandidateAssessmentCatalogKey, { totalQuestions: number }> = {
   "ipip-neo-120": { totalQuestions: 120 },
   safran: { totalQuestions: 45 },
+  mwms: { totalQuestions: 19 },
   riasec: { totalQuestions: 48 },
 };
 
@@ -471,8 +472,9 @@ function buildAssessmentCardsFromTests(
   accessRows: DashboardOrganizationTestAccessRow[],
   questionCountsByTestId: Map<string, number>,
 ): CandidateAssessmentCard[] {
+  const visibleTests = tests.filter((test) => getCandidateAssessmentCatalogKey(test) !== "riasec");
   const accessibleTestIds = new Set(accessRows.map((row) => row.test_id));
-  const databaseCards: CandidateAssessmentCard[] = tests.map((test) => {
+  const databaseCards: CandidateAssessmentCard[] = visibleTests.map((test) => {
     const primaryAttempt = getPrimaryAttemptForTest(test.id, test.slug, attempts);
     const primaryAttemptLifecycle = primaryAttempt
       ? getAssessmentAttemptLifecycle({
@@ -613,7 +615,11 @@ function buildAssessmentCardsFromTests(
       return 0;
     });
 
-  return [...batteryCards, ...roadmapCards];
+  const additionalDatabaseCards = sortedDatabaseCards.filter(
+    (card) => !isCuratedBatteryTitle(card.title),
+  );
+
+  return [...batteryCards, ...additionalDatabaseCards, ...roadmapCards];
 }
 
 function mapInitialAttemptsToDashboardAttempts(
