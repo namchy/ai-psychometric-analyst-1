@@ -173,7 +173,7 @@ type DashboardOrganizationTestAccessRow = {
 
 type CompositeReportState = "locked" | "pending" | "ready";
 
-type CuratedBatteryTitle = "IPIP-NEO-120" | "SAFRAN" | "Procjena radne motivacije";
+type CuratedBatteryTitle = "IPIP-NEO-120" | "SAFRAN" | "MWMS";
 type CuratedBatteryConfig = {
   key: CandidateAssessmentCatalogKey;
   title: CuratedBatteryTitle;
@@ -183,7 +183,7 @@ type CuratedBatteryConfig = {
 };
 
 function isCuratedBatteryTitle(value: string): value is CuratedBatteryTitle {
-  return value === "IPIP-NEO-120" || value === "SAFRAN" || value === "Procjena radne motivacije";
+  return value === "IPIP-NEO-120" || value === "SAFRAN" || value === "MWMS";
 }
 
 const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
@@ -203,8 +203,8 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
   },
   {
     key: "mwms",
-    title: "Procjena radne motivacije",
-    description: "Tvoji izvori motivacije i način na koji ulažeš trud u radnom kontekstu.",
+    title: "MWMS",
+    description: "Procjena radne motivacije",
     category: "behavioral",
     metaLabel: "Motivacija",
   },
