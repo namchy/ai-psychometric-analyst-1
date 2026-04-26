@@ -842,7 +842,7 @@ function TopNav({
       <div className="flex min-w-0 items-center gap-6 lg:gap-10">
         <Link
           href="/app"
-          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
+          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-[var(--dp-text)] transition-opacity hover:opacity-90 sm:text-xl"
         >
           Deep Profile
         </Link>
@@ -853,8 +853,8 @@ function TopNav({
               key={item}
               className={
                 item === "Testovi"
-                  ? "rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-                  : "rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors duration-200 hover:bg-white hover:text-slate-900"
+                  ? "rounded-full border border-[var(--dp-border-strong)] bg-[var(--dp-primary-soft)] px-3 py-1.5 text-sm font-semibold text-[var(--dp-primary-hover)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                  : "rounded-full px-3 py-1.5 text-sm font-medium text-[var(--dp-text-soft)] transition-colors duration-200 hover:bg-[var(--dp-surface)] hover:text-[var(--dp-text)]"
               }
             >
               {item}
@@ -866,19 +866,19 @@ function TopNav({
       <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
         <button
           aria-label="Settings"
-          className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-slate-500 shadow-none transition-all duration-200 hover:border-slate-200 hover:bg-white hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+          className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-[var(--dp-text-soft)] shadow-none transition-all duration-200 hover:border-[var(--dp-border)] hover:bg-[var(--dp-surface)] hover:text-[var(--dp-text)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/20"
           type="button"
         >
           <DashboardIcon className="h-5 w-5" name="settings" />
         </button>
 
-        <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-teal-500 to-violet-400 text-xs font-bold text-white shadow-[0_10px_24px_rgba(20,184,166,0.22)]">
+        <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-[var(--dp-primary)] to-[var(--dp-insight)] text-xs font-bold text-white shadow-[0_10px_24px_rgba(20,184,166,0.22)]">
           <span>{initials || "LU"}</span>
         </div>
 
         <form action={logout} className="hidden md:block">
           <button
-            className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="min-h-0 rounded-full border border-[var(--dp-border)] bg-[var(--dp-surface)] px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-[var(--dp-text-soft)] shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-[var(--dp-border-strong)] hover:text-[var(--dp-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/20"
             type="submit"
           >
             Odjava
@@ -891,30 +891,30 @@ function TopNav({
 
 function DashboardHeader() {
   return (
-    <DashboardSectionShell className="w-full border-white/60 bg-[#F5F8FB] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(148,163,184,0.16),0_3px_8px_rgba(148,163,184,0.08)]">
+    <DashboardSectionShell className="w-full border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(148,163,184,0.16),0_3px_8px_rgba(148,163,184,0.08)]">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-10 top-0 h-32 w-32 rounded-full bg-teal-100/55 blur-3xl"
+        className="pointer-events-none absolute -right-10 top-0 h-32 w-32 rounded-full bg-[var(--dp-primary-soft)]/70 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-violet-100/65 blur-3xl"
+        className="pointer-events-none absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-[var(--dp-insight-soft)]/80 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-slate-300/80 to-transparent"
+        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[var(--dp-border)] to-transparent"
       />
       <div className="relative max-w-[36rem]">
         <DashboardSectionHeader
           className="gap-0.5"
           eyebrow="Pregled"
-          eyebrowClassName="text-teal-800/90"
+          eyebrowClassName="text-[var(--dp-primary-hover)]"
           title="Integrisana procjena"
           titleClassName="mt-1.5 text-[1.7rem] font-extrabold tracking-[-0.05em] leading-tight sm:text-[2.05rem]"
           description="Tri komplementarna testa"
           descriptionClassName="mt-0.5 max-w-xl"
         />
-        <p className="mt-1 max-w-xl font-body text-[14px] leading-6 text-slate-700">
+        <p className="mt-1 max-w-xl font-body text-[14px] leading-6 text-[var(--dp-text-muted)]">
           Završi sva tri testa kako bi dobio cjelovit profil, dublju analizu i jasniji uvid u svoje obrasce ponašanja, način razmišljanja i radni stil.
         </p>
       </div>
@@ -933,33 +933,33 @@ function WelcomeOverviewCard({
   const progressPercent = totalAssigned > 0 ? Math.min((completedCount / totalAssigned) * 100, 100) : 0;
 
   return (
-    <DashboardSectionShell className="border-white/60 bg-[#F3F7FA] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
+    <DashboardSectionShell className="border-[var(--dp-border)] bg-[var(--dp-surface-tint)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white to-transparent"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-teal-100/50 blur-3xl"
+        className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-[var(--dp-primary-soft)]/65 blur-3xl"
       />
       <DashboardSectionHeader
         className="relative"
         eyebrow="PREGLED"
-        eyebrowClassName="text-teal-800/90"
+        eyebrowClassName="text-[var(--dp-primary-hover)]"
         title="Tvoj napredak"
         titleClassName="mt-2 text-[1.65rem] leading-tight tracking-[-0.045em]"
       />
-      <p className="relative mt-3 text-[13px] font-semibold text-slate-900">
+      <p className="relative mt-3 text-[13px] font-semibold text-[var(--dp-text)]">
         Završeno: {completedCount} {formatProcjenaCount(completedCount)}
       </p>
-      <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-slate-200/90">
+      <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-[var(--dp-border)]">
         <div
           aria-hidden="true"
-          className="h-full rounded-full bg-teal-600 transition-all duration-500"
+          className="h-full rounded-full bg-[var(--dp-primary)] transition-all duration-500"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
-      <p className="relative mt-3 text-[13px] font-semibold text-slate-700">
+      <p className="relative mt-3 text-[13px] font-semibold text-[var(--dp-text-muted)]">
         Preostalo: {remainingCount} {formatProcjenaCount(remainingCount)}
       </p>
     </DashboardSectionShell>
@@ -987,25 +987,25 @@ function QuickActionCard({
       ? "Kompozitni izvještaj će uskoro biti dostupan."
       : undefined;
   const cardClassName = isReady
-    ? "mx-auto w-full max-w-[800px] border-teal-600/80 bg-teal-700 p-6 shadow-[0_24px_48px_rgba(13,148,136,0.18)] transition-colors duration-200 sm:p-7 md:p-8"
+    ? "mx-auto w-full max-w-[800px] border-[var(--dp-insight)] bg-[var(--dp-insight)] p-6 shadow-[0_24px_48px_rgba(13,148,136,0.18)] transition-colors duration-200 sm:p-7 md:p-8"
     : isPending
-      ? "mx-auto w-full max-w-[800px] border-teal-300/80 bg-teal-100 p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8"
-      : "mx-auto w-full max-w-[800px] border-teal-400/90 bg-[#DDEFEA] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8";
-  const eyebrowClassName = isReady ? "text-white/80" : "text-violet-700";
+      ? "mx-auto w-full max-w-[800px] border-[var(--dp-border-strong)] bg-[var(--dp-insight-soft)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8"
+      : "mx-auto w-full max-w-[800px] border-[var(--dp-border-strong)] bg-[var(--dp-insight-soft)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8";
+  const eyebrowClassName = isReady ? "text-white/80" : "text-[var(--dp-insight-contrast)]";
   const titleClassName = `mt-2 text-[1.375rem] leading-tight tracking-[-0.03em] ${
-    isReady ? "text-white" : "text-slate-950"
+    isReady ? "text-white" : "text-[var(--dp-text)]"
   }`;
   const descriptionClassName = isReady ? "mt-2 max-w-none text-white/80" : "mt-2 max-w-none";
   const pillClassName = isReady
     ? "border-white/15 bg-white/12 text-white"
     : isPending
-      ? "border-teal-300 bg-teal-100/80 text-teal-900"
-      : "border-slate-300 bg-slate-100 text-slate-600";
+      ? "border-[var(--dp-border-strong)] bg-[var(--dp-surface)]/80 text-[var(--dp-insight-contrast)]"
+      : "border-[var(--dp-border)] bg-[var(--dp-surface)]/85 text-[var(--dp-insight-contrast)]";
   const ctaClassName = isReady
-    ? "border-white/90 bg-white text-teal-800 shadow-[0_18px_36px_rgba(8,47,73,0.16)] hover:-translate-y-0.5 hover:bg-teal-50"
+    ? "border-white/90 bg-[var(--dp-surface)] text-[var(--dp-insight-contrast)] shadow-[0_18px_36px_rgba(8,47,73,0.16)] hover:-translate-y-0.5 hover:bg-[var(--dp-surface-elevated)]"
     : isPending
-      ? "border-teal-200 bg-white/70 text-teal-800 opacity-90"
-      : "border-slate-300 bg-slate-100 text-slate-400 opacity-85";
+      ? "border-[var(--dp-border)] bg-[var(--dp-surface)]/70 text-[var(--dp-insight-contrast)] opacity-90"
+      : "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] text-[var(--dp-text-soft)] opacity-85";
   const pillText = isReady ? "Dostupno" : isPending ? "U obradi" : `${completedCount}/3 završeno`;
   const ctaText = isReady
     ? "Otvori kompozitni izvještaj"
@@ -1034,7 +1034,7 @@ function QuickActionCard({
             descriptionClassName={descriptionClassName}
           />
           {helperText ? (
-            <p className={`mt-4 text-sm leading-6 ${isReady ? "text-white/80" : "text-slate-700"}`}>
+            <p className={`mt-4 text-sm leading-6 ${isReady ? "text-white/80" : "text-[var(--dp-text-muted)]"}`}>
               {helperText}
             </p>
           ) : null}
@@ -1206,23 +1206,23 @@ function AssessmentCard({
     Boolean(assessment.testId);
   const badgeClassName =
     isRoadmap
-      ? "border-violet-200/90 bg-violet-50 text-violet-900"
+      ? "border-[var(--dp-border-strong)] bg-[var(--dp-insight-soft)] text-[var(--dp-insight-contrast)]"
       : isPaid && !muted
-      ? "border-teal-300 bg-teal-50 text-teal-800"
-      : "border-slate-300 bg-slate-100 text-slate-600";
+      ? "border-[var(--dp-border-strong)] bg-[var(--dp-primary-soft)] text-[var(--dp-primary-hover)]"
+      : "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] text-[var(--dp-text-soft)]";
   const cardClassName = muted
-    ? "border-slate-200/80 bg-white shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-slate-300/80 hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]"
+    ? "border-[var(--dp-border)] bg-[var(--dp-surface)] shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-[var(--dp-border-strong)] hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]"
     : assessment.accessState === "roadmap"
-        ? "border-violet-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,255,0.98))] shadow-[0_18px_31px_rgba(76,29,149,0.06)]"
+        ? "border-[var(--dp-border-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),var(--dp-insight-soft))] shadow-[0_18px_31px_rgba(76,29,149,0.06)]"
         : primary
-          ? "border-teal-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(240,249,248,0.98))] shadow-[0_30px_61px_rgba(15,23,42,0.14)] hover:border-teal-400 hover:shadow-[0_34px_65px_rgba(20,184,166,0.16)]"
-          : "border-slate-200/80 bg-white shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-teal-200/90 hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]";
+          ? "border-[var(--dp-border-strong)] bg-[linear-gradient(180deg,var(--dp-surface),var(--dp-surface-elevated))] shadow-[0_30px_61px_rgba(15,23,42,0.14)] hover:border-[var(--dp-primary)] hover:shadow-[0_34px_65px_rgba(20,184,166,0.16)]"
+          : "border-[var(--dp-border)] bg-[var(--dp-surface)] shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-[var(--dp-border-strong)] hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]";
   const descriptionClassName = muted
-    ? "text-slate-600"
+    ? "text-[var(--dp-text-muted)]"
     : isRoadmap
-      ? "text-slate-700/95"
-      : "text-slate-700";
-  const metaClassName = muted ? "text-slate-700" : isRoadmap ? "text-slate-700" : "text-slate-800";
+      ? "text-[var(--dp-text-muted)]"
+      : "text-[var(--dp-text-muted)]";
+  const metaClassName = muted ? "text-[var(--dp-text-muted)]" : isRoadmap ? "text-[var(--dp-text-muted)]" : "text-[var(--dp-text)]";
   const answeredQuestions = assessment.answeredQuestions ?? 0;
   const totalQuestions = assessment.totalQuestions ?? 0;
   const progressPercent =
@@ -1286,7 +1286,7 @@ function AssessmentCard({
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div
-          className={`rounded-[1.25rem] border border-slate-200/70 bg-white p-2.5 shadow-[0_6px_14px_rgba(15,23,42,0.06)] ${primary ? "ring-1 ring-teal-200/80" : isRoadmap ? "ring-1 ring-violet-100/90" : ""} ${iconTileClassName} ${muted ? "opacity-75" : isRoadmap ? "opacity-95" : ""}`}
+          className={`rounded-[1.25rem] border border-[var(--dp-border)] bg-[var(--dp-surface)] p-2.5 shadow-[0_6px_14px_rgba(15,23,42,0.06)] ${primary ? "ring-1 ring-[var(--dp-border-strong)]" : isRoadmap ? "ring-1 ring-[var(--dp-border-strong)]" : ""} ${iconTileClassName} ${muted ? "opacity-75" : isRoadmap ? "opacity-95" : ""}`}
         >
           <DashboardIcon className={`h-[1.375rem] w-[1.375rem] ${iconColorClassName} sm:h-6 sm:w-6`} name={assessment.icon} />
         </div>
@@ -1300,7 +1300,7 @@ function AssessmentCard({
       </div>
 
       <div className="flex flex-1 flex-col">
-        <h3 className={`font-headline font-bold leading-tight tracking-[-0.04em] ${primary ? "text-[1.32rem]" : "text-[1.18rem]"} ${muted ? "text-slate-900" : isRoadmap ? "text-slate-900" : "text-slate-950"}`}>
+        <h3 className={`font-headline font-bold leading-tight tracking-[-0.04em] ${primary ? "text-[1.32rem]" : "text-[1.18rem]"} ${muted ? "text-[var(--dp-text)]" : isRoadmap ? "text-[var(--dp-text)]" : "text-[var(--dp-text)]"}`}>
           {assessment.title}
         </h3>
         <p className={`mt-1.5 font-body ${primary ? "text-[14px] leading-6" : isRoadmap ? "text-[13px] leading-[1.35rem]" : "text-[13px] leading-[1.35rem]"} ${muted ? "text-slate-600" : descriptionClassName}`}>
@@ -1308,35 +1308,35 @@ function AssessmentCard({
         </p>
 
         <DashboardCompactMetaRow
-          className={primary ? "mt-3 border-slate-300" : muted ? "mt-3 border-slate-300" : isRoadmap ? "mb-2 mt-3 gap-y-1.5 border-slate-200/90 pt-2" : "mt-3 border-slate-200"}
+          className={primary ? "mt-3 border-[var(--dp-border-strong)]" : muted ? "mt-3 border-[var(--dp-border-strong)]" : isRoadmap ? "mb-2 mt-3 gap-y-1.5 border-[var(--dp-border)] pt-2" : "mt-3 border-[var(--dp-border)]"}
         >
-          <DashboardCompactMetaItem className={muted ? "text-slate-700" : metaClassName}>
-            <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-slate-500" : "text-slate-400"}`} name="schedule" />
+          <DashboardCompactMetaItem className={muted ? "text-[var(--dp-text-muted)]" : metaClassName}>
+            <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-[var(--dp-text-soft)]" : "text-[var(--dp-text-soft)]"}`} name="schedule" />
             {assessment.duration}
           </DashboardCompactMetaItem>
-          <DashboardCompactMetaItem className={muted ? "text-slate-700" : metaClassName}>
-            <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-slate-500" : "text-slate-400"}`} name={assessment.secondaryIcon} />
+          <DashboardCompactMetaItem className={muted ? "text-[var(--dp-text-muted)]" : metaClassName}>
+            <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-[var(--dp-text-soft)]" : "text-[var(--dp-text-soft)]"}`} name={assessment.secondaryIcon} />
             {assessment.secondaryMeta}
           </DashboardCompactMetaItem>
         </DashboardCompactMetaRow>
 
         {showsProgressScaffold ? (
           <div className="mt-3">
-            <p className="mb-1.5 text-[11px] text-slate-600">
+            <p className="mb-1.5 text-[11px] text-[var(--dp-text-soft)]">
               {answeredQuestions} / {totalQuestions} pitanja
             </p>
-            <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--dp-border)]">
               <div
-                className="h-full rounded-full bg-teal-600 transition-all duration-500"
+                className="h-full rounded-full bg-[var(--dp-primary)] transition-all duration-500"
                 style={{ width: `${assessment.ctaKind === "report" ? 100 : progressPercent}%` }}
               />
             </div>
             {assessment.ctaKind === "start" ? (
-              <p className="mt-1.5 text-[10px] italic text-slate-600">Još nije započeto</p>
+              <p className="mt-1.5 text-[10px] italic text-[var(--dp-text-soft)]">Još nije započeto</p>
             ) : assessment.ctaKind === "resume" ? (
               <>
                 {startedAtLabel ? (
-                  <p className="mt-1.5 text-[10px] italic text-slate-600">
+                  <p className="mt-1.5 text-[10px] italic text-[var(--dp-text-soft)]">
                     Započeto: {startedAtLabel}
                   </p>
                 ) : null}
@@ -1344,12 +1344,12 @@ function AssessmentCard({
             ) : (
               <>
                 {startedAtLabel ? (
-                  <p className="mt-1.5 text-[10px] italic text-slate-600">
+                  <p className="mt-1.5 text-[10px] italic text-[var(--dp-text-soft)]">
                     Započeto: {startedAtLabel}
                   </p>
                 ) : null}
                 {completedAtLabel ? (
-                  <p className="mt-0.5 text-[10px] italic text-slate-600">
+                  <p className="mt-0.5 text-[10px] italic text-[var(--dp-text-soft)]">
                     Završeno: {completedAtLabel}
                   </p>
                 ) : null}
@@ -1362,7 +1362,7 @@ function AssessmentCard({
       {canCreateAttempt ? (
         <DashboardActionRow className="mt-auto pt-3">
           <button
-            className={`flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 disabled:cursor-wait disabled:opacity-80 ${primary ? "sm:text-[12px]" : ""}`}
+            className={`flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-primary-strong)] bg-[var(--dp-primary)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--dp-primary-hover)] hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/25 focus:ring-offset-0 disabled:cursor-wait disabled:opacity-80 ${primary ? "sm:text-[12px]" : ""}`}
             disabled={isCreatingAttempt}
             onClick={() => {
               void handleCreateAttempt();
@@ -1377,22 +1377,22 @@ function AssessmentCard({
         <DashboardActionRow className={isRoadmap ? "mt-auto pt-3" : "mt-auto pt-3 stack-xs"}>
           <button
             className={isRoadmap
-              ? "flex w-full items-center justify-center gap-2 rounded-full border border-violet-200/90 bg-violet-50/70 py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] opacity-100"
-              : "flex w-full items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-100 py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-slate-500 opacity-90"}
+              ? "flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-border-strong)] bg-[var(--dp-insight-soft)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-[var(--dp-insight-contrast)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] opacity-100"
+              : "flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-[var(--dp-text-soft)] opacity-90"}
             disabled
             type="button"
           >
             <span>{assessment.ctaLabel}</span>
-            <DashboardIcon className={`h-4 w-4 ${isRoadmap ? "text-violet-500/80" : ""}`} name="arrow_right" />
+            <DashboardIcon className={`h-4 w-4 ${isRoadmap ? "text-[var(--dp-insight)]" : ""}`} name="arrow_right" />
           </button>
           {assessment.availabilityNote ? (
-            <p className="text-xs text-slate-600">{assessment.availabilityNote}</p>
+            <p className="text-xs text-[var(--dp-text-soft)]">{assessment.availabilityNote}</p>
           ) : null}
         </DashboardActionRow>
       ) : (
         <DashboardActionRow className="mt-auto pt-3">
           <button
-            className={`flex w-full items-center justify-center gap-2 rounded-full border border-teal-700 bg-teal-600 py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-0 ${primary ? "sm:text-[12px]" : ""}`}
+            className={`flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-primary-strong)] bg-[var(--dp-primary)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--dp-primary-hover)] hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/25 focus:ring-offset-0 ${primary ? "sm:text-[12px]" : ""}`}
             onClick={handleNavigate}
             type="button"
           >
@@ -1442,29 +1442,29 @@ function DashboardStatCard({
   status?: boolean;
 }) {
   return (
-    <DashboardInfoCardShell className="border-white/60 bg-[#F3F7FA] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
+    <DashboardInfoCardShell className="border-[var(--dp-border)] bg-[var(--dp-surface-tint)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
       <div className="flex items-start justify-between gap-3">
-        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500/85">
+        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
           {label}
         </p>
         <span
-          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-[#EDF3F7] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_6px_14px_rgba(148,163,184,0.14)] ${iconBgClassName}`}
+          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_6px_14px_rgba(148,163,184,0.14)] ${iconBgClassName}`}
         >
           <DashboardIcon className={`h-[1.125rem] w-[1.125rem] ${iconClassName}`} name={icon} />
         </span>
       </div>
       {loading && !status ? (
         <div className="mt-4 flex min-h-[2.5rem] items-center">
-          <LoaderCircle className="h-7 w-7 animate-spin text-slate-500" />
+          <LoaderCircle className="h-7 w-7 animate-spin text-[var(--dp-text-soft)]" />
         </div>
       ) : status ? (
-        <p className="mt-3 inline-flex min-h-[2.35rem] items-center gap-2 text-[1.2rem] font-bold tracking-[-0.035em] text-slate-950 sm:text-[1.35rem]">
+        <p className="mt-3 inline-flex min-h-[2.35rem] items-center gap-2 text-[1.2rem] font-bold tracking-[-0.035em] text-[var(--dp-text)] sm:text-[1.35rem]">
           <span className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(34,197,94,0.14)]" />
           {value}
         </p>
       ) : (
         <p
-          className={`mt-3 min-h-[2.35rem] text-center text-[1.72rem] font-extrabold tracking-[-0.055em] leading-none sm:text-[1.9rem] ${accent ? "text-teal-700" : "text-slate-950"}`}
+          className={`mt-3 min-h-[2.35rem] text-center text-[1.72rem] font-extrabold tracking-[-0.055em] leading-none sm:text-[1.9rem] ${accent ? "text-[var(--dp-primary-hover)]" : "text-[var(--dp-text)]"}`}
         >
           {value}
         </p>
@@ -1481,12 +1481,12 @@ function DashboardFooter({
   return (
     <AuthenticatedAppFooterShell>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
-        <p className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600">
+        <p className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)]">
           © 2026 <strong>RE:SELEKCIJA</strong>. All rights reserved.
         </p>
         {showHrLink ? (
           <Link
-            className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
+            className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
             href="/hr"
           >
             HR Workspace
@@ -1496,19 +1496,19 @@ function DashboardFooter({
 
       <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
+          className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
           href="/"
         >
           Privacy Policy
         </a>
         <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
+          className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
           href="/"
         >
           Terms of Service
         </a>
         <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
+          className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
           href="/"
         >
           Security
@@ -1520,14 +1520,14 @@ function DashboardFooter({
 
 function EmptyState() {
   return (
-    <section className="rounded-[1.75rem] border border-white/80 bg-white/85 p-8 shadow-[0_24px_48px_rgba(15,23,42,0.07)] md:p-10">
-      <h2 className="font-headline text-2xl font-bold tracking-tight text-slate-900">
+    <section className="rounded-[1.75rem] border border-[var(--dp-border)] bg-[var(--dp-surface)]/85 p-8 shadow-[0_24px_48px_rgba(15,23,42,0.07)] md:p-10">
+      <h2 className="font-headline text-2xl font-bold tracking-tight text-[var(--dp-text)]">
         Kandidat profil još nije povezan
       </h2>
-      <p className="mt-4 max-w-2xl font-body text-sm leading-7 text-slate-600">
+      <p className="mt-4 max-w-2xl font-body text-sm leading-7 text-[var(--dp-text-muted)]">
         Ovaj nalog trenutno nema povezan kandidat profil, pa procjene još nisu dostupne.
       </p>
-      <p className="mt-2 max-w-2xl font-body text-sm leading-7 text-slate-600">
+      <p className="mt-2 max-w-2xl font-body text-sm leading-7 text-[var(--dp-text-muted)]">
         Dok se povezivanje ne završi, ovdje se neće prikazati dostupni testovi ni izvještaji.
       </p>
     </section>
@@ -1743,7 +1743,7 @@ export function CandidateDashboardView({
     "Ukupno vrijeme": loadError ? "N/A" : totalHours,
   };
   return (
-    <AuthenticatedAppPageShell>
+    <AuthenticatedAppPageShell className="bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.07),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.08),_transparent_22%),linear-gradient(180deg,var(--dp-bg)_0%,var(--dp-bg)_100%)]">
       <TopNav userEmail={userEmail} userName={userName} />
 
       <AuthenticatedAppMainContent topPaddingClassName="pt-20">
@@ -1754,7 +1754,7 @@ export function CandidateDashboardView({
             <div className={DASHBOARD_CONTENT_GRID_CLASS_NAME}>
               <div className={DASHBOARD_SIDEBAR_CLASS_NAME}>
                 <aside className={DASHBOARD_SIDEBAR_STACK_CLASS_NAME}>
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
                     Korisnički profil
                   </p>
                   <WelcomeOverviewCard
@@ -1778,14 +1778,14 @@ export function CandidateDashboardView({
                     ))}
                   </section>
 
-                  <DashboardInfoCardShell className="border-white/60 bg-[#F3F7FA] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
-                    <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500/85">
+                  <DashboardInfoCardShell className="border-[var(--dp-border)] bg-[var(--dp-surface-tint)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_24px_rgba(148,163,184,0.16),0_2px_6px_rgba(148,163,184,0.08)]">
+                    <p className="font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
                       TVOJI KORACI
                     </p>
-                    <h3 className="mt-2.5 font-headline text-[1.2rem] font-bold tracking-[-0.04em] text-slate-950">
+                    <h3 className="mt-2.5 font-headline text-[1.2rem] font-bold tracking-[-0.04em] text-[var(--dp-text)]">
                       Kako nastaje tvoj profil
                     </h3>
-                    <p className="mt-3 w-full max-w-none text-[13px] leading-6 text-slate-600">
+                    <p className="mt-3 w-full max-w-none text-[13px] leading-6 text-[var(--dp-text-muted)]">
                       Svaki rezultat dodaje jedan dio slike. Objedinjeni pregled otkriva širi
                       obrazac tvog rada, razmišljanja i interesa.
                     </p>
@@ -1795,7 +1795,7 @@ export function CandidateDashboardView({
 
               <section aria-label="Assessments" className={DASHBOARD_PRIMARY_COLUMN_CLASS_NAME}>
                 <div className={DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME}>
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-teal-800/80">
+                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-primary-hover)]">
                     TVOJA BATERIJA TESTOVA
                   </p>
                   <div className="!mt-3">
