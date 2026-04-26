@@ -1296,7 +1296,10 @@ function AssessmentCard({
         <div
           className={`rounded-[1.25rem] border border-[var(--dp-border)] bg-[var(--dp-surface)] p-2.5 shadow-[0_6px_14px_rgba(15,23,42,0.06)] ${primary ? "ring-1 ring-[var(--dp-border-strong)]" : isRoadmap ? "ring-1 ring-[var(--dp-border-strong)]" : ""} ${iconTileClassName} ${muted ? "opacity-75" : isRoadmap ? "opacity-95" : ""}`}
         >
-          <DashboardIcon className={`h-[1.375rem] w-[1.375rem] ${iconColorClassName} sm:h-6 sm:w-6`} name={assessment.icon} />
+          <DashboardIcon
+            className={`h-5 w-5 ${iconColorClassName} opacity-80 sm:h-[1.35rem] sm:w-[1.35rem]`}
+            name={assessment.icon}
+          />
         </div>
         <DashboardStatusBadge
           className={badgeClassName}
