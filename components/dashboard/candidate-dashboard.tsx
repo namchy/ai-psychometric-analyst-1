@@ -180,6 +180,7 @@ type CuratedBatteryConfig = {
   description: string;
   category: DashboardTestCategory;
   metaLabel: string;
+  durationLabel: string;
 };
 
 function isCuratedBatteryTitle(value: string): value is CuratedBatteryTitle {
@@ -193,6 +194,7 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
     description: "Tvoj pristup radu, saradnji i situacijama.",
     category: "personality",
     metaLabel: "Ličnost",
+    durationLabel: "Oko 20 min",
   },
   {
     key: "safran",
@@ -200,6 +202,7 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
     description: "Kognitivni zadaci za verbalno, figuralno i numeričko zaključivanje.",
     category: "cognitive",
     metaLabel: "Kognitivni",
+    durationLabel: "15 min",
   },
   {
     key: "mwms",
@@ -207,6 +210,7 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
     description: "Procjena radne motivacije",
     category: "behavioral",
     metaLabel: "Motivacija",
+    durationLabel: "Oko 5 min",
   },
 ] as const;
 
@@ -356,22 +360,22 @@ function getCategoryVisuals(category: DashboardTestCategory): Pick<
       return {
         icon: "groups",
         secondaryIcon: "hub",
-        iconBgClassName: "assessment-card__icon-tile--secondary",
-        iconColorClassName: "assessment-card__icon-color--aqua",
+        iconBgClassName: "assessment-card__icon-tile--complete",
+        iconColorClassName: "assessment-card__icon-color--complete",
       };
     case "cognitive":
       return {
         icon: "insights",
         secondaryIcon: "trending_up",
-        iconBgClassName: "assessment-card__icon-tile--cyan",
-        iconColorClassName: "assessment-card__icon-color--cyan",
+        iconBgClassName: "assessment-card__icon-tile--active",
+        iconColorClassName: "assessment-card__icon-color--active",
       };
     default:
       return {
         icon: "psychology",
         secondaryIcon: "task_alt",
-        iconBgClassName: "assessment-card__icon-tile--primary",
-        iconColorClassName: "assessment-card__icon-color--teal",
+        iconBgClassName: "assessment-card__icon-tile--start",
+        iconColorClassName: "assessment-card__icon-color--start",
       };
   }
 }
@@ -524,7 +528,7 @@ function buildAssessmentCardsFromTests(
       accessState: availabilityState.accessState,
       ctaKind: ctaState.ctaKind,
       status: ctaState.status,
-      duration: formatDurationLabel(test.duration_minutes),
+      duration: curatedBatteryConfig?.durationLabel ?? formatDurationLabel(test.duration_minutes),
       secondaryMeta: curatedBatteryConfig?.metaLabel ?? getCategoryLabel(test.category),
       href: ctaState.href,
       ctaLabel: ctaState.ctaLabel,
@@ -585,7 +589,7 @@ function buildAssessmentCardsFromTests(
         accessState: isAvailable ? "paid" : "roadmap",
         ctaKind: isAvailable ? "start" : "roadmap",
         status: "Nije započet",
-        duration: "Vrijeme uskoro",
+        duration: entry.durationLabel,
         totalQuestions: CURATED_BATTERY_UI_FALLBACKS[entry.key].totalQuestions,
         answeredQuestions: 0,
         secondaryMeta: entry.metaLabel,
@@ -790,35 +794,40 @@ function DashboardIcon({ name, className }: { name: DashboardIconName; className
 
 function getIconTileClassName(iconBgClassName: string): string {
   switch (iconBgClassName) {
+    case "assessment-card__icon-tile--start":
     case "assessment-card__icon-tile--primary":
-      return "bg-primary/10";
-    case "assessment-card__icon-tile--tertiary":
-      return "bg-tertiary/10";
+      return "border-[var(--dp-border)] bg-[var(--dp-start-soft)] shadow-[0_5px_12px_rgba(15,23,42,0.06)]";
+    case "assessment-card__icon-tile--active":
     case "assessment-card__icon-tile--cyan":
-      return "bg-primary-container/10";
+      return "border-[var(--dp-border)] bg-[var(--dp-active-soft)] shadow-[0_5px_12px_rgba(15,23,42,0.06)]";
+    case "assessment-card__icon-tile--complete":
     case "assessment-card__icon-tile--secondary":
-      return "bg-secondary/10";
+      return "border-[var(--dp-border)] bg-[var(--dp-complete-soft)] shadow-[0_5px_12px_rgba(15,23,42,0.06)]";
+    case "assessment-card__icon-tile--tertiary":
     case "assessment-card__icon-tile--coral":
-      return "bg-tertiary-fixed/10";
+      return "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] shadow-[0_6px_14px_rgba(15,23,42,0.07)]";
     default:
-      return "bg-white/5";
+      return "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] shadow-[0_5px_12px_rgba(15,23,42,0.06)]";
   }
 }
 
 function getIconColorClassName(iconColorClassName: string): string {
   switch (iconColorClassName) {
+    case "assessment-card__icon-color--start":
     case "assessment-card__icon-color--teal":
-      return "text-primary-fixed";
-    case "assessment-card__icon-color--coral-muted":
-      return "text-tertiary-fixed-dim";
+      return "text-[var(--dp-primary)]";
+    case "assessment-card__icon-color--active":
     case "assessment-card__icon-color--cyan":
-      return "text-secondary-fixed";
     case "assessment-card__icon-color--aqua":
-      return "text-secondary-fixed-dim";
+      return "text-[var(--dp-active-contrast)]";
+    case "assessment-card__icon-color--complete":
+      return "text-[var(--dp-complete-contrast)]";
+    case "assessment-card__icon-color--coral-muted":
+      return "text-[var(--dp-insight)]";
     case "assessment-card__icon-color--coral":
-      return "text-tertiary-fixed";
+      return "text-[var(--dp-insight)]";
     default:
-      return "text-white";
+      return "text-[var(--dp-text-soft)]";
   }
 }
 
@@ -952,10 +961,10 @@ function WelcomeOverviewCard({
       <p className="relative mt-3 text-[13px] font-semibold text-[var(--dp-text)]">
         Završeno: {completedCount} {formatProcjenaCount(completedCount)}
       </p>
-      <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-[var(--dp-border)]">
+      <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-[var(--dp-progress-track)]">
         <div
           aria-hidden="true"
-          className="h-full rounded-full bg-[var(--dp-primary)] transition-all duration-500"
+          className="h-full rounded-full bg-[var(--dp-complete)] transition-all duration-500"
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -987,25 +996,25 @@ function QuickActionCard({
       ? "Kompozitni izvještaj će uskoro biti dostupan."
       : undefined;
   const cardClassName = isReady
-    ? "mx-auto w-full max-w-[800px] border-[var(--dp-insight)] bg-[var(--dp-insight)] p-6 shadow-[0_24px_48px_rgba(13,148,136,0.18)] transition-colors duration-200 sm:p-7 md:p-8"
+    ? "mx-auto w-full max-w-[800px] border-[var(--dp-composite)]/20 bg-[linear-gradient(180deg,var(--dp-surface)_0%,var(--dp-surface-elevated)_72%,var(--dp-composite-soft)_100%)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.10)] transition-colors duration-200 sm:p-7 md:p-8"
     : isPending
-      ? "mx-auto w-full max-w-[800px] border-[var(--dp-border-strong)] bg-[var(--dp-insight-soft)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8"
-      : "mx-auto w-full max-w-[800px] border-[var(--dp-border-strong)] bg-[var(--dp-insight-soft)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8";
-  const eyebrowClassName = isReady ? "text-white/80" : "text-[var(--dp-insight-contrast)]";
+      ? "mx-auto w-full max-w-[800px] border-[var(--dp-composite)]/16 bg-[linear-gradient(180deg,var(--dp-surface)_0%,var(--dp-surface-elevated)_74%,var(--dp-composite-soft)_100%)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8"
+      : "mx-auto w-full max-w-[800px] border-[var(--dp-composite)]/12 bg-[linear-gradient(180deg,var(--dp-surface)_0%,var(--dp-surface-elevated)_76%,var(--dp-composite-soft)_100%)] p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)] transition-colors duration-200 sm:p-7 md:p-8";
+  const eyebrowClassName = "text-[var(--dp-composite)]";
   const titleClassName = `mt-2 text-[1.375rem] leading-tight tracking-[-0.03em] ${
-    isReady ? "text-white" : "text-[var(--dp-text)]"
+    "text-[var(--dp-text)]"
   }`;
-  const descriptionClassName = isReady ? "mt-2 max-w-none text-white/80" : "mt-2 max-w-none";
+  const descriptionClassName = "mt-2 max-w-none";
   const pillClassName = isReady
-    ? "border-white/15 bg-white/12 text-white"
+    ? "border-[var(--dp-composite)]/25 bg-[var(--dp-composite-soft)] text-[var(--dp-composite-contrast)]"
     : isPending
-      ? "border-[var(--dp-border-strong)] bg-[var(--dp-surface)]/80 text-[var(--dp-insight-contrast)]"
-      : "border-[var(--dp-border)] bg-[var(--dp-surface)]/85 text-[var(--dp-insight-contrast)]";
+      ? "border-[var(--dp-composite)]/25 bg-[var(--dp-composite-soft)] text-[var(--dp-composite-contrast)]"
+      : "border-[var(--dp-composite)]/20 bg-[var(--dp-composite-soft)] text-[var(--dp-composite-contrast)]";
   const ctaClassName = isReady
-    ? "border-white/90 bg-[var(--dp-surface)] text-[var(--dp-insight-contrast)] shadow-[0_18px_36px_rgba(8,47,73,0.16)] hover:-translate-y-0.5 hover:bg-[var(--dp-surface-elevated)]"
+    ? "border-[var(--dp-composite)]/22 bg-[var(--dp-surface)] text-[var(--dp-composite-contrast)] shadow-[0_18px_36px_rgba(8,47,73,0.12)] hover:-translate-y-0.5 hover:bg-[var(--dp-surface-elevated)]"
     : isPending
-      ? "border-[var(--dp-border)] bg-[var(--dp-surface)]/70 text-[var(--dp-insight-contrast)] opacity-90"
-      : "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] text-[var(--dp-text-soft)] opacity-85";
+      ? "border-[var(--dp-composite)]/18 bg-[var(--dp-surface)]/72 text-[var(--dp-composite-contrast)] opacity-90"
+      : "border-[var(--dp-composite)]/14 bg-[var(--dp-surface-elevated)] text-[var(--dp-text-soft)] opacity-90";
   const pillText = isReady ? "Dostupno" : isPending ? "U obradi" : `${completedCount}/3 završeno`;
   const ctaText = isReady
     ? "Otvori kompozitni izvještaj"
@@ -1034,7 +1043,7 @@ function QuickActionCard({
             descriptionClassName={descriptionClassName}
           />
           {helperText ? (
-            <p className={`mt-4 text-sm leading-6 ${isReady ? "text-white/80" : "text-[var(--dp-text-muted)]"}`}>
+            <p className="mt-4 text-sm leading-6 text-[var(--dp-text-muted)]">
               {helperText}
             </p>
           ) : null}
@@ -1191,10 +1200,17 @@ function AssessmentCard({
 }) {
   const router = useRouter();
   const [isCreatingAttempt, setIsCreatingAttempt] = useState(false);
-  const iconTileClassName = getIconTileClassName(assessment.iconBgClassName);
-  const iconColorClassName = getIconColorClassName(assessment.iconColorClassName);
   const isPaid = assessment.accessState === "paid";
   const isRoadmap = assessment.accessState === "roadmap";
+  const iconTileClassName = isRoadmap
+    ? getIconTileClassName("assessment-card__icon-tile--coral")
+    : getIconTileClassName(assessment.iconBgClassName);
+  const iconColorClassName = isRoadmap
+    ? getIconColorClassName("assessment-card__icon-color--coral-muted")
+    : getIconColorClassName(assessment.iconColorClassName);
+  const isStartState = assessment.ctaKind === "start";
+  const isActiveState = assessment.ctaKind === "resume";
+  const isCompleteState = assessment.ctaKind === "report";
   const isInteractive =
     isPaid &&
     !assessment.disabled &&
@@ -1206,14 +1222,29 @@ function AssessmentCard({
     Boolean(assessment.testId);
   const badgeClassName =
     isRoadmap
-      ? "border-[var(--dp-border-strong)] bg-[var(--dp-insight-soft)] text-[var(--dp-insight-contrast)]"
-      : isPaid && !muted
-      ? "border-[var(--dp-border-strong)] bg-[var(--dp-primary-soft)] text-[var(--dp-primary-hover)]"
-      : "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] text-[var(--dp-text-soft)]";
+      ? "border-[var(--dp-composite)]/18 bg-[var(--dp-composite-soft)] text-[var(--dp-composite-contrast)]"
+      : isCompleteState
+        ? "border-[var(--dp-complete)]/28 bg-[var(--dp-complete-soft)] text-[var(--dp-complete-contrast)]"
+        : isActiveState
+          ? "border-[var(--dp-active)]/40 bg-[var(--dp-active-soft)] text-[var(--dp-active-contrast)]"
+          : isPaid && !muted
+            ? "border-[var(--dp-start)]/28 bg-[var(--dp-start-soft)] text-[var(--dp-start-contrast)]"
+            : "border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] text-[var(--dp-text-soft)]";
+  const progressTrackClassName = "bg-[var(--dp-progress-track)]";
+  const progressFillClassName = isActiveState
+    ? "bg-[var(--dp-active)]"
+    : isCompleteState
+      ? "bg-[var(--dp-complete)]"
+      : "bg-[var(--dp-start)]";
+  const ctaClassName = isActiveState
+    ? `flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-active)]/45 bg-[var(--dp-primary-strong)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(15,23,42,0.14)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--dp-text)] hover:shadow-[0_22px_40px_rgba(15,23,42,0.18)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-active)]/35 focus:ring-offset-0 ${primary ? "sm:text-[12px]" : ""}`
+    : isCompleteState
+      ? `flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-complete)] bg-[var(--dp-complete)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-[var(--dp-primary-strong)] shadow-[0_18px_36px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--dp-complete)]/90 hover:shadow-[0_22px_40px_rgba(15,23,42,0.15)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-complete)]/30 focus:ring-offset-0 ${primary ? "sm:text-[12px]" : ""}`
+      : `flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-primary-strong)] bg-[var(--dp-primary)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--dp-primary-hover)] hover:shadow-[0_22px_40px_rgba(15,23,42,0.15)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/25 focus:ring-offset-0 disabled:cursor-wait disabled:opacity-80 ${primary ? "sm:text-[12px]" : ""}`;
   const cardClassName = muted
     ? "border-[var(--dp-border)] bg-[var(--dp-surface)] shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-[var(--dp-border-strong)] hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]"
     : assessment.accessState === "roadmap"
-        ? "border-[var(--dp-border-strong)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),var(--dp-insight-soft))] shadow-[0_18px_31px_rgba(76,29,149,0.06)]"
+        ? "border-[var(--dp-composite)]/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),var(--dp-composite-soft))] shadow-[0_18px_31px_rgba(15,23,42,0.06)]"
         : primary
           ? "border-[var(--dp-border-strong)] bg-[linear-gradient(180deg,var(--dp-surface),var(--dp-surface-elevated))] shadow-[0_30px_61px_rgba(15,23,42,0.14)] hover:border-[var(--dp-primary)] hover:shadow-[0_34px_65px_rgba(20,184,166,0.16)]"
           : "border-[var(--dp-border)] bg-[var(--dp-surface)] shadow-[0_12px_24px_rgba(15,23,42,0.08)] hover:border-[var(--dp-border-strong)] hover:shadow-[0_16px_28px_rgba(15,23,42,0.1)]";
@@ -1300,16 +1331,19 @@ function AssessmentCard({
       </div>
 
       <div className="flex flex-1 flex-col">
-        <h3 className={`font-headline font-bold leading-tight tracking-[-0.04em] ${primary ? "text-[1.32rem]" : "text-[1.18rem]"} ${muted ? "text-[var(--dp-text)]" : isRoadmap ? "text-[var(--dp-text)]" : "text-[var(--dp-text)]"}`}>
-          {assessment.title}
-        </h3>
-        <p className={`mt-1.5 font-body ${primary ? "text-[14px] leading-6" : isRoadmap ? "text-[13px] leading-[1.35rem]" : "text-[13px] leading-[1.35rem]"} ${muted ? "text-slate-600" : descriptionClassName}`}>
-          {assessment.description}
-        </p>
+        <div className="flex min-h-[4.75rem] flex-col sm:min-h-[5.25rem]">
+          <h3 className={`font-headline font-bold leading-tight tracking-[-0.04em] ${primary ? "text-[1.32rem]" : "text-[1.18rem]"} ${muted ? "text-[var(--dp-text)]" : isRoadmap ? "text-[var(--dp-text)]" : "text-[var(--dp-text)]"}`}>
+            {assessment.title}
+          </h3>
+          <p className={`mt-1.5 font-body ${primary ? "text-[14px] leading-6" : isRoadmap ? "text-[13px] leading-[1.35rem]" : "text-[13px] leading-[1.35rem]"} ${muted ? "text-slate-600" : descriptionClassName}`}>
+            {assessment.description}
+          </p>
+        </div>
 
-        <DashboardCompactMetaRow
-          className={primary ? "mt-3 border-[var(--dp-border-strong)]" : muted ? "mt-3 border-[var(--dp-border-strong)]" : isRoadmap ? "mb-2 mt-3 gap-y-1.5 border-[var(--dp-border)] pt-2" : "mt-3 border-[var(--dp-border)]"}
-        >
+        <div className="mt-3">
+          <DashboardCompactMetaRow
+            className={primary ? "border-[var(--dp-border-strong)]" : muted ? "border-[var(--dp-border-strong)]" : isRoadmap ? "mb-2 gap-y-1.5 border-[var(--dp-border)] pt-2" : "border-[var(--dp-border)]"}
+          >
           <DashboardCompactMetaItem className={muted ? "text-[var(--dp-text-muted)]" : metaClassName}>
             <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-[var(--dp-text-soft)]" : "text-[var(--dp-text-soft)]"}`} name="schedule" />
             {assessment.duration}
@@ -1318,16 +1352,16 @@ function AssessmentCard({
             <DashboardIcon className={`h-4 w-4 ${primary || muted ? "text-[var(--dp-text-soft)]" : "text-[var(--dp-text-soft)]"}`} name={assessment.secondaryIcon} />
             {assessment.secondaryMeta}
           </DashboardCompactMetaItem>
-        </DashboardCompactMetaRow>
+          </DashboardCompactMetaRow>
 
-        {showsProgressScaffold ? (
-          <div className="mt-3">
+          {showsProgressScaffold ? (
+            <div className="mt-3">
             <p className="mb-1.5 text-[11px] text-[var(--dp-text-soft)]">
               {answeredQuestions} / {totalQuestions} pitanja
             </p>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--dp-border)]">
+            <div className={`h-1.5 overflow-hidden rounded-full ${progressTrackClassName}`}>
               <div
-                className="h-full rounded-full bg-[var(--dp-primary)] transition-all duration-500"
+                className={`h-full rounded-full transition-all duration-500 ${progressFillClassName}`}
                 style={{ width: `${assessment.ctaKind === "report" ? 100 : progressPercent}%` }}
               />
             </div>
@@ -1355,14 +1389,15 @@ function AssessmentCard({
                 ) : null}
               </>
             )}
-          </div>
-        ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {canCreateAttempt ? (
         <DashboardActionRow className="mt-auto pt-3">
           <button
-            className={`flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-primary-strong)] bg-[var(--dp-primary)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--dp-primary-hover)] hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/25 focus:ring-offset-0 disabled:cursor-wait disabled:opacity-80 ${primary ? "sm:text-[12px]" : ""}`}
+            className={ctaClassName}
             disabled={isCreatingAttempt}
             onClick={() => {
               void handleCreateAttempt();
@@ -1392,7 +1427,7 @@ function AssessmentCard({
       ) : (
         <DashboardActionRow className="mt-auto pt-3">
           <button
-            className={`flex w-full items-center justify-center gap-2 rounded-full border border-[var(--dp-primary-strong)] bg-[var(--dp-primary)] py-2 text-[12px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--dp-primary-hover)] hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/25 focus:ring-offset-0 ${primary ? "sm:text-[12px]" : ""}`}
+            className={ctaClassName}
             onClick={handleNavigate}
             type="button"
           >
