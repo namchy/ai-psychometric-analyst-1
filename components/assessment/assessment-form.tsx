@@ -181,6 +181,22 @@ function getVisibleQuestionText(question: TestQuestion): string | null {
   return text;
 }
 
+function getLikertAssessmentCode(assessmentDisplayName?: string | null): string | null {
+  const name = assessmentDisplayName?.trim();
+
+  if (!name) {
+    return null;
+  }
+
+  const parentheticalMatch = name.match(/\(([^)]+)\)/);
+
+  if (parentheticalMatch?.[1]) {
+    return parentheticalMatch[1].trim();
+  }
+
+  return name;
+}
+
 function AssessmentStimulusImages({ question }: { question: TestQuestion }) {
   const imagePaths = [
     question.stimulus_image_path,
@@ -368,22 +384,53 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact {
-        gap: 0.2rem;
-      }
-
-      .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact .run-form-hero__eyebrow {
-        font-size: 10px;
-        letter-spacing: 0.18em;
-        color: rgba(71, 85, 105, 0.88);
+        gap: 0.45rem;
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact h1 {
-        margin-top: 0.25rem;
+        margin-top: 0;
         font-size: clamp(1.1rem, 2vw, 1.35rem);
         font-weight: 700;
         line-height: 1.2;
         letter-spacing: -0.03em;
         color: rgb(15, 23, 42);
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        align-items: center;
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__meta-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.7rem;
+        padding: 0.3rem 0.65rem;
+        border: 1px solid rgba(203, 213, 225, 0.88);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.9);
+        color: rgb(71, 85, 105);
+        font-size: 0.72rem;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: 0.01em;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__meta-pill--code {
+        border-color: rgba(7, 59, 76, 0.72);
+        background: #073b4c;
+        color: rgba(248, 250, 252, 0.98);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__meta-pill--count {
+        border-color: rgba(148, 163, 184, 0.5);
+        background: rgba(248, 250, 252, 0.96);
+        color: rgb(51, 65, 85);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header h3 {
@@ -486,6 +533,20 @@ function AssessmentDashboardSkinStyles() {
         box-shadow: 0 10px 20px -16px rgba(13, 148, 136, 0.45);
       }
 
+      .assessment-run-page--dashboard-skin.run-form-layout--compact {
+        row-gap: 1rem;
+      }
+
+      .assessment-run-page--dashboard-skin.run-form-layout--top-compact {
+        margin-top: -3.5rem;
+      }
+
+      @media (min-width: 640px) {
+        .assessment-run-page--dashboard-skin.run-form-layout--top-compact {
+          margin-top: -4.25rem;
+        }
+      }
+
       .assessment-run-page--dashboard-skin .assessment-step-card {
         border: 1px solid rgba(203, 213, 225, 0.86);
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.98));
@@ -570,15 +631,15 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option--selected {
-        border-color: color-mix(in srgb, var(--likert-border) 30%, #6f65ab 70%);
+        border-color: color-mix(in srgb, var(--likert-border) 18%, #118ab2 82%);
         background: linear-gradient(
           180deg,
-          color-mix(in srgb, var(--likert-bg) 62%, #9c94c9 38%),
-          color-mix(in srgb, white 20%, #9c94c9 80%)
+          color-mix(in srgb, var(--likert-bg) 54%, #118ab2 46%),
+          color-mix(in srgb, white 26%, #118ab2 74%)
         );
         box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.3),
-          0 0 0 1px rgba(111, 101, 171, 0.16),
+          inset 0 1px 0 rgba(255, 255, 255, 0.34),
+          0 0 0 1px rgba(17, 138, 178, 0.16),
           0 0 0 6px var(--likert-selected-ring),
           0 18px 26px -22px var(--likert-selected-shadow);
       }
@@ -621,18 +682,18 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option {
-        --likert-bg: rgba(246, 244, 252, 0.98);
-        --likert-border: rgba(174, 166, 212, 0.38);
-        --likert-hover-glow: rgba(191, 184, 227, 0.34);
-        --likert-selected-ring: rgba(137, 126, 191, 0.22);
-        --likert-selected-shadow: rgba(125, 113, 182, 0.18);
+        --likert-bg: rgba(244, 250, 252, 0.98);
+        --likert-border: rgba(17, 138, 178, 0.18);
+        --likert-hover-glow: rgba(17, 138, 178, 0.16);
+        --likert-selected-ring: rgba(17, 138, 178, 0.2);
+        --likert-selected-shadow: rgba(17, 138, 178, 0.18);
         width: 100%;
         min-height: 3.4rem;
         border-color: var(--likert-border);
         background: linear-gradient(180deg, var(--likert-bg), rgba(255, 255, 255, 0.98));
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 14px 24px -24px rgba(82, 69, 141, 0.18);
+          0 14px 24px -24px rgba(17, 138, 178, 0.14);
         transition:
           border-color 180ms ease,
           background-color 180ms ease,
@@ -641,37 +702,49 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__options > li:nth-child(1) .assessment-likert-option {
-        --likert-bg: rgba(248, 246, 253, 0.99);
-        --likert-border: rgba(181, 173, 220, 0.34);
-        --likert-hover-glow: rgba(214, 209, 239, 0.34);
+        --likert-bg: rgba(245, 251, 253, 0.99);
+        --likert-border: rgba(17, 138, 178, 0.16);
+        --likert-hover-glow: rgba(17, 138, 178, 0.12);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__options > li:nth-child(2) .assessment-likert-option {
-        --likert-bg: rgba(239, 235, 249, 0.99);
-        --likert-border: rgba(172, 163, 214, 0.38);
-        --likert-hover-glow: rgba(205, 197, 234, 0.34);
+        --likert-bg: rgba(236, 247, 251, 0.99);
+        --likert-border: rgba(17, 138, 178, 0.22);
+        --likert-hover-glow: rgba(17, 138, 178, 0.14);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__options > li:nth-child(3) .assessment-likert-option {
-        --likert-bg: rgba(228, 222, 244, 0.99);
-        --likert-border: rgba(161, 151, 205, 0.42);
-        --likert-hover-glow: rgba(193, 184, 225, 0.34);
+        --likert-bg: rgba(225, 243, 249, 0.99);
+        --likert-border: rgba(17, 138, 178, 0.28);
+        --likert-hover-glow: rgba(17, 138, 178, 0.16);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__options > li:nth-child(4) .assessment-likert-option {
-        --likert-bg: rgba(216, 208, 239, 0.99);
-        --likert-border: rgba(149, 138, 197, 0.44);
-        --likert-hover-glow: rgba(182, 171, 220, 0.34);
+        --likert-bg: rgba(212, 238, 246, 0.99);
+        --likert-border: rgba(17, 138, 178, 0.34);
+        --likert-hover-glow: rgba(17, 138, 178, 0.18);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__options > li:nth-child(5) .assessment-likert-option {
-        --likert-bg: rgba(201, 192, 231, 0.99);
-        --likert-border: rgba(138, 126, 190, 0.48);
-        --likert-hover-glow: rgba(169, 157, 213, 0.32);
+        --likert-bg: rgba(197, 231, 241, 0.99);
+        --likert-border: rgba(17, 138, 178, 0.42);
+        --likert-hover-glow: rgba(17, 138, 178, 0.2);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert__options > li:nth-child(6) .assessment-likert-option {
+        --likert-bg: rgba(180, 224, 237, 0.99);
+        --likert-border: rgba(17, 138, 178, 0.48);
+        --likert-hover-glow: rgba(17, 138, 178, 0.22);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert__options > li:nth-child(7) .assessment-likert-option {
+        --likert-bg: rgba(161, 215, 232, 0.99);
+        --likert-border: rgba(17, 138, 178, 0.54);
+        --likert-hover-glow: rgba(17, 138, 178, 0.24);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option:hover {
-        border-color: color-mix(in srgb, var(--likert-border) 72%, #9c94c9 28%);
+        border-color: color-mix(in srgb, var(--likert-border) 68%, #118ab2 32%);
         background: linear-gradient(
           180deg,
           color-mix(in srgb, var(--likert-bg) 82%, white 18%),
@@ -680,14 +753,14 @@ function AssessmentDashboardSkinStyles() {
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.84),
           0 0 0 5px var(--likert-hover-glow),
-          0 14px 22px -24px rgba(99, 86, 156, 0.2);
+          0 14px 22px -24px rgba(17, 138, 178, 0.16);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option__value {
         font-size: 1rem;
         font-weight: 700;
         letter-spacing: -0.02em;
-        color: rgb(49, 46, 95);
+        color: rgb(15, 74, 96);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option:focus-within,
@@ -700,15 +773,15 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option:focus-within {
-        border-color: rgba(124, 113, 182, 0.78);
+        border-color: rgba(17, 138, 178, 0.72);
         box-shadow:
-          0 0 0 4px rgba(190, 181, 228, 0.28),
+          0 0 0 4px rgba(17, 138, 178, 0.2),
           inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 14px 22px -22px rgba(99, 86, 156, 0.22);
+          0 14px 22px -22px rgba(17, 138, 178, 0.18);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option--selected .assessment-likert-option__value {
-        color: rgb(35, 30, 78);
+        color: rgb(9, 63, 83);
       }
 
       .assessment-run-page--dashboard-skin .assessment-option__marker {
@@ -1351,6 +1424,7 @@ export function AssessmentForm({
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
     const visibleQuestionText = isImageQuestion ? getVisibleQuestionText(currentQuestion) : currentQuestion.text;
+    const likertAssessmentCode = getLikertAssessmentCode(assessmentDisplayName);
     const shouldAutoAdvance = isLikertQuestion && !isLastQuestion;
     const shouldShowFinishButton = isLastQuestion && hasValidCurrentAnswer;
     const shouldShowContinueButton = !isLastQuestion && !shouldAutoAdvance;
@@ -1361,7 +1435,11 @@ export function AssessmentForm({
       : "assessment-step-actions assessment-step-actions--compact";
 
     return (
-      <div className="run-form-layout assessment-run-page--dashboard-skin grid gap-6">
+      <div
+        className={`run-form-layout assessment-run-page--dashboard-skin grid gap-6${
+          isLikertQuestion ? " run-form-layout--compact run-form-layout--top-compact" : ""
+        }`}
+      >
           <AssessmentDashboardSkinStyles />
           <section className={`run-form-hero${isLikertQuestion ? " run-form-hero--compact" : ""}`}>
           <div aria-hidden="true" className="run-form-hero__top-line" />
@@ -1369,17 +1447,35 @@ export function AssessmentForm({
             <div className={`run-form-hero__intro${isLikertQuestion ? " run-form-hero__intro--compact" : ""}`}>
               <div className="run-form-hero__identity">
                 <div className={`run-form-hero__title-group${isLikertQuestion ? " run-form-hero__title-group--compact" : ""}`}>
-                  <p className="run-form-hero__eyebrow">Procjena</p>
-                  <h1>{assessmentDisplayName ?? "Procjena"}</h1>
-                  {participantDisplayName ? (
-                    <p
-                      className={`run-form-hero__participant${
-                        isLikertQuestion ? " run-form-hero__participant--compact" : ""
-                      }`}
-                    >
-                      {participantDisplayName}
-                    </p>
-                  ) : null}
+                  {isLikertQuestion ? (
+                    <>
+                      <h1>Procjena ličnosti</h1>
+                      <div className="run-form-hero__meta">
+                        {likertAssessmentCode ? (
+                          <span className="run-form-hero__meta-pill run-form-hero__meta-pill--code">
+                            {likertAssessmentCode}
+                          </span>
+                        ) : null}
+                        <span className="run-form-hero__meta-pill run-form-hero__meta-pill--count">
+                          {questions.length} pitanja
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="run-form-hero__eyebrow">Procjena</p>
+                      <h1>{assessmentDisplayName ?? "Procjena"}</h1>
+                      {participantDisplayName ? (
+                        <p
+                          className={`run-form-hero__participant${
+                            isLikertQuestion ? " run-form-hero__participant--compact" : ""
+                          }`}
+                        >
+                          {participantDisplayName}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
 
