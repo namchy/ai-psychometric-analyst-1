@@ -155,7 +155,8 @@ function getStepCompletionValidationMessage(completionState: AssessmentCompletio
 function isLikertScaleQuestion(question: TestQuestion, options: TestAnswerOption[]): boolean {
   return (
     question.question_type === "single_choice" &&
-    options.length === 5 &&
+    options.length >= 5 &&
+    options.length <= 7 &&
     options.every((option) => typeof option.value === "number" && !option.image_path)
   );
 }
@@ -1211,7 +1212,7 @@ export function AssessmentForm({
     const shouldAutoAdvance = isLikertQuestion && !isLastQuestion;
     const shouldShowFinishButton = isLastQuestion && hasValidCurrentAnswer;
     const shouldShowContinueButton = !isLastQuestion && !shouldAutoAdvance;
-    const shouldShowSaveButton = !shouldShowFinishButton;
+    const shouldShowSaveButton = !isLikertQuestion && !shouldShowFinishButton;
     const shouldShowPrimaryButton = shouldShowContinueButton || shouldShowFinishButton;
     const stepActionsClassName = shouldShowPrimaryButton
       ? "assessment-step-actions"
