@@ -1121,12 +1121,19 @@ function IpipNeo120ParticipantReportSections({
 
   return (
     <div className="results-report__closing stack-md">
-      <section className="results-report__section results-report__panel card stack-sm">
+      <section className="results-report__section results-report__panel stack-sm rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 pt-[22px] pb-6 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.35)] sm:px-8 sm:pt-[28px] sm:pb-[30px]">
+        <div className="h-[3px] w-[72px] rounded-full bg-[linear-gradient(90deg,#0f766e,#0e7490)] mb-[18px] sm:w-[88px]" />
         <div className="results-report__section-heading">
-          <p className="results-report__section-kicker">Sažetak</p>
-          <h3>{report.summary.headline}</h3>
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+            Sažetak
+          </p>
+          <h3 className="mb-5 max-w-[720px] text-[clamp(1.65rem,2.4vw,2.05rem)] font-bold leading-[1.08] tracking-[-0.04em] text-slate-900 [font-family:var(--font-zodiak),var(--font-sans),serif]">
+            {report.summary.headline}
+          </h3>
         </div>
-        <p>{report.summary.overview}</p>
+        <p className="mt-0 max-w-[760px] text-[15px] leading-[1.75] text-slate-700">
+          {report.summary.overview}
+        </p>
       </section>
 
       <section className="results-report__section results-report__panel card stack-sm">
@@ -1843,7 +1850,7 @@ export function CompletedAssessmentSummary({
           <h2
             className={
               ipipNeo120ParticipantReport
-                ? "max-w-[12ch] text-[clamp(2rem,4vw,3rem)] font-bold leading-[0.98] tracking-[-0.045em] text-slate-950"
+                ? "max-w-[12ch] text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.04] tracking-[-0.04em] text-slate-950 [font-family:var(--font-zodiak),var(--font-sans),serif]"
                 : undefined
             }
           >
