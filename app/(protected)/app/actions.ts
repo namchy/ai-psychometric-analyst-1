@@ -1,5 +1,6 @@
 "use server";
 
+import { getAppLocaleCookieValue } from "@/lib/auth/app-locale";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 import { getCandidateAssessmentAvailability } from "@/lib/assessment/availability";
 import { getTestRunReadiness } from "@/lib/assessment/tests";
@@ -125,6 +126,7 @@ export async function createAssessmentAttempt(
     return (existingAttemptRow as CreatedAttemptRow).id;
   }
 
+  const attemptLocale = getAppLocaleCookieValue();
   const { data: attemptRow, error: attemptError } = await supabase
     .from("attempts")
     .insert({
@@ -132,6 +134,7 @@ export async function createAssessmentAttempt(
       user_id: user.id,
       organization_id: organization.id,
       participant_id: participantId,
+      locale: attemptLocale,
       status: "in_progress",
       started_at: new Date().toISOString(),
     })
