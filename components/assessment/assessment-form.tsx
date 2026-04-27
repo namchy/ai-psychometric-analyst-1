@@ -275,9 +275,28 @@ function AssessmentDashboardSkinStyles() {
         z-index: 1;
       }
 
+      .assessment-run-page--dashboard-skin .run-form-hero--compact {
+        padding: 1rem 1.1rem;
+        border-radius: 1.35rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.78),
+          0 18px 34px -30px rgba(15, 23, 42, 0.2);
+      }
+
+      @media (min-width: 640px) {
+        .assessment-run-page--dashboard-skin .run-form-hero--compact {
+          padding: 1.1rem 1.2rem;
+        }
+      }
+
       .assessment-run-page--dashboard-skin .run-form-hero__intro {
         display: grid;
         gap: 1.5rem;
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__intro--compact {
+        gap: 0.9rem;
       }
 
       @media (min-width: 1024px) {
@@ -285,6 +304,12 @@ function AssessmentDashboardSkinStyles() {
           grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
           gap: 1.5rem;
           align-items: start;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero__intro--compact {
+          grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+          gap: 1rem;
+          align-items: center;
         }
       }
 
@@ -342,6 +367,25 @@ function AssessmentDashboardSkinStyles() {
         }
       }
 
+      .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact {
+        gap: 0.2rem;
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact .run-form-hero__eyebrow {
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        color: rgba(71, 85, 105, 0.88);
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact h1 {
+        margin-top: 0.25rem;
+        font-size: clamp(1.1rem, 2vw, 1.35rem);
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: -0.03em;
+        color: rgb(15, 23, 42);
+      }
+
       .assessment-run-page--dashboard-skin .assessment-step-card__header h3 {
         font-size: clamp(1.72rem, 3vw, 2.3rem);
         font-weight: 600;
@@ -358,6 +402,13 @@ function AssessmentDashboardSkinStyles() {
         color: rgb(71, 85, 105);
       }
 
+      .assessment-run-page--dashboard-skin .run-form-hero__participant--compact {
+        margin-top: 0.2rem;
+        font-size: 0.9rem;
+        line-height: 1.45;
+        color: rgb(100, 116, 139);
+      }
+
       .assessment-run-page--dashboard-skin .assessment-completion-state__hero > * + * {
         margin-top: 0.75rem;
       }
@@ -370,6 +421,28 @@ function AssessmentDashboardSkinStyles() {
           0 18px 32px -28px rgba(15, 23, 42, 0.12);
       }
 
+      .assessment-run-page--dashboard-skin .assessment-progress--compact {
+        border-color: rgba(203, 213, 225, 0.82);
+        border-radius: 1.1rem;
+        padding: 0.9rem 0.95rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.82),
+          0 16px 30px -28px rgba(15, 23, 42, 0.18);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-progress__summary--compact {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-progress__metric--compact {
+        display: grid;
+        gap: 0.18rem;
+      }
+
       .assessment-run-page--dashboard-skin .assessment-progress__metric-label,
       .assessment-run-page--dashboard-skin .assessment-step-card__kicker {
         color: rgb(13, 148, 136);
@@ -377,14 +450,35 @@ function AssessmentDashboardSkinStyles() {
         text-transform: uppercase;
       }
 
+      .assessment-run-page--dashboard-skin .assessment-progress__metric--compact .assessment-progress__metric-label {
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        color: rgb(100, 116, 139);
+      }
+
       .assessment-run-page--dashboard-skin .assessment-progress__metric-value,
       .assessment-run-page--dashboard-skin .assessment-progress-note {
         color: rgb(15, 23, 42);
       }
 
+      .assessment-run-page--dashboard-skin .assessment-progress__metric--compact .assessment-progress__metric-value {
+        font-size: 0.98rem;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-progress__bar-region--compact {
+        margin-top: 0.7rem;
+      }
+
       .assessment-run-page--dashboard-skin .assessment-progress__track {
         background: linear-gradient(180deg, rgb(226, 232, 240), rgb(241, 245, 249));
         box-shadow: inset 0 1px 2px rgba(148, 163, 184, 0.24);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-progress--compact .assessment-progress__track {
+        height: 0.55rem;
+        border-radius: 999px;
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress__fill {
@@ -1221,23 +1315,41 @@ export function AssessmentForm({
     return (
       <div className="run-form-layout assessment-run-page--dashboard-skin grid gap-6">
           <AssessmentDashboardSkinStyles />
-          <section className="run-form-hero">
+          <section className={`run-form-hero${isLikertQuestion ? " run-form-hero--compact" : ""}`}>
           <div aria-hidden="true" className="run-form-hero__top-line" />
           <div className="run-form-hero__content">
-            <div className="run-form-hero__intro">
+            <div className={`run-form-hero__intro${isLikertQuestion ? " run-form-hero__intro--compact" : ""}`}>
               <div className="run-form-hero__identity">
-                <div className="run-form-hero__title-group">
+                <div className={`run-form-hero__title-group${isLikertQuestion ? " run-form-hero__title-group--compact" : ""}`}>
                   <p className="run-form-hero__eyebrow">Procjena</p>
                   <h1>{assessmentDisplayName ?? "Procjena"}</h1>
                   {participantDisplayName ? (
-                    <p className="run-form-hero__participant">{participantDisplayName}</p>
+                    <p
+                      className={`run-form-hero__participant${
+                        isLikertQuestion ? " run-form-hero__participant--compact" : ""
+                      }`}
+                    >
+                      {participantDisplayName}
+                    </p>
                   ) : null}
                 </div>
               </div>
 
-              <div className="assessment-progress" aria-label="Trenutni napredak">
-                <div className="assessment-progress__summary" aria-label="Trenutni napredak">
-                  <div className="assessment-progress__metric">
+              <div
+                className={`assessment-progress${isLikertQuestion ? " assessment-progress--compact" : ""}`}
+                aria-label="Trenutni napredak"
+              >
+                <div
+                  className={`assessment-progress__summary${
+                    isLikertQuestion ? " assessment-progress__summary--compact" : ""
+                  }`}
+                  aria-label="Trenutni napredak"
+                >
+                  <div
+                    className={`assessment-progress__metric${
+                      isLikertQuestion ? " assessment-progress__metric--compact" : ""
+                    }`}
+                  >
                     <span className="assessment-progress__metric-label">Progres</span>
                     <p className="assessment-progress__metric-value">
                       Pitanje {currentQuestionIndex + 1} od {questions.length}
@@ -1245,7 +1357,11 @@ export function AssessmentForm({
                   </div>
                 </div>
 
-                <div className="assessment-progress__bar-region">
+                <div
+                  className={`assessment-progress__bar-region${
+                    isLikertQuestion ? " assessment-progress__bar-region--compact" : ""
+                  }`}
+                >
                   <div aria-hidden="true" className="assessment-progress__track">
                     <div
                       className="assessment-progress__fill"
