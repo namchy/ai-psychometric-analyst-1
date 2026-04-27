@@ -2,6 +2,7 @@
 
 import type { LoginScreenContent } from "@/components/auth/login-content";
 import { loginWithPassword } from "@/app/actions/auth";
+import type { AssessmentLocale } from "@/lib/assessment/locale";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
@@ -18,7 +19,15 @@ function getDesktopLoginMessage(message: string) {
 
 type LoginFormProps = {
   content: LoginScreenContent;
+  initialLocale: AssessmentLocale;
 };
+
+const localeOptions = [
+  { value: "bs", label: "Bosanski" },
+  { value: "hr", label: "Hrvatski" },
+  { value: "en", label: "English" },
+  { value: "sr", label: "Srpski" },
+] as const;
 
 function MailIcon() {
   return (
@@ -68,12 +77,14 @@ function LockIcon() {
   );
 }
 
-export function LoginForm({ content }: LoginFormProps) {
+export function LoginForm({ content, initialLocale }: LoginFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [locale, setLocale] = useState<AssessmentLocale>(initialLocale);
   const [rememberDevice, setRememberDevice] = useState(true);
   const rememberId = useId();
+  const localeId = useId();
   const inputClassName =
     "block h-[56px] w-full appearance-none rounded-[18px] border border-[#8bb8d4]/30 bg-[#e9f5ff] font-body text-[17px] font-medium leading-[1.15] text-[#00374d] shadow-none outline-none ring-0 transition-all duration-200 placeholder:text-[#54809a]/78 focus:border-[#8bb8d4]/45 focus:outline-none focus:ring-2 focus:ring-[#abe5fe]";
   const labelClassName =
@@ -87,9 +98,10 @@ export function LoginForm({ content }: LoginFormProps) {
         const formData = new FormData(event.currentTarget);
         const email = String(formData.get("email") ?? "");
         const password = String(formData.get("password") ?? "");
+        const locale = String(formData.get("locale") ?? "");
 
         startTransition(async () => {
-          const result = await loginWithPassword({ email, password });
+          const result = await loginWithPassword({ email, password, locale });
 
           if (!result.ok) {
             setMessage(result.message);
@@ -143,6 +155,38 @@ export function LoginForm({ content }: LoginFormProps) {
       </div>
 
       <div className="mt-6 border-b border-[#8bb8d4]/25 pb-6">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <label className="min-w-0 flex-1" htmlFor={localeId}>
+            <span className={labelClassName}>Jezik</span>
+            <span className="relative block">
+              <select
+                className="block h-[48px] w-full appearance-none rounded-[16px] border border-[#8bb8d4]/30 bg-[#e9f5ff] px-5 pr-12 font-body text-[15px] font-medium text-[#00374d] outline-none transition-all duration-200 focus:border-[#8bb8d4]/45 focus:ring-2 focus:ring-[#abe5fe]"
+                id={localeId}
+                name="locale"
+                value={locale}
+                onChange={(event) => setLocale(event.target.value as AssessmentLocale)}
+              >
+                {localeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#54809a]">
+                <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4">
+                  <path
+                    d="m5.5 7.5 4.5 4.5 4.5-4.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+              </span>
+            </span>
+          </label>
+        </div>
         <div className="flex items-start gap-3">
         <label
           className="inline-flex cursor-pointer items-start gap-3"

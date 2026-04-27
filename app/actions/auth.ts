@@ -9,6 +9,7 @@ import { createSupabaseAuthClient } from "@/lib/supabase/server";
 export type LoginInput = {
   email: string;
   password: string;
+  locale?: string | null;
 };
 
 export type LoginResult =
@@ -50,7 +51,7 @@ export async function loginWithPassword(input: LoginInput): Promise<LoginResult>
   }
 
   persistAuthSession(data.session);
-  persistAppLocaleCookie();
+  persistAppLocaleCookie(input.locale);
 
   const redirectPath = await getPostLoginRedirectPathForUserId(data.user.id);
 

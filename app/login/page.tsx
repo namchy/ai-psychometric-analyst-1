@@ -1,6 +1,7 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { loginScreenContent } from "@/components/auth/login-content";
 import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
+import { getAppLocaleCookieValue } from "@/lib/auth/app-locale";
 import { getAuthenticatedUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
@@ -23,6 +24,7 @@ const heroStats = [
 
 export default async function LoginPage() {
   const user = await getAuthenticatedUser();
+  const locale = getAppLocaleCookieValue();
 
   if (user) {
     redirect(await getPostLoginRedirectPathForUserId(user.id));
@@ -102,7 +104,7 @@ export default async function LoginPage() {
                 </p>
               </header>
 
-              <LoginForm content={loginScreenContent} />
+              <LoginForm content={loginScreenContent} initialLocale={locale} />
             </div>
           </section>
         </main>
