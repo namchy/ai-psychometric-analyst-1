@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getPostLoginRedirectPathForUserId } from "@/lib/auth/app-context";
+import { persistAppLocaleCookie } from "@/lib/auth/app-locale";
 import { clearAuthSession, persistAuthSession } from "@/lib/auth/session";
 import { createSupabaseAuthClient } from "@/lib/supabase/server";
 
@@ -49,6 +50,7 @@ export async function loginWithPassword(input: LoginInput): Promise<LoginResult>
   }
 
   persistAuthSession(data.session);
+  persistAppLocaleCookie();
 
   const redirectPath = await getPostLoginRedirectPathForUserId(data.user.id);
 
