@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { DetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
@@ -1797,13 +1798,68 @@ export function CompletedAssessmentSummary({
 
   return (
     <div className="results-report stack-md">
-      <section className="results-report__hero">
-        <div className="results-report__hero-copy">
-          <p className="results-report__eyebrow">Izvještaj procjene</p>
-          <h2>{reportHeroTitle}</h2>
+      {ipipNeo120ParticipantReport ? (
+        <div className="mb-3">
+          <Link
+            href="/app"
+            className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.01em] text-slate-700 transition-colors duration-200 hover:text-slate-900"
+          >
+            <span aria-hidden="true">←</span>
+            <span>Nazad na dashboard</span>
+          </Link>
+        </div>
+      ) : null}
+
+      <section
+        className={
+          ipipNeo120ParticipantReport
+            ? "results-report__hero relative overflow-hidden border border-slate-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,248,251,0.96))] px-6 py-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)] sm:px-7 sm:py-6"
+            : "results-report__hero"
+        }
+      >
+        {ipipNeo120ParticipantReport ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.08),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0))]"
+          />
+        ) : null}
+
+        <div
+          className={
+            ipipNeo120ParticipantReport
+              ? "results-report__hero-copy relative z-10 gap-2.5 sm:gap-3"
+              : "results-report__hero-copy"
+          }
+        >
+          <p
+            className={
+              ipipNeo120ParticipantReport
+                ? "results-report__eyebrow text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500"
+                : "results-report__eyebrow"
+            }
+          >
+            Izvještaj procjene
+          </p>
+          <h2
+            className={
+              ipipNeo120ParticipantReport
+                ? "max-w-[12ch] text-[clamp(2rem,4vw,3rem)] font-bold leading-[0.98] tracking-[-0.045em] text-slate-950"
+                : undefined
+            }
+          >
+            {reportHeroTitle}
+          </h2>
 
           {ipipParticipantMetaLine ? (
-            <p className="results-report__section-body">{ipipParticipantMetaLine}</p>
+            <p
+              className={
+                ipipNeo120ParticipantReport
+                  ? "w-full max-w-full whitespace-nowrap overflow-hidden text-ellipsis border-t border-slate-200/85 pt-2.5 text-sm font-medium tracking-[-0.01em] text-slate-600 sm:pt-3"
+                  : "results-report__section-body"
+              }
+            >
+              {ipipParticipantMetaLine}
+            </p>
           ) : (
             <div className="results-report__hero-meta-wrap">
               <dl className="results-report__hero-meta">
