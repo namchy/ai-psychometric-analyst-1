@@ -247,6 +247,41 @@ function getLeadSentence(text: string): string {
   return splitIntoSentences(text)[0] ?? text.trim();
 }
 
+function formatParticipantIpipDomainLabel(label: string): string {
+  if (label === "Ugodnost") return "Spremnost na saradnju";
+  if (label === "Neuroticizam") return "Emocionalna stabilnost";
+  return label;
+}
+
+function formatParticipantIpipSubdimensionLabel(label: string): string {
+  if (label === "Liberalizam") return "Preispitivanje stavova";
+  if (label === "Saradljivost") return "Spremnost na dogovor";
+  return label;
+}
+
+function getParticipantIpipDomainDisplayState(domain: {
+  domain_code: string;
+  score: number;
+  band: "lower" | "balanced" | "higher";
+}) {
+  if (domain.domain_code !== "NEUROTICISM") {
+    return {
+      score: domain.score,
+      band: domain.band,
+    };
+  }
+
+  return {
+    score: 6 - domain.score,
+    band:
+      domain.band === "lower"
+        ? "higher"
+        : domain.band === "higher"
+          ? "lower"
+          : "balanced",
+  };
+}
+
 function stripInsightLabel(text: string): string {
   return text.replace(/^[^:]{2,40}:\s*/, "").trim();
 }
@@ -1104,35 +1139,42 @@ function IpipNeo120ParticipantReportSections({
         <div className="results-report__section-heading">
           <h3>Pregled domena</h3>
           <p className="results-report__section-note">
-            Primarni sloj izvještaja. Vizualni prikaz koristi skalu {scaleMin}–{scaleMax} uz diskretan broj.
+            Skala pokazuje koliko je svaki domen izražen u tvom profilu.
           </p>
         </div>
 
         <ol className="results-dimension-list">
-          {report.domains.map((domain) => (
-            <li key={domain.domain_code} className="results-dimension-card">
-              <div className="results-dimension-card__header">
-                <div className="results-dimension-card__title">
-                  <h4>{domain.label}</h4>
-                  <p className="results-dimension-card__helper">{formatNeoBandLabel(domain.band)}</p>
-                </div>
-                <div className="results-dimension-card__score">
-                  <span className="results-dimension-card__score-value">
-                    {formatDiscreetScore(domain.score)}
-                  </span>
-                </div>
-              </div>
+          {report.domains.map((domain) => {
+            const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
+            const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
 
-              <IpipNeo120ScoreBar
-                label={domain.label}
-                score={domain.score}
-                min={scaleMin}
-                max={scaleMax}
-              />
+            return (
+              <li key={domain.domain_code} className="results-dimension-card">
+                <div className="results-dimension-card__header">
+                  <div className="results-dimension-card__title">
+                    <h4>{domainDisplayLabel}</h4>
+                    <p className="results-dimension-card__helper">
+                      {formatNeoBandLabel(domainDisplayState.band)}
+                    </p>
+                  </div>
+                  <div className="results-dimension-card__score">
+                    <span className="results-dimension-card__score-value">
+                      {formatDiscreetScore(domainDisplayState.score)}
+                    </span>
+                  </div>
+                </div>
 
-              <p className="results-dimension-card__summary">{domain.summary}</p>
-            </li>
-          ))}
+                <IpipNeo120ScoreBar
+                  label={domainDisplayLabel}
+                  score={domainDisplayState.score}
+                  min={scaleMin}
+                  max={scaleMax}
+                />
+
+                <p className="results-dimension-card__summary">{domain.summary}</p>
+              </li>
+            );
+          })}
         </ol>
       </section>
 
@@ -1179,81 +1221,99 @@ function IpipNeo120ParticipantReportSections({
         </div>
 
         <ol className="results-dimension-list">
-          {report.domains.map((domain) => (
-            <li key={domain.domain_code} className="results-dimension-card">
-              <details className="stack-xs">
-                <summary className="results-dimension-card__toggle">
-                  <span className="results-dimension-card__header">
-                    <span className="results-dimension-card__title">
-                      <span>{domain.label}</span>
-                      <span className="results-dimension-card__helper">
-                        {formatNeoBandLabel(domain.band)}
+          {report.domains.map((domain) => {
+            const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
+            const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
+
+            return (
+              <li key={domain.domain_code} className="results-dimension-card">
+                <details className="stack-xs">
+                  <summary className="results-dimension-card__toggle">
+                    <span className="results-dimension-card__header">
+                      <span className="results-dimension-card__title">
+                        <span>{domainDisplayLabel}</span>
+                        <span className="results-dimension-card__helper">
+                          {formatNeoBandLabel(domainDisplayState.band)}
+                        </span>
+                      </span>
+                      <span className="results-dimension-card__score">
+                        <span className="results-dimension-card__score-value">
+                          {formatDiscreetScore(domainDisplayState.score)}
+                        </span>
                       </span>
                     </span>
-                    <span className="results-dimension-card__score">
-                      <span className="results-dimension-card__score-value">
-                        {formatDiscreetScore(domain.score)}
-                      </span>
+                    <span className="results-dimension-card__toggle-label-desktop">
+                      Prikaži detalje
                     </span>
-                  </span>
-                  <span className="results-dimension-card__toggle-label-desktop">
-                    Prikaži detalje
-                  </span>
-                </summary>
+                  </summary>
 
-                <section className="results-dimension-card__details stack-xs">
-                  <p className="results-dimension-card__summary">{domain.summary}</p>
+                  <section className="results-dimension-card__details stack-xs">
+                    <p className="results-dimension-card__summary">{domain.summary}</p>
 
-                  <div className="results-dimension-card__detail-block">
-                    <h5>Snage</h5>
-                    <ul className="results-bullet-list">
-                      {domain.strengths.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
+                    <div className="results-dimension-card__detail-block">
+                      <h5>Snage</h5>
+                      <ul className="results-bullet-list">
+                        {domain.strengths.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div className="results-dimension-card__detail-block">
-                    <h5>Tačke opreza</h5>
-                    <ul className="results-bullet-list">
-                      {domain.watchouts.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
+                    <div className="results-dimension-card__detail-block">
+                      <h5>Tačke opreza</h5>
+                      <ul className="results-bullet-list">
+                        {domain.watchouts.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div className="results-dimension-card__detail-block">
-                    <h5>Razvojni fokus</h5>
-                    <p>{domain.development_tip}</p>
-                  </div>
+                    <div className="results-dimension-card__detail-block">
+                      <h5>Razvojni fokus</h5>
+                      <p>{domain.development_tip}</p>
+                    </div>
 
-                  <div className="results-dimension-card__detail-block">
-                    <h5>Poddimenzije</h5>
-                    <ol className="results-score-overview" aria-label={`Poddimenzije za ${domain.label}`}>
-                      {domain.subdimensions.map((subdimension) => (
-                        <li key={subdimension.facet_code} className="results-score-overview__item">
-                          <div className="results-score-overview__header">
-                            <strong>{subdimension.label}</strong>
-                            <span>{formatDiscreetScore(subdimension.score)}</span>
-                          </div>
-                          <IpipNeo120ScoreBar
-                            label={subdimension.label}
-                            score={subdimension.score}
-                            min={scaleMin}
-                            max={scaleMax}
-                          />
-                          <p className="results-dimension-card__helper">
-                            {formatNeoBandLabel(subdimension.band)}
-                          </p>
-                          <p className="results-dimension-card__summary">{subdimension.summary}</p>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                </section>
-              </details>
-            </li>
-          ))}
+                    <div className="results-dimension-card__detail-block">
+                      <h5>Poddimenzije</h5>
+                      <ol
+                        className="results-score-overview"
+                        aria-label={`Poddimenzije za ${domainDisplayLabel}`}
+                      >
+                        {domain.subdimensions.map((subdimension) => {
+                          const subdimensionDisplayLabel =
+                            formatParticipantIpipSubdimensionLabel(subdimension.label);
+
+                          return (
+                            <li
+                              key={subdimension.facet_code}
+                              className="results-score-overview__item"
+                            >
+                              <div className="results-score-overview__header">
+                                <strong>{subdimensionDisplayLabel}</strong>
+                                <span>{formatDiscreetScore(subdimension.score)}</span>
+                              </div>
+                              <IpipNeo120ScoreBar
+                                label={subdimensionDisplayLabel}
+                                score={subdimension.score}
+                                min={scaleMin}
+                                max={scaleMax}
+                              />
+                              <p className="results-dimension-card__helper">
+                                {formatNeoBandLabel(subdimension.band)}
+                              </p>
+                              <p className="results-dimension-card__summary">
+                                {subdimension.summary}
+                              </p>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  </section>
+                </details>
+              </li>
+            );
+          })}
         </ol>
       </section>
 
