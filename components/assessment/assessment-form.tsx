@@ -592,10 +592,14 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__scale {
-        gap: 1rem;
+        display: grid;
+        gap: 0.8rem;
+        width: min(100%, 54rem);
+        max-width: 54rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__labels {
+        width: min(100%, 54rem);
         font-size: 0.8rem;
         font-weight: 500;
         color: rgb(71, 85, 105);
@@ -603,7 +607,17 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert__options {
-        gap: 0.65rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 0.7rem;
+        width: min(100%, 54rem);
+        max-width: 54rem;
+        justify-content: start;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert__options > li {
+        min-width: 0;
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option {
@@ -612,7 +626,8 @@ function AssessmentDashboardSkinStyles() {
         --likert-hover-glow: rgba(191, 184, 227, 0.34);
         --likert-selected-ring: rgba(137, 126, 191, 0.22);
         --likert-selected-shadow: rgba(125, 113, 182, 0.18);
-        min-height: 4.5rem;
+        width: 100%;
+        min-height: 3.4rem;
         border-color: var(--likert-border);
         background: linear-gradient(180deg, var(--likert-bg), rgba(255, 255, 255, 0.98));
         box-shadow:
@@ -669,6 +684,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option__value {
+        font-size: 1rem;
         font-weight: 700;
         letter-spacing: -0.02em;
         color: rgb(49, 46, 95);
