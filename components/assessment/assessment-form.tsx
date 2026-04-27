@@ -469,13 +469,11 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress--compact {
-        border-color: rgba(203, 213, 225, 0.82);
-        border-radius: 1.1rem;
-        padding: 0.9rem 0.95rem;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 16px 30px -28px rgba(15, 23, 42, 0.18);
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress__summary--compact {
@@ -515,7 +513,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress__bar-region--compact {
-        margin-top: 0.7rem;
+        margin-top: 0.55rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress__track {
@@ -524,7 +522,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress--compact .assessment-progress__track {
-        height: 0.55rem;
+        height: 0.5rem;
         border-radius: 999px;
       }
 
