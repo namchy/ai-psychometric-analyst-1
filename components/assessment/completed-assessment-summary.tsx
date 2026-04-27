@@ -1077,12 +1077,13 @@ function IpipNeo120ParticipantReportSections({
 }) {
   const scaleMin = report.meta.scale_hint.min;
   const scaleMax = report.meta.scale_hint.max;
+  const hasDevelopmentRecommendations = report.development_recommendations.length > 0;
 
   return (
     <div className="results-report__closing stack-md">
       <section className="results-report__section results-report__panel card stack-sm">
         <div className="results-report__section-heading">
-          <p className="results-report__section-kicker">Participant izvještaj</p>
+          <p className="results-report__section-kicker">Sažetak</p>
           <h3>{report.summary.headline}</h3>
         </div>
         <p>{report.summary.overview}</p>
@@ -1090,7 +1091,7 @@ function IpipNeo120ParticipantReportSections({
 
       <section className="results-report__section results-report__panel card stack-sm">
         <div className="results-report__section-heading">
-          <h3>Dominantni razvojni signali</h3>
+          <h3>Ključni nalazi</h3>
         </div>
         <ul className="results-bullet-list">
           {report.dominant_signals.map((signal) => (
@@ -1101,7 +1102,7 @@ function IpipNeo120ParticipantReportSections({
 
       <section className="results-report__section results-report__section--dimensions stack-sm">
         <div className="results-report__section-heading">
-          <h3>Domene</h3>
+          <h3>Pregled domena</h3>
           <p className="results-report__section-note">
             Primarni sloj izvještaja. Vizualni prikaz koristi skalu {scaleMin}–{scaleMax} uz diskretan broj.
           </p>
@@ -1130,55 +1131,6 @@ function IpipNeo120ParticipantReportSections({
               />
 
               <p className="results-dimension-card__summary">{domain.summary}</p>
-
-              <section className="results-dimension-card__details stack-xs">
-                <div className="results-dimension-card__detail-block">
-                  <h5>Snage</h5>
-                  <ul className="results-bullet-list">
-                    {domain.strengths.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="results-dimension-card__detail-block">
-                  <h5>Tačke opreza</h5>
-                  <ul className="results-bullet-list">
-                    {domain.watchouts.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="results-dimension-card__detail-block">
-                  <h5>Razvojni fokus</h5>
-                  <p>{domain.development_tip}</p>
-                </div>
-
-                <div className="results-dimension-card__detail-block">
-                  <h5>Poddimenzije</h5>
-                  <ol className="results-score-overview" aria-label={`Poddimenzije za ${domain.label}`}>
-                    {domain.subdimensions.map((subdimension) => (
-                      <li key={subdimension.facet_code} className="results-score-overview__item">
-                        <div className="results-score-overview__header">
-                          <strong>{subdimension.label}</strong>
-                          <span>{formatDiscreetScore(subdimension.score)}</span>
-                        </div>
-                        <IpipNeo120ScoreBar
-                          label={subdimension.label}
-                          score={subdimension.score}
-                          min={scaleMin}
-                          max={scaleMax}
-                        />
-                        <p className="results-dimension-card__helper">
-                          {formatNeoBandLabel(subdimension.band)}
-                        </p>
-                        <p className="results-dimension-card__summary">{subdimension.summary}</p>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </section>
             </li>
           ))}
         </ol>
@@ -1186,35 +1138,123 @@ function IpipNeo120ParticipantReportSections({
 
       <section className="results-report__section results-report__panel card stack-sm">
         <div className="results-report__section-heading">
-          <h3>Snage</h3>
+          <h3>Šta ovaj profil znači u praksi</h3>
         </div>
-        <ul className="results-bullet-list">
-          {report.strengths.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+
+        <div className="stack-md">
+          <div>
+            <h4>Snage</h4>
+            <ul className="results-bullet-list">
+              {report.strengths.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4>Tačke opreza</h4>
+            <ul className="results-bullet-list">
+              {report.watchouts.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+
+          {hasDevelopmentRecommendations ? (
+            <div>
+              <h4>Preporuke</h4>
+              <ul className="results-bullet-list">
+                {report.development_recommendations.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
       </section>
 
-      <section className="results-report__section results-report__panel card stack-sm">
+      <section className="results-report__section results-report__section--dimensions stack-sm">
         <div className="results-report__section-heading">
-          <h3>Tačke opreza</h3>
+          <h3>Detaljni pregled domena</h3>
         </div>
-        <ul className="results-bullet-list">
-          {report.watchouts.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
 
-      <section className="results-report__section results-report__panel card stack-sm">
-        <div className="results-report__section-heading">
-          <h3>Preporuke za razvoj</h3>
-        </div>
-        <ul className="results-bullet-list">
-          {report.development_recommendations.map((item) => (
-            <li key={item}>{item}</li>
+        <ol className="results-dimension-list">
+          {report.domains.map((domain) => (
+            <li key={domain.domain_code} className="results-dimension-card">
+              <details className="stack-xs">
+                <summary className="results-dimension-card__toggle">
+                  <span className="results-dimension-card__header">
+                    <span className="results-dimension-card__title">
+                      <span>{domain.label}</span>
+                      <span className="results-dimension-card__helper">
+                        {formatNeoBandLabel(domain.band)}
+                      </span>
+                    </span>
+                    <span className="results-dimension-card__score">
+                      <span className="results-dimension-card__score-value">
+                        {formatDiscreetScore(domain.score)}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="results-dimension-card__toggle-label-desktop">
+                    Prikaži detalje
+                  </span>
+                </summary>
+
+                <section className="results-dimension-card__details stack-xs">
+                  <p className="results-dimension-card__summary">{domain.summary}</p>
+
+                  <div className="results-dimension-card__detail-block">
+                    <h5>Snage</h5>
+                    <ul className="results-bullet-list">
+                      {domain.strengths.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="results-dimension-card__detail-block">
+                    <h5>Tačke opreza</h5>
+                    <ul className="results-bullet-list">
+                      {domain.watchouts.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="results-dimension-card__detail-block">
+                    <h5>Razvojni fokus</h5>
+                    <p>{domain.development_tip}</p>
+                  </div>
+
+                  <div className="results-dimension-card__detail-block">
+                    <h5>Poddimenzije</h5>
+                    <ol className="results-score-overview" aria-label={`Poddimenzije za ${domain.label}`}>
+                      {domain.subdimensions.map((subdimension) => (
+                        <li key={subdimension.facet_code} className="results-score-overview__item">
+                          <div className="results-score-overview__header">
+                            <strong>{subdimension.label}</strong>
+                            <span>{formatDiscreetScore(subdimension.score)}</span>
+                          </div>
+                          <IpipNeo120ScoreBar
+                            label={subdimension.label}
+                            score={subdimension.score}
+                            min={scaleMin}
+                            max={scaleMax}
+                          />
+                          <p className="results-dimension-card__helper">
+                            {formatNeoBandLabel(subdimension.band)}
+                          </p>
+                          <p className="results-dimension-card__summary">{subdimension.summary}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </section>
+              </details>
+            </li>
           ))}
-        </ul>
+        </ol>
       </section>
 
       <section className="results-report__section results-report__panel card stack-sm">
@@ -1664,6 +1704,16 @@ export function CompletedAssessmentSummary({
   const shouldShowResultsUnavailable = !hasResults;
   const shouldShowReadyReportShapeMismatch = reportRenderer.kind === "shape_mismatch";
   const shouldShowUnsupportedReadySignal = reportRenderer.kind === "unsupported_signal";
+  const reportHeroTitle = ipipNeo120ParticipantReport ? "Tvoj profil ličnosti" : testName ?? "Rezultati procjene";
+  const ipipParticipantMetaLine = ipipNeo120ParticipantReport
+    ? [
+        "IPIP-NEO-120",
+        organizationName,
+        `završeno ${formatCompletedAt(completedAt)}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
   const readyReportShapeMismatchMessage =
     reportRenderer.kind === "shape_mismatch" ? reportRenderer.message : null;
   const unsupportedReadySignalMessage =
@@ -1686,28 +1736,32 @@ export function CompletedAssessmentSummary({
       <section className="results-report__hero">
         <div className="results-report__hero-copy">
           <p className="results-report__eyebrow">Izvještaj procjene</p>
-          <h2>{testName ?? "Rezultati procjene"}</h2>
+          <h2>{reportHeroTitle}</h2>
 
-          <div className="results-report__hero-meta-wrap">
-            <dl className="results-report__hero-meta">
-              {participantName ? (
-                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
-                  <dt>Korisnik</dt>
-                  <dd>{participantName}</dd>
+          {ipipParticipantMetaLine ? (
+            <p className="results-report__section-body">{ipipParticipantMetaLine}</p>
+          ) : (
+            <div className="results-report__hero-meta-wrap">
+              <dl className="results-report__hero-meta">
+                {participantName ? (
+                  <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                    <dt>Korisnik</dt>
+                    <dd>{participantName}</dd>
+                  </div>
+                ) : null}
+                {organizationName ? (
+                  <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                    <dt>Organizacija</dt>
+                    <dd>{organizationName}</dd>
+                  </div>
+                ) : null}
+                <div className="results-report__hero-meta-item results-report__hero-meta-item--wide">
+                  <dt>Završeno</dt>
+                  <dd>{formatCompletedAt(completedAt)}</dd>
                 </div>
-              ) : null}
-              {organizationName ? (
-                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
-                  <dt>Organizacija</dt>
-                  <dd>{organizationName}</dd>
-                </div>
-              ) : null}
-              <div className="results-report__hero-meta-item results-report__hero-meta-item--wide">
-                <dt>Završeno</dt>
-                <dd>{formatCompletedAt(completedAt)}</dd>
-              </div>
-            </dl>
-          </div>
+              </dl>
+            </div>
+          )}
         </div>
 
       {bigFiveReport && topInsights.length > 0 ? (
