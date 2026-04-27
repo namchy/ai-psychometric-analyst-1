@@ -26,6 +26,7 @@
     "test:mwms-scoring": "node scripts/test-mwms-scoring.cjs",
     "test:safran-interpretation": "node scripts/test-safran-interpretation.cjs",
     "test:safran-stimuli": "node --env-file=.env.local scripts/audit-safran-stimuli.cjs",
+    "test:standard-battery-active": "node scripts/test-standard-battery-active.cjs",
     "test:standard-battery": "node scripts/test-standard-assessment-battery.cjs",
     "test:safran-v1-scoring": "node scripts/test-safran-v1-scoring.cjs"
   },
