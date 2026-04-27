@@ -384,7 +384,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact {
-        gap: 0.45rem;
+        gap: calc(0.45rem + 6px);
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero__title-group--compact h1 {
@@ -517,18 +517,18 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress__track {
-        background: linear-gradient(180deg, rgb(226, 232, 240), rgb(241, 245, 249));
-        box-shadow: inset 0 1px 2px rgba(148, 163, 184, 0.24);
+        background: linear-gradient(180deg, rgba(203, 213, 225, 0.95), rgba(226, 232, 240, 0.98));
+        box-shadow: inset 0 1px 2px rgba(148, 163, 184, 0.18);
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress--compact .assessment-progress__track {
-        height: 0.5rem;
+        height: 5px;
         border-radius: 999px;
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress__fill {
-        background: linear-gradient(90deg, rgb(13, 148, 136), rgb(45, 212, 191));
-        box-shadow: 0 10px 20px -16px rgba(13, 148, 136, 0.45);
+        background: linear-gradient(90deg, #06d6a0, rgba(6, 214, 160, 0.84));
+        box-shadow: 0 4px 10px -6px rgba(6, 214, 160, 0.42);
       }
 
       .assessment-run-page--dashboard-skin.run-form-layout--compact {
@@ -961,6 +961,42 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .assessment-step-layout__actions-primary {
         flex: 1 1 auto;
+      }
+
+      .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-layout__footer {
+        margin-top: 0.55rem;
+      }
+
+      .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-layout__actions-row {
+        gap: 0.75rem;
+      }
+
+      .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-actions__button--dashboard-return {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+        color: rgba(7, 59, 76, 0.82);
+      }
+
+      .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-actions__button--dashboard-return:hover:not(:disabled) {
+        border-color: transparent;
+        background: rgba(7, 59, 76, 0.06);
+        box-shadow: none;
+        color: rgb(7, 59, 76);
+      }
+
+      .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-layout__actions-primary .assessment-step-actions__button--ghost {
+        border-color: rgba(203, 213, 225, 0.92);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: none;
+        color: rgb(15, 23, 42);
+      }
+
+      .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-layout__actions-primary .assessment-step-actions__button--ghost:hover:not(:disabled) {
+        border-color: rgba(148, 163, 184, 0.78);
+        background: rgba(248, 250, 252, 0.98);
+        box-shadow: none;
       }
 
       @media (max-width: 720px) {
