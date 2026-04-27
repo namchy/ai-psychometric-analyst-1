@@ -494,8 +494,21 @@ function AssessmentDashboardSkinStyles() {
           inset 0 1px 0 rgba(255, 255, 255, 0.82);
       }
 
+      .assessment-run-page--dashboard-skin .assessment-step-card--compact {
+        border-color: rgba(203, 213, 225, 0.82);
+        border-radius: 1.5rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.985), rgba(248, 250, 252, 0.97));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.84),
+          0 22px 42px -34px rgba(15, 23, 42, 0.2);
+      }
+
       .assessment-run-page--dashboard-skin .assessment-step-card__header {
         margin-bottom: 1.35rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__header--compact {
+        margin-bottom: 1rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header > * + * {
@@ -507,8 +520,27 @@ function AssessmentDashboardSkinStyles() {
         max-width: 60rem;
       }
 
+      .assessment-run-page--dashboard-skin .assessment-step-card__question-region--compact {
+        gap: 0.5rem;
+      }
+
       .assessment-run-page--dashboard-skin .assessment-step-card__fieldset {
         padding-top: 0.15rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__kicker--compact {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        color: rgb(100, 116, 139);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__header--compact h3 {
+        font-size: clamp(1.45rem, 2.4vw, 1.85rem);
+        font-weight: 600;
+        line-height: 1.22;
+        letter-spacing: -0.035em;
+        color: rgb(15, 23, 42);
       }
 
       .assessment-run-page--dashboard-skin .assessment-option,
@@ -1375,14 +1407,28 @@ export function AssessmentForm({
           </section>
 
           <div className="assessment-step-layout">
-          <section className="assessment-step-card">
-            <div className="assessment-step-card__header">
+          <section
+            className={`assessment-step-card${isLikertQuestion ? " assessment-step-card--compact" : ""}`}
+          >
+            <div
+              className={`assessment-step-card__header${
+                isLikertQuestion ? " assessment-step-card__header--compact" : ""
+              }`}
+            >
               <div
                 className={`assessment-step-card__question-region${
-                  isLikertQuestion ? " assessment-step-card__question-region--stable" : ""
+                  isLikertQuestion
+                    ? " assessment-step-card__question-region--stable assessment-step-card__question-region--compact"
+                    : ""
                 }`}
               >
-                <p className="assessment-step-card__kicker">Pitanje {currentQuestionIndex + 1}</p>
+                <p
+                  className={`assessment-step-card__kicker${
+                    isLikertQuestion ? " assessment-step-card__kicker--compact" : ""
+                  }`}
+                >
+                  Pitanje {currentQuestionIndex + 1}
+                </p>
                 {visibleQuestionText ? <h3>{visibleQuestionText}</h3> : null}
                 <AssessmentStimulusImages question={currentQuestion} />
               </div>
