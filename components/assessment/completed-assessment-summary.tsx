@@ -259,11 +259,15 @@ function formatParticipantIpipSubdimensionLabel(label: string): string {
   return label;
 }
 
-function getParticipantIpipDomainDisplayState(domain: {
-  domain_code: string;
-  score: number;
-  band: "lower" | "balanced" | "higher";
-}) {
+type ParticipantIpipDomain = IpipNeo120ParticipantReportV1["domains"][number];
+type ParticipantIpipDomainDisplayState = {
+  score: ParticipantIpipDomain["score"];
+  band: ParticipantIpipDomain["band"];
+};
+
+function getParticipantIpipDomainDisplayState(
+  domain: Pick<ParticipantIpipDomain, "domain_code" | "score" | "band">,
+): ParticipantIpipDomainDisplayState {
   if (domain.domain_code !== "NEUROTICISM") {
     return {
       score: domain.score,
