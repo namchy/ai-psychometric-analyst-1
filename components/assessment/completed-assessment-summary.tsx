@@ -1134,6 +1134,38 @@ function IpipNeo120ParticipantReportSections({
             {report.summary.headline}
           </h3>
         </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <span
+            className="inline-flex items-center rounded-full px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em]"
+            style={{
+              background: "rgba(6, 214, 160, 0.12)",
+              border: "1px solid rgba(6, 214, 160, 0.34)",
+              color: "#073b4c",
+            }}
+          >
+            Visoka savjesnost
+          </span>
+          <span
+            className="inline-flex items-center rounded-full px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em]"
+            style={{
+              background: "rgba(17, 138, 178, 0.12)",
+              border: "1px solid rgba(17, 138, 178, 0.34)",
+              color: "#073b4c",
+            }}
+          >
+            Visoka energija
+          </span>
+          <span
+            className="inline-flex items-center rounded-full px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em]"
+            style={{
+              background: "rgba(255, 209, 102, 0.18)",
+              border: "1px solid rgba(255, 209, 102, 0.42)",
+              color: "#073b4c",
+            }}
+          >
+            Stabilan emocionalni profil
+          </span>
+        </div>
         <p className="mt-0 max-w-[760px] text-[15px] leading-[1.75] text-slate-700">
           {report.summary.overview}
         </p>
@@ -1206,6 +1238,10 @@ function IpipNeo120ParticipantReportSections({
 
         <div className="grid gap-3">
           <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+            <div
+              className="mb-3.5 h-1 w-14 rounded-full"
+              style={{ background: "#06d6a0" }}
+            />
             <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">Snage</h4>
             <ul className="results-bullet-list space-y-2 text-[13.5px] leading-[1.55] text-slate-600">
               {report.strengths.map((item) => (
@@ -1216,6 +1252,10 @@ function IpipNeo120ParticipantReportSections({
 
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+              <div
+                className="mb-3.5 h-1 w-14 rounded-full"
+                style={{ background: "#ffd166" }}
+              />
               <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">
                 Tačke opreza
               </h4>
@@ -1228,6 +1268,10 @@ function IpipNeo120ParticipantReportSections({
 
             {hasDevelopmentRecommendations ? (
               <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+                <div
+                  className="mb-3.5 h-1 w-14 rounded-full"
+                  style={{ background: "#118ab2" }}
+                />
                 <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">
                   Preporuke
                 </h4>
