@@ -1487,6 +1487,12 @@ function IpipNeo120ParticipantReportSections({
                         subdimension.label,
                       );
                       const facetAccentColor = getParticipantIpipFacetAccentColor(index);
+                      const facetDisplayState = {
+                        score: subdimension.score,
+                      };
+                      const facetScorePercent =
+                        ((facetDisplayState.score - scaleMin) / (scaleMax - scaleMin)) * 100;
+                      const activeTick = Math.round(facetDisplayState.score);
 
                       return (
                         <li
@@ -1504,16 +1510,38 @@ function IpipNeo120ParticipantReportSections({
                             <p className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-[12px] font-bold leading-none text-slate-500">
                               {formatNeoBandLabel(subdimension.band)}
                             </p>
-                            <div className="mt-0">
-                              <IpipNeo120ScoreBar
-                                label={subdimensionDisplayLabel}
-                                score={subdimension.score}
-                                min={scaleMin}
-                                max={scaleMax}
-                                fillColor={facetAccentColor}
-                              />
+                            <div className="mt-3">
+                              <div className="relative h-2 rounded-full bg-slate-200/90">
+                                <div
+                                  className="absolute left-0 top-0 h-2 rounded-full bg-[#118ab2]"
+                                  style={{ width: `${facetScorePercent}%` }}
+                                />
+                                <div
+                                  className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#073b4c] shadow-[0_2px_8px_-3px_rgba(15,23,42,0.55)]"
+                                  style={{ left: `${facetScorePercent}%` }}
+                                />
+                              </div>
+                              <div className="mt-2 grid grid-cols-5 text-[11px] font-extrabold leading-none">
+                                {[1, 2, 3, 4, 5].map((tick) => {
+                                  const isActiveTick = tick === activeTick;
+
+                                  return (
+                                    <span key={tick} className="flex justify-center">
+                                      <span
+                                        className={
+                                          isActiveTick
+                                            ? "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#073b4c] px-1.5 text-white"
+                                            : "text-slate-400"
+                                        }
+                                      >
+                                        {tick}
+                                      </span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
                             </div>
-                            <p className="text-[13.5px] leading-[1.55] text-slate-600">
+                            <p className="mt-3 text-[13.5px] leading-[1.55] text-slate-600">
                               {subdimension.summary}
                             </p>
                           </div>
@@ -1593,11 +1621,13 @@ function IpipNeo120ParticipantReportSections({
         </div>
       </section>
 
-      <section className="results-report__section results-report__panel card stack-sm">
-        <div className="results-report__section-heading">
-          <h3>Interpretacijska napomena</h3>
-        </div>
-        <p>{report.interpretation_note}</p>
+      <section className="rounded-[18px] border border-slate-200/70 bg-slate-50/70 px-5 py-4">
+        <h3 className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+          Interpretacijska napomena
+        </h3>
+        <p className="mt-2 text-[12.5px] leading-[1.6] text-slate-500">
+          {report.interpretation_note}
+        </p>
       </section>
     </div>
   );
