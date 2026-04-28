@@ -1204,35 +1204,41 @@ function IpipNeo120ParticipantReportSections({
           <h3>Šta ovaj profil znači u praksi</h3>
         </div>
 
-        <div className="stack-md">
-          <div>
-            <h4>Snage</h4>
-            <ul className="results-bullet-list">
+        <div className="grid gap-3">
+          <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+            <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">Snage</h4>
+            <ul className="results-bullet-list space-y-2 text-[13.5px] leading-[1.55] text-slate-600">
               {report.strengths.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           </div>
 
-          <div>
-            <h4>Tačke opreza</h4>
-            <ul className="results-bullet-list">
-              {report.watchouts.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-
-          {hasDevelopmentRecommendations ? (
-            <div>
-              <h4>Preporuke</h4>
-              <ul className="results-bullet-list">
-                {report.development_recommendations.map((item) => (
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+              <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">
+                Tačke opreza
+              </h4>
+              <ul className="results-bullet-list space-y-2 text-[13.5px] leading-[1.55] text-slate-600">
+                {report.watchouts.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
             </div>
-          ) : null}
+
+            {hasDevelopmentRecommendations ? (
+              <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+                <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">
+                  Preporuke
+                </h4>
+                <ul className="results-bullet-list space-y-2 text-[13.5px] leading-[1.55] text-slate-600">
+                  {report.development_recommendations.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
 
