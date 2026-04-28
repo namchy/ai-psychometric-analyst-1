@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { DetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
 import type {
@@ -1161,9 +1161,30 @@ function IpipNeo120ParticipantReportSections({
 }: {
   report: IpipNeo120ParticipantReportV1;
 }) {
+  const [activeDomainCode, setActiveDomainCode] = useState<string | null>(null);
+  const detailPanelRef = useRef<HTMLDivElement | null>(null);
   const scaleMin = report.meta.scale_hint.min;
   const scaleMax = report.meta.scale_hint.max;
   const hasDevelopmentRecommendations = report.development_recommendations.length > 0;
+  const activeDomain =
+    report.domains.find((domain) => domain.domain_code === activeDomainCode) ?? null;
+  const activeDomainDisplayState = activeDomain
+    ? getParticipantIpipDomainDisplayState(activeDomain)
+    : null;
+
+  useEffect(() => {
+    if (!activeDomain || !detailPanelRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    const panelRect = detailPanelRef.current.getBoundingClientRect();
+    const isInViewport =
+      panelRect.top >= 0 && panelRect.bottom <= window.innerHeight;
+
+    if (!isInViewport) {
+      detailPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [activeDomain]);
 
   return (
     <div className="results-report__closing stack-md">
@@ -1221,7 +1242,7 @@ function IpipNeo120ParticipantReportSections({
           <h3>Ključni obrasci u profilu</h3>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
             <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#06d6a0" }} />
             <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
               Organizovana inicijativa
@@ -1233,7 +1254,7 @@ function IpipNeo120ParticipantReportSections({
             </p>
           </div>
 
-          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
             <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#118ab2" }} />
             <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
               Stabilnost pod pritiskom
@@ -1245,7 +1266,7 @@ function IpipNeo120ParticipantReportSections({
             </p>
           </div>
 
-          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
             <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#ffd166" }} />
             <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
               Saradnja s jasnim standardima
@@ -1257,7 +1278,7 @@ function IpipNeo120ParticipantReportSections({
             </p>
           </div>
 
-          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
             <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#ef476f" }} />
             <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
               Praktična otvorenost
@@ -1279,38 +1300,48 @@ function IpipNeo120ParticipantReportSections({
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-4">
-          {report.domains.map((domain) => {
-              const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
-              const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
-              const domainMicroSummary = getParticipantIpipDomainMicroSummary(domain.domain_code);
-              const bandAccentColor = getParticipantIpipBandAccentColor(domainDisplayState.band);
-              const bandPillClassName = getParticipantIpipBandPillClassName(domainDisplayState.band);
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
+          {report.domains.map((domain, index) => {
+            const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
+            const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
+            const domainMicroSummary = getParticipantIpipDomainMicroSummary(domain.domain_code);
+            const bandAccentColor = getParticipantIpipBandAccentColor(domainDisplayState.band);
+            const bandPillClassName = getParticipantIpipBandPillClassName(domainDisplayState.band);
+            const isActive = activeDomainCode === domain.domain_code;
 
-              return (
+            return (
+              <div
+                key={domain.domain_code}
+                className={
+                  index === 4
+                    ? "md:col-start-2 md:col-span-2"
+                    : "md:col-span-2"
+                }
+              >
                 <div
-                  key={domain.domain_code}
-                  className="w-full rounded-[22px] border border-slate-200/85 bg-white/95 p-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.46)] min-h-[132px] md:w-[calc(50%-0.5rem)]"
+                  className={`min-h-[132px] rounded-[22px] border border-slate-200/85 bg-white/95 p-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.46)] ${
+                    isActive ? "ring-2 ring-[#118ab2]/35 border-[#118ab2]/35 bg-white" : ""
+                  }`}
                 >
+                  <div
+                    className="mb-4 h-1 w-12 rounded-full"
+                    style={{ background: bandAccentColor }}
+                  />
                   <div className="min-w-0">
-                    <div
-                      className="mb-4 h-1 w-12 rounded-full"
-                      style={{ background: bandAccentColor }}
-                    />
                     <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-[14px] font-extrabold leading-[1.15] tracking-[-0.015em] text-slate-950">
-                        {domainDisplayLabel}
-                      </h4>
-                      <p
-                        className={`mt-2 inline-flex w-fit items-center rounded-full border px-2 py-1 text-[11px] font-bold leading-none ${bandPillClassName}`}
-                      >
-                        {formatNeoBandLabel(domainDisplayState.band)}
-                      </p>
-                    </div>
-                    <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-extrabold leading-none text-slate-900">
-                      {formatDiscreetScore(domainDisplayState.score)}/{scaleMax}
-                    </span>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-[14px] font-extrabold leading-[1.15] tracking-[-0.015em] text-slate-950">
+                          {domainDisplayLabel}
+                        </h4>
+                        <p
+                          className={`mt-2 inline-flex w-fit items-center rounded-full border px-2 py-1 text-[11px] font-bold leading-none ${bandPillClassName}`}
+                        >
+                          {formatNeoBandLabel(domainDisplayState.band)}
+                        </p>
+                      </div>
+                      <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-extrabold leading-none text-slate-900">
+                        {formatDiscreetScore(domainDisplayState.score)}/{scaleMax}
+                      </span>
                     </div>
 
                     <p className="mt-3 text-[12.5px] font-semibold leading-[1.35] text-slate-500">
@@ -1326,11 +1357,156 @@ function IpipNeo120ParticipantReportSections({
                       />
                     </div>
 
+                    <div className="mt-4 flex items-center justify-end">
+                      <button
+                        type="button"
+                        className="inline-flex items-center rounded-full border border-[#118ab2]/35 bg-[rgba(17,138,178,0.08)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#118ab2]/55 hover:bg-[rgba(17,138,178,0.14)]"
+                        onClick={() =>
+                          setActiveDomainCode(isActive ? null : domain.domain_code)
+                        }
+                      >
+                        {isActive ? "Sakrij detalje ↑" : "Prikaži detalje ↓"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
         </div>
+
+        {activeDomain && activeDomainDisplayState ? (
+          <div
+            ref={detailPanelRef}
+            className="mt-5 overflow-hidden rounded-[28px] border border-slate-200/85 bg-white/95 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.5)]"
+          >
+            <div className="h-[5px] w-full bg-[#118ab2]" />
+            <div className="p-6 sm:p-7">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200/75 pb-5">
+                <div className="min-w-0 flex-1">
+                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                    OTVOREN DETALJ
+                  </p>
+                  <h4 className="text-[24px] font-extrabold leading-[1.1] tracking-[-0.03em] text-slate-950">
+                    {formatParticipantIpipDomainLabel(activeDomain.label)}
+                  </h4>
+                  <p className="mt-2 inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[12px] font-bold leading-none text-slate-500">
+                    {formatNeoBandLabel(activeDomainDisplayState.band)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-3 py-1.5 text-[13px] font-extrabold leading-none text-slate-900">
+                    {formatDiscreetScore(activeDomainDisplayState.score)}/{scaleMax}
+                  </span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-full border border-[#118ab2]/35 bg-[rgba(17,138,178,0.08)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#118ab2]/55 hover:bg-[rgba(17,138,178,0.14)]"
+                    onClick={() => setActiveDomainCode(null)}
+                  >
+                    Sakrij detalje ↑
+                  </button>
+                </div>
+              </div>
+
+              <p className="mt-5 text-[15px] leading-[1.8] text-slate-600">
+                {activeDomain.summary}
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/75 p-4">
+                  <h5 className="text-[13px] font-extrabold text-slate-950">Snage</h5>
+                  <ul className="mt-3 space-y-2">
+                    {activeDomain.strengths.map((item) => (
+                      <li key={item} className="text-[13.5px] leading-[1.65] text-slate-600">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/75 p-4">
+                  <h5 className="text-[13px] font-extrabold text-slate-950">Tačke opreza</h5>
+                  <ul className="mt-3 space-y-2">
+                    {activeDomain.watchouts.map((item) => (
+                      <li key={item} className="text-[13.5px] leading-[1.65] text-slate-600">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {activeDomain.development_tip ? (
+                  <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/75 p-4">
+                    <h5 className="text-[13px] font-extrabold text-slate-950">
+                      Razvojni fokus
+                    </h5>
+                    <p className="mt-3 text-[13.5px] leading-[1.65] text-slate-600">
+                      {activeDomain.development_tip}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
+              {activeDomain.subdimensions.length > 0 ? (
+                <div className="mt-7 border-t border-slate-200/75 pt-6">
+                  <h5 className="text-[16px] font-extrabold text-slate-950">Poddimenzije</h5>
+                  <p className="mt-1 text-[13px] leading-[1.5] text-slate-500">
+                    Poddimenzije pokazuju od čega se ovaj domen sastoji.
+                  </p>
+                  <ol className="mt-5 space-y-3">
+                    {activeDomain.subdimensions.map((subdimension) => {
+                      const subdimensionDisplayLabel = formatParticipantIpipSubdimensionLabel(
+                        subdimension.label,
+                      );
+
+                      return (
+                        <li
+                          key={subdimension.facet_code}
+                          className="rounded-[18px] border border-slate-200/75 bg-white/85 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <h6 className="text-[13.5px] font-extrabold text-slate-950">
+                                {subdimensionDisplayLabel}
+                              </h6>
+                              <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                                {formatNeoBandLabel(subdimension.band)}
+                              </p>
+                            </div>
+                            <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2.5 py-1 text-[12px] font-extrabold leading-none text-slate-900">
+                              {formatDiscreetScore(subdimension.score)}
+                            </span>
+                          </div>
+                          <div className="mt-3">
+                            <IpipNeo120ScoreBar
+                              label={subdimensionDisplayLabel}
+                              score={subdimension.score}
+                              min={scaleMin}
+                              max={scaleMax}
+                            />
+                          </div>
+                          <p className="mt-2 text-[13px] leading-[1.65] text-slate-600">
+                            {subdimension.summary}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              ) : null}
+
+              <div className="mt-7 flex justify-end border-t border-slate-200/75 pt-5">
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-full border border-[#118ab2]/35 bg-[rgba(17,138,178,0.08)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#118ab2]/55 hover:bg-[rgba(17,138,178,0.14)]"
+                  onClick={() => setActiveDomainCode(null)}
+                >
+                  Sakrij detalje ↑
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="results-report__section results-report__panel card stack-sm">
@@ -1386,114 +1562,6 @@ function IpipNeo120ParticipantReportSections({
             ) : null}
           </div>
         </div>
-      </section>
-
-      <section className="results-report__section results-report__section--dimensions stack-sm">
-        <div className="results-report__section-heading">
-          <h3>Detaljni pregled domena</h3>
-        </div>
-
-        <ol className="results-dimension-list">
-          {report.domains.map((domain) => {
-            const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
-            const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
-
-            return (
-              <li key={domain.domain_code} className="results-dimension-card">
-                <details className="stack-xs">
-                  <summary className="flex w-full cursor-pointer list-none items-center text-left outline-none">
-                    <span className="flex w-full min-w-0 items-center justify-between gap-4">
-                      <span className="min-w-0 flex-1">
-                        <span className="results-dimension-card__title min-w-0">
-                          <span className="truncate text-[14px] font-bold text-slate-900">
-                            {domainDisplayLabel}
-                          </span>
-                          <span className="results-dimension-card__helper mt-[2px] text-[12px] font-semibold text-slate-500">
-                            {formatNeoBandLabel(domainDisplayState.band)}
-                          </span>
-                        </span>
-                      </span>
-                      <span className="ml-auto flex shrink-0 items-center gap-2">
-                        <span className="results-dimension-card__score">
-                          <span className="results-dimension-card__score-value inline-flex items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-bold text-slate-900">
-                            {formatDiscreetScore(domainDisplayState.score)}/{scaleMax}
-                          </span>
-                        </span>
-                        <span className="results-dimension-card__toggle-label-desktop shrink-0">
-                          Prikaži detalje
-                        </span>
-                      </span>
-                    </span>
-                  </summary>
-
-                  <section className="results-dimension-card__details stack-xs">
-                    <p className="results-dimension-card__summary">{domain.summary}</p>
-
-                    <div className="results-dimension-card__detail-block">
-                      <h5>Snage</h5>
-                      <ul className="results-bullet-list">
-                        {domain.strengths.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="results-dimension-card__detail-block">
-                      <h5>Tačke opreza</h5>
-                      <ul className="results-bullet-list">
-                        {domain.watchouts.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="results-dimension-card__detail-block">
-                      <h5>Razvojni fokus</h5>
-                      <p>{domain.development_tip}</p>
-                    </div>
-
-                    <div className="results-dimension-card__detail-block">
-                      <h5>Poddimenzije</h5>
-                      <ol
-                        className="results-score-overview"
-                        aria-label={`Poddimenzije za ${domainDisplayLabel}`}
-                      >
-                        {domain.subdimensions.map((subdimension) => {
-                          const subdimensionDisplayLabel =
-                            formatParticipantIpipSubdimensionLabel(subdimension.label);
-
-                          return (
-                            <li
-                              key={subdimension.facet_code}
-                              className="results-score-overview__item"
-                            >
-                              <div className="results-score-overview__header">
-                                <strong>{subdimensionDisplayLabel}</strong>
-                                <span>{formatDiscreetScore(subdimension.score)}</span>
-                              </div>
-                              <IpipNeo120ScoreBar
-                                label={subdimensionDisplayLabel}
-                                score={subdimension.score}
-                                min={scaleMin}
-                                max={scaleMax}
-                              />
-                              <p className="results-dimension-card__helper">
-                                {formatNeoBandLabel(subdimension.band)}
-                              </p>
-                              <p className="results-dimension-card__summary">
-                                {subdimension.summary}
-                              </p>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </div>
-                  </section>
-                </details>
-              </li>
-            );
-          })}
-        </ol>
       </section>
 
       <section className="results-report__section results-report__panel card stack-sm">
