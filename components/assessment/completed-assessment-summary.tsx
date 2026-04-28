@@ -261,6 +261,51 @@ function formatParticipantIpipSubdimensionLabel(label: string): string {
   return label;
 }
 
+function getParticipantIpipDomainMicroSummary(domainCode: ParticipantIpipDomain["domain_code"]): string {
+  switch (domainCode) {
+    case "EXTRAVERSION":
+      return "Socijalna energija i kontakt";
+    case "AGREEABLENESS":
+      return "Saradnja i povjerenje";
+    case "CONSCIENTIOUSNESS":
+      return "Organizovanost i pouzdanost";
+    case "NEUROTICISM":
+      return "Mirnoća pod pritiskom";
+    case "OPENNESS_TO_EXPERIENCE":
+      return "Fleksibilnost i nove ideje";
+    default:
+      return "";
+  }
+}
+
+function getParticipantIpipBandAccentColor(band: ParticipantIpipDomainDisplayState["band"]): string {
+  switch (band) {
+    case "higher":
+      return "#06d6a0";
+    case "balanced":
+      return "#ffd166";
+    case "lower":
+      return "#ef476f";
+    default:
+      return "#ffd166";
+  }
+}
+
+function getParticipantIpipBandPillClassName(
+  band: ParticipantIpipDomainDisplayState["band"],
+): string {
+  switch (band) {
+    case "higher":
+      return "border-[rgba(6,214,160,0.34)] bg-[rgba(6,214,160,0.12)] text-[#073b4c]";
+    case "balanced":
+      return "border-[rgba(255,209,102,0.42)] bg-[rgba(255,209,102,0.18)] text-[#073b4c]";
+    case "lower":
+      return "border-[rgba(239,71,111,0.34)] bg-[rgba(239,71,111,0.12)] text-[#073b4c]";
+    default:
+      return "border-[rgba(255,209,102,0.42)] bg-[rgba(255,209,102,0.18)] text-[#073b4c]";
+  }
+}
+
 type ParticipantIpipDomain = IpipNeo120ParticipantReportV1["domains"][number];
 type ParticipantIpipDomainDisplayState = {
   score: ParticipantIpipDomain["score"];
@@ -1173,13 +1218,57 @@ function IpipNeo120ParticipantReportSections({
 
       <section className="results-report__section results-report__panel card stack-sm">
         <div className="results-report__section-heading">
-          <h3>Ključni nalazi</h3>
+          <h3>Ključni obrasci u profilu</h3>
         </div>
-        <ul className="results-bullet-list">
-          {report.dominant_signals.map((signal) => (
-            <li key={signal}>{signal}</li>
-          ))}
-        </ul>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#06d6a0" }} />
+            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
+              Organizovana inicijativa
+            </h4>
+            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
+              Kombinacija vrlo visoke Savjesnosti i vrlo visoke Ekstraverzije sugeriše da
+              najčešće ne ostaješ pasivan kada postoji cilj. Vjerovatno ti odgovara kada
+              možeš preuzeti ritam, pokrenuti stvari i istovremeno zadržati strukturu.
+            </p>
+          </div>
+
+          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#118ab2" }} />
+            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
+              Stabilnost pod pritiskom
+            </h4>
+            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
+              Vrlo niska emocionalna reaktivnost ukazuje da u stresnim situacijama
+              najčešće ne reaguješ naglo. To može biti važna prednost u odgovornim ili
+              dinamičnim okruženjima, posebno kada drugi očekuju miran ton i dosljednost.
+            </p>
+          </div>
+
+          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#ffd166" }} />
+            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
+              Saradnja s jasnim standardima
+            </h4>
+            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
+              Visoka Spremnost na saradnju sugeriše korektan i otvoren odnos prema
+              drugima. U kombinaciji s visokom Savjesnošću, može značiti da cijeniš
+              dogovor, ali i očekuješ da se preuzete obaveze zaista ispune.
+            </p>
+          </div>
+
+          <div className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
+            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#ef476f" }} />
+            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
+              Praktična otvorenost
+            </h4>
+            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
+              Uravnotežena Otvorenost prema iskustvu sugeriše da nove ideje ne odbacuješ,
+              ali ih vjerovatno procjenjuješ kroz korisnost i smisao. Najlakše prihvataš
+              promjene kada vidiš kako doprinose cilju.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="results-report__section results-report__section--dimensions stack-sm">
@@ -1190,45 +1279,58 @@ function IpipNeo120ParticipantReportSections({
           </p>
         </div>
 
-        <ol className="results-dimension-list">
+        <div className="flex flex-wrap justify-center gap-4">
           {report.domains.map((domain) => {
-            const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
-            const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
+              const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
+              const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
+              const domainMicroSummary = getParticipantIpipDomainMicroSummary(domain.domain_code);
+              const bandAccentColor = getParticipantIpipBandAccentColor(domainDisplayState.band);
+              const bandPillClassName = getParticipantIpipBandPillClassName(domainDisplayState.band);
 
-            return (
-              <li key={domain.domain_code} className="results-dimension-card">
-                <div className="results-dimension-card__header flex items-start justify-between gap-4">
-                  <div className="results-dimension-card__title min-w-0 flex-1">
-                    <h4 className="text-[15px] font-bold leading-[1.2] text-slate-900">
-                      {domainDisplayLabel}
-                    </h4>
-                    <p className="results-dimension-card__helper mt-[3px] text-[12px] font-semibold text-slate-500">
-                      {formatNeoBandLabel(domainDisplayState.band)}
-                    </p>
-                  </div>
-                  <div className="results-dimension-card__score shrink-0 self-start">
-                    <span className="results-dimension-card__score-value inline-flex items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-bold text-slate-900">
+              return (
+                <div
+                  key={domain.domain_code}
+                  className="w-full rounded-[22px] border border-slate-200/85 bg-white/95 p-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.46)] min-h-[132px] md:w-[calc(50%-0.5rem)]"
+                >
+                  <div className="min-w-0">
+                    <div
+                      className="mb-4 h-1 w-12 rounded-full"
+                      style={{ background: bandAccentColor }}
+                    />
+                    <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-[14px] font-extrabold leading-[1.15] tracking-[-0.015em] text-slate-950">
+                        {domainDisplayLabel}
+                      </h4>
+                      <p
+                        className={`mt-2 inline-flex w-fit items-center rounded-full border px-2 py-1 text-[11px] font-bold leading-none ${bandPillClassName}`}
+                      >
+                        {formatNeoBandLabel(domainDisplayState.band)}
+                      </p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-extrabold leading-none text-slate-900">
                       {formatDiscreetScore(domainDisplayState.score)}/{scaleMax}
                     </span>
+                    </div>
+
+                    <p className="mt-3 text-[12.5px] font-semibold leading-[1.35] text-slate-500">
+                      {domainMicroSummary}
+                    </p>
+
+                    <div className="mt-3">
+                      <IpipNeo120ScoreBar
+                        label={domainDisplayLabel}
+                        score={domainDisplayState.score}
+                        min={scaleMin}
+                        max={scaleMax}
+                      />
+                    </div>
+
                   </div>
                 </div>
-
-                <div className="mt-3.5">
-                  <IpipNeo120ScoreBar
-                    label={domainDisplayLabel}
-                    score={domainDisplayState.score}
-                    min={scaleMin}
-                    max={scaleMax}
-                  />
-                </div>
-
-                <p className="results-dimension-card__summary mt-3.5 text-[14px] leading-[1.6] text-slate-600">
-                  {domain.summary}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
+              );
+            })}
+        </div>
       </section>
 
       <section className="results-report__section results-report__panel card stack-sm">
