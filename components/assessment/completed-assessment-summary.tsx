@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  PersonalityRadarChart,
+  getPersonalityRadarSnapshot,
+  type PersonalityRadarDomain,
+} from "@/components/assessment/personality-radar-chart";
 import type { DetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
 import type {
   IpipNeo120HrReportV1,
@@ -312,6 +317,14 @@ type ParticipantIpipDomainDisplayState = {
   band: ParticipantIpipDomain["band"];
 };
 
+const PARTICIPANT_IPIP_RADAR_DOMAIN_ORDER = [
+  "EXTRAVERSION",
+  "AGREEABLENESS",
+  "CONSCIENTIOUSNESS",
+  "NEUROTICISM",
+  "OPENNESS_TO_EXPERIENCE",
+] as const satisfies ReadonlyArray<ParticipantIpipDomain["domain_code"]>;
+
 function getParticipantIpipDomainDisplayState(
   domain: Pick<ParticipantIpipDomain, "domain_code" | "score" | "band">,
 ): ParticipantIpipDomainDisplayState {
@@ -353,6 +366,45 @@ function getAverageScore(rawScore: number, scoredQuestionCount: number): number 
   }
 
   return Math.round((rawScore / scoredQuestionCount) * 100) / 100;
+}
+
+function getParticipantIpipRadarDomains(
+  report: IpipNeo120ParticipantReportV1,
+): PersonalityRadarDomain[] {
+  const domainsByCode = new Map(report.domains.map((domain) => [domain.domain_code, domain]));
+
+  return PARTICIPANT_IPIP_RADAR_DOMAIN_ORDER.flatMap((domainCode) => {
+    const domain = domainsByCode.get(domainCode);
+
+    if (!domain) {
+      return [];
+    }
+
+    return [
+      {
+        key: domain.domain_code,
+        label: formatParticipantIpipDomainLabel(domain.label),
+        score: getParticipantIpipDomainDisplayState(domain).score,
+      },
+    ];
+  });
+}
+
+function formatParticipantIpipRadarLabel(domainCode: ParticipantIpipDomain["domain_code"]): string {
+  switch (domainCode) {
+    case "EXTRAVERSION":
+      return "Ekstraverzija";
+    case "AGREEABLENESS":
+      return "Saradnja";
+    case "CONSCIENTIOUSNESS":
+      return "Savjesnost";
+    case "NEUROTICISM":
+      return "Stabilnost";
+    case "OPENNESS_TO_EXPERIENCE":
+      return "Otvorenost";
+    default:
+      return "";
+  }
 }
 
 function getScoreBand(score: number): "high" | "mid" | "low" {
@@ -1179,6 +1231,48 @@ function IpipNeo120ParticipantReportSections({
   const activeDomainDisplayState = activeDomain
     ? getParticipantIpipDomainDisplayState(activeDomain)
     : null;
+  const radarDomains = getParticipantIpipRadarDomains(report);
+  const shouldRenderRadarSection = radarDomains.length === PARTICIPANT_IPIP_RADAR_DOMAIN_ORDER.length;
+  const radarSnapshot = shouldRenderRadarSection
+    ? getPersonalityRadarSnapshot(radarDomains)
+    : null;
+  const radarChartDomains = shouldRenderRadarSection
+    ? radarDomains.map((domain) => ({
+        ...domain,
+        label: formatParticipantIpipRadarLabel(domain.key as ParticipantIpipDomain["domain_code"]),
+      }))
+    : [];
+  const radarSnapshotRows = radarSnapshot
+    ? [
+        {
+          title: "Dominantni domen",
+          domain: radarSnapshot.highest,
+          accent: "#155E75",
+          glow: "rgba(21, 94, 117, 0.14)",
+        },
+        {
+          title: "Drugi izraženi domen",
+          domain: radarSnapshot.secondHighest,
+          accent: "#6B7D3A",
+          glow: "rgba(107, 125, 58, 0.14)",
+        },
+        {
+          title: "Najmanje izražen domen",
+          domain: radarSnapshot.lowest,
+          accent: "#B7791F",
+          glow: "rgba(183, 121, 31, 0.14)",
+        },
+      ].filter(
+        (
+          item,
+        ): item is {
+          title: string;
+          domain: PersonalityRadarDomain;
+          accent: string;
+          glow: string;
+        } => item.domain !== null,
+      )
+    : [];
 
   useEffect(() => {
     if (!activeDomain || !detailPanelRef.current || typeof window === "undefined") {
@@ -1207,6 +1301,55 @@ function IpipNeo120ParticipantReportSections({
 
   return (
     <div className="results-report__closing stack-md">
+      {shouldRenderRadarSection ? (
+        <section className="results-report__section results-report__panel card px-5 pt-5 pb-4 sm:px-6 sm:pt-6 sm:pb-5">
+          <div className="results-report__section-heading">
+            <h3 className="text-[0.95rem] font-bold tracking-[-0.02em] text-slate-900 sm:text-[1rem]">
+              Sveobuhvatni pregled
+            </h3>
+            <p className="mt-1 text-[12.5px] leading-[1.55] text-slate-500">
+              Ovdje vidiš kako su pojedini domeni izraženi u tvom ukupnom profilu.
+            </p>
+          </div>
+
+          <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)] lg:items-start lg:gap-x-14">
+            <div className="mx-auto w-full max-w-[540px]">
+              <PersonalityRadarChart domains={radarChartDomains} className="h-[304px] sm:h-[300px]" />
+            </div>
+
+            {radarSnapshotRows.length > 0 ? (
+              <div className="rounded-[18px] border border-[rgba(21,94,117,0.12)] bg-[#F3F8F6] px-4 py-4 sm:px-5 lg:mt-6">
+                <h4 className="text-[13.5px] font-semibold leading-[1.3] tracking-[-0.01em] text-[#073b4c]">
+                  Najizraženiji signali
+                </h4>
+                <div className="mt-3 divide-y divide-[rgba(148,163,184,0.22)]">
+                  {radarSnapshotRows.map((row) => (
+                    <div
+                      key={`${row.title}-${row.domain.key}`}
+                      className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="mt-[4px] h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: row.accent, boxShadow: `0 0 0 4px ${row.glow}` }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                          {row.title}
+                        </p>
+                        <p className="mt-1 text-[14px] font-medium leading-[1.45] text-slate-700">
+                          {row.domain.label} · {formatDiscreetScore(Number(row.domain.score))}/5
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       <section className="results-report__section results-report__panel stack-sm rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 pt-[22px] pb-6 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.35)] sm:px-8 sm:pt-[28px] sm:pb-[30px]">
         <div className="h-[3px] w-[72px] rounded-full bg-[linear-gradient(90deg,#0f766e,#0e7490)] mb-[18px] sm:w-[88px]" />
         <div className="results-report__section-heading">
