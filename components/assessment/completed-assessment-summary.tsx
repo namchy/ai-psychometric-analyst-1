@@ -30,6 +30,7 @@ import {
   getSafranInterpretationFallbackText,
   type SafranScoreKey,
 } from "@/lib/assessment/safran-interpretation";
+import { zodiak } from "@/lib/fonts";
 
 type CompletedAssessmentSummaryProps = {
   completedAt?: string | null;
@@ -1127,7 +1128,9 @@ function IpipNeo120ParticipantReportSections({
           <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
             Sažetak
           </p>
-          <h3 className="mb-5 max-w-[720px] text-[clamp(1.65rem,2.4vw,2.05rem)] font-bold leading-[1.08] tracking-[-0.04em] text-slate-900 [font-family:var(--font-zodiak),var(--font-sans),serif]">
+          <h3
+            className={`${zodiak.className} mb-5 max-w-[720px] text-[clamp(1.65rem,2.4vw,2.05rem)] font-bold leading-[1.08] tracking-[-0.04em] text-slate-900`}
+          >
             {report.summary.headline}
           </h3>
         </div>
@@ -1162,28 +1165,34 @@ function IpipNeo120ParticipantReportSections({
 
             return (
               <li key={domain.domain_code} className="results-dimension-card">
-                <div className="results-dimension-card__header">
-                  <div className="results-dimension-card__title">
-                    <h4>{domainDisplayLabel}</h4>
-                    <p className="results-dimension-card__helper">
+                <div className="results-dimension-card__header flex items-start justify-between gap-4">
+                  <div className="results-dimension-card__title min-w-0 flex-1">
+                    <h4 className="text-[15px] font-bold leading-[1.2] text-slate-900">
+                      {domainDisplayLabel}
+                    </h4>
+                    <p className="results-dimension-card__helper mt-[3px] text-[12px] font-semibold text-slate-500">
                       {formatNeoBandLabel(domainDisplayState.band)}
                     </p>
                   </div>
-                  <div className="results-dimension-card__score">
-                    <span className="results-dimension-card__score-value">
-                      {formatDiscreetScore(domainDisplayState.score)}
+                  <div className="results-dimension-card__score shrink-0 self-start">
+                    <span className="results-dimension-card__score-value inline-flex items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-bold text-slate-900">
+                      {formatDiscreetScore(domainDisplayState.score)}/{scaleMax}
                     </span>
                   </div>
                 </div>
 
-                <IpipNeo120ScoreBar
-                  label={domainDisplayLabel}
-                  score={domainDisplayState.score}
-                  min={scaleMin}
-                  max={scaleMax}
-                />
+                <div className="mt-3.5">
+                  <IpipNeo120ScoreBar
+                    label={domainDisplayLabel}
+                    score={domainDisplayState.score}
+                    min={scaleMin}
+                    max={scaleMax}
+                  />
+                </div>
 
-                <p className="results-dimension-card__summary">{domain.summary}</p>
+                <p className="results-dimension-card__summary mt-3.5 text-[14px] leading-[1.6] text-slate-600">
+                  {domain.summary}
+                </p>
               </li>
             );
           })}
@@ -1240,22 +1249,28 @@ function IpipNeo120ParticipantReportSections({
             return (
               <li key={domain.domain_code} className="results-dimension-card">
                 <details className="stack-xs">
-                  <summary className="results-dimension-card__toggle">
-                    <span className="results-dimension-card__header">
-                      <span className="results-dimension-card__title">
-                        <span>{domainDisplayLabel}</span>
-                        <span className="results-dimension-card__helper">
-                          {formatNeoBandLabel(domainDisplayState.band)}
+                  <summary className="flex w-full cursor-pointer list-none items-center text-left outline-none">
+                    <span className="flex w-full min-w-0 items-center justify-between gap-4">
+                      <span className="min-w-0 flex-1">
+                        <span className="results-dimension-card__title min-w-0">
+                          <span className="truncate text-[14px] font-bold text-slate-900">
+                            {domainDisplayLabel}
+                          </span>
+                          <span className="results-dimension-card__helper mt-[2px] text-[12px] font-semibold text-slate-500">
+                            {formatNeoBandLabel(domainDisplayState.band)}
+                          </span>
                         </span>
                       </span>
-                      <span className="results-dimension-card__score">
-                        <span className="results-dimension-card__score-value">
-                          {formatDiscreetScore(domainDisplayState.score)}
+                      <span className="ml-auto flex shrink-0 items-center gap-2">
+                        <span className="results-dimension-card__score">
+                          <span className="results-dimension-card__score-value inline-flex items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-bold text-slate-900">
+                            {formatDiscreetScore(domainDisplayState.score)}/{scaleMax}
+                          </span>
+                        </span>
+                        <span className="results-dimension-card__toggle-label-desktop shrink-0">
+                          Prikaži detalje
                         </span>
                       </span>
-                    </span>
-                    <span className="results-dimension-card__toggle-label-desktop">
-                      Prikaži detalje
                     </span>
                   </summary>
 
@@ -1850,7 +1865,15 @@ export function CompletedAssessmentSummary({
           <h2
             className={
               ipipNeo120ParticipantReport
-                ? "max-w-[12ch] text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.04] tracking-[-0.04em] text-slate-950 [font-family:var(--font-zodiak),var(--font-sans),serif]"
+                ? `${zodiak.className} max-w-none whitespace-nowrap text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.04] tracking-[-0.04em] text-slate-950`
+                : undefined
+            }
+            style={
+              ipipNeo120ParticipantReport
+                ? {
+                    maxWidth: "none",
+                    whiteSpace: "nowrap",
+                  }
                 : undefined
             }
           >
@@ -1861,7 +1884,7 @@ export function CompletedAssessmentSummary({
             <p
               className={
                 ipipNeo120ParticipantReport
-                  ? "w-full max-w-full whitespace-nowrap overflow-hidden text-ellipsis border-t border-slate-200/85 pt-2.5 text-sm font-medium tracking-[-0.01em] text-slate-600 sm:pt-3"
+                  ? "mt-2 inline-flex max-w-full items-center whitespace-nowrap overflow-hidden text-ellipsis text-[13px] font-semibold leading-[1.4] tracking-[-0.01em] text-slate-500 sm:mt-2.5"
                   : "results-report__section-body"
               }
             >
