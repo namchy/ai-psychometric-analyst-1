@@ -13,6 +13,7 @@ import type {
   IpipNeo120HrReportV1,
   IpipNeo120ParticipantReportV1,
 } from "@/lib/assessment/ipip-neo-120-report-v1";
+import type { IpipNeo120ParticipantReportV2 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
@@ -29,6 +30,7 @@ import {
   isMwmsDimensionSet,
   normalizeIpcUiLocale,
 } from "@/lib/assessment/result-display";
+import { buildParticipantIpipProfileOverview } from "@/lib/assessment/ipip-participant-report-display";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import {
   buildSafranCandidateInterpretation,
@@ -80,6 +82,7 @@ type ReportDimensionSnapshot = {
 type ReportRendererSelection =
   | { kind: "ipip_neo_120_hr_v1"; report: IpipNeo120HrReportV1 }
   | { kind: "ipip_neo_120_participant_v1"; report: IpipNeo120ParticipantReportV1 }
+  | { kind: "ipip_neo_120_participant_v2"; report: IpipNeo120ParticipantReportV2 }
   | { kind: "big_five_participant_v1"; report: DetailedReportV1 }
   | { kind: "big_five_hr_v1"; report: DetailedReportV1 }
   | { kind: "ipc_participant_v1"; report: IpcParticipantReportV1 }
@@ -105,6 +108,22 @@ function isIpipNeo120ParticipantReport(report: unknown): report is IpipNeo120Par
     (report as IpipNeo120ParticipantReportV1).contract_version ===
       "ipip_neo_120_participant_v1" &&
     Array.isArray((report as IpipNeo120ParticipantReportV1).domains)
+  );
+}
+
+function isIpipNeo120ParticipantReportV2(
+  report: unknown,
+): report is IpipNeo120ParticipantReportV2 {
+  return (
+    Boolean(report) &&
+    typeof report === "object" &&
+    (report as IpipNeo120ParticipantReportV2).contract_version ===
+      "ipip_neo_120_participant_v2" &&
+    Array.isArray((report as IpipNeo120ParticipantReportV2).domains) &&
+    Array.isArray((report as IpipNeo120ParticipantReportV2).key_patterns) &&
+    Array.isArray((report as IpipNeo120ParticipantReportV2).strengths) &&
+    Array.isArray((report as IpipNeo120ParticipantReportV2).watchouts) &&
+    Array.isArray((report as IpipNeo120ParticipantReportV2).development_recommendations)
   );
 }
 
@@ -164,6 +183,14 @@ function selectReportRenderer(
   }
 
   switch (reportState.reportRenderFormat) {
+    case "ipip_neo_120_participant_v2":
+      return isIpipNeo120ParticipantReportV2(reportState.report)
+        ? { kind: "ipip_neo_120_participant_v2", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava IPIP-NEO-120 participant V2 izvještaj, ali snapshot shape ne odgovara tom rendereru.",
+          };
     case "ipip_neo_120_participant_v1":
       return isIpipNeo120ParticipantReport(reportState.report)
         ? { kind: "ipip_neo_120_participant_v1", report: reportState.report }
@@ -264,6 +291,18 @@ function formatParticipantIpipSubdimensionLabel(label: string): string {
   if (label === "Liberalizam") return "Preispitivanje stavova";
   if (label === "Saradljivost") return "Spremnost na dogovor";
   return label;
+}
+
+function formatParticipantIpipInlineNarrativeLabel(label: string): string {
+  return label.trim().toLocaleLowerCase("bs");
+}
+
+function ParticipantIpipInlineNarrativeTerm({
+  label,
+}: {
+  label: string;
+}) {
+  return <em>{formatParticipantIpipInlineNarrativeLabel(label)}</em>;
 }
 
 function getParticipantIpipDomainMicroSummary(domainCode: ParticipantIpipDomain["domain_code"]): string {
@@ -1215,14 +1254,19 @@ function IpipNeo120ScoreBar({
   );
 }
 
+function scrollReportSectionIntoView(target: HTMLElement | null) {
+  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function IpipNeo120ParticipantReportSections({
   report,
 }: {
   report: IpipNeo120ParticipantReportV1;
 }) {
   const [activeDomainCode, setActiveDomainCode] = useState<string | null>(null);
-  const domainGridRef = useRef<HTMLDivElement | null>(null);
+  const overviewSectionRef = useRef<HTMLElement | null>(null);
   const detailPanelRef = useRef<HTMLDivElement | null>(null);
+  const pendingScrollTargetRef = useRef<"details" | "overview" | null>(null);
   const scaleMin = report.meta.scale_hint.min;
   const scaleMax = report.meta.scale_hint.max;
   const hasDevelopmentRecommendations = report.development_recommendations.length > 0;
@@ -1236,6 +1280,7 @@ function IpipNeo120ParticipantReportSections({
   const radarSnapshot = shouldRenderRadarSection
     ? getPersonalityRadarSnapshot(radarDomains)
     : null;
+  const profileOverview = buildParticipantIpipProfileOverview(report);
   const radarChartDomains = shouldRenderRadarSection
     ? radarDomains.map((domain) => ({
         ...domain,
@@ -1275,28 +1320,34 @@ function IpipNeo120ParticipantReportSections({
     : [];
 
   useEffect(() => {
-    if (!activeDomain || !detailPanelRef.current || typeof window === "undefined") {
+    if (pendingScrollTargetRef.current === null) {
       return;
     }
 
-    const panelRect = detailPanelRef.current.getBoundingClientRect();
-    const isInViewport =
-      panelRect.top >= 0 && panelRect.bottom <= window.innerHeight;
-
-    if (!isInViewport) {
-      detailPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [activeDomain]);
-
-  const handleCloseDomainDetails = () => {
-    setActiveDomainCode(null);
+    const scrollTarget = pendingScrollTargetRef.current;
+    pendingScrollTargetRef.current = null;
 
     requestAnimationFrame(() => {
-      domainGridRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      if (scrollTarget === "details") {
+        scrollReportSectionIntoView(detailPanelRef.current);
+        return;
+      }
+
+      scrollReportSectionIntoView(overviewSectionRef.current);
     });
+  }, [activeDomainCode]);
+
+  const handleCloseDomainDetails = () => {
+    pendingScrollTargetRef.current = "overview";
+    setActiveDomainCode(null);
+  };
+
+  const handleToggleDomainDetails = (domainCode: string) => {
+    pendingScrollTargetRef.current =
+      activeDomainCode === domainCode ? "overview" : "details";
+    setActiveDomainCode((currentDomainCode) =>
+      currentDomainCode === domainCode ? null : domainCode,
+    );
   };
 
   return (
@@ -1363,36 +1414,19 @@ function IpipNeo120ParticipantReportSections({
           </h3>
         </div>
         <div className="mb-4 flex flex-wrap gap-2">
-          <span
-            className="inline-flex items-center rounded-full px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em]"
-            style={{
-              background: "rgba(6, 214, 160, 0.12)",
-              border: "1px solid rgba(6, 214, 160, 0.34)",
-              color: "#073b4c",
-            }}
-          >
-            Visoka savjesnost
-          </span>
-          <span
-            className="inline-flex items-center rounded-full px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em]"
-            style={{
-              background: "rgba(17, 138, 178, 0.12)",
-              border: "1px solid rgba(17, 138, 178, 0.34)",
-              color: "#073b4c",
-            }}
-          >
-            Visoka energija
-          </span>
-          <span
-            className="inline-flex items-center rounded-full px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em]"
-            style={{
-              background: "rgba(255, 209, 102, 0.18)",
-              border: "1px solid rgba(255, 209, 102, 0.42)",
-              color: "#073b4c",
-            }}
-          >
-            Stabilan emocionalni profil
-          </span>
+          {profileOverview.badges.map((badge) => (
+            <span
+              key={badge.text}
+              className="inline-flex items-center rounded-full px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em]"
+              style={{
+                background: badge.backgroundColor,
+                border: `1px solid ${badge.borderColor}`,
+                color: "#073b4c",
+              }}
+            >
+              {badge.text}
+            </span>
+          ))}
         </div>
         <p className="mt-0 max-w-[760px] text-[15px] leading-[1.75] text-slate-700">
           {report.summary.overview}
@@ -1404,57 +1438,27 @@ function IpipNeo120ParticipantReportSections({
           <h3>Ključni obrasci u profilu</h3>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
-            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#06d6a0" }} />
-            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
-              Organizovana inicijativa
-            </h4>
-            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
-              Kombinacija vrlo visoke Savjesnosti i vrlo visoke Ekstraverzije sugeriše da
-              najčešće ne ostaješ pasivan kada postoji cilj. Vjerovatno ti odgovara kada
-              možeš preuzeti ritam, pokrenuti stvari i istovremeno zadržati strukturu.
-            </p>
-          </div>
-
-          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
-            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#118ab2" }} />
-            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
-              Stabilnost pod pritiskom
-            </h4>
-            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
-              Vrlo niska emocionalna reaktivnost ukazuje da u stresnim situacijama
-              najčešće ne reaguješ naglo. To može biti važna prednost u odgovornim ili
-              dinamičnim okruženjima, posebno kada drugi očekuju miran ton i dosljednost.
-            </p>
-          </div>
-
-          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
-            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#ffd166" }} />
-            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
-              Saradnja s jasnim standardima
-            </h4>
-            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
-              Visoka Spremnost na saradnju sugeriše korektan i otvoren odnos prema
-              drugima. U kombinaciji s visokom Savjesnošću, može značiti da cijeniš
-              dogovor, ali i očekuješ da se preuzete obaveze zaista ispune.
-            </p>
-          </div>
-
-          <div className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none">
-            <div className="mb-4 h-1 w-12 rounded-full" style={{ background: "#ef476f" }} />
-            <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
-              Praktična otvorenost
-            </h4>
-            <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
-              Uravnotežena Otvorenost prema iskustvu sugeriše da nove ideje ne odbacuješ,
-              ali ih vjerovatno procjenjuješ kroz korisnost i smisao. Najlakše prihvataš
-              promjene kada vidiš kako doprinose cilju.
-            </p>
-          </div>
+          {profileOverview.patterns.map((pattern) => (
+            <div
+              key={pattern.title}
+              className="min-h-[190px] rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none"
+            >
+              <div className="mb-4 h-1 w-12 rounded-full" style={{ background: pattern.accentColor }} />
+              <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
+                {pattern.title}
+              </h4>
+              <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
+                {pattern.body}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="results-report__section results-report__section--dimensions stack-sm">
+      <section
+        ref={overviewSectionRef}
+        className="results-report__section results-report__section--dimensions stack-sm"
+      >
         <div className="results-report__section-heading">
           <h3>Pregled domena</h3>
           <p className="results-report__section-note">
@@ -1462,7 +1466,7 @@ function IpipNeo120ParticipantReportSections({
           </p>
         </div>
 
-        <div ref={domainGridRef} className="mt-5 grid gap-4 md:grid-cols-4">
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
           {report.domains.map((domain, index) => {
             const domainDisplayLabel = formatParticipantIpipDomainLabel(domain.label);
             const domainDisplayState = getParticipantIpipDomainDisplayState(domain);
@@ -1522,18 +1526,15 @@ function IpipNeo120ParticipantReportSections({
                     <div className="mt-4 flex items-center justify-end">
                       <button
                         type="button"
+                        aria-expanded={isActive}
                         className={
                           isActive
-                            ? "inline-flex items-center rounded-full border border-[#ef476f]/45 bg-[rgba(239,71,111,0.10)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#ef476f]/70 hover:bg-[rgba(239,71,111,0.16)]"
+                            ? "inline-flex items-center rounded-full border border-[rgba(14,116,144,0.28)] bg-[#EAF7F7] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#155E75] transition-colors hover:border-[rgba(14,116,144,0.38)] hover:bg-[rgba(14,116,144,0.12)]"
                             : "inline-flex items-center rounded-full border border-[#118ab2]/45 bg-[rgba(17,138,178,0.10)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#118ab2]/70 hover:bg-[rgba(17,138,178,0.16)]"
                         }
-                        onClick={() =>
-                          isActive
-                            ? handleCloseDomainDetails()
-                            : setActiveDomainCode(domain.domain_code)
-                        }
+                        onClick={() => handleToggleDomainDetails(domain.domain_code)}
                       >
-                        {isActive ? "Sakrij detalje ↑" : "Prikaži detalje ↓"}
+                        {isActive ? "Zatvori detalje" : "Prikaži detalje"}
                       </button>
                     </div>
                   </div>
@@ -1568,10 +1569,10 @@ function IpipNeo120ParticipantReportSections({
                   </span>
                   <button
                     type="button"
-                    className="inline-flex items-center rounded-full border border-[#ef476f]/45 bg-[rgba(239,71,111,0.10)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#ef476f]/70 hover:bg-[rgba(239,71,111,0.16)]"
+                    className="inline-flex items-center rounded-full border border-[rgba(14,116,144,0.28)] bg-[#EAF7F7] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#155E75] transition-colors hover:border-[rgba(14,116,144,0.38)] hover:bg-[rgba(14,116,144,0.12)]"
                     onClick={handleCloseDomainDetails}
                   >
-                    Sakrij detalje ↑
+                    Zatvori detalje
                   </button>
                 </div>
               </div>
@@ -1622,7 +1623,11 @@ function IpipNeo120ParticipantReportSections({
                 <div className="mt-7 border-t border-slate-200/75 pt-6">
                   <h5 className="text-[16px] font-extrabold text-slate-950">Poddimenzije</h5>
                   <p className="mt-1 text-[13px] leading-[1.5] text-slate-500">
-                    Poddimenzije pokazuju od čega se ovaj domen sastoji.
+                    Poddimenzije pokazuju od čega se{" "}
+                    <ParticipantIpipInlineNarrativeTerm
+                      label={formatParticipantIpipDomainLabel(activeDomain.label)}
+                    />{" "}
+                    sastoji.
                   </p>
                   <ol className="mt-5 grid list-none items-start gap-3 md:grid-cols-2">
                     {activeDomain.subdimensions.map((subdimension, index) => {
@@ -1698,10 +1703,10 @@ function IpipNeo120ParticipantReportSections({
               <div className="mt-7 flex justify-end border-t border-slate-200/75 pt-5">
                 <button
                   type="button"
-                  className="inline-flex items-center rounded-full border border-[#ef476f]/45 bg-[rgba(239,71,111,0.10)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#ef476f]/70 hover:bg-[rgba(239,71,111,0.16)]"
+                  className="inline-flex items-center rounded-full border border-[rgba(14,116,144,0.28)] bg-[#EAF7F7] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#155E75] transition-colors hover:border-[rgba(14,116,144,0.38)] hover:bg-[rgba(14,116,144,0.12)]"
                   onClick={handleCloseDomainDetails}
                 >
-                  Sakrij detalje ↑
+                  Zatvori detalje
                 </button>
               </div>
             </div>
@@ -1770,6 +1775,435 @@ function IpipNeo120ParticipantReportSections({
         </h3>
         <p className="mt-2 text-[12.5px] leading-[1.6] text-slate-500">
           {report.interpretation_note}
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function IpipNeo120ParticipantReportV2Sections({
+  report,
+}: {
+  report: IpipNeo120ParticipantReportV2;
+}) {
+  const [activeDomainCode, setActiveDomainCode] = useState<string | null>(null);
+  const overviewSectionRef = useRef<HTMLElement | null>(null);
+  const detailPanelRef = useRef<HTMLDivElement | null>(null);
+  const pendingScrollTargetRef = useRef<"details" | "overview" | null>(null);
+  const scaleMin = report.meta.scale_hint.min;
+  const scaleMax = report.meta.scale_hint.max;
+  const activeDomain =
+    report.domains.find((domain) => domain.domain_code === activeDomainCode) ?? null;
+
+  useEffect(() => {
+    if (pendingScrollTargetRef.current === null) {
+      return;
+    }
+
+    const scrollTarget = pendingScrollTargetRef.current;
+    pendingScrollTargetRef.current = null;
+
+    requestAnimationFrame(() => {
+      if (scrollTarget === "details") {
+        scrollReportSectionIntoView(detailPanelRef.current);
+        return;
+      }
+
+      scrollReportSectionIntoView(overviewSectionRef.current);
+    });
+  }, [activeDomainCode]);
+
+  const handleSelectDomain = (domainCode: string) => {
+    pendingScrollTargetRef.current =
+      activeDomainCode === domainCode ? "overview" : "details";
+    setActiveDomainCode((currentDomainCode) =>
+      currentDomainCode === domainCode ? null : domainCode,
+    );
+  };
+
+  return (
+    <div className="results-report__closing stack-md">
+      <section className="results-report__section results-report__panel stack-sm rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 pt-[22px] pb-6 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.35)] sm:px-8 sm:pt-[28px] sm:pb-[30px]">
+        <div className="h-[3px] w-[72px] rounded-full bg-[linear-gradient(90deg,#0f766e,#0e7490)] mb-[18px] sm:w-[88px]" />
+        <div className="results-report__section-heading">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+            Sažetak
+          </p>
+          <h3
+            className={`${zodiak.className} mb-5 max-w-[720px] text-[clamp(1.65rem,2.4vw,2.05rem)] font-bold leading-[1.08] tracking-[-0.04em] text-slate-900`}
+          >
+            {report.summary.headline}
+          </h3>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {report.summary.badges.map((badge) => (
+            <span
+              key={`${badge.label}-${badge.related_domains.join("-")}-${badge.related_facets.join("-")}`}
+              className="inline-flex items-center rounded-full border border-[rgba(14,116,144,0.18)] bg-[rgba(14,116,144,0.08)] px-[11px] py-[7px] text-[12.5px] font-bold leading-none tracking-[-0.01em] text-[#073b4c]"
+            >
+              {badge.label}
+            </span>
+          ))}
+        </div>
+        <p className="mt-0 max-w-[760px] text-[15px] leading-[1.75] text-slate-700">
+          {report.summary.overview}
+        </p>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Ključni obrasci u profilu</h3>
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {report.key_patterns.map((pattern) => (
+            <div
+              key={pattern.title}
+              className="rounded-[20px] border border-slate-200/85 bg-slate-50/70 p-5 shadow-none"
+            >
+              <div className="mb-4 h-1 w-12 rounded-full bg-[#155E75]" />
+              <h4 className="text-[15px] font-extrabold leading-[1.25] tracking-[-0.01em] text-slate-950">
+                {pattern.title}
+              </h4>
+              <p className="mt-2.5 text-[14px] leading-[1.65] text-slate-600">
+                {pattern.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>{report.work_style.title}</h3>
+        </div>
+        <div className="results-report__section-body stack-xs">
+          {report.work_style.paragraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </div>
+      </section>
+
+      <section
+        ref={overviewSectionRef}
+        className="results-report__section results-report__section--dimensions stack-sm"
+      >
+        <div className="results-report__section-heading">
+          <h3>Pregled domena</h3>
+          <p className="results-report__section-note">
+            Skala koristi canonical score vrijednosti iz V2 report snapshot-a.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
+          {report.domains.map((domain, index) => {
+            const isActive = activeDomainCode === domain.domain_code;
+            const bandPillClassName = getParticipantIpipBandPillClassName(domain.display_band);
+            const bandAccentColor = getParticipantIpipBandAccentColor(domain.display_band);
+
+            return (
+              <div
+                key={domain.domain_code}
+                className={
+                  index === 4
+                    ? "md:col-start-2 md:col-span-2"
+                    : "md:col-span-2"
+                }
+              >
+                <div
+                  className={`min-h-[150px] rounded-[22px] border border-slate-200/85 bg-white/95 p-5 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.46)] ${
+                    isActive ? "ring-2 ring-[#155E75]/30 border-[#155E75]/35 bg-white" : ""
+                  }`}
+                >
+                  <div
+                    className="mb-4 h-1 w-12 rounded-full"
+                    style={{ background: bandAccentColor }}
+                  />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-[14px] font-extrabold leading-[1.15] tracking-[-0.015em] text-slate-950">
+                        {domain.participant_display_label}
+                      </h4>
+                      <p
+                        className={`mt-2 inline-flex w-fit items-center rounded-full border px-2 py-1 text-[11px] font-bold leading-none ${bandPillClassName}`}
+                      >
+                        {domain.display_band_label}
+                      </p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-2 py-1 text-[12px] font-extrabold leading-none text-slate-900">
+                      {formatDiscreetScore(domain.display_score)}/{scaleMax}
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-[13px] font-semibold leading-[1.45] text-slate-500">
+                    {domain.card_title}
+                  </p>
+
+                  <div className="mt-3">
+                    <IpipNeo120ScoreBar
+                      label={domain.participant_display_label}
+                      score={domain.display_score}
+                      min={scaleMin}
+                      max={scaleMax}
+                    />
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-end">
+                    <button
+                      type="button"
+                      aria-expanded={isActive}
+                      className={
+                        isActive
+                          ? "inline-flex items-center rounded-full border border-[rgba(14,116,144,0.28)] bg-[#EAF7F7] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#155E75] transition-colors hover:border-[rgba(14,116,144,0.38)] hover:bg-[rgba(14,116,144,0.12)]"
+                          : "inline-flex items-center rounded-full border border-[#118ab2]/45 bg-[rgba(17,138,178,0.10)] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#073b4c] transition-colors hover:border-[#118ab2]/70 hover:bg-[rgba(17,138,178,0.16)]"
+                      }
+                      onClick={() => handleSelectDomain(domain.domain_code)}
+                    >
+                      {isActive ? "Zatvori detalje" : "Prikaži detalje"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {activeDomain ? (
+          <div
+            ref={detailPanelRef}
+            className="mt-5 overflow-hidden rounded-[28px] border border-slate-200/85 bg-white/95 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.5)]"
+          >
+            <div className="h-[5px] w-full bg-[#155E75]" />
+            <div className="p-6 sm:p-7">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200/75 pb-5">
+                <div className="min-w-0 flex-1">
+                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                    DETALJ AKTIVNE DOMENE
+                  </p>
+                  <h4 className="text-[24px] font-extrabold leading-[1.1] tracking-[-0.03em] text-slate-950">
+                    {activeDomain.participant_display_label}
+                  </h4>
+                  <p className="mt-2 inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[12px] font-bold leading-none text-slate-500">
+                    {activeDomain.display_band_label}
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-slate-100/90 px-3 py-1.5 text-[13px] font-extrabold leading-none text-slate-900">
+                  {formatDiscreetScore(activeDomain.display_score)}/{scaleMax}
+                </span>
+              </div>
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
+                <div className="space-y-4">
+                  <section>
+                    <h5 className="text-[13px] font-extrabold text-[#073b4c]">
+                      {activeDomain.card_title}
+                    </h5>
+                    <p className="mt-2 text-[15px] leading-[1.8] text-slate-600">
+                      {activeDomain.summary}
+                    </p>
+                  </section>
+                  <section>
+                    <h5 className="text-[13px] font-extrabold text-[#073b4c]">
+                      Praktični signal
+                    </h5>
+                    <p className="mt-2 text-[14px] leading-[1.7] text-slate-600">
+                      {activeDomain.practical_signal}
+                    </p>
+                  </section>
+                  <section>
+                    <h5 className="text-[13px] font-extrabold text-[#073b4c]">
+                      Refleksija
+                    </h5>
+                    <p className="mt-2 text-[14px] leading-[1.7] text-slate-600">
+                      {activeDomain.candidate_reflection}
+                    </p>
+                  </section>
+                </div>
+
+                <div className="grid gap-3">
+                  <div className="rounded-[18px] border border-[#06d6a0]/20 bg-[rgba(6,214,160,0.045)] p-4">
+                    <h5 className="text-[13px] font-extrabold text-[#073b4c]">Snage</h5>
+                    <ul className="mt-3 space-y-2">
+                      {activeDomain.strengths.map((item) => (
+                        <li key={item} className="text-[13.5px] leading-[1.6] text-slate-600">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="rounded-[18px] border border-[#ffd166]/28 bg-[rgba(255,209,102,0.06)] p-4">
+                    <h5 className="text-[13px] font-extrabold text-[#073b4c]">Tačke opreza</h5>
+                    <ul className="mt-3 space-y-2">
+                      {activeDomain.watchouts.map((item) => (
+                        <li key={item} className="text-[13.5px] leading-[1.6] text-slate-600">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="rounded-[18px] border border-[#118ab2]/20 bg-[rgba(17,138,178,0.045)] p-4">
+                    <h5 className="text-[13px] font-extrabold text-[#073b4c]">
+                      Razvojni fokus
+                    </h5>
+                    <p className="mt-3 text-[13.5px] leading-[1.6] text-slate-600">
+                      {activeDomain.development_tip}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-7 border-t border-slate-200/75 pt-6">
+                <h5 className="text-[16px] font-extrabold text-slate-950">Poddimenzije</h5>
+                <p className="mt-1 text-[13px] leading-[1.5] text-slate-500">
+                  Poddimenzije pokazuju od čega se{" "}
+                  <ParticipantIpipInlineNarrativeTerm
+                    label={activeDomain.participant_display_label}
+                  />{" "}
+                  sastoji.
+                </p>
+                <ol className="mt-5 grid list-none items-start gap-3 md:grid-cols-2">
+                  {activeDomain.subdimensions.map((subdimension, index) => {
+                    const facetAccentColor = getParticipantIpipFacetAccentColor(index);
+                    const facetScorePercent = getVisualScoreWidth(
+                      subdimension.score,
+                      scaleMin,
+                      scaleMax,
+                    );
+
+                    return (
+                      <li
+                        key={subdimension.facet_code}
+                        className="self-start rounded-[18px] border border-slate-200/80 bg-slate-50/55 p-4"
+                      >
+                        <div
+                          className="mb-3 h-1 w-10 rounded-full"
+                          style={{ backgroundColor: facetAccentColor }}
+                        />
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h6 className="text-[14px] font-extrabold leading-[1.25] text-slate-950">
+                              {subdimension.participant_display_label}
+                            </h6>
+                            <p className="mt-2 inline-flex w-fit items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-[12px] font-bold leading-none text-slate-500">
+                              {subdimension.band_label}
+                            </p>
+                          </div>
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-slate-300/80 bg-white px-2 py-1 text-[12px] font-extrabold leading-none text-slate-900">
+                            {formatDiscreetScore(subdimension.score)}/{scaleMax}
+                          </span>
+                        </div>
+                        <div className="mt-3">
+                          <div className="relative h-2 rounded-full bg-slate-200/90">
+                            <div
+                              className="absolute left-0 top-0 h-2 rounded-full bg-[#118ab2]"
+                              style={{ width: `${facetScorePercent}%` }}
+                            />
+                          </div>
+                        </div>
+                        <h6 className="mt-4 text-[13px] font-extrabold text-[#073b4c]">
+                          {subdimension.card_title}
+                        </h6>
+                        <p className="mt-2 text-[13.5px] leading-[1.55] text-slate-600">
+                          {subdimension.summary}
+                        </p>
+                        <p className="mt-2 text-[13px] leading-[1.55] text-slate-500">
+                          {subdimension.practical_signal}
+                        </p>
+                        <p className="mt-2 text-[13px] leading-[1.55] text-slate-500">
+                          {subdimension.candidate_reflection}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+
+              <div className="mt-7 flex justify-end border-t border-slate-200/75 pt-5">
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-full border border-[rgba(14,116,144,0.28)] bg-[#EAF7F7] px-3.5 py-2 text-[12.5px] font-extrabold leading-none text-[#155E75] transition-colors hover:border-[rgba(14,116,144,0.38)] hover:bg-[rgba(14,116,144,0.12)]"
+                  onClick={() => {
+                    pendingScrollTargetRef.current = "overview";
+                    setActiveDomainCode(null);
+                  }}
+                >
+                  Zatvori detalje
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="results-report__section results-report__panel card stack-sm">
+        <div className="results-report__section-heading">
+          <h3>Šta ovaj profil znači u praksi</h3>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+            <div className="mb-3.5 h-1 w-14 rounded-full bg-[#06d6a0]" />
+            <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">Snage</h4>
+            <ul className="grid gap-3 md:grid-cols-2">
+              {report.strengths.map((item) => (
+                <li key={item.title} className="rounded-[14px] bg-white/70 p-4">
+                  <h5 className="text-[13.5px] font-extrabold text-slate-900">{item.title}</h5>
+                  <p className="mt-2 text-[13.5px] leading-[1.6] text-slate-600">
+                    {item.description}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+              <div className="mb-3.5 h-1 w-14 rounded-full bg-[#ffd166]" />
+              <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">
+                Tačke opreza
+              </h4>
+              <ul className="space-y-3">
+                {report.watchouts.map((item) => (
+                  <li key={item.title} className="rounded-[14px] bg-white/70 p-4">
+                    <h5 className="text-[13.5px] font-extrabold text-slate-900">{item.title}</h5>
+                    <p className="mt-2 text-[13.5px] leading-[1.6] text-slate-600">
+                      {item.description}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-[18px] border border-slate-200/80 bg-slate-50/70 p-[18px] shadow-none">
+              <div className="mb-3.5 h-1 w-14 rounded-full bg-[#118ab2]" />
+              <h4 className="mb-3 text-[13px] font-extrabold leading-[1.2] text-slate-950">
+                Preporuke
+              </h4>
+              <ul className="space-y-3">
+                {report.development_recommendations.map((item) => (
+                  <li key={item.title} className="rounded-[14px] bg-white/70 p-4">
+                    <h5 className="text-[13.5px] font-extrabold text-slate-900">{item.title}</h5>
+                    <p className="mt-2 text-[13.5px] leading-[1.6] text-slate-600">
+                      {item.description}
+                    </p>
+                    <p className="mt-2 text-[13px] font-semibold leading-[1.55] text-[#155E75]">
+                      {item.action}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[18px] border border-slate-200/70 bg-slate-50/70 px-5 py-4">
+        <h3 className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-slate-400">
+          {report.interpretation_note.title}
+        </h3>
+        <p className="mt-2 text-[12.5px] leading-[1.6] text-slate-500">
+          {report.interpretation_note.text}
         </p>
       </section>
     </div>
@@ -2145,8 +2579,12 @@ export function CompletedAssessmentSummary({
   const hasResults = results !== null;
   const ipcUiLocale = normalizeIpcUiLocale(locale);
   const reportRenderer = selectReportRenderer(reportState);
-  const ipipNeo120ParticipantReport =
+  const ipipNeo120ParticipantV1Report =
     reportRenderer.kind === "ipip_neo_120_participant_v1" ? reportRenderer.report : null;
+  const ipipNeo120ParticipantV2Report =
+    reportRenderer.kind === "ipip_neo_120_participant_v2" ? reportRenderer.report : null;
+  const ipipNeo120ParticipantReport =
+    ipipNeo120ParticipantV1Report ?? ipipNeo120ParticipantV2Report;
   const ipipNeo120HrReport =
     reportRenderer.kind === "ipip_neo_120_hr_v1" ? reportRenderer.report : null;
   const bigFiveParticipantReport =
@@ -2604,7 +3042,11 @@ export function CompletedAssessmentSummary({
       ) : null}
 
       {ipipNeo120ParticipantReport ? (
-        <IpipNeo120ParticipantReportSections report={ipipNeo120ParticipantReport} />
+        ipipNeo120ParticipantV1Report ? (
+          <IpipNeo120ParticipantReportSections report={ipipNeo120ParticipantV1Report} />
+        ) : ipipNeo120ParticipantV2Report ? (
+          <IpipNeo120ParticipantReportV2Sections report={ipipNeo120ParticipantV2Report} />
+        ) : null
       ) : null}
 
       {ipipNeo120HrReport ? (

@@ -17,6 +17,7 @@ import {
   persistCompletedAssessmentReport,
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
+import { claimNextReportJob, processClaimedReportJob } from "@/lib/assessment/report-job-worker";
 import {
   normalizeAssessmentLocale,
   type AssessmentLocale,
@@ -144,6 +145,26 @@ function revalidateAttemptAllPaths(attemptId: string) {
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/attempts/${attemptId}`);
   revalidatePath(`/dashboard/attempts/${attemptId}/run`);
+}
+
+async function triggerQueuedParticipantReportProcessing(attemptId: string): Promise<void> {
+  try {
+    const job = await claimNextReportJob({
+      attemptId,
+      audience: "participant",
+    });
+
+    if (!job) {
+      return;
+    }
+
+    await processClaimedReportJob(job);
+  } catch (error) {
+    console.error("triggerQueuedParticipantReportProcessing failed", {
+      attemptId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 function isStringArray(value: AssessmentSelectionValue): value is string[] {
@@ -936,6 +957,7 @@ export async function completeProtectedAssessmentAttempt(
 
     if (shouldGenerateCompletedAssessmentReport(results)) {
       await enqueueCompletedAssessmentReports(persistResult.attemptId);
+      await triggerQueuedParticipantReportProcessing(persistResult.attemptId);
     }
 
     revalidateAttemptAllPaths(persistResult.attemptId);

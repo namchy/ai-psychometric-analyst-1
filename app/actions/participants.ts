@@ -1,5 +1,7 @@
 "use server";
 
+import { randomInt } from "node:crypto";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 import { normalizeAssessmentLocale } from "@/lib/assessment/locale";
@@ -14,6 +16,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type ParticipantType = "employee" | "candidate";
 type ParticipantStatus = "active" | "inactive";
+const PARTICIPANT_CREDENTIALS_COOKIE = "participant-provisioning-flash";
 
 function getFieldValue(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -33,7 +36,67 @@ function isParticipantStatus(value: string): value is ParticipantStatus {
   return value === "active" || value === "inactive";
 }
 
-export async function createParticipant(formData: FormData) {
+function generateTemporaryPassword(length = 14): string {
+  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowercase = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const symbols = "!@#$%^&*()-_=+?";
+  const allCharacters = `${uppercase}${lowercase}${digits}${symbols}`;
+
+  const requiredCharacters = [
+    uppercase[randomInt(0, uppercase.length)],
+    lowercase[randomInt(0, lowercase.length)],
+    digits[randomInt(0, digits.length)],
+    symbols[randomInt(0, symbols.length)],
+  ];
+
+  while (requiredCharacters.length < length) {
+    requiredCharacters.push(allCharacters[randomInt(0, allCharacters.length)]);
+  }
+
+  for (let index = requiredCharacters.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(0, index + 1);
+    [requiredCharacters[index], requiredCharacters[swapIndex]] = [
+      requiredCharacters[swapIndex],
+      requiredCharacters[index],
+    ];
+  }
+
+  return requiredCharacters.join("");
+}
+
+type CreateParticipantResult =
+  | {
+      success: true;
+      message: string;
+      credentials: {
+        email: string;
+        temporaryPassword: string;
+      };
+    }
+  | {
+      success: false;
+      message: string;
+      credentials?: undefined;
+    };
+
+function setParticipantProvisioningCookie(result: CreateParticipantResult) {
+  cookies().set(
+    PARTICIPANT_CREDENTIALS_COOKIE,
+    JSON.stringify(result),
+    {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/dashboard",
+      maxAge: 180,
+    },
+  );
+}
+
+async function createParticipantProvisioningResult(
+  formData: FormData,
+): Promise<CreateParticipantResult> {
   const user = await requireAuthenticatedUserForAction();
   const organization = await getActiveOrganizationForUser(user.id);
 
@@ -63,9 +126,47 @@ export async function createParticipant(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const { data: existingParticipant, error: existingParticipantError } = await supabase
+    .from("participants")
+    .select("id")
+    .eq("organization_id", organization.id)
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (existingParticipantError) {
+    redirect(
+      `/dashboard?error=create-participant-failed&detail=${encodeURIComponent("Nije moguće provjeriti da li kandidat već postoji.")}`,
+    );
+  }
+
+  if (existingParticipant) {
+    redirect(
+      `/dashboard?error=create-participant-failed&detail=${encodeURIComponent("Kandidat sa ovom email adresom već postoji u aktivnoj organizaciji.")}`,
+    );
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  const { data: authData, error: createUserError } = await supabase.auth.admin.createUser({
+    email,
+    password: temporaryPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+      role: "participant",
+    },
+  });
+
+  const authUserId = authData.user?.id;
+
+  if (createUserError || !authUserId) {
+    const detail =
+      createUserError?.message ?? "Nije moguće kreirati auth korisnika za kandidata.";
+    redirect(`/dashboard?error=create-participant-failed&detail=${encodeURIComponent(detail)}`);
+  }
+
   const { error } = await supabase.from("participants").insert({
     organization_id: organization.id,
-    user_id: null,
+    user_id: authUserId,
     full_name: fullName,
     email,
     participant_type: participantType,
@@ -73,9 +174,34 @@ export async function createParticipant(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/dashboard?error=create-participant-failed&detail=${encodeURIComponent(error.message)}`);
+    const { error: rollbackError } = await supabase.auth.admin.deleteUser(authUserId);
+
+    if (rollbackError) {
+      redirect(
+        `/dashboard?error=create-participant-failed&detail=${encodeURIComponent("Auth korisnik je kreiran, ali participant zapis nije sačuvan i rollback nije uspio. Potrebna je ručna provjera.")}`,
+      );
+    }
+
+    redirect(
+      `/dashboard?error=create-participant-failed&detail=${encodeURIComponent(`Participant zapis nije kreiran: ${error.message}`)}`,
+    );
   }
 
+  const result: CreateParticipantResult = {
+    success: true,
+    message: "Kandidat je uspješno kreiran.",
+    credentials: {
+      email,
+      temporaryPassword,
+    },
+  };
+
+  setParticipantProvisioningCookie(result);
+  return result;
+}
+
+export async function createParticipant(formData: FormData): Promise<void> {
+  await createParticipantProvisioningResult(formData);
   redirect("/dashboard?success=participant-created");
 }
 

@@ -25,6 +25,11 @@ import {
   type IpipNeo120ParticipantReportV1,
 } from "@/lib/assessment/ipip-neo-120-report-v1";
 import {
+  formatIpipNeo120ParticipantReportV2ValidationErrors,
+  validateIpipNeo120ParticipantReportV2,
+  type IpipNeo120ParticipantReportV2,
+} from "@/lib/assessment/ipip-neo-120-participant-report-v2";
+import {
   getIpcPromptContract,
   isIpcTestSlug,
   type IpcReportAudience,
@@ -39,13 +44,15 @@ import {
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type { ScoringMethod } from "@/lib/assessment/types";
+import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
 
 export type ReportGeneratorType = "mock" | "openai";
 export type ReportFamily = "big_five" | "ipc";
 export type ReportAudience = "participant" | "hr";
-export type ReportVersion = "v1";
+export type ReportVersion = "v1" | "v2";
 export type ReportRenderFormat =
   | "ipip_neo_120_participant_v1"
+  | "ipip_neo_120_participant_v2"
   | "big_five_participant_v1"
   | "big_five_hr_v1"
   | "ipc_participant_v1"
@@ -62,6 +69,7 @@ export type RuntimeCompletedAssessmentReport =
   | BigFiveCompletedAssessmentReport
   | IpipNeo120HrReportV1
   | IpipNeo120ParticipantReportV1
+  | IpipNeo120ParticipantReportV2
   | IpcCompletedAssessmentReport;
 export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
 
@@ -148,6 +156,7 @@ export function isCompletedAssessmentReport(value: unknown): value is CompletedA
     validateDetailedReportV1(value).ok ||
     validateIpipNeo120HrReportV1(value).ok ||
     validateIpipNeo120ParticipantReportV1(value).ok ||
+    validateIpipNeo120ParticipantReportV2(value).ok ||
     validateIpcParticipantReportV1(value).ok ||
     validateIpcHrReportV1(value).ok
   );
@@ -219,10 +228,15 @@ export function resolveReportSignal(context: {
 } {
   const reportFamily = resolveReportFamily(context.testSlug);
   const reportAudience = context.audience;
-  const reportVersion = "v1" as const;
+  const reportVersion =
+    isIpipNeo120TestSlug(context.testSlug) && context.audience === "participant"
+      ? getIpipNeo120ParticipantReportVersion()
+      : "v1";
   const reportRenderFormat =
     isIpipNeo120TestSlug(context.testSlug) && context.audience === "participant"
-      ? "ipip_neo_120_participant_v1"
+      ? reportVersion === "v2"
+        ? "ipip_neo_120_participant_v2"
+        : "ipip_neo_120_participant_v1"
       : resolveReportRenderFormat({
           reportFamily,
           reportAudience,
@@ -268,18 +282,32 @@ export function validateRuntimeCompletedAssessmentReport(
   | { ok: true; value: RuntimeCompletedAssessmentReport }
   | { ok: false; reason: string } {
   if (isIpipNeo120TestSlug(context.testSlug) && context.audience === "participant") {
-    const validationResult = validateIpipNeo120ParticipantReportV1(value);
+    const v1ValidationResult = validateIpipNeo120ParticipantReportV1(value);
 
-    if (!validationResult.ok) {
+    if (v1ValidationResult.ok) {
       return {
-        ok: false,
-        reason: formatIpipNeo120ReportValidationErrors(validationResult.errors),
+        ok: true,
+        value: v1ValidationResult.value,
+      };
+    }
+
+    const v2ValidationResult = validateIpipNeo120ParticipantReportV2(value);
+
+    if (v2ValidationResult.ok) {
+      return {
+        ok: true,
+        value: v2ValidationResult.value,
       };
     }
 
     return {
-      ok: true,
-      value: validationResult.value,
+      ok: false,
+      reason: [
+        "V1:",
+        formatIpipNeo120ReportValidationErrors(v1ValidationResult.errors),
+        "V2:",
+        formatIpipNeo120ParticipantReportV2ValidationErrors(v2ValidationResult.errors),
+      ].join(" "),
     };
   }
 

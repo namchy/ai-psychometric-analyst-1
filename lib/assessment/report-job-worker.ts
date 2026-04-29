@@ -477,7 +477,27 @@ async function failReportJob(reportId: string, failure: ReportJobFailure): Promi
   );
 
   if (error) {
-    throw new Error(`Failed to persist report job failure: ${error.message}`);
+    const completedAt = new Date().toISOString();
+    const { error: fallbackError } = await executeSupabaseOperation(
+      async () =>
+        await supabase
+          .from("attempt_reports")
+          .update({
+            report_status: "failed",
+            failure_code: failure.code,
+            failure_reason: failure.reason,
+            completed_at: completedAt,
+          })
+          .eq("id", reportId)
+          .eq("report_status", "processing"),
+      "failReportJobFallbackUpdate",
+    );
+
+    if (fallbackError) {
+      throw new Error(
+        `Failed to persist report job failure: ${error.message}; fallback update also failed: ${fallbackError.message}`,
+      );
+    }
   }
 }
 

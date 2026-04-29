@@ -8,26 +8,45 @@ import {
 } from "@/lib/assessment/detailed-report-v1";
 import {
   IPIP_NEO_120_DOMAIN_ORDER,
+  IPIP_NEO_120_FACETS_BY_DOMAIN,
+  getIpipNeo120FacetLabel,
   type IpipNeo120DomainCode,
 } from "@/lib/assessment/ipip-neo-120-labels";
 import {
   formatIpipNeo120ReportValidationErrors,
+  type IpipNeo120HrReportV1,
   type IpipNeo120ParticipantReportV1,
+  validateIpipNeo120HrReportV1,
   validateIpipNeo120ParticipantReportV1,
 } from "@/lib/assessment/ipip-neo-120-report-v1";
+import {
+  buildIpipNeo120ParticipantAiInputV2,
+  validateIpipNeo120ParticipantAiInputV2,
+  type IpipNeo120ParticipantAiInputV2,
+  type IpipNeo120ParticipantBandV2,
+} from "@/lib/assessment/ipip-neo-120-participant-ai-input-v2";
+import {
+  formatIpipNeo120ParticipantReportV2ValidationErrors,
+  validateIpipNeo120ParticipantReportV2,
+  type IpipNeo120ParticipantReportV2,
+} from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { IpcReportPromptInput } from "@/lib/assessment/ipc-report-contract";
 import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
   validateIpcParticipantReportV1,
 } from "@/lib/assessment/ipc-report-v1";
-import type { IpipNeo120ParticipantReportPromptInput } from "@/lib/assessment/ipip-neo-120-report-contract";
+import type {
+  IpipNeo120HrReportPromptInput,
+  IpipNeo120ParticipantReportPromptInput,
+} from "@/lib/assessment/ipip-neo-120-report-contract";
 import type {
   AiReportPromptInput,
   PreparedReportGenerationInput,
   ReportProvider,
   RuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
+import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
 
 function getNeoBandCopy(band: "lower" | "balanced" | "higher") {
   switch (band) {
@@ -84,7 +103,7 @@ function buildIpipNeo120MockReport(
   const lowDomain = rankedDomains[rankedDomains.length - 1] ?? null;
   const topFacets = neoPromptInput.domains
     .flatMap((domain) =>
-      domain.subdimensions.map((subdimension) => ({
+      (Array.isArray(domain.subdimensions) ? domain.subdimensions : []).map((subdimension) => ({
         ...subdimension,
         domain_label: domain.label,
       })),
@@ -138,7 +157,7 @@ function buildIpipNeo120MockReport(
         strengths: narrative.strengths,
         watchouts: narrative.watchouts,
         development_tip: `Odaberi jednu malu sedmičnu praksu kojom ćeš svjesnije razvijati oblast ${domain.label.toLowerCase()}.`,
-        subdimensions: domain.subdimensions.map((subdimension) => ({
+        subdimensions: (Array.isArray(domain.subdimensions) ? domain.subdimensions : []).map((subdimension) => ({
           facet_code: subdimension.facet_code,
           label: subdimension.label,
           score: subdimension.score,
@@ -175,6 +194,407 @@ function buildIpipNeo120MockReport(
   if (!validationResult.ok) {
     throw new Error(
       `Mock IPIP-NEO-120 participant report failed validation: ${formatIpipNeo120ReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
+function getIpipNeo120V2BandPhrase(band: IpipNeo120ParticipantBandV2): string {
+  switch (band) {
+    case "higher":
+      return "izraženiji signal koji je češće prisutno vidljiv";
+    case "balanced":
+      return "uravnotežen signal u srednjem rasponu";
+    case "lower":
+      return "tiši signal koji je manje izraženo prisutan";
+  }
+}
+
+function getIpipNeo120V2RelatedDomainCodes(
+  input: IpipNeo120ParticipantAiInputV2,
+  limit: number,
+): string[] {
+  return input.deterministic_summary.ranked_domains.slice(0, limit);
+}
+
+function getIpipNeo120V2RelatedFacetCodes(
+  input: IpipNeo120ParticipantAiInputV2,
+  limit: number,
+): string[] {
+  return input.deterministic_summary.top_subdimensions.slice(0, limit);
+}
+
+function buildIpipNeo120ParticipantV2MockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput;
+
+  if (!("domains" in promptInput) || promptInput.audience !== "participant") {
+    throw new Error("IPIP-NEO-120 participant V2 mock report requires participant prompt input.");
+  }
+
+  const aiInput = buildIpipNeo120ParticipantAiInputV2(
+    promptInput as IpipNeo120ParticipantReportPromptInput,
+  );
+  const aiInputValidation = validateIpipNeo120ParticipantAiInputV2(aiInput);
+
+  if (!aiInputValidation.ok) {
+    throw new Error(
+      `Mock IPIP-NEO-120 participant V2 AI input failed validation: ${aiInputValidation.errors.join(" | ")}`,
+    );
+  }
+
+  const v2Input = aiInputValidation.value;
+  const rankedDomains = v2Input.deterministic_summary.ranked_domains;
+  const highestDomainCode = rankedDomains[0] ?? v2Input.domains[0]?.domain_code ?? null;
+  const highestDomain = v2Input.domains.find(
+    (domain) => domain.domain_code === highestDomainCode,
+  );
+  const relatedDomains = getIpipNeo120V2RelatedDomainCodes(v2Input, 2);
+  const relatedFacets = getIpipNeo120V2RelatedFacetCodes(v2Input, 2);
+
+  const report: IpipNeo120ParticipantReportV2 = {
+    contract_version: "ipip_neo_120_participant_v2",
+    test: {
+      slug: v2Input.test_slug,
+      name: v2Input.test_name,
+      locale: v2Input.locale,
+    },
+    meta: {
+      report_type: "participant",
+      generated_at: new Date().toISOString(),
+      scale_hint: {
+        min: v2Input.scale_hint.min,
+        max: v2Input.scale_hint.max,
+      },
+    },
+    summary: {
+      headline: highestDomain
+        ? `${highestDomain.participant_display_label} daje izraženiji ton ovom profilu.`
+        : "Profil daje razvojni pregled pet domena.",
+      overview:
+        "Ovaj V2 mock izvještaj koristi pripremljeni AI input, canonical skorove i V2 pravila prikaza. Svaki domen i svaka poddimenzija zadržavaju izvorni score, band, labelu i participant labelu. Narativ je jednostavan i služi za provjeru V2 contracta.",
+      badges: [
+        {
+          label: "Izraženiji signal",
+          related_domains: relatedDomains.slice(0, 1),
+          related_facets: relatedFacets.slice(0, 1),
+        },
+        {
+          label: "Srednji raspon",
+          related_domains: v2Input.deterministic_summary.balanced_domains.slice(0, 1),
+          related_facets: relatedFacets.slice(1, 2),
+        },
+        {
+          label: "Tiši signal",
+          related_domains: v2Input.deterministic_summary.lowest_domains.slice(0, 1),
+          related_facets: v2Input.deterministic_summary.lowest_subdimensions.slice(0, 1),
+        },
+      ],
+    },
+    key_patterns: [
+      {
+        title: "Pregled domena",
+        description:
+          "Pet domena je prikazano u canonical redoslijedu i svaka koristi V2 participant labelu. Opis se oslanja na band meaning pravila, bez mijenjanja score vrijednosti.",
+        related_domains: relatedDomains,
+        related_facets: relatedFacets,
+      },
+      {
+        title: "Pregled poddimenzija",
+        description:
+          "Trideset poddimenzija zadržava canonical facet kodove i pripadajuće domene. Neuroticism facete ostaju direct_but_non_clinical i ne invertuju se.",
+        related_domains: ["NEUROTICISM"],
+        related_facets: ["ANXIETY", "VULNERABILITY"],
+      },
+      {
+        title: "Razvojni fokus",
+        description:
+          "Viši, srednji i niži bandovi se opisuju kao izraženiji, uravnoteženi ili tiši signali. Tekst ostaje razvojni i vezan za dati input.",
+        related_domains: v2Input.deterministic_summary.ranked_domains.slice(0, 2),
+        related_facets: v2Input.deterministic_summary.lowest_subdimensions.slice(0, 2),
+      },
+    ],
+    domains: v2Input.domains.map((domain) => {
+      const domainPhrase =
+        domain.domain_code === "NEUROTICISM" && domain.band_meaning.display_phrases?.[0]
+          ? domain.band_meaning.display_phrases[0]
+          : getIpipNeo120V2BandPhrase(domain.band);
+
+      return {
+        domain_code: domain.domain_code,
+        label: domain.label,
+        participant_display_label: domain.participant_display_label,
+        score: domain.score,
+        band: domain.band,
+        band_label: domain.band_label,
+        display_score: domain.display_score,
+        display_band: domain.display_band,
+        display_band_label: domain.display_band_label,
+        card_title: `${domain.participant_display_label} profil`,
+        summary: `${domain.participant_display_label} se u ovom profilu prikazuje kao ${domainPhrase}. Opis koristi definiciju domene: ${domain.definition}`,
+        practical_signal: `${domain.participant_display_label} može se u radu pratiti kroz ponašanja koja odgovaraju V2 display pravilu. Band se čita kao ${getIpipNeo120V2BandPhrase(domain.band)}.`,
+        candidate_reflection: `Najkorisnije je da ${domain.participant_display_label.toLowerCase()} pratiš kroz jasan kontekst i svjesno prilagođavanje situaciji.`,
+        strengths: [
+          `${domain.participant_display_label} može dati oslonac kada je kontekst usklađen sa ovim obrascem.`,
+          `Band ${domain.band_label.toLowerCase()} pomaže da signal čitaš nijansirano i kontekstualno.`,
+        ],
+        watchouts: [
+          `Vrijedi pratiti kada ${domain.participant_display_label.toLowerCase()} traži dodatni kontekst.`,
+          "Korisno je povezati ovaj signal sa stvarnim ponašanjem u radu i saradnji.",
+        ],
+        development_tip: `Izaberi jednu situaciju u kojoj ćeš pratiti kako se pokazuje ${domain.participant_display_label.toLowerCase()}.`,
+        subdimensions: domain.subdimensions.map((subdimension) => ({
+          facet_code: subdimension.facet_code,
+          label: subdimension.label,
+          participant_display_label: subdimension.participant_display_label,
+          score: subdimension.score,
+          band: subdimension.band,
+          band_label: subdimension.band_label,
+          card_title: `${subdimension.participant_display_label} signal`,
+          summary: `${subdimension.participant_display_label} se prikazuje kao ${getIpipNeo120V2BandPhrase(subdimension.band)}. Ova poddimenzija koristi V2 definiciju i canonical score.`,
+          practical_signal: `${subdimension.participant_display_label} može se pratiti kroz konkretan obrazac u svakodnevnom radu.`,
+          candidate_reflection: `Najkorisnije je da ${subdimension.participant_display_label.toLowerCase()} pratiš kroz konkretne situacije u praksi.`,
+        })) as IpipNeo120ParticipantReportV2["domains"][number]["subdimensions"],
+      };
+    }) as IpipNeo120ParticipantReportV2["domains"],
+    strengths: [
+      {
+        title: "Canonical struktura",
+        description:
+          "V2 snapshot čuva canonical redoslijed domena i poddimenzija, što olakšava stabilan prikaz i provjeru.",
+        related_domains: relatedDomains,
+        related_facets: relatedFacets,
+      },
+      {
+        title: "Participant labele",
+        description:
+          "Svaki domen i svaka poddimenzija koriste participant display labelu iz V2 definition seta.",
+        related_domains: ["AGREEABLENESS"],
+        related_facets: ["COOPERATION"],
+      },
+      {
+        title: "Band značenja",
+        description:
+          "Niži, srednji i viši bandovi koriste kontrolisan razvojni jezik kao tiši, uravnotežen ili izraženiji signal.",
+        related_domains: v2Input.deterministic_summary.ranked_domains.slice(0, 2),
+        related_facets: v2Input.deterministic_summary.top_subdimensions.slice(0, 2),
+      },
+      {
+        title: "Neuroticism prikaz",
+        description:
+          "Domena se prikazuje kao Emocionalna stabilnost, dok poddimenzije ostaju direct_but_non_clinical.",
+        related_domains: ["NEUROTICISM"],
+        related_facets: ["ANXIETY", "VULNERABILITY"],
+      },
+    ],
+    watchouts: [
+      {
+        title: "Kontekst čitanja",
+        description:
+          "Rezultat je najkorisnije povezati sa konkretnim situacijama, zadacima i saradnjom.",
+        related_domains: relatedDomains,
+        related_facets: relatedFacets,
+      },
+      {
+        title: "Tiši signali",
+        description:
+          "Niže izraženi dijelovi profila bolje se čitaju kao tiši signali, ne kao zaključak o sposobnosti.",
+        related_domains: v2Input.deterministic_summary.lowest_domains.slice(0, 2),
+        related_facets: v2Input.deterministic_summary.lowest_subdimensions.slice(0, 2),
+      },
+      {
+        title: "Srednji raspon",
+        description:
+          "Uravnoteženi bandovi traže situaciono čitanje jer se mogu različito pokazati u različitim uslovima.",
+        related_domains: v2Input.deterministic_summary.balanced_domains.slice(0, 2),
+        related_facets: relatedFacets,
+      },
+    ],
+    work_style: {
+      title: "Radni stil",
+      paragraphs: [
+        "Radni stil se u ovom V2 mock izvještaju opisuje kroz kombinaciju canonical domena, poddimenzija i band meaning pravila.",
+        "Praktično čitanje profila najbolje je vezati za stvarne situacije, povratnu informaciju i male razvojne korake.",
+      ],
+    },
+    development_recommendations: [
+      {
+        title: "Prati jedan domen",
+        description:
+          "Odaberi jedan domen i posmatraj kako se njegov signal pokazuje u konkretnim zadacima i saradnji.",
+        action: "Zabilježi jednu situaciju u kojoj se signal jasno pokazao.",
+        related_domains: relatedDomains.slice(0, 1),
+        related_facets: relatedFacets.slice(0, 1),
+      },
+      {
+        title: "Poveži poddimenziju",
+        description:
+          "Izaberi jednu poddimenziju i poveži je sa ponašanjem koje možeš stvarno pratiti u radu.",
+        action: "Napiši jedan primjer ponašanja koji odgovara toj poddimenziji.",
+        related_domains: relatedDomains.slice(0, 1),
+        related_facets: relatedFacets.slice(0, 1),
+      },
+      {
+        title: "Provjeri kontekst",
+        description:
+          "Isti signal može izgledati drugačije kada se promijeni nivo pritiska, samostalnosti ili saradnje.",
+        action: "Uporedi jednu mirniju i jednu zahtjevniju situaciju.",
+        related_domains: ["NEUROTICISM"],
+        related_facets: ["VULNERABILITY"],
+      },
+      {
+        title: "Koristi feedback",
+        description:
+          "Povratna informacija može pomoći da razvojni signal povežeš sa stvarnim utiskom drugih.",
+        action: "Zatraži kratak konkretan feedback o jednom obrascu.",
+        related_domains: v2Input.deterministic_summary.ranked_domains.slice(0, 1),
+        related_facets: v2Input.deterministic_summary.top_subdimensions.slice(0, 1),
+      },
+    ],
+    interpretation_note: v2Input.static_text.interpretation_note,
+  };
+
+  const validationResult = validateIpipNeo120ParticipantReportV2(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock IPIP-NEO-120 participant V2 report failed validation: ${formatIpipNeo120ParticipantReportV2ValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
+function buildIpipNeo120HrMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput;
+
+  if (!("domains" in promptInput) || promptInput.audience !== "hr") {
+    throw new Error("IPIP-NEO-120 HR mock report requires HR neo prompt input.");
+  }
+
+  const neoPromptInput = promptInput as IpipNeo120HrReportPromptInput;
+  const rankedDomains = [...neoPromptInput.domains].sort(
+    (left, right) => right.score - left.score || left.domain_code.localeCompare(right.domain_code),
+  );
+  const highestDomain = rankedDomains[0] ?? null;
+  const lowestDomain = rankedDomains[rankedDomains.length - 1] ?? null;
+  const topFacets = neoPromptInput.domains
+    .flatMap((domain) => (Array.isArray(domain.facets) ? domain.facets : []))
+    .sort((left, right) => right.score - left.score || left.facet_code.localeCompare(right.facet_code))
+    .slice(0, 5);
+
+  const report = {
+    contract_version: "ipip_neo_120_hr_v1",
+    test: {
+      code: "ipip_neo_120",
+      name: "IPIP-NEO-120",
+    },
+    meta: {
+      language: "bs",
+      audience: "hr",
+    },
+    headline: highestDomain
+      ? `${highestDomain.label} trenutno daje najuočljiviji profesionalni signal u profilu.`
+      : "Profil pokazuje uravnotežen profesionalni pregled bez jedne potpuno dominantne domene.",
+    executive_summary:
+      highestDomain && lowestDomain && highestDomain.domain_code !== lowestDomain.domain_code
+        ? `Najizraženiji signal trenutno se vidi u domeni ${highestDomain.label.toLowerCase()}, dok domena ${lowestDomain.label.toLowerCase()} traži nešto pažljivije upravljanje kroz kontekst, očekivanja i razvojnu podršku.`
+        : "Ovaj HR pregled koristi već izračunate IPIP-NEO-120 rezultate kako bi opisao radni stil, saradnju, komunikaciju i praktične razvojne signale bez hiring presuda.",
+    workplace_signals: [
+      highestDomain
+        ? `${highestDomain.label} djeluje kao najstabilniji izvor radnog ritma i profesionalnog tona.`
+        : "Profil pokazuje nekoliko uravnoteženih profesionalnih signala bez jedne dominantne domene.",
+      topFacets[0]
+        ? `Najizraženija faceta trenutno je ${topFacets[0].label.toLowerCase()}, što može pomoći finijem razumijevanju svakodnevnog radnog stila.`
+        : "Facete nude dodatni sloj za operativno čitanje svakodnevnog ponašanja i saradnje.",
+      "Profil je najkorisnije čitati kao razvojni i radni signal, ne kao fiksnu etiketu.",
+      "Najviše vrijednosti obično daju najjasnije obrasce ponašanja pod tipičnim radnim zahtjevima.",
+      lowestDomain
+        ? `Domena ${lowestDomain.label.toLowerCase()} može biti dobar fokus za razvojnu podršku i situacionu fleksibilnost.`
+        : "Mirniji dijelovi profila mogu biti koristan razvojni fokus kada uloga traži širi raspon ponašanja.",
+    ] as IpipNeo120HrReportV1["workplace_signals"],
+    domains: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+      const domain = neoPromptInput.domains.find(
+        (item: IpipNeo120HrReportPromptInput["domains"][number]) => item.domain_code === domainCode,
+      );
+
+      if (!domain) {
+        throw new Error(`Missing neo HR prompt domain ${domainCode}.`);
+      }
+
+      const inputFacets = Array.isArray(domain.facets) ? domain.facets : [];
+      const inputFacetByCode = new Map(inputFacets.map((facet) => [facet.facet_code, facet]));
+      const facets = IPIP_NEO_120_FACETS_BY_DOMAIN[domainCode].map((facetCode) => {
+        const facet = inputFacetByCode.get(facetCode);
+
+        return {
+          code: facetCode,
+          label: getIpipNeo120FacetLabel(facetCode) ?? facetCode,
+          score_band: facet?.score_band ?? domain.score_band,
+          summary: facet
+            ? `${facet.label} djeluje kao radno relevantna faceta koja dodatno nijansira ovu domenu u profesionalnom kontekstu.`
+            : `${(getIpipNeo120FacetLabel(facetCode) ?? facetCode).toLowerCase()} služi kao pomoćni signal za čitanje ove domene u radnom kontekstu kada detaljniji facet podaci nisu dostupni.`,
+        };
+      });
+
+      return {
+        code:
+          domain.domain_code === "NEUROTICISM"
+            ? "N"
+            : domain.domain_code === "EXTRAVERSION"
+              ? "E"
+              : domain.domain_code === "OPENNESS_TO_EXPERIENCE"
+                ? "O"
+                : domain.domain_code === "AGREEABLENESS"
+                  ? "A"
+                  : "C",
+        label: domain.label,
+        score_band: domain.score_band,
+        summary: `${domain.label} trenutno daje prepoznatljiv profesionalni signal koji vrijedi čitati kroz radni kontekst, očekivanja i nivo podrške.`,
+        workplace_strengths: [
+          `Kada je ${domain.label.toLowerCase()} dobro usklađena s ulogom, može podržati stabilniji ritam rada i jasnije prioritete.`,
+          `Ova domena može pomoći u predvidivijem ponašanju i lakšem usklađivanju sa zahtjevima radnog okruženja.`,
+        ] as [string, string],
+        workplace_watchouts: [
+          `Vrijedi pratiti kako se ${domain.label.toLowerCase()} pokazuje pod pritiskom, promjenom prioriteta ili pojačanom međuzavisnošću.`,
+          `Bez jasnog konteksta, ova domena se može tumačiti preširoko umjesto kroz konkretna radna ponašanja.`,
+        ] as [string, string],
+        management_notes: [
+          `Koristan je konkretan feedback o tome kako se ${domain.label.toLowerCase()} vidi u svakodnevnom radu i saradnji.`,
+          `Najviše koristi daje kada su očekivanja, odgovornosti i razvojni fokus vezani za stvarne situacije iz uloge.`,
+        ] as [string, string],
+        facets: facets as IpipNeo120HrReportV1["domains"][number]["facets"],
+      };
+    }) as IpipNeo120HrReportV1["domains"],
+    collaboration_style:
+      "Stil saradnje je najkorisnije tumačiti kroz kombinaciju izraženijih i mirnijih domena, posebno tamo gdje rad traži usklađivanje sa drugima, dijeljenje odgovornosti i stabilan ritam komunikacije.",
+    communication_style:
+      "Komunikacijski stil vjerovatno odražava dominantnije obrasce iz profila, ali ga vrijedi čitati situaciono: kroz zahtjeve uloge, timsku dinamiku i način na koji osoba reaguje na povratnu informaciju.",
+    leadership_and_influence:
+      "Uticaj i vođstvo ne proizlaze iz jedne domene izolovano, nego iz kombinacije prioriteta, samoregulacije, energije, otvorenosti i odnosa prema drugima u konkretnom okruženju rada.",
+    team_watchouts: [
+      "Preusko tumačenje jednog izraženog signala može zamagliti širu sliku o tome kako osoba funkcioniše kroz različite zadatke i timove.",
+      "Timska očekivanja, tempo rada i stil saradnje vrijedi rano uskladiti kako bi se smanjila pogrešna čitanja profila.",
+      "Profil je korisniji kao okvir za razgovor i podršku nego kao samostalan zaključak o učinku ili potencijalu.",
+    ] as [string, string, string],
+    onboarding_or_management_recommendations: [
+      "U prvim sedmicama definišite jasan ritam feedbacka i nekoliko konkretnih radnih očekivanja koja olakšavaju tumačenje profila kroz praksu.",
+      "Povežite razvojni razgovor s jednom izraženijom i jednom mirnijom domenom kako bi fokus ostao praktičan i upotrebljiv.",
+      "Profil koristite kao ulaz za upravljanje saradnjom, komunikacijom i podrškom, a ne kao zamjenu za posmatranje stvarnog ponašanja u radu.",
+    ] as [string, string, string],
+    interpretation_note:
+      "Ovaj izvještaj je profesionalni razvojni pregled IPIP-NEO-120 rezultata. Ne predstavlja dijagnozu, ne potvrđuje zaštićene osobine i ne daje hiring odluku ili konačnu istinu o osobi.",
+  };
+
+  const validationResult = validateIpipNeo120HrReportV1(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock IPIP-NEO-120 HR report failed validation: ${formatIpipNeo120ReportValidationErrors(validationResult.errors)}`,
     );
   }
 
@@ -540,6 +960,14 @@ function buildIpcMockReport(input: PreparedReportGenerationInput): RuntimeComple
 
 function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
   if ("domains" in input.promptInput) {
+    if (input.promptInput.audience === "hr") {
+      return buildIpipNeo120HrMockReport(input);
+    }
+
+    if (getIpipNeo120ParticipantReportVersion() === "v2") {
+      return buildIpipNeo120ParticipantV2MockReport(input);
+    }
+
     return buildIpipNeo120MockReport(input);
   }
 

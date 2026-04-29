@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import { createParticipant, createStandardAssessmentBattery } from "@/app/actions/participants";
@@ -35,6 +36,17 @@ import { requireAuthenticatedUser } from "@/lib/auth/session";
 type DashboardPageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
 };
+
+type ParticipantProvisioningFlash = {
+  success: boolean;
+  message: string;
+  credentials?: {
+    email: string;
+    temporaryPassword: string;
+  };
+};
+
+const PARTICIPANT_CREDENTIALS_COOKIE = "participant-provisioning-flash";
 
 function HrDashboardHeader() {
   return (
@@ -169,10 +181,24 @@ function getDashboardSuccessMessage(
   }
 
   if (success === "participant-created") {
-    return "Participant was created successfully.";
+    return "Kandidat je uspješno kreiran.";
   }
 
   return null;
+}
+
+function getParticipantProvisioningFlash(): ParticipantProvisioningFlash | null {
+  const rawValue = cookies().get(PARTICIPANT_CREDENTIALS_COOKIE)?.value;
+
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawValue) as ParticipantProvisioningFlash;
+  } catch {
+    return null;
+  }
 }
 
 function getInlineBatterySuccessMessage(
@@ -220,14 +246,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const message = getDashboardMessage(searchParams?.error);
   const successMessage = getDashboardSuccessMessage(searchParams?.success);
   const inlineBatterySuccessMessage = getInlineBatterySuccessMessage(searchParams?.success);
+  const participantProvisioningFlash = getParticipantProvisioningFlash();
   const createParticipantDetails =
     typeof searchParams?.detail === "string" ? decodeURIComponent(searchParams.detail) : null;
+  const createParticipantCredentials =
+    searchParams?.success === "participant-created" && participantProvisioningFlash?.success
+      ? participantProvisioningFlash.credentials ?? null
+      : null;
   const shouldOpenCreateParticipantPanel =
     searchParams?.error === "participant-full-name-required" ||
     searchParams?.error === "participant-email-required" ||
     searchParams?.error === "participant-type-invalid" ||
     searchParams?.error === "participant-status-invalid" ||
-    searchParams?.error === "create-participant-failed";
+    searchParams?.error === "create-participant-failed" ||
+    Boolean(createParticipantCredentials);
   const createAttemptDetails =
     typeof searchParams?.detail === "string" &&
     (searchParams?.error === "create-attempt-failed" ||
@@ -396,6 +428,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                           <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
                             {createParticipantDetails}
                           </p>
+                        ) : null}
+                        {createParticipantCredentials ? (
+                          <div className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm leading-6 text-emerald-800">
+                            <p className="font-semibold text-emerald-900">Kandidat je kreiran.</p>
+                            <p className="mt-2">
+                              <strong>Email:</strong> {createParticipantCredentials.email}
+                            </p>
+                            <p>
+                              <strong>Privremena lozinka:</strong>{" "}
+                              {createParticipantCredentials.temporaryPassword}
+                            </p>
+                            <p className="mt-2 text-emerald-700">
+                              Pošalji ove podatke kandidatu. Kandidat se može prijaviti i
+                              započeti dodijeljenu procjenu.
+                            </p>
+                          </div>
                         ) : null}
                         <DashboardActionRow className="flex items-center justify-end pt-1">
                           <button
