@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getAssessmentAttemptLifecycle, type AssessmentAttemptLifecycle } from "@/lib/assessment/attempt-lifecycle";
+import { STANDARD_ASSESSMENT_BATTERY_SLUGS } from "@/lib/assessment/standard-battery";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -35,6 +37,12 @@ export type OrganizationAvailableTestSummary = {
   name: string;
 };
 
+export type OrganizationRunnableStandardBatteryTestSummary = {
+  id: string;
+  slug: (typeof STANDARD_ASSESSMENT_BATTERY_SLUGS)[number];
+  name: string;
+};
+
 export type OrganizationScopedAttemptSummary = {
   id: string;
   test_id: string;
@@ -44,7 +52,10 @@ export type OrganizationScopedAttemptSummary = {
   participant_id: string | null;
   status: "in_progress" | "completed" | "abandoned";
   started_at: string;
+  scored_started_at: string | null;
   completed_at: string | null;
+  responseCount: number;
+  lifecycle: AssessmentAttemptLifecycle;
   tests: {
     slug: string;
     name: string;
@@ -91,6 +102,7 @@ type AttemptRow = {
   participant_id: string | null;
   status: OrganizationScopedAttemptSummary["status"];
   started_at: string;
+  scored_started_at: string | null;
   completed_at: string | null;
   tests: AttemptRelation<OrganizationScopedAttemptSummary["tests"] extends infer T ? NonNullable<T> : never>;
   participants: AttemptRelation<
@@ -99,6 +111,30 @@ type AttemptRow = {
   organizations: AttemptRelation<
     OrganizationScopedAttemptSummary["organizations"] extends infer T ? NonNullable<T> : never
   >;
+};
+
+type AttemptResponseRow = {
+  attempt_id: string;
+};
+
+type OrganizationRunnableStandardBatteryTestRow = {
+  test_id: string;
+  tests:
+    | {
+        id: string;
+        slug: string;
+        name: string;
+        status: string;
+        is_active: boolean;
+      }
+    | Array<{
+        id: string;
+        slug: string;
+        name: string;
+        status: string;
+        is_active: boolean;
+      }>
+    | null;
 };
 
 function normalizeOrganization(
@@ -124,6 +160,54 @@ function isLegacyIcarTest(test: OrganizationAvailableTestSummary): boolean {
   const normalizedName = test.name.toLowerCase();
 
   return normalizedSlug.includes("icar") || normalizedName.includes("icar");
+}
+
+function isMissingScoredStartedAtColumnError(message: string | undefined): boolean {
+  return typeof message === "string" && message.includes("scored_started_at");
+}
+
+async function getResponseCountsForAttemptIds(
+  attemptIds: string[],
+): Promise<Map<string, number>> {
+  if (attemptIds.length === 0) {
+    return new Map();
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("responses")
+    .select("attempt_id")
+    .in("attempt_id", attemptIds);
+
+  if (error) {
+    throw new Error(`Failed to load organization attempt responses: ${error.message}`);
+  }
+
+  return ((data ?? []) as AttemptResponseRow[]).reduce((counts, response) => {
+    counts.set(response.attempt_id, (counts.get(response.attempt_id) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>());
+}
+
+function mapOrganizationAttemptSummary(
+  attemptRow: AttemptRow,
+  responseCount: number,
+): OrganizationScopedAttemptSummary {
+  const tests = normalizeAttemptRelation(attemptRow.tests);
+
+  return {
+    ...attemptRow,
+    responseCount,
+    lifecycle: getAssessmentAttemptLifecycle({
+      status: attemptRow.status,
+      responseCount,
+      testSlug: tests?.slug,
+      scoredStartedAt: attemptRow.scored_started_at,
+    }),
+    tests,
+    participants: normalizeAttemptRelation(attemptRow.participants),
+    organizations: normalizeAttemptRelation(attemptRow.organizations),
+  };
 }
 
 export async function getMembershipsForUser(userId: string): Promise<MembershipSummary[]> {
@@ -221,6 +305,76 @@ export async function getAvailableTestsForOrganization(
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+export async function getRunnableStandardBatteryTestsForOrganization(
+  organizationId: string,
+): Promise<OrganizationRunnableStandardBatteryTestSummary[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("organization_test_access")
+    .select("test_id, tests(id, slug, name, status, is_active)")
+    .eq("organization_id", organizationId)
+    .order("test_id", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load organization standard battery access: ${error.message}`);
+  }
+
+  const candidateTests = ((data ?? []) as OrganizationRunnableStandardBatteryTestRow[])
+    .map((row) => normalizeAttemptRelation(row.tests))
+    .filter(
+      (
+        test,
+      ): test is {
+        id: string;
+        slug: string;
+        name: string;
+        status: string;
+        is_active: boolean;
+      } => !!test,
+    )
+    .filter(
+      (test) =>
+        STANDARD_ASSESSMENT_BATTERY_SLUGS.includes(
+          test.slug as (typeof STANDARD_ASSESSMENT_BATTERY_SLUGS)[number],
+        ) &&
+        test.status === "active" &&
+        test.is_active === true,
+    );
+
+  if (candidateTests.length === 0) {
+    return [];
+  }
+
+  const { data: questionRows, error: questionError } = await supabase
+    .from("questions")
+    .select("test_id")
+    .in(
+      "test_id",
+      candidateTests.map((test) => test.id),
+    )
+    .eq("is_active", true);
+
+  if (questionError) {
+    throw new Error(`Failed to load standard battery questions: ${questionError.message}`);
+  }
+
+  const activeQuestionTestIds = new Set((questionRows ?? []).map((row) => String(row.test_id)));
+  const orderLookup = new Map(STANDARD_ASSESSMENT_BATTERY_SLUGS.map((slug, index) => [slug, index]));
+
+  return candidateTests
+    .filter((test) => activeQuestionTestIds.has(test.id))
+    .map((test) => ({
+      id: test.id,
+      slug: test.slug as (typeof STANDARD_ASSESSMENT_BATTERY_SLUGS)[number],
+      name: test.name,
+    }))
+    .sort(
+      (left, right) =>
+        (orderLookup.get(left.slug) ?? Number.MAX_SAFE_INTEGER) -
+        (orderLookup.get(right.slug) ?? Number.MAX_SAFE_INTEGER),
+    );
+}
+
 export async function getLinkedParticipantForUser(
   userId: string,
 ): Promise<ParticipantSummary | null> {
@@ -247,14 +401,33 @@ export async function getAttemptForOrganization(
   attemptId: string,
 ): Promise<OrganizationScopedAttemptSummary | null> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("attempts")
     .select(
-      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, scored_started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
     )
     .eq("id", attemptId)
     .eq("organization_id", organizationId)
     .maybeSingle();
+
+  if (error && isMissingScoredStartedAtColumnError(error.message)) {
+    const fallbackResult = await supabase
+      .from("attempts")
+      .select(
+        "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      )
+      .eq("id", attemptId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+
+    data = fallbackResult.data
+      ? {
+          ...fallbackResult.data,
+          scored_started_at: null,
+        }
+      : null;
+    error = fallbackResult.error;
+  }
 
   if (error) {
     throw new Error(`Failed to load organization attempt: ${error.message}`);
@@ -266,12 +439,8 @@ export async function getAttemptForOrganization(
     return null;
   }
 
-  const attempt: OrganizationScopedAttemptSummary = {
-    ...attemptRow,
-    tests: normalizeAttemptRelation(attemptRow.tests),
-    participants: normalizeAttemptRelation(attemptRow.participants),
-    organizations: normalizeAttemptRelation(attemptRow.organizations),
-  };
+  const responseCounts = await getResponseCountsForAttemptIds([attemptRow.id]);
+  const attempt = mapOrganizationAttemptSummary(attemptRow, responseCounts.get(attemptRow.id) ?? 0);
 
   if (
     attempt.participants &&
@@ -287,33 +456,47 @@ export async function getAttemptsForOrganization(
   organizationId: string,
 ): Promise<OrganizationScopedAttemptSummary[]> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("attempts")
     .select(
-      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, scored_started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
     )
     .eq("organization_id", organizationId)
     .order("started_at", { ascending: false })
     .order("id", { ascending: false });
 
+  if (error && isMissingScoredStartedAtColumnError(error.message)) {
+    const fallbackResult = await supabase
+      .from("attempts")
+      .select(
+        "id, test_id, locale, user_id, organization_id, participant_id, status, started_at, completed_at, tests(slug, name), participants(id, organization_id, full_name, email), organizations(name, slug)",
+      )
+      .eq("organization_id", organizationId)
+      .order("started_at", { ascending: false })
+      .order("id", { ascending: false });
+
+    data = (fallbackResult.data ?? []).map((attempt) => ({
+      ...attempt,
+      scored_started_at: null,
+    }));
+    error = fallbackResult.error;
+  }
+
   if (error) {
     throw new Error(`Failed to load organization attempts: ${error.message}`);
   }
 
-  return ((data ?? []) as AttemptRow[])
-    .map((attempt) => ({
-      ...attempt,
-      tests: normalizeAttemptRelation(attempt.tests),
-      participants: normalizeAttemptRelation(attempt.participants),
-      organizations: normalizeAttemptRelation(attempt.organizations),
-    }))
-    .filter(
-      (attempt) =>
-        !attempt.participants || attempt.participants.organization_id === organizationId,
-    )
+  const attemptRows = ((data ?? []) as AttemptRow[]).filter((attempt) => {
+    const participant = normalizeAttemptRelation(attempt.participants);
+    return !participant || participant.organization_id === organizationId;
+  });
+  const responseCounts = await getResponseCountsForAttemptIds(attemptRows.map((attempt) => attempt.id));
+
+  return attemptRows
+    .map((attempt) => mapOrganizationAttemptSummary(attempt, responseCounts.get(attempt.id) ?? 0))
     .sort((left, right) => {
-      const leftPriority = left.status === "in_progress" ? 0 : 1;
-      const rightPriority = right.status === "in_progress" ? 0 : 1;
+      const leftPriority = left.lifecycle === "in_progress" ? 0 : left.lifecycle === "not_started" ? 1 : 2;
+      const rightPriority = right.lifecycle === "in_progress" ? 0 : right.lifecycle === "not_started" ? 1 : 2;
 
       if (leftPriority !== rightPriority) {
         return leftPriority - rightPriority;
