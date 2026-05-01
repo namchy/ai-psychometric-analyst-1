@@ -265,6 +265,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero {
+        width: 100%;
         position: relative;
         overflow: hidden;
         border: 1px solid rgba(203, 213, 225, 0.78);
@@ -571,6 +572,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card {
+        width: 100%;
         border: 1px solid rgba(203, 213, 225, 0.86);
         border-radius: 1.5rem;
         padding: 1.5rem;
@@ -606,6 +608,10 @@ function AssessmentDashboardSkinStyles() {
         max-width: 52rem;
       }
 
+      .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__question-region {
+        max-width: 52rem;
+      }
+
       .assessment-run-page--dashboard-skin .assessment-step-card__question-region--visual {
         width: 100%;
         max-width: 100%;
@@ -614,6 +620,10 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__question-region:not(.assessment-step-card__question-region--visual) h3 {
+        max-width: 47.5rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__question-region h3 {
         max-width: 47.5rem;
       }
 
@@ -1035,6 +1045,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-layout__actions-row {
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -1068,10 +1079,11 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-layout__footer {
-        margin-top: 0.55rem;
+        margin-top: 0.65rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-layout__footer {
+        width: 100%;
         position: sticky;
         bottom: 0;
         z-index: 20;
@@ -1241,16 +1253,11 @@ function AssessmentDashboardSkinStyles() {
           line-height: 1.2;
         }
 
-        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-layout__footer {
-          margin-top: 0.45rem;
-          margin-bottom: 0.25rem;
-        }
-
-        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-layout__actions-row {
+        .assessment-run-page--dashboard-skin .assessment-step-layout__actions-row {
           gap: 0.75rem;
         }
 
-        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-actions__button {
+        .assessment-run-page--dashboard-skin .assessment-step-actions__button {
           min-height: 2.6rem;
           padding-top: 0.55rem;
           padding-bottom: 0.55rem;
@@ -1291,10 +1298,6 @@ function AssessmentDashboardSkinStyles() {
           padding: 0.62rem 0.85rem;
         }
 
-        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-layout__footer {
-          margin-top: 0.65rem;
-          margin-bottom: 0.5rem;
-        }
       }
 
       .assessment-run-page--dashboard-skin .assessment-completion-state {
@@ -1744,7 +1747,7 @@ export function AssessmentForm({
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
     const visibleQuestionText = isImageQuestion ? getVisibleQuestionText(currentQuestion) : currentQuestion.text;
-    const stepContentWidthClassName = isImageQuestion ? "max-w-[1040px]" : "max-w-[940px]";
+    const stepShellWidthClassName = "max-w-[1040px]";
     const stepDensityClassName = isImageQuestion
       ? "assessment-step-density--visual"
       : "assessment-step-density--verbal";
@@ -1759,7 +1762,7 @@ export function AssessmentForm({
 
     return (
       <div
-        className={`run-form-layout assessment-run-page--dashboard-skin mx-auto grid w-full ${stepContentWidthClassName} ${stepDensityClassName} gap-4${
+        className={`run-form-layout assessment-run-page--dashboard-skin mx-auto grid w-full ${stepShellWidthClassName} ${stepDensityClassName} gap-4${
           isLikertQuestion ? " run-form-layout--compact run-form-layout--top-compact" : ""
         }`}
       >
