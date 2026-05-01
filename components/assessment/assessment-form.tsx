@@ -900,7 +900,9 @@ function AssessmentDashboardSkinStyles() {
       }
 
       @media (max-width: 760px) {
-        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image {
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image,
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-5,
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-6 {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
@@ -910,7 +912,9 @@ function AssessmentDashboardSkinStyles() {
       }
 
       @media (min-width: 761px) and (max-width: 1180px) {
-        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image {
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image,
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-5,
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-6 {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
       }
@@ -969,9 +973,17 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 0.65rem;
         margin-top: 0.45rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-6 {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.5rem;
       }
 
       .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image .assessment-option {
@@ -991,6 +1003,25 @@ function AssessmentDashboardSkinStyles() {
         min-width: 1.55rem;
         min-height: 1.55rem;
         font-size: 0.72rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-6 .assessment-option {
+        min-height: 6.35rem;
+        padding: 0.42rem;
+        border-radius: 0.9rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-6 .assessment-option__image {
+        height: 4.95rem;
+        padding: 0.28rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image-count-6 .assessment-option__marker {
+        top: 0.35rem;
+        left: 0.35rem;
+        min-width: 1.42rem;
+        min-height: 1.42rem;
+        font-size: 0.68rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-option__content {
@@ -1746,6 +1777,9 @@ export function AssessmentForm({
     );
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
+    const imageOptionsCountClassName = isImageQuestion
+      ? ` assessment-options--image-count-${options.length}`
+      : "";
     const visibleQuestionText = isImageQuestion ? getVisibleQuestionText(currentQuestion) : currentQuestion.text;
     const stepShellWidthClassName = "max-w-[1040px]";
     const stepDensityClassName = isImageQuestion
@@ -1950,7 +1984,7 @@ export function AssessmentForm({
                 </div>
               ) : options.length > 0 ? (
                 <ol
-                  className={`assessment-options${isImageQuestion ? " assessment-options--image" : ""}`}
+                  className={`assessment-options${isImageQuestion ? " assessment-options--image" : ""}${imageOptionsCountClassName}`}
                 >
                   {options.map((option) => {
                     const inputId = `${currentQuestion.id}-${option.option_order}`;
