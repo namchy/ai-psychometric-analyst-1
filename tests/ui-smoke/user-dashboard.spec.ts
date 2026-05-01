@@ -172,7 +172,7 @@ test("candidate dashboard resumes SAFRAN scored attempt from the first unanswere
     await page.getByRole("button", { name: "Nastavi" }).click();
     await expect(page.getByText("Pitanje 3 od")).toBeVisible();
 
-    await page.getByRole("button", { name: "Povratak na dashboard" }).click();
+    await page.getByRole("button", { name: "Nazad na dashboard" }).click();
     await page.waitForURL("**/app");
 
     const progressLabel = `2 / ${fixture.totalQuestionCount} pitanja`;

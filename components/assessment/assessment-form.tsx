@@ -268,15 +268,15 @@ function AssessmentDashboardSkinStyles() {
         position: relative;
         overflow: hidden;
         border: 1px solid rgba(203, 213, 225, 0.78);
-        border-radius: 1.75rem;
-        padding: 1.5rem;
+        border-radius: 1.5rem;
+        padding: 1.25rem;
         background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(243, 249, 249, 0.97) 58%, rgba(246, 242, 255, 0.95));
-        box-shadow: 0 28px 60px rgba(15, 23, 42, 0.1);
+        box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
       }
 
       @media (min-width: 640px) {
         .assessment-run-page--dashboard-skin .run-form-hero {
-          padding: 1.75rem;
+          padding: 1.5rem;
         }
       }
 
@@ -308,7 +308,7 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .run-form-hero__intro {
         display: grid;
-        gap: 1.5rem;
+        gap: 1.25rem;
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero__intro--compact {
@@ -317,8 +317,8 @@ function AssessmentDashboardSkinStyles() {
 
       @media (min-width: 1024px) {
         .assessment-run-page--dashboard-skin .run-form-hero__intro {
-          grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
-          gap: 1.5rem;
+          grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+          gap: 1.25rem;
           align-items: start;
         }
 
@@ -369,17 +369,34 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero__intro h1 {
-        margin: 0.75rem 0 0;
+        margin: 0.55rem 0 0;
         max-width: 42rem;
-        font-size: 1.875rem;
-        font-weight: 800;
-        line-height: 1.05;
+        font-size: 1.75rem;
+        font-weight: 780;
+        line-height: 1.08;
         color: rgb(2, 6, 23);
+      }
+
+      .assessment-run-page--dashboard-skin .run-form-hero__test-pill {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        margin-top: 0.55rem;
+        border: 1px solid rgba(17, 138, 178, 0.24);
+        border-radius: 999px;
+        background: rgba(17, 138, 178, 0.08);
+        padding: 0.28rem 0.72rem;
+        color: rgb(7, 59, 76);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        line-height: 1;
+        text-transform: uppercase;
       }
 
       @media (min-width: 640px) {
         .assessment-run-page--dashboard-skin .run-form-hero__intro h1 {
-          font-size: 2.25rem;
+          font-size: 2rem;
         }
       }
 
@@ -434,7 +451,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header h3 {
-        font-size: clamp(1.72rem, 3vw, 2.3rem);
+        font-size: clamp(1.1rem, 1.8vw, 1.46rem);
         font-weight: 600;
         line-height: 1.18;
         text-wrap: pretty;
@@ -442,10 +459,10 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .run-form-hero__participant {
-        margin: 0.5rem 0 0;
+        margin: 0.35rem 0 0;
         max-width: 42rem;
-        font-size: 15px;
-        line-height: 1.75;
+        font-size: 14px;
+        line-height: 1.55;
         color: rgb(71, 85, 105);
       }
 
@@ -462,6 +479,8 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .assessment-progress {
         border: 1px solid rgba(191, 219, 254, 0.7);
+        border-radius: 1.25rem;
+        padding: 1.1rem 1.25rem;
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(240, 249, 255, 0.92));
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.78),
@@ -503,6 +522,9 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .assessment-progress__metric-value,
       .assessment-run-page--dashboard-skin .assessment-progress-note {
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.25;
         color: rgb(15, 23, 42);
       }
 
@@ -517,6 +539,9 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-progress__track {
+        height: 0.5rem;
+        border-radius: 999px;
+        overflow: hidden;
         background: linear-gradient(180deg, rgba(203, 213, 225, 0.95), rgba(226, 232, 240, 0.98));
         box-shadow: inset 0 1px 2px rgba(148, 163, 184, 0.18);
       }
@@ -547,6 +572,8 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .assessment-step-card {
         border: 1px solid rgba(203, 213, 225, 0.86);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.98));
         box-shadow:
           0 24px 56px rgba(15, 23, 42, 0.08),
@@ -563,7 +590,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header {
-        margin-bottom: 1.35rem;
+        margin-bottom: 1.1rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header--compact {
@@ -571,12 +598,23 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__header > * + * {
-        margin-top: 1rem;
+        margin-top: 0.75rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__question-region {
-        gap: 0.7rem;
-        max-width: 60rem;
+        gap: 0.55rem;
+        max-width: 52rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__question-region--visual {
+        width: 100%;
+        max-width: 100%;
+        margin-inline: auto;
+        align-items: center;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__question-region:not(.assessment-step-card__question-region--visual) h3 {
+        max-width: 47.5rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-card__question-region--compact {
@@ -611,21 +649,27 @@ function AssessmentDashboardSkinStyles() {
           0 16px 28px -26px rgba(15, 23, 42, 0.12);
       }
 
+      .assessment-run-page--dashboard-skin .assessment-option {
+        min-height: 4rem;
+        border-radius: 1.125rem;
+        padding: 0.9rem 1.1rem;
+      }
+
       .assessment-run-page--dashboard-skin .assessment-option:hover {
-        border-color: rgba(94, 234, 212, 0.85);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(240, 253, 250, 0.88));
+        border-color: rgba(17, 138, 178, 0.34);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 248, 251, 0.94));
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 18px 30px -24px rgba(13, 148, 136, 0.14);
+          0 14px 24px -24px rgba(17, 138, 178, 0.12);
       }
 
       .assessment-run-page--dashboard-skin .assessment-option--selected {
-        border-color: rgba(20, 184, 166, 0.65);
-        background: linear-gradient(180deg, rgba(240, 253, 250, 0.98), rgba(236, 252, 203, 0.58));
+        border-color: rgba(17, 138, 178, 0.55);
+        background: linear-gradient(180deg, rgba(241, 248, 251, 0.98), rgba(232, 243, 248, 0.78));
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 18px 30px -24px rgba(13, 148, 136, 0.16),
-          0 0 0 1px rgba(45, 212, 191, 0.18);
+          0 14px 24px -24px rgba(17, 138, 178, 0.14),
+          0 0 0 1px rgba(17, 138, 178, 0.1);
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option--selected {
@@ -643,7 +687,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-options {
-        gap: 0.75rem;
+        gap: 0.65rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert {
@@ -783,21 +827,31 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-option__marker {
+        min-width: 2.125rem;
+        min-height: 2.125rem;
+        font-size: 0.875rem;
+        font-weight: 700;
         border-color: rgba(148, 163, 184, 0.7);
         background: rgba(255, 255, 255, 0.98);
         color: rgb(51, 65, 85);
       }
 
       .assessment-run-page--dashboard-skin .assessment-option--selected .assessment-option__marker {
-        border-color: rgba(13, 148, 136, 0.86);
-        background: linear-gradient(180deg, rgb(15, 118, 110), rgb(13, 148, 136));
+        border-color: rgba(17, 138, 178, 0.9);
+        background: rgb(17, 138, 178);
         color: white;
-        box-shadow: 0 8px 16px -12px rgba(13, 148, 136, 0.38);
+        box-shadow: 0 8px 16px -12px rgba(17, 138, 178, 0.32);
       }
 
       .assessment-run-page--dashboard-skin .assessment-option__label,
       .assessment-run-page--dashboard-skin .assessment-likert__labels {
         color: rgb(30, 41, 59);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-option__label {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.35;
       }
 
       .assessment-run-page--dashboard-skin .assessment-textarea,
@@ -810,16 +864,11 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .assessment-stimulus-images {
         display: grid;
-        gap: 1rem;
-        margin: 1rem 0 0;
+        place-items: center;
+        gap: 0.5rem;
+        margin: 0.35rem auto 0;
         width: 100%;
-        max-width: 100%;
-      }
-
-      @media (min-width: 760px) {
-        .assessment-run-page--dashboard-skin .assessment-stimulus-images {
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        }
+        max-width: 46rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-stimulus-images__image,
@@ -835,8 +884,25 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin .assessment-stimulus-images__image {
         justify-self: center;
-        max-height: 22rem;
+        margin-inline: auto;
+        max-height: 13.25rem;
         max-width: 100%;
+      }
+
+      @media (max-width: 760px) {
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-stimulus-images__image {
+          max-height: 11rem;
+        }
+      }
+
+      @media (min-width: 761px) and (max-width: 1180px) {
+        .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
       }
 
       .assessment-run-page--dashboard-skin .assessment-options--image {
@@ -879,10 +945,48 @@ function AssessmentDashboardSkinStyles() {
         box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.5);
       }
 
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-step-card {
+        padding: 1rem 1.15rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-step-card__header {
+        margin-bottom: 0.65rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-step-card__kicker {
+        align-self: flex-start;
+        text-align: left;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin-top: 0.45rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image .assessment-option {
+        min-height: 7.25rem;
+        padding: 0.55rem;
+        border-radius: 1rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image .assessment-option__image {
+        height: 5.8rem;
+        padding: 0.35rem;
+      }
+
+      .assessment-run-page--dashboard-skin.assessment-step-density--visual .assessment-options--image .assessment-option__marker {
+        top: 0.45rem;
+        left: 0.45rem;
+        min-width: 1.55rem;
+        min-height: 1.55rem;
+        font-size: 0.72rem;
+      }
+
       .assessment-run-page--dashboard-skin .assessment-option__content {
         display: grid;
         width: 100%;
-        gap: 0.65rem;
+        gap: 0.5rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-options--image .assessment-option__content {
@@ -942,7 +1046,7 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-layout__actions-secondary .assessment-step-actions__button {
-        min-width: 13.5rem;
+        min-width: 11.5rem;
       }
 
       .assessment-run-page--dashboard-skin .assessment-step-actions__button--dashboard-return {
@@ -965,6 +1069,21 @@ function AssessmentDashboardSkinStyles() {
 
       .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-layout__footer {
         margin-top: 0.55rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-layout__footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        margin-top: 0.75rem;
+        margin-bottom: 0;
+        padding: 0.35rem 0 0.45rem;
+        background: linear-gradient(180deg, rgba(248, 250, 252, 0), rgba(248, 250, 252, 0.82) 34%, rgba(248, 250, 252, 0.94));
+        backdrop-filter: blur(6px);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-layout {
+        padding-bottom: 0.5rem;
       }
 
       .assessment-run-page--dashboard-skin.run-form-layout--compact .assessment-step-layout__actions-row {
@@ -1005,9 +1124,176 @@ function AssessmentDashboardSkinStyles() {
           align-items: stretch;
         }
 
+        .assessment-run-page--dashboard-skin .assessment-step-layout__actions-primary {
+          order: 2;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-step-layout__actions-secondary {
+          order: 1;
+        }
+
         .assessment-run-page--dashboard-skin .assessment-step-layout__actions-secondary .assessment-step-actions__button {
           width: 100%;
           min-width: 0;
+        }
+      }
+
+      @media (min-width: 1024px) and (max-height: 820px) {
+        .assessment-run-page--dashboard-skin {
+          row-gap: 0.55rem;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero {
+          padding: 0.8rem 1.1rem;
+          border-radius: 1.2rem;
+          box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero__intro {
+          gap: 0.75rem;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero__intro h1 {
+          margin-top: 0.28rem;
+          font-size: 1.42rem;
+          line-height: 1.03;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero__test-pill {
+          margin-top: 0.28rem;
+          padding: 0.18rem 0.52rem;
+          font-size: 0.62rem;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero__participant {
+          display: none;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-progress {
+          padding: 0.65rem 0.85rem;
+          border-radius: 0.95rem;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-progress__metric-label {
+          font-size: 0.6rem;
+          letter-spacing: 0.14em;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-progress__metric-value {
+          font-size: 0.88rem;
+          line-height: 1.12;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-progress__bar-region {
+          margin-top: 0.42rem;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-progress__track {
+          height: 0.32rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card {
+          padding: 0.95rem 1.05rem;
+          border-radius: 1.15rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__header {
+          margin-bottom: 0.55rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__header > * + * {
+          margin-top: 0.35rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__kicker {
+          font-size: 0.62rem;
+          letter-spacing: 0.14em;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__header h3 {
+          font-size: clamp(0.92rem, 1.25vw, 1.08rem);
+          line-height: 1.12;
+          max-width: 42rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__fieldset {
+          padding-top: 0;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-options {
+          gap: 0.38rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-option {
+          min-height: 3rem;
+          padding: 0.52rem 0.78rem;
+          border-radius: 0.85rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-option__marker {
+          min-width: 1.75rem;
+          min-height: 1.75rem;
+          font-size: 0.74rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-option__label {
+          font-size: 0.9rem;
+          line-height: 1.2;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-layout__footer {
+          margin-top: 0.45rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-layout__actions-row {
+          gap: 0.75rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-actions__button {
+          min-height: 2.6rem;
+          padding-top: 0.55rem;
+          padding-bottom: 0.55rem;
+        }
+      }
+
+      @media (min-width: 1024px) and (max-height: 740px) {
+        .assessment-run-page--dashboard-skin {
+          row-gap: 0.65rem;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero {
+          padding: 0.85rem 1.1rem;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero__intro h1 {
+          font-size: 1.45rem;
+        }
+
+        .assessment-run-page--dashboard-skin .run-form-hero__participant {
+          display: none;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card {
+          padding: 1rem 1.1rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card__header h3 {
+          font-size: clamp(0.95rem, 1.35vw, 1.12rem);
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-options {
+          gap: 0.42rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-option {
+          min-height: 3.2rem;
+          padding: 0.62rem 0.85rem;
+        }
+
+        .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-layout__footer {
+          margin-top: 0.65rem;
+          margin-bottom: 0.5rem;
         }
       }
 
@@ -1458,11 +1744,14 @@ export function AssessmentForm({
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
     const visibleQuestionText = isImageQuestion ? getVisibleQuestionText(currentQuestion) : currentQuestion.text;
+    const stepContentWidthClassName = isImageQuestion ? "max-w-[1040px]" : "max-w-[940px]";
+    const stepDensityClassName = isImageQuestion
+      ? "assessment-step-density--visual"
+      : "assessment-step-density--verbal";
     const likertAssessmentCode = getLikertAssessmentCode(assessmentDisplayName);
     const shouldAutoAdvance = isLikertQuestion && !isLastQuestion;
     const shouldShowFinishButton = isLastQuestion && hasValidCurrentAnswer;
     const shouldShowContinueButton = !isLastQuestion && !shouldAutoAdvance;
-    const shouldShowSaveButton = !isLikertQuestion && !shouldShowFinishButton;
     const shouldShowPrimaryButton = shouldShowContinueButton || shouldShowFinishButton;
     const stepActionsClassName = shouldShowPrimaryButton
       ? "assessment-step-actions"
@@ -1470,7 +1759,7 @@ export function AssessmentForm({
 
     return (
       <div
-        className={`run-form-layout assessment-run-page--dashboard-skin grid gap-6${
+        className={`run-form-layout assessment-run-page--dashboard-skin mx-auto grid w-full ${stepContentWidthClassName} ${stepDensityClassName} gap-4${
           isLikertQuestion ? " run-form-layout--compact run-form-layout--top-compact" : ""
         }`}
       >
@@ -1498,7 +1787,10 @@ export function AssessmentForm({
                   ) : (
                     <>
                       <p className="run-form-hero__eyebrow">Procjena</p>
-                      <h1>{assessmentDisplayName ?? "Procjena"}</h1>
+                      <h1>Test kognitivnih sposobnosti</h1>
+                      <span className="run-form-hero__test-pill">
+                        {assessmentDisplayName ?? "SAFRAN"}
+                      </span>
                       {participantDisplayName ? (
                         <p
                           className={`run-form-hero__participant${
@@ -1566,6 +1858,7 @@ export function AssessmentForm({
                   isLikertQuestion
                     ? " assessment-step-card__question-region--stable assessment-step-card__question-region--compact"
                     : ""
+                }${isImageQuestion ? " assessment-step-card__question-region--visual" : ""
                 }`}
               >
                 <p
@@ -1773,7 +2066,7 @@ export function AssessmentForm({
                   type="button"
                   onClick={() => router.push("/app")}
                 >
-                  Povratak na dashboard
+                  Nazad na dashboard
                 </button>
               </div>
 
@@ -1786,21 +2079,6 @@ export function AssessmentForm({
                 >
                   Nazad
                 </button>
-
-                {shouldShowSaveButton ? (
-                  <button
-                    className="assessment-step-actions__button assessment-step-actions__button--save"
-                    type="button"
-                    onClick={handleSave}
-                    disabled={isInteractionLocked}
-                  >
-                    {saveStatus === "saving"
-                      ? "Čuvanje..."
-                      : showManualSaveSuccess
-                        ? "Sačuvano"
-                        : "Sačuvaj"}
-                  </button>
-                ) : null}
 
                 {shouldShowPrimaryButton ? (
                   <button
