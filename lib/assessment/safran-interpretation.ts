@@ -48,10 +48,11 @@ type SafranDomainDefinition = {
 };
 
 const SAFRAN_INTERPRETATION_INTRO =
-  "Ovo je opis tvog učinka na SAFRAN zadacima. Rezultati su sirovi skorovi, odnosno broj tačnih odgovora u ovoj procjeni. Ne predstavljaju IQ, percentile niti rang u odnosu na populaciju.";
+  "Ovo je opis tvog učinka na SAFRAN zadacima. Rezultati prikazuju broj tačnih odgovora u ovoj procjeni. Ne predstavljaju IQ, percentile niti rang u odnosu na populaciju.";
 
 const SAFRAN_INTERPRETATION_LIMITATIONS = [
   "Rezultati su broj tačnih odgovora u ovoj procjeni, ne IQ skor, percentile ili rang.",
+  "Numerički rezultat je prilagođen jer ova digitalna verzija koristi numeričke nizove, bez računskih zadataka koji zahtijevaju papir i olovku.",
   "SAFRAN ne mjeri iskustvo, motivaciju, kreativnost, komunikacijski stil ili timski doprinos.",
   "Rezultate je najbolje čitati zajedno s intervjuom, radnim zadatkom, iskustvom i drugim testovima.",
 ] as const;
@@ -76,8 +77,8 @@ const SAFRAN_DOMAIN_DEFINITIONS: SafranDomainDefinition[] = [
   },
   {
     scoreKey: "numerical_series_score",
-    domainLabelBs: "Numerički nizovi",
-    maxPossible: 9,
+    domainLabelBs: "Numerički rezultat",
+    maxPossible: 18,
   },
 ];
 
@@ -85,8 +86,8 @@ export const SAFRAN_INTERPRETATION_RULES: SafranInterpretationRule[] = [
   {
     scoreKey: "cognitive_composite_v1",
     minScore: 0,
-    maxScore: 15,
-    maxPossible: 45,
+    maxScore: 18,
+    maxPossible: 54,
     bandKey: "lower_raw",
     bandLabelBs: "manji ukupni broj tačnih odgovora",
     domainLabelBs: "Ukupni rezultat",
@@ -95,9 +96,9 @@ export const SAFRAN_INTERPRETATION_RULES: SafranInterpretationRule[] = [
   },
   {
     scoreKey: "cognitive_composite_v1",
-    minScore: 16,
-    maxScore: 30,
-    maxPossible: 45,
+    minScore: 19,
+    maxScore: 36,
+    maxPossible: 54,
     bandKey: "moderate_raw",
     bandLabelBs: "umjeren ukupni broj tačnih odgovora",
     domainLabelBs: "Ukupni rezultat",
@@ -106,9 +107,9 @@ export const SAFRAN_INTERPRETATION_RULES: SafranInterpretationRule[] = [
   },
   {
     scoreKey: "cognitive_composite_v1",
-    minScore: 31,
-    maxScore: 45,
-    maxPossible: 45,
+    minScore: 37,
+    maxScore: 54,
+    maxPossible: 54,
     bandKey: "higher_raw",
     bandLabelBs: "veći ukupni broj tačnih odgovora",
     domainLabelBs: "Ukupni rezultat",
@@ -184,33 +185,33 @@ export const SAFRAN_INTERPRETATION_RULES: SafranInterpretationRule[] = [
   {
     scoreKey: "numerical_series_score",
     minScore: 0,
-    maxScore: 3,
-    maxPossible: 9,
+    maxScore: 6,
+    maxPossible: 18,
     bandKey: "lower_raw",
     bandLabelBs: "manji broj tačnih odgovora",
-    domainLabelBs: "Numerički nizovi",
+    domainLabelBs: "Numerički rezultat",
     candidateTextBs:
       "U numeričkim nizovima ostvario si manji broj tačnih odgovora. Ovaj dio prikazuje učinak na zadacima u kojima je trebalo prepoznati pravilo u brojevnom nizu.",
   },
   {
     scoreKey: "numerical_series_score",
-    minScore: 4,
-    maxScore: 6,
-    maxPossible: 9,
+    minScore: 7,
+    maxScore: 12,
+    maxPossible: 18,
     bandKey: "moderate_raw",
     bandLabelBs: "umjeren broj tačnih odgovora",
-    domainLabelBs: "Numerički nizovi",
+    domainLabelBs: "Numerički rezultat",
     candidateTextBs:
       "U numeričkim nizovima ostvario si umjeren broj tačnih odgovora. Ovaj dio prikazuje učinak na zadacima u kojima je trebalo prepoznati pravilo u brojevnom nizu.",
   },
   {
     scoreKey: "numerical_series_score",
-    minScore: 7,
-    maxScore: 9,
-    maxPossible: 9,
+    minScore: 13,
+    maxScore: 18,
+    maxPossible: 18,
     bandKey: "higher_raw",
     bandLabelBs: "veći broj tačnih odgovora",
-    domainLabelBs: "Numerički nizovi",
+    domainLabelBs: "Numerički rezultat",
     candidateTextBs:
       "U numeričkim nizovima ostvario si veći broj tačnih odgovora. Ovaj dio prikazuje učinak na zadacima u kojima je trebalo prepoznati pravilo u brojevnom nizu.",
   },
@@ -241,7 +242,7 @@ function buildRelativeProfile(
 
   if (
     !isValidScoreValue(overallScore) ||
-    overallScore < 14 ||
+    overallScore < 19 ||
     !isValidScoreValue(verbalScore) ||
     !isValidScoreValue(figuralScore) ||
     !isValidScoreValue(numericalScore)
@@ -252,7 +253,7 @@ function buildRelativeProfile(
   const domainPercents = [
     { domainLabelBs: "Verbalni dio", percent: verbalScore / 18 },
     { domainLabelBs: "Figuralni dio", percent: figuralScore / 18 },
-    { domainLabelBs: "Numerički nizovi", percent: numericalScore / 9 },
+    { domainLabelBs: "Numerički rezultat", percent: numericalScore / 18 },
   ].sort((left, right) => right.percent - left.percent);
 
   const highest = domainPercents[0];

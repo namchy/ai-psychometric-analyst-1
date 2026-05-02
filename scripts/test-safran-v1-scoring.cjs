@@ -68,20 +68,52 @@ assert.equal(normalizeSafranNumericAnswer("4,5"), "4.5");
 assert.equal(scoreSafranNumericAnswer("4,5", "4.5"), 1);
 assert.equal(scoreSafranSingleChoiceAnswer(true), 1);
 assert.equal(scoreSafranSingleChoiceAnswer(false), 0);
-assert.deepEqual(
-  buildSafranV1CompositeScores({
-    VW: 2,
-    VA: 3,
-    FA: 4,
-    FM: 5,
-    NZ: 6,
-  }),
-  {
-    verbalScore: 5,
-    figuralScore: 9,
-    numericalSeriesScore: 6,
-    cognitiveCompositeV1: 20,
-  },
+
+const partialComposite = buildSafranV1CompositeScores({
+  VW: 2,
+  VA: 3,
+  FA: 4,
+  FM: 5,
+  NZ: 6,
+});
+
+assert.deepEqual(partialComposite, {
+  verbalScore: 5,
+  figuralScore: 9,
+  numericalRawScore: 6,
+  numericalAdjustedScore: 12,
+  numericalScore: 12,
+  numericalSeriesScore: 12,
+  cognitiveCompositeScore: 26,
+  cognitiveCompositeV1: 26,
+});
+
+const perfectComposite = buildSafranV1CompositeScores({
+  VW: 9,
+  VA: 9,
+  FA: 9,
+  FM: 9,
+  NZ: 9,
+});
+
+assert.equal(perfectComposite.verbalScore, 18);
+assert.equal(perfectComposite.figuralScore, 18);
+assert.equal(perfectComposite.numericalRawScore, 9);
+assert.equal(perfectComposite.numericalAdjustedScore, 18);
+assert.equal(perfectComposite.numericalScore, 18);
+assert.equal(perfectComposite.numericalSeriesScore, 18);
+assert.equal(perfectComposite.cognitiveCompositeScore, 54);
+assert.equal(perfectComposite.cognitiveCompositeV1, 54);
+
+const safranSeed = JSON.parse(
+  fs.readFileSync(path.join(projectRoot, "safran_v1_seed.json"), "utf8"),
 );
+const scoredItems = (safranSeed.items ?? []).filter((item) =>
+  ["VW", "VA", "FA", "FM", "NZ"].includes(item.subtest_code),
+);
+const nzItems = scoredItems.filter((item) => item.subtest_code === "NZ");
+
+assert.equal(scoredItems.length, 45);
+assert.equal(nzItems.length, 9);
 
 console.log("SAFRAN V1 scoring tests passed.");

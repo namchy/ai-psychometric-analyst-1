@@ -2,8 +2,10 @@
 
 import { randomInt } from "node:crypto";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
+import type { CreateAssessmentModalState } from "@/components/dashboard/create-assessment-modal-state";
 import { normalizeAssessmentLocale } from "@/lib/assessment/locale";
 import {
   planStandardAssessmentBatteryCreation,
@@ -69,6 +71,8 @@ type CreateParticipantResult =
   | {
       success: true;
       message: string;
+      participantId?: string;
+      participantName?: string;
       credentials: {
         email: string;
         temporaryPassword: string;
@@ -94,55 +98,69 @@ function setParticipantProvisioningCookie(result: CreateParticipantResult) {
   );
 }
 
-async function createParticipantProvisioningResult(
-  formData: FormData,
-): Promise<CreateParticipantResult> {
-  const user = await requireAuthenticatedUserForAction();
-  const organization = await getActiveOrganizationForUser(user.id);
+type ParticipantProvisioningContext = {
+  organizationId: string;
+};
 
-  if (!organization) {
-    redirect("/dashboard?error=no-active-organization");
-  }
+type ParticipantProvisioningSuccessResult = Extract<CreateParticipantResult, { success: true }> & {
+  participantId: string;
+  participantName: string;
+};
 
+function getCreateParticipantInput(formData: FormData): {
+  fullName: string;
+  email: string;
+  participantType: ParticipantType;
+  status: ParticipantStatus;
+} {
   const fullName = getFieldValue(formData, "fullName");
   const email = getFieldValue(formData, "email").toLowerCase();
-  const participantType = getFieldValue(formData, "participantType");
+  const participantType = getFieldValue(formData, "participantType") || "candidate";
   const status = getFieldValue(formData, "status") || "active";
 
   if (!fullName) {
-    redirect("/dashboard?error=participant-full-name-required");
+    throw new Error("Ime i prezime je obavezno.");
   }
 
   if (!email) {
-    redirect("/dashboard?error=participant-email-required");
+    throw new Error("Email je obavezan.");
   }
 
   if (!isParticipantType(participantType)) {
-    redirect("/dashboard?error=participant-type-invalid");
+    throw new Error("Tip kandidata nije validan.");
   }
 
   if (!isParticipantStatus(status)) {
-    redirect("/dashboard?error=participant-status-invalid");
+    throw new Error("Status kandidata nije validan.");
   }
 
+  return {
+    fullName,
+    email,
+    participantType,
+    status,
+  };
+}
+
+async function createParticipantProvisioningResultForOrganization(
+  formData: FormData,
+  context: ParticipantProvisioningContext,
+): Promise<ParticipantProvisioningSuccessResult> {
+  const { fullName, email, participantType, status } = getCreateParticipantInput(formData);
   const supabase = createSupabaseAdminClient();
   const { data: existingParticipant, error: existingParticipantError } = await supabase
     .from("participants")
     .select("id")
-    .eq("organization_id", organization.id)
+    .eq("organization_id", context.organizationId)
     .ilike("email", email)
     .maybeSingle();
 
   if (existingParticipantError) {
-    redirect(
-      `/dashboard?error=create-participant-failed&detail=${encodeURIComponent("Nije moguće provjeriti da li kandidat već postoji.")}`,
-    );
+    throw new Error("Nije moguće provjeriti da li kandidat već postoji.");
   }
 
   if (existingParticipant) {
-    redirect(
-      `/dashboard?error=create-participant-failed&detail=${encodeURIComponent("Kandidat sa ovom email adresom već postoji u aktivnoj organizaciji.")}`,
-    );
+    throw new Error("Kandidat sa ovom email adresom već postoji u aktivnoj organizaciji.");
   }
 
   const temporaryPassword = generateTemporaryPassword();
@@ -159,42 +177,166 @@ async function createParticipantProvisioningResult(
   const authUserId = authData.user?.id;
 
   if (createUserError || !authUserId) {
-    const detail =
-      createUserError?.message ?? "Nije moguće kreirati auth korisnika za kandidata.";
-    redirect(`/dashboard?error=create-participant-failed&detail=${encodeURIComponent(detail)}`);
+    throw new Error(createUserError?.message ?? "Nije moguće kreirati auth korisnika za kandidata.");
   }
 
-  const { error } = await supabase.from("participants").insert({
-    organization_id: organization.id,
-    user_id: authUserId,
-    full_name: fullName,
-    email,
-    participant_type: participantType,
-    status,
-  });
+  const { data: participantData, error } = await supabase
+    .from("participants")
+    .insert({
+      organization_id: context.organizationId,
+      user_id: authUserId,
+      full_name: fullName,
+      email,
+      participant_type: participantType,
+      status,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !participantData?.id) {
     const { error: rollbackError } = await supabase.auth.admin.deleteUser(authUserId);
 
     if (rollbackError) {
-      redirect(
-        `/dashboard?error=create-participant-failed&detail=${encodeURIComponent("Auth korisnik je kreiran, ali participant zapis nije sačuvan i rollback nije uspio. Potrebna je ručna provjera.")}`,
+      throw new Error(
+        "Auth korisnik je kreiran, ali participant zapis nije sačuvan i rollback nije uspio. Potrebna je ručna provjera.",
       );
     }
 
-    redirect(
-      `/dashboard?error=create-participant-failed&detail=${encodeURIComponent(`Participant zapis nije kreiran: ${error.message}`)}`,
-    );
+    throw new Error(`Participant zapis nije kreiran: ${error?.message ?? "unknown error"}`);
   }
 
-  const result: CreateParticipantResult = {
+  return {
     success: true,
+    participantId: participantData.id,
+    participantName: fullName,
     message: "Kandidat je uspješno kreiran.",
     credentials: {
       email,
       temporaryPassword,
     },
   };
+}
+
+async function createStandardAssessmentBatteryForParticipant(params: {
+  organizationId: string;
+  participantId: string;
+  locale: string | null | undefined;
+}): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const participant = await getParticipantForOrganization(params.organizationId, params.participantId);
+
+  if (!participant) {
+    throw new Error("Kandidat nije pronađen u aktivnoj organizaciji.");
+  }
+
+  const { data: batteryTestsData, error: batteryTestsError } = await supabase
+    .from("tests")
+    .select("id, slug, status, is_active")
+    .in("slug", [...STANDARD_ASSESSMENT_BATTERY_SLUGS]);
+
+  if (batteryTestsError) {
+    throw new Error(batteryTestsError.message);
+  }
+
+  const batteryTests = (batteryTestsData ?? []) as StandardBatteryTestRow[];
+  const candidateTests = batteryTests.filter((test) => test.status === "active" && test.is_active === true);
+
+  let activeQuestionTestIds = new Set<string>();
+
+  if (candidateTests.length > 0) {
+    const { data: questionRows, error: questionError } = await supabase
+      .from("questions")
+      .select("test_id")
+      .in(
+        "test_id",
+        candidateTests.map((test) => test.id),
+      )
+      .eq("is_active", true);
+
+    if (questionError) {
+      throw new Error(questionError.message);
+    }
+
+    activeQuestionTestIds = new Set((questionRows ?? []).map((row) => String(row.test_id)));
+  }
+
+  let existingAttemptsData: StandardBatteryExistingAttemptRow[] = [];
+
+  if (candidateTests.length > 0) {
+    const { data, error: existingAttemptsError } = await supabase
+      .from("attempts")
+      .select("id, test_id, status")
+      .eq("organization_id", params.organizationId)
+      .eq("participant_id", participant.id)
+      .in(
+        "test_id",
+        candidateTests.map((test) => test.id),
+      )
+      .in("status", ["in_progress", "completed"]);
+
+    if (existingAttemptsError) {
+      throw new Error(existingAttemptsError.message);
+    }
+
+    existingAttemptsData = (data ?? []) as StandardBatteryExistingAttemptRow[];
+  }
+
+  const batteryPlan = planStandardAssessmentBatteryCreation({
+    availableTests: batteryTests,
+    activeQuestionTestIds,
+    existingAttempts: existingAttemptsData,
+    organizationId: params.organizationId,
+    participantId: participant.id,
+    participantUserId: participant.user_id,
+    locale: params.locale,
+    startedAt: new Date().toISOString(),
+  });
+
+  if (batteryPlan.outcome === "battery-no-runnable-tests") {
+    throw new Error("Trenutno nema aktivnih testova spremnih za standardnu procjenu.");
+  }
+
+  if (batteryPlan.attemptIdsToAbandon.length > 0) {
+    const { error: abandonError } = await supabase
+      .from("attempts")
+      .update({ status: "abandoned" })
+      .in("id", batteryPlan.attemptIdsToAbandon)
+      .eq("organization_id", params.organizationId)
+      .eq("participant_id", participant.id)
+      .eq("status", "in_progress");
+
+    if (abandonError) {
+      throw new Error(abandonError.message);
+    }
+  }
+
+  const { error: insertError } = await supabase.from("attempts").insert(batteryPlan.attemptsToInsert);
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
+}
+
+async function createParticipantProvisioningResult(
+  formData: FormData,
+): Promise<CreateParticipantResult> {
+  const user = await requireAuthenticatedUserForAction();
+  const organization = await getActiveOrganizationForUser(user.id);
+
+  if (!organization) {
+    redirect("/dashboard?error=no-active-organization");
+  }
+
+  let result: ParticipantProvisioningSuccessResult;
+
+  try {
+    result = await createParticipantProvisioningResultForOrganization(formData, {
+      organizationId: organization.id,
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Nije moguće kreirati kandidata.";
+    redirect(`/dashboard?error=create-participant-failed&detail=${encodeURIComponent(detail)}`);
+  }
 
   setParticipantProvisioningCookie(result);
   return result;
@@ -203,6 +345,59 @@ async function createParticipantProvisioningResult(
 export async function createParticipant(formData: FormData): Promise<void> {
   await createParticipantProvisioningResult(formData);
   redirect("/dashboard?success=participant-created");
+}
+
+export async function createCandidateAssessment(
+  _previousState: CreateAssessmentModalState,
+  formData: FormData,
+): Promise<CreateAssessmentModalState> {
+  const user = await requireAuthenticatedUserForAction();
+  const organization = await getActiveOrganizationForUser(user.id);
+
+  if (!organization) {
+    return {
+      status: "error",
+      message: "Aktivna organizacija nije dostupna za ovaj nalog.",
+    };
+  }
+
+  try {
+    const participantResult = await createParticipantProvisioningResultForOrganization(formData, {
+      organizationId: organization.id,
+    });
+
+    try {
+      await createStandardAssessmentBatteryForParticipant({
+        organizationId: organization.id,
+        participantId: participantResult.participantId,
+        locale: getFieldValue(formData, "locale"),
+      });
+    } catch (error) {
+      return {
+        status: "error",
+        message:
+          error instanceof Error
+            ? `Kandidat je kreiran, ali procjena nije dodijeljena: ${error.message}`
+            : "Kandidat je kreiran, ali procjena nije dodijeljena.",
+      };
+    }
+
+    revalidatePath("/dashboard");
+
+    return {
+      status: "success",
+      participantName: participantResult.participantName,
+      email: participantResult.credentials.email,
+      temporaryPassword: participantResult.credentials.temporaryPassword,
+      assignedTests: ["IPIP-NEO-120", "SAFRAN", "MWMS"],
+      message: "Procjena je kreirana.",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Nije moguće kreirati procjenu.",
+    };
+  }
 }
 
 export async function createAssessmentAttempt(formData: FormData) {

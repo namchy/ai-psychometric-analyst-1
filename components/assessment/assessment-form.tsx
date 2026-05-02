@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/assessment";
 import { logout } from "@/app/actions/auth";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { ReportGenerationLoadingScreen } from "@/components/assessment/report-generation-loading-screen";
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState, isQuestionAnswered } from "@/lib/assessment/completion";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
@@ -50,13 +51,6 @@ type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
 type SaveStatus = "idle" | "saving" | "saved" | "completing" | "completed" | "error";
 type ProtectedCompletionUiPhase = "processing" | "redirecting" | null;
 const MANUAL_SAVE_SUCCESS_DURATION_MS = 1600;
-
-type ProtectedCompletionUiContent = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  liveMessage: string;
-};
 
 function getSerializableSelections(
   selections: SelectionState,
@@ -197,6 +191,30 @@ function getLikertAssessmentCode(assessmentDisplayName?: string | null): string 
   return name;
 }
 
+function parseNumericSequenceQuestionText(text: string): { prompt: string; tokens: string[] } | null {
+  const normalizedText = text.trim();
+  const match = normalizedText.match(/^Logično dopuni niz:\s*(.+)$/i);
+
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const rawSequence = match[1].trim();
+  const tokens = rawSequence
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  if (tokens.length < 2) {
+    return null;
+  }
+
+  return {
+    prompt: "Logično dopuni niz",
+    tokens,
+  };
+}
+
 function AssessmentStimulusImages({ question }: { question: TestQuestion }) {
   const imagePaths = [
     question.stimulus_image_path,
@@ -233,27 +251,6 @@ function AssessmentOptionMedia({ option }: { option: TestAnswerOption }) {
       src={option.image_path}
     />
   );
-}
-
-function getProtectedCompletionUiContent(
-  phase: Exclude<ProtectedCompletionUiPhase, null>,
-): ProtectedCompletionUiContent {
-  if (phase === "redirecting") {
-    return {
-      eyebrow: "Procjena završena",
-      title: "Analiziramo tvoje rezultate",
-      description: "Odgovori su zaprimljeni, a personalizovani izvještaj je spreman za prikaz.",
-      liveMessage: "Analiza je završena. Otvaramo rezultate.",
-    };
-  }
-
-  return {
-    eyebrow: "Procjena završena",
-    title: "Analiziramo tvoje rezultate",
-    description:
-      "Odgovori su uspješno zaprimljeni. Pripremamo tvoj personalizovani izvještaj.",
-    liveMessage: "Procjena je završena. Analiza rezultata je u toku.",
-  };
 }
 
 function AssessmentDashboardSkinStyles() {
@@ -864,12 +861,148 @@ function AssessmentDashboardSkinStyles() {
         line-height: 1.35;
       }
 
+      .assessment-run-page--dashboard-skin .assessment-step-card--numeric {
+        min-height: 12rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card--numeric .assessment-step-card__question-region {
+        max-width: 100%;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-question {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-question h3 {
+        margin: 0;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-sequence {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        align-items: center;
+        margin-top: 0.15rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-sequence__token {
+        display: inline-flex;
+        min-width: 2.75rem;
+        min-height: 2.35rem;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(203, 213, 225, 0.92);
+        border-radius: 0.85rem;
+        background: rgba(255, 255, 255, 0.96);
+        color: rgb(15, 23, 42);
+        font-size: 1.05rem;
+        font-weight: 750;
+        line-height: 1;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-sequence__token--unknown {
+        border-color: rgba(17, 138, 178, 0.34);
+        background: rgba(17, 138, 178, 0.08);
+        color: rgb(7, 59, 76);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-answer {
+        display: grid;
+        width: fit-content;
+        max-width: 100%;
+        justify-items: start;
+        gap: 1.35rem;
+        padding-top: 0.15rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-answer__hint {
+        margin: 0;
+        color: rgb(71, 85, 105);
+        font-size: 0.88rem;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-answer__field {
+        display: grid;
+        gap: 0.35rem;
+        width: fit-content;
+        max-width: 100%;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-answer__label {
+        margin: 0;
+        color: rgb(71, 85, 105);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-text-input--numeric {
+        width: min(100%, 14rem);
+        min-height: 3.35rem;
+        padding: 0.7rem 0.95rem;
+        text-align: center;
+        color: rgb(15, 23, 42);
+        font-size: 1.2rem;
+        font-weight: 750;
+        letter-spacing: 0.02em;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-text-input--numeric::placeholder {
+        color: rgb(148, 163, 184);
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 0;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-text-input--numeric:focus {
+        border-color: rgba(17, 138, 178, 0.72);
+        box-shadow:
+          0 0 0 4px rgba(17, 138, 178, 0.14),
+          inset 0 1px 0 rgba(255, 255, 255, 0.82);
+        outline: none;
+      }
+
       .assessment-run-page--dashboard-skin .assessment-textarea,
       .assessment-run-page--dashboard-skin .assessment-text-input {
         border-color: rgba(203, 213, 225, 0.88);
         border-radius: 1rem;
         background: rgba(255, 255, 255, 0.96);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-answer .assessment-text-input--numeric {
+        width: 10.5rem;
+        max-width: 100%;
+        min-height: 3.25rem;
+        border: 0;
+        border-bottom: 2px solid rgba(17, 138, 178, 0.46);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        padding: 0.35rem 0.25rem 0.45rem;
+        text-align: center;
+        color: rgb(15, 23, 42);
+        font-size: 1.55rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-answer .assessment-text-input--numeric:hover {
+        border-bottom-color: rgba(17, 138, 178, 0.68);
+        background: transparent;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-numeric-answer .assessment-text-input--numeric:focus {
+        border-bottom-color: rgb(13, 148, 136);
+        background: transparent;
+        box-shadow: 0 8px 18px -18px rgba(13, 148, 136, 0.5);
+        outline: none;
       }
 
       .assessment-run-page--dashboard-skin .assessment-stimulus-images {
@@ -1238,6 +1371,30 @@ function AssessmentDashboardSkinStyles() {
           height: 0.32rem;
         }
 
+        .assessment-run-page--dashboard-skin .assessment-step-card--numeric {
+          min-height: 10.5rem;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-numeric-question {
+          gap: 0.65rem;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-numeric-sequence {
+          gap: 0.5rem;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-numeric-sequence__token {
+          min-width: 2.45rem;
+          min-height: 2.05rem;
+          font-size: 0.98rem;
+        }
+
+        .assessment-run-page--dashboard-skin .assessment-numeric-answer .assessment-text-input--numeric {
+          width: 9.5rem;
+          min-height: 3.05rem;
+          font-size: 1.4rem;
+        }
+
         .assessment-run-page--dashboard-skin.assessment-step-density--verbal .assessment-step-card {
           padding: 0.95rem 1.05rem;
           border-radius: 1.15rem;
@@ -1492,6 +1649,7 @@ export function AssessmentForm({
   const [stepValidationMessage, setStepValidationMessage] = useState<string | null>(null);
   const requestInFlightRef = useRef(false);
   const manualSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const numericInputRef = useRef<HTMLInputElement | null>(null);
   const effectiveSelections = getEffectiveSelections(initialSelections, selections);
   const [showManualSaveSuccess, setShowManualSaveSuccess] = useState(false);
 
@@ -1542,6 +1700,24 @@ export function AssessmentForm({
   useEffect(() => {
     clearManualSaveSuccessFeedback();
   }, [currentQuestionIndex, currentQuestion?.id]);
+
+  useEffect(() => {
+    if (
+      !isStepLayout ||
+      currentQuestion?.renderer_type !== "numeric_input" ||
+      isInteractionLocked
+    ) {
+      return undefined;
+    }
+
+    const focusTimer = window.setTimeout(() => {
+      numericInputRef.current?.focus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+    };
+  }, [isStepLayout, currentQuestion?.id, currentQuestion?.renderer_type, isInteractionLocked]);
 
   async function persistSelections(
     nextSelections: SelectionState,
@@ -1739,34 +1915,15 @@ export function AssessmentForm({
   }
 
   if (executionMode === "protected" && protectedCompletionUiPhase) {
-    const completionUi = getProtectedCompletionUiContent(protectedCompletionUiPhase);
-
     return (
       <>
         <AssessmentDashboardSkinStyles />
-        <section
-          aria-live="polite"
-          aria-busy="true"
-          className="assessment-completion-state assessment-run-page--dashboard-skin"
-          role="status"
-        >
-          <div className="assessment-completion-state__hero">
-            <p className="assessment-eyebrow">{completionUi.eyebrow}</p>
-            <h2>{completionUi.title}</h2>
-            <p className="assessment-completion-state__description">{completionUi.description}</p>
-          </div>
-
-          <div aria-hidden="true" className="assessment-completion-state__indicator">
-            <span className="assessment-completion-state__indicator-orbit">
-              <span className="assessment-completion-state__indicator-core" />
-            </span>
-            <span className="assessment-completion-state__indicator-bar" />
-          </div>
-
-          <p className="assessment-completion-state__status" aria-label={completionUi.liveMessage}>
-            Rezultati će se otvoriti automatski čim obrada bude završena.
-          </p>
-        </section>
+        <ReportGenerationLoadingScreen
+          status={protectedCompletionUiPhase === "redirecting" ? "ready" : "processing"}
+          testSlug={null}
+          testName={assessmentDisplayName ?? null}
+          participantName={participantDisplayName ?? null}
+        />
       </>
     );
   }
@@ -1780,6 +1937,10 @@ export function AssessmentForm({
     );
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
+    const isNumericInputQuestion = currentQuestion.renderer_type === "numeric_input";
+    const numericSequenceQuestion = isNumericInputQuestion
+      ? parseNumericSequenceQuestionText(currentQuestion.text)
+      : null;
     const imageOptionsCountClassName = isImageQuestion
       ? ` assessment-options--image-count-${options.length}`
       : "";
@@ -1788,6 +1949,7 @@ export function AssessmentForm({
     const stepDensityClassName = isImageQuestion
       ? "assessment-step-density--visual"
       : "assessment-step-density--verbal";
+    const shouldUseTopCompactLayout = false;
     const likertAssessmentCode = getLikertAssessmentCode(assessmentDisplayName);
     const shouldAutoAdvance = isLikertQuestion && !isLastQuestion;
     const shouldShowFinishButton = isLastQuestion && hasValidCurrentAnswer;
@@ -1800,7 +1962,9 @@ export function AssessmentForm({
     return (
       <div
         className={`run-form-layout assessment-run-page--dashboard-skin mx-auto grid w-full ${stepShellWidthClassName} ${stepDensityClassName} gap-4${
-          isLikertQuestion ? " run-form-layout--compact run-form-layout--top-compact" : ""
+          isLikertQuestion
+            ? ` run-form-layout--compact${shouldUseTopCompactLayout ? " run-form-layout--top-compact" : ""}`
+            : ""
         }`}
       >
           <AssessmentDashboardSkinStyles />
@@ -1886,7 +2050,9 @@ export function AssessmentForm({
 
           <div className="assessment-step-layout">
           <section
-            className={`assessment-step-card${isLikertQuestion ? " assessment-step-card--compact" : ""}`}
+            className={`assessment-step-card${isLikertQuestion ? " assessment-step-card--compact" : ""}${
+              isNumericInputQuestion ? " assessment-step-card--numeric" : ""
+            }`}
           >
             <div
               className={`assessment-step-card__header${
@@ -1908,7 +2074,25 @@ export function AssessmentForm({
                 >
                   Pitanje {currentQuestionIndex + 1}
                 </p>
-                {visibleQuestionText ? <h3>{visibleQuestionText}</h3> : null}
+                {isNumericInputQuestion && numericSequenceQuestion ? (
+                  <div className="assessment-numeric-question">
+                    <h3>{numericSequenceQuestion.prompt}</h3>
+                    <div className="assessment-numeric-sequence" aria-label={currentQuestion.text}>
+                      {numericSequenceQuestion.tokens.map((token, tokenIndex) => (
+                        <span
+                          key={`${currentQuestion.id}-numeric-token-${tokenIndex}`}
+                          className={`assessment-numeric-sequence__token${
+                            token === "?" ? " assessment-numeric-sequence__token--unknown" : ""
+                          }`}
+                        >
+                          {token}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : visibleQuestionText ? (
+                  <h3>{visibleQuestionText}</h3>
+                ) : null}
                 <AssessmentStimulusImages question={currentQuestion} />
               </div>
             </div>
@@ -1920,15 +2104,32 @@ export function AssessmentForm({
 
               {currentQuestion.question_type === "text" ? (
                 currentQuestion.renderer_type === "numeric_input" ? (
-                  <input
-                    className="assessment-text-input"
-                    inputMode="decimal"
-                    type="text"
-                    value={typeof currentSelection === "string" ? currentSelection : ""}
-                    onChange={(event) => {
-                      updateSelection(currentQuestion.id, event.target.value);
-                    }}
-                  />
+                  <div className="assessment-numeric-answer">
+                    <p className="assessment-numeric-answer__hint">Unesi sljedeći broj u nizu.</p>
+                    <div className="assessment-numeric-answer__field">
+                      <p className="assessment-numeric-answer__label">Tvoj odgovor</p>
+                      <input
+                        aria-label="Tvoj odgovor"
+                        autoFocus
+                        className="assessment-text-input assessment-text-input--numeric"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        ref={numericInputRef}
+                        type="text"
+                        value={typeof currentSelection === "string" ? currentSelection : ""}
+                        onChange={(event) => {
+                          const numericOnlyValue = event.target.value.replace(/\D/g, "");
+                          updateSelection(currentQuestion.id, numericOnlyValue);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void handleAdvance();
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <textarea
                     className="assessment-textarea"
@@ -2095,10 +2296,6 @@ export function AssessmentForm({
           </section>
 
           <div className="assessment-step-layout__footer">
-            {!canComplete && currentQuestionIndex === questions.length - 1 ? (
-              <p className="assessment-progress-note">{incompleteRequiredAnswersMessage}</p>
-            ) : null}
-
             <div className="assessment-step-layout__actions-row">
               <div className="assessment-step-layout__actions-secondary">
                 <button

@@ -12,9 +12,10 @@ import {
   DashboardActionRow,
   DashboardInfoCardShell,
   DashboardSectionHeader,
-  DashboardSectionShell,
   DashboardStatusBadge,
+  DashboardSectionShell,
 } from "@/components/dashboard/primitives";
+import { HrAssessmentsTable } from "@/components/dashboard/hr-assessments-table";
 import { SingleOpenPanelGroup } from "@/components/dashboard/single-open-panel-group";
 import {
   DEFAULT_ASSESSMENT_LOCALE,
@@ -71,27 +72,25 @@ type ParticipantAssessmentRow = {
   completedTests: number;
   hasOpenAssessment: boolean;
   aggregateStatus: AssessmentAggregateStatus;
-  reportLabel: string;
-  reportNote: string | null;
   primaryAction:
     | {
         kind: "create";
-        label: "Kreiraj procjenu";
+        label: "Dodijeli procjenu";
       }
     | {
-        kind: "disabled";
-        label: "Prati procjenu" | "Pregledaj problem";
+        kind: "info";
+        label: "Čeka kandidata" | "Traži pažnju";
+        note: string;
       }
     | {
         kind: "link";
-        label: "Pogledaj rezultate" | "Otvori rezultate";
+        label: "Pogledaj procjenu";
         href: string;
       };
   testItems: Array<{
     key: string;
     shortLabel: string;
     status: HrFriendlyTestStatus;
-    resultHref: string | null;
   }>;
 };
 
@@ -105,10 +104,6 @@ const STANDARD_BATTERY_DISPLAY_TESTS: readonly StandardBatteryDisplayTest[] = [
   { slug: "safran_v1", shortLabel: "SAFRAN" },
   { slug: "mwms_v1", shortLabel: "MWMS" },
 ] as const;
-
-function getStandardBatteryShortLabel(slug: string): string {
-  return STANDARD_BATTERY_DISPLAY_TESTS.find((test) => test.slug === slug)?.shortLabel ?? slug;
-}
 
 const PARTICIPANT_CREDENTIALS_COOKIE = "participant-provisioning-flash";
 
@@ -175,6 +170,29 @@ function HrDashboardFooter() {
 function getOrganizationName(membership: MembershipSummary): string {
   return membership.organization?.name ?? "Unknown organization";
 }
+
+const HERO_KPI_CARD_CONFIG = {
+  activeAssessments: {
+    accentColor: "#118ab2",
+    background:
+      "linear-gradient(135deg, rgba(17, 138, 178, 0.10), rgba(255, 255, 255, 0.92))",
+  },
+  waitingCandidates: {
+    accentColor: "#ffd166",
+    background:
+      "linear-gradient(135deg, rgba(255, 209, 102, 0.14), rgba(255, 255, 255, 0.92))",
+  },
+  reviewReady: {
+    accentColor: "#06d6a0",
+    background:
+      "linear-gradient(135deg, rgba(6, 214, 160, 0.12), rgba(255, 255, 255, 0.92))",
+  },
+  reportsAvailable: {
+    accentColor: "#ef476f",
+    background:
+      "linear-gradient(135deg, rgba(239, 71, 111, 0.10), rgba(255, 255, 255, 0.92))",
+  },
+} as const;
 
 function getDashboardMessage(rawError: string | string[] | undefined): string | null {
   const error = Array.isArray(rawError) ? rawError[0] : rawError;
@@ -275,45 +293,6 @@ function getStringParam(value: string | string[] | undefined): string | null {
   return null;
 }
 
-function formatCountLabel(count: number, singular: string, paucal: string, plural: string): string {
-  const absoluteCount = Math.abs(count);
-  const lastTwoDigits = absoluteCount % 100;
-
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-    return plural;
-  }
-
-  const lastDigit = absoluteCount % 10;
-
-  if (lastDigit === 1) {
-    return singular;
-  }
-
-  if (lastDigit >= 2 && lastDigit <= 4) {
-    return paucal;
-  }
-
-  return plural;
-}
-
-function buildDashboardHref(
-  searchTerm: string,
-  filter: AssessmentFilterKey,
-): string {
-  const params = new URLSearchParams();
-
-  if (searchTerm) {
-    params.set("q", searchTerm);
-  }
-
-  if (filter !== "all") {
-    params.set("filter", filter);
-  }
-
-  const query = params.toString();
-  return query ? `/dashboard?${query}` : "/dashboard";
-}
-
 function getTestStatusLabel(attempt: OrganizationScopedAttemptSummary | null): HrFriendlyTestStatus {
   if (!attempt) {
     return "Nije dodijeljeno";
@@ -336,39 +315,6 @@ function getTestStatusLabel(attempt: OrganizationScopedAttemptSummary | null): H
   }
 
   return "Greška";
-}
-
-function getTestStatusClassName(status: HrFriendlyTestStatus): string {
-  switch (status) {
-    case "Završeno":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "U toku":
-      return "border-sky-200 bg-sky-50 text-sky-700";
-    case "Čeka":
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    case "Nije dodijeljeno":
-      return "border-slate-200 bg-slate-50 text-slate-500";
-    case "Arhivirano":
-      return "border-slate-200 bg-slate-100 text-slate-600";
-    case "Greška":
-      return "border-rose-200 bg-rose-50 text-rose-700";
-    default:
-      return "border-slate-200 bg-slate-100 text-slate-600";
-  }
-}
-
-function getAggregateStatusClassName(status: AssessmentAggregateStatus): string {
-  switch (status) {
-    case "Spremno za pregled":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "Djelimično završeno":
-    case "U toku":
-      return "border-sky-200 bg-sky-50 text-sky-700";
-    case "Traži pažnju":
-      return "border-rose-200 bg-rose-50 text-rose-700";
-    default:
-      return "border-amber-200 bg-amber-50 text-amber-700";
-  }
 }
 
 function selectRelevantAttempt(attempts: OrganizationScopedAttemptSummary[]): OrganizationScopedAttemptSummary | null {
@@ -445,7 +391,6 @@ function buildParticipantAssessmentRows(input: {
         key: test.slug,
         shortLabel: test.shortLabel,
         status,
-        resultHref: relevantAttempt?.lifecycle === "completed" ? `/dashboard/attempts/${relevantAttempt.id}` : null,
       };
     });
 
@@ -488,44 +433,34 @@ function buildParticipantAssessmentRows(input: {
       aggregateStatus = "Čeka kandidata";
     }
 
-    let reportLabel = "Rezultati nakon završenog testa";
-    let reportNote: string | null = "Kompozit nakon 3 testa";
-
-    if (completedCount === 1) {
-      reportLabel = "1 rezultat dostupan";
-    } else if (completedCount === 2) {
-      reportLabel = "2 rezultata dostupna";
-    } else if (completedCount === 3) {
-      reportLabel = "3 rezultata dostupna";
-      reportNote = "Kompozit u pripremi";
-    }
-
     let primaryAction: ParticipantAssessmentRow["primaryAction"] = {
       kind: "create",
-      label: "Kreiraj procjenu",
+      label: "Dodijeli procjenu",
     };
 
     if (hasInvalidState) {
       primaryAction = {
-        kind: "disabled",
-        label: "Pregledaj problem",
+        kind: "info",
+        label: "Traži pažnju",
+        note: "Provjeri status procjene.",
       };
     } else if (totalTests > 0 && completedCount === totalTests && completedAttempts[0]) {
       primaryAction = {
         kind: "link",
-        label: "Otvori rezultate",
+        label: "Pogledaj procjenu",
         href: `/dashboard/attempts/${completedAttempts[0].id}`,
       };
     } else if (completedCount > 0 && completedAttempts[0]) {
       primaryAction = {
         kind: "link",
-        label: "Pogledaj rezultate",
+        label: "Pogledaj procjenu",
         href: `/dashboard/attempts/${completedAttempts[0].id}`,
       };
     } else if (openAttempt || archivedOnlyAttempt) {
       primaryAction = {
-        kind: "disabled",
-        label: "Prati procjenu",
+        kind: "info",
+        label: "Čeka kandidata",
+        note: "Rezultati će biti dostupni nakon završenog testa.",
       };
     }
 
@@ -535,25 +470,10 @@ function buildParticipantAssessmentRows(input: {
       completedTests: completedCount,
       hasOpenAssessment,
       aggregateStatus,
-      reportLabel,
-      reportNote,
       primaryAction,
       testItems,
     };
   });
-}
-
-function matchesFilter(row: ParticipantAssessmentRow, filter: AssessmentFilterKey): boolean {
-  switch (filter) {
-    case "in-progress":
-      return row.aggregateStatus === "U toku" || row.aggregateStatus === "Djelimično završeno";
-    case "review-ready":
-      return row.aggregateStatus === "Spremno za pregled";
-    case "attention":
-      return row.aggregateStatus === "Traži pažnju";
-    default:
-      return true;
-  }
 }
 
 export const dynamic = "force-dynamic";
@@ -601,19 +521,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     attempts,
     standardBatteryTests,
   });
-  const visibleRows = assessmentRows.filter((row) => {
-    const normalizedSearch = searchTerm.toLocaleLowerCase("hr");
-    const matchesSearch =
-      normalizedSearch.length === 0 ||
-      row.participant.full_name.toLocaleLowerCase("hr").includes(normalizedSearch) ||
-      row.participant.email.toLocaleLowerCase("hr").includes(normalizedSearch);
-
-    return matchesSearch && matchesFilter(row, activeFilter);
-  });
-  const firstCreateCandidate = visibleRows.find((row) => row.primaryAction.kind === "create");
-  const createActionHref = firstCreateCandidate
-    ? `#row-action-${firstCreateCandidate.participant.id}`
-    : "#candidate-assessments-table";
   const activeAssessmentCount = assessmentRows.filter((row) => row.hasOpenAssessment).length;
   const waitingCount = assessmentRows.filter(
     (row) => row.aggregateStatus === "Čeka kandidata" && row.completedTests === 0,
@@ -642,17 +549,74 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             />
 
             <div className="relative space-y-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <DashboardSectionHeader
-                  eyebrow="HR control plane"
-                  eyebrowClassName="text-teal-800/90"
-                  title="HR pregled procjena"
-                  titleClassName="text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
-                  description="Prati status testova, dostupne rezultate i sljedeću HR akciju za svakog kandidata."
-                  descriptionClassName="max-w-3xl"
-                />
+              <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0 flex-1 space-y-5">
+                  <DashboardSectionHeader
+                    eyebrow="HR control panel"
+                    eyebrowClassName="text-teal-800/90"
+                    title="HR pregled procjena"
+                    titleClassName="text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
+                    description="Prati status testova, dostupne rezultate i sljedeću HR akciju za svakog kandidata."
+                    descriptionClassName="max-w-3xl"
+                  />
 
-                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                  <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 xl:max-w-[810px] xl:grid-cols-4">
+                    <DashboardInfoCardShell
+                      className="flex h-[72px] w-[195px] items-center justify-between rounded-[1.35rem] border-slate-200/80 px-4 py-3 shadow-none"
+                      style={{
+                        background: HERO_KPI_CARD_CONFIG.activeAssessments.background,
+                        borderLeftColor: HERO_KPI_CARD_CONFIG.activeAssessments.accentColor,
+                        borderLeftWidth: "4px",
+                      }}
+                    >
+                      <span className="block max-w-[125px] text-[10px] font-semibold uppercase leading-[1.15] tracking-[0.18em] text-slate-500 whitespace-nowrap">
+                        Aktivne procjene
+                      </span>
+                      <p className="shrink-0 text-3xl font-bold leading-none tracking-[-0.05em] text-slate-950">{activeAssessmentCount}</p>
+                    </DashboardInfoCardShell>
+                    <DashboardInfoCardShell
+                      className="flex h-[72px] w-[195px] items-center justify-between rounded-[1.35rem] border-slate-200/80 px-4 py-3 shadow-none"
+                      style={{
+                        background: HERO_KPI_CARD_CONFIG.waitingCandidates.background,
+                        borderLeftColor: HERO_KPI_CARD_CONFIG.waitingCandidates.accentColor,
+                        borderLeftWidth: "4px",
+                      }}
+                    >
+                      <span className="block max-w-[125px] text-[10px] font-semibold uppercase leading-[1.15] tracking-[0.18em] text-slate-500 whitespace-nowrap">
+                        Čekaju kandidata
+                      </span>
+                      <p className="shrink-0 text-3xl font-bold leading-none tracking-[-0.05em] text-slate-950">{waitingCount}</p>
+                    </DashboardInfoCardShell>
+                    <DashboardInfoCardShell
+                      className="flex h-[72px] w-[195px] items-center justify-between rounded-[1.35rem] border-slate-200/80 px-4 py-3 shadow-none"
+                      style={{
+                        background: HERO_KPI_CARD_CONFIG.reviewReady.background,
+                        borderLeftColor: HERO_KPI_CARD_CONFIG.reviewReady.accentColor,
+                        borderLeftWidth: "4px",
+                      }}
+                    >
+                      <span className="block max-w-[125px] text-[10px] font-semibold uppercase leading-[1.15] tracking-[0.18em] text-slate-500">
+                        Spremno za pregled
+                      </span>
+                      <p className="shrink-0 text-3xl font-bold leading-none tracking-[-0.05em] text-slate-950">{reviewReadyCount}</p>
+                    </DashboardInfoCardShell>
+                    <DashboardInfoCardShell
+                      className="flex h-[72px] w-[195px] items-center justify-between rounded-[1.35rem] border-slate-200/80 px-4 py-3 shadow-none"
+                      style={{
+                        background: HERO_KPI_CARD_CONFIG.reportsAvailable.background,
+                        borderLeftColor: HERO_KPI_CARD_CONFIG.reportsAvailable.accentColor,
+                        borderLeftWidth: "4px",
+                      }}
+                    >
+                      <span className="block max-w-[125px] text-[10px] font-semibold uppercase leading-[1.15] tracking-[0.18em] text-slate-500 whitespace-nowrap">
+                        Izvještaji dostupni
+                      </span>
+                      <p className="shrink-0 text-3xl font-bold leading-none tracking-[-0.05em] text-slate-950">{reportsAvailableCount}</p>
+                    </DashboardInfoCardShell>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 xl:ml-6 xl:max-w-[18rem] xl:justify-end">
                   <span className="rounded-full border border-white/70 bg-white/70 px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
                     {activeOrganization ? activeOrganization.name : "No active organization"}
                   </span>
@@ -660,33 +624,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     {user.email ?? user.id}
                   </span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <DashboardInfoCardShell className="rounded-[1.35rem] border-slate-200/90 bg-white/78 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Aktivne procjene
-                  </span>
-                  <p className="mt-3 text-3xl font-bold tracking-[-0.05em] text-slate-950">{activeAssessmentCount}</p>
-                </DashboardInfoCardShell>
-                <DashboardInfoCardShell className="rounded-[1.35rem] border-slate-200/90 bg-white/78 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Čekaju kandidata
-                  </span>
-                  <p className="mt-3 text-3xl font-bold tracking-[-0.05em] text-slate-950">{waitingCount}</p>
-                </DashboardInfoCardShell>
-                <DashboardInfoCardShell className="rounded-[1.35rem] border-slate-200/90 bg-white/78 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Spremno za pregled
-                  </span>
-                  <p className="mt-3 text-3xl font-bold tracking-[-0.05em] text-slate-950">{reviewReadyCount}</p>
-                </DashboardInfoCardShell>
-                <DashboardInfoCardShell className="rounded-[1.35rem] border-slate-200/90 bg-white/78 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Izvještaji dostupni
-                  </span>
-                  <p className="mt-3 text-3xl font-bold tracking-[-0.05em] text-slate-950">{reportsAvailableCount}</p>
-                </DashboardInfoCardShell>
               </div>
 
               {memberships.length > 1 ? (
@@ -708,286 +645,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </DashboardSectionShell>
 
-          <DashboardSectionShell className="overflow-hidden rounded-[2rem] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(242,247,250,0.95))] px-0 py-0 shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
-            <div className="border-b border-slate-200/80 px-5 py-5 sm:px-6">
-              <div className="flex flex-col gap-3.5">
-                <div className="min-w-0">
-                  <h2 className="font-headline text-[1.8rem] font-bold tracking-[-0.04em] text-slate-950">
-                    Procjene kandidata
-                  </h2>
-                  <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                    Prati status testova, dostupne rezultate i sljedeću HR akciju za svakog kandidata.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <form action="/dashboard" className="flex min-w-0 flex-1 flex-col gap-2.5">
-                    <div className="relative min-w-0 max-w-[24rem]">
-                      <input
-                        aria-label="Pretraži kandidata"
-                        className="w-full rounded-full border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
-                        defaultValue={searchTerm}
-                        name="q"
-                        placeholder="Pretraži kandidata"
-                        type="search"
-                      />
-                      {activeFilter !== "all" ? <input name="filter" type="hidden" value={activeFilter} /> : null}
-                    </div>
-                  </form>
-
-                  <Link
-                    className="min-h-0 w-fit rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)]"
-                    href={createActionHref}
-                  >
-                    Kreiraj procjenu
-                  </Link>
-                </div>
-
-                <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
-                  <span className="shrink-0 pr-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    Filteri
-                  </span>
-                  {(
-                    [
-                      { key: "all", label: "Svi" },
-                      { key: "in-progress", label: "U toku" },
-                      { key: "review-ready", label: "Spremno za pregled" },
-                      { key: "attention", label: "Traži pažnju" },
-                    ] satisfies Array<{ key: AssessmentFilterKey; label: string }>
-                  ).map((filterOption) => {
-                    const isActive = activeFilter === filterOption.key;
-
-                    return (
-                      <Link
-                        key={filterOption.key}
-                        className={`shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition ${
-                          isActive
-                            ? "border border-teal-200 bg-teal-50 text-teal-700 shadow-[0_12px_24px_rgba(13,148,136,0.12)]"
-                            : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-                        }`}
-                        href={buildDashboardHref(searchTerm, filterOption.key)}
-                      >
-                        {filterOption.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {!activeOrganization ? (
+          {activeOrganization ? (
+            <HrAssessmentsTable
+              createActionMessage={message}
+              createAttemptDetails={createParticipantDetails}
+              initialFilter={activeFilter}
+              initialSearchTerm={searchTerm}
+              inlineBatterySuccessMessage={inlineBatterySuccessMessage}
+              openAttemptFor={openAttemptFor}
+              rows={assessmentRows}
+              standardBatteryTests={standardBatteryTests}
+            />
+          ) : (
+            <DashboardSectionShell className="overflow-hidden rounded-[2rem] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(242,247,250,0.95))] px-0 py-0 shadow-[0_30px_70px_rgba(15,23,42,0.1)]">
               <div className="px-6 py-8 text-sm leading-6 text-slate-600">
                 Ovaj korisnik još nema aktivnu organizaciju, pa HR dashboard trenutno nema dostupne procjene.
               </div>
-            ) : visibleRows.length === 0 ? (
-              <div className="px-6 py-8 text-sm leading-6 text-slate-600">
-                Nema kandidata koji odgovaraju trenutnoj pretrazi ili filteru.
-              </div>
-            ) : (
-              <div className="overflow-x-auto" id="candidate-assessments-table">
-                <table className="min-w-[1080px] w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200/80 text-left">
-                      {["Kandidat", "Napredak", "Testovi", "Izvještaji", "Status", "Akcija"].map((header) => (
-                        <th
-                          key={header}
-                          className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500"
-                          scope="col"
-                        >
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleRows.map((row) => {
-                      const progressRatio = row.totalTests > 0 ? row.completedTests / row.totalTests : 0;
-
-                      return (
-                        <tr
-                          key={row.participant.id}
-                          className="border-b border-slate-200/70 align-top last:border-b-0"
-                        >
-                          <td className="px-6 py-4.5">
-                            <div className="space-y-1.5">
-                              <div>
-                                <p className="text-[15px] font-semibold leading-6 text-slate-950">
-                                  {row.participant.full_name}
-                                </p>
-                                <p className="text-sm text-slate-600">{row.participant.email}</p>
-                              </div>
-                              <span
-                                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                                  row.participant.user_id
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-slate-100 text-slate-600"
-                                }`}
-                              >
-                                {row.participant.user_id ? "Povezan nalog" : "Nalog nije povezan"}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4.5">
-                            <div className="max-w-[12rem] space-y-2.5">
-                              <p className="text-[15px] font-semibold leading-6 text-slate-900">
-                                {row.completedTests}/{row.totalTests} završeno
-                              </p>
-                              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                                <div
-                                  className="h-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500"
-                                  style={{ width: `${Math.max(progressRatio * 100, row.totalTests > 0 ? 6 : 0)}%` }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4.5">
-                            <div className="space-y-2">
-                              {row.testItems.map((testItem) => (
-                                <div
-                                  key={testItem.key}
-                                  className="grid max-w-[16rem] grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-0.5"
-                                >
-                                  <div className="min-w-0">
-                                    <p className="text-[14px] font-semibold leading-5 text-slate-900">
-                                      {testItem.shortLabel}
-                                    </p>
-                                    {testItem.resultHref ? (
-                                      <Link
-                                        className="text-[12px] font-medium leading-4 text-slate-500 transition hover:text-teal-700"
-                                        href={testItem.resultHref}
-                                      >
-                                        Rezultati
-                                      </Link>
-                                    ) : (
-                                      <span className="block h-4" aria-hidden="true" />
-                                    )}
-                                  </div>
-                                  <span
-                                    className={`mt-0.5 shrink-0 self-start whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getTestStatusClassName(testItem.status)}`}
-                                  >
-                                    {testItem.status}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4.5">
-                            <div className="max-w-[12rem] space-y-1">
-                              <p className="text-[14px] font-semibold leading-5 text-slate-800">
-                                {row.reportLabel}
-                              </p>
-                              {row.reportNote ? (
-                                <p className="text-xs leading-5 text-slate-500">{row.reportNote}</p>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4.5">
-                            <span
-                              className={`inline-flex rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] ${getAggregateStatusClassName(row.aggregateStatus)}`}
-                            >
-                              {row.aggregateStatus}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4.5">
-                            {row.primaryAction.kind === "link" ? (
-                              <div className="space-y-3">
-                                <Link
-                                  className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700"
-                                  href={row.primaryAction.href}
-                                >
-                                  {row.primaryAction.label}
-                                </Link>
-                              </div>
-                            ) : row.primaryAction.kind === "disabled" ? (
-                              <div className="max-w-[14rem] space-y-1.5">
-                                <button
-                                  className="inline-flex min-h-0 cursor-not-allowed rounded-full border border-slate-200 bg-slate-100 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400 opacity-90"
-                                  disabled
-                                  type="button"
-                                >
-                                  {row.primaryAction.label}
-                                </button>
-                                <p className="text-[11px] leading-4 text-slate-400">
-                                  HR pregled za ovu procjenu još nije dostupan.
-                                </p>
-                              </div>
-                            ) : (
-                              <details
-                                className="group w-[16rem] rounded-[1.2rem] border border-slate-200 bg-white/85 shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
-                                id={`row-action-${row.participant.id}`}
-                                open={openAttemptFor === row.participant.id}
-                              >
-                                <summary className="cursor-pointer list-none rounded-[1.2rem] px-4 py-3 [&::-webkit-details-marker]:hidden">
-                                  <span className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] transition-all duration-200 group-open:bg-teal-700">
-                                    {row.primaryAction.label}
-                                  </span>
-                                </summary>
-                                <form
-                                  action={createStandardAssessmentBattery}
-                                  className="space-y-4 border-t border-slate-200/90 px-4 py-4"
-                                >
-                                  <input name="participantId" type="hidden" value={row.participant.id} />
-                                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50/80 px-4 py-3">
-                                    <p className="text-sm font-semibold text-slate-900">Standardna baterija</p>
-                                    <ul className="mt-2 space-y-2 text-sm text-slate-600">
-                                      {standardBatteryTests.map((test) => (
-                                        <li key={test.id} className="flex items-center justify-between gap-3">
-                                          <span>{getStandardBatteryShortLabel(test.slug)}</span>
-                                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
-                                            Dostupno
-                                          </span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700" htmlFor={`attempt-locale-${row.participant.id}`}>
-                                      Jezik
-                                    </label>
-                                    <select
-                                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
-                                      defaultValue={toLegacyAssessmentLocale(DEFAULT_ASSESSMENT_LOCALE)}
-                                      id={`attempt-locale-${row.participant.id}`}
-                                      name="locale"
-                                      required
-                                    >
-                                      {SUPPORTED_ASSESSMENT_LOCALES.map((locale) => (
-                                        <option key={locale} value={locale}>
-                                          {getAssessmentLocaleLabel(locale)}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                  {openAttemptFor === row.participant.id && message ? (
-                                    <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
-                                      {createParticipantDetails ?? message}
-                                    </p>
-                                  ) : null}
-                                  {openAttemptFor === row.participant.id && inlineBatterySuccessMessage ? (
-                                    <p className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-700">
-                                      {inlineBatterySuccessMessage}
-                                    </p>
-                                  ) : null}
-                                  <DashboardActionRow>
-                                    <button
-                                      className="w-full min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)]"
-                                      type="submit"
-                                    >
-                                      Kreiraj procjenu
-                                    </button>
-                                  </DashboardActionRow>
-                                </form>
-                              </details>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </DashboardSectionShell>
+            </DashboardSectionShell>
+          )}
 
           <DashboardInfoCardShell className="rounded-[1.25rem] border-slate-200/70 bg-white/75 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)] sm:p-4.5">
             <section aria-labelledby="participants-section-heading" className="space-y-5">

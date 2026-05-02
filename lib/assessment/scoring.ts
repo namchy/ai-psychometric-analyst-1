@@ -102,7 +102,11 @@ export type IpcDerivedResults = {
 export type SafranV1DerivedResults = {
   verbalScore: number;
   figuralScore: number;
+  numericalRawScore: number;
+  numericalAdjustedScore: number;
+  numericalScore: number;
   numericalSeriesScore: number;
+  cognitiveCompositeScore: number;
   cognitiveCompositeV1: number;
 };
 
@@ -338,13 +342,19 @@ export function buildSafranV1CompositeScores(subtestScores: {
 }): SafranV1DerivedResults {
   const verbalScore = subtestScores.VW + subtestScores.VA;
   const figuralScore = subtestScores.FA + subtestScores.FM;
-  const numericalSeriesScore = subtestScores.NZ;
+  const numericalRawScore = subtestScores.NZ;
+  const numericalAdjustedScore = numericalRawScore * 2;
+  const cognitiveCompositeScore = verbalScore + figuralScore + numericalAdjustedScore;
 
   return {
     verbalScore,
     figuralScore,
-    numericalSeriesScore,
-    cognitiveCompositeV1: verbalScore + figuralScore + numericalSeriesScore,
+    numericalRawScore,
+    numericalAdjustedScore,
+    numericalScore: numericalAdjustedScore,
+    numericalSeriesScore: numericalAdjustedScore,
+    cognitiveCompositeScore,
+    cognitiveCompositeV1: cognitiveCompositeScore,
   };
 }
 
@@ -354,12 +364,18 @@ function buildSafranV1DerivedResults(
   const scoreByDimension = new Map(
     dimensions.map((dimension) => [dimension.dimension, dimension.rawScore]),
   );
+  const numericalAdjustedScore = scoreByDimension.get("numerical_series_score") ?? 0;
+  const cognitiveCompositeScore = scoreByDimension.get("cognitive_composite_v1") ?? 0;
 
   return {
     verbalScore: scoreByDimension.get("verbal_score") ?? 0,
     figuralScore: scoreByDimension.get("figural_score") ?? 0,
-    numericalSeriesScore: scoreByDimension.get("numerical_series_score") ?? 0,
-    cognitiveCompositeV1: scoreByDimension.get("cognitive_composite_v1") ?? 0,
+    numericalRawScore: numericalAdjustedScore / 2,
+    numericalAdjustedScore,
+    numericalScore: numericalAdjustedScore,
+    numericalSeriesScore: numericalAdjustedScore,
+    cognitiveCompositeScore,
+    cognitiveCompositeV1: cognitiveCompositeScore,
   };
 }
 

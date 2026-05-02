@@ -43,6 +43,7 @@ export default async function CandidateAttemptReportPage({
           locale={attempt.locale}
           organizationName={attempt.organizations?.name ?? null}
           participantName={attempt.participants?.full_name ?? null}
+          testSlug={attempt.tests?.slug ?? null}
           testName={getAssessmentDisplayName(attempt.tests)}
           results={reportPageData.results}
           reportState={reportPageData.report}

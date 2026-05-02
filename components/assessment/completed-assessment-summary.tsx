@@ -8,6 +8,7 @@ import {
   getPersonalityRadarSnapshot,
   type PersonalityRadarDomain,
 } from "@/components/assessment/personality-radar-chart";
+import { ReportGenerationLoadingScreen } from "@/components/assessment/report-generation-loading-screen";
 import type { DetailedReportV1 } from "@/lib/assessment/detailed-report-v1";
 import type {
   IpipNeo120HrReportV1,
@@ -44,6 +45,7 @@ type CompletedAssessmentSummaryProps = {
   locale?: AssessmentLocale | null;
   organizationName?: string | null;
   participantName?: string | null;
+  testSlug?: string | null;
   testName?: string | null;
   results: CompletedAssessmentResults | null;
   reportState: CompletedAssessmentReportState | null;
@@ -964,7 +966,7 @@ function getSafranScoreCards() {
   return [
     { key: "verbal_score", label: "Verbalni dio", emphasized: false },
     { key: "figural_score", label: "Figuralni dio", emphasized: false },
-    { key: "numerical_series_score", label: "Numerički nizovi", emphasized: false },
+    { key: "numerical_series_score", label: "Numerički rezultat", emphasized: false },
     {
       key: "cognitive_composite_v1",
       label: "Ukupni rezultat",
@@ -981,8 +983,8 @@ function getSafranDisplayScore(
   return {
     verbal_score: derived?.verbalScore ?? null,
     figural_score: derived?.figuralScore ?? null,
-    numerical_series_score: derived?.numericalSeriesScore ?? null,
-    cognitive_composite_v1: derived?.cognitiveCompositeV1 ?? null,
+    numerical_series_score: derived?.numericalAdjustedScore ?? derived?.numericalSeriesScore ?? null,
+    cognitive_composite_v1: derived?.cognitiveCompositeScore ?? derived?.cognitiveCompositeV1 ?? null,
   };
 }
 
@@ -1017,7 +1019,7 @@ function SafranV1ResultsSummary({
   const interpretation = buildSafranCandidateInterpretation(interpretationScores);
   const overallScore = interpretationScores.cognitive_composite_v1;
   const overallHasValue = typeof overallScore === "number" && Number.isFinite(overallScore);
-  const overallIsOutOfRange = overallHasValue && (overallScore < 0 || overallScore > 45);
+  const overallIsOutOfRange = overallHasValue && (overallScore < 0 || overallScore > 54);
   const domainsByKey = new Map(interpretation.domains.map((domain) => [domain.scoreKey, domain]));
   const interpretationSections = [
     {
@@ -1032,8 +1034,8 @@ function SafranV1ResultsSummary({
     },
     {
       scoreKey: "numerical_series_score" as const,
-      domainLabelBs: "Numerički nizovi",
-      maxPossible: 9,
+      domainLabelBs: "Numerički rezultat",
+      maxPossible: 18,
     },
   ];
 
@@ -1044,7 +1046,7 @@ function SafranV1ResultsSummary({
           <p className="results-report__eyebrow">Rezultati procjene</p>
           <h2>{testName ?? "SAFRAN"}</h2>
           <p className="results-report__section-body">
-            Rezultati su prikazani kroz sirove skorove i kratko tumačenje unutar ove procjene.
+            Rezultati su prikazani kroz broj tačnih odgovora i kratko tumačenje unutar ove procjene.
           </p>
 
           <div className="results-report__hero-meta-wrap">
@@ -1096,11 +1098,20 @@ function SafranV1ResultsSummary({
                 >
                   <div className="results-score-overview__header">
                     <strong>{scoreCard.label}</strong>
-                    <span>{formatDiscreetScore(scoreByDimension.get(scoreCard.key) ?? 0)}</span>
+                    <span>
+                      {renderSafranInterpretationValue(
+                        interpretationScores[scoreCard.key] ?? scoreByDimension.get(scoreCard.key) ?? null,
+                        scoreCard.key === "cognitive_composite_v1" ? 54 : 18,
+                      )}
+                    </span>
                   </div>
                 </li>
               ))}
             </ol>
+            <p className="text-xs leading-5 text-slate-500">
+              Numerički rezultat je prilagođen jer ova digitalna verzija koristi numeričke nizove,
+              bez računskih zadataka koji zahtijevaju papir i olovku.
+            </p>
           </section>
 
           <section className="results-report__section results-report__panel card stack-sm">
@@ -1117,7 +1128,7 @@ function SafranV1ResultsSummary({
                   </div>
                   <div className="results-dimension-card__score">
                     <span className="results-dimension-card__score-value">
-                      {renderSafranInterpretationValue(overallScore, 45)}
+                      {renderSafranInterpretationValue(overallScore, 54)}
                     </span>
                   </div>
                 </div>
@@ -2571,6 +2582,7 @@ export function CompletedAssessmentSummary({
   locale,
   organizationName,
   participantName,
+  testSlug,
   testName,
   results,
   reportState,
@@ -2807,16 +2819,12 @@ export function CompletedAssessmentSummary({
       ) : null}
 
       {shouldShowNarrativePending ? (
-        <section className="results-report__section results-report__status results-report__panel card stack-sm">
-          <div className="results-report__section-heading">
-            <h3>Interpretativni izvještaj se priprema</h3>
-          </div>
-          <p className="results-report__section-body">
-            Tvoj detaljni narativni izvještaj je zaprimljen i trenutno se obrađuje. Preliminarni
-            pregled bodovanja dostupan je ispod, a stranica će se osvježavati automatski čim puni
-            izvještaj bude spreman.
-          </p>
-        </section>
+        <ReportGenerationLoadingScreen
+          status={reportState?.status}
+          testSlug={testSlug}
+          testName={testName}
+          participantName={participantName}
+        />
       ) : null}
 
       {shouldShowNarrativeFailed ? (

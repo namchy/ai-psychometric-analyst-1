@@ -81,8 +81,8 @@ function interpretationFor(scoreKey, score) {
   const interpretation = buildSafranCandidateInterpretation({
     verbal_score: 9,
     figural_score: 9,
-    numerical_series_score: 4,
-    cognitive_composite_v1: 22,
+    numerical_series_score: 8,
+    cognitive_composite_v1: 26,
     [scoreKey]: score,
   });
 
@@ -108,18 +108,18 @@ assert.equal(interpretationFor("figural_score", 13)?.bandKey, "higher_raw");
 assert.equal(interpretationFor("figural_score", 18)?.bandKey, "higher_raw");
 
 assert.equal(interpretationFor("numerical_series_score", 0)?.bandKey, "lower_raw");
-assert.equal(interpretationFor("numerical_series_score", 3)?.bandKey, "lower_raw");
-assert.equal(interpretationFor("numerical_series_score", 4)?.bandKey, "moderate_raw");
-assert.equal(interpretationFor("numerical_series_score", 6)?.bandKey, "moderate_raw");
-assert.equal(interpretationFor("numerical_series_score", 7)?.bandKey, "higher_raw");
-assert.equal(interpretationFor("numerical_series_score", 9)?.bandKey, "higher_raw");
+assert.equal(interpretationFor("numerical_series_score", 6)?.bandKey, "lower_raw");
+assert.equal(interpretationFor("numerical_series_score", 7)?.bandKey, "moderate_raw");
+assert.equal(interpretationFor("numerical_series_score", 12)?.bandKey, "moderate_raw");
+assert.equal(interpretationFor("numerical_series_score", 13)?.bandKey, "higher_raw");
+assert.equal(interpretationFor("numerical_series_score", 18)?.bandKey, "higher_raw");
 
 assert.equal(interpretationFor("cognitive_composite_v1", 0)?.bandKey, "lower_raw");
-assert.equal(interpretationFor("cognitive_composite_v1", 15)?.bandKey, "lower_raw");
-assert.equal(interpretationFor("cognitive_composite_v1", 16)?.bandKey, "moderate_raw");
-assert.equal(interpretationFor("cognitive_composite_v1", 30)?.bandKey, "moderate_raw");
-assert.equal(interpretationFor("cognitive_composite_v1", 31)?.bandKey, "higher_raw");
-assert.equal(interpretationFor("cognitive_composite_v1", 45)?.bandKey, "higher_raw");
+assert.equal(interpretationFor("cognitive_composite_v1", 18)?.bandKey, "lower_raw");
+assert.equal(interpretationFor("cognitive_composite_v1", 19)?.bandKey, "moderate_raw");
+assert.equal(interpretationFor("cognitive_composite_v1", 36)?.bandKey, "moderate_raw");
+assert.equal(interpretationFor("cognitive_composite_v1", 37)?.bandKey, "higher_raw");
+assert.equal(interpretationFor("cognitive_composite_v1", 54)?.bandKey, "higher_raw");
 
 const missingInterpretation = buildSafranCandidateInterpretation({
   verbal_score: null,
@@ -127,9 +127,10 @@ const missingInterpretation = buildSafranCandidateInterpretation({
 });
 assert.equal(missingInterpretation.overall, null);
 assert.deepEqual(missingInterpretation.domains, []);
-assert.equal(missingInterpretation.limitationsBs.length, 3);
+assert.equal(missingInterpretation.limitationsBs.length, 4);
 assert.deepEqual(missingInterpretation.limitationsBs, [
   "Rezultati su broj tačnih odgovora u ovoj procjeni, ne IQ skor, percentile ili rang.",
+  "Numerički rezultat je prilagođen jer ova digitalna verzija koristi numeričke nizove, bez računskih zadataka koji zahtijevaju papir i olovku.",
   "SAFRAN ne mjeri iskustvo, motivaciju, kreativnost, komunikacijski stil ili timski doprinos.",
   "Rezultate je najbolje čitati zajedno s intervjuom, radnim zadatkom, iskustvom i drugim testovima.",
 ]);
@@ -146,8 +147,8 @@ const forbiddenWords = ["nizak", "visok", "prosječan", "iznadprosječan", "ispo
 const interpretation = buildSafranCandidateInterpretation({
   verbal_score: 18,
   figural_score: 18,
-  numerical_series_score: 9,
-  cognitive_composite_v1: 45,
+  numerical_series_score: 18,
+  cognitive_composite_v1: 54,
 });
 const candidateFacingTexts = collectCandidateFacingTexts(interpretation);
 const bandLabels = [
@@ -184,7 +185,7 @@ for (const domain of interpretation.domains) {
 
 const iqTexts = candidateFacingTexts.filter((text) => text.includes("IQ"));
 assert.deepEqual(iqTexts, [
-  "Ovo je opis tvog učinka na SAFRAN zadacima. Rezultati su sirovi skorovi, odnosno broj tačnih odgovora u ovoj procjeni. Ne predstavljaju IQ, percentile niti rang u odnosu na populaciju.",
+  "Ovo je opis tvog učinka na SAFRAN zadacima. Rezultati prikazuju broj tačnih odgovora u ovoj procjeni. Ne predstavljaju IQ, percentile niti rang u odnosu na populaciju.",
   "Rezultati su broj tačnih odgovora u ovoj procjeni, ne IQ skor, percentile ili rang.",
 ]);
 
@@ -208,7 +209,7 @@ for (const label of bandLabels) {
 const lowCompositeInterpretation = buildSafranCandidateInterpretation({
   verbal_score: 6,
   figural_score: 5,
-  numerical_series_score: 2,
+  numerical_series_score: 4,
   cognitive_composite_v1: 13,
 });
 assert.equal(lowCompositeInterpretation.relativeProfileBs, null);
@@ -216,8 +217,8 @@ assert.equal(lowCompositeInterpretation.relativeProfileBs, null);
 const relativeProfileInterpretation = buildSafranCandidateInterpretation({
   verbal_score: 15,
   figural_score: 8,
-  numerical_series_score: 3,
-  cognitive_composite_v1: 26,
+  numerical_series_score: 6,
+  cognitive_composite_v1: 29,
 });
 assert.equal(
   relativeProfileInterpretation.relativeProfileBs,
