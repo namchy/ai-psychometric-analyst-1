@@ -44,49 +44,50 @@ jobs:
           echo "==> Testing connection"
           PGCONNECT_TIMEOUT=20 psql "$SUPABASE_DB_URL" -c "select current_database(), current_user, now();"
 
-          cat > "$BACKUP_DIR/manifest.txt" <<MANIFEST
-Deep Profile Supabase Backup
-Created at UTC: $(date -u -Iseconds)
-
-Contents:
-- schema.sql
-- data.sql
-- full.sql
-- restore-from-backup.sh
-- manifest.txt
-- SHA256SUMS.txt
-
-Important:
-- This is a logical PostgreSQL backup.
-- Supabase Storage file objects are not included.
-- Restore into a new/empty target database whenever possible.
-- Keep this artifact private. It can contain sensitive application data.
-MANIFEST
+          echo "==> Writing manifest"
+          {
+            echo "Deep Profile Supabase Backup"
+            echo "Created at UTC: $(date -u -Iseconds)"
+            echo ""
+            echo "Contents:"
+            echo "- schema.sql"
+            echo "- data.sql"
+            echo "- full.sql"
+            echo "- restore-from-backup.sh"
+            echo "- manifest.txt"
+            echo "- SHA256SUMS.txt"
+            echo ""
+            echo "Important:"
+            echo "- This is a logical PostgreSQL backup."
+            echo "- Supabase Storage file objects are not included."
+            echo "- Restore into a new/empty target database whenever possible."
+            echo "- Keep this artifact private. It can contain sensitive application data."
+          } > "$BACKUP_DIR/manifest.txt"
 
           echo "==> Creating restore helper"
-          cat > "$BACKUP_DIR/restore-from-backup.sh" <<'RESTORE'
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-if [ -z "${RESTORE_DB_URL:-}" ]; then
-  echo "ERROR: Set RESTORE_DB_URL before running."
-  echo "Example:"
-  echo "RESTORE_DB_URL='postgresql://...' ./restore-from-backup.sh"
-  exit 1
-fi
-
-BACKUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-if [ ! -f "$BACKUP_DIR/full.sql" ]; then
-  echo "ERROR: Missing full.sql in $BACKUP_DIR"
-  exit 1
-fi
-
-echo "==> Restoring full.sql"
-psql "$RESTORE_DB_URL" --variable "ON_ERROR_STOP=1" --file "$BACKUP_DIR/full.sql"
-
-echo "==> Restore completed"
-RESTORE
+          {
+            echo '#!/usr/bin/env bash'
+            echo 'set -Eeuo pipefail'
+            echo ''
+            echo 'if [ -z "${RESTORE_DB_URL:-}" ]; then'
+            echo '  echo "ERROR: Set RESTORE_DB_URL before running."'
+            echo '  echo "Example:"'
+            echo '  echo "RESTORE_DB_URL='\''postgresql://...'\'' ./restore-from-backup.sh"'
+            echo '  exit 1'
+            echo 'fi'
+            echo ''
+            echo 'BACKUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"'
+            echo ''
+            echo 'if [ ! -f "$BACKUP_DIR/full.sql" ]; then'
+            echo '  echo "ERROR: Missing full.sql in $BACKUP_DIR"'
+            echo '  exit 1'
+            echo 'fi'
+            echo ''
+            echo 'echo "==> Restoring full.sql"'
+            echo 'psql "$RESTORE_DB_URL" --variable "ON_ERROR_STOP=1" --file "$BACKUP_DIR/full.sql"'
+            echo ''
+            echo 'echo "==> Restore completed"'
+          } > "$BACKUP_DIR/restore-from-backup.sh"
 
           chmod +x "$BACKUP_DIR/restore-from-backup.sh"
 
