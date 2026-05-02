@@ -17,3 +17,7 @@ tsconfig.tsbuildinfo
 /playwright/.auth/
 repomix-output.xml
 db_backups/
+
+# Local database backup secrets
+.env.supabase-backup
+backups/
