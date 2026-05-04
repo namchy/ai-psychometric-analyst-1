@@ -49,7 +49,11 @@ export function getCandidateAssessmentCatalogKey(
     return "safran";
   }
 
-  if (normalizedSlug.includes("mwms") || normalizedName.includes("motivacije")) {
+  if (
+    normalizedSlug.includes("mwms") ||
+    normalizedName.includes("motivacije") ||
+    normalizedName.includes("motivacija")
+  ) {
     return "mwms";
   }
 

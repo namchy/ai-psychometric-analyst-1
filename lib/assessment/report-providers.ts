@@ -36,6 +36,16 @@ import {
   type IpcReportPromptInput,
 } from "@/lib/assessment/ipc-report-contract";
 import {
+  MWMS_PARTICIPANT_REPORT_CONTRACT,
+  isMwmsTestSlug,
+  type MwmsParticipantReportPromptInput,
+} from "@/lib/assessment/mwms-report-contract";
+import {
+  formatMwmsParticipantReportV1ValidationErrors,
+  validateMwmsParticipantReportV1,
+  type MwmsParticipantReportV1,
+} from "@/lib/assessment/mwms-participant-report-v1";
+import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
   validateIpcParticipantReportV1,
@@ -47,7 +57,7 @@ import type { ScoringMethod } from "@/lib/assessment/types";
 import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
 
 export type ReportGeneratorType = "mock" | "openai";
-export type ReportFamily = "big_five" | "ipc";
+export type ReportFamily = "big_five" | "ipc" | "mwms";
 export type ReportAudience = "participant" | "hr";
 export type ReportVersion = "v1" | "v2";
 export type ReportRenderFormat =
@@ -56,7 +66,8 @@ export type ReportRenderFormat =
   | "big_five_participant_v1"
   | "big_five_hr_v1"
   | "ipc_participant_v1"
-  | "ipc_hr_v1";
+  | "ipc_hr_v1"
+  | "mwms_participant_report_v1";
 export type AttemptReportStatus =
   | "queued"
   | "processing"
@@ -70,7 +81,8 @@ export type RuntimeCompletedAssessmentReport =
   | IpipNeo120HrReportV1
   | IpipNeo120ParticipantReportV1
   | IpipNeo120ParticipantReportV2
-  | IpcCompletedAssessmentReport;
+  | IpcCompletedAssessmentReport
+  | MwmsParticipantReportV1;
 export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
 
 export type CompletedAssessmentReportRequest = {
@@ -115,7 +127,8 @@ export type ReportPromptInput =
   | AiReportPromptInput
   | IpipNeo120HrReportPromptInput
   | IpipNeo120ParticipantReportPromptInput
-  | IpcReportPromptInput;
+  | IpcReportPromptInput
+  | MwmsParticipantReportPromptInput;
 
 export type ReportContractDescriptor = {
   family: ReportFamily;
@@ -158,7 +171,8 @@ export function isCompletedAssessmentReport(value: unknown): value is CompletedA
     validateIpipNeo120ParticipantReportV1(value).ok ||
     validateIpipNeo120ParticipantReportV2(value).ok ||
     validateIpcParticipantReportV1(value).ok ||
-    validateIpcHrReportV1(value).ok
+    validateIpcHrReportV1(value).ok ||
+    validateMwmsParticipantReportV1(value).ok
   );
 }
 
@@ -203,6 +217,18 @@ export function resolveReportContract(
     };
   }
 
+  if (isMwmsTestSlug(testSlug) && audience === "participant") {
+    return {
+      family: "mwms",
+      reportType: MWMS_PARTICIPANT_REPORT_CONTRACT.reportType,
+      sourceType: MWMS_PARTICIPANT_REPORT_CONTRACT.sourceType,
+      promptKey: MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey,
+      schemaName: MWMS_PARTICIPANT_REPORT_CONTRACT.schemaId,
+      outputSchemaJson:
+        MWMS_PARTICIPANT_REPORT_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
   return {
     family: "big_five",
     reportType: "individual",
@@ -214,7 +240,15 @@ export function resolveReportContract(
 }
 
 export function resolveReportFamily(testSlug: string): ReportFamily {
-  return isIpcTestSlug(testSlug) ? "ipc" : "big_five";
+  if (isIpcTestSlug(testSlug)) {
+    return "ipc";
+  }
+
+  if (isMwmsTestSlug(testSlug)) {
+    return "mwms";
+  }
+
+  return "big_five";
 }
 
 export function resolveReportSignal(context: {
@@ -237,6 +271,8 @@ export function resolveReportSignal(context: {
       ? reportVersion === "v2"
         ? "ipip_neo_120_participant_v2"
         : "ipip_neo_120_participant_v1"
+      : isMwmsTestSlug(context.testSlug) && context.audience === "participant"
+        ? "mwms_participant_report_v1"
       : resolveReportRenderFormat({
           reportFamily,
           reportAudience,
@@ -267,6 +303,8 @@ export function resolveReportRenderFormat(context: {
       return "ipc_participant_v1";
     case "ipc:hr:v1":
       return "ipc_hr_v1";
+    case "mwms:participant:v1":
+      return "mwms_participant_report_v1";
     default:
       return null;
   }
@@ -337,6 +375,22 @@ export function validateRuntimeCompletedAssessmentReport(
       return {
         ok: false,
         reason: formatIpcReportValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isMwmsTestSlug(context.testSlug) && context.audience === "participant") {
+    const validationResult = validateMwmsParticipantReportV1(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: formatMwmsParticipantReportV1ValidationErrors(validationResult.errors),
       };
     }
 

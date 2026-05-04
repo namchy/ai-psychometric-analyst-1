@@ -6,6 +6,7 @@ import { getAiReportConfig, type AiReportConfig } from "@/lib/assessment/report-
 import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
 import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
 import { createSelectedReportProvider } from "@/lib/assessment/report-provider-registry";
+import { isMwmsTestSlug } from "@/lib/assessment/mwms-report-contract";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import { getActiveReportRuntimeConfig } from "@/lib/assessment/report-runtime-config";
 import type {
@@ -471,6 +472,67 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
 
   if (error) {
     throw new Error(`Failed to enqueue attempt reports: ${error.message}`);
+  }
+
+  const { data: attemptData, error: attemptError } = await supabase
+    .from("attempts")
+    .select("test_id, tests(slug)")
+    .eq("id", attemptId)
+    .maybeSingle();
+
+  if (attemptError) {
+    throw new Error(`Failed to load attempt for queued report input snapshot: ${attemptError.message}`);
+  }
+
+  const attempt = attemptData as {
+    test_id: string;
+    tests: { slug: string } | { slug: string }[] | null;
+  } | null;
+  const testSlug = Array.isArray(attempt?.tests)
+    ? attempt?.tests[0]?.slug
+    : attempt?.tests?.slug;
+
+  if (attempt?.test_id && testSlug && isMwmsTestSlug(testSlug)) {
+    const request = await buildCompletedAssessmentReportRequest(attempt.test_id, attemptId, {
+      audience: PARTICIPANT_REPORT_AUDIENCE,
+      locale: "bs",
+    });
+
+    if (request) {
+      const preparedInput = buildPreparedReportGenerationInput(request);
+      const { error: inputSnapshotError } = await supabase
+        .from("attempt_reports")
+        .update({
+          input_snapshot: preparedInput.promptInput as unknown,
+        })
+        .eq("attempt_id", attemptId)
+        .eq("report_type", PARTICIPANT_REPORT_TYPE)
+        .eq("audience", PARTICIPANT_REPORT_AUDIENCE)
+        .eq("source_type", PARTICIPANT_REPORT_SOURCE_TYPE);
+
+      if (inputSnapshotError) {
+        throw new Error(`Failed to persist MWMS report input snapshot: ${inputSnapshotError.message}`);
+      }
+    }
+
+    const { error: hrDisableError } = await supabase
+      .from("attempt_reports")
+      .update({
+        report_status: "unavailable",
+        completed_at: new Date().toISOString(),
+        failure_code: "unsupported_audience",
+        failure_reason: "MWMS V1 supports participant reports only.",
+        report_snapshot: null,
+      })
+      .eq("attempt_id", attemptId)
+      .eq("report_type", PARTICIPANT_REPORT_TYPE)
+      .eq("audience", "hr")
+      .eq("source_type", PARTICIPANT_REPORT_SOURCE_TYPE)
+      .eq("report_status", "queued");
+
+    if (hrDisableError) {
+      throw new Error(`Failed to disable unsupported MWMS HR report job: ${hrDisableError.message}`);
+    }
   }
 
   const runtimeConfig = await getActiveReportRuntimeConfig({

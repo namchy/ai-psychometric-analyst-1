@@ -33,6 +33,8 @@ import {
   type IpcRawOctantScores,
   type IpcReportPromptInput,
 } from "@/lib/assessment/ipc-report-contract";
+import { buildMwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-participant-ai-input-v1";
+import { isMwmsTestSlug } from "@/lib/assessment/mwms-report-contract";
 export { formatDimensionLabel } from "@/lib/assessment/result-display";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type {
@@ -438,6 +440,10 @@ export function buildReportPromptInput(
     return input.audience === "participant"
       ? buildIpipNeo120ParticipantPromptInput(input)
       : buildIpipNeo120HrPromptInput(input);
+  }
+
+  if (isMwmsTestSlug(input.testSlug) && input.audience === "participant") {
+    return buildMwmsParticipantReportPromptInput(input);
   }
 
   return isIpcTestSlug(input.testSlug)

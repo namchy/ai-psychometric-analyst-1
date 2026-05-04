@@ -2,10 +2,16 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const Module = require("node:module");
+const React = require("react");
+const { renderToStaticMarkup } = require("react-dom/server");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
+const nextLinkStubPath = path.join(__dirname, "test-stub-next-link.cjs");
+const nextFontGoogleStubPath = path.join(__dirname, "test-stub-next-font-google.cjs");
+const nextFontLocalStubPath = path.join(__dirname, "test-stub-next-font-local.cjs");
+const rechartsStubPath = path.join(__dirname, "test-stub-recharts.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 function resolveWithExtensions(candidatePath) {
@@ -29,6 +35,22 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     return emptyModulePath;
   }
 
+  if (request === "next/link") {
+    return nextLinkStubPath;
+  }
+
+  if (request === "next/font/google") {
+    return nextFontGoogleStubPath;
+  }
+
+  if (request === "next/font/local") {
+    return nextFontLocalStubPath;
+  }
+
+  if (request === "recharts") {
+    return rechartsStubPath;
+  }
+
   if (request.startsWith("@/")) {
     return originalResolveFilename.call(
       this,
@@ -42,7 +64,7 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
   return originalResolveFilename.call(this, request, parent, isMain, options);
 };
 
-require.extensions[".ts"] = function compileTypeScript(module, filename) {
+function compileTypeScriptModule(module, filename) {
   const source = fs.readFileSync(filename, "utf8");
   const transpiled = ts.transpileModule(source, {
     compilerOptions: {
@@ -50,16 +72,23 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
       moduleResolution: ts.ModuleResolutionKind.NodeJs,
       target: ts.ScriptTarget.ES2022,
       esModuleInterop: true,
+      jsx: ts.JsxEmit.ReactJSX,
     },
     fileName: filename,
   });
 
   module._compile(transpiled.outputText, filename);
-};
+}
+
+require.extensions[".ts"] = compileTypeScriptModule;
+require.extensions[".tsx"] = compileTypeScriptModule;
 
 const {
   buildMwmsComputedDimensionsFromPersistedScores,
 } = require("../lib/assessment/scoring.ts");
+const {
+  CompletedAssessmentSummary,
+} = require("../components/assessment/completed-assessment-summary.tsx");
 const {
   formatDimensionLabel,
   formatMwmsScoreLabel,
@@ -67,6 +96,103 @@ const {
   getMwmsScoreWidth,
   isMwmsDimensionSet,
 } = require("../lib/assessment/result-display.ts");
+
+const completedSummarySource = fs.readFileSync(
+  path.join(projectRoot, "components/assessment/completed-assessment-summary.tsx"),
+  "utf8",
+);
+
+const mwmsRenderOutput = renderToStaticMarkup(
+  React.createElement(CompletedAssessmentSummary, {
+    completedAt: "2026-05-04T10:30:00.000Z",
+    locale: "bs",
+    organizationName: "Test organizacija",
+    participantName: "Test kandidat",
+    testSlug: "mwms_v1",
+    testName: "Procjena radne motivacije",
+    results: {
+      attemptId: "attempt-mwms-report",
+      scoringMethod: "likert_sum",
+      dimensions: [
+        { dimension: "amotivation", rawScore: 4, scoredQuestionCount: 3 },
+        { dimension: "external_social", rawScore: 4, scoredQuestionCount: 3 },
+        { dimension: "external_material", rawScore: 5, scoredQuestionCount: 3 },
+        { dimension: "introjected", rawScore: 3.75, scoredQuestionCount: 4 },
+        { dimension: "identified", rawScore: 4.67, scoredQuestionCount: 3 },
+        { dimension: "intrinsic", rawScore: 5, scoredQuestionCount: 3 },
+      ],
+      scoredResponseCount: 19,
+      unscoredResponses: [],
+    },
+    reportState: null,
+  }),
+);
+
+const mwmsAiRenderOutput = renderToStaticMarkup(
+  React.createElement(CompletedAssessmentSummary, {
+    completedAt: "2026-05-04T10:30:00.000Z",
+    locale: "bs",
+    organizationName: "Test organizacija",
+    participantName: "Test kandidat",
+    testSlug: "mwms_v1",
+    testName: "Procjena radne motivacije",
+    results: {
+      attemptId: "attempt-mwms-report",
+      scoringMethod: "likert_sum",
+      dimensions: [
+        { dimension: "amotivation", rawScore: 4, scoredQuestionCount: 3 },
+        { dimension: "external_social", rawScore: 4, scoredQuestionCount: 3 },
+        { dimension: "external_material", rawScore: 5, scoredQuestionCount: 3 },
+        { dimension: "introjected", rawScore: 3.75, scoredQuestionCount: 4 },
+        { dimension: "identified", rawScore: 4.67, scoredQuestionCount: 3 },
+        { dimension: "intrinsic", rawScore: 5, scoredQuestionCount: 3 },
+      ],
+      scoredResponseCount: 19,
+      unscoredResponses: [],
+    },
+    reportState: {
+      status: "ready",
+      reportFamily: "mwms",
+      reportAudience: "participant",
+      reportVersion: "v1",
+      reportRenderFormat: "mwms_participant_report_v1",
+      report: {
+        schema_version: "mwms_participant_report_v1",
+        test_slug: "mwms_v1",
+        audience: "participant",
+        title: "Radna motivacija",
+        summary: {
+          headline: "Tvoj profil pokazuje kombinaciju različitih izvora radne motivacije.",
+          paragraph:
+            "Ovaj izvještaj čita šest već izračunatih skala kao profil, bez ukupnog rezultata ili presude.",
+        },
+        motivation_pattern: {
+          autonomous:
+            "Autonomni izvori motivacije pokazuju koliko se posao može povezati sa smislom, vrijednostima ili interesom.",
+          controlled:
+            "Kontrolisani izvori motivacije pokazuju koliko napor može dolaziti iz očekivanja, pritiska ili nagrade.",
+          amotivation:
+            "Amotivaciju treba čitati oprezno i povezati je sa konkretnim kontekstom rada.",
+        },
+        key_observations: [
+          "Identificirana i intrinzična motivacija daju važan dio profila.",
+          "Ekstrinzični izvori motivacije ne treba čitati kao jedini zaključak.",
+        ],
+        possible_tensions: [
+          "Moguća napetost je odnos između ličnog smisla i vanjskih očekivanja.",
+        ],
+        reflection_questions: [
+          "Koji aspekti posla ti daju najviše osjećaja smisla i energije?",
+        ],
+        development_suggestions: [
+          "Poveži važne zadatke sa konkretnim vrijednostima i očekivanjima uloge.",
+        ],
+        interpretation_note:
+          "Ovaj rezultat nije dijagnoza, presuda niti samostalna osnova za odluku o zapošljavanju.",
+      },
+    },
+  }),
+);
 
 function assertApproxEqual(actual, expected, epsilon = 1e-9) {
   assert.equal(Math.abs(actual - expected) <= epsilon, true, `Expected ${actual} to be within ${epsilon} of ${expected}.`);
@@ -84,7 +210,7 @@ assert.equal(isMwmsDimensionSet([
 assert.equal(formatDimensionLabel("amotivation"), "Amotivacija");
 assert.equal(formatDimensionLabel("external_social"), "Ekstrinzična motivacija — socijalna");
 assert.equal(formatDimensionLabel("external_material"), "Ekstrinzična motivacija — materijalna");
-assert.equal(formatDimensionLabel("introjected"), "Introjecirana motivacija");
+assert.equal(formatDimensionLabel("introjected"), "Introjektirana motivacija");
 assert.equal(formatDimensionLabel("identified"), "Identificirana motivacija");
 assert.equal(formatDimensionLabel("intrinsic"), "Intrinzična motivacija");
 
@@ -134,5 +260,96 @@ assert.equal(persistedMwmsDimensions.some((dimension) => dimension.rawScore === 
 
 assert.equal(formatScoreLabel(12), "12 bodova");
 assert.equal(formatDimensionLabel("EXTRAVERSION"), "Ekstraverzija");
+
+assert.equal(completedSummarySource.includes("Radna motivacija"), true);
+assert.equal(completedSummarySource.includes("Profil motivacije"), true);
+assert.equal(completedSummarySource.includes("Kako čitati profil motivacije"), true);
+assert.equal(completedSummarySource.includes("Napomena o interpretaciji"), true);
+assert.equal(completedSummarySource.includes("Naredni korak"), true);
+assert.equal(
+  completedSummarySource.includes("!isMwmsResults && bigFiveReport && topInsights.length > 0"),
+  true,
+);
+assert.equal(
+  completedSummarySource.includes("!isMwmsResults && bigFiveParticipantReport"),
+  true,
+);
+assert.equal(
+  completedSummarySource.includes('!isMwmsResults &&\n    (reportState === null ||'),
+  true,
+);
+assert.equal(
+  completedSummarySource.includes('!isMwmsResults &&\n    (reportState?.status === "failed" || reportState?.status === "unavailable")'),
+  true,
+);
+
+for (const expectedText of [
+  "Radna motivacija",
+  "Kako čitati profil motivacije",
+  "Profil motivacije",
+  "Napomena o interpretaciji",
+  "Naredni korak",
+  "Amotivacija",
+  "Ekstrinzična motivacija — socijalna",
+  "Ekstrinzična motivacija — materijalna",
+  "Introjektirana motivacija",
+  "Identificirana motivacija",
+  "Intrinzična motivacija",
+]) {
+  assert.equal(
+    mwmsRenderOutput.includes(expectedText),
+    true,
+    `Expected MWMS render output to include: ${expectedText}`,
+  );
+}
+
+for (const expectedText of [
+  "Tvoj profil pokazuje kombinaciju različitih izvora radne motivacije.",
+  "Obrazac motivacije",
+  "Ključni uvidi",
+  "Moguće napetosti",
+  "Pitanja za razmišljanje",
+  "Razvojne smjernice",
+  "Napomena o interpretaciji",
+]) {
+  assert.equal(
+    mwmsAiRenderOutput.includes(expectedText),
+    true,
+    `Expected ready MWMS AI render output to include: ${expectedText}`,
+  );
+}
+
+assert.equal(mwmsAiRenderOutput.includes("4.00 / 7"), true);
+assert.equal(mwmsAiRenderOutput.includes("4.67 / 7"), true);
+
+assert.equal(mwmsRenderOutput.includes("4.00 / 7"), true);
+assert.equal(mwmsRenderOutput.includes("4.67 / 7"), true);
+assert.equal(mwmsRenderOutput.includes("3.75 / 7"), true);
+
+for (const forbiddenText of [
+  "Sažetak ključnih obrazaca",
+  "Zaključak",
+  "Preporuke",
+  "Dostupni skorovi ukazuju",
+  "nizak raspon",
+  "Detaljna interpretacija za ovu dimenziju trenutno nije dostupna",
+  "Prikaži detalje",
+  "total score",
+  "percentile",
+  "pass/fail",
+  "hire/no-hire",
+  "V1",
+]) {
+  assert.equal(
+    mwmsRenderOutput.includes(forbiddenText),
+    false,
+    `Expected MWMS render output to exclude: ${forbiddenText}`,
+  );
+  assert.equal(
+    mwmsAiRenderOutput.includes(forbiddenText),
+    false,
+    `Expected ready MWMS AI render output to exclude: ${forbiddenText}`,
+  );
+}
 
 console.log("MWMS report display tests passed.");

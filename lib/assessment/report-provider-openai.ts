@@ -20,6 +20,12 @@ import {
   ipipNeo120ParticipantReportV2OpenAiSchema,
   validateIpipNeo120ParticipantReportV2,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
+import type { MwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-report-contract";
+import {
+  formatMwmsParticipantReportV1ValidationErrors,
+  mwmsParticipantReportV1OpenAiSchema,
+  validateMwmsParticipantReportV1,
+} from "@/lib/assessment/mwms-participant-report-v1";
 import {
   assembleIpipNeo120ParticipantReportV2FromSegments,
   buildIpipNeo120ParticipantDomainSegmentPromptInput,
@@ -61,6 +67,16 @@ function isIpipNeo120ParticipantPromptInput(
   promptInput: ReportPromptInput,
 ): promptInput is Extract<ReportPromptInput, { audience: "participant"; domains: unknown[] }> {
   return "domains" in promptInput && promptInput.audience === "participant";
+}
+
+function isMwmsParticipantPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is MwmsParticipantReportPromptInput {
+  return (
+    "dimensions" in promptInput &&
+    promptInput.test_slug === "mwms_v1" &&
+    promptInput.audience === "participant"
+  );
 }
 
 function shouldUseIpipNeo120ParticipantReportV2(
@@ -181,6 +197,15 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
   }
 
   if (!("dimension_scores" in input.promptInput)) {
+    if (isMwmsParticipantPromptInput(input.promptInput)) {
+      return input.promptInput.dimensions
+        .map(
+          (dimension) =>
+            `${dimension.code} (${dimension.label}): raw_score=${dimension.raw_score}, short_description=${dimension.short_description}`,
+        )
+        .join(" | ");
+    }
+
     return [
       `dominance=${input.promptInput.derived.dominance}`,
       `warmth=${input.promptInput.derived.warmth}`,
@@ -298,6 +323,41 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
   }
 
   if (!("dimension_scores" in input.promptInput)) {
+    if (isMwmsParticipantPromptInput(input.promptInput)) {
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one MWMS participant report in schema_version mwms_participant_report_v1.",
+          audience_behavior:
+            "Write in Bosnian language, ijekavica, Latin script. Address the participant directly, neutrally, professionally and briefly.",
+          source_rule:
+            "Use only the provided MWMS structured input and dimension_scores already calculated by the application. Do not calculate from raw answers and do not invent scores.",
+          profile_rule:
+            "Interpret the six scales as a profile. Do not create a total score, percentile, pass/fail label, rank, norm comparison or hiring decision.",
+          guardrails: [
+            "Do not diagnose or use clinical language.",
+            "Do not use hire/no-hire language.",
+            "Do not say good candidate, bad candidate, recommend hiring, or do not recommend hiring.",
+            "Do not invent job, organization, performance or personal context not present in the input.",
+            "Do not mention AI.",
+            "Use Radna motivacija as the candidate-facing title and do not mention MWMS in the title.",
+            "Do not claim that the result proves the person's motivation.",
+            "Frame claims as profile insights or hypotheses for reflection.",
+          ],
+          structure_rules: [
+            "summary.headline and summary.paragraph must be short.",
+            "key_observations must contain at most 3 items.",
+            "possible_tensions must contain at most 3 items.",
+            "reflection_questions must contain at most 3 items.",
+            "development_suggestions must contain at most 3 items.",
+            "interpretation_note must be neutral and state that the report is not a standalone basis for hiring decisions.",
+          ],
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
+    }
+
     return JSON.stringify({
       instructions: {
         output_contract: "Return one IPC report in the exact schema.",
@@ -412,6 +472,10 @@ function resolveOpenAiResponseFormatSchemaForInput(
 ): Record<string, unknown> {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
     return ipipNeo120ParticipantReportV2OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isMwmsParticipantPromptInput(input.promptInput)) {
+    return mwmsParticipantReportV1OpenAiSchema as Record<string, unknown>;
   }
 
   return input.reportContract.outputSchemaJson;
@@ -782,6 +846,18 @@ function validateStructuredReport(
     if (!validationResult.ok) {
       throw new Error(
         `OpenAI response JSON failed IPIP-NEO-120 HR report validation: ${formatIpipNeo120ReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  if (input.testSlug === "mwms_v1" && isMwmsParticipantPromptInput(input.promptInput)) {
+    const validationResult = validateMwmsParticipantReportV1(report);
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed MWMS participant report validation: ${formatMwmsParticipantReportV1ValidationErrors(validationResult.errors)}`,
       );
     }
 

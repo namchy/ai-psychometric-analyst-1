@@ -7,9 +7,14 @@ import {
   isIpcTestSlug,
 } from "@/lib/assessment/ipc-report-contract";
 import {
+  MWMS_PARTICIPANT_REPORT_CONTRACT,
+  isMwmsTestSlug,
+} from "@/lib/assessment/mwms-report-contract";
+import {
   type RuntimeCompletedAssessmentReport,
   validateRuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
+import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
 import {
   buildCompletedAssessmentReportRequest,
   generateCompletedAssessmentReport,
@@ -376,6 +381,8 @@ async function loadPromptVersionForJob(
       promptKey:
         isIpipNeo120TestSlug(job.test_slug) && job.audience === "participant"
           ? IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.promptKey
+          : isMwmsTestSlug(job.test_slug) && job.audience === "participant"
+            ? MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey
           : isIpcTestSlug(job.test_slug)
             ? getIpcPromptContract(job.audience).promptKey
             : REPORT_PROMPT_KEY,
@@ -396,11 +403,13 @@ async function freezeProcessingReportMetadata(
   metadata: {
     promptVersionId?: string | null;
     modelName?: string | null;
+    inputSnapshot?: unknown;
   },
 ): Promise<void> {
   const updatePayload: {
     prompt_version_id?: string | null;
     model_name?: string | null;
+    input_snapshot?: unknown;
   } = {};
 
   if (metadata.promptVersionId !== undefined) {
@@ -409,6 +418,10 @@ async function freezeProcessingReportMetadata(
 
   if (metadata.modelName !== undefined) {
     updatePayload.model_name = metadata.modelName;
+  }
+
+  if (metadata.inputSnapshot !== undefined) {
+    updatePayload.input_snapshot = metadata.inputSnapshot;
   }
 
   if (Object.keys(updatePayload).length === 0) {
@@ -522,6 +535,13 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   snapshot: RuntimeCompletedAssessmentReport;
   modelName: string | null;
 }> {
+  if (isMwmsTestSlug(job.test_slug) && job.audience !== "participant") {
+    throw new ReportJobError(
+      "CONFIG_ERROR",
+      "MWMS V1 supports participant reports only.",
+    );
+  }
+
   const attemptContext = await loadAttemptContext(job.attempt_id);
   const [runtimeConfig, activePromptVersion] = await Promise.all([
     loadRuntimeConfigForJob(job),
@@ -546,9 +566,15 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
     );
   }
 
+  const preparedInput = buildPreparedReportGenerationInput(request, {
+    promptVersionId: activePromptVersion?.id ?? job.prompt_version_id,
+    promptTemplate: activePromptVersion,
+  });
+
   await freezeProcessingReportMetadata(job.id, {
     promptVersionId: activePromptVersion?.id,
     modelName: resolvedModelName,
+    inputSnapshot: job.input_snapshot ?? preparedInput.promptInput,
   });
 
   console.info("Report provider generation started", {
@@ -580,7 +606,11 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   console.info("Report snapshot normalization succeeded", {
     reportId: job.id,
     attemptId: job.attempt_id,
-    reportFamily: isIpcTestSlug(job.test_slug) ? "ipc" : "big_five",
+    reportFamily: isIpcTestSlug(job.test_slug)
+      ? "ipc"
+      : isMwmsTestSlug(job.test_slug)
+        ? "mwms"
+        : "big_five",
   });
 
   const validationResult = validateRuntimeCompletedAssessmentReport(generationResult.report, {

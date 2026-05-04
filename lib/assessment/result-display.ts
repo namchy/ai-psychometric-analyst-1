@@ -123,7 +123,7 @@ const MWMS_DIMENSION_LABELS: Record<MwmsDimensionCode, string> = {
   amotivation: "Amotivacija",
   external_social: "Ekstrinzična motivacija — socijalna",
   external_material: "Ekstrinzična motivacija — materijalna",
-  introjected: "Introjecirana motivacija",
+  introjected: "Introjektirana motivacija",
   identified: "Identificirana motivacija",
   intrinsic: "Intrinzična motivacija",
 };

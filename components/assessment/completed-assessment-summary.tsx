@@ -17,6 +17,7 @@ import type {
 import type { IpipNeo120ParticipantReportV2 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
+import type { MwmsParticipantReportV1 } from "@/lib/assessment/mwms-participant-report-v1";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
 import {
   formatDimensionLabel,
@@ -89,9 +90,24 @@ type ReportRendererSelection =
   | { kind: "big_five_hr_v1"; report: DetailedReportV1 }
   | { kind: "ipc_participant_v1"; report: IpcParticipantReportV1 }
   | { kind: "ipc_hr_v1"; report: IpcHrReportV1 }
+  | { kind: "mwms_participant_report_v1"; report: MwmsParticipantReportV1 }
   | { kind: "shape_mismatch"; message: string }
   | { kind: "unsupported_signal"; message: string }
   | { kind: "none" };
+
+const MWMS_PROFILE_READING_GUIDANCE = [
+  "Rezultat prikazuje koji su izvori radne motivacije izraženiji u ovom trenutku.",
+  "Skale treba čitati zajedno, kao profil, a ne kao jedan ukupni rezultat.",
+  "Viši skor na autonomnim oblicima motivacije obično ukazuje da osoba lakše povezuje posao sa ličnim vrijednostima, interesom ili smislom.",
+  "Viši skor na kontrolisanim oblicima motivacije ukazuje da veći dio napora može dolaziti iz pritiska, očekivanja, nagrade ili izbjegavanja negativnih posljedica.",
+  "Amotivacija se čita oprezno i služi kao signal za dodatni razgovor o kontekstu, energiji i jasnoći uloge.",
+] as const;
+
+const MWMS_NEXT_STEPS = [
+  "U razgovoru provjeriti koji aspekti posla kandidatu daju osjećaj smisla, energije i odgovornosti.",
+  "Povezati motivacijski profil sa očekivanjima konkretne uloge, načinom vođenja i uslovima rada.",
+  "Ne koristiti pojedinačnu skalu kao eliminacioni kriterij.",
+] as const;
 
 function isBigFiveReport(report: unknown): report is DetailedReportV1 {
   return (
@@ -155,6 +171,23 @@ function isIpcHrReport(report: unknown): report is IpcHrReportV1 {
     "communication_style" in (report as IpcHrReportV1) &&
     "collaboration_style" in (report as IpcHrReportV1) &&
     "leadership_and_influence" in (report as IpcHrReportV1)
+  );
+}
+
+function isMwmsParticipantReport(report: unknown): report is MwmsParticipantReportV1 {
+  return (
+    Boolean(report) &&
+    typeof report === "object" &&
+    (report as MwmsParticipantReportV1).schema_version === "mwms_participant_report_v1" &&
+    (report as MwmsParticipantReportV1).test_slug === "mwms_v1" &&
+    (report as MwmsParticipantReportV1).audience === "participant" &&
+    (report as MwmsParticipantReportV1).title === "Radna motivacija" &&
+    Boolean((report as MwmsParticipantReportV1).summary) &&
+    Boolean((report as MwmsParticipantReportV1).motivation_pattern) &&
+    Array.isArray((report as MwmsParticipantReportV1).key_observations) &&
+    Array.isArray((report as MwmsParticipantReportV1).possible_tensions) &&
+    Array.isArray((report as MwmsParticipantReportV1).reflection_questions) &&
+    Array.isArray((report as MwmsParticipantReportV1).development_suggestions)
   );
 }
 
@@ -236,6 +269,14 @@ function selectReportRenderer(
             kind: "shape_mismatch",
             message:
               "Report render format označava IPC HR izvještaj, ali snapshot shape ne odgovara HR rendereru.",
+          };
+    case "mwms_participant_report_v1":
+      return isMwmsParticipantReport(reportState.report)
+        ? { kind: "mwms_participant_report_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava MWMS participant izvještaj, ali snapshot shape ne odgovara tom rendereru.",
           };
     default:
       return {
@@ -2606,8 +2647,8 @@ export function CompletedAssessmentSummary({
   const ipcParticipantReport =
     reportRenderer.kind === "ipc_participant_v1" ? reportRenderer.report : null;
   const ipcHrReport = reportRenderer.kind === "ipc_hr_v1" ? reportRenderer.report : null;
-  const shouldShowGenericDimensionCards =
-    Boolean(results) && Boolean(bigFiveParticipantReport) && !ipipNeo120ParticipantReport;
+  const mwmsParticipantReport =
+    reportRenderer.kind === "mwms_participant_report_v1" ? reportRenderer.report : null;
   const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport) && !ipipNeo120HrReport;
   const shouldShowRawResultsPreview = !ipipNeo120ParticipantReport && !ipipNeo120HrReport;
 
@@ -2618,6 +2659,11 @@ export function CompletedAssessmentSummary({
   const isMwmsResults = results
     ? isMwmsDimensionSet(results.dimensions.map((dimension) => dimension.dimension))
     : false;
+  const shouldShowGenericDimensionCards =
+    Boolean(results) &&
+    Boolean(bigFiveParticipantReport) &&
+    !ipipNeo120ParticipantReport &&
+    !isMwmsResults;
 
   const reportDimensionsByKey = getReportDimensionsByKey(bigFiveReport);
 
@@ -2652,18 +2698,31 @@ export function CompletedAssessmentSummary({
   const conclusionParagraphs = getConclusion(bigFiveReport, dimensionCards);
   const recommendations = getRecommendations(bigFiveReport);
   const scoreRangeLabel = isMwmsResults ? "Skala 1–7" : maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
+  const mwmsResultsNote = isMwmsResults
+    ? "Ovaj rezultat prikazuje profil motivacije u radnom kontekstu i služi kao uvid, ne kao presuda."
+    : null;
+  const shouldShowMwmsAiReport = isMwmsResults && hasResults && Boolean(mwmsParticipantReport);
+  const shouldShowMwmsGuidance = isMwmsResults && hasResults && !mwmsParticipantReport;
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
   const hasScoredDimensions = dimensionCards.length > 0;
   const shouldShowNarrativePending =
-    reportState === null ||
-    reportState.status === "queued" ||
-    reportState.status === "processing";
+    !isMwmsResults &&
+    (reportState === null ||
+      reportState.status === "queued" ||
+      reportState.status === "processing");
   const shouldShowNarrativeFailed =
-    reportState?.status === "failed" || reportState?.status === "unavailable";
+    !isMwmsResults &&
+    (reportState?.status === "failed" || reportState?.status === "unavailable");
   const shouldShowResultsUnavailable = !hasResults;
-  const shouldShowReadyReportShapeMismatch = reportRenderer.kind === "shape_mismatch";
-  const shouldShowUnsupportedReadySignal = reportRenderer.kind === "unsupported_signal";
-  const reportHeroTitle = ipipNeo120ParticipantReport ? "Tvoj profil ličnosti" : testName ?? "Rezultati procjene";
+  const shouldShowReadyReportShapeMismatch =
+    !isMwmsResults && reportRenderer.kind === "shape_mismatch";
+  const shouldShowUnsupportedReadySignal =
+    !isMwmsResults && reportRenderer.kind === "unsupported_signal";
+  const reportHeroTitle = ipipNeo120ParticipantReport
+    ? "Tvoj profil ličnosti"
+    : isMwmsResults
+      ? "Radna motivacija"
+      : testName ?? "Rezultati procjene";
   const ipipParticipantMetaLine = ipipNeo120ParticipantReport
     ? [
         "IPIP-NEO-120",
@@ -2784,9 +2843,13 @@ export function CompletedAssessmentSummary({
               </dl>
             </div>
           )}
+
+          {mwmsResultsNote ? (
+            <p className="results-report__section-note">{mwmsResultsNote}</p>
+          ) : null}
         </div>
 
-      {bigFiveReport && topInsights.length > 0 ? (
+      {!isMwmsResults && bigFiveReport && topInsights.length > 0 ? (
         <section
           className="results-report__hero-insights results-report__hero-insights--mobile"
           aria-label="Top insights"
@@ -2801,7 +2864,7 @@ export function CompletedAssessmentSummary({
         ) : null}
       </section>
 
-      {bigFiveReport && topInsights.length > 0 ? (
+      {!isMwmsResults && bigFiveReport && topInsights.length > 0 ? (
         <section
           className="results-report__section results-report__section--insights results-report__panel card stack-sm"
           aria-label="Top insights"
@@ -2815,6 +2878,30 @@ export function CompletedAssessmentSummary({
               <li key={insight}>{insight}</li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {shouldShowMwmsGuidance ? (
+        <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Kako čitati profil motivacije</h3>
+          </div>
+          <ul className="results-bullet-list">
+            {MWMS_PROFILE_READING_GUIDANCE.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {shouldShowMwmsAiReport && mwmsParticipantReport ? (
+        <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>{mwmsParticipantReport.summary.headline}</h3>
+          </div>
+          <p className="results-report__section-body">
+            {mwmsParticipantReport.summary.paragraph}
+          </p>
         </section>
       ) : null}
 
@@ -2871,12 +2958,15 @@ export function CompletedAssessmentSummary({
         <>
           <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
             <div className="results-report__section-heading">
-              <h3>Pregled dimenzija</h3>
+              <h3>{isMwmsResults ? "Profil motivacije" : "Pregled dimenzija"}</h3>
               {scoreRangeLabel ? <p className="results-report__section-note">{scoreRangeLabel}</p> : null}
             </div>
 
             {dimensionCards.length > 0 ? (
-              <ol className="results-score-overview" aria-label="Pregled rezultata po dimenzijama">
+              <ol
+                className="results-score-overview"
+                aria-label={isMwmsResults ? "Profil motivacije po subskalama" : "Pregled rezultata po dimenzijama"}
+              >
                 {dimensionCards.map((dimension) => (
                   <li key={dimension.key} className="results-score-overview__item">
                     <div className="results-score-overview__header">
@@ -3003,7 +3093,99 @@ export function CompletedAssessmentSummary({
         </>
       ) : null}
 
-      {bigFiveParticipantReport ? (
+      {shouldShowMwmsGuidance ? (
+        <div className="results-report__closing stack-md">
+          <section className="results-report__section results-report__section--conclusion results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Napomena o interpretaciji</h3>
+            </div>
+            <p className="results-report__section-body">
+              Ovaj rezultat ne predstavlja procjenu vrijednosti osobe niti samostalnu osnovu za odluku o zapošljavanju. Najkorisniji je kada se poveže sa konkretnom ulogom, razgovorom sa kandidatom i drugim rezultatima procjene.
+            </p>
+          </section>
+
+          <section className="results-report__section results-report__section--recommendations results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Naredni korak</h3>
+            </div>
+            <ul className="results-bullet-list">
+              {MWMS_NEXT_STEPS.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      ) : null}
+
+      {shouldShowMwmsAiReport && mwmsParticipantReport ? (
+        <div className="results-report__closing stack-md">
+          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Obrazac motivacije</h3>
+            </div>
+            <div className="results-report__section-body stack-xs">
+              <p>{mwmsParticipantReport.motivation_pattern.autonomous}</p>
+              <p>{mwmsParticipantReport.motivation_pattern.controlled}</p>
+              <p>{mwmsParticipantReport.motivation_pattern.amotivation}</p>
+            </div>
+          </section>
+
+          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Ključni uvidi</h3>
+            </div>
+            <ul className="results-bullet-list">
+              {mwmsParticipantReport.key_observations.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Moguće napetosti</h3>
+            </div>
+            <ul className="results-bullet-list">
+              {mwmsParticipantReport.possible_tensions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Pitanja za razmišljanje</h3>
+            </div>
+            <ul className="results-bullet-list">
+              {mwmsParticipantReport.reflection_questions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="results-report__section results-report__section--recommendations results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Razvojne smjernice</h3>
+            </div>
+            <ul className="results-bullet-list">
+              {mwmsParticipantReport.development_suggestions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="results-report__section results-report__section--conclusion results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Napomena o interpretaciji</h3>
+            </div>
+            <p className="results-report__section-body">
+              {mwmsParticipantReport.interpretation_note}
+            </p>
+          </section>
+        </div>
+      ) : null}
+
+      {!isMwmsResults && bigFiveParticipantReport ? (
         <div className="results-report__closing stack-md">
           <section className="results-report__section results-report__section--conclusion results-report__panel card stack-sm">
             <div className="results-report__section-heading">

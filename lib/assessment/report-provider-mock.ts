@@ -31,6 +31,12 @@ import {
   type IpipNeo120ParticipantReportV2,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { IpcReportPromptInput } from "@/lib/assessment/ipc-report-contract";
+import type { MwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-report-contract";
+import {
+  MWMS_PARTICIPANT_REPORT_SCHEMA_VERSION,
+  formatMwmsParticipantReportV1ValidationErrors,
+  validateMwmsParticipantReportV1,
+} from "@/lib/assessment/mwms-participant-report-v1";
 import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
@@ -958,6 +964,82 @@ function buildIpcMockReport(input: PreparedReportGenerationInput): RuntimeComple
   return validationResult.value;
 }
 
+function buildMwmsParticipantMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as MwmsParticipantReportPromptInput;
+  const scoreByCode = new Map(promptInput.dimensions.map((dimension) => [dimension.code, dimension]));
+  const dominantLabels = promptInput.derived_profile.dominant_dimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+  const lowerLabels = promptInput.derived_profile.lower_dimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+  const hasElevatedAmotivation = promptInput.derived_profile.caution_flags.elevated_amotivation;
+  const hasMixedProfile = promptInput.derived_profile.caution_flags.mixed_profile;
+
+  const report = {
+    schema_version: MWMS_PARTICIPANT_REPORT_SCHEMA_VERSION,
+    test_slug: "mwms_v1",
+    audience: "participant",
+    title: "Radna motivacija",
+    summary: {
+      headline: dominantLabels
+        ? `${dominantLabels} trenutno su najizraženiji dijelovi tvog profila motivacije.`
+        : "Profil motivacije daje pregled više izvora radnog angažmana.",
+      paragraph:
+        "Ovaj izvještaj koristi već izračunate skorove na šest skala i čita ih kao profil, bez ukupnog rezultata ili presude o osobi.",
+    },
+    motivation_pattern: {
+      autonomous:
+        `Autonomni oblici motivacije imaju prosjek ${promptInput.derived_profile.autonomous_motivation_score.toFixed(2)} / 7 i opisuju koliko se posao može povezati sa vrijednostima, interesom ili smislom.`,
+      controlled:
+        `Kontrolisani oblici motivacije imaju prosjek ${promptInput.derived_profile.controlled_motivation_score.toFixed(2)} / 7 i opisuju koliko napor može dolaziti iz očekivanja, pritiska, nagrade ili izbjegavanja negativnih posljedica.`,
+      amotivation: hasElevatedAmotivation
+        ? "Amotivacija je povišena i vrijedi je čitati oprezno, kao poziv na razgovor o kontekstu, energiji i jasnoći uloge."
+        : "Amotivacija nije jedini zaključak o profilu i korisna je uglavnom kao signal za provjeru konteksta i jasnoće uloge.",
+    },
+    key_observations: [
+      dominantLabels
+        ? `Najizraženije skale su ${dominantLabels.toLowerCase()}, što daje početnu sliku o tome koji izvori motivacije su trenutno vidljiviji.`
+        : "Profil nema jedan potpuno dominantan izvor motivacije.",
+      hasMixedProfile
+        ? "Autonomni i kontrolisani izvori motivacije su istovremeno izraženi, pa profil vrijedi čitati kao mješovit."
+        : "Skale je korisnije čitati zajedno nego izdvajati jednu vrijednost kao konačan zaključak.",
+    ],
+    possible_tensions: [
+      lowerLabels
+        ? `Niže izražene skale (${lowerLabels.toLowerCase()}) mogu pokazati gdje vrijedi dodatno provjeriti šta osobi daje ili oduzima energiju.`
+        : "Moguće napetosti treba provjeravati kroz konkretan radni kontekst.",
+      promptInput.derived_profile.caution_flags.high_controlled_relative_to_autonomous
+        ? "Kontrolisani izvori motivacije su vidljivo jači od autonomnih, što može značiti da dio napora dolazi iz pritiska ili očekivanja."
+        : "Profil ne treba tumačiti kao dokaz motivacije, nego kao hipotezu za razgovor.",
+    ],
+    reflection_questions: [
+      "Koji aspekti posla ti najviše daju osjećaj smisla, interesa ili lične vrijednosti?",
+      "U kojim situacijama osjećaš da radiš više zbog pritiska, očekivanja ili posljedica nego zbog samog značaja posla?",
+      "Šta bi u konkretnom radnom kontekstu moglo povećati jasnoću, energiju i osjećaj odgovornosti?",
+    ],
+    development_suggestions: [
+      "Poveži jedan važan zadatak sa konkretnom vrijednošću ili ishodom koji ti ima smisla.",
+      "Razgovaraj o uslovima rada koji povećavaju osjećaj autonomije, jasnoće i odgovornosti.",
+      "Ne koristi jednu skalu kao etiketu, nego profil poveži sa stvarnim primjerima iz rada.",
+    ],
+    interpretation_note:
+      "Ovaj izvještaj ne predstavlja procjenu vrijednosti osobe niti samostalnu osnovu za odluku o zapošljavanju. Najkorisniji je kada se poveže sa konkretnom ulogom, razgovorom i drugim rezultatima procjene.",
+  };
+
+  const validationResult = validateMwmsParticipantReportV1(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock MWMS participant report failed validation: ${formatMwmsParticipantReportV1ValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
 function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
   if ("domains" in input.promptInput) {
     if (input.promptInput.audience === "hr") {
@@ -969,6 +1051,10 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
     }
 
     return buildIpipNeo120MockReport(input);
+  }
+
+  if ("dimensions" in input.promptInput && input.promptInput.test_slug === "mwms_v1") {
+    return buildMwmsParticipantMockReport(input);
   }
 
   if (!("dimension_scores" in input.promptInput)) {
