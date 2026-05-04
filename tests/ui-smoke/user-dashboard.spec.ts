@@ -12,6 +12,25 @@ test("candidate dashboard renders core smoke signal", async ({ page }, testInfo)
     }),
   ).toBeVisible();
 
+  await expect(
+    page.getByRole("heading", {
+      name: "Procjena obrazaca ponašanja",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("IPIP-NEO-120")).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Procjena kognitivnog rezonovanja",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("SAFRAN")).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Procjena izvora radne motivacije",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("MWMS")).toBeVisible();
+
   await page.screenshot({
     fullPage: true,
     path: testInfo.outputPath("user-dashboard.png"),

@@ -36,7 +36,7 @@ import {
   DashboardSectionShell,
   DashboardStatusBadge,
 } from "@/components/dashboard/primitives";
-import { getAssessmentDisplayName } from "@/lib/assessment/display";
+import { getAssessmentDisplayInfo } from "@/lib/assessment/display";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type DashboardIconName =
@@ -69,6 +69,7 @@ export type CandidateAssessmentCard = {
   completedAt?: string | null;
   lastAnsweredAt?: string | null;
   title: string;
+  subtitle?: string;
   description: string;
   status: "Nije započet" | "U toku" | "Završeno" | "U pripremi";
   accessState: "paid" | "roadmap";
@@ -176,24 +177,24 @@ type DashboardOrganizationTestAccessRow = {
 
 type CompositeReportState = "locked" | "pending" | "ready";
 
-type CuratedBatteryTitle = "IPIP-NEO-120" | "SAFRAN" | "MWMS";
+type CuratedBatteryKey = "ipip-neo-120" | "safran" | "mwms";
 type CuratedBatteryConfig = {
-  key: CandidateAssessmentCatalogKey;
-  title: CuratedBatteryTitle;
+  key: CuratedBatteryKey;
+  slug: "ipip-neo-120-v1" | "safran_v1" | "mwms_v1";
+  title: string;
+  subtitle: string;
   description: string;
   category: DashboardTestCategory;
   metaLabel: string;
   durationLabel: string;
 };
 
-function isCuratedBatteryTitle(value: string): value is CuratedBatteryTitle {
-  return value === "IPIP-NEO-120" || value === "SAFRAN" || value === "MWMS";
-}
-
 const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
   {
     key: "ipip-neo-120",
-    title: "IPIP-NEO-120",
+    slug: "ipip-neo-120-v1",
+    title: "Procjena obrazaca ponašanja",
+    subtitle: "IPIP-NEO-120",
     description: "Tvoj pristup radu, saradnji i situacijama.",
     category: "personality",
     metaLabel: "Ličnost",
@@ -201,7 +202,9 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
   },
   {
     key: "safran",
-    title: "SAFRAN",
+    slug: "safran_v1",
+    title: "Procjena kognitivnog rezonovanja",
+    subtitle: "SAFRAN",
     description: "Kognitivni zadaci za verbalno, figuralno i numeričko zaključivanje.",
     category: "cognitive",
     metaLabel: "Kognitivni",
@@ -209,7 +212,9 @@ const CURATED_BATTERY_TESTS: readonly CuratedBatteryConfig[] = [
   },
   {
     key: "mwms",
-    title: "MWMS",
+    slug: "mwms_v1",
+    title: "Procjena izvora radne motivacije",
+    subtitle: "MWMS",
     description: "Procjena radne motivacije",
     category: "behavioral",
     metaLabel: "Motivacija",
@@ -240,6 +245,24 @@ const ROADMAP_TESTS = [
     category: "personality" as const,
   },
 ] as const;
+
+function getCuratedBatteryOrder(
+  testSlug: string | null | undefined,
+  curatedKeyBySlug: Map<string, CuratedBatteryKey>,
+  curatedOrder: Map<CuratedBatteryKey, number>,
+): number {
+  if (!testSlug) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const curatedKey = curatedKeyBySlug.get(testSlug);
+
+  if (!curatedKey) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return curatedOrder.get(curatedKey) ?? Number.POSITIVE_INFINITY;
+}
 
 function getDashboardAttemptLifecycle(
   attempt: Pick<DashboardAttemptRow, "status" | "responseCount" | "scored_started_at" | "tests">,
@@ -473,6 +496,7 @@ function buildAssessmentCardsFromTests(
     const curatedBatteryConfig = curatedBatteryKey
       ? CURATED_BATTERY_TESTS.find((entry) => entry.key === curatedBatteryKey) ?? null
       : null;
+    const displayInfo = getAssessmentDisplayInfo(test);
     const curatedBatteryFallback = curatedBatteryKey
       ? CURATED_BATTERY_UI_FALLBACKS[curatedBatteryKey]
       : null;
@@ -501,7 +525,8 @@ function buildAssessmentCardsFromTests(
       startedAt: primaryAttempt?.started_at ?? primaryAttempt?.created_at ?? null,
       completedAt: primaryAttempt?.completed_at ?? null,
       lastAnsweredAt: primaryAttempt?.last_answered_at ?? null,
-      title: curatedBatteryConfig?.title ?? getAssessmentDisplayName(test),
+      title: curatedBatteryConfig?.title ?? displayInfo.title,
+      subtitle: curatedBatteryConfig?.subtitle ?? displayInfo.subtitle,
       description:
         curatedBatteryConfig?.description ??
         test.description?.trim() ??
@@ -518,16 +543,13 @@ function buildAssessmentCardsFromTests(
       ...visuals,
     };
   });
-  const curatedOrder = new Map<CuratedBatteryTitle, number>(
-    CURATED_BATTERY_TESTS.map((entry, index) => [entry.title, index]),
+  const curatedOrder = new Map<CuratedBatteryKey, number>(
+    CURATED_BATTERY_TESTS.map((entry, index) => [entry.key, index]),
   );
+  const curatedKeyBySlug = new Map(CURATED_BATTERY_TESTS.map((entry) => [entry.slug, entry.key]));
   const sortedDatabaseCards = [...databaseCards].sort((left, right) => {
-    const leftOrder = isCuratedBatteryTitle(left.title)
-      ? curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY
-      : Number.POSITIVE_INFINITY;
-    const rightOrder = isCuratedBatteryTitle(right.title)
-      ? curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY
-      : Number.POSITIVE_INFINITY;
+    const leftOrder = getCuratedBatteryOrder(left.testSlug, curatedKeyBySlug, curatedOrder);
+    const rightOrder = getCuratedBatteryOrder(right.testSlug, curatedKeyBySlug, curatedOrder);
 
     if (leftOrder !== rightOrder) {
       return leftOrder - rightOrder;
@@ -549,9 +571,9 @@ function buildAssessmentCardsFromTests(
     ...getCategoryVisuals(test.category),
   }));
 
-  const curatedTitles = new Set<CuratedBatteryTitle>(CURATED_BATTERY_TESTS.map((entry) => entry.title));
+  const curatedSlugs = new Set<string>(CURATED_BATTERY_TESTS.map((entry) => entry.slug));
   const missingCuratedCards: CandidateAssessmentCard[] = CURATED_BATTERY_TESTS
-    .filter((entry) => !sortedDatabaseCards.some((card) => card.title === entry.title))
+    .filter((entry) => !sortedDatabaseCards.some((card) => card.testSlug === entry.slug))
     .map((entry) => {
       const availability = getCandidateAssessmentAvailability({
         slug: entry.key,
@@ -565,8 +587,9 @@ function buildAssessmentCardsFromTests(
 
       return {
         title: entry.title,
+        subtitle: entry.subtitle,
         description: entry.description,
-        testSlug: undefined,
+        testSlug: entry.slug,
         accessState: isAvailable ? "paid" : "roadmap",
         ctaKind: isAvailable ? "start" : "roadmap",
         status: "Nije započet",
@@ -581,17 +604,13 @@ function buildAssessmentCardsFromTests(
     });
   const batteryCards = [
     ...sortedDatabaseCards.filter(
-      (card) => isCuratedBatteryTitle(card.title) && curatedTitles.has(card.title),
+      (card) => Boolean(card.testSlug && curatedSlugs.has(card.testSlug)),
     ),
     ...missingCuratedCards,
   ]
     .sort((left, right) => {
-      const leftOrder = isCuratedBatteryTitle(left.title)
-        ? curatedOrder.get(left.title) ?? Number.POSITIVE_INFINITY
-        : Number.POSITIVE_INFINITY;
-      const rightOrder = isCuratedBatteryTitle(right.title)
-        ? curatedOrder.get(right.title) ?? Number.POSITIVE_INFINITY
-        : Number.POSITIVE_INFINITY;
+      const leftOrder = getCuratedBatteryOrder(left.testSlug, curatedKeyBySlug, curatedOrder);
+      const rightOrder = getCuratedBatteryOrder(right.testSlug, curatedKeyBySlug, curatedOrder);
 
       if (leftOrder !== rightOrder) {
         return leftOrder - rightOrder;
@@ -601,7 +620,7 @@ function buildAssessmentCardsFromTests(
     });
 
   const additionalDatabaseCards = sortedDatabaseCards.filter(
-    (card) => !isCuratedBatteryTitle(card.title),
+    (card) => !card.testSlug || !curatedSlugs.has(card.testSlug),
   );
 
   return [...batteryCards, ...additionalDatabaseCards, ...roadmapCards];
@@ -1315,9 +1334,17 @@ function AssessmentCard({
           <h3 className={`font-headline font-bold leading-tight tracking-[-0.04em] ${primary ? "text-[1.32rem]" : "text-[1.18rem]"} ${muted ? "text-[var(--dp-text)]" : isRoadmap ? "text-[var(--dp-text)]" : "text-[var(--dp-text)]"}`}>
             {assessment.title}
           </h3>
-          <p className={`mt-1.5 font-body ${primary ? "text-[14px] leading-6" : isRoadmap ? "text-[13px] leading-[1.35rem]" : "text-[13px] leading-[1.35rem]"} ${muted ? "text-slate-600" : descriptionClassName}`}>
-            {assessment.description}
-          </p>
+          {assessment.subtitle ? (
+            <p
+              className={`mt-1.5 font-label text-[11px] font-semibold uppercase tracking-[0.16em] ${muted ? "text-slate-500" : "text-[var(--dp-text-muted)]"}`}
+            >
+              {assessment.subtitle}
+            </p>
+          ) : (
+            <p className={`mt-1.5 font-body ${primary ? "text-[14px] leading-6" : isRoadmap ? "text-[13px] leading-[1.35rem]" : "text-[13px] leading-[1.35rem]"} ${muted ? "text-slate-600" : descriptionClassName}`}>
+              {assessment.description}
+            </p>
+          )}
         </div>
 
         <div className="mt-3">
@@ -1675,12 +1702,11 @@ export function CandidateDashboardView({
     };
   }, [hasLinkedParticipant, initialAttempts, linkedOrganizationId]);
 
-  const curatedBatteryTitles = new Set<CuratedBatteryTitle>(
-    CURATED_BATTERY_TESTS.map((entry) => entry.title),
+  const curatedBatterySlugs = new Set<string>(
+    CURATED_BATTERY_TESTS.map((entry) => entry.slug),
   );
   const availableAssessments = liveAssessments.filter(
-    (assessment) =>
-      isCuratedBatteryTitle(assessment.title) && curatedBatteryTitles.has(assessment.title),
+    (assessment) => Boolean(assessment.testSlug && curatedBatterySlugs.has(assessment.testSlug)),
   );
   const totalBatteryTestsCount = CURATED_BATTERY_TESTS.length;
   const completedBatteryCount = Math.min(
