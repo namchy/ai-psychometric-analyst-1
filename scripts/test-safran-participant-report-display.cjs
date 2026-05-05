@@ -118,8 +118,9 @@ function flattenDisplayTexts(display) {
         case "signals":
           return [section.title, section.body, ...section.items];
         case "reading_guide":
-        case "next_step":
           return [section.title, ...section.items];
+        case "next_step":
+          return [section.title, ...(section.items ?? []), section.body, section.ctaLabel];
         default:
           return [];
       }
@@ -174,7 +175,11 @@ const practiceMentions = display.sections.flatMap((section) => {
 
 assert.deepEqual(practiceMentions, []);
 assert.equal(
-  display.sections[3].items.some((item) => /practice/i.test(item)),
+  display.sections[3].items.some((item) => /probna pitanja/i.test(item)),
+  true,
+);
+assert.equal(
+  display.sections[3].items.some((item) => /ne ulaze u rezultat/i.test(item)),
   true,
 );
 
@@ -220,6 +225,9 @@ const aiDisplay = resolveSafranParticipantReportDisplay({
 assert.equal(aiDisplay.header.title, "SAFRAN");
 assert.equal(aiDisplay.header.statusLabel, "Završeno");
 assert.equal(aiDisplay.sections[0].overall.helper, aiReport.summary.bandLabel);
+assert.equal(aiDisplay.sections[2].title, "Kognitivni signal");
+assert.equal(aiDisplay.sections[3].title, "Kako čitati ovaj rezultat");
+assert.equal(aiDisplay.sections[4].title, "Korak za razmišljanje");
 assert.equal(
   aiDisplay.sections[0].body,
   aiReport.summary.interpretation,
@@ -388,6 +396,14 @@ assert.equal(
   true,
 );
 assert.equal(
+  aiRenderOutput.includes("18 / 18"),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes("0 / 18"),
+  true,
+);
+assert.equal(
   aiRenderOutput.includes("umjeren ukupni broj tačnih odgovora"),
   true,
 );
@@ -405,7 +421,66 @@ assert.equal(
 );
 assert.equal(
   aiRenderOutput.includes(
-    "Primarni signal je jasan odnos u kojem verbalni i figuralni dio drže stabilniji obrazac tačnosti nego numerički dio.",
+    "Kada čitaš ovaj obrazac, korisno je izdvojiti gdje su pravila bila odmah uočljiva, a gdje je numerički format tražio više provjere, vremena ili drugačiji pristup.",
+  ),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes("Kognitivni signal"),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes(
+    "Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao povezan obrazac iz istog pokušaja.",
+  ),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes(
+    "Rezultat ispod sažima učinak u ovom pokušaju, a puni smisao dobija tek zajedno s pregledom po oblastima.",
+  ),
+  false,
+);
+for (const title of [
+  "Sažetak rezultata",
+  "Pregled po oblastima",
+  "Kognitivni signal",
+  "Kako čitati ovaj rezultat",
+  "Korak za razmišljanje",
+]) {
+  assert.equal(
+    aiRenderOutput.includes(title),
+    true,
+    `Expected SAFRAN AI renderer output to include section title ${title}.`,
+  );
+}
+assert.equal(
+  aiRenderOutput.includes("Kognitivni signali"),
+  false,
+);
+assert.equal(
+  aiRenderOutput.includes("Oprez pri čitanju"),
+  false,
+);
+assert.equal(
+  aiRenderOutput.includes("Kako posmatrati obrazac"),
+  false,
+);
+assert.equal(
+  aiRenderOutput.includes("Najizraženiji signal"),
+  false,
+);
+assert.equal(
+  aiRenderOutput.includes("Za razmišljanje"),
+  false,
+);
+assert.equal(
+  aiRenderOutput.includes("Obrati pažnju"),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes(
+    "Numerički dio treba čitati oprezno jer jedan izdvojen rezultat ne opisuje tvoj ukupni način rješavanja različitih zadataka.",
   ),
   true,
 );
@@ -416,10 +491,24 @@ assert.equal(
   true,
 );
 assert.equal(
-  aiRenderOutput.includes(
-    "Rezultat ispod sažima učinak u ovom pokušaju, a puni smisao dobija tek zajedno s pregledom po oblastima.",
-  ),
+  aiRenderOutput.includes("Practice pitanja"),
   false,
+);
+assert.equal(
+  aiRenderOutput.includes("scoring"),
+  false,
+);
+assert.equal(
+  aiRenderOutput.includes("Probna pitanja"),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes("ne ulaze u rezultat"),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes("Nazad na pregled procjene"),
+  true,
 );
 
 console.log("SAFRAN participant report display tests passed.");

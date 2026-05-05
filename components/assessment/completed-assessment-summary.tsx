@@ -1037,6 +1037,21 @@ function renderSafranInterpretationValue(
   return `${formatDiscreetScore(score)} / ${maxPossible}`;
 }
 
+function getSafranVisualScoreWidth(
+  score: number | null | undefined,
+  maxPossible: number,
+): number {
+  if (typeof score !== "number" || !Number.isFinite(score) || maxPossible <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min((score / maxPossible) * 100, 100));
+}
+
+function getSafranBandPillClassName(): string {
+  return "inline-flex items-center rounded-full border border-[rgba(15,23,42,0.10)] bg-[rgba(248,250,252,0.96)] px-3 py-1 text-[11px] font-semibold tracking-[0.02em] text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]";
+}
+
 function SafranV1ResultsSummary({
   completedAt,
   organizationName,
@@ -1064,32 +1079,34 @@ function SafranV1ResultsSummary({
 
   return (
     <div className="results-report results-report--safran stack-md">
-      <section className="results-report__hero">
-        <div className="results-report__hero-copy">
-          <p className="results-report__eyebrow">{reportDisplay.header.eyebrow}</p>
+      <section className="results-report__hero border border-slate-300/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,248,251,0.96))] px-5 py-5 shadow-[0_18px_38px_rgba(15,23,42,0.06)] sm:px-6 sm:py-5">
+        <div className="results-report__hero-copy gap-2.5">
+          <p className="results-report__eyebrow text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">{reportDisplay.header.eyebrow}</p>
           <h2>{reportDisplay.header.title}</h2>
-          <p className="results-report__section-body">
+          <p className="results-report__section-body text-[15px] text-slate-600">
             {reportDisplay.header.subtitle}
           </p>
           {reportDisplay.header.statusLabel ? (
-            <p className="results-report__section-note">{reportDisplay.header.statusLabel}</p>
+            <p className="inline-flex w-fit items-center rounded-full border border-[rgba(22,163,74,0.22)] bg-[rgba(22,163,74,0.10)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#166534] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+              {reportDisplay.header.statusLabel}
+            </p>
           ) : null}
 
           <div className="results-report__hero-meta-wrap">
             <dl className="results-report__hero-meta">
               {participantName ? (
-                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                <div className={`${primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"} border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]`}>
                   <dt>Korisnik</dt>
                   <dd>{participantName}</dd>
                 </div>
               ) : null}
               {organizationName ? (
-                <div className={primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"}>
+                <div className={`${primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"} border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]`}>
                   <dt>Organizacija</dt>
                   <dd>{organizationName}</dd>
                 </div>
               ) : null}
-              <div className="results-report__hero-meta-item results-report__hero-meta-item--wide">
+              <div className="results-report__hero-meta-item results-report__hero-meta-item--wide border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]">
                 <dt>Završeno</dt>
                 <dd>{formatCompletedAt(completedAt)}</dd>
               </div>
@@ -1109,79 +1126,106 @@ function SafranV1ResultsSummary({
         </section>
       ) : (
         <>
-          <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
+          <section className="results-report__section results-report__section--overview results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 pt-5 pb-5 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.35)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
               <h3>{summarySection.title}</h3>
             </div>
-            <p className="results-report__section-body">{summarySection.body}</p>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.9fr)] lg:items-start">
+              <article className="rounded-[22px] border border-[rgba(17,138,178,0.14)] bg-[linear-gradient(180deg,rgba(248,252,255,0.96),rgba(255,255,255,0.98))] px-5 py-5 shadow-[0_18px_46px_-40px_rgba(17,138,178,0.42)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Glavni obrazac</p>
+                <p className="mt-3 text-[15px] leading-7 text-slate-700">{summarySection.body}</p>
+              </article>
 
-            <article className="results-dimension-card">
-              <div className="results-dimension-card__header">
-                <div className="results-dimension-card__title">
-                  <h4>{summarySection.overall.label}</h4>
-                </div>
-                <div className="results-dimension-card__score">
-                  <span className="results-dimension-card__score-value">
-                    {renderSafranInterpretationValue(
-                      summarySection.overall.score,
-                      summarySection.overall.maxPossible,
-                    )}
+              <article className="rounded-[22px] border border-[rgba(15,23,42,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(247,250,252,0.98))] px-5 py-5 shadow-[0_22px_48px_-42px_rgba(15,23,42,0.34)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {summarySection.overall.label}
+                    </p>
+                    <p className="mt-4 whitespace-nowrap text-[clamp(1.9rem,3vw,2.9rem)] font-semibold leading-none tracking-[-0.04em] text-slate-900">
+                      {renderSafranInterpretationValue(
+                        summarySection.overall.score,
+                        summarySection.overall.maxPossible,
+                      )}
+                    </p>
+                  </div>
+                  <span className={getSafranBandPillClassName()}>
+                    {summarySection.overall.helper}
                   </span>
                 </div>
-              </div>
-              <p className="results-dimension-card__helper">{summarySection.overall.helper}</p>
-              <p className="results-dimension-card__summary">{summarySection.overall.summary}</p>
-            </article>
+                <p className="mt-4 text-sm leading-6 text-slate-600">{summarySection.overall.summary}</p>
+              </article>
+            </div>
           </section>
 
-          <section className="results-report__section results-report__panel card stack-sm">
+          <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.82)] bg-[rgba(255,255,255,0.98)] px-5 pt-5 pb-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
               <h3>{domainsSection.title}</h3>
             </div>
             <div className="stack-sm">
               {domainsSection.rows.map((row) => (
-                <article key={row.scoreKey} className="results-dimension-card">
-                  <div className="results-dimension-card__header">
-                    <div className="results-dimension-card__title">
-                      <h4>{row.label}</h4>
+                <article
+                  key={row.scoreKey}
+                  className="rounded-[20px] border border-[rgba(226,232,240,0.95)] bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.96))] px-4 py-4 shadow-[0_16px_34px_-36px_rgba(15,23,42,0.45)] sm:px-5"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h4 className="text-[1rem] font-semibold text-slate-900">{row.label}</h4>
+                      <p className="mt-2">
+                        <span className={getSafranBandPillClassName()}>{row.helper}</span>
+                      </p>
                     </div>
-                    <div className="results-dimension-card__score">
-                      <span className="results-dimension-card__score-value">
+                    <div className="text-right">
+                      <span className="text-[1.2rem] font-semibold tracking-[-0.03em] text-slate-900">
                         {renderSafranInterpretationValue(row.score, row.maxPossible)}
                       </span>
                     </div>
                   </div>
-                  <p className="results-dimension-card__helper">{row.helper}</p>
-                  <p className="results-dimension-card__summary">{row.summary}</p>
+                  <div className="mt-4">
+                    <div className="h-2.5 overflow-hidden rounded-full bg-[rgba(226,232,240,0.88)]">
+                      <div
+                        className="h-full rounded-full bg-[linear-gradient(90deg,rgba(17,138,178,0.72),rgba(17,138,178,0.28))]"
+                        style={{ width: `${getSafranVisualScoreWidth(row.score, row.maxPossible)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-700">{row.summary}</p>
                 </article>
               ))}
             </div>
           </section>
 
-          <section className="results-report__section results-report__panel card stack-sm">
+          <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.16)] bg-[linear-gradient(180deg,rgba(246,251,253,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_18px_42px_-40px_rgba(17,138,178,0.24)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
               <h3>{signalsSection.title}</h3>
             </div>
-            <p className="results-report__section-body">{signalsSection.body}</p>
-            <ul className="results-insight-list">
-              {signalsSection.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            <article className="rounded-[20px] border border-[rgba(148,163,184,0.14)] bg-[rgba(255,255,255,0.84)] px-4 py-4 shadow-[0_16px_34px_-36px_rgba(15,23,42,0.3)] sm:px-5">
+              <p className="text-sm leading-7 text-slate-700">{signalsSection.body}</p>
+              {signalsSection.items.length > 0 ? (
+                <div className="mt-4 rounded-[16px] border border-[rgba(148,163,184,0.14)] bg-[rgba(248,250,252,0.88)] px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Obrati pažnju</p>
+                  <ul className="results-insight-list mt-3 text-sm text-slate-600">
+                    {signalsSection.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </article>
           </section>
 
-          <section className="results-report__section results-report__panel card stack-sm">
+          <section className="results-report__section results-report__panel rounded-[22px] border border-[rgba(226,232,240,0.82)] bg-[rgba(248,250,252,0.76)] px-5 pt-5 pb-5 shadow-[0_12px_28px_-32px_rgba(15,23,42,0.24)] sm:px-6">
             <div className="results-report__section-heading">
               <h3>{readingGuideSection.title}</h3>
             </div>
-            <ul className="results-insight-list">
+            <ul className="results-insight-list text-sm text-slate-600">
               {readingGuideSection.items.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
 
-          <section className="results-report__section results-report__panel card stack-sm">
+          <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.16)] bg-[linear-gradient(180deg,rgba(247,251,253,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_22px_48px_-42px_rgba(17,138,178,0.28)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
               <h3>{nextStepSection.title}</h3>
             </div>
@@ -1197,7 +1241,11 @@ function SafranV1ResultsSummary({
                   <p className="results-report__section-body">{nextStepSection.body}</p>
                 ) : null}
                 {nextStepSection.ctaLabel ? (
-                  <p className="results-report__section-note">{nextStepSection.ctaLabel}</p>
+                  <div className="pt-2">
+                    <span className="inline-flex items-center rounded-full border border-[rgba(17,138,178,0.18)] bg-[rgba(17,138,178,0.08)] px-4 py-2 text-sm font-semibold text-[#0f5d75] shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
+                      {nextStepSection.ctaLabel}
+                    </span>
+                  </div>
                 ) : null}
               </>
             )}

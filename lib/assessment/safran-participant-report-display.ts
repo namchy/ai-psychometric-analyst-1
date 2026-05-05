@@ -88,7 +88,7 @@ const SAFRAN_READING_GUIDE: SafranParticipantReportReadingGuideSection["items"] 
   "Rezultati prikazuju broj tačnih odgovora unutar ove procjene i najkorisnije ih je čitati kao profil po oblastima.",
   "Verbalni, figuralni i numerički dio vrijedi posmatrati zajedno, jer svaka oblast pokazuje drugačiji tip zadataka.",
   "Numerički dio u ovoj digitalnoj verziji koristi numeričke nizove, pa rezultat treba čitati u tom formatu zadataka.",
-  "Ako si prije glavnog testa radio ili radila practice pitanja, ona služe samo za upoznavanje formata i ne ulaze u ove rezultate.",
+  "Ako si prije glavnog testa radio ili radila Probna pitanja, ona služe samo za upoznavanje formata i ne ulaze u rezultat.",
 ] as const;
 
 const SAFRAN_NEXT_STEPS: SafranParticipantReportNextStepSection["items"] = [
@@ -98,6 +98,94 @@ const SAFRAN_NEXT_STEPS: SafranParticipantReportNextStepSection["items"] = [
 
 const SAFRAN_AI_OVERALL_CARD_SUMMARY =
   "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.";
+
+function normalizeSafranDisplayText(value: string): string {
+  return value
+    .replace(/\bjedan slabiji dio\b/gi, "jedan izdvojen rezultat")
+    .replace(/\bpri čitanju nalaza\b/gi, "pri čitanju rezultata")
+    .replace(/\bnalaz\b/gi, "rezultat")
+    .replace(/\bpractice pitanja\b/gi, "Probna pitanja")
+    .replace(/\bne ulaze u scoring\b/gi, "ne ulaze u rezultat");
+}
+
+function uniqueNonEmptyTexts(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const items: string[] = [];
+
+  for (const value of values) {
+    const normalized = value?.trim();
+
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLowerCase();
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    items.push(normalizedSafranDisplayText(normalized));
+  }
+
+  return items;
+}
+
+function normalizedSafranDisplayText(value: string): string {
+  return normalizeSafranDisplayText(value.trim());
+}
+
+function softenSafranCautionText(value: string): string {
+  return normalizedSafranDisplayText(value).replace(
+    /^glavni oprez je da\s+/i,
+    "",
+  );
+}
+
+function buildSafranCautionSentence(value: string): string {
+  const softened = softenSafranCautionText(value);
+
+  if (!softened) {
+    return "";
+  }
+
+  if (/numerički kontrast/i.test(softened)) {
+    return "Numerički dio treba čitati oprezno jer jedan izdvojen rezultat ne opisuje tvoj ukupni način rješavanja različitih zadataka.";
+  }
+
+  return `Pritom je korisno imati na umu da ${softened.charAt(0).toLowerCase()}${softened.slice(1)}`;
+}
+
+function buildSafranAiSignalParagraph(report: SafranParticipantAiReport): string {
+  const parts = uniqueNonEmptyTexts([
+    report.cognitiveSignals.primarySignal,
+    report.cognitiveSignals.balanceNote,
+  ]);
+  const caution = buildSafranCautionSentence(report.cognitiveSignals.cautionSignal);
+
+  if (caution) {
+    parts.push(caution);
+  }
+
+  return parts.join(" ");
+}
+
+function buildSafranAiSignalReflectionItems(report: SafranParticipantAiReport): string[] {
+  return uniqueNonEmptyTexts([report.nextStep.body]).slice(0, 2);
+}
+
+function normalizeSafranReadingGuideItems(items: readonly string[]): string[] {
+  return items.map((item) => normalizedSafranDisplayText(item));
+}
+
+function normalizeSafranCtaLabel(label?: string | null): string | undefined {
+  if (!label?.trim()) {
+    return undefined;
+  }
+
+  return "Nazad na pregled procjene";
+}
 
 function normalizeTitle(testName?: string | null): string {
   const trimmed = testName?.trim();
@@ -176,17 +264,15 @@ function getSignalsSection(
   scores: SafranCandidateInterpretationScores,
 ): SafranParticipantReportSignalsSection {
   const interpretation = buildSafranCandidateInterpretation(scores);
+  const body = interpretation.relativeProfileBs
+    ? normalizedSafranDisplayText(interpretation.relativeProfileBs)
+    : "Pregled po oblastima ovdje daje najkorisniju sliku o tome koji su ti tipovi zadataka djelovali prirodnije i gdje je pristup tražio više prilagođavanja.";
 
   return {
     id: "signals",
-    title: "Profil kognitivnih signala",
-    body:
-      "Ovaj kratki profil služi kao orijentir za to koji su ti tipovi zadataka u ovoj procjeni djelovali prirodnije.",
-    items: interpretation.relativeProfileBs
-      ? [interpretation.relativeProfileBs]
-      : [
-          "Raspored rezultata po oblastima ovdje je korisniji od jednog kratkog profila, pa pregled po oblastima ostaje glavni oslonac za tumačenje.",
-        ],
+    title: "Kognitivni signal",
+    body,
+    items: [],
   };
 }
 
@@ -227,12 +313,12 @@ export function buildSafranParticipantReportDisplay({
       getSignalsSection(scores),
       {
         id: "reading_guide",
-        title: "Kako čitati ove rezultate",
-        items: SAFRAN_READING_GUIDE,
+        title: "Kako čitati ovaj rezultat",
+        items: normalizeSafranReadingGuideItems(SAFRAN_READING_GUIDE),
       },
       {
         id: "next_step",
-        title: "Sljedeći korak",
+        title: "Korak za razmišljanje",
         items: SAFRAN_NEXT_STEPS,
       },
     ],
@@ -290,25 +376,20 @@ export function buildSafranParticipantReportDisplayFromAiReport(
       },
       {
         id: "signals",
-        title: report.cognitiveSignals.title,
-        body:
-          "Ovaj kratki profil tumači odnos signala unutar verbalnih, figuralnih i numeričkih zadataka.",
-        items: [
-          report.cognitiveSignals.primarySignal,
-          report.cognitiveSignals.cautionSignal,
-          report.cognitiveSignals.balanceNote,
-        ],
+        title: "Kognitivni signal",
+        body: buildSafranAiSignalParagraph(report),
+        items: buildSafranAiSignalReflectionItems(report),
       },
       {
         id: "reading_guide",
-        title: report.readingGuide.title,
-        items: report.readingGuide.bullets,
+        title: "Kako čitati ovaj rezultat",
+        items: normalizeSafranReadingGuideItems(report.readingGuide.bullets),
       },
       {
         id: "next_step",
-        title: report.nextStep.title,
+        title: "Korak za razmišljanje",
         body: report.nextStep.body,
-        ctaLabel: report.nextStep.ctaLabel,
+        ctaLabel: normalizeSafranCtaLabel(report.nextStep.ctaLabel),
       },
     ],
   };
