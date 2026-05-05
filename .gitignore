@@ -15,7 +15,7 @@ tsconfig.tsbuildinfo
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-repomix-output.xml
+repomix-output*.xml
 db_backups/
 
 # Local database backup secrets
