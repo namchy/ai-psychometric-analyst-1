@@ -1,30 +1,55 @@
 # Deep Profile — To-do registar
 
+## 0. Operating rules
+
+Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog stanja.
+
+Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
+
+Pravila:
+
+- `docs/deep-profile-todo.md` je zadnji stabilizovani zapis trenutno važećeg plana, prioriteta i otvorenih taskova.
+- Dokument ne zamjenjuje razgovor, product judgement ili novu odluku.
+- Ako se u razgovoru donese nova odluka koja mijenja prioritet, redoslijed ili scope, treba je zabilježiti u todo dokument.
+- Dok promjena nije zabilježena, tretira se kao radni dogovor, ne kao stabilizovani backlog.
+- Canvas je radna memorija ili draft promjene, ne trajni izvor istine.
+- EoD handover je dnevni kontekst, ne zamjena za ovaj dokument.
+- GitHub issues i GitHub Projects su execution layer izveden iz ovog dokumenta, ne canonical backlog.
+- Ranija memorija ili prethodni chatovi ne smiju nadjačati ovaj dokument bez eksplicitne nove odluke.
+- U novom chatu, kada korisnik pita za todo, backlog, sljedeći task, prioritete, nastavak rada, handover, project status ili sync, prvo se koristi ovaj dokument.
+- Ako dokument nije direktno dostupan, fallback je aktuelni `repomix-output.xml`.
+- Ako nije dostupan ni dokument ni repomix, treba tražiti od korisnika da pošalje aktuelni `repomix-output.xml` ili sadržaj ovog dokumenta.
+- Ne kreirati novi todo canvas osim ako korisnik to eksplicitno zatraži.
+
+Komande:
+
+- “pregledaj todo” = pročitati `docs/deep-profile-todo.md` i sažeti trenutne prioritete.
+- “predloži sljedeći task” = prvo pročitati todo, zatim preporučiti sljedeći task.
+- “zabilježi u todo” = pripremiti ili ažurirati sadržaj namijenjen za `docs/deep-profile-todo.md`.
+- “sync todo” = pripremiti jedan Codex prompt za ažuriranje `docs/deep-profile-todo.md`.
+- “sync todo + github” = pripremiti jedan Codex prompt za ažuriranje `docs/deep-profile-todo.md` i zatim sinhronizaciju odgovarajućih GitHub issues / Project items.
+
 ## Kompaktni prioritetni pregled taskova
 
 | Prioritet | Task                                                 | Status      | Kategorija                   | Sljedeći korak                                                                                 |
 | --------- | ---------------------------------------------------- | ----------- | ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| P0        | SAFRAN user report content architecture              | Otvoreno    | SAFRAN / Candidate report    | Zaključati sadržaj, redoslijed sekcija i kandidat-facing značenje reporta prije UI poliranja. |
+| P0        | SAFRAN report visual parity sa IPIP reportom         | Otvoreno    | SAFRAN / Report UI           | Uskladiti SAFRAN report sa IPIP completed report vizuelnim sistemom nakon content architecture taska. |
+| P0        | SAFRAN practice visual parity sa scored pitanjima    | Otvoreno    | SAFRAN / Assessment UX       | Probna SAFRAN pitanja uskladiti sa vizuelnim stilom pravih scored pitanja. |
 | P1        | IPIP prethodno pitanje ne prikazuje odabrani odgovor | Otvoreno    | Assessment UX / State        | Provjeriti persistenciju i rehydration odgovora pri navigaciji nazad u IPIP testu.             |
 | P1        | SAFRAN izgleda kao da ima default označen odgovor    | Otvoreno    | Assessment UX / Input state  | Provjeriti da nijedan odgovor nije unaprijed selektovan, posebno vrijednost/option 1.          |
 | P1        | IPIP tekst na karticama dimenzija se ponavlja        | Otvoreno    | Report UI / Copy             | Locirati duplirani copy u IPIP report karticama i ukloniti ponavljanje.                        |
 | P1        | Kompozitni AI profil IPIP + SAFRAN + MWMS            | Planirano   | Product / AI report          | Definisati input payload, schema, audience, fallback i UI strukturu.                           |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Definisati modal, DB preferencu i snapshot na attempt/report nivou.                            |
 | P1        | MWMS pitanja / item UX                               | Otvoreno    | Assessment UX / Copy         | Redizajnirati MWMS prikaz kao “Mogući razlog” + zajednički uvodni stem.                        |
-| P1        | IPIP tekst na karticama dimenzija se ponavlja        | Otvoreno    | Report UI / Copy             | Locirati duplirani copy u IPIP report karticama i ukloniti ponavljanje.                        |
-| P1        | IPIP prethodno pitanje ne prikazuje odabrani odgovor | Otvoreno    | Assessment UX / State        | Provjeriti persistenciju i rehydration odgovora pri navigaciji nazad u IPIP testu.             |
 | P1        | SAFRAN default označen odgovor                       | Otvoreno    | Assessment UX / Input state  | Provjeriti da nijedan odgovor nije unaprijed selektovan, posebno vrijednost/option 1.          |
 | P1        | IPIP radar chart                                     | Otvoreno    | Report UI / Visualization    | Vratiti radar chart kao deterministic visual summary za IPIP report.                           |
-| P1        | SAFRAN novi stimulus asseti                          | Otvoreno    | Assessment assets / UX       | Ubaciti nove SAFRAN stimulus slike sa većim, čitljivijim tekstom.                              |
-| P1        | Globalni app header i footer                         | Otvoreno    | App shell / UI system        | Definisati i primijeniti jedan konzistentan header i footer na cijeloj aplikaciji.             |
-| P1        | Logo u headeru                                       | Otvoreno    | Branding / UI                | Dodati postojeći Deep Profile logo u globalni header.                                          |
 | P1        | SAFRAN novi stimulus asseti                          | Otvoreno    | Assessment assets / UX       | Ubaciti nove SAFRAN stimulus slike sa većim, čitljivijim tekstom.                              |
 | P1        | Globalni app header i footer                         | Otvoreno    | App shell / UI system        | Definisati i primijeniti jedan konzistentan header i footer na cijeloj aplikaciji.             |
 | P1        | Logo u headeru                                       | Otvoreno    | Branding / UI                | Dodati postojeći Deep Profile logo u globalni header.                                          |
 | P1        | MWMS licenca                                         | Otvoreno    | Legal / Product risk         | Pravno očistiti komercijalnu upotrebu MWMS-a prije produkcijskog rollouta.                     |
 | P2        | Login screen UI polish                               | Otvoreno    | Auth UI / Visual consistency | Uskladiti login ekran sa ostatkom aplikacije i popraviti font promjenu pri fokusu email polja. |
 | P2        | IPIP poddimenzije prikaz                             | Otvoreno    | Report UI / Visualization    | Skratiti prikaz poddimenzija i razmotriti bars umjesto predugog tekstualnog prikaza.           |
-| P2        | IPIP poddimenzije prikaz                             | Otvoreno    | Report UI / Visualization    | Skratiti prikaz poddimenzija i razmotriti bars umjesto predugog tekstualnog prikaza.           |
-| P2        | Login screen UI polish                               | Otvoreno    | Auth UI / Visual consistency | Uskladiti login ekran sa ostatkom aplikacije i popraviti font promjenu pri fokusu email polja. |
 | P2        | Candidate dashboard labels                           | Završeno    | UX copy                      | Kartice sada koriste user-facing title kao glavni naziv procjene, a instrument kao subtitle.   |
 | P2        | MWMS AI report copy ton                              | Otvoreno    | Report copy / Tone           | Uskladiti “ti” vs. “vi/Vaš” nakon odluke o obliku obraćanja.                                   |
 | P2        | Report visual language po testovima                  | Planirano   | Report UI                    | IPIP radar, MWMS bar profile, SAFRAN score cards, composite mapa.                              |
@@ -37,6 +62,7 @@
 
 ## Outline
 
+0. Operating rules
 1. Svrha dokumenta
 2. Pravila korištenja
 3. Prioriteti
@@ -67,11 +93,12 @@ Koristi se za bilježenje stvari koje primijetimo tokom razgovora, testiranja i 
 
 ### 2.1 Dogovoreni todo workflow
 
-Koristimo tri sloja:
+Koristimo četiri sloja:
 
-1. **Canvas** — radna memorija tokom razgovora i izvor istine za trenutni to-do sadržaj.
-2. **Repo dokument** — trajna verzija u GitHubu: `docs/deep-profile-todo.md`.
-3. **GitHub Projects** — execution board za taskove koji ulaze u rad.
+1. **Razgovor** — mjesto za razmišljanje, product judgement i promjene prioriteta.
+2. **Canvas** — radna memorija ili draft promjene tokom razgovora.
+3. **Repo dokument** — trajni canonical snapshot u GitHubu: `docs/deep-profile-todo.md`.
+4. **GitHub Projects** — execution board za taskove koji ulaze u rad.
 
 Dogovorene komande u razgovoru:
 
@@ -80,7 +107,7 @@ Dogovorene komande u razgovoru:
 
 Pravilo za sync:
 
-* Canvas je izvor istine za sadržaj.
+* Repo dokument je zadnji stabilizovani snapshot plana. Canvas može biti draft promjene, ali ne nadjačava repo dokument dok se promjena ne syncuje u docs/deep-profile-todo.md.
 * Codex ne interpretira backlog i ne donosi product odluke.
 * Sanela priprema tačan Markdown sadržaj iz canvas dokumenta.
 * Codex dobija instrukciju da ažurira `docs/deep-profile-todo.md` tim sadržajem, bez preuređivanja, kreativnog dopunjavanja ili izmjene drugih fajlova.
@@ -96,7 +123,7 @@ Codex workflow za repo sync:
 
 Napomena: Za to-do sync ne tražiti obavezni `git diff` prije commita. To je dokumentacioni sync, a Codex dobija tačan Markdown sadržaj iz canvasa. Diff provjera ostaje opcionalna, samo ako Namchy to zatraži.
 
-Pravilo: Canvas je prostor za razmišljanje i živi backlog, a GitHub dokument je trajna verzija sa historijom promjena. Codex je izvršitelj sync-a, ne dodatni interpretator to-do sadržaja.
+Pravilo: razgovor i canvas služe za razmišljanje i draft promjene, a docs/deep-profile-todo.md je zadnji stabilizovani snapshot sa historijom promjena. Codex je izvršitelj sync-a, ne dodatni interpretator to-do sadržaja.
 
 ---
 
@@ -121,6 +148,136 @@ Dobre ideje koje nisu za sadašnji razvojni sprint.
 ---
 
 ## 4. Aktivni backlog
+
+### P0 — SAFRAN user report content architecture
+
+**Status:** Otvoreno  
+**Kategorija:** SAFRAN / Candidate report / Product content
+
+**Problem / context:**  
+SAFRAN trenutno ima deterministic candidate interpretation, ali prije vizuelnog poliranja treba jasno zaključati šta user report prikazuje, kojim redoslijedom i sa kojim značenjem.
+
+UI ne smije sam određivati semantičku strukturu reporta. Prvo treba zaključati sadržaj, tek onda dizajn.
+
+**Scope:**  
+Definisati kandidat-facing strukturu SAFRAN reporta:
+
+1. header reporta
+2. ukupni rezultat
+3. pregled po oblastima
+4. profil kognitivnih signala
+5. kako čitati rezultate
+6. sljedeći korak / CTA
+
+**Predloženi redoslijed reporta:**
+
+1. **Header reporta**
+   - naziv testa: SAFRAN
+   - kratko objašnjenje: procjena kroz verbalne, figuralne i numeričke zadatke
+   - status: završeno
+
+2. **Sažetak rezultata**
+   - ukupni rezultat
+   - neutralni deskriptivni band
+   - kratka rečenica koja objašnjava ukupni rezultat u okviru testa
+
+3. **Pregled po oblastima**
+   - verbalni rezultat
+   - figuralni rezultat
+   - numerički rezultat
+   - za svaku oblast: score, band, kratko neutralno tumačenje
+
+4. **Profil kognitivnih signala**
+   - najizraženija oblast
+   - oblast koja traži najviše opreza u tumačenju
+   - kratko poređenje domena bez rangiranja osobe kao bolje/lošije
+
+5. **Kako čitati ove rezultate**
+   - nema IQ interpretacije
+   - nema percentila
+   - nema lokalnih normi
+   - rezultat nije samostalna odluka o kandidatu
+   - practice pitanja ne ulaze u scoring
+
+6. **Sljedeći korak**
+   - povratak na dashboard
+   - nastavak drugih testova ako postoje
+   - završni CTA ako je baterija kompletirana
+
+**Acceptance criteria:**
+- Report ima zaključan redoslijed sekcija.
+- Ne prikazuje se `V1`.
+- Ne koristi se “Ukupni kognitivni kompozit”.
+- Ne koristi se “Rezultat ne znači...” u domain tekstovima.
+- Tekst je neutralan, kratak i kandidat-facing.
+- Ograničenja su jasna, ali nisu dominantan defanzivni blok.
+- Practice pitanja su eksplicitno navedena kao nescored samo u sekciji “Kako čitati ove rezultate”.
+
+**Next step:**  
+Pripremiti implementacijski prompt koji prvo stabilizuje SAFRAN report content contract/helper, bez velikog vizuelnog refaktora.
+
+---
+
+### P0 — SAFRAN report visual parity sa IPIP reportom
+
+**Status:** Otvoreno  
+**Kategorija:** SAFRAN / Candidate report / UI
+
+**Problem / context:**  
+SAFRAN report ne smije izgledati kao generički score dump ili kao odvojen proizvod. Kandidat treba osjetiti da su IPIP i SAFRAN dio istog Deep Profile sistema.
+
+Ovaj task se radi nakon što je zaključen sadržaj i redoslijed SAFRAN reporta.
+
+**Scope:**
+- uskladiti report layout sa IPIP completed report ritmom
+- koristiti isti vizuelni sistem kartica, širina, spacinga i hijerarhije
+- ukupni rezultat prikazati jasno, ali ne agresivno
+- domain rezultate prikazati pregledno i mirno
+- interpretacijsku napomenu učiniti sekundarnom
+- ukloniti legacy osjećaj SAFRAN result ekrana
+
+**Acceptance criteria:**
+- SAFRAN report vizuelno pripada istoj porodici kao IPIP report.
+- Header, score kartice, interpretacijske sekcije i CTA zona imaju usklađen ritam.
+- Nema velikih teških blokova teksta.
+- Interpretacijska napomena nije najveći ili najdominantniji element.
+- Nema user-facing interne terminologije.
+- Report izgleda kao candidate-facing proizvod, ne kao debug/score ekran.
+
+**Next step:**  
+Nakon content architecture taska, pripremiti implementacijski prompt za vizuelni refactor SAFRAN reporta prema IPIP completed report patternu.
+
+---
+
+### P0 — SAFRAN practice visual parity sa scored pitanjima
+
+**Status:** Otvoreno  
+**Kategorija:** SAFRAN / Assessment UX / Practice flow
+
+**Problem / context:**  
+Probna SAFRAN pitanja su prvi stvarni kontakt kandidata sa zadacima. Ako vizuelno odstupaju od pravih scored pitanja, korisnik osjeti šav između practice i scored dijela.
+
+Practice ne ulazi u scoring, ali mora izgledati kao ista vrsta zadatka i isti proizvodni tok.
+
+**Scope:**
+- practice pitanja koriste isti max-width kao scored pitanja
+- isti kartični sistem
+- isti tretman stimulusa
+- isti tretman answer option kartica
+- isti footer/action ritam gdje je primjenjivo
+- practice-specific copy ostaje samo tamo gdje objašnjava da je riječ o primjerima
+
+**Acceptance criteria:**
+- Practice i scored pitanja izgledaju kao isti UI sistem.
+- Razlika između practice i scored dijela je semantička, ne vizuelno haotična.
+- Nema duplih stimulus slika.
+- Nema osjećaja da je practice dio stariji ekran.
+- Practice ekran i dalje jasno komunicira da odgovori ne ulaze u rezultat.
+
+**Next step:**  
+Pripremiti implementacijski prompt za refactor SAFRAN practice rendera tako da koristi isti layout/pattern kao scored AssessmentForm gdje god je tehnički razumno.
+
+---
 
 | Prioritet | Tema                       | Status    | Kratak opis                                                                                                                  | Sljedeći korak                                                                                |
 | --------- | -------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -169,6 +326,21 @@ Opcije:
 Napomena:
 
 > Ovaj izbor se koristi samo da pitanja i izvještaji zvuče prirodnije. Ne utiče na rezultate procjene.
+
+### 5.4 SAFRAN redoslijed stabilizacije
+
+Dogovoreno je da finalni ručni SAFRAN smoke test ne ide prije zatvaranja report i practice UX sloja.
+
+Revidirani redoslijed:
+
+1. SAFRAN user report content architecture
+2. SAFRAN report visual parity sa IPIP reportom
+3. SAFRAN practice visual parity sa scored pitanjima
+4. finalni ručni SAFRAN smoke test
+5. RIASEC implementation doc
+6. composite report architecture
+
+Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno blizu finalnog, a ne poluzavršen report/practice tok.
 
 ---
 
@@ -241,6 +413,22 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-05 — SAFRAN report i practice UX prije finalnog smoke testa
+
+Dogovoreno:
+
+* Finalni ručni SAFRAN smoke test više nije prvi naredni task.
+* Prije smoke testa treba zaključati sadržaj i redoslijed SAFRAN user reporta.
+* SAFRAN user report treba vizuelno uskladiti sa IPIP completed report stilom.
+* Probna SAFRAN pitanja treba vizuelno uskladiti sa pravim scored pitanjima.
+* Tek nakon ta tri P0 taska radi se finalni ručni SAFRAN smoke test.
+
+Racionala:
+
+* Smoke test ne treba testirati poluzavršen kandidat-facing UX.
+* SAFRAN report prvo treba imati jasan semantički redoslijed, pa tek onda vizuelni polish.
+* Practice pitanja su prvi stvarni kontakt kandidata sa SAFRAN zadacima i moraju izgledati kao dio istog sistema kao scored pitanja.
 
 ### 2026-05-04 — Candidate dashboard assessment labels
 
