@@ -35,6 +35,10 @@ import {
 } from "@/lib/assessment/ipc-report-contract";
 import { buildMwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-participant-ai-input-v1";
 import { isMwmsTestSlug } from "@/lib/assessment/mwms-report-contract";
+import {
+  buildSafranParticipantAiReportInput,
+  isSafranTestSlug,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
 export { formatDimensionLabel } from "@/lib/assessment/result-display";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type {
@@ -444,6 +448,10 @@ export function buildReportPromptInput(
 
   if (isMwmsTestSlug(input.testSlug) && input.audience === "participant") {
     return buildMwmsParticipantReportPromptInput(input);
+  }
+
+  if (isSafranTestSlug(input.testSlug) && input.audience === "participant") {
+    return buildSafranParticipantAiReportInput(input);
   }
 
   return isIpcTestSlug(input.testSlug)

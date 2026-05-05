@@ -26,6 +26,12 @@ import {
   mwmsParticipantReportV1OpenAiSchema,
   validateMwmsParticipantReportV1,
 } from "@/lib/assessment/mwms-participant-report-v1";
+import type { SafranAiReportInput } from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
+  formatSafranParticipantAiReportValidationErrors,
+  safranParticipantAiReportV1OpenAiSchema,
+  validateSafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
   assembleIpipNeo120ParticipantReportV2FromSegments,
   buildIpipNeo120ParticipantDomainSegmentPromptInput,
@@ -76,6 +82,16 @@ function isMwmsParticipantPromptInput(
     "dimensions" in promptInput &&
     promptInput.test_slug === "mwms_v1" &&
     promptInput.audience === "participant"
+  );
+}
+
+function isSafranParticipantPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is SafranAiReportInput {
+  return (
+    "test" in promptInput &&
+    promptInput.test.slug === "safran_v1" &&
+    promptInput.test.audience === "participant"
   );
 }
 
@@ -197,6 +213,15 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
   }
 
   if (!("dimension_scores" in input.promptInput)) {
+    if (isSafranParticipantPromptInput(input.promptInput)) {
+      return input.promptInput.scores.domains
+        .map(
+          (domain) =>
+            `${domain.code} (${domain.label}): raw_score=${domain.rawScore}, score_label=${domain.scoreLabel}, band=${domain.band}, band_label=${domain.bandLabel}`,
+        )
+        .join(" | ");
+    }
+
     if (isMwmsParticipantPromptInput(input.promptInput)) {
       return input.promptInput.dimensions
         .map(
@@ -323,6 +348,58 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
   }
 
   if (!("dimension_scores" in input.promptInput)) {
+    if (isSafranParticipantPromptInput(input.promptInput)) {
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one SAFRAN participant report in reportType safran_participant_ai_report_v1.",
+          audience_behavior:
+            "Write in the locale from input.test.locale. Address the participant directly in a calm, neutral, non-clinical tone.",
+          source_rule:
+            "Use only the provided structured SAFRAN input with already calculated scoreLabel, bandLabel and deterministicMeaning values. Do not calculate scores, do not change scoreLabel, and do not change bandLabel.",
+          single_test_rule:
+            "This is a single-test SAFRAN report. Interpret only SAFRAN results. Do not connect SAFRAN with IPIP or MWMS except in readingGuide where you may say it is useful together with other parts of Deep Profile procjene.",
+          structure_rules: [
+            "Return valid JSON only.",
+            "Keep section order as header, summary, domains, cognitiveSignals, readingGuide, nextStep, safetyChecks.",
+            "Keep domains in exact order verbal, figural, numeric.",
+            'header.title must be exactly "SAFRAN".',
+            "summary.scoreLabel must match input.scores.overall.scoreLabel exactly.",
+            "summary.bandLabel must match input.scores.overall.bandLabel exactly.",
+            "Each domain scoreLabel and bandLabel must match the provided input exactly.",
+            "summary.interpretation must be at most 2 sentences.",
+            "Each domain interpretation must be at most 2 sentences.",
+            "Each cognitiveSignals field must be 1 sentence at most.",
+            "readingGuide.bullets must contain exactly 5 items, one sentence each.",
+          ],
+          reading_guide_requirements: [
+            "Use exactly these five readingGuide bullets in the same order, adapted only for locale while keeping the same meaning.",
+            "1. The result is not a measure of general intelligence.",
+            "2. The result is not a percentile and does not represent comparison with a local reference group.",
+            "3. Practice questions are only for familiarization and do not enter scoring.",
+            "4. SAFRAN result should not be used as a standalone decision about the candidate.",
+            "5. The result is most useful when read together with other parts of Deep Profile procjene.",
+            "Preferred Bosnian phrasing is acceptable and recommended: 'Ovi rezultati ne predstavljaju mjeru opšte inteligencije.' 'Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.' 'Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.' 'SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.' 'Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.'",
+          ],
+          guardrails: [
+            "Do not use HR or hiring language.",
+            "Do not use hire/no-hire language.",
+            "Do not make IQ, percentile or norm claims.",
+            "Do not diagnose and do not use clinical language.",
+            "Do not make fixed-ability claims.",
+            "Do not call the person smart, capable, incapable, above-average or below-average.",
+            "Do not use V1, Ukupni kognitivni kompozit, or Rezultat ne znači.",
+            "Do not mention raw answers, item banks, other candidates or organizational context.",
+            "Do not mention AI.",
+          ],
+          safety_checks_rule:
+            "All safetyChecks fields must be false.",
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
+    }
+
     if (isMwmsParticipantPromptInput(input.promptInput)) {
       return JSON.stringify({
         instructions: {
@@ -428,6 +505,22 @@ function buildSystemPrompt(input: PreparedReportGenerationInput): string {
   return input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input);
 }
 
+function getPromptInputLocale(input: ReportPromptInput): string {
+  if ("locale" in input) {
+    return input.locale;
+  }
+
+  return input.test.locale;
+}
+
+function getPromptInputAudience(input: ReportPromptInput): "participant" | "hr" {
+  if ("audience" in input) {
+    return input.audience;
+  }
+
+  return input.test.audience;
+}
+
 function applyPromptTemplate(
   template: string,
   input: PreparedReportGenerationInput,
@@ -436,7 +529,7 @@ function applyPromptTemplate(
   const replacements = new Map<string, string>([
     ["{{prompt_version}}", promptTemplate.version],
     ["{{prompt_version_id}}", promptTemplate.id],
-    ["{{locale}}", input.promptInput.locale],
+    ["{{locale}}", getPromptInputLocale(input.promptInput)],
     ["{{test_slug}}", input.testSlug],
     ["{{dimension_hint_text}}", buildDimensionHintText(input)],
     ["{{prompt_input_json}}", JSON.stringify(input.promptInput)],
@@ -476,6 +569,10 @@ function resolveOpenAiResponseFormatSchemaForInput(
 
   if (isMwmsParticipantPromptInput(input.promptInput)) {
     return mwmsParticipantReportV1OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isSafranParticipantPromptInput(input.promptInput)) {
+    return safranParticipantAiReportV1OpenAiSchema as Record<string, unknown>;
   }
 
   return input.reportContract.outputSchemaJson;
@@ -864,16 +961,31 @@ function validateStructuredReport(
     return validationResult.value;
   }
 
+  if (input.testSlug === "safran_v1" && isSafranParticipantPromptInput(input.promptInput)) {
+    const validationResult = validateSafranParticipantAiReport(report, {
+      expectedInput: input.promptInput,
+    });
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed SAFRAN participant report validation: ${formatSafranParticipantAiReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
   const validationResult = validateRuntimeCompletedAssessmentReport(report, {
     testSlug: input.testSlug,
-    audience: input.promptInput.audience,
+    audience: getPromptInputAudience(input.promptInput),
   });
 
   if (!validationResult.ok) {
     const validationPrefix =
       input.reportContract.family === "ipc"
         ? "OpenAI response JSON failed IPC report validation"
-        : input.testSlug === "ipip-neo-120-v1" && input.promptInput.audience === "participant"
+        : input.testSlug === "ipip-neo-120-v1" &&
+            getPromptInputAudience(input.promptInput) === "participant"
           ? "OpenAI response JSON failed IPIP-NEO-120 participant report validation"
         : "OpenAI response JSON failed detailed report validation";
     throw new Error(`${validationPrefix}: ${validationResult.reason}`);

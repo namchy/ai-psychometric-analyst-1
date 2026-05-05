@@ -1,14 +1,20 @@
 import {
+  parseSafranAiScoreLabel,
+  validateSafranParticipantAiReport,
+  type SafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
   buildSafranCandidateInterpretation,
   getSafranInterpretationFallbackText,
   type SafranCandidateInterpretationScores,
   type SafranScoreKey,
 } from "@/lib/assessment/safran-interpretation";
 
-type SafranParticipantReportHeader = {
+export type SafranParticipantReportHeader = {
   eyebrow: string;
   title: string;
   subtitle: string;
+  statusLabel?: string;
 };
 
 export type SafranParticipantReportSummarySection = {
@@ -56,13 +62,15 @@ export type SafranParticipantReportSignalsSection = {
 export type SafranParticipantReportReadingGuideSection = {
   id: "reading_guide";
   title: string;
-  items: [string, string, string, string];
+  items: string[];
 };
 
 export type SafranParticipantReportNextStepSection = {
   id: "next_step";
   title: string;
-  items: [string, string];
+  items?: [string, string];
+  body?: string;
+  ctaLabel?: string;
 };
 
 export type SafranParticipantReportDisplay = {
@@ -91,6 +99,25 @@ const SAFRAN_NEXT_STEPS: SafranParticipantReportNextStepSection["items"] = [
 function normalizeTitle(testName?: string | null): string {
   const trimmed = testName?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : "SAFRAN";
+}
+
+function parseScoreLabel(scoreLabel: string, fallbackMax: number): {
+  score: number | null;
+  maxPossible: number;
+} {
+  const parsed = parseSafranAiScoreLabel(scoreLabel);
+
+  if (!parsed) {
+    return {
+      score: null,
+      maxPossible: fallbackMax,
+    };
+  }
+
+  return {
+    score: parsed.rawScore,
+    maxPossible: parsed.maxScore,
+  };
 }
 
 function isFiniteScore(value: number | null | undefined): value is number {
@@ -207,4 +234,102 @@ export function buildSafranParticipantReportDisplay({
       },
     ],
   };
+}
+
+export function buildSafranParticipantReportDisplayFromAiReport(
+  report: SafranParticipantAiReport,
+): SafranParticipantReportDisplay {
+  const overallScore = parseScoreLabel(report.summary.scoreLabel, 54);
+  const domainRows: SafranParticipantReportDomainsSection["rows"] = report.domains.map(
+    (domain) => {
+      const score = parseScoreLabel(domain.scoreLabel, 18);
+
+      return {
+        scoreKey:
+          domain.code === "verbal"
+            ? "verbal_score"
+            : domain.code === "figural"
+              ? "figural_score"
+              : "numerical_series_score",
+        label: domain.title,
+        score: score.score,
+        maxPossible: score.maxPossible,
+        helper: domain.bandLabel,
+        summary: domain.interpretation,
+      };
+    },
+  ) as SafranParticipantReportDomainsSection["rows"];
+
+  return {
+    header: {
+      eyebrow: "AI izvještaj procjene",
+      title: report.header.title,
+      subtitle: report.header.subtitle,
+      statusLabel: report.header.statusLabel,
+    },
+    sections: [
+      {
+        id: "summary",
+        title: report.summary.title,
+        body: report.summary.interpretation,
+        overall: {
+          label: "Ukupni rezultat",
+          score: overallScore.score,
+          maxPossible: overallScore.maxPossible,
+          helper: report.summary.bandLabel,
+          summary: report.summary.interpretation,
+        },
+      },
+      {
+        id: "domains",
+        title: "Pregled po oblastima",
+        rows: domainRows,
+      },
+      {
+        id: "signals",
+        title: report.cognitiveSignals.title,
+        body:
+          "Ovaj kratki profil tumači odnos signala unutar verbalnih, figuralnih i numeričkih zadataka.",
+        items: [
+          report.cognitiveSignals.primarySignal,
+          report.cognitiveSignals.cautionSignal,
+          report.cognitiveSignals.balanceNote,
+        ],
+      },
+      {
+        id: "reading_guide",
+        title: report.readingGuide.title,
+        items: report.readingGuide.bullets,
+      },
+      {
+        id: "next_step",
+        title: report.nextStep.title,
+        body: report.nextStep.body,
+        ctaLabel: report.nextStep.ctaLabel,
+      },
+    ],
+  };
+}
+
+export function resolveSafranParticipantReportDisplay({
+  scores,
+  testName,
+  aiReport,
+}: {
+  scores: SafranCandidateInterpretationScores;
+  testName?: string | null;
+  aiReport?: unknown;
+}): SafranParticipantReportDisplay {
+  const aiValidation = aiReport
+    ? validateSafranParticipantAiReport(aiReport)
+    : null;
+
+  if (aiValidation?.ok) {
+    return buildSafranParticipantReportDisplayFromAiReport(aiValidation.value);
+  }
+
+  return buildSafranParticipantReportDisplay({
+    scores,
+    testName,
+  });
 }

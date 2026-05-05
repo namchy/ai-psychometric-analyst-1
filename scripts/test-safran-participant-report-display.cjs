@@ -58,7 +58,12 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 };
 
 const {
+  buildMockSafranParticipantAiReport,
+  buildSafranParticipantAiReportInput,
+} = require("../lib/assessment/safran-participant-ai-report-v1.ts");
+const {
   buildSafranParticipantReportDisplay,
+  resolveSafranParticipantReportDisplay,
 } = require("../lib/assessment/safran-participant-report-display.ts");
 
 function flattenDisplayTexts(display) {
@@ -143,5 +148,65 @@ assert.equal(
   display.sections[3].items.some((item) => /practice/i.test(item)),
   true,
 );
+
+const aiInput = buildSafranParticipantAiReportInput({
+  testSlug: "safran_v1",
+  locale: "bs",
+  results: {
+    attemptId: "attempt-safran-display",
+    scoringMethod: "correct_answers",
+    dimensions: [
+      { dimension: "verbal_score", rawScore: 15, scoredQuestionCount: 18 },
+      { dimension: "figural_score", rawScore: 8, scoredQuestionCount: 18 },
+      { dimension: "numerical_series_score", rawScore: 6, scoredQuestionCount: 18 },
+      { dimension: "cognitive_composite_v1", rawScore: 29, scoredQuestionCount: 54 },
+    ],
+    scoredResponseCount: 45,
+    unscoredResponses: [],
+    derived: {
+      safranV1: {
+        verbalScore: 15,
+        figuralScore: 8,
+        numericalRawScore: 3,
+        numericalAdjustedScore: 6,
+        numericalScore: 6,
+        numericalSeriesScore: 6,
+        cognitiveCompositeScore: 29,
+        cognitiveCompositeV1: 29,
+      },
+    },
+  },
+});
+const aiReport = buildMockSafranParticipantAiReport(aiInput);
+const aiDisplay = resolveSafranParticipantReportDisplay({
+  scores: {
+    verbal_score: 15,
+    figural_score: 8,
+    numerical_series_score: 6,
+    cognitive_composite_v1: 29,
+  },
+  testName: "SAFRAN",
+  aiReport,
+});
+assert.equal(aiDisplay.header.title, "SAFRAN");
+assert.equal(aiDisplay.header.statusLabel, "Završeno");
+assert.equal(aiDisplay.sections[0].overall.helper, aiReport.summary.bandLabel);
+
+const fallbackDisplay = resolveSafranParticipantReportDisplay({
+  scores: {
+    verbal_score: 15,
+    figural_score: 8,
+    numerical_series_score: 6,
+    cognitive_composite_v1: 29,
+  },
+  testName: "SAFRAN",
+  aiReport: {
+    reportType: "safran_participant_ai_report_v1",
+    testSlug: "safran_v1",
+    audience: "participant",
+  },
+});
+assert.equal(fallbackDisplay.header.statusLabel, undefined);
+assert.equal(fallbackDisplay.sections[0].title, "Sažetak rezultata");
 
 console.log("SAFRAN participant report display tests passed.");

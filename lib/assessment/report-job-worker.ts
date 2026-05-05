@@ -11,6 +11,10 @@ import {
   isMwmsTestSlug,
 } from "@/lib/assessment/mwms-report-contract";
 import {
+  SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT,
+  isSafranTestSlug,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
   type RuntimeCompletedAssessmentReport,
   validateRuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
@@ -383,6 +387,8 @@ async function loadPromptVersionForJob(
           ? IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.promptKey
           : isMwmsTestSlug(job.test_slug) && job.audience === "participant"
             ? MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey
+            : isSafranTestSlug(job.test_slug) && job.audience === "participant"
+              ? SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey
           : isIpcTestSlug(job.test_slug)
             ? getIpcPromptContract(job.audience).promptKey
             : REPORT_PROMPT_KEY,
@@ -542,6 +548,13 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
     );
   }
 
+  if (isSafranTestSlug(job.test_slug) && job.audience !== "participant") {
+    throw new ReportJobError(
+      "CONFIG_ERROR",
+      "SAFRAN V1 AI report supports participant reports only.",
+    );
+  }
+
   const attemptContext = await loadAttemptContext(job.attempt_id);
   const [runtimeConfig, activePromptVersion] = await Promise.all([
     loadRuntimeConfigForJob(job),
@@ -610,6 +623,8 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
       ? "ipc"
       : isMwmsTestSlug(job.test_slug)
         ? "mwms"
+        : isSafranTestSlug(job.test_slug)
+          ? "safran"
         : "big_five",
   });
 

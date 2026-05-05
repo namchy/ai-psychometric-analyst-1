@@ -35,9 +35,14 @@ import {
 import { buildParticipantIpipProfileOverview } from "@/lib/assessment/ipip-participant-report-display";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import {
-  type SafranScoreKey,
-} from "@/lib/assessment/safran-interpretation";
-import { buildSafranParticipantReportDisplay } from "@/lib/assessment/safran-participant-report-display";
+  extractSafranParticipantAiDisplayScores,
+  validateSafranParticipantAiReport,
+  type SafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
+import type { SafranScoreKey } from "@/lib/assessment/safran-interpretation";
+import {
+  resolveSafranParticipantReportDisplay,
+} from "@/lib/assessment/safran-participant-report-display";
 import { zodiak } from "@/lib/fonts";
 
 type CompletedAssessmentSummaryProps = {
@@ -90,6 +95,7 @@ type ReportRendererSelection =
   | { kind: "ipc_participant_v1"; report: IpcParticipantReportV1 }
   | { kind: "ipc_hr_v1"; report: IpcHrReportV1 }
   | { kind: "mwms_participant_report_v1"; report: MwmsParticipantReportV1 }
+  | { kind: "safran_participant_ai_report_v1"; report: SafranParticipantAiReport }
   | { kind: "shape_mismatch"; message: string }
   | { kind: "unsupported_signal"; message: string }
   | { kind: "none" };
@@ -190,6 +196,10 @@ function isMwmsParticipantReport(report: unknown): report is MwmsParticipantRepo
   );
 }
 
+function isSafranParticipantAiReport(report: unknown): report is SafranParticipantAiReport {
+  return validateSafranParticipantAiReport(report).ok;
+}
+
 function renderReportFallbackCard(title: string, body: string) {
   return (
     <section className="results-report__section results-report__status results-report__panel card stack-sm">
@@ -276,6 +286,14 @@ function selectReportRenderer(
             kind: "shape_mismatch",
             message:
               "Report render format označava MWMS participant izvještaj, ali snapshot shape ne odgovara tom rendereru.",
+          };
+    case "safran_participant_ai_report_v1":
+      return isSafranParticipantAiReport(reportState.report)
+        ? { kind: "safran_participant_ai_report_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava SAFRAN participant AI izvještaj, ali snapshot shape ne odgovara tom rendereru.",
           };
     default:
       return {
@@ -1005,14 +1023,7 @@ function isSafranV1Results(results: CompletedAssessmentResults | null): boolean 
 function getSafranDisplayScore(
   results: CompletedAssessmentResults | null,
 ): Partial<Record<SafranScoreKey, number | null>> {
-  const derived = results?.derived?.safranV1;
-
-  return {
-    verbal_score: derived?.verbalScore ?? null,
-    figural_score: derived?.figuralScore ?? null,
-    numerical_series_score: derived?.numericalAdjustedScore ?? derived?.numericalSeriesScore ?? null,
-    cognitive_composite_v1: derived?.cognitiveCompositeScore ?? derived?.cognitiveCompositeV1 ?? null,
-  };
+  return extractSafranParticipantAiDisplayScores(results);
 }
 
 function renderSafranInterpretationValue(
@@ -1032,18 +1043,20 @@ function SafranV1ResultsSummary({
   participantName,
   testName,
   results,
+  aiReport,
 }: {
   completedAt?: string | null;
   organizationName?: string | null;
   participantName?: string | null;
   testName?: string | null;
   results: CompletedAssessmentResults | null;
+  aiReport?: SafranParticipantAiReport | null;
 }) {
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
-  const interpretationScores = getSafranDisplayScore(results);
-  const reportDisplay = buildSafranParticipantReportDisplay({
-    scores: interpretationScores,
+  const reportDisplay = resolveSafranParticipantReportDisplay({
+    scores: getSafranDisplayScore(results),
     testName,
+    aiReport,
   });
   const [summarySection, domainsSection, signalsSection, readingGuideSection, nextStepSection] =
     reportDisplay.sections;
@@ -1057,6 +1070,9 @@ function SafranV1ResultsSummary({
           <p className="results-report__section-body">
             {reportDisplay.header.subtitle}
           </p>
+          {reportDisplay.header.statusLabel ? (
+            <p className="results-report__section-note">{reportDisplay.header.statusLabel}</p>
+          ) : null}
 
           <div className="results-report__hero-meta-wrap">
             <dl className="results-report__hero-meta">
@@ -1168,11 +1184,22 @@ function SafranV1ResultsSummary({
             <div className="results-report__section-heading">
               <h3>{nextStepSection.title}</h3>
             </div>
-            <ul className="results-insight-list">
-              {nextStepSection.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            {nextStepSection.items ? (
+              <ul className="results-insight-list">
+                {nextStepSection.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <>
+                {nextStepSection.body ? (
+                  <p className="results-report__section-body">{nextStepSection.body}</p>
+                ) : null}
+                {nextStepSection.ctaLabel ? (
+                  <p className="results-report__section-note">{nextStepSection.ctaLabel}</p>
+                ) : null}
+              </>
+            )}
           </section>
         </>
       )}
@@ -2585,6 +2612,8 @@ export function CompletedAssessmentSummary({
   const ipcHrReport = reportRenderer.kind === "ipc_hr_v1" ? reportRenderer.report : null;
   const mwmsParticipantReport =
     reportRenderer.kind === "mwms_participant_report_v1" ? reportRenderer.report : null;
+  const safranParticipantAiReport =
+    reportRenderer.kind === "safran_participant_ai_report_v1" ? reportRenderer.report : null;
   const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport) && !ipipNeo120HrReport;
   const shouldShowRawResultsPreview = !ipipNeo120ParticipantReport && !ipipNeo120HrReport;
 
@@ -2681,6 +2710,7 @@ export function CompletedAssessmentSummary({
         participantName={participantName}
         testName={testName}
         results={results}
+        aiReport={safranParticipantAiReport}
       />
     );
   }

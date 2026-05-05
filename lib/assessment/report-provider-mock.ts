@@ -37,6 +37,12 @@ import {
   formatMwmsParticipantReportV1ValidationErrors,
   validateMwmsParticipantReportV1,
 } from "@/lib/assessment/mwms-participant-report-v1";
+import type { SafranAiReportInput } from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
+  buildMockSafranParticipantAiReport,
+  formatSafranParticipantAiReportValidationErrors,
+  validateSafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
@@ -1040,6 +1046,24 @@ function buildMwmsParticipantMockReport(
   return validationResult.value;
 }
 
+function buildSafranParticipantMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as SafranAiReportInput;
+  const report = buildMockSafranParticipantAiReport(promptInput);
+  const validationResult = validateSafranParticipantAiReport(report, {
+    expectedInput: promptInput,
+  });
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock SAFRAN participant report failed validation: ${formatSafranParticipantAiReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
 function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
   if ("domains" in input.promptInput) {
     if (input.promptInput.audience === "hr") {
@@ -1055,6 +1079,10 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
 
   if ("dimensions" in input.promptInput && input.promptInput.test_slug === "mwms_v1") {
     return buildMwmsParticipantMockReport(input);
+  }
+
+  if ("test" in input.promptInput && input.promptInput.test.slug === "safran_v1") {
+    return buildSafranParticipantMockReport(input);
   }
 
   if (!("dimension_scores" in input.promptInput)) {
@@ -1084,11 +1112,12 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
       development_focus: insightCopy.development_focus,
     };
   });
+  const promptAudience = input.promptInput.audience;
 
   const strengths = primaryDimensions.map((dimensionCode, index) => {
     const dimension = dimensionsByCode.get(dimensionCode);
     const insight = dimensionInsights.find((item) => item.dimension_code === dimensionCode);
-    const isHrAudience = input.promptInput.audience === "hr";
+    const isHrAudience = promptAudience === "hr";
 
     return buildTitleDescriptionItem(
       isHrAudience
@@ -1102,7 +1131,7 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
   const blindSpots = lowestDimensions.map((dimensionCode, index) => {
     const dimension = dimensionsByCode.get(dimensionCode);
     const insight = dimensionInsights.find((item) => item.dimension_code === dimensionCode);
-    const isHrAudience = input.promptInput.audience === "hr";
+    const isHrAudience = promptAudience === "hr";
 
     return buildTitleDescriptionItem(
       isHrAudience
@@ -1120,7 +1149,7 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
       highestDimension !== null
         ? dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension
         : null;
-    const isHrAudience = input.promptInput.audience === "hr";
+    const isHrAudience = promptAudience === "hr";
 
     return {
       title: isHrAudience

@@ -41,6 +41,13 @@ import {
   type MwmsParticipantReportPromptInput,
 } from "@/lib/assessment/mwms-report-contract";
 import {
+  SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT,
+  isSafranTestSlug,
+  validateSafranParticipantAiReport,
+  type SafranAiReportInput,
+  type SafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
   formatMwmsParticipantReportV1ValidationErrors,
   validateMwmsParticipantReportV1,
   type MwmsParticipantReportV1,
@@ -57,7 +64,7 @@ import type { ScoringMethod } from "@/lib/assessment/types";
 import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
 
 export type ReportGeneratorType = "mock" | "openai";
-export type ReportFamily = "big_five" | "ipc" | "mwms";
+export type ReportFamily = "big_five" | "ipc" | "mwms" | "safran";
 export type ReportAudience = "participant" | "hr";
 export type ReportVersion = "v1" | "v2";
 export type ReportRenderFormat =
@@ -67,7 +74,8 @@ export type ReportRenderFormat =
   | "big_five_hr_v1"
   | "ipc_participant_v1"
   | "ipc_hr_v1"
-  | "mwms_participant_report_v1";
+  | "mwms_participant_report_v1"
+  | "safran_participant_ai_report_v1";
 export type AttemptReportStatus =
   | "queued"
   | "processing"
@@ -82,7 +90,8 @@ export type RuntimeCompletedAssessmentReport =
   | IpipNeo120ParticipantReportV1
   | IpipNeo120ParticipantReportV2
   | IpcCompletedAssessmentReport
-  | MwmsParticipantReportV1;
+  | MwmsParticipantReportV1
+  | SafranParticipantAiReport;
 export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
 
 export type CompletedAssessmentReportRequest = {
@@ -128,7 +137,8 @@ export type ReportPromptInput =
   | IpipNeo120HrReportPromptInput
   | IpipNeo120ParticipantReportPromptInput
   | IpcReportPromptInput
-  | MwmsParticipantReportPromptInput;
+  | MwmsParticipantReportPromptInput
+  | SafranAiReportInput;
 
 export type ReportContractDescriptor = {
   family: ReportFamily;
@@ -173,6 +183,7 @@ export function isCompletedAssessmentReport(value: unknown): value is CompletedA
     validateIpcParticipantReportV1(value).ok ||
     validateIpcHrReportV1(value).ok ||
     validateMwmsParticipantReportV1(value).ok
+    || validateSafranParticipantAiReport(value).ok
   );
 }
 
@@ -229,6 +240,21 @@ export function resolveReportContract(
     };
   }
 
+  if (isSafranTestSlug(testSlug) && audience === "participant") {
+    return {
+      family: "safran",
+      reportType: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.reportType,
+      sourceType: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.sourceType,
+      promptKey: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey,
+      schemaName: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.schemaId,
+      outputSchemaJson:
+        SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.outputSchemaJson as Record<
+          string,
+          unknown
+        >,
+    };
+  }
+
   return {
     family: "big_five",
     reportType: "individual",
@@ -246,6 +272,10 @@ export function resolveReportFamily(testSlug: string): ReportFamily {
 
   if (isMwmsTestSlug(testSlug)) {
     return "mwms";
+  }
+
+  if (isSafranTestSlug(testSlug)) {
+    return "safran";
   }
 
   return "big_five";
@@ -273,6 +303,8 @@ export function resolveReportSignal(context: {
         : "ipip_neo_120_participant_v1"
       : isMwmsTestSlug(context.testSlug) && context.audience === "participant"
         ? "mwms_participant_report_v1"
+      : isSafranTestSlug(context.testSlug) && context.audience === "participant"
+        ? "safran_participant_ai_report_v1"
       : resolveReportRenderFormat({
           reportFamily,
           reportAudience,
@@ -305,6 +337,8 @@ export function resolveReportRenderFormat(context: {
       return "ipc_hr_v1";
     case "mwms:participant:v1":
       return "mwms_participant_report_v1";
+    case "safran:participant:v1":
+      return "safran_participant_ai_report_v1";
     default:
       return null;
   }
@@ -391,6 +425,22 @@ export function validateRuntimeCompletedAssessmentReport(
       return {
         ok: false,
         reason: formatMwmsParticipantReportV1ValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isSafranTestSlug(context.testSlug) && context.audience === "participant") {
+    const validationResult = validateSafranParticipantAiReport(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: validationResult.errors.join(" | "),
       };
     }
 
