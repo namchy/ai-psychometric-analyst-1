@@ -96,6 +96,9 @@ const SAFRAN_NEXT_STEPS: SafranParticipantReportNextStepSection["items"] = [
   "Za potpuniju sliku, ove rezultate poveži s iskustvom, interesima i razgovorom o tome kako pristupaš problemskim zadacima.",
 ] as const;
 
+const SAFRAN_AI_OVERALL_CARD_SUMMARY =
+  "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.";
+
 function normalizeTitle(testName?: string | null): string {
   const trimmed = testName?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : "SAFRAN";
@@ -277,7 +280,7 @@ export function buildSafranParticipantReportDisplayFromAiReport(
           score: overallScore.score,
           maxPossible: overallScore.maxPossible,
           helper: report.summary.bandLabel,
-          summary: report.summary.interpretation,
+          summary: SAFRAN_AI_OVERALL_CARD_SUMMARY,
         },
       },
       {

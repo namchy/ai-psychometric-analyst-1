@@ -1053,6 +1053,7 @@ function SafranV1ResultsSummary({
   aiReport?: SafranParticipantAiReport | null;
 }) {
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
+  const hasValidAiReport = Boolean(aiReport && validateSafranParticipantAiReport(aiReport).ok);
   const reportDisplay = resolveSafranParticipantReportDisplay({
     scores: getSafranDisplayScore(results),
     testName,
@@ -1097,7 +1098,7 @@ function SafranV1ResultsSummary({
         </div>
       </section>
 
-      {!results ? (
+      {!results && !hasValidAiReport ? (
         <section className="results-report__section results-report__status results-report__panel card stack-sm">
           <div className="results-report__section-heading">
             <h3>Rezultati trenutno nisu dostupni</h3>
@@ -2615,7 +2616,8 @@ export function CompletedAssessmentSummary({
   const safranParticipantAiReport =
     reportRenderer.kind === "safran_participant_ai_report_v1" ? reportRenderer.report : null;
   const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport) && !ipipNeo120HrReport;
-  const shouldShowRawResultsPreview = !ipipNeo120ParticipantReport && !ipipNeo120HrReport;
+  const shouldShowRawResultsPreview =
+    !ipipNeo120ParticipantReport && !ipipNeo120HrReport && !safranParticipantAiReport;
 
   const maxRawScore =
     results && results.dimensions.length > 0

@@ -82,6 +82,10 @@ function parseAttemptId(argv) {
   return null;
 }
 
+function parseBooleanFlag(argv, flagName) {
+  return argv.includes(flagName);
+}
+
 async function loadAttemptContext(supabase, attemptId) {
   const { data, error } = await supabase
     .from("attempts")
@@ -175,6 +179,8 @@ async function loadResponsesSnapshot(supabase, attemptId) {
 
 async function main() {
   const attemptId = parseAttemptId(process.argv.slice(2));
+  const forceRerun = parseBooleanFlag(process.argv.slice(2), "--force")
+    || parseBooleanFlag(process.argv.slice(2), "--rerun");
 
   if (!attemptId) {
     fail("Missing --attempt-id.");
@@ -219,9 +225,11 @@ async function main() {
     reportBefore.report_status === "unavailable"
   ) {
     await resetExistingParticipantReportRow(supabase, reportBefore.id);
+  } else if (forceRerun) {
+    await resetExistingParticipantReportRow(supabase, reportBefore.id);
   } else {
     fail(
-      `Participant attempt_report already exists for ${attemptId} with status ${reportBefore.report_status} (id=${reportBefore.id}).`,
+      `Participant attempt_report already exists for ${attemptId} with status ${reportBefore.report_status} (id=${reportBefore.id}). Use --force to rerun only that attempt_reports row.`,
     );
   }
 

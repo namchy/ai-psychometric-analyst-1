@@ -128,6 +128,15 @@ async function main() {
   assert.equal(runtimeValidation.ok, true, runtimeValidation.ok ? undefined : runtimeValidation.reason);
   assert.equal(result.report.reportType, "safran_participant_ai_report_v1");
   assert.equal(result.report.header.title, "SAFRAN");
+  assert.match(
+    [
+      result.report.summary.interpretation,
+      result.report.cognitiveSignals.primarySignal,
+      result.report.cognitiveSignals.cautionSignal,
+      result.report.cognitiveSignals.balanceNote,
+    ].join(" "),
+    /obrazac|odnos|kontrast|razlika|u odnosu na/i,
+  );
 
   console.log("SAFRAN participant AI report pipeline tests passed.");
 }

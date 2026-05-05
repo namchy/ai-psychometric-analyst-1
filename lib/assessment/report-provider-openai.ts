@@ -357,6 +357,15 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
             "Write in the locale from input.test.locale. Address the participant directly in a calm, neutral, non-clinical tone.",
           source_rule:
             "Use only the provided structured SAFRAN input with already calculated scoreLabel, bandLabel and deterministicMeaning values. Do not calculate scores, do not change scoreLabel, and do not change bandLabel.",
+          narrative_quality_rules: [
+            "deterministicMeaning is a safety/context boundary, not final copy.",
+            "Do not copy deterministicMeaning verbatim or with a trivial paraphrase in any domain interpretation.",
+            "Do not merely restate scoreLabel or bandLabel in summary.interpretation.",
+            "summary.interpretation must explain the pattern across domains, including relation, contrast or difference between areas when visible.",
+            "If there is a clear contrast, name it carefully with terms such as obrazac, odnos, kontrast, razlika, u odnosu na, verbalno-figuralni dio, numerički dio.",
+            "Keep interpretation tied to SAFRAN task performance, not to the whole person.",
+            "Use nextStep.body for one practical candidate-facing reflection about where the format felt clearer and where it required more checking, time or a different approach.",
+          ],
           single_test_rule:
             "This is a single-test SAFRAN report. Interpret only SAFRAN results. Do not connect SAFRAN with IPIP or MWMS except in readingGuide where you may say it is useful together with other parts of Deep Profile procjene.",
           structure_rules: [
@@ -371,6 +380,7 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
             "Each domain interpretation must be at most 2 sentences.",
             "Each cognitiveSignals field must be 1 sentence at most.",
             "readingGuide.bullets must contain exactly 5 items, one sentence each.",
+            "summary.interpretation or cognitiveSignals must contain at least one explicit pattern term such as obrazac, odnos, kontrast, razlika or u odnosu na.",
           ],
           reading_guide_requirements: [
             "Use exactly these five readingGuide bullets in the same order, adapted only for locale while keeping the same meaning.",

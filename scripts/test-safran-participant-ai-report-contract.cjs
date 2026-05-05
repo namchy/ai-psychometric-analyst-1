@@ -174,6 +174,10 @@ for (const forbiddenText of [
   "no-hire",
   "dijagnoza",
   "klinički",
+  "slab u matematici",
+  "nizak IQ",
+  "nije analitičan",
+  "nesposoban",
 ]) {
   const mutated = clone(validReport);
   mutated.summary.interpretation = `Test ${forbiddenText}`;
@@ -279,5 +283,85 @@ assert.equal(
       ),
   true,
 );
+
+const copiedDeterministicMeaning = clone(validReport);
+copiedDeterministicMeaning.domains[0].interpretation =
+  input.scores.domains[0].deterministicMeaning;
+const copiedDeterministicMeaningResult = validateSafranParticipantAiReport(
+  copiedDeterministicMeaning,
+  {
+    expectedInput: input,
+  },
+);
+assert.equal(copiedDeterministicMeaningResult.ok, false);
+assert.equal(
+  copiedDeterministicMeaningResult.ok
+    ? false
+    : copiedDeterministicMeaningResult.errors.includes(
+        "domains[0].interpretation: Must not copy or closely paraphrase deterministicMeaning.",
+      ),
+  true,
+);
+
+const genericSummary = clone(validReport);
+genericSummary.summary.interpretation =
+  "Tvoj ukupni rezultat pokazuje umjeren ukupni broj tačnih odgovora u ovom testu.";
+genericSummary.cognitiveSignals.primarySignal =
+  "Ovdje je važno gledati rezultate po oblastima.";
+genericSummary.cognitiveSignals.cautionSignal =
+  "Jedna oblast ne treba da se čita odvojeno od drugih.";
+genericSummary.cognitiveSignals.balanceNote =
+  "Tri dijela testa vrijedi posmatrati zajedno.";
+const genericSummaryResult = validateSafranParticipantAiReport(genericSummary, {
+  expectedInput: input,
+});
+assert.equal(genericSummaryResult.ok, false);
+assert.equal(
+  genericSummaryResult.ok
+    ? false
+    : genericSummaryResult.errors.includes(
+        "summary/cognitiveSignals: Must describe a pattern, relation or contrast across SAFRAN domains.",
+      ),
+  true,
+);
+
+const contrastInput = buildSafranParticipantAiReportInput({
+  testSlug: "safran_v1",
+  locale: "bs",
+  results: {
+    attemptId: "attempt-safran-contract-contrast",
+    scoringMethod: "correct_answers",
+    dimensions: [
+      { dimension: "verbal_score", rawScore: 18, scoredQuestionCount: 18 },
+      { dimension: "figural_score", rawScore: 18, scoredQuestionCount: 18 },
+      { dimension: "numerical_series_score", rawScore: 0, scoredQuestionCount: 18 },
+      { dimension: "cognitive_composite_v1", rawScore: 36, scoredQuestionCount: 54 },
+    ],
+    scoredResponseCount: 54,
+    unscoredResponses: [],
+    derived: {
+      safranV1: {
+        verbalScore: 18,
+        figuralScore: 18,
+        numericalRawScore: 0,
+        numericalAdjustedScore: 0,
+        numericalScore: 0,
+        numericalSeriesScore: 0,
+        cognitiveCompositeScore: 36,
+        cognitiveCompositeV1: 36,
+      },
+    },
+  },
+});
+const contrastMock = buildMockSafranParticipantAiReport(contrastInput);
+const contrastNarrative = [
+  contrastMock.summary.interpretation,
+  contrastMock.cognitiveSignals.primarySignal,
+  contrastMock.cognitiveSignals.cautionSignal,
+  contrastMock.domains[2].interpretation,
+].join(" ");
+assert.match(contrastNarrative, /verbalno-figuraln/i);
+assert.match(contrastNarrative, /numeri[čc]ki dio/i);
+assert.match(contrastNarrative, /kontrast|odnos|razlika|u odnosu na/i);
 
 console.log("SAFRAN participant AI report contract tests passed.");

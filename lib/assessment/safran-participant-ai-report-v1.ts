@@ -181,9 +181,15 @@ const GLOBAL_FORBIDDEN_PATTERNS: Array<{
   { pattern: /dijagnoza/i, label: "dijagnoza" },
   { pattern: /poremećaj/i, label: "poremećaj" },
   { pattern: /klinički/i, label: "klinički" },
+  { pattern: /slab u matematici/i, label: "slab u matematici" },
+  { pattern: /nizak iq/i, label: "nizak IQ" },
+  { pattern: /nije analiti[čc]an/i, label: "nije analitičan" },
   { pattern: /garantuje/i, label: "garantuje" },
   { pattern: /dokazuje/i, label: "dokazuje" },
 ];
+
+const PATTERN_SIGNAL_PATTERN =
+  /\bobrazac\b|\bodnos\b|\bkontrast\b|\brazlika\b|u odnosu na|verbalno-figuraln|numeri[čc]ki dio/i;
 
 export const safranParticipantAiReportV1OpenAiSchema = {
   type: "object",
@@ -388,6 +394,69 @@ function isValidLocale(value: unknown): value is SafranAiReportLocale {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function normalizeNarrativeText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getTokenSet(value: string): Set<string> {
+  return new Set(
+    normalizeNarrativeText(value)
+      .split(" ")
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 3),
+  );
+}
+
+function calculateTokenOverlap(left: string, right: string): number {
+  const leftTokens = getTokenSet(left);
+  const rightTokens = getTokenSet(right);
+
+  if (leftTokens.size === 0 || rightTokens.size === 0) {
+    return 0;
+  }
+
+  let sharedCount = 0;
+
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) {
+      sharedCount += 1;
+    }
+  }
+
+  return sharedCount / Math.max(leftTokens.size, rightTokens.size);
+}
+
+function isTooSimilarToDeterministicMeaning(
+  candidateText: string,
+  deterministicMeaning: string,
+): boolean {
+  const normalizedCandidate = normalizeNarrativeText(candidateText);
+  const normalizedDeterministic = normalizeNarrativeText(deterministicMeaning);
+
+  if (!normalizedCandidate || !normalizedDeterministic) {
+    return false;
+  }
+
+  if (normalizedCandidate === normalizedDeterministic) {
+    return true;
+  }
+
+  if (
+    normalizedCandidate.length >= 48 &&
+    normalizedDeterministic.length >= 48 &&
+    (normalizedCandidate.includes(normalizedDeterministic) ||
+      normalizedDeterministic.includes(normalizedCandidate))
+  ) {
+    return true;
+  }
+
+  return calculateTokenOverlap(normalizedCandidate, normalizedDeterministic) >= 0.85;
 }
 
 function mapSafranBandKeyToAiBand(bandKey: SafranBandKey): SafranAiBand {
@@ -718,6 +787,59 @@ function validateReadingGuideCoverage(
   if (!/deep profile procjene/i.test(combined)) {
     errors.push("readingGuide.bullets: Missing Deep Profile context note.");
   }
+}
+
+function validateNarrativeQuality(
+  report: SafranParticipantAiReport,
+  expectedInput: SafranAiReportInput | null,
+  errors: string[],
+): void {
+  const summaryText = report.summary.interpretation;
+  const signalTexts = [
+    report.cognitiveSignals.primarySignal,
+    report.cognitiveSignals.cautionSignal,
+    report.cognitiveSignals.balanceNote,
+  ];
+  const combinedPatternText = [summaryText, ...signalTexts].join(" ");
+
+  if (!PATTERN_SIGNAL_PATTERN.test(combinedPatternText)) {
+    errors.push(
+      "summary/cognitiveSignals: Must describe a pattern, relation or contrast across SAFRAN domains.",
+    );
+  }
+
+  if (
+    expectedInput &&
+    !PATTERN_SIGNAL_PATTERN.test(summaryText) &&
+    !/(verbal|figural|numeri[čc]k)/i.test(summaryText)
+  ) {
+    errors.push(
+      "summary.interpretation: Must explain the cross-domain SAFRAN pattern, not only restate the overall score.",
+    );
+  }
+
+  if (!expectedInput) {
+    return;
+  }
+
+  report.domains.forEach((domain, index) => {
+    const expectedDomain = expectedInput.scores.domains[index];
+
+    if (!expectedDomain) {
+      return;
+    }
+
+    if (
+      isTooSimilarToDeterministicMeaning(
+        domain.interpretation,
+        expectedDomain.deterministicMeaning,
+      )
+    ) {
+      errors.push(
+        `domains[${index}].interpretation: Must not copy or closely paraphrase deterministicMeaning.`,
+      );
+    }
+  });
 }
 
 function validateAdditionalProperties(
@@ -1068,6 +1190,14 @@ export function validateSafranParticipantAiReport(
     });
   }
 
+  if (errors.length === 0) {
+    validateNarrativeQuality(
+      value as SafranParticipantAiReport,
+      expectedInput,
+      errors,
+    );
+  }
+
   if (errors.length > 0) {
     return { ok: false, errors };
   }
@@ -1088,6 +1218,14 @@ export function buildMockSafranParticipantAiReport(
   input: SafranAiReportInput,
 ): SafranParticipantAiReport {
   const [verbal, figural, numeric] = input.scores.domains;
+  const hasStrongVerbalFiguralContrast =
+    verbal.rawScore >= 15 &&
+    figural.rawScore >= 15 &&
+    numeric.rawScore <= 3;
+  const hasBalancedProfile =
+    Math.max(verbal.rawScore, figural.rawScore, numeric.rawScore) -
+      Math.min(verbal.rawScore, figural.rawScore, numeric.rawScore) <=
+    3;
 
   const report: SafranParticipantAiReport = {
     reportType: SAFRAN_PARTICIPANT_AI_REPORT_TYPE,
@@ -1106,7 +1244,11 @@ export function buildMockSafranParticipantAiReport(
       scoreLabel: input.scores.overall.scoreLabel,
       bandLabel: input.scores.overall.bandLabel,
       interpretation:
-        "Ukupni rezultat pokazuje kako je ovaj pokušaj izgledao kroz tri tipa SAFRAN zadataka. Najkorisnije ga je čitati zajedno s pregledom po oblastima, bez širenja značenja izvan ovog testa.",
+        hasStrongVerbalFiguralContrast
+          ? "Ukupni obrazac pokazuje vrlo stabilan verbalno-figuralni učinak uz izražen kontrast u odnosu na numerički dio. To je korisnije čitati kao razliku između tipova SAFRAN zadataka nego kao jedinstven zaključak o osobi."
+          : hasBalancedProfile
+            ? "Ukupni obrazac djeluje prilično ujednačeno kroz verbalni, figuralni i numerički dio, bez jednog izdvojenog kontrasta. Najviše smisla ima gledati odnos među oblastima, a ne samo ukupan zbir."
+            : "Ukupni obrazac pokazuje razliku između jačih i mirnijih dijelova SAFRAN profila. Najkorisnije ga je čitati kroz odnos verbalnog, figuralnog i numeričkog dijela, a ne samo kroz ukupan rezultat.",
     },
     domains: [
       {
@@ -1115,7 +1257,9 @@ export function buildMockSafranParticipantAiReport(
         scoreLabel: verbal.scoreLabel,
         bandLabel: verbal.bandLabel,
         interpretation:
-          "Ovaj dio opisuje učinak na zadacima koji traže razumijevanje riječi, pojmova i odnosa među njima. Rezultat govori o ovom tipu zadataka u SAFRAN formatu, a ne o osobi u cjelini.",
+          hasStrongVerbalFiguralContrast
+            ? "Verbalni dio ovdje pokazuje da su pravila u zadacima s riječima i pojmovima bila brzo prepoznatljiva i stabilno praćena. U odnosu na numerički dio, ovaj format je djelovao jasnije za održavanje tačnosti kroz cijeli niz zadataka."
+            : "Verbalni dio pokazuje kako je tekao rad sa zadacima u kojima su riječi, pojmovi i njihovi odnosi nosili glavno pravilo. Ovaj rezultat je najkorisniji kao signal za to koliko je taj format zadataka bio jasan i stabilan u ovom pokušaju.",
       },
       {
         code: "figural",
@@ -1123,7 +1267,9 @@ export function buildMockSafranParticipantAiReport(
         scoreLabel: figural.scoreLabel,
         bandLabel: figural.bandLabel,
         interpretation:
-          "Ovaj dio opisuje učinak na zadacima prepoznavanja obrazaca i odnosa među oblicima. Najkorisniji je kao signal za to kako je ovaj pokušaj izgledao u vizuelno-obrasnim zadacima.",
+          hasStrongVerbalFiguralContrast
+            ? "Figuralni dio prati sličan obrazac kao verbalni: odnosi među oblicima i prostorna pravila ovdje su bili dosljedno uhvaćeni. To sugeriše da je vizuelno-obrasni format u ovom pokušaju imao stabilniji ritam nego numerički nizovi."
+            : "Figuralni dio pokazuje kako je izgledao rad sa obrascima, odnosima među oblicima i promjenama kroz niz zadataka. Koristan je za čitanje toga koliko je vizuelno pravilo bilo lako pratiti iz zadatka u zadatak.",
       },
       {
         code: "numeric",
@@ -1131,17 +1277,23 @@ export function buildMockSafranParticipantAiReport(
         scoreLabel: numeric.scoreLabel,
         bandLabel: numeric.bandLabel,
         interpretation:
-          "Ovaj dio opisuje učinak na numeričkim nizovima u kojima je trebalo prepoznati pravilo. Rezultat treba vezati za ovaj format zadataka, bez zaključka o fiksnoj sposobnosti.",
+          hasStrongVerbalFiguralContrast
+            ? "Numerički dio se ovdje jasno odvaja od verbalno-figuralnog obrasca i traži oprezniju interpretaciju. U ovom formatu nizova moglo je biti potrebno više provjere pravila, drugačiji tempo ili dodatno prilagođavanje strategije nego u preostala dva dijela."
+            : "Numerički dio pokazuje kako je izgledalo prepoznavanje pravila u nizovima brojeva unutar ovog formata zadataka. Kada je ovaj rezultat mirniji od ostalih oblasti, korisno ga je čitati kao signal da je numerički obrazac tražio više provjere ili drugačiji pristup.",
       },
     ],
     cognitiveSignals: {
       title: "Profil kognitivnih signala",
       primarySignal:
-        "Relativno jači signal vrijedi tražiti tamo gdje je unutar ovog testa bilo više tačnih odgovora i stabilniji ritam rješavanja.",
+        hasStrongVerbalFiguralContrast
+          ? "Primarni signal je jasan odnos u kojem verbalni i figuralni dio drže stabilniji obrazac tačnosti nego numerički dio."
+          : "Primarni signal vrijedi tražiti u obrascu oblasti gdje se kroz više zadataka održavao stabilniji odnos tačnosti i ritma.",
       cautionSignal:
-        "Mirniji rezultat u jednoj oblasti ne treba čitati odvojeno od formata zadataka, vremena i ukupnog rasporeda rezultata.",
+        hasStrongVerbalFiguralContrast
+          ? "Glavni oprez je da se numerički kontrast ne pretvori u zaključak o osobi, jer može odražavati to da je taj format tražio više provjere i drugačiju strategiju."
+          : "Mirniji rezultat u jednoj oblasti ne treba čitati odvojeno od formata zadataka, vremena i ukupnog odnosa među rezultatima.",
       balanceNote:
-        "Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao tri povezana signala iz istog pokušaja.",
+        "Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao povezan obrazac iz istog pokušaja, a ne kao tri odvojene etikete.",
     },
     readingGuide: {
       title: "Kako čitati ove rezultate",
@@ -1156,7 +1308,9 @@ export function buildMockSafranParticipantAiReport(
     nextStep: {
       title: "Sljedeći korak",
       body:
-        "Za potpuniju sliku, ovaj rezultat poveži s iskustvom, interesima i ostalim nalazima iz procjene prije nego što zaključiš šta ti je u ovim zadacima djelovalo prirodnije.",
+        hasStrongVerbalFiguralContrast
+          ? "Kada čitaš ovaj obrazac, korisno je izdvojiti gdje su pravila bila odmah uočljiva, a gdje je numerički format tražio više provjere, vremena ili drugačiji pristup prije nego što izvučeš širi zaključak."
+          : "Kada čitaš ovaj obrazac, korisno je primijetiti u kojim tipovima zadataka je pravilo bilo jasnije, a gdje je tražilo više provjere ili drugačiji tempo prije nego što izvučeš širi zaključak.",
       ctaLabel: "Nazad na pregled",
     },
     safetyChecks: {
