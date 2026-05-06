@@ -365,18 +365,21 @@ function ParticipantIpipInlineNarrativeTerm({
   return <em>{formatParticipantIpipInlineNarrativeLabel(label)}</em>;
 }
 
-function getParticipantIpipDomainMicroSummary(domainCode: ParticipantIpipDomain["domain_code"]): string {
-  switch (domainCode) {
+function getParticipantIpipDomainMicroSummary(domainCode: string | null | undefined): string {
+  const normalizedCode = String(domainCode ?? "").toUpperCase();
+
+  switch (normalizedCode) {
     case "EXTRAVERSION":
-      return "Socijalna energija i kontakt";
+      return "Energija koju unosiš u kontakt s drugima";
     case "AGREEABLENESS":
-      return "Saradnja i povjerenje";
+      return "Način na koji gradiš povjerenje i odnose";
     case "CONSCIENTIOUSNESS":
-      return "Organizovanost i pouzdanost";
+      return "Tvoj odnos prema redu, obavezama i odgovornosti";
     case "NEUROTICISM":
-      return "Mirnoća pod pritiskom";
+      return "Tvoj odgovor na pritisak i zahtjevne situacije";
+    case "OPENNESS":
     case "OPENNESS_TO_EXPERIENCE":
-      return "Fleksibilnost i nove ideje";
+      return "Tvoj odnos prema novim idejama i promjenama";
     default:
       return "";
   }
@@ -1963,6 +1966,8 @@ function IpipNeo120ParticipantReportV2Sections({
             const isActive = activeDomainCode === domain.domain_code;
             const bandPillClassName = getParticipantIpipBandPillClassName(domain.display_band);
             const bandAccentColor = getParticipantIpipBandAccentColor(domain.display_band);
+            const domainMicroSummary =
+              getParticipantIpipDomainMicroSummary(domain.domain_code) || domain.card_title;
 
             return (
               <div
@@ -1999,7 +2004,7 @@ function IpipNeo120ParticipantReportV2Sections({
                   </div>
 
                   <p className="mt-3 text-[13px] font-semibold leading-[1.45] text-slate-500">
-                    {domain.card_title}
+                    {domainMicroSummary}
                   </p>
 
                   <div className="mt-3">
