@@ -59,21 +59,16 @@ function getSerializableSelections(
 }
 
 function getEffectiveSelections(
-  initialSelections: AssessmentSelectionsInput,
   selections: SelectionState,
 ): Record<string, AssessmentSelectionValue> {
-  return {
-    ...initialSelections,
-    ...getSerializableSelections(selections),
-  };
+  return getSerializableSelections(selections);
 }
 
 function getQuestionSelectionDelta(
-  initialSelections: AssessmentSelectionsInput,
   selections: SelectionState,
   questionId: string,
 ): Record<string, AssessmentSelectionValue> {
-  const effectiveSelections = getEffectiveSelections(initialSelections, selections);
+  const effectiveSelections = getEffectiveSelections(selections);
   const selection = effectiveSelections[questionId];
 
   return selection === undefined ? {} : { [questionId]: selection };
@@ -684,17 +679,17 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option--selected {
-        border-color: color-mix(in srgb, var(--likert-border) 18%, #118ab2 82%);
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--likert-border) 42%, #118ab2 58%);
         background: linear-gradient(
           180deg,
-          color-mix(in srgb, var(--likert-bg) 54%, #118ab2 46%),
-          color-mix(in srgb, white 26%, #118ab2 74%)
+          color-mix(in srgb, var(--likert-bg) 70%, white 30%),
+          color-mix(in srgb, rgba(255, 255, 255, 0.99) 82%, rgba(224, 242, 254, 0.98) 18%)
         );
         box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.34),
-          0 0 0 1px rgba(17, 138, 178, 0.16),
-          0 0 0 6px var(--likert-selected-ring),
-          0 18px 26px -22px var(--likert-selected-shadow);
+          inset 0 1px 0 rgba(255, 255, 255, 0.84),
+          0 0 0 6px color-mix(in srgb, var(--likert-hover-glow) 170%, rgba(17, 138, 178, 0.16) 0%),
+          0 14px 22px -22px rgba(17, 138, 178, 0.22);
       }
 
       .assessment-run-page--dashboard-skin .assessment-options {
@@ -810,10 +805,34 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option__value {
+        display: inline-flex;
+        width: 100%;
+        min-height: 100%;
+        align-items: center;
+        justify-content: center;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid transparent;
+        border-radius: 0.95rem;
+        background: rgba(255, 255, 255, 0.28);
         font-size: 1rem;
         font-weight: 700;
         letter-spacing: -0.02em;
         color: rgb(15, 74, 96);
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease,
+          box-shadow 180ms ease,
+          color 180ms ease;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option:hover .assessment-likert-option__value {
+        border-color: color-mix(in srgb, var(--likert-border) 68%, #118ab2 32%);
+        background: linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--likert-bg) 82%, white 18%),
+          rgba(255, 255, 255, 0.99)
+        );
+        box-shadow: none;
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option:focus-within,
@@ -834,7 +853,12 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option--selected .assessment-likert-option__value {
+        border-width: 2px;
+        border-color: rgb(17, 138, 178);
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: none;
         color: rgb(9, 63, 83);
+        font-weight: 800;
       }
 
       .assessment-run-page--dashboard-skin .assessment-option__marker {
@@ -1532,7 +1556,7 @@ export function AssessmentForm({
   initialReport,
 }: AssessmentFormProps) {
   const router = useRouter();
-  const [selections, setSelections] = useState<SelectionState>(initialSelections);
+  const [selections, setSelections] = useState<SelectionState>({ ...initialSelections });
   const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<AttemptStatus | null>(initialAttemptStatus);
   const [completedAt, setCompletedAt] = useState<string | null>(initialCompletedAt);
@@ -1557,7 +1581,7 @@ export function AssessmentForm({
   const requestInFlightRef = useRef(false);
   const manualSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const numericInputRef = useRef<HTMLInputElement | null>(null);
-  const effectiveSelections = getEffectiveSelections(initialSelections, selections);
+  const effectiveSelections = getEffectiveSelections(selections);
   const [showManualSaveSuccess, setShowManualSaveSuccess] = useState(false);
 
   const isCompleted = attemptStatus === "completed";
@@ -1647,7 +1671,7 @@ export function AssessmentForm({
         testId,
         locale,
         selections:
-          options?.selections ?? getEffectiveSelections(initialSelections, nextSelections),
+          options?.selections ?? getEffectiveSelections(nextSelections),
       });
 
       if (!result.ok) {
@@ -1678,8 +1702,8 @@ export function AssessmentForm({
     const didSave = await persistSelections(selections, {
       selections:
         isStepLayout && currentQuestion
-          ? getQuestionSelectionDelta(initialSelections, selections, currentQuestion.id)
-          : getEffectiveSelections(initialSelections, selections),
+          ? getQuestionSelectionDelta(selections, currentQuestion.id)
+          : getEffectiveSelections(selections),
     });
 
     if (didSave) {
@@ -1756,7 +1780,7 @@ export function AssessmentForm({
     const nextSelections = updateSelection(currentQuestion.id, optionId);
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
     const didSave = await persistSelections(nextSelections, {
-      selections: getQuestionSelectionDelta(initialSelections, nextSelections, currentQuestion.id),
+      selections: getQuestionSelectionDelta(nextSelections, currentQuestion.id),
     });
 
     if (!didSave || isLastQuestion) {
@@ -1807,7 +1831,7 @@ export function AssessmentForm({
     }
 
     const didSave = await persistSelections(selections, {
-      selections: getQuestionSelectionDelta(initialSelections, selections, currentQuestion.id),
+      selections: getQuestionSelectionDelta(selections, currentQuestion.id),
     });
 
     if (!didSave) {
