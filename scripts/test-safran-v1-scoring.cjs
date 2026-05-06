@@ -65,7 +65,18 @@ const {
 } = require("../lib/assessment/scoring.ts");
 
 assert.equal(normalizeSafranNumericAnswer("4,5"), "4.5");
+assert.equal(normalizeSafranNumericAnswer("  -4,5  "), "-4.5");
+assert.equal(scoreSafranNumericAnswer("7", "7"), 1);
+assert.equal(scoreSafranNumericAnswer("4.5", "4.5"), 1);
 assert.equal(scoreSafranNumericAnswer("4,5", "4.5"), 1);
+assert.equal(scoreSafranNumericAnswer("-1,5", "-1.5"), 1);
+assert.equal(scoreSafranNumericAnswer("1..5", "1.5"), 0);
+assert.equal(scoreSafranNumericAnswer("1,,5", "1.5"), 0);
+assert.equal(scoreSafranNumericAnswer("1,.", "1.5"), 0);
+assert.equal(scoreSafranNumericAnswer("abc", "1.5"), 0);
+assert.equal(scoreSafranNumericAnswer("1a", "1"), 0);
+assert.equal(scoreSafranNumericAnswer("1.", "1"), 0);
+assert.equal(scoreSafranNumericAnswer("1,", "1"), 0);
 assert.equal(scoreSafranSingleChoiceAnswer(true), 1);
 assert.equal(scoreSafranSingleChoiceAnswer(false), 0);
 

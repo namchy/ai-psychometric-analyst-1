@@ -19,6 +19,7 @@ export type CompletionQuestion = {
   text: string;
   question_type: QuestionType;
   is_required: boolean;
+  renderer_type?: string | null;
 };
 
 export type AssessmentCompletionState = {
@@ -33,15 +34,27 @@ function isNonEmptyString(value: string): boolean {
   return value.trim().length > 0;
 }
 
+function isCompleteNumericInputValue(value: string): boolean {
+  return /^-?\d+(?:[.,]\d+)?$/.test(value.trim());
+}
+
 export function isQuestionAnswered(
-  questionType: QuestionType,
+  question: Pick<CompletionQuestion, "question_type" | "renderer_type">,
   selection: AssessmentSelectionValue | undefined,
 ): boolean {
-  if (questionType === "text") {
-    return typeof selection === "string" && isNonEmptyString(selection);
+  if (question.question_type === "text") {
+    if (typeof selection !== "string") {
+      return false;
+    }
+
+    if (question.renderer_type === "numeric_input") {
+      return isCompleteNumericInputValue(selection);
+    }
+
+    return isNonEmptyString(selection);
   }
 
-  if (questionType === "single_choice") {
+  if (question.question_type === "single_choice") {
     return typeof selection === "string" && selection.length > 0;
   }
 
@@ -54,7 +67,7 @@ export function getAssessmentCompletionState(
 ): AssessmentCompletionState {
   const requiredQuestions = questions.filter((question) => question.is_required);
   const missingRequiredQuestions = requiredQuestions.filter(
-    (question) => !isQuestionAnswered(question.question_type, selections[question.id]),
+    (question) => !isQuestionAnswered(question, selections[question.id]),
   );
 
   return {

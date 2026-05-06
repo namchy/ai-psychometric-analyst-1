@@ -106,7 +106,7 @@ function getInitialQuestionIndex(
   selections: AssessmentSelectionsInput,
 ): number {
   const firstUnansweredIndex = questions.findIndex(
-    (question) => !isQuestionAnswered(question.question_type, selections[question.id]),
+    (question) => !isQuestionAnswered(question, selections[question.id]),
   );
 
   if (firstUnansweredIndex >= 0) {
@@ -169,6 +169,14 @@ function getVisibleQuestionText(question: TestQuestion): string | null {
   }
 
   return text;
+}
+
+function isIntermediateNumericInputValue(value: string): boolean {
+  return /^-?(?:\d+(?:[.,]\d*)?)?$/.test(value);
+}
+
+function getNextNumericInputValue(rawValue: string): string | null {
+  return isIntermediateNumericInputValue(rawValue) ? rawValue : null;
 }
 
 function getLikertAssessmentCode(assessmentDisplayName?: string | null): string | null {
@@ -1781,7 +1789,7 @@ export function AssessmentForm({
       return;
     }
 
-    if (!isQuestionAnswered(currentQuestion.question_type, currentSelection)) {
+    if (!isQuestionAnswered(currentQuestion, currentSelection)) {
       setStepValidationMessage(getQuestionValidationMessage(currentQuestion));
       return;
     }
@@ -1830,10 +1838,7 @@ export function AssessmentForm({
   if (isStepLayout && !isCompleted && currentQuestion) {
     const options = answerOptionsByQuestionId[currentQuestion.id] ?? [];
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
-    const hasValidCurrentAnswer = isQuestionAnswered(
-      currentQuestion.question_type,
-      currentSelection,
-    );
+    const hasValidCurrentAnswer = isQuestionAnswered(currentQuestion, currentSelection);
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
     const isNumericInputQuestion = currentQuestion.renderer_type === "numeric_input";
@@ -2011,14 +2016,19 @@ export function AssessmentForm({
                         aria-label="Tvoj odgovor"
                         autoFocus
                         className="assessment-text-input assessment-text-input--numeric"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
+                        inputMode="decimal"
+                        pattern="-?[0-9]+([\\.,][0-9]+)?"
                         ref={numericInputRef}
                         type="text"
                         value={typeof currentSelection === "string" ? currentSelection : ""}
                         onChange={(event) => {
-                          const numericOnlyValue = event.target.value.replace(/\D/g, "");
-                          updateSelection(currentQuestion.id, numericOnlyValue);
+                          const nextValue = getNextNumericInputValue(event.target.value);
+
+                          if (nextValue === null) {
+                            return;
+                          }
+
+                          updateSelection(currentQuestion.id, nextValue);
                         }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter") {
@@ -2267,10 +2277,17 @@ export function AssessmentForm({
                     <input
                       className="assessment-text-input"
                       inputMode="decimal"
+                      pattern="-?[0-9]+([\\.,][0-9]+)?"
                       type="text"
                       value={typeof selection === "string" ? selection : ""}
                       onChange={(event) => {
-                        updateSelection(question.id, event.target.value);
+                        const nextValue = getNextNumericInputValue(event.target.value);
+
+                        if (nextValue === null) {
+                          return;
+                        }
+
+                        updateSelection(question.id, nextValue);
                       }}
                     />
                   ) : (
