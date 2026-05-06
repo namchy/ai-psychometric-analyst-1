@@ -737,11 +737,10 @@ function AssessmentDashboardSkinStyles() {
         --likert-selected-shadow: rgba(17, 138, 178, 0.18);
         width: 100%;
         min-height: 3.4rem;
-        border-color: var(--likert-border);
-        background: linear-gradient(180deg, var(--likert-bg), rgba(255, 255, 255, 0.98));
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 14px 24px -24px rgba(17, 138, 178, 0.14);
+        padding: 0;
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
         transition:
           border-color 180ms ease,
           background-color 180ms ease,
@@ -791,29 +790,22 @@ function AssessmentDashboardSkinStyles() {
         --likert-hover-glow: rgba(17, 138, 178, 0.24);
       }
 
-      .assessment-run-page--dashboard-skin .assessment-likert-option:hover {
-        border-color: color-mix(in srgb, var(--likert-border) 68%, #118ab2 32%);
-        background: linear-gradient(
-          180deg,
-          color-mix(in srgb, var(--likert-bg) 82%, white 18%),
-          rgba(255, 255, 255, 0.99)
-        );
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.84),
-          0 0 0 5px var(--likert-hover-glow),
-          0 14px 22px -24px rgba(17, 138, 178, 0.16);
+      .assessment-run-page--dashboard-skin .assessment-likert-option:not(.assessment-likert-option--selected):hover {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option__value {
         display: inline-flex;
         width: 100%;
-        min-height: 100%;
+        min-height: 3.4rem;
         align-items: center;
         justify-content: center;
         padding: 0.7rem 0.8rem;
-        border: 1px solid transparent;
+        border: 1px solid var(--likert-border);
         border-radius: 0.95rem;
-        background: rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.98);
         font-size: 1rem;
         font-weight: 700;
         letter-spacing: -0.02em;
@@ -825,13 +817,9 @@ function AssessmentDashboardSkinStyles() {
           color 180ms ease;
       }
 
-      .assessment-run-page--dashboard-skin .assessment-likert-option:hover .assessment-likert-option__value {
+      .assessment-run-page--dashboard-skin .assessment-likert-option:not(.assessment-likert-option--selected):hover .assessment-likert-option__value {
         border-color: color-mix(in srgb, var(--likert-border) 68%, #118ab2 32%);
-        background: linear-gradient(
-          180deg,
-          color-mix(in srgb, var(--likert-bg) 82%, white 18%),
-          rgba(255, 255, 255, 0.99)
-        );
+        background: color-mix(in srgb, var(--likert-bg) 78%, white 22%);
         box-shadow: none;
       }
 
@@ -845,19 +833,38 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option:focus-within {
-        border-color: rgba(17, 138, 178, 0.72);
-        box-shadow:
-          0 0 0 4px rgba(17, 138, 178, 0.2),
-          inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 14px 22px -22px rgba(17, 138, 178, 0.18);
+        border-color: transparent;
+        box-shadow: none;
       }
 
-      .assessment-run-page--dashboard-skin .assessment-likert-option--selected .assessment-likert-option__value {
-        border-width: 2px;
-        border-color: rgb(17, 138, 178);
-        background: rgba(255, 255, 255, 0.98);
+      .assessment-run-page--dashboard-skin .assessment-likert-option:has(input:focus-visible) .assessment-likert-option__value {
+        outline: 2px solid rgba(17, 138, 178, 0.28);
+        outline-offset: 2px;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected {
+        border-color: transparent;
+        background: transparent;
         box-shadow: none;
-        color: rgb(9, 63, 83);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected:hover {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected:has(input:focus-visible) .assessment-likert-option__value {
+        border-color: rgba(17, 138, 178, 0.72);
+        outline-color: rgba(13, 148, 136, 0.32);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected .assessment-likert-option__value,
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected:hover .assessment-likert-option__value {
+        border-color: rgb(13, 148, 136);
+        background: rgb(13, 148, 136);
+        box-shadow: none;
+        color: white;
         font-weight: 800;
       }
 
