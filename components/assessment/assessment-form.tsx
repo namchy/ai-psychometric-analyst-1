@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,7 +8,6 @@ import {
   saveProtectedAssessmentProgress,
   saveAssessmentProgress,
 } from "@/app/actions/assessment";
-import { logout } from "@/app/actions/auth";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import { ReportGenerationLoadingScreen } from "@/components/assessment/report-generation-loading-screen";
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
@@ -26,8 +24,6 @@ import type {
   AttemptStatus,
 } from "@/lib/assessment/types";
 import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
-
-const RUN_PAGE_PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
 
 type AssessmentFormProps = {
   executionMode?: "public" | "protected";
@@ -1507,103 +1503,6 @@ function AssessmentDashboardSkinStyles() {
         color: rgb(13, 148, 136);
       }
     `}</style>
-  );
-}
-
-function getRunPageTopBarInitials(userName?: string | null, userEmail?: string | null) {
-  const source = userName?.trim() || userEmail?.trim() || "Deep Profile";
-
-  return source
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-export function RunPageTopBar({
-  userEmail,
-  userName,
-}: {
-  userEmail: string;
-  userName?: string | null;
-}) {
-  const initials = getRunPageTopBarInitials(userName, userEmail);
-
-  return (
-    <header className="fixed top-0 z-50 w-full border-b border-slate-300/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.94),rgba(243,247,251,0.9))] shadow-[0_16px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-200/70 to-transparent"
-      />
-      <div className="mx-auto flex h-16 w-full max-w-full items-center justify-between px-4 sm:px-6 lg:px-12">
-        <div className="flex min-w-0 items-center gap-6 lg:gap-10">
-          <Link
-            href="/app"
-            className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
-          >
-            Deep Profile
-          </Link>
-
-          <nav aria-label="Primary" className="hidden items-center gap-2 lg:flex">
-            {RUN_PAGE_PRIMARY_NAV_ITEMS.map((item) => (
-              <span
-                key={item}
-                className={
-                  item === "Testovi"
-                    ? "rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-                    : "rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors duration-200 hover:bg-white hover:text-slate-900"
-                }
-              >
-                {item}
-              </span>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
-          <button
-            aria-label="Settings"
-            className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-slate-500 shadow-none transition-all duration-200 hover:border-slate-200 hover:bg-white hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            type="button"
-          >
-            <svg
-              aria-hidden="true"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.8"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="12" cy="12" r="2.8" />
-              <path d="M12 4.5v1.3" />
-              <path d="M12 18.2v1.3" />
-              <path d="m6.7 6.7.9.9" />
-              <path d="m16.4 16.4.9.9" />
-              <path d="M4.5 12h1.3" />
-              <path d="M18.2 12h1.3" />
-              <path d="m6.7 17.3.9-.9" />
-              <path d="m16.4 7.6.9-.9" />
-            </svg>
-          </button>
-
-          <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-teal-500 to-violet-400 text-xs font-bold text-white shadow-[0_10px_24px_rgba(20,184,166,0.22)]">
-            <span>{initials || "DP"}</span>
-          </div>
-
-          <form action={logout} className="hidden md:block">
-            <button
-              className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              type="submit"
-            >
-              Odjava
-            </button>
-          </form>
-        </div>
-      </div>
-    </header>
   );
 }
 

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { FileText, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { logout } from "@/app/actions/auth";
 import { createAssessmentAttempt } from "@/app/(protected)/app/actions";
 import {
   getCandidateAssessmentAvailability,
@@ -17,10 +16,7 @@ import {
   selectPrimaryAttemptForTest,
 } from "@/lib/assessment/attempt-lifecycle";
 import {
-  AuthenticatedAppFooterShell,
-  AuthenticatedAppHeaderShell,
   AuthenticatedAppMainContent,
-  AuthenticatedAppPageShell,
 } from "@/components/app/authenticated-app-chrome";
 import {
   DASHBOARD_CONTENT_GRID_CLASS_NAME,
@@ -112,9 +108,6 @@ export type CandidateDashboardInitialAttempt = {
 };
 
 type CandidateDashboardViewProps = {
-  userEmail: string;
-  userName?: string | null;
-  showHrLink: boolean;
   hasLinkedParticipant: boolean;
   linkedOrganizationId?: string | null;
   initialAttempts: CandidateDashboardInitialAttempt[];
@@ -228,8 +221,6 @@ const CURATED_BATTERY_UI_FALLBACKS: Record<CandidateAssessmentCatalogKey, { tota
   mwms: { totalQuestions: 19 },
   riasec: { totalQuestions: 48 },
 };
-
-const PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
 
 const ROADMAP_TESTS = [
   {
@@ -864,73 +855,6 @@ function getIconColorClassName(iconColorClassName: string): string {
   }
 }
 
-function TopNav({
-  userEmail,
-  userName,
-}: {
-  userEmail: string;
-  userName?: string | null;
-}) {
-  const initialsSource = userName?.trim() || userEmail;
-  const initials = initialsSource
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-
-  return (
-    <AuthenticatedAppHeaderShell>
-      <div className="flex min-w-0 items-center gap-6 lg:gap-10">
-        <Link
-          href="/app"
-          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-[var(--dp-text)] transition-opacity hover:opacity-90 sm:text-xl"
-        >
-          Deep Profile
-        </Link>
-
-        <nav aria-label="Primary" className="hidden items-center gap-2 lg:flex">
-          {PRIMARY_NAV_ITEMS.map((item) => (
-            <span
-              key={item}
-              className={
-                item === "Testovi"
-                  ? "rounded-full border border-[var(--dp-border-strong)] bg-[var(--dp-primary-soft)] px-3 py-1.5 text-sm font-semibold text-[var(--dp-primary-hover)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-                  : "rounded-full px-3 py-1.5 text-sm font-medium text-[var(--dp-text-soft)] transition-colors duration-200 hover:bg-[var(--dp-surface)] hover:text-[var(--dp-text)]"
-              }
-            >
-              {item}
-            </span>
-          ))}
-        </nav>
-      </div>
-
-      <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
-        <button
-          aria-label="Settings"
-          className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-[var(--dp-text-soft)] shadow-none transition-all duration-200 hover:border-[var(--dp-border)] hover:bg-[var(--dp-surface)] hover:text-[var(--dp-text)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/20"
-          type="button"
-        >
-          <DashboardIcon className="h-5 w-5" name="settings" />
-        </button>
-
-        <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-[var(--dp-primary)] to-[var(--dp-insight)] text-xs font-bold text-white shadow-[0_10px_24px_rgba(20,184,166,0.22)]">
-          <span>{initials || "LU"}</span>
-        </div>
-
-        <form action={logout} className="hidden md:block">
-          <button
-            className="min-h-0 rounded-full border border-[var(--dp-border)] bg-[var(--dp-surface)] px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-[var(--dp-text-soft)] shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-[var(--dp-border-strong)] hover:text-[var(--dp-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--dp-primary)]/20"
-            type="submit"
-          >
-            Odjava
-          </button>
-        </form>
-      </div>
-    </AuthenticatedAppHeaderShell>
-  );
-}
-
 function DashboardHeader() {
   return (
     <DashboardSectionShell className="w-full border-[var(--dp-border)] bg-[var(--dp-surface-elevated)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94),0_12px_28px_rgba(148,163,184,0.16),0_3px_8px_rgba(148,163,184,0.08)]">
@@ -1464,51 +1388,6 @@ function LoaderCircle({ className }: { className?: string }) {
   );
 }
 
-function DashboardFooter({
-  showHrLink,
-}: {
-  showHrLink: boolean;
-}) {
-  return (
-    <AuthenticatedAppFooterShell>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
-        <p className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)]">
-          © 2026 <strong>RE:SELEKCIJA</strong>. All rights reserved.
-        </p>
-        {showHrLink ? (
-          <Link
-            className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
-            href="/hr"
-          >
-            HR Workspace
-          </Link>
-        ) : null}
-      </div>
-
-      <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
-          href="/"
-        >
-          Privacy Policy
-        </a>
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
-          href="/"
-        >
-          Terms of Service
-        </a>
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-[var(--dp-text-soft)] transition-colors duration-200 hover:text-[var(--dp-primary-hover)]"
-          href="/"
-        >
-          Security
-        </a>
-      </nav>
-    </AuthenticatedAppFooterShell>
-  );
-}
-
 function EmptyState() {
   return (
     <section className="rounded-[1.75rem] border border-[var(--dp-border)] bg-[var(--dp-surface)]/85 p-8 shadow-[0_24px_48px_rgba(15,23,42,0.07)] md:p-10">
@@ -1526,9 +1405,6 @@ function EmptyState() {
 }
 
 export function CandidateDashboardView({
-  userEmail,
-  userName,
-  showHrLink,
   hasLinkedParticipant,
   linkedOrganizationId,
   initialAttempts,
@@ -1723,59 +1599,53 @@ export function CandidateDashboardView({
         ? `Završite sve dodijeljene testove (${completedBatteryCount} / ${totalBatteryTestsCount}) za dubinsku analizu.`
         : undefined;
   return (
-    <AuthenticatedAppPageShell className="bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.07),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.08),_transparent_22%),linear-gradient(180deg,var(--dp-bg)_0%,var(--dp-bg)_100%)]">
-      <TopNav userEmail={userEmail} userName={userName} />
-
-      <AuthenticatedAppMainContent topPaddingClassName="pt-20">
-        {hasLinkedParticipant ? (
-          isLoading && !loadError ? (
-            <DashboardSkeleton />
-          ) : (
-            <div className={DASHBOARD_CONTENT_GRID_CLASS_NAME}>
-              <div className={DASHBOARD_SIDEBAR_CLASS_NAME}>
-                <aside className={DASHBOARD_SIDEBAR_STACK_CLASS_NAME}>
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
-                    Korisnički profil
-                  </p>
-                  <WelcomeOverviewCard
-                    completedCount={completedBatteryCount}
-                    totalAssigned={totalBatteryTestsCount}
-                  />
-
-                  <QuickActionCard
-                    state={compositeReportState}
-                    title={aiAnalystTitle}
-                  />
-                </aside>
-              </div>
-
-              <section aria-label="Assessments" className={DASHBOARD_PRIMARY_COLUMN_CLASS_NAME}>
-                <div className={DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME}>
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-primary-hover)]">
-                    TVOJA BATERIJA TESTOVA
-                  </p>
-                  <div className="!mt-3">
-                    <DashboardHeader />
-                  </div>
-                  {availableAssessments.length > 0 ? (
-                    <AssessmentSection
-                      title="Tvoja baterija testova"
-                      description="Aktivne procjene koje možeš odmah otvoriti i završiti."
-                      assessments={availableAssessments}
-                      linkedOrganizationId={linkedOrganizationId}
-                      hideSectionHeader
-                    />
-                  ) : null}
-                </div>
-              </section>
-            </div>
-          )
+    <AuthenticatedAppMainContent topPaddingClassName="pt-0">
+      {hasLinkedParticipant ? (
+        isLoading && !loadError ? (
+          <DashboardSkeleton />
         ) : (
-          <EmptyState />
-        )}
-      </AuthenticatedAppMainContent>
+          <div className={DASHBOARD_CONTENT_GRID_CLASS_NAME}>
+            <div className={DASHBOARD_SIDEBAR_CLASS_NAME}>
+              <aside className={DASHBOARD_SIDEBAR_STACK_CLASS_NAME}>
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
+                  Korisnički profil
+                </p>
+                <WelcomeOverviewCard
+                  completedCount={completedBatteryCount}
+                  totalAssigned={totalBatteryTestsCount}
+                />
 
-      <DashboardFooter showHrLink={showHrLink} />
-    </AuthenticatedAppPageShell>
+                <QuickActionCard
+                  state={compositeReportState}
+                  title={aiAnalystTitle}
+                />
+              </aside>
+            </div>
+
+            <section aria-label="Assessments" className={DASHBOARD_PRIMARY_COLUMN_CLASS_NAME}>
+              <div className={DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME}>
+                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-primary-hover)]">
+                  TVOJA BATERIJA TESTOVA
+                </p>
+                <div className="!mt-3">
+                  <DashboardHeader />
+                </div>
+                {availableAssessments.length > 0 ? (
+                  <AssessmentSection
+                    title="Tvoja baterija testova"
+                    description="Aktivne procjene koje možeš odmah otvoriti i završiti."
+                    assessments={availableAssessments}
+                    linkedOrganizationId={linkedOrganizationId}
+                    hideSectionHeader
+                  />
+                ) : null}
+              </div>
+            </section>
+          </div>
+        )
+      ) : (
+        <EmptyState />
+      )}
+    </AuthenticatedAppMainContent>
   );
 }

@@ -1,9 +1,7 @@
 import { getAppContextForUserId } from "@/lib/auth/app-context";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import { getCandidateAttemptLookupForUser } from "@/lib/candidate/attempts";
-import {
-  CandidateDashboardView,
-} from "@/components/dashboard/candidate-dashboard";
+import { CandidateDashboardView } from "@/components/dashboard/candidate-dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +12,6 @@ export default async function CandidateAppEntryPage() {
     getCandidateAttemptLookupForUser(user.id),
   ]);
   const linkedParticipant = context.linkedParticipant;
-  const desktopUserName = linkedParticipant?.full_name?.trim();
-  const desktopUserEmail = linkedParticipant?.email ?? user.email ?? user.id;
   const initialAttempts = attemptLookup.attempts.map((attempt) => ({
     id: attempt.id,
     test_id: attempt.test_id,
@@ -34,9 +30,6 @@ export default async function CandidateAppEntryPage() {
       hasLinkedParticipant={Boolean(linkedParticipant)}
       initialAttempts={initialAttempts}
       linkedOrganizationId={linkedParticipant?.organization_id ?? null}
-      showHrLink={context.recommendedAppArea === "hr"}
-      userEmail={desktopUserEmail}
-      userName={desktopUserName}
     />
   );
 }

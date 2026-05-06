@@ -1,12 +1,7 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
-import { logout } from "@/app/actions/auth";
 import { createParticipant, createStandardAssessmentBattery } from "@/app/actions/participants";
 import {
-  AuthenticatedAppFooterShell,
-  AuthenticatedAppHeaderShell,
   AuthenticatedAppMainContent,
-  AuthenticatedAppPageShell,
 } from "@/components/app/authenticated-app-chrome";
 import {
   DashboardActionRow,
@@ -106,66 +101,6 @@ const STANDARD_BATTERY_DISPLAY_TESTS: readonly StandardBatteryDisplayTest[] = [
 ] as const;
 
 const PARTICIPANT_CREDENTIALS_COOKIE = "participant-provisioning-flash";
-
-function HrDashboardHeader() {
-  return (
-    <AuthenticatedAppHeaderShell>
-      <div className="flex min-w-0 items-center gap-4">
-        <Link
-          href="/dashboard"
-          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
-        >
-          Deep Profile
-        </Link>
-        <span className="hidden rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] lg:inline-flex">
-          HR Workspace
-        </span>
-      </div>
-
-      <form action={logout} className="shrink-0">
-        <button
-          className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-          type="submit"
-        >
-          Sign out
-        </button>
-      </form>
-    </AuthenticatedAppHeaderShell>
-  );
-}
-
-function HrDashboardFooter() {
-  return (
-    <AuthenticatedAppFooterShell>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
-        <p className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600">
-          © 2026 <strong>RE:SELEKCIJA</strong>. All rights reserved.
-        </p>
-      </div>
-
-      <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
-          href="/"
-        >
-          Privacy Policy
-        </a>
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
-          href="/"
-        >
-          Terms of Service
-        </a>
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
-          href="/"
-        >
-          Security
-        </a>
-      </nav>
-    </AuthenticatedAppFooterShell>
-  );
-}
 
 function getOrganizationName(membership: MembershipSummary): string {
   return membership.organization?.name ?? "Unknown organization";
@@ -529,10 +464,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const reportsAvailableCount = assessmentRows.filter((row) => row.completedTests > 0).length;
 
   return (
-    <AuthenticatedAppPageShell>
-      <HrDashboardHeader />
-
-      <AuthenticatedAppMainContent className="mx-auto max-w-[92rem] px-4 sm:px-6 lg:px-10">
+      <AuthenticatedAppMainContent
+        className="mx-auto max-w-[92rem] px-4 sm:px-6 lg:px-10"
+        topPaddingClassName="pt-0"
+      >
         <div className="space-y-10 pb-12">
           <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
             <div
@@ -828,8 +763,5 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           ) : null}
         </div>
       </AuthenticatedAppMainContent>
-
-      <HrDashboardFooter />
-    </AuthenticatedAppPageShell>
   );
 }
