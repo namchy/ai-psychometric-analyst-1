@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSelectedLayoutSegments } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { logout } from "@/app/actions/auth";
 import {
@@ -18,11 +18,36 @@ type ProtectedAppChromeProps = {
 };
 
 type ProtectedChromeVariant = "candidate" | "hr";
+type ProtectedChromeMode = "standard" | "focus";
 
 const PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
 
-function getProtectedChromeVariant(segments: string[]): ProtectedChromeVariant {
-  return segments[0] === "app" ? "candidate" : "hr";
+function getProtectedChromeVariant(pathname: string | null): ProtectedChromeVariant {
+  return pathname?.startsWith("/app") ? "candidate" : "hr";
+}
+
+function getProtectedChromeMode(pathname: string | null): ProtectedChromeMode {
+  if (!pathname?.startsWith("/app/attempts/")) {
+    return "standard";
+  }
+
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments.length < 4 || segments[0] !== "app" || segments[1] !== "attempts") {
+    return "standard";
+  }
+
+  const executionSegment = segments[3];
+
+  if (executionSegment === "run" || executionSegment === "pre-test") {
+    return "focus";
+  }
+
+  if (executionSegment === "practice") {
+    return "focus";
+  }
+
+  return "standard";
 }
 
 function getInitials(userName?: string | null, userEmail?: string | null) {
@@ -234,9 +259,11 @@ export function ProtectedAppChrome({
   userEmail,
   userName,
 }: ProtectedAppChromeProps) {
-  const segments = useSelectedLayoutSegments();
-  const variant = getProtectedChromeVariant(segments);
-  const contentTopPaddingClassName = variant === "candidate" ? "pt-20" : "pt-[120px]";
+  const pathname = usePathname();
+  const variant = getProtectedChromeVariant(pathname);
+  const mode = getProtectedChromeMode(pathname);
+  const contentTopPaddingClassName =
+    mode === "focus" ? "pt-6 sm:pt-8" : variant === "candidate" ? "pt-20" : "pt-[120px]";
   const pageShellClassName =
     variant === "candidate"
       ? "bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.07),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(167,139,250,0.08),_transparent_22%),linear-gradient(180deg,var(--dp-bg)_0%,var(--dp-bg)_100%)]"
@@ -244,19 +271,27 @@ export function ProtectedAppChrome({
 
   return (
     <AuthenticatedAppPageShell className={pageShellClassName}>
-      {variant === "candidate" ? (
-        <CandidateSiteHeader
-          showHrLink={showHrLink}
-          userEmail={userEmail}
-          userName={userName}
-        />
-      ) : (
-        <HrSiteHeader />
-      )}
+      {mode === "standard"
+        ? variant === "candidate"
+          ? (
+            <CandidateSiteHeader
+              showHrLink={showHrLink}
+              userEmail={userEmail}
+              userName={userName}
+            />
+            )
+          : (
+            <HrSiteHeader />
+            )
+        : null}
 
       <div className={`flex-1 ${contentTopPaddingClassName}`}>{children}</div>
 
-      {variant === "candidate" ? <CandidateSiteFooter showHrLink={showHrLink} /> : <HrSiteFooter />}
+      {mode === "standard"
+        ? variant === "candidate"
+          ? <CandidateSiteFooter showHrLink={showHrLink} />
+          : <HrSiteFooter />
+        : null}
     </AuthenticatedAppPageShell>
   );
 }
