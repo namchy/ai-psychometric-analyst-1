@@ -34,7 +34,7 @@ Komande:
 
 | Prioritet | Task                                                 | Status      | Kategorija                   | Sljedeći korak                                                                                 |
 | --------- | ---------------------------------------------------- | ----------- | ---------------------------- | ---------------------------------------------------------------------------------------------- |
-| P0        | SAFRAN practice visual parity sa scored pitanjima    | Otvoreno    | SAFRAN / Assessment UX       | Sljedeći P0 task: pripremiti implementacijski prompt za vizuelno usklađivanje SAFRAN practice ekrana sa scored pitanjima. |
+| P0        | SAFRAN practice visual parity sa scored pitanjima    | Završeno    | SAFRAN / Assessment UX       | Zatvoreno nakon usklađivanja practice primjera sa scored SAFRAN visual-question layoutom. |
 | P0        | SAFRAN user report content architecture              | Završeno    | SAFRAN / Candidate report    | Zatvoreno nakon stabilizacije sadržaja, AI pipelinea i fallback/display modela participant reporta. |
 | P0        | SAFRAN report visual parity sa IPIP reportom         | Završeno    | SAFRAN / Report UI           | Zatvoreno nakon vizuelnog usklađivanja SAFRAN reporta sa Deep Profile/IPIP report porodicom. |
 | P1        | IPIP prethodno pitanje ne prikazuje odabrani odgovor | Otvoreno    | Assessment UX / State        | Provjeriti persistenciju i rehydration odgovora pri navigaciji nazad u IPIP testu.             |
@@ -45,7 +45,7 @@ Komande:
 | P1        | MWMS pitanja / item UX                               | Otvoreno    | Assessment UX / Copy         | Redizajnirati MWMS prikaz kao “Mogući razlog” + zajednički uvodni stem.                        |
 | P1        | IPIP radar chart                                     | Otvoreno    | Report UI / Visualization    | Vratiti radar chart kao deterministic visual summary za IPIP report.                           |
 | P1        | SAFRAN novi stimulus asseti                          | Otvoreno    | Assessment assets / UX       | Ubaciti nove SAFRAN stimulus slike sa većim, čitljivijim tekstom.                              |
-| P1        | Globalni app header i footer                         | Otvoreno    | App shell / UI system        | Definisati i primijeniti jedan konzistentan header i footer na cijeloj aplikaciji.             |
+| P1        | Globalni app header i footer                         | Završeno    | App shell / UI system        | Zatvoreno nakon uvođenja protected app-wide chrome i focus chrome moda za assessment execution rute. |
 | P1        | Logo u headeru                                       | Otvoreno    | Branding / UI                | Dodati postojeći Deep Profile logo u globalni header.                                          |
 | P1        | MWMS licenca                                         | Otvoreno    | Legal / Product risk         | Pravno očistiti komercijalnu upotrebu MWMS-a prije produkcijskog rollouta.                     |
 | P2        | Login screen UI polish                               | Otvoreno    | Auth UI / Visual consistency | Uskladiti login ekran sa ostatkom aplikacije i popraviti font promjenu pri fokusu email polja. |
@@ -251,7 +251,7 @@ SAFRAN report je vizuelno usklađen sa Deep Profile/IPIP report porodicom kroz s
 
 ### P0 — SAFRAN practice visual parity sa scored pitanjima
 
-**Status:** Otvoreno  
+**Status:** Završeno  
 **Kategorija:** SAFRAN / Assessment UX / Practice flow
 
 **Problem / context:**  
@@ -274,8 +274,8 @@ Practice ne ulazi u scoring, ali mora izgledati kao ista vrsta zadatka i isti pr
 - Nema osjećaja da je practice dio stariji ekran.
 - Practice ekran i dalje jasno komunicira da odgovori ne ulaze u rezultat.
 
-**Next step:**  
-Pripremiti implementacijski prompt za vizuelno usklađivanje SAFRAN practice ekrana sa scored pitanjima. Posebno provjeriti max-width, kartični sistem, stimulus prikaz, answer option kartice i footer/action ritam.
+**Completion note:**  
+Završeno kroz layout parity implementaciju u kojoj SAFRAN practice primjeri sada prate scored visual-question strukturu za stimulus card, image option grid i sticky bottom action footer. Primjeri sa 5/6 image opcija ostaju u jednom desktop redu gdje prostor to dozvoljava, a manji breakpointi se i dalje sigurno lome. Implementacija je bila parity, ne redesign, i scoring, data, report logika i persistence nisu mijenjani.
 
 ---
 
@@ -335,12 +335,39 @@ Revidirani redoslijed:
 
 1. SAFRAN user report content architecture — završeno
 2. SAFRAN report visual parity sa IPIP reportom — završeno
-3. SAFRAN practice visual parity sa scored pitanjima — sljedeće
+3. SAFRAN practice visual parity sa scored pitanjima — završeno
 4. finalni ručni SAFRAN smoke test
 5. RIASEC implementation doc
 6. composite report architecture
 
 Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno blizu finalnog, a ne poluzavršen report/practice tok.
+
+### 5.5 App chrome politika
+
+* Standard protected chrome koristi se za dashboarde, report stranice, attempt landing stranice i normalnu protected navigaciju.
+* Assessment execution rute koriste focus chrome kako bi se smanjio navigacijski šum i sačuvao vertikalni prostor.
+* Ovo je route-based odluka i važi za sve procjene, ne samo za SAFRAN.
+* Report/results stranice zadržavaju standard chrome jer su review/navigation iskustvo, ne aktivno rješavanje testa.
+* Buduće procjene koje koriste isti execution route family treba da naslijede focus chrome po defaultu.
+
+### 5.6 SAFRAN decimalni numerički odgovori
+
+* SAFRAN numeric sequence odgovori moraju podržati decimalne vrijednosti.
+* I zarez i tačka prihvataju se kao decimalni separator.
+* Normalizacija se radi za validation/scoring, dok se user-entered string format može zadržati za autosave/resume.
+
+### 5.7 Preporučeni sljedeći redoslijed
+
+1. IPIP prethodno pitanje ne prikazuje odabrani odgovor
+2. SAFRAN izgleda kao da ima default označen odgovor
+3. IPIP tekst na karticama dimenzija se ponavlja
+4. MWMS pitanja / item UX
+5. IPIP radar chart
+6. Kompozitni AI profil IPIP + SAFRAN + MWMS
+
+Razlog za sljedeći prioritet:
+
+* `IPIP prethodno pitanje ne prikazuje odabrani odgovor` je state/persistence trust problem tokom navigacije kroz procjenu i trenutno je preporučeni sljedeći task.
 
 ---
 
@@ -417,6 +444,24 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-06 — Protected app chrome, SAFRAN practice parity i decimalni numeric input
+
+Završeno:
+
+* protected app-wide chrome prebačen je na layout nivo za protected app stranice
+* header/footer više nisu page-level duplikati na `/app` i `/dashboard`
+* uveden je focus chrome za assessment execution rute
+* focus chrome se aktivira route matching pravilom, ne test slug pravilom, i važi za sve procjene u istom route familyju
+* SAFRAN practice visual parity sa scored visual pitanjima je završena
+* SAFRAN numeric sequence input sada prihvata decimalne vrijednosti sa `.` i `,` separatorima
+* decimalne vrijednosti se normalizuju samo za final validation/scoring
+* SAFRAN decimal input task je po potrebi ažurirao scoring validation/tests
+
+Napomena:
+
+* scoring, persistence, reports, promptovi, dashboard logika i question data nisu namjerno mijenjani u chrome/practice parity taskovima
+* SAFRAN decimal input fix je zadržao string-based unos za autosave/resume i prošao postojeće SAFRAN scoring testove
 
 ### 2026-05-05 — SAFRAN participant report content + visual stabilization
 
