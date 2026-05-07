@@ -96,6 +96,7 @@ export default async function CandidateAttemptRunPage({
             completionRedirectPath={`/app/attempts/${attempt.id}/report`}
             assessmentDisplayName={runPageData.assessmentName}
             participantDisplayName={runPageData.participantName}
+            testSlug={attempt.tests?.slug ?? null}
             testId={attempt.test_id}
             locale={attempt.locale}
             questions={runPageData.questions}

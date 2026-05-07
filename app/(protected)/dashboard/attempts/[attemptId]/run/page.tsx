@@ -57,6 +57,7 @@ export default async function ProtectedAttemptRunPage({
           completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
           assessmentDisplayName={runPageData.assessmentName}
           participantDisplayName={runPageData.participantName}
+          testSlug={attempt.tests?.slug ?? null}
           testId={attempt.test_id}
           locale={attempt.locale}
           questions={runPageData.questions}

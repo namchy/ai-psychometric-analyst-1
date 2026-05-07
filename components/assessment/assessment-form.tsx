@@ -13,6 +13,7 @@ import { ReportGenerationLoadingScreen } from "@/components/assessment/report-ge
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState, isQuestionAnswered } from "@/lib/assessment/completion";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
+import { MWMS_V1_TEST_SLUG } from "@/lib/assessment/mwms-scoring";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import {
   DEFAULT_ASSESSMENT_LOCALE,
@@ -31,6 +32,7 @@ type AssessmentFormProps = {
   completionRedirectPath?: string | null;
   assessmentDisplayName?: string | null;
   participantDisplayName?: string | null;
+  testSlug?: string | null;
   testId: string;
   locale?: AssessmentLocale;
   questions: TestQuestion[];
@@ -47,6 +49,9 @@ type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
 type SaveStatus = "idle" | "saving" | "saved" | "completing" | "completed" | "error";
 type ProtectedCompletionUiPhase = "processing" | "redirecting" | null;
 const MANUAL_SAVE_SUCCESS_DURATION_MS = 1600;
+const MWMS_SHARED_STEM = "Zašto ulažeš trud u svoj posao?";
+const MWMS_REASON_LABEL = "Mogući razlog";
+const MWMS_SCALE_INSTRUCTION = "U kojoj mjeri se ovaj razlog odnosi na tebe?";
 
 function getSerializableSelections(
   selections: SelectionState,
@@ -188,6 +193,10 @@ function getLikertAssessmentCode(assessmentDisplayName?: string | null): string 
   }
 
   return name;
+}
+
+function isMwmsAssessmentSlug(slug: string | null | undefined): boolean {
+  return slug === MWMS_V1_TEST_SLUG;
 }
 
 function parseNumericSequenceQuestionText(text: string): { prompt: string; tokens: string[] } | null {
@@ -644,6 +653,42 @@ function AssessmentDashboardSkinStyles() {
         line-height: 1.22;
         letter-spacing: -0.035em;
         color: rgb(15, 23, 42);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-block {
+        display: grid;
+        gap: 0;
+        max-width: 43rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-block h3 {
+        margin: 0;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-label {
+        margin: 1.2rem 0 0;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgb(100, 116, 139);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-item {
+        margin: 0.45rem 0 0;
+        max-width: 42rem;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: rgb(51, 65, 85);
+        text-wrap: pretty;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert__instruction {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+        line-height: 1.45;
+        color: rgb(51, 65, 85);
       }
 
       .assessment-run-page--dashboard-skin .assessment-option,
@@ -1551,6 +1596,7 @@ export function AssessmentForm({
   completionRedirectPath = null,
   assessmentDisplayName = null,
   participantDisplayName = null,
+  testSlug = null,
   testId,
   locale = DEFAULT_ASSESSMENT_LOCALE,
   questions,
@@ -1873,6 +1919,7 @@ export function AssessmentForm({
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
     const isNumericInputQuestion = currentQuestion.renderer_type === "numeric_input";
+    const isMwmsQuestion = isMwmsAssessmentSlug(testSlug) && isLikertQuestion;
     const numericSequenceQuestion = isNumericInputQuestion
       ? parseNumericSequenceQuestionText(currentQuestion.text)
       : null;
@@ -2025,6 +2072,14 @@ export function AssessmentForm({
                       ))}
                     </div>
                   </div>
+                ) : isMwmsQuestion ? (
+                  <div className="assessment-step-card__mwms-block">
+                    <h3>{MWMS_SHARED_STEM}</h3>
+                    <p className="assessment-step-card__mwms-label">{MWMS_REASON_LABEL}</p>
+                    {visibleQuestionText ? (
+                      <p className="assessment-step-card__mwms-item">{visibleQuestionText}</p>
+                    ) : null}
+                  </div>
                 ) : visibleQuestionText ? (
                   <h3>{visibleQuestionText}</h3>
                 ) : null}
@@ -2083,6 +2138,9 @@ export function AssessmentForm({
               ) : isLikertQuestion ? (
                 <div className="assessment-likert">
                   <div className="assessment-likert__scale">
+                    {isMwmsQuestion ? (
+                      <p className="assessment-likert__instruction">{MWMS_SCALE_INSTRUCTION}</p>
+                    ) : null}
                     <div className="assessment-likert__labels" aria-hidden="true">
                       <span>{options[0]?.label}</span>
                       <span>{options[options.length - 1]?.label}</span>
