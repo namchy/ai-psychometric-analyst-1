@@ -662,6 +662,7 @@ function getParticipantIpipBandPillClassName(
 }
 
 type ParticipantIpipDomain = IpipNeo120ParticipantReportV1["domains"][number];
+type ParticipantIpipDomainV2 = IpipNeo120ParticipantReportV2["domains"][number];
 type ParticipantIpipDomainDisplayState = {
   score: ParticipantIpipDomain["score"];
   band: ParticipantIpipDomain["band"];
@@ -755,6 +756,50 @@ function formatParticipantIpipRadarLabel(domainCode: ParticipantIpipDomain["doma
     default:
       return "";
   }
+}
+
+function getParticipantIpipRadarLabelV2(domain: Pick<
+  ParticipantIpipDomainV2,
+  "domain_code" | "participant_display_label"
+>): string {
+  switch (domain.domain_code) {
+    case "EXTRAVERSION":
+      return "Ekstraverzija";
+    case "AGREEABLENESS":
+      return "Saradnja";
+    case "CONSCIENTIOUSNESS":
+      return "Savjesnost";
+    case "NEUROTICISM":
+      return domain.participant_display_label === "Emocionalna reaktivnost"
+        ? "Emocionalna reaktivnost"
+        : "Emocionalna stabilnost";
+    case "OPENNESS_TO_EXPERIENCE":
+      return "Otvorenost";
+    default:
+      return domain.participant_display_label;
+  }
+}
+
+function getParticipantIpipRadarDomainsV2(
+  report: IpipNeo120ParticipantReportV2,
+): PersonalityRadarDomain[] {
+  const domainsByCode = new Map(report.domains.map((domain) => [domain.domain_code, domain]));
+
+  return PARTICIPANT_IPIP_RADAR_DOMAIN_ORDER.flatMap((domainCode) => {
+    const domain = domainsByCode.get(domainCode);
+
+    if (!domain || !Number.isFinite(domain.display_score)) {
+      return [];
+    }
+
+    return [
+      {
+        key: domain.domain_code,
+        label: getParticipantIpipRadarLabelV2(domain),
+        score: domain.display_score,
+      },
+    ];
+  });
 }
 
 function getScoreBand(score: number): "high" | "mid" | "low" {
@@ -2109,6 +2154,8 @@ function IpipNeo120ParticipantReportV2Sections({
   const scaleMax = report.meta.scale_hint.max;
   const activeDomain =
     report.domains.find((domain) => domain.domain_code === activeDomainCode) ?? null;
+  const radarDomains = getParticipantIpipRadarDomainsV2(report);
+  const shouldRenderRadarSection = radarDomains.length === PARTICIPANT_IPIP_RADAR_DOMAIN_ORDER.length;
 
   useEffect(() => {
     if (pendingScrollTargetRef.current === null) {
@@ -2164,6 +2211,20 @@ function IpipNeo120ParticipantReportV2Sections({
           {report.summary.overview}
         </p>
       </section>
+
+      {shouldRenderRadarSection ? (
+        <section className="results-report__section results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>Vizuelni profil osobina</h3>
+            <p className="results-report__section-note">
+              Radar prikazuje pet glavnih domena na skali od 1 do 5.
+            </p>
+          </div>
+          <div className="mx-auto w-full max-w-[560px]">
+            <PersonalityRadarChart domains={radarDomains} className="h-[304px] sm:h-[300px]" />
+          </div>
+        </section>
+      ) : null}
 
       <section className="results-report__section results-report__panel card stack-sm">
         <div className="results-report__section-heading">
