@@ -37,9 +37,9 @@ Komande:
 | P0        | SAFRAN practice visual parity sa scored pitanjima    | Završeno    | SAFRAN / Assessment UX       | Zatvoreno nakon usklađivanja practice primjera sa scored SAFRAN visual-question layoutom. |
 | P0        | SAFRAN user report content architecture              | Završeno    | SAFRAN / Candidate report    | Zatvoreno nakon stabilizacije sadržaja, AI pipelinea i fallback/display modela participant reporta. |
 | P0        | SAFRAN report visual parity sa IPIP reportom         | Završeno    | SAFRAN / Report UI           | Zatvoreno nakon vizuelnog usklađivanja SAFRAN reporta sa Deep Profile/IPIP report porodicom. |
-| P1        | IPIP prethodno pitanje ne prikazuje odabrani odgovor | Otvoreno    | Assessment UX / State        | Provjeriti persistenciju i rehydration odgovora pri navigaciji nazad u IPIP testu.             |
-| P1        | SAFRAN izgleda kao da ima default označen odgovor    | Otvoreno    | Assessment UX / Input state  | Provjeriti da nijedan odgovor nije unaprijed selektovan, posebno vrijednost/option 1.          |
-| P1        | IPIP tekst na karticama dimenzija se ponavlja        | Otvoreno    | Report UI / Copy             | Locirati duplirani copy u IPIP report karticama i ukloniti ponavljanje.                        |
+| P1        | IPIP prethodno pitanje ne prikazuje odabrani odgovor | Završeno    | Assessment UX / State        | Zatvoreno nakon popravke selected-state vidljivosti pri povratku na prethodno odgovoreno IPIP pitanje. |
+| P1        | SAFRAN izgleda kao da ima default označen odgovor    | Zatvoreno / Nije reproducirano | Assessment UX / Input state  | Ne traži code work nakon ručne provjere; svježe SAFRAN pitanje se učitava bez unaprijed selektovanog odgovora. |
+| P1        | IPIP tekst na karticama dimenzija se ponavlja        | Završeno    | Report UI / Copy             | Zatvoreno nakon zamjene ponovljenog domain title body copyja kratkim descriptor tekstom u vidljivom V2 report pathu. |
 | P1        | Kompozitni AI profil IPIP + SAFRAN + MWMS            | Planirano   | Product / AI report          | Definisati input payload, schema, audience, fallback i UI strukturu.                           |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Definisati modal, DB preferencu i snapshot na attempt/report nivou.                            |
 | P1        | MWMS pitanja / item UX                               | Otvoreno    | Assessment UX / Copy         | Redizajnirati MWMS prikaz kao “Mogući razlog” + zajednički uvodni stem.                        |
@@ -281,7 +281,7 @@ Završeno kroz layout parity implementaciju u kojoj SAFRAN practice primjeri sad
 
 | Prioritet | Tema                       | Status    | Kratak opis                                                                                                                  | Sljedeći korak                                                                                |
 | --------- | -------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| P1        | MWMS pitanja / item UX     | Otvoreno  | MWMS itemi trenutno mogu zvučati čudno jer su zavisni od zajedničkog uvodnog pitanja, a prikazuju se kao samostalna pitanja. | Dizajnirati MWMS-specific question screen: “Mogući razlog” + stalni stem + objašnjenje skale. |
+| P1        | MWMS pitanja / item UX     | Otvoreno  | MWMS itemi trenutno mogu zvučati čudno jer su zavisni od zajedničkog uvodnog pitanja, a prikazuju se kao samostalna pitanja. | Redizajnirati prikaz kao zajednički stem + “Mogući razlog” + trenutna item tvrdnja + jasna 1–7 instrukcija skale. |
 | P1        | IPIP radar chart           | Otvoreno  | Radar chart je postojao u ranijoj IPIP verziji, ali je vjerovatno ispao iz novog AI/V2 render patha.                         | Vratiti radar kao deterministic visual summary za IPIP, bez obzira na AI report readiness.    |
 | P1        | Oblik obraćanja            | Otvoreno  | Korisnik treba odabrati muški ili ženski jezički oblik obraćanja, bez pitanja o spolu.                                       | Definisati modal, DB polje/preferencu i snapshot na attempt/report nivou.                     |
 | P1        | Kompozitni AI profil       | Planirano | Glavni diferencijator je AI sinteza IPIP + SAFRAN + MWMS.                                                                    | Prvo definisati input payload, schema, audience, UI strukturu i fallback.                     |
@@ -289,6 +289,12 @@ Završeno kroz layout parity implementaciju u kojoj SAFRAN practice primjeri sad
 | P2        | MWMS AI report copy ton    | Otvoreno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Uskladiti nakon odluke o općem candidate tonu i obliku obraćanja.                             |
 
 ---
+
+Napomena za zatvorene P1 stavke:
+
+* `IPIP prethodno pitanje ne prikazuje odabrani odgovor` je završeno kroz popravku selected-state vidljivosti i resume/back-navigation feedbacka; IPIP auto-advance ostaje, bez `Nastavi` dugmeta.
+* `SAFRAN izgleda kao da ima default označen odgovor` je zatvoren kao nereproduciran nakon ručne provjere; nije bio potreban code change.
+* `IPIP tekst na karticama dimenzija se ponavlja` je završen u browser-visible V2 participant report rendereru; scoring, AI promptovi i `attempt_reports` pipeline nisu mijenjani.
 
 ## 5. Product / UX odluke
 
@@ -358,16 +364,33 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. IPIP prethodno pitanje ne prikazuje odabrani odgovor
-2. SAFRAN izgleda kao da ima default označen odgovor
-3. IPIP tekst na karticama dimenzija se ponavlja
-4. MWMS pitanja / item UX
-5. IPIP radar chart
-6. Kompozitni AI profil IPIP + SAFRAN + MWMS
+1. MWMS pitanja / item UX
+2. IPIP radar chart
+3. Oblik obraćanja
+4. Kompozitni AI profil IPIP + SAFRAN + MWMS
+5. MWMS AI report copy ton
+6. Report visual language po testovima
 
 Razlog za sljedeći prioritet:
 
-* `IPIP prethodno pitanje ne prikazuje odabrani odgovor` je state/persistence trust problem tokom navigacije kroz procjenu i trenutno je preporučeni sljedeći task.
+* `MWMS pitanja / item UX` je sada preporučeni sljedeći task jer je MWMS već dio standardne baterije, a trenutni item prikaz može zvučati nezgrapno pošto instrument koristi zajednički stem i item tvrdnje.
+
+### 5.8 IPIP Likert selected-state politika
+
+* IPIP zadržava auto-advance nakon klika na Likert odgovor.
+* `Nastavi` dugme se ne uvodi za IPIP.
+* Default stanje je neutralno dugme.
+* Hover stanje je lagani preview state.
+* Selected stanje je puni teal/green button sa bijelim bold brojem.
+* Selected stanje mora ostati jasno vidljivo nakon back-navigation/resume.
+* Hover ne smije overrideovati selected styling.
+
+### 5.9 IPIP domain card copy politika
+
+* `Pregled domena` kartice su navigacijski/scannable sloj, ne dodatni interpretacijski pasus.
+* Kartice treba da prikazuju title, band, score, score bar, CTA i kratki domain descriptor.
+* Body copy ne treba ponavljati naziv domena.
+* Detaljna interpretacija ostaje u report sekcijama i detail panelu.
 
 ---
 
@@ -444,6 +467,22 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-06 — IPIP selected state i domain card copy cleanup
+
+Završeno:
+
+* IPIP selected answer visibility je popravljena za auto-advance i back-navigation/resume scenario.
+* UX odluka je da IPIP zadržava auto-advance, bez dodavanja `Nastavi` dugmeta.
+* Likert selected state sada prati clean full-button model sa solid teal/green selected stanjem i bijelim bold brojem.
+* SAFRAN concern oko default-selected odgovora ručno je provjeren i zatvoren kao nereproduciran / false alarm.
+* IPIP `Pregled domena` kartice više ne ponavljaju naziv domena u body liniji.
+* Browser-visible path za ponovljeni domain copy bio je V2 participant report renderer.
+* Dodani su kratki domain descriptori da zadrže informativnu vrijednost bez dupliranja interpretacije reporta.
+
+Napomena:
+
+* scoring, report generation, AI prompt logika i `attempt_reports` pipeline nisu mijenjani u ovom cleanupu.
 
 ### 2026-05-06 — Protected app chrome, SAFRAN practice parity i decimalni numeric input
 
