@@ -41,9 +41,9 @@ Komande:
 | P1        | SAFRAN izgleda kao da ima default označen odgovor    | Zatvoreno / Nije reproducirano | Assessment UX / Input state  | Ne traži code work nakon ručne provjere; svježe SAFRAN pitanje se učitava bez unaprijed selektovanog odgovora. |
 | P1        | IPIP tekst na karticama dimenzija se ponavlja        | Završeno    | Report UI / Copy             | Zatvoreno nakon zamjene ponovljenog domain title body copyja kratkim descriptor tekstom u vidljivom V2 report pathu. |
 | P1        | Kompozitni AI profil IPIP + SAFRAN + MWMS            | Planirano   | Product / AI report          | Definisati input payload, schema, audience, fallback i UI strukturu.                           |
-| P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Definisati modal, DB preferencu i snapshot na attempt/report nivou.                            |
-| P1        | MWMS pitanja / item UX                               | Otvoreno    | Assessment UX / Copy         | Redizajnirati MWMS prikaz kao “Mogući razlog” + zajednički uvodni stem.                        |
-| P1        | IPIP radar chart                                     | Otvoreno    | Report UI / Visualization    | Vratiti radar chart kao deterministic visual summary za IPIP report.                           |
+| P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
+| P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
+| P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
 | P1        | SAFRAN novi stimulus asseti                          | Otvoreno    | Assessment assets / UX       | Ubaciti nove SAFRAN stimulus slike sa većim, čitljivijim tekstom.                              |
 | P1        | Globalni app header i footer                         | Završeno    | App shell / UI system        | Zatvoreno nakon uvođenja protected app-wide chrome i focus chrome moda za assessment execution rute. |
 | P1        | Logo u headeru                                       | Otvoreno    | Branding / UI                | Dodati postojeći Deep Profile logo u globalni header.                                          |
@@ -51,7 +51,7 @@ Komande:
 | P2        | Login screen UI polish                               | Otvoreno    | Auth UI / Visual consistency | Uskladiti login ekran sa ostatkom aplikacije i popraviti font promjenu pri fokusu email polja. |
 | P2        | IPIP poddimenzije prikaz                             | Otvoreno    | Report UI / Visualization    | Skratiti prikaz poddimenzija i razmotriti bars umjesto predugog tekstualnog prikaza.           |
 | P2        | Candidate dashboard labels                           | Završeno    | UX copy                      | Kartice sada koriste user-facing title kao glavni naziv procjene, a instrument kao subtitle.   |
-| P2        | MWMS AI report copy ton                              | Otvoreno    | Report copy / Tone           | Uskladiti “ti” vs. “vi/Vaš” nakon odluke o obliku obraćanja.                                   |
+| P2        | MWMS AI report copy ton                              | Završeno    | Report copy / Tone           | Zatvoreno nakon usklađivanja MWMS participant reporta na “ti” formu kroz prompt pravila, renderer safety net, display smoke test i regenerisani testni report. |
 | P2        | Report visual language po testovima                  | Planirano   | Report UI                    | IPIP radar, MWMS bar profile, SAFRAN score cards, composite mapa.                              |
 | P2        | Worker/report monitoring                             | Otvoreno    | Tech debt / Ops              | Pratiti queued/processing/ready/failed prelaze za AI report worker.                            |
 | P3        | HR-facing MWMS AI report                             | Parking lot | HR report                    | Razmotriti nakon composite arhitekture ili HR dashboard prioriteta.                            |
@@ -281,12 +281,12 @@ Završeno kroz layout parity implementaciju u kojoj SAFRAN practice primjeri sad
 
 | Prioritet | Tema                       | Status    | Kratak opis                                                                                                                  | Sljedeći korak                                                                                |
 | --------- | -------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| P1        | MWMS pitanja / item UX     | Otvoreno  | MWMS itemi trenutno mogu zvučati čudno jer su zavisni od zajedničkog uvodnog pitanja, a prikazuju se kao samostalna pitanja. | Redizajnirati prikaz kao zajednički stem + “Mogući razlog” + trenutna item tvrdnja + jasna 1–7 instrukcija skale. |
-| P1        | IPIP radar chart           | Otvoreno  | Radar chart je postojao u ranijoj IPIP verziji, ali je vjerovatno ispao iz novog AI/V2 render patha.                         | Vratiti radar kao deterministic visual summary za IPIP, bez obzira na AI report readiness.    |
-| P1        | Oblik obraćanja            | Otvoreno  | Korisnik treba odabrati muški ili ženski jezički oblik obraćanja, bez pitanja o spolu.                                       | Definisati modal, DB polje/preferencu i snapshot na attempt/report nivou.                     |
+| P1        | MWMS pitanja / item UX     | Završeno  | MWMS itemi trenutno mogu zvučati čudno jer su zavisni od zajedničkog uvodnog pitanja, a prikazuju se kao samostalna pitanja. | Zatvoreno nakon redizajna MWMS item prikaza kao zajednički stem + “Mogući razlog” + item tvrdnja + jasna 1–7 instrukcija skale. |
+| P1        | IPIP radar chart           | Završeno  | Radar chart je postojao u ranijoj IPIP verziji, ali je vjerovatno ispao iz novog AI/V2 render patha.                         | Zatvoreno nakon vraćanja radar chart-a u IPIP V2 participant report kao deterministic visual summary iz display_score vrijednosti. |
+| P1        | Oblik obraćanja            | Otvoreno  | Korisnik treba odabrati muški ili ženski jezički oblik obraćanja, bez pitanja o spolu.                                       | Definisati arhitekturu preference za muški/ženski jezički oblik, uključujući modal, DB/snapshot model i pravila za participant AI promptove. |
 | P1        | Kompozitni AI profil       | Planirano | Glavni diferencijator je AI sinteza IPIP + SAFRAN + MWMS.                                                                    | Prvo definisati input payload, schema, audience, UI strukturu i fallback.                     |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
-| P2        | MWMS AI report copy ton    | Otvoreno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Uskladiti nakon odluke o općem candidate tonu i obliku obraćanja.                             |
+| P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
 
 ---
 
@@ -300,7 +300,7 @@ Napomena za zatvorene P1 stavke:
 
 ### 5.1 Radar chart politika
 
-* IPIP: radar chart ima smisla i treba ga vratiti.
+* IPIP: radar chart je vraćen u V2 participant report i koristi deterministic `display_score` iz V2 snapshot-a.
 * MWMS: ne radar; bolji su motivacijski barovi/grupisani profil.
 * SAFRAN: ne radar; bolji su score cards i horizontalni barovi.
 * Composite: ne jedan veliki radar; bolja je integrisana mapa profila.
@@ -315,6 +315,11 @@ MWMS V1 sada ima:
 * participant-facing AI report V1 kroz attempt_reports pipeline
 * OpenAI structured output schema
 * browser-confirmed ready AI report
+* polished participant report UI
+* “ti” formu u promptu i renderer safety net-u
+* forbidden-form smoke test
+* regenerisan testni report nakon aktivacije prompta
+* motivacijski bar profil sa mikro-objašnjenjima subskala
 
 MWMS HR report nije podržan u V1 i `unsupported_audience` je očekivano ponašanje.
 
@@ -364,16 +369,16 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. MWMS pitanja / item UX
-2. IPIP radar chart
-3. Oblik obraćanja
-4. Kompozitni AI profil IPIP + SAFRAN + MWMS
-5. MWMS AI report copy ton
-6. Report visual language po testovima
+1. Oblik obraćanja
+2. Kompozitni AI profil IPIP + SAFRAN + MWMS
+3. Report visual language po testovima
+4. SAFRAN novi stimulus asseti
+5. Logo u headeru
+6. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
-* `MWMS pitanja / item UX` je sada preporučeni sljedeći task jer je MWMS već dio standardne baterije, a trenutni item prikaz može zvučati nezgrapno pošto instrument koristi zajednički stem i item tvrdnje.
+* `MWMS pitanja / item UX`, `MWMS AI report copy ton` i `IPIP radar chart` su završeni. Sljedeći logičan task je `Oblik obraćanja` jer utiče na sve buduće participant reporte i sprječava ručno krpljenje `ti/vi` forme po pojedinačnim testovima.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -398,7 +403,7 @@ Razlog za sljedeći prioritet:
 
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou.                                 | Slično locale snapshotu.                           |
+| P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
 | P1        | MWMS prompt/pipeline monitoring | Treba pratiti queued/processing/ready/failed prelaze za report worker.                       | Posebno prije produkcije.                          |
 | P2        | Branch features                 | Trenutno se radi na branchu `features`; main ostaje stabilan.                                | Ne mergati dok report/copy/pitanja nisu dotjerani. |
 | P2        | MWMS licenca                    | MWMS tehnički radi, ali komercijalni rollout zavisi od licencnog/pravno-poslovnog odobrenja. | Nije dev blocker, jeste produkcijski blocker.      |
@@ -462,11 +467,31 @@ Zaključak:
 | ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Composite report UI    | Dizajnirati poseban composite ekran, ne samo još jedan report. | Nakon definisanja composite input/schema.                         |
 | HR-facing MWMS report  | Poseban HR report za motivacijski profil kandidata.            | Nakon composite arhitekture ili ako HR dashboard to prvo zatraži. |
-| Report visual language | Svaki test treba imati svoj prikladan vizuelni summary.        | Nakon vraćanja IPIP radar charta.                                 |
+| Report visual language | Svaki test treba imati svoj prikladan vizuelni summary.        | Nakon zatvaranja addressing taska i definisanja narednog participant polish sloja. |
 
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-07 — MWMS participant polish, prompt ton i IPIP radar
+
+Završeno:
+
+* MWMS participant report je restrukturiran u jasniji insight flow.
+* “Profil motivacije” koristi 2x3 desktop grid, intensity pillove i mikro-objašnjenja subskala.
+* MWMS participant copy je usklađen na “ti” formu.
+* MWMS promptovi za base, bs i hr lokalizaciju su ažurirani da traže drugo lice jednine.
+* Renderer safety net `normalizeMwmsCopy` čisti stare snapshotove od formalnih/pluralnih oblika.
+* MWMS display smoke test sada hvata formalne oblike i drugo lice množine.
+* Aktiviran je ažurirani MWMS prompt i regenerisan je testni participant report za attempt `762dd4b5-e005-44c3-a418-4e0baefc9d5a`.
+* MWMS assessment item UX je poboljšan kroz zajednički stem “Zašto ulažeš trud u svoj posao?”, label “Mogući razlog” i jasnu skalu.
+* IPIP NEO-120 participant V2 report ponovo prikazuje radar chart kao deterministic visual summary iz `report.domains[].display_score`.
+
+Napomena:
+
+* Scoring, score vrijednosti, pragovi, AI report pipeline i baza nisu mijenjani u ovim UI/copy taskovima.
+* Postojeći MWMS snapshotovi u bazi nisu masovno regenerisani; čiste se pri prikazu kroz renderer safety net.
+* Oblik obraćanja ostaje otvoren kao širi product/technical task za sistemsko rješenje muškog/ženskog jezičkog oblika.
 
 ### 2026-05-06 — IPIP selected state i domain card copy cleanup
 
