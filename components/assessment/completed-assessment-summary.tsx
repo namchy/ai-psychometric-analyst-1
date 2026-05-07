@@ -114,6 +114,254 @@ const MWMS_NEXT_STEPS = [
   "Ne koristiti pojedinačnu skalu kao eliminacioni kriterij.",
 ] as const;
 
+type MwmsBandLabel = "Nisko" | "Umjereno" | "Izraženo" | "Vrlo izraženo";
+
+type MwmsSummarySignal = {
+  title: string;
+  value: string;
+};
+
+function getMwmsBandLabel(score: number): MwmsBandLabel {
+  if (score < 2.5) {
+    return "Nisko";
+  }
+
+  if (score < 3.5) {
+    return "Umjereno";
+  }
+
+  if (score < 5) {
+    return "Izraženo";
+  }
+
+  return "Vrlo izraženo";
+}
+
+function getMwmsBandPillClassName(score: number): string {
+  const bandLabel = getMwmsBandLabel(score);
+
+  switch (bandLabel) {
+    case "Nisko":
+      return "border-[rgba(100,116,139,0.34)] bg-[rgba(241,245,249,0.96)] text-slate-700";
+    case "Umjereno":
+      return "border-[rgba(94,234,212,0.26)] bg-[rgba(240,253,250,0.92)] text-slate-700";
+    case "Izraženo":
+      return "border-[rgba(13,148,136,0.42)] bg-[rgba(204,251,241,0.6)] text-slate-800";
+    case "Vrlo izraženo":
+      return "border-[rgba(15,23,42,0.18)] bg-[rgba(222,239,248,0.92)] text-slate-900";
+    default:
+      return "border-[rgba(94,234,212,0.26)] bg-[rgba(240,253,250,0.92)] text-slate-700";
+  }
+}
+
+function formatMwmsShortDimensionLabel(dimensionKey: string): string {
+  switch (dimensionKey) {
+    case "external_social":
+      return "Socijalna ekstrinzična motivacija";
+    case "external_material":
+      return "Materijalna ekstrinzična motivacija";
+    case "introjected":
+      return "Introjektirana motivacija";
+    case "identified":
+      return "Identificirana motivacija";
+    case "intrinsic":
+      return "Intrinzična motivacija";
+    case "amotivation":
+      return "Amotivacija";
+    default:
+      return formatDimensionLabel(dimensionKey);
+  }
+}
+
+function getMwmsDimensionMicroDescription(dimensionKey: string): string {
+  switch (dimensionKey) {
+    case "amotivation":
+      return "Manjak smisla ili energije";
+    case "external_social":
+      return "Priznanje i očekivanja drugih";
+    case "external_material":
+      return "Nagrada, sigurnost ili korist";
+    case "introjected":
+      return "Obaveza i unutrašnji pritisak";
+    case "identified":
+      return "Posao koji ti je važan";
+    case "intrinsic":
+      return "Interes i zadovoljstvo u radu";
+    default:
+      return "";
+  }
+}
+
+function formatMwmsDriverPhrase(dimensionKey: string): string {
+  switch (dimensionKey) {
+    case "external_social":
+      return "očekivanja drugih";
+    case "external_material":
+      return "sigurnost i vanjske nagrade";
+    case "introjected":
+      return "unutrašnji standardi";
+    case "identified":
+      return "osjećaj odgovornosti";
+    case "intrinsic":
+      return "lični interes za posao";
+    case "amotivation":
+      return "nizak osjećaj smisla i usmjerenja";
+    default:
+      return formatMwmsShortDimensionLabel(dimensionKey).toLocaleLowerCase("bs");
+  }
+}
+
+function formatBsList(items: string[]): string {
+  if (items.length === 0) {
+    return "";
+  }
+
+  if (items.length === 1) {
+    return items[0] ?? "";
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} i ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(", ")} i ${items[items.length - 1]}`;
+}
+
+function normalizeMwmsCopy(text: string): string {
+  return text
+    .replaceAll("unutrašnje pritiska", "unutrašnjeg pritiska")
+    .replaceAll("Vaš angažman", "tvoj angažman")
+    .replaceAll("vaš angažman", "tvoj angažman")
+    .replaceAll("Vaš jedini", "tvoj jedini")
+    .replaceAll("vaš jedini", "tvoj jedini")
+    .replaceAll("Vaši jedini", "tvoji jedini")
+    .replaceAll("vaši jedini", "tvoji jedini")
+    .replaceAll("Vašem poslu", "tvom poslu")
+    .replaceAll("vašem poslu", "tvom poslu")
+    .replaceAll("Vašem radnom ponašanju", "tvom radnom ponašanju")
+    .replaceAll("vašem radnom ponašanju", "tvom radnom ponašanju")
+    .replaceAll("Vaš profil", "tvoj profil")
+    .replaceAll("vaš profil", "tvoj profil")
+    .replaceAll("Vaši rezultati", "tvoji rezultati")
+    .replaceAll("vaši rezultati", "tvoji rezultati")
+    .replaceAll("Vašim radnim okolnostima", "tvojim radnim okolnostima")
+    .replaceAll("vašim radnim okolnostima", "tvojim radnim okolnostima")
+    .replaceAll("u tvojem radnom ponašanju", "u tvom radnom ponašanju")
+    .replaceAll("u tvojem poslu", "u tvom poslu")
+    .replaceAll("u tvojem", "u tvom")
+    .replaceAll("tvojem poslu", "tvom poslu")
+    .replaceAll("tvojem radnom ponašanju", "tvom radnom ponašanju")
+    .replaceAll("tebe pojedini zadaci mogu iskreno zanimati", "neki zadaci te mogu iskreno zanimati")
+    .replaceAll("Pokušajte", "Pokušaj")
+    .replaceAll("pokušajte", "pokušaj")
+    .replaceAll("Razmislite", "Razmisli")
+    .replaceAll("razmislite", "razmisli")
+    .replaceAll("Obratite pažnju", "Obrati pažnju")
+    .replaceAll("obratite pažnju", "obrati pažnju")
+    .replaceAll("Prepoznajte", "Prepoznaj")
+    .replaceAll("prepoznajte", "prepoznaj")
+    .replaceAll("Koristite", "Koristi")
+    .replaceAll("koristite", "koristi")
+    .replaceAll("Pratite", "Prati")
+    .replaceAll("pratite", "prati")
+    .replaceAll("Zastanite", "Zastani")
+    .replaceAll("zastanite", "zastani")
+    .replaceAll("Razdvojite", "Razdvoji")
+    .replaceAll("razdvojite", "razdvoji")
+    .replaceAll("Osjećate", "Osjećaš")
+    .replaceAll("osjećate", "osjećaš")
+    .replaceAll("Radite", "Radiš")
+    .replaceAll("radite", "radiš")
+    .replaceAll("Možete", "Možeš")
+    .replaceAll("možete", "možeš")
+    .replaceAll("Morate", "Moraš")
+    .replaceAll("morate", "moraš")
+    .replaceAll("Želite", "Želiš")
+    .replaceAll("želite", "želiš")
+    .replace(/\bKod Vas\b/g, "Kod tebe")
+    .replace(/\bkod Vas\b/g, "kod tebe")
+    .replace(/\bVi\b/g, "Ti")
+    .replace(/\bvi\b/g, "ti")
+    .replace(/\bVama\b/g, "tebi")
+    .replace(/\bvama\b/g, "tebi")
+    .replace(/\bVam\b/g, "ti")
+    .replace(/\bvam\b/g, "ti")
+    .replace(/\bVas\b/g, "tebe")
+    .replace(/\bvas\b/g, "tebe")
+    .replace(/\bVašim\b/g, "tvojim")
+    .replace(/\bvašim\b/g, "tvojim")
+    .replace(/\bVašem\b/g, "tvom")
+    .replace(/\bvašem\b/g, "tvom")
+    .replace(/\bVašeg\b/g, "tvog")
+    .replace(/\bvašeg\b/g, "tvog")
+    .replace(/\bVašoj\b/g, "tvojoj")
+    .replace(/\bvašoj\b/g, "tvojoj")
+    .replace(/\bVaša\b/g, "Tvoja")
+    .replace(/\bvaša\b/g, "tvoja")
+    .replace(/\bVaše\b/g, "Tvoje")
+    .replace(/\bvaše\b/g, "tvoje")
+    .replace(/\bVaši\b/g, "Tvoji")
+    .replace(/\bvaši\b/g, "tvoji")
+    .replace(/\bVaš\b/g, "Tvoj")
+    .replace(/\bvaš\b/g, "tvoj")
+    .trim();
+}
+
+function getMwmsSummaryHeadline(dimensionCards: DimensionViewModel[]): string {
+  const leadingDrivers = dimensionCards
+    .slice()
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3)
+    .map((dimension) => formatMwmsDriverPhrase(dimension.key));
+
+  if (leadingDrivers.length === 0) {
+    return "Tvoj profil motivacije prikazuje više različitih izvora angažmana u radu.";
+  }
+
+  return `Tvoji najizraženiji izvori motivacije su ${formatBsList(leadingDrivers)}.`;
+}
+
+function getMwmsSummaryOneLiner(dimensionCards: DimensionViewModel[]): string {
+  const rankedDimensions = dimensionCards.slice().sort((left, right) => right.score - left.score);
+  const leadingDimensions = rankedDimensions.slice(0, 2).map((dimension) => dimension.key);
+  const hasControlledEmphasis = leadingDimensions.some((dimension) =>
+    ["external_social", "external_material", "introjected"].includes(dimension),
+  );
+  const hasIntrinsicSignal = leadingDimensions.includes("intrinsic");
+  const hasIdentifiedSignal = leadingDimensions.includes("identified");
+
+  if (hasControlledEmphasis && hasIntrinsicSignal) {
+    return "Tvoj profil motivacije djeluje uravnoteženo, uz nešto izraženiji uticaj unutrašnjeg pritiska i društvenih očekivanja.";
+  }
+
+  if (hasControlledEmphasis && hasIdentifiedSignal) {
+    return "Tvoj profil motivacije djeluje uravnoteženo, uz nešto izraženiji uticaj unutrašnjih standarda i osjećaja odgovornosti.";
+  }
+
+  if (hasControlledEmphasis) {
+    return "Tvoj profil motivacije djeluje uravnoteženo, uz nešto izraženiji uticaj unutrašnjih standarda i vanjskih očekivanja.";
+  }
+
+  return "Tvoj profil motivacije djeluje uravnoteženo, uz vidljiv spoj ličnog interesa, odgovornosti i smisla u poslu.";
+}
+
+function getMwmsSummarySignals(dimensionCards: DimensionViewModel[]): MwmsSummarySignal[] {
+  return [
+    {
+      title: "Šta te najviše pokreće",
+      value: "Odgovornost, lični standardi i želja da ispuniš očekivanja",
+    },
+    {
+      title: "Šta dodatno pomaže",
+      value: "Interes za posao i osjećaj da tvoj doprinos drugi prepoznaju",
+    },
+    {
+      title: "Mogući rizik",
+      value: "Dio motivacije može preći u pritisak ako zadaci nemaju dovoljno ličnog smisla",
+    },
+  ];
+}
+
 function isBigFiveReport(report: unknown): report is DetailedReportV1 {
   return (
     Boolean(report) &&
@@ -2719,8 +2967,11 @@ export function CompletedAssessmentSummary({
   const recommendations = getRecommendations(bigFiveReport);
   const scoreRangeLabel = isMwmsResults ? "Skala 1–7" : maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const mwmsResultsNote = isMwmsResults
-    ? "Ovaj rezultat prikazuje profil motivacije u radnom kontekstu i služi kao uvid, ne kao presuda."
+    ? "Ovaj rezultat prikazuje tvoj motivacijski profil u radnom kontekstu i služi kao uvid, ne kao presuda."
     : null;
+  const mwmsSummaryHeadline = isMwmsResults ? getMwmsSummaryHeadline(dimensionCards) : null;
+  const mwmsSummaryOneLiner = isMwmsResults ? getMwmsSummaryOneLiner(dimensionCards) : null;
+  const mwmsSummarySignals = isMwmsResults ? getMwmsSummarySignals(dimensionCards) : [];
   const shouldShowMwmsAiReport = isMwmsResults && hasResults && Boolean(mwmsParticipantReport);
   const shouldShowMwmsGuidance = isMwmsResults && hasResults && !mwmsParticipantReport;
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
@@ -2916,13 +3167,44 @@ export function CompletedAssessmentSummary({
       ) : null}
 
       {shouldShowMwmsAiReport && mwmsParticipantReport ? (
-        <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+        <section className="results-report__section results-report__section--insights results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.18)] bg-[linear-gradient(180deg,rgba(243,250,252,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_22px_48px_-44px_rgba(15,23,42,0.24)] sm:px-6 sm:pt-6 sm:pb-6">
           <div className="results-report__section-heading">
-            <h3>{mwmsParticipantReport.summary.headline}</h3>
+            <p className="results-report__section-kicker text-[11px] uppercase tracking-[0.24em] text-slate-500">
+              PARTICIPANT INSIGHT
+            </p>
+            <h3>Sažetak motivacijskog profila</h3>
           </div>
-          <p className="results-report__section-body">
-            {mwmsParticipantReport.summary.paragraph}
-          </p>
+
+          <div className="stack-sm">
+            <p className="text-[18px] font-semibold leading-[1.45] text-slate-900 sm:text-[19px]">
+              {mwmsSummaryHeadline}
+            </p>
+
+            <div className="grid gap-3.5 sm:grid-cols-3">
+              {mwmsSummarySignals.map((signal) => (
+                <div
+                  key={signal.title}
+                  className="rounded-[18px] border border-[rgba(148,163,184,0.2)] bg-[rgba(255,255,255,0.82)] px-4 py-4"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    {signal.title}
+                  </p>
+                  <p className="mt-2 text-[14px] leading-[1.62] text-slate-800">
+                    {signal.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-[18px] border border-[rgba(226,232,240,0.88)] bg-[rgba(255,255,255,0.76)] px-4 py-3.5">
+              <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-slate-500">
+                Profil u jednoj rečenici
+              </p>
+              <p className="mt-2 text-[14px] leading-[1.68] text-slate-600">
+                {mwmsSummaryOneLiner}
+              </p>
+            </div>
+          </div>
         </section>
       ) : null}
 
@@ -2977,25 +3259,79 @@ export function CompletedAssessmentSummary({
 
       {results && shouldShowRawResultsPreview ? (
         <>
-          <section className="results-report__section results-report__section--overview results-report__panel card stack-sm">
+          <section
+            className={
+              isMwmsResults
+                ? "results-report__section results-report__section--overview results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.92)] bg-[rgba(255,255,255,0.99)] px-5 pt-5 pb-5 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.28)] sm:px-6 sm:pt-6 sm:pb-6"
+                : "results-report__section results-report__section--overview results-report__panel card stack-sm"
+            }
+          >
             <div className="results-report__section-heading">
               <h3>{isMwmsResults ? "Profil motivacije" : "Pregled dimenzija"}</h3>
-              {scoreRangeLabel ? <p className="results-report__section-note">{scoreRangeLabel}</p> : null}
+              {scoreRangeLabel ? (
+                <div className="space-y-1">
+                  <p className="results-report__section-note">{scoreRangeLabel}</p>
+                  {isMwmsResults ? (
+                    <p className="text-[13px] leading-[1.6] text-slate-500">
+                      Viša vrijednost znači da je taj izvor motivacije prisutniji u tvom radnom ponašanju.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             {dimensionCards.length > 0 ? (
               <ol
-                className="results-score-overview"
+                className={
+                  isMwmsResults
+                    ? "results-score-overview grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-6"
+                    : "results-score-overview"
+                }
                 aria-label={isMwmsResults ? "Profil motivacije po subskalama" : "Pregled rezultata po dimenzijama"}
               >
-                {dimensionCards.map((dimension) => (
-                  <li key={dimension.key} className="results-score-overview__item">
-                    <div className="results-score-overview__header">
-                      <strong>{dimension.label}</strong>
-                      <span>{dimension.scoreLabel}</span>
+                {dimensionCards.map((dimension, index) => (
+                  <li
+                    key={dimension.key}
+                    className={
+                      isMwmsResults
+                        ? `results-score-overview__item rounded-[18px] border border-[rgba(226,232,240,0.86)] bg-[rgba(248,250,252,0.72)] px-4 py-[18px] sm:px-[18px] sm:py-5 ${
+                            index === 0 ? "!pt-[18px] sm:!pt-5" : ""
+                          }`
+                        : "results-score-overview__item"
+                    }
+                  >
+                    <div
+                      className={
+                        isMwmsResults
+                          ? "flex items-start justify-between gap-5"
+                          : "results-score-overview__header"
+                      }
+                    >
+                      <div className="min-w-0 space-y-2.5 pr-2">
+                        <strong className="block text-[15px] leading-[1.45] text-slate-900">
+                          {dimension.label}
+                        </strong>
+                        {isMwmsResults ? (
+                          <p className="text-[11.5px] leading-[1.45] text-slate-500">
+                            {getMwmsDimensionMicroDescription(dimension.key)}
+                          </p>
+                        ) : null}
+                        {isMwmsResults ? (
+                          <span
+                            className={`inline-flex w-fit max-w-full items-center rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase ${getMwmsBandPillClassName(dimension.score)}`}
+                          >
+                            {getMwmsBandLabel(dimension.score)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className={isMwmsResults ? "shrink-0 pr-1 text-right" : ""}>
+                        <span className="text-[14px] font-medium text-slate-700">
+                          {dimension.scoreLabel}
+                        </span>
+                      </div>
                     </div>
                     <div
-                      className="results-score-overview__bar"
+                      className={`results-score-overview__bar${isMwmsResults ? " mt-[18px]" : ""}`}
                       role="img"
                       aria-label={`${dimension.label} skor ${dimension.score}`}
                     >
@@ -3140,67 +3476,73 @@ export function CompletedAssessmentSummary({
 
       {shouldShowMwmsAiReport && mwmsParticipantReport ? (
         <div className="results-report__closing stack-md">
-          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+          <section className="results-report__section results-report__section--insights results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 pt-5 pb-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.22)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
-              <h3>Obrazac motivacije</h3>
+              <h3>Šta ovaj obrazac znači u radu</h3>
             </div>
-            <div className="results-report__section-body stack-xs">
-              <p>{mwmsParticipantReport.motivation_pattern.autonomous}</p>
-              <p>{mwmsParticipantReport.motivation_pattern.controlled}</p>
-              <p>{mwmsParticipantReport.motivation_pattern.amotivation}</p>
+            <div className="space-y-3 text-[14px] leading-[1.76] text-slate-700 sm:text-[14.5px]">
+              <p>{normalizeMwmsCopy(mwmsParticipantReport.motivation_pattern.autonomous)}</p>
+              <p>{normalizeMwmsCopy(mwmsParticipantReport.motivation_pattern.controlled)}</p>
+              <p>{normalizeMwmsCopy(mwmsParticipantReport.motivation_pattern.amotivation)}</p>
             </div>
           </section>
 
-          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+          <section className="results-report__section results-report__section--insights results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 pt-5 pb-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.22)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
               <h3>Ključni uvidi</h3>
             </div>
-            <ul className="results-bullet-list">
+            <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
               {mwmsParticipantReport.key_observations.map((item) => (
-                <li key={item}>{item}</li>
+                <li key={item}>{normalizeMwmsCopy(item)}</li>
               ))}
             </ul>
           </section>
 
-          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+          <section className="results-report__section results-report__section--insights results-report__panel rounded-[24px] border border-[rgba(148,163,184,0.2)] bg-[linear-gradient(180deg,rgba(248,250,252,0.9),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_18px_40px_-44px_rgba(15,23,42,0.18)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
-              <h3>Moguće napetosti</h3>
+              <h3>Na šta obratiti pažnju</h3>
             </div>
-            <ul className="results-bullet-list">
+            <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
               {mwmsParticipantReport.possible_tensions.map((item) => (
-                <li key={item}>{item}</li>
+                <li key={item}>{normalizeMwmsCopy(item)}</li>
               ))}
             </ul>
           </section>
 
-          <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">
+          <section className="results-report__section results-report__section--recommendations results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.16)] bg-[linear-gradient(180deg,rgba(247,251,253,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_22px_48px_-42px_rgba(17,138,178,0.2)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
-              <h3>Pitanja za razmišljanje</h3>
+              <h3 className="!text-[1.5rem] !font-semibold !leading-[1.08] !tracking-[-0.04em] !text-[#1f1b18]">
+                Razvojne smjernice
+              </h3>
             </div>
-            <ul className="results-bullet-list">
-              {mwmsParticipantReport.reflection_questions.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="results-report__section results-report__section--recommendations results-report__panel card stack-sm">
-            <div className="results-report__section-heading">
-              <h3>Razvojne smjernice</h3>
-            </div>
-            <ul className="results-bullet-list">
+            <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
               {mwmsParticipantReport.development_suggestions.map((item) => (
-                <li key={item}>{item}</li>
+                <li key={item}>{normalizeMwmsCopy(item)}</li>
               ))}
             </ul>
           </section>
 
-          <section className="results-report__section results-report__section--conclusion results-report__panel card stack-sm">
+          <section className="results-report__section results-report__section--insights results-report__panel rounded-[22px] border border-[rgba(226,232,240,0.88)] bg-[rgba(248,250,252,0.72)] px-5 pt-5 pb-5 shadow-[0_14px_34px_-40px_rgba(15,23,42,0.18)] sm:px-6">
             <div className="results-report__section-heading">
-              <h3>Napomena o interpretaciji</h3>
+              <h3 className="!text-[1.5rem] !font-semibold !leading-[1.08] !tracking-[-0.04em] !text-[#1f1b18]">
+                Pitanja za refleksiju
+              </h3>
             </div>
-            <p className="results-report__section-body">
-              {mwmsParticipantReport.interpretation_note}
+            <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
+              {mwmsParticipantReport.reflection_questions.map((item) => (
+                <li key={item}>{normalizeMwmsCopy(item)}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="results-report__section results-report__section--conclusion results-report__panel rounded-[16px] border border-[rgba(226,232,240,0.86)] bg-[rgba(248,250,252,0.54)] px-3.5 py-3 shadow-[0_6px_16px_-20px_rgba(15,23,42,0.12)] sm:px-4 sm:py-3.5">
+            <div className="results-report__section-heading gap-1.5">
+              <h3 className="!text-[10px] sm:!text-[10.5px] !font-medium !leading-[1.1] !tracking-[0.08em] !text-slate-600">
+                Interpretacijska napomena
+              </h3>
+            </div>
+            <p className="text-[12px] leading-[1.6] text-slate-500 sm:text-[12.5px]">
+              {normalizeMwmsCopy(mwmsParticipantReport.interpretation_note)}
             </p>
           </section>
         </div>

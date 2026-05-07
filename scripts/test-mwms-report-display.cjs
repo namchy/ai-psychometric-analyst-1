@@ -290,11 +290,17 @@ for (const expectedText of [
   "Napomena o interpretaciji",
   "Naredni korak",
   "Amotivacija",
+  "Manjak smisla ili energije",
   "Ekstrinzična motivacija — socijalna",
+  "Priznanje i očekivanja drugih",
   "Ekstrinzična motivacija — materijalna",
+  "Nagrada, sigurnost ili korist",
   "Introjektirana motivacija",
+  "Obaveza i unutrašnji pritisak",
   "Identificirana motivacija",
+  "Posao koji ti je važan",
   "Intrinzična motivacija",
+  "Interes i zadovoljstvo u radu",
 ]) {
   assert.equal(
     mwmsRenderOutput.includes(expectedText),
@@ -304,13 +310,23 @@ for (const expectedText of [
 }
 
 for (const expectedText of [
-  "Tvoj profil pokazuje kombinaciju različitih izvora radne motivacije.",
-  "Obrazac motivacije",
+  "PARTICIPANT INSIGHT",
+  "Sažetak motivacijskog profila",
+  "Profil u jednoj rečenici",
+  "Šta te najviše pokreće",
+  "Šta dodatno pomaže",
+  "Mogući rizik",
+  "Šta ovaj obrazac znači u radu",
   "Ključni uvidi",
-  "Moguće napetosti",
-  "Pitanja za razmišljanje",
+  "Na šta obratiti pažnju",
   "Razvojne smjernice",
-  "Napomena o interpretaciji",
+  "Pitanja za refleksiju",
+  "Interpretacijska napomena",
+  "Tvoji najizraženiji izvori motivacije su",
+  "tvom radnom ponašanju",
+  "Odgovornost, lični standardi i želja da ispuniš očekivanja",
+  "Interes za posao i osjećaj da tvoj doprinos drugi prepoznaju",
+  "Dio motivacije može preći u pritisak ako zadaci nemaju dovoljno ličnog smisla",
 ]) {
   assert.equal(
     mwmsAiRenderOutput.includes(expectedText),
@@ -339,6 +355,13 @@ for (const forbiddenText of [
   "pass/fail",
   "hire/no-hire",
   "V1",
+  "Obrazac motivacije",
+  "Moguće napetosti",
+  "Pitanja za razmišljanje",
+  "Kod Vas su",
+  "Vaš profil",
+  "Vašem radnom ponašanju",
+  "tvojem radnom ponašanju",
 ]) {
   assert.equal(
     mwmsRenderOutput.includes(forbiddenText),
@@ -349,6 +372,40 @@ for (const forbiddenText of [
     mwmsAiRenderOutput.includes(forbiddenText),
     false,
     `Expected ready MWMS AI render output to exclude: ${forbiddenText}`,
+  );
+}
+
+assert.equal(mwmsAiRenderOutput.includes("Napomena o interpretaciji"), false);
+
+for (const forbiddenFormalText of [
+  " Vi ",
+  " Vam ",
+  " Vas ",
+  " Vaš ",
+  " Vaša ",
+  " Vaše ",
+  " Vašem ",
+  " Vašim ",
+  " Vaši ",
+  " kod Vas",
+  "pokušajte",
+  "razmislite",
+  "obratite",
+  "koristite",
+  "prepoznajte",
+  "pratite",
+  "zastanite",
+  "razdvojite",
+  "osjećate",
+  "radite",
+  "želite",
+  "morate",
+  "možete",
+]) {
+  assert.equal(
+    mwmsAiRenderOutput.includes(forbiddenFormalText),
+    false,
+    `Expected ready MWMS AI render output to exclude formal address fragment: ${forbiddenFormalText}`,
   );
 }
 
