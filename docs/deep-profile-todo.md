@@ -44,7 +44,8 @@ Komande:
 | P1        | HR report locale / i18n readiness policy            | Završeno    | i18n / Report architecture   | Zatvoreno nakon upisa locale-aware pravila u HR report spec i backlog: MVP ostaje bs-only, ali HR architecture razlikuje assessment locale, participant report locale, HR report locale i report locale. |
 | P1        | HR report locale/i18n audit                         | Završeno    | i18n / Report pipeline audit | Zatvoreno read-only auditom koji je mapirao postojeće locale izvore, prompt-version lokalizacije, snapshot praznine i bosanski hardcoding rizike. |
 | P1        | Persisted report locale guardrails for future HR lanes | Završeno | i18n / Report pipeline | Zatvoreno nakon uvođenja centralnog `ReportLocale` / `resolveReportLocale(...)` guardraila i uklanjanja nepotrebnog `"bs"` hardcodinga iz poznatih report generation fallback path-eva. |
-| P1        | SAFRAN HR report V1                                 | Planirano   | HR report / SAFRAN           | Implementirati HR-facing SAFRAN report nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
+| P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | MWMS HR report V1                                   | Planirano   | HR report / MWMS             | Implementirati HR-facing motivacijski report nakon eksplicitnog HR retrievala i locale readiness pravila. |
 | P1        | Composite HR report data model decision             | Planirano   | Architecture / HR report storage | Odlučiti da li composite HR report ide kroz privremeni `attempt_reports` bridge ili kroz novi `assessment_reports` / assessment-level model. |
 | P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
@@ -439,7 +440,7 @@ Završeno kroz uvođenje centralnog `ReportLocale = AssessmentLocale` i `resolve
 
 ### P1 — SAFRAN HR report V1
 
-**Status:** Planirano  
+**Status:** Završeno  
 **Kategorija:** HR report / SAFRAN
 
 **Problem / context:**  
@@ -468,6 +469,41 @@ SAFRAN trenutno ima participant report lane, ali nema HR report lane. HR report 
 - report koristi deterministic SAFRAN scores kao input
 - AI ne računa niti mijenja score/band
 - report nema IQ, percentile, norme ili hire/no-hire odluke
+
+**Completion note:**  
+Završeno kroz izolovani SAFRAN HR V1 contract/input/validator sloj, mock runtime lane, OpenAI provider branch, runtime validation, HR-only retrieval, SAFRAN HR renderer i realni lifecycle smoke. Report se generiše kao audience='hr', source_type='single_test', report_type='individual', koristi deterministic SAFRAN score rezultate kao input, a AI ne računa niti mijenja score/band. OpenAI smoke je potvrđen na stvarnom attempt_reports toku sa generator_type='openai', model_name='gpt-5.4', report_status='ready' i report_snapshot.reportType='safran_hr_report_v1'. Browser smoke je potvrdio prikaz na HR route-u. Završni copy polish je uskladio cognitiveSignals, pointsOfCaution, interviewQuestions, onboardingGuidance i interpretationLimits za oprezan, HR-koristan V1 report bez IQ, percentila, normi i hire/no-hire jezika.
+
+---
+
+### P1 — HR candidate assessment detail page
+
+**Status:** Završeno  
+**Kategorija:** HR dashboard / Report navigation
+
+**Problem / context:**  
+HR dashboard je ranije imao CTA “Pogledaj procjenu” koji je vodio direktno na jedan attempt route. To je postalo pogrešno kada kandidat ima više testova i više HR report artefakata. U stvarnom slučaju dashboard je vodio na IPIP attempt sa queued HR reportom, iako je za istog kandidata postojao ready SAFRAN HR report.
+
+**Scope:**
+- dodati participant-level HR assessment detail rutu
+- dashboard CTA vodi na /dashboard/participants/[participantId]/reports
+- detail page prikazuje IPIP, SAFRAN i MWMS report kartice
+- ready HR report kartica vodi na /dashboard/attempts/[attemptId]
+- queued/processing/failed/not assigned/in progress stanja prikazati jasno
+- composite HR report prikazati samo kao placeholder/status
+- ne uvoditi composite generation
+- ne uvoditi novu DB tabelu
+- ne koristiti participant report kao HR fallback
+
+**Acceptance criteria:**
+- dashboard CTA ne vodi direktno na nasumični/primarni attempt
+- HR vidi sve relevantne report kartice za kandidata
+- ready SAFRAN HR report je dostupan kroz SAFRAN karticu
+- IPIP queued HR report ne blokira pristup ready SAFRAN HR reportu
+- participant report se ne koristi kao HR fallback
+- single report route ostaje /dashboard/attempts/[attemptId]
+
+**Completion note:**  
+Završeno uvođenjem /dashboard/participants/[participantId]/reports detail stranice. Dashboard CTA sada vodi na participant-level pregled procjene, gdje HR vidi IPIP, SAFRAN i MWMS kartice, dostupnost HR reportova i composite placeholder. SAFRAN ready kartica vodi na postojeću /dashboard/attempts/[attemptId] rutu. Model/helper logika čita samo HR artefakte filtrirane po audience='hr', report_type='individual' i source_type='single_test', pa participant report ne može postati HR fallback. Browser smoke je potvrdio flow dashboard → candidate assessment detail page → SAFRAN ready card → SAFRAN HR report.
 
 ---
 
@@ -577,7 +613,8 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 | P1        | HR report locale / i18n readiness policy | Završeno | HR report architecture mora ostati locale-aware od početka iako MVP ostaje bosanski. | Zatvoreno nakon dokumentovanja locale modela i pravila za assessment/report locale razdvajanje u backlogu i HR spec-u. |
 | P1        | HR report locale/i18n audit | Završeno | Treba mapirati gdje report pipeline već nosi locale, a gdje hardcodira bosanski sadržaj. | Zatvoreno read-only auditom koji je mapirao locale izvore, snapshot praznine i bosanski hardcoding rizike. |
 | P1        | Persisted report locale guardrails for future HR lanes | Završeno | Budući HR report lane-ovi ne smiju ulaziti u pipeline bez centralnog locale guardraila i bez kontrole fallback `"bs"` ponašanja. | Zatvoreno nakon `ReportLocale` / `resolveReportLocale(...)` guardraila i uklanjanja nepotrebnog `"bs"` hardcodinga iz poznatih fallback path-eva. |
-| P1        | SAFRAN HR report V1       | Planirano | SAFRAN ima participant lane, ali nema HR-facing report sa opreznim kognitivnim guardrailima. | Raditi nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | SAFRAN HR report V1       | Završeno | SAFRAN HR report lane je zatvoren sa contract/input/validator slojem, mock/OpenAI runtime-om, HR-only retrievalom i browser potvrdom. | Zatvoreno nakon realnog OpenAI smoke-a, HR route prikaza i završnog copy polish-a. |
+| P1        | HR candidate assessment detail page | Završeno | Dashboard CTA sada vodi na participant-level pregled procjene umjesto na nasumični ili primarni attempt. | Zatvoreno nakon detail stranice sa IPIP/SAFRAN/MWMS karticama i composite placeholderom. |
 | P1        | MWMS HR report V1         | Planirano | MWMS ima participant lane, ali nema HR-facing motivacijski report za intervju/onboarding/management uvide. | Raditi nakon eksplicitnog HR retrievala i locale readiness pravila. |
 | P1        | Composite HR report data model decision | Planirano | Composite HR report nema prirodan jedan attempt_id i traži storage odluku prije implementacije. | Procijeniti `attempt_reports` bridge naspram `assessment_reports` / assessment-level modela. |
 | P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
@@ -665,16 +702,18 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Oblik obraćanja
-2. Kompozitni AI profil IPIP + SAFRAN + MWMS
-3. Report visual language po testovima
-4. SAFRAN novi stimulus asseti
-5. Logo u headeru
-6. Login screen UI polish
+1. MWMS HR report V1
+2. Composite HR report data model decision
+3. Composite HR report V1
+4. Oblik obraćanja: muški/ženski jezički oblik
+5. Report visual language po testovima
+6. SAFRAN novi stimulus asseti
+7. Logo u headeru
+8. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
-* `MWMS pitanja / item UX`, `MWMS AI report copy ton` i `IPIP radar chart` su završeni. Sljedeći logičan task je `Oblik obraćanja` jer utiče na sve buduće participant reporte i sprječava ručno krpljenje `ti/vi` forme po pojedinačnim testovima.
+* Nakon zatvaranja SAFRAN HR reporta V1 i HR candidate assessment detail flow-a, najlogičniji nastavak HR report lane-a je MWMS HR report V1, kako bi single-test HR temelji bili pokriveni prije composite HR report data model odluke i composite reporta.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -786,12 +825,44 @@ Zaključak:
 | Tema                   | Ideja                                                          | Kada razmatrati                                                   |
 | ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Composite report UI    | Dizajnirati poseban composite ekran, ne samo još jedan report. | Nakon definisanja composite input/schema.                         |
-| HR-facing MWMS report  | Poseban HR report za motivacijski profil kandidata.            | Nakon composite arhitekture ili ako HR dashboard to prvo zatraži. |
+| HR-facing MWMS report  | MWMS HR report V1 je sada P1 aktivni task; parking lot zadržava samo kasnije napredne varijante, npr. role-specific MWMS guidance. | Nakon zatvaranja MWMS HR reporta V1 i osnovnog HR report lane-a. |
 | Report visual language | Svaki test treba imati svoj prikladan vizuelni summary.        | Nakon zatvaranja addressing taska i definisanja narednog participant polish sloja. |
 
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-08 — SAFRAN HR report V1 i HR candidate assessment detail završeni
+
+Završeno:
+
+* SAFRAN HR V1 contract/input/validator sloj
+* SAFRAN HR mock runtime lane
+* SAFRAN HR OpenAI provider branch
+* mandatory HR guardrails u default i DB prompt path-u
+* provider enforcement u lifecycle smoke skripti
+* SAFRAN HR renderer
+* HR-only retrieval bez participant fallbacka
+* realni OpenAI lifecycle smoke sa generator_type='openai'
+* browser smoke SAFRAN HR reporta
+* završni SAFRAN HR copy polish
+* HR candidate assessment detail page sa report karticama za IPIP, SAFRAN i MWMS
+* composite placeholder bez generation logike
+
+Odluke:
+
+* SAFRAN HR report je single-test HR artefakt, ne composite report.
+* AI interpretira deterministic SAFRAN rezultate, ali ne računa i ne mijenja score/band.
+* HR report mora ostati decision-support, ne odluka o zapošljavanju.
+* Dashboard CTA “Pogledaj procjenu” ne vodi direktno na attempt, nego na participant-level assessment detail page.
+* Single report route /dashboard/attempts/[attemptId] ostaje mjesto za prikaz konkretnog HR reporta.
+* Points of caution u HR reportu moraju biti stvarne HR hipoteze/tačke opreza, ne pozitivni signali ubačeni u pogrešnu sekciju.
+
+Racionala:
+
+* HR mora moći vidjeti koji su reporti dostupni po kandidatu, umjesto da dashboard slučajno otvori queued ili nepodržani attempt.
+* Single-test HR reportovi su temelj za kasniji composite HR report.
+* SAFRAN HR report zatvara kognitivni HR signal lane i priprema teren za MWMS HR report i composite HR report.
 
 ### 2026-05-07 — HR report taskovi grupisani nakon pipeline audita
 
