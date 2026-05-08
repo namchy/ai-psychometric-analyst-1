@@ -26,6 +26,7 @@ import {
   mwmsParticipantReportV1OpenAiSchema,
   validateMwmsParticipantReportV1,
 } from "@/lib/assessment/mwms-participant-report-v1";
+import type { SafranHrReportInput } from "@/lib/assessment/safran-hr-report-v1";
 import type { SafranAiReportInput } from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
   formatSafranParticipantAiReportValidationErrors,
@@ -92,6 +93,16 @@ function isSafranParticipantPromptInput(
     "test" in promptInput &&
     promptInput.test.slug === "safran_v1" &&
     promptInput.test.audience === "participant"
+  );
+}
+
+function isSafranHrPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is SafranHrReportInput {
+  return (
+    "test" in promptInput &&
+    promptInput.test.slug === "safran_v1" &&
+    promptInput.test.audience === "hr"
   );
 }
 
@@ -229,6 +240,15 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
             `${dimension.code} (${dimension.label}): raw_score=${dimension.raw_score}, short_description=${dimension.short_description}`,
         )
         .join(" | ");
+    }
+
+    if (isSafranHrPromptInput(input.promptInput)) {
+      return [
+        `overall=${input.promptInput.scores.overall.scoreLabel}/${input.promptInput.scores.overall.bandLabel}`,
+        `verbal=${input.promptInput.scores.verbal.scoreLabel}/${input.promptInput.scores.verbal.bandLabel}`,
+        `figural=${input.promptInput.scores.figural.scoreLabel}/${input.promptInput.scores.figural.bandLabel}`,
+        `numeric=${input.promptInput.scores.numeric.scoreLabel}/${input.promptInput.scores.numeric.bandLabel}`,
+      ].join(" | ");
     }
 
     return [
@@ -408,6 +428,10 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
         },
         input: input.promptInput,
       });
+    }
+
+    if (isSafranHrPromptInput(input.promptInput)) {
+      throw new Error("SAFRAN HR OpenAI provider path is not enabled in this slice.");
     }
 
     if (isMwmsParticipantPromptInput(input.promptInput)) {

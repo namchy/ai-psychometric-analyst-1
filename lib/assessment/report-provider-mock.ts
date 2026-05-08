@@ -43,6 +43,12 @@ import {
   formatSafranParticipantAiReportValidationErrors,
   validateSafranParticipantAiReport,
 } from "@/lib/assessment/safran-participant-ai-report-v1";
+import type { SafranHrReportInput } from "@/lib/assessment/safran-hr-report-v1";
+import {
+  buildMockSafranHrReportV1,
+  formatSafranHrReportValidationErrors,
+  validateSafranHrReport,
+} from "@/lib/assessment/safran-hr-report-v1";
 import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
@@ -1064,6 +1070,24 @@ function buildSafranParticipantMockReport(
   return validationResult.value;
 }
 
+function buildSafranHrMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as SafranHrReportInput;
+  const report = buildMockSafranHrReportV1(promptInput);
+  const validationResult = validateSafranHrReport(report, {
+    expectedInput: promptInput,
+  });
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock SAFRAN HR report failed validation: ${formatSafranHrReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
 function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
   if ("domains" in input.promptInput) {
     if (input.promptInput.audience === "hr") {
@@ -1082,6 +1106,10 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
   }
 
   if ("test" in input.promptInput && input.promptInput.test.slug === "safran_v1") {
+    if (input.promptInput.test.audience === "hr") {
+      return buildSafranHrMockReport(input);
+    }
+
     return buildSafranParticipantMockReport(input);
   }
 

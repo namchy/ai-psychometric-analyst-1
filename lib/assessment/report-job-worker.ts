@@ -548,10 +548,14 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
     );
   }
 
-  if (isSafranTestSlug(job.test_slug) && job.audience !== "participant") {
+  if (
+    isSafranTestSlug(job.test_slug) &&
+    job.audience === "hr" &&
+    job.generator_type !== "mock"
+  ) {
     throw new ReportJobError(
       "CONFIG_ERROR",
-      "SAFRAN V1 AI report supports participant reports only.",
+      "SAFRAN HR report V1 mock runtime integration supports mock provider only.",
     );
   }
 
