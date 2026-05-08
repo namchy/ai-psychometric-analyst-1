@@ -199,6 +199,21 @@ function buildDefaultSystemPrompt(input: PreparedReportGenerationInput): string 
   return baseLines.join(" ");
 }
 
+export function buildSafranHrMandatoryPromptGuardrails(): string {
+  return [
+    "SAFRAN HR mandatory guardrails:",
+    "executiveSummary.summary must be a cautious HR hypothesis, not a conclusion, verdict or selection decision.",
+    'executiveSummary.summary must explicitly use hypothesis wording such as "Ovaj rezultat može ukazivati...", "Ovo treba čitati kao hipotezu za provjeru..." or "Signal treba provjeriti kroz intervju, iskustvo i kontekst uloge."',
+    "executiveSummary.summary must not sound final, absolute, diagnostic or hire/no-hire oriented.",
+    "interpretationLimits must include at least one sentence stating that results should be read together with experience, interview and role context.",
+    'interpretationLimits must include the idea: "čitati zajedno sa iskustvom, intervjuom i kontekstom uloge."',
+    "interpretationLimits must state that the report is not a hiring decision.",
+    "interpretationLimits must state that SAFRAN is not IQ, norma or percentil.",
+    "interpretationLimits must state that the cognitive signal is a hypothesis for checking, not a final conclusion.",
+    "Forbidden language: IQ, kvocijent inteligencije, intelligent/inteligentan, neinteligentan, iznadprosječan, ispodprosječan, percentile, percentil, norma, normativno poređenje, hiring score, hire/no-hire recommendation, red flag, rizičan kandidat, idealni kandidat.",
+  ].join("\n");
+}
+
 function buildDimensionHintText(input: PreparedReportGenerationInput): string {
   if (isIpipNeo120ParticipantPromptInput(input.promptInput)) {
     return input.promptInput.domains
@@ -592,7 +607,13 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
 }
 
 function buildSystemPrompt(input: PreparedReportGenerationInput): string {
-  return input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input);
+  const basePrompt = input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input);
+
+  if (!isSafranHrPromptInput(input.promptInput)) {
+    return basePrompt;
+  }
+
+  return `${basePrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
 }
 
 function getPromptInputLocale(input: ReportPromptInput): string {
@@ -634,16 +655,20 @@ function applyPromptTemplate(
   return rendered;
 }
 
-function buildUserPrompt(input: PreparedReportGenerationInput): string {
+export function buildUserPrompt(input: PreparedReportGenerationInput): string {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
     return buildDefaultUserPrompt(input);
   }
 
-  if (!input.promptTemplate) {
-    return buildDefaultUserPrompt(input);
+  const basePrompt = !input.promptTemplate
+    ? buildDefaultUserPrompt(input)
+    : applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
+
+  if (!isSafranHrPromptInput(input.promptInput)) {
+    return basePrompt;
   }
 
-  return applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
+  return `${basePrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
 }
 
 function parseStructuredContent(content: string): unknown {

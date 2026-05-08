@@ -62,7 +62,9 @@ const {
   buildPreparedReportGenerationInput,
 } = require("../lib/assessment/report-provider-helpers.ts");
 const {
+  buildSafranHrMandatoryPromptGuardrails,
   buildDefaultUserPrompt,
+  buildUserPrompt,
   resolveOpenAiResponseFormatSchemaForInput,
   validateStructuredReport,
 } = require("../lib/assessment/report-provider-openai.ts");
@@ -126,6 +128,30 @@ function buildPreparedInput(audience) {
   );
 }
 
+function buildPromptTemplateOverride(audience) {
+  return {
+    id: `prompt-version-${audience}`,
+    testId: "test-safran",
+    reportType: "individual",
+    audience,
+    sourceType: "single_test",
+    generatorType: "openai",
+    promptKey:
+      audience === "hr" ? "safran_hr_report_v1" : "safran_participant_ai_report_v1",
+    version: "v-db",
+    systemPrompt: `DB system prompt for ${audience} {{prompt_version}}`,
+    userPromptTemplate:
+      audience === "hr"
+        ? "DB HR prompt {{prompt_version_id}} {{locale}} {{test_slug}} {{dimension_hint_text}} {{prompt_input_json}}"
+        : "DB participant prompt {{prompt_version_id}} {{locale}} {{test_slug}} {{prompt_input_json}}",
+    outputSchemaJson: null,
+    notes: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    updatedBy: null,
+  };
+}
+
 function main() {
   const hrInput = buildPreparedInput("hr");
   const participantInput = buildPreparedInput("participant");
@@ -168,6 +194,37 @@ function main() {
     hrPrompt.instructions.hard_guardrails.some((item) => /participant/i.test(item)),
     false,
   );
+
+  const hrInputWithPromptTemplate = {
+    ...hrInput,
+    promptTemplate: buildPromptTemplateOverride("hr"),
+    promptVersionId: "prompt-version-hr",
+  };
+  const participantInputWithPromptTemplate = {
+    ...participantInput,
+    promptTemplate: buildPromptTemplateOverride("participant"),
+    promptVersionId: "prompt-version-participant",
+  };
+  const hrFinalPrompt = buildUserPrompt(hrInputWithPromptTemplate);
+  const participantFinalPrompt = buildUserPrompt(participantInputWithPromptTemplate);
+  const mandatoryGuardrails = buildSafranHrMandatoryPromptGuardrails();
+
+  assert.match(hrFinalPrompt, /DB HR prompt/);
+  assert.match(hrFinalPrompt, /prompt-version-hr/);
+  assert.match(hrFinalPrompt, /executiveSummary\.summary/);
+  assert.match(hrFinalPrompt, /interpretationLimits/);
+  assert.match(
+    hrFinalPrompt,
+    /cautious HR hypothesis|Ovaj rezultat može ukazivati|hipotezu za provjeru/i,
+  );
+  assert.match(
+    hrFinalPrompt,
+    /experience|interview|role context|iskustvom, intervjuom i kontekstom uloge/i,
+  );
+  assert.match(hrFinalPrompt, /SAFRAN HR mandatory guardrails/);
+  assert.match(mandatoryGuardrails, /executiveSummary\.summary/);
+  assert.doesNotMatch(participantFinalPrompt, /SAFRAN HR mandatory guardrails/);
+  assert.doesNotMatch(participantFinalPrompt, /cautious HR hypothesis|role context/);
 
   const participantPrompt = JSON.parse(buildDefaultUserPrompt(participantInput));
   assert.equal(participantPrompt.input.test.audience, "participant");
