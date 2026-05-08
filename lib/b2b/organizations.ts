@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getAssessmentAttemptLifecycle, type AssessmentAttemptLifecycle } from "@/lib/assessment/attempt-lifecycle";
+import type { AttemptReportStatus } from "@/lib/assessment/report-providers";
 import { STANDARD_ASSESSMENT_BATTERY_SLUGS } from "@/lib/assessment/standard-battery";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -72,6 +73,20 @@ export type OrganizationScopedAttemptSummary = {
   } | null;
 };
 
+export type OrganizationScopedAttemptReportSummary = {
+  id: string;
+  attempt_id: string;
+  test_slug: string;
+  audience: "participant" | "hr";
+  report_type: string;
+  source_type: string;
+  report_status: AttemptReportStatus;
+  generated_at: string;
+  completed_at: string | null;
+  failure_code: string | null;
+  failure_reason: string | null;
+};
+
 type AttemptRelation<T> = T | T[] | null;
 
 type MembershipRow = {
@@ -116,6 +131,8 @@ type AttemptRow = {
 type AttemptResponseRow = {
   attempt_id: string;
 };
+
+type AttemptReportRow = OrganizationScopedAttemptReportSummary;
 
 type OrganizationRunnableStandardBatteryTestRow = {
   test_id: string;
@@ -504,4 +521,40 @@ export async function getAttemptsForOrganization(
 
       return Date.parse(right.started_at) - Date.parse(left.started_at);
     });
+}
+
+export async function getAttemptsForParticipantInOrganization(
+  organizationId: string,
+  participantId: string,
+): Promise<OrganizationScopedAttemptSummary[]> {
+  const attempts = await getAttemptsForOrganization(organizationId);
+
+  return attempts.filter((attempt) => attempt.participant_id === participantId);
+}
+
+export async function getHrAttemptReportsForAttemptIds(
+  attemptIds: string[],
+): Promise<OrganizationScopedAttemptReportSummary[]> {
+  if (attemptIds.length === 0) {
+    return [];
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select(
+      "id, attempt_id, test_slug, audience, report_type, source_type, report_status, generated_at, completed_at, failure_code, failure_reason",
+    )
+    .in("attempt_id", attemptIds)
+    .eq("audience", "hr")
+    .eq("report_type", "individual")
+    .eq("source_type", "single_test")
+    .order("generated_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load HR attempt reports: ${error.message}`);
+  }
+
+  return (data ?? []) as AttemptReportRow[];
 }

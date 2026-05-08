@@ -26,9 +26,8 @@ import {
   getAttemptsForOrganization,
   type MembershipSummary,
   type OrganizationRunnableStandardBatteryTestSummary,
-  type OrganizationScopedAttemptSummary,
-  type ParticipantSummary,
 } from "@/lib/b2b/organizations";
+import { buildParticipantAssessmentRows } from "@/lib/dashboard/hr-candidate-assessment";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 
 type DashboardPageProps = {
@@ -44,61 +43,7 @@ type ParticipantProvisioningFlash = {
   };
 };
 
-type AssessmentAggregateStatus =
-  | "Čeka kandidata"
-  | "U toku"
-  | "Djelimično završeno"
-  | "Spremno za pregled"
-  | "Traži pažnju";
-
 type AssessmentFilterKey = "all" | "in-progress" | "review-ready" | "attention";
-
-type HrFriendlyTestStatus =
-  | "Završeno"
-  | "U toku"
-  | "Čeka"
-  | "Nije dodijeljeno"
-  | "Arhivirano"
-  | "Greška";
-
-type ParticipantAssessmentRow = {
-  participant: ParticipantSummary;
-  totalTests: number;
-  completedTests: number;
-  hasOpenAssessment: boolean;
-  aggregateStatus: AssessmentAggregateStatus;
-  primaryAction:
-    | {
-        kind: "create";
-        label: "Dodijeli procjenu";
-      }
-    | {
-        kind: "info";
-        label: "Čeka kandidata" | "Traži pažnju";
-        note: string;
-      }
-    | {
-        kind: "link";
-        label: "Pogledaj procjenu";
-        href: string;
-      };
-  testItems: Array<{
-    key: string;
-    shortLabel: string;
-    status: HrFriendlyTestStatus;
-  }>;
-};
-
-type StandardBatteryDisplayTest = {
-  slug: "ipip-neo-120-v1" | "safran_v1" | "mwms_v1";
-  shortLabel: "IPIP-NEO-120" | "SAFRAN" | "MWMS";
-};
-
-const STANDARD_BATTERY_DISPLAY_TESTS: readonly StandardBatteryDisplayTest[] = [
-  { slug: "ipip-neo-120-v1", shortLabel: "IPIP-NEO-120" },
-  { slug: "safran_v1", shortLabel: "SAFRAN" },
-  { slug: "mwms_v1", shortLabel: "MWMS" },
-] as const;
 
 const PARTICIPANT_CREDENTIALS_COOKIE = "participant-provisioning-flash";
 
@@ -228,189 +173,6 @@ function getStringParam(value: string | string[] | undefined): string | null {
   return null;
 }
 
-function getTestStatusLabel(attempt: OrganizationScopedAttemptSummary | null): HrFriendlyTestStatus {
-  if (!attempt) {
-    return "Nije dodijeljeno";
-  }
-
-  if (attempt.lifecycle === "completed") {
-    return "Završeno";
-  }
-
-  if (attempt.lifecycle === "in_progress") {
-    return "U toku";
-  }
-
-  if (attempt.lifecycle === "not_started") {
-    return "Čeka";
-  }
-
-  if (attempt.lifecycle === "abandoned") {
-    return "Arhivirano";
-  }
-
-  return "Greška";
-}
-
-function selectRelevantAttempt(attempts: OrganizationScopedAttemptSummary[]): OrganizationScopedAttemptSummary | null {
-  if (attempts.length === 0) {
-    return null;
-  }
-
-  const priority = (attempt: OrganizationScopedAttemptSummary) => {
-    switch (attempt.lifecycle) {
-      case "completed":
-        return 0;
-      case "in_progress":
-        return 1;
-      case "not_started":
-        return 2;
-      case "abandoned":
-        return 3;
-      default:
-        return 4;
-    }
-  };
-
-  return [...attempts].sort((left, right) => {
-    const priorityDifference = priority(left) - priority(right);
-
-    if (priorityDifference !== 0) {
-      return priorityDifference;
-    }
-
-    const leftTimestamp = Date.parse(left.completed_at ?? left.started_at);
-    const rightTimestamp = Date.parse(right.completed_at ?? right.started_at);
-    return rightTimestamp - leftTimestamp;
-  })[0] ?? null;
-}
-
-function buildParticipantAssessmentRows(input: {
-  participants: ParticipantSummary[];
-  attempts: OrganizationScopedAttemptSummary[];
-  standardBatteryTests: OrganizationRunnableStandardBatteryTestSummary[];
-}): ParticipantAssessmentRow[] {
-  const attemptsByParticipantId = new Map<string, OrganizationScopedAttemptSummary[]>();
-
-  for (const attempt of input.attempts) {
-    if (!attempt.participant_id) {
-      continue;
-    }
-
-    const participantAttempts = attemptsByParticipantId.get(attempt.participant_id) ?? [];
-    participantAttempts.push(attempt);
-    attemptsByParticipantId.set(attempt.participant_id, participantAttempts);
-  }
-
-  return input.participants.map((participant) => {
-    const participantAttempts = attemptsByParticipantId.get(participant.id) ?? [];
-    const attemptsBySlug = new Map<string, OrganizationScopedAttemptSummary[]>();
-
-    for (const attempt of participantAttempts) {
-      const slug = attempt.tests?.slug;
-
-      if (!slug) {
-        continue;
-      }
-
-      const testAttempts = attemptsBySlug.get(slug) ?? [];
-      testAttempts.push(attempt);
-      attemptsBySlug.set(slug, testAttempts);
-    }
-
-    const testItems = STANDARD_BATTERY_DISPLAY_TESTS.map((test) => {
-      const relevantAttempt = selectRelevantAttempt(attemptsBySlug.get(test.slug) ?? []);
-      const status = getTestStatusLabel(relevantAttempt);
-
-      return {
-        key: test.slug,
-        shortLabel: test.shortLabel,
-        status,
-      };
-    });
-
-    const relevantAttempts = STANDARD_BATTERY_DISPLAY_TESTS
-      .map((test) => selectRelevantAttempt(attemptsBySlug.get(test.slug) ?? []))
-      .filter((attempt): attempt is OrganizationScopedAttemptSummary => Boolean(attempt));
-    const completedAttempts = relevantAttempts.filter((attempt) => attempt.lifecycle === "completed");
-    const openAttempt =
-      relevantAttempts.find((attempt) => attempt.lifecycle === "in_progress") ??
-      relevantAttempts.find((attempt) => attempt.lifecycle === "not_started") ??
-      null;
-    const archivedOnlyAttempt =
-      !openAttempt && completedAttempts.length === 0
-        ? relevantAttempts.find((attempt) => attempt.lifecycle === "abandoned") ?? null
-        : null;
-    const completedCount = completedAttempts.length;
-    const totalTests = STANDARD_BATTERY_DISPLAY_TESTS.length;
-    const hasInvalidState = relevantAttempts.some(
-      (attempt) =>
-        attempt.lifecycle !== "completed" &&
-        attempt.lifecycle !== "in_progress" &&
-        attempt.lifecycle !== "not_started" &&
-        attempt.lifecycle !== "abandoned",
-    );
-    const hasInProgressAttempt = relevantAttempts.some((attempt) => attempt.lifecycle === "in_progress");
-    const hasNotStartedAttempt = relevantAttempts.some((attempt) => attempt.lifecycle === "not_started");
-    const hasOpenAssessment = hasInProgressAttempt || hasNotStartedAttempt;
-
-    let aggregateStatus: AssessmentAggregateStatus = "Čeka kandidata";
-
-    if (hasInvalidState) {
-      aggregateStatus = "Traži pažnju";
-    } else if (completedCount === totalTests) {
-      aggregateStatus = "Spremno za pregled";
-    } else if (completedCount > 0) {
-      aggregateStatus = "Djelimično završeno";
-    } else if (hasInProgressAttempt) {
-      aggregateStatus = "U toku";
-    } else if (hasNotStartedAttempt || completedCount === 0) {
-      aggregateStatus = "Čeka kandidata";
-    }
-
-    let primaryAction: ParticipantAssessmentRow["primaryAction"] = {
-      kind: "create",
-      label: "Dodijeli procjenu",
-    };
-
-    if (hasInvalidState) {
-      primaryAction = {
-        kind: "info",
-        label: "Traži pažnju",
-        note: "Provjeri status procjene.",
-      };
-    } else if (totalTests > 0 && completedCount === totalTests && completedAttempts[0]) {
-      primaryAction = {
-        kind: "link",
-        label: "Pogledaj procjenu",
-        href: `/dashboard/attempts/${completedAttempts[0].id}`,
-      };
-    } else if (completedCount > 0 && completedAttempts[0]) {
-      primaryAction = {
-        kind: "link",
-        label: "Pogledaj procjenu",
-        href: `/dashboard/attempts/${completedAttempts[0].id}`,
-      };
-    } else if (openAttempt || archivedOnlyAttempt) {
-      primaryAction = {
-        kind: "info",
-        label: "Čeka kandidata",
-        note: "Rezultati će biti dostupni nakon završenog testa.",
-      };
-    }
-
-    return {
-      participant,
-      totalTests,
-      completedTests: completedCount,
-      hasOpenAssessment,
-      aggregateStatus,
-      primaryAction,
-      testItems,
-    };
-  });
-}
-
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -454,7 +216,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const assessmentRows = buildParticipantAssessmentRows({
     participants,
     attempts,
-    standardBatteryTests,
   });
   const activeAssessmentCount = assessmentRows.filter((row) => row.hasOpenAssessment).length;
   const waitingCount = assessmentRows.filter(
