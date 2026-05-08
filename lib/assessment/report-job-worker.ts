@@ -548,17 +548,6 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
     );
   }
 
-  if (
-    isSafranTestSlug(job.test_slug) &&
-    job.audience === "hr" &&
-    job.generator_type !== "mock"
-  ) {
-    throw new ReportJobError(
-      "CONFIG_ERROR",
-      "SAFRAN HR report V1 mock runtime integration supports mock provider only.",
-    );
-  }
-
   const attemptContext = await loadAttemptContext(job.attempt_id);
   const [runtimeConfig, activePromptVersion] = await Promise.all([
     loadRuntimeConfigForJob(job),

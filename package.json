@@ -50,6 +50,8 @@
     "test:safran-hr-report-contract": "node scripts/test-safran-hr-report-contract.cjs",
     "test:safran-hr-report-pipeline": "node scripts/test-safran-hr-report-pipeline.cjs",
     "test:safran-hr-report-display": "node scripts/test-safran-hr-report-display.cjs",
+    "test:safran-hr-report-lifecycle": "node scripts/test-safran-hr-report-lifecycle.cjs",
+    "test:safran-hr-report-openai-provider": "node scripts/test-safran-hr-report-openai-provider.cjs",
     "test:mwms-availability": "node scripts/test-mwms-availability.cjs",
     "test:mwms-package": "node scripts/test-mwms-package.cjs",
     "test:mwms-scoring": "node scripts/test-mwms-scoring.cjs",

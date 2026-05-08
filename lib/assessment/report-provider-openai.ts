@@ -26,7 +26,12 @@ import {
   mwmsParticipantReportV1OpenAiSchema,
   validateMwmsParticipantReportV1,
 } from "@/lib/assessment/mwms-participant-report-v1";
-import type { SafranHrReportInput } from "@/lib/assessment/safran-hr-report-v1";
+import {
+  formatSafranHrReportValidationErrors,
+  safranHrReportV1OpenAiSchema,
+  validateSafranHrReport,
+  type SafranHrReportInput,
+} from "@/lib/assessment/safran-hr-report-v1";
 import type { SafranAiReportInput } from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
   formatSafranParticipantAiReportValidationErrors,
@@ -302,7 +307,7 @@ export function buildIpipNeo120ParticipantV2SingleUserPrompt(
   });
 }
 
-function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
+export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
     return buildIpipNeo120ParticipantV2SingleUserPrompt(input);
   }
@@ -431,7 +436,45 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
     }
 
     if (isSafranHrPromptInput(input.promptInput)) {
-      throw new Error("SAFRAN HR OpenAI provider path is not enabled in this slice.");
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one SAFRAN HR report in reportType safran_hr_report_v1.",
+          audience_behavior:
+            "Write in the locale from input.test.locale for an HR professional. Keep the tone neutral, workplace-oriented, careful and non-clinical.",
+          decision_support_rule:
+            "This report is decision-support only and must not make or imply a hiring decision.",
+          source_rule:
+            "Use only the provided structured SAFRAN input with already calculated rawScore, maxScore, scoreLabel, band and bandLabel values. Do not calculate scores, do not change scores, and do not change labels or bands.",
+          interpretation_rule:
+            "Frame all conclusions as signals, hypotheses and checks. Use wording such as moze ukazivati, korisno je provjeriti, u ovom setu zadataka, and signal treba citati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
+          structure_rules: [
+            "Return valid JSON only.",
+            "Output sections must be executiveSummary, cognitiveSignals, pointsOfCaution, interviewQuestions, onboardingGuidance, interpretationLimits and safetyChecks.",
+            "Keep identity fields exact: reportType safran_hr_report_v1, testSlug safran_v1, audience hr, sourceType single_test.",
+            "executiveSummary.title must be short and HR-facing.",
+            "cognitiveSignals must contain exactly overall, verbal, figural and numeric.",
+            "pointsOfCaution must contain at least 2 items and each item must have signal, whyItMatters and howToCheck.",
+            "interviewQuestions must contain at least 3 items and each item must have category, question and whatToListenFor.",
+            "onboardingGuidance must contain first30Days, days60 and days90 arrays with at least 1 item each.",
+            "interpretationLimits must contain at least 3 items.",
+            "All safetyChecks fields must be true.",
+          ],
+          hard_guardrails: [
+            "Do not calculate or mutate any score.",
+            "Do not change scoreLabel, band or bandLabel.",
+            "Do not invent norms, percentiles, IQ, general intelligence, normative comparisons or population comparisons.",
+            "Do not use IQ, kvocijent inteligencije, inteligentan, neinteligentan, nadaren, iznadprosjecan, ispodprosjecan, prosjecan u populaciji, percentile, percentil, norma or normativno poredjenje.",
+            "Do not use hire/no-hire recommendations, hiring score, preporucuje se zaposljavanje, ne preporucuje se zaposljavanje, slab kandidat, idealni kandidat, los fit, red flag or rizican kandidat.",
+            "Do not use diagnostic, clinical or fixed-ability language.",
+            "Do not mention AI.",
+          ],
+          output_validation_rule:
+            "Output must satisfy the provided SAFRAN HR JSON schema exactly.",
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
     }
 
     if (isMwmsParticipantPromptInput(input.promptInput)) {
@@ -594,7 +637,7 @@ function parseStructuredContent(content: string): unknown {
   return JSON.parse(content) as unknown;
 }
 
-function resolveOpenAiResponseFormatSchemaForInput(
+export function resolveOpenAiResponseFormatSchemaForInput(
   input: PreparedReportGenerationInput,
 ): Record<string, unknown> {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
@@ -607,6 +650,10 @@ function resolveOpenAiResponseFormatSchemaForInput(
 
   if (isSafranParticipantPromptInput(input.promptInput)) {
     return safranParticipantAiReportV1OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isSafranHrPromptInput(input.promptInput)) {
+    return safranHrReportV1OpenAiSchema as Record<string, unknown>;
   }
 
   return input.reportContract.outputSchemaJson;
@@ -943,7 +990,7 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
   return assembled.value;
 }
 
-function validateStructuredReport(
+export function validateStructuredReport(
   report: unknown,
   input: PreparedReportGenerationInput,
 ): RuntimeCompletedAssessmentReport {
@@ -1003,6 +1050,20 @@ function validateStructuredReport(
     if (!validationResult.ok) {
       throw new Error(
         `OpenAI response JSON failed SAFRAN participant report validation: ${formatSafranParticipantAiReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  if (input.testSlug === "safran_v1" && isSafranHrPromptInput(input.promptInput)) {
+    const validationResult = validateSafranHrReport(report, {
+      expectedInput: input.promptInput,
+    });
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed SAFRAN HR report validation: ${formatSafranHrReportValidationErrors(validationResult.errors)}`,
       );
     }
 
