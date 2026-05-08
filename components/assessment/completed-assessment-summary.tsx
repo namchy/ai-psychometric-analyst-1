@@ -19,6 +19,7 @@ import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
 import type { MwmsParticipantReportV1 } from "@/lib/assessment/mwms-participant-report-v1";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
+import type { SafranHrReportV1 } from "@/lib/assessment/safran-hr-report-v1";
 import {
   formatDimensionLabel,
   formatIpcOctantLabel,
@@ -43,6 +44,9 @@ import type { SafranScoreKey } from "@/lib/assessment/safran-interpretation";
 import {
   resolveSafranParticipantReportDisplay,
 } from "@/lib/assessment/safran-participant-report-display";
+import {
+  resolveSafranHrReportDisplay,
+} from "@/lib/assessment/safran-hr-report-display";
 import { zodiak } from "@/lib/fonts";
 
 type CompletedAssessmentSummaryProps = {
@@ -96,6 +100,7 @@ type ReportRendererSelection =
   | { kind: "ipc_hr_v1"; report: IpcHrReportV1 }
   | { kind: "mwms_participant_report_v1"; report: MwmsParticipantReportV1 }
   | { kind: "safran_participant_ai_report_v1"; report: SafranParticipantAiReport }
+  | { kind: "safran_hr_report_v1"; report: SafranHrReportV1 }
   | { kind: "shape_mismatch"; message: string }
   | { kind: "unsupported_signal"; message: string }
   | { kind: "none" };
@@ -448,6 +453,10 @@ function isSafranParticipantAiReport(report: unknown): report is SafranParticipa
   return validateSafranParticipantAiReport(report).ok;
 }
 
+function isSafranHrReport(report: unknown): report is SafranHrReportV1 {
+  return resolveSafranHrReportDisplay(report) !== null;
+}
+
 function renderReportFallbackCard(title: string, body: string) {
   return (
     <section className="results-report__section results-report__status results-report__panel card stack-sm">
@@ -542,6 +551,14 @@ function selectReportRenderer(
             kind: "shape_mismatch",
             message:
               "Report render format označava SAFRAN participant AI izvještaj, ali snapshot shape ne odgovara tom rendereru.",
+          };
+    case "safran_hr_report_v1":
+      return isSafranHrReport(reportState.report)
+        ? { kind: "safran_hr_report_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava SAFRAN HR izvještaj, ali snapshot shape ne odgovara tom rendereru.",
           };
     default:
       return {
@@ -1548,6 +1565,174 @@ function SafranV1ResultsSummary({
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+function SafranHrReportSummary({
+  completedAt,
+  organizationName,
+  participantName,
+  report,
+}: {
+  completedAt?: string | null;
+  organizationName?: string | null;
+  participantName?: string | null;
+  report: SafranHrReportV1;
+}) {
+  const display = resolveSafranHrReportDisplay(report);
+
+  if (!display) {
+    return renderReportFallbackCard(
+      "SAFRAN HR izvještaj nije dostupan",
+      "HR snapshot postoji, ali njegov shape ne odgovara očekivanom SAFRAN HR contractu.",
+    );
+  }
+
+  const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
+
+  return (
+    <div className="results-report stack-md">
+      <section className="results-report__hero border border-slate-300/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,248,251,0.96))] px-5 py-5 shadow-[0_18px_38px_rgba(15,23,42,0.06)] sm:px-6 sm:py-5">
+        <div className="results-report__hero-copy gap-2.5">
+          <p className="results-report__eyebrow text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            {display.header.eyebrow}
+          </p>
+          <h2>{display.header.title}</h2>
+          <p className="results-report__section-body text-[15px] text-slate-600">
+            {display.header.subtitle}
+          </p>
+          <p className="inline-flex w-fit items-center rounded-full border border-[rgba(15,23,42,0.12)] bg-[rgba(248,250,252,0.9)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+            Namijenjeno HR-u
+          </p>
+
+          <div className="results-report__hero-meta-wrap">
+            <dl className="results-report__hero-meta">
+              {participantName ? (
+                <div className={`${primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"} border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]`}>
+                  <dt>Kandidat</dt>
+                  <dd>{participantName}</dd>
+                </div>
+              ) : null}
+              {organizationName ? (
+                <div className={`${primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"} border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]`}>
+                  <dt>Organizacija</dt>
+                  <dd>{organizationName}</dd>
+                </div>
+              ) : null}
+              <div className="results-report__hero-meta-item results-report__hero-meta-item--wide border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]">
+                <dt>Završeno</dt>
+                <dd>{formatCompletedAt(completedAt)}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.executiveSummary.title}</h3>
+        </div>
+        <p className="results-report__section-body text-[15px] leading-7 text-slate-700">
+          {display.executiveSummary.summary}
+        </p>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>Kognitivni signali</h3>
+        </div>
+        <div className="stack-sm">
+          {display.cognitiveSignals.map((signal) => (
+            <article
+              key={signal.key}
+              className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4"
+            >
+              <h4 className="text-[1rem] font-semibold text-slate-900">{signal.label}</h4>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{signal.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>Tačke opreza</h3>
+        </div>
+        <div className="stack-sm">
+          {display.pointsOfCaution.map((item) => (
+            <article
+              key={`${item.signal}-${item.howToCheck}`}
+              className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4"
+            >
+              <h4 className="text-[1rem] font-semibold text-slate-900">{item.signal}</h4>
+              <p className="mt-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Zašto je važno
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.whyItMatters}</p>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Kako provjeriti
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.howToCheck}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>Preporučena intervju pitanja</h3>
+        </div>
+        <div className="stack-sm">
+          {display.interviewQuestions.map((item) => (
+            <article
+              key={`${item.category}-${item.question}`}
+              className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {item.category}
+              </p>
+              <h4 className="mt-3 text-[1rem] font-semibold text-slate-900">{item.question}</h4>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Šta slušati u odgovoru
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.whatToListenFor}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>Onboarding smjernice</h3>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {display.onboardingGuidance.map((group) => (
+            <article
+              key={group.key}
+              className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4"
+            >
+              <h4 className="text-[1rem] font-semibold text-slate-900">{group.label}</h4>
+              <ul className="results-insight-list mt-3 text-sm text-slate-700">
+                {group.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>Interpretacijska ograničenja</h3>
+        </div>
+        <ul className="results-insight-list text-sm text-slate-700">
+          {display.interpretationLimits.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
@@ -2977,9 +3162,14 @@ export function CompletedAssessmentSummary({
     reportRenderer.kind === "mwms_participant_report_v1" ? reportRenderer.report : null;
   const safranParticipantAiReport =
     reportRenderer.kind === "safran_participant_ai_report_v1" ? reportRenderer.report : null;
+  const safranHrReport =
+    reportRenderer.kind === "safran_hr_report_v1" ? reportRenderer.report : null;
   const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport) && !ipipNeo120HrReport;
   const shouldShowRawResultsPreview =
-    !ipipNeo120ParticipantReport && !ipipNeo120HrReport && !safranParticipantAiReport;
+    !ipipNeo120ParticipantReport &&
+    !ipipNeo120HrReport &&
+    !safranParticipantAiReport &&
+    !safranHrReport;
 
   const maxRawScore =
     results && results.dimensions.length > 0
@@ -3070,6 +3260,17 @@ export function CompletedAssessmentSummary({
     reportRenderer.kind === "unsupported_signal" ? reportRenderer.message : null;
 
   if (isSafranV1Results(results) || results?.scoringMethod === "correct_answers") {
+    if (safranHrReport) {
+      return (
+        <SafranHrReportSummary
+          completedAt={completedAt}
+          organizationName={organizationName}
+          participantName={participantName}
+          report={safranHrReport}
+        />
+      );
+    }
+
     return (
       <SafranV1ResultsSummary
         completedAt={completedAt}
