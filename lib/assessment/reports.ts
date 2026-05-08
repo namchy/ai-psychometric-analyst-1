@@ -1,7 +1,7 @@
 import "server-only";
 
 import { loadAssessmentCompletionState } from "@/lib/assessment/completion-server";
-import type { AssessmentLocale } from "@/lib/assessment/locale";
+import { resolveReportLocale, type AssessmentLocale } from "@/lib/assessment/locale";
 import { getAiReportConfig, type AiReportConfig } from "@/lib/assessment/report-config";
 import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
 import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
@@ -46,9 +46,13 @@ type AttemptReportRow = {
 const PARTICIPANT_REPORT_TYPE = "individual";
 const PARTICIPANT_REPORT_AUDIENCE = "participant";
 const PARTICIPANT_REPORT_SOURCE_TYPE = "single_test";
+const HR_REPORT_TYPE = "individual";
+const HR_REPORT_AUDIENCE = "hr";
+const HR_REPORT_SOURCE_TYPE = "single_test";
 
 type AttemptRecord = {
   id: string;
+  locale: string | null;
   status: "in_progress" | "completed" | "abandoned";
 };
 
@@ -61,6 +65,7 @@ type TestRecord = {
 
 type LoadedReportContext = {
   supabase: ReturnType<typeof createSupabaseAdminClient>;
+  attemptLocale: AssessmentLocale;
   test: TestRecord;
   results: CompletedAssessmentResults;
 };
@@ -204,7 +209,7 @@ async function loadReportContext(testId: string, attemptId: string): Promise<Loa
 
   const { data: attemptData, error: attemptError } = await supabase
     .from("attempts")
-    .select("id, status")
+    .select("id, locale, status")
     .eq("id", attemptId)
     .eq("test_id", testId)
     .maybeSingle();
@@ -245,6 +250,7 @@ async function loadReportContext(testId: string, attemptId: string): Promise<Loa
 
   return {
     supabase,
+    attemptLocale: resolveReportLocale(attempt.locale),
     test: testData as TestRecord,
     results,
   };
@@ -255,7 +261,7 @@ export async function buildCompletedAssessmentReportRequest(
   attemptId: string,
   options?: Pick<ReportGenerationOverrides, "promptVersion"> & {
     audience?: "participant" | "hr";
-    locale?: AssessmentLocale;
+    locale?: string | null;
   },
 ): Promise<CompletedAssessmentReportRequest | null> {
   const context = await loadReportContext(testId, attemptId);
@@ -270,7 +276,7 @@ export async function buildCompletedAssessmentReportRequest(
     testSlug: context.test.slug,
     testName: context.test.name,
     audience: options?.audience ?? "participant",
-    locale: options?.locale ?? "bs",
+    locale: resolveReportLocale(options?.locale ?? context.attemptLocale),
     scoringMethod: context.test.scoring_method,
     promptVersion: options?.promptVersion ?? getAiReportConfig().promptVersion,
     results: context.results,
@@ -429,6 +435,59 @@ async function loadPersistedParticipantReportSnapshot(
   };
 }
 
+export async function loadPersistedHrReportSnapshot(
+  attemptId: string,
+): Promise<CompletedAssessmentReportState | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select(
+      "id, attempt_id, test_slug, audience, generator_type, generated_at, completed_at, report_status, failure_code, failure_reason, report_snapshot",
+    )
+    .eq("attempt_id", attemptId)
+    .eq("report_type", HR_REPORT_TYPE)
+    .eq("audience", HR_REPORT_AUDIENCE)
+    .eq("source_type", HR_REPORT_SOURCE_TYPE)
+    .eq("report_status", "ready")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load HR attempt report: ${error.message}`);
+  }
+
+  const row = data as AttemptReportRow | null;
+
+  if (!row) {
+    return null;
+  }
+
+  if (!isAttemptReportStatus(row.report_status)) {
+    throw new Error(`Invalid HR attempt report status for attempt ${attemptId}.`);
+  }
+
+  const validationResult = validateRuntimeCompletedAssessmentReport(row.report_snapshot, {
+    testSlug: row.test_slug,
+    audience: row.audience,
+  });
+
+  if (!validationResult.ok) {
+    return {
+      status: "failed",
+      generatorType: row.generator_type,
+      generatedAt: row.generated_at,
+      completedAt: row.completed_at,
+      failureCode: "invalid_report_snapshot",
+      failureReason: "Persisted report snapshot does not match the current report contract.",
+    };
+  }
+
+  return buildReadyCompletedAssessmentReportState({
+    testSlug: row.test_slug,
+    audience: row.audience,
+    report: validationResult.value,
+  });
+}
+
 export async function getCompletedAssessmentReport(
   testId: string,
   attemptId: string | null,
@@ -464,6 +523,16 @@ export async function getPersistedParticipantCompletedAssessmentReportState(
   return loadPersistedParticipantReportSnapshot(attemptId);
 }
 
+export async function getPersistedHrCompletedAssessmentReportState(
+  attemptId: string | null,
+): Promise<CompletedAssessmentReportState | null> {
+  if (!attemptId) {
+    return null;
+  }
+
+  return loadPersistedHrReportSnapshot(attemptId);
+}
+
 export async function enqueueCompletedAssessmentReports(attemptId: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase.rpc("enqueue_individual_reports", {
@@ -476,7 +545,7 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
 
   const { data: attemptData, error: attemptError } = await supabase
     .from("attempts")
-    .select("test_id, tests(slug)")
+    .select("test_id, locale, tests(slug)")
     .eq("id", attemptId)
     .maybeSingle();
 
@@ -486,6 +555,7 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
 
   const attempt = attemptData as {
     test_id: string;
+    locale: string | null;
     tests: { slug: string } | { slug: string }[] | null;
   } | null;
   const testSlug = Array.isArray(attempt?.tests)
@@ -495,7 +565,7 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
   if (attempt?.test_id && testSlug && isMwmsTestSlug(testSlug)) {
     const request = await buildCompletedAssessmentReportRequest(attempt.test_id, attemptId, {
       audience: PARTICIPANT_REPORT_AUDIENCE,
-      locale: "bs",
+      locale: resolveReportLocale(attempt.locale),
     });
 
     if (request) {
@@ -586,7 +656,7 @@ export async function persistCompletedAssessmentReport(
     testId,
     testSlug: context.test.slug,
     audience: "participant",
-    locale: "bs",
+    locale: resolveReportLocale(context.attemptLocale),
     scoringMethod: context.test.scoring_method,
     promptVersion: getAiReportConfig().promptVersion,
     results: context.results,
