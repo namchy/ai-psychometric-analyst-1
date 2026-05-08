@@ -68,6 +68,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 function parseCliOptions(argv) {
   const options = {
     force: false,
+    provider: "mock",
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -92,6 +93,33 @@ function parseCliOptions(argv) {
 
     if (argument === "--force" || argument === "--rerun") {
       options.force = true;
+      continue;
+    }
+
+    if (argument === "--provider") {
+      const value = argv[index + 1];
+
+      if (!value) {
+        throw new Error("Missing value for --provider.");
+      }
+
+      if (value !== "mock" && value !== "openai") {
+        throw new Error(`Unsupported value for --provider: ${value}`);
+      }
+
+      options.provider = value;
+      index += 1;
+      continue;
+    }
+
+    if (argument.startsWith("--provider=")) {
+      const value = argument.slice("--provider=".length);
+
+      if (value !== "mock" && value !== "openai") {
+        throw new Error(`Unsupported value for --provider: ${value}`);
+      }
+
+      options.provider = value;
     }
   }
 
@@ -345,7 +373,7 @@ async function loadAttemptReportRow(supabase, attemptId, audience) {
   const { data, error } = await supabase
     .from("attempt_reports")
     .select(
-      "id, attempt_id, test_slug, audience, report_type, source_type, generator_type, report_status, generated_at, started_at, completed_at, failure_code, failure_reason, report_snapshot",
+      "id, attempt_id, test_slug, audience, report_type, source_type, generator_type, model_name, report_status, generated_at, started_at, completed_at, failure_code, failure_reason, report_snapshot",
     )
     .eq("attempt_id", attemptId)
     .eq("audience", audience)
@@ -379,6 +407,24 @@ async function resetAttemptReportRow(supabase, reportId) {
   }
 }
 
+async function enforceAttemptReportProvider(supabase, reportId, requestedProvider, modelName) {
+  const updatePayload = {
+    generator_type: requestedProvider,
+    model_name: requestedProvider === "openai" ? modelName : null,
+  };
+
+  const { error } = await supabase
+    .from("attempt_reports")
+    .update(updatePayload)
+    .eq("id", reportId);
+
+  if (error) {
+    throw new Error(
+      `Unable to enforce provider ${requestedProvider} for attempt_report ${reportId}: ${error.message}`,
+    );
+  }
+}
+
 async function runDbLifecycleChecks(options) {
   const { createSupabaseAdminClient } = require("../lib/supabase/admin.ts");
   const {
@@ -393,6 +439,9 @@ async function runDbLifecycleChecks(options) {
   const {
     validateSafranHrReport,
   } = require("../lib/assessment/safran-hr-report-v1.ts");
+  const {
+    getActiveReportRuntimeConfig,
+  } = require("../lib/assessment/report-runtime-config.ts");
 
   const supabase = createSupabaseAdminClient();
   const attempt = await findCompletedSafranAttempt(supabase, options.attemptId);
@@ -438,15 +487,53 @@ async function runDbLifecycleChecks(options) {
     throw new Error(`HR attempt_report was not created for attempt ${attempt.id}.`);
   }
 
+  const runtimeConfig = await getActiveReportRuntimeConfig({
+    reportType: "individual",
+    audience: "hr",
+    sourceType: "single_test",
+    generatorType: options.provider,
+  });
+  const requestedModelName = options.provider === "openai" ? runtimeConfig?.modelName ?? null : null;
+
+  if (
+    hrQueued.generator_type !== options.provider ||
+    hrQueued.model_name !== requestedModelName
+  ) {
+    await enforceAttemptReportProvider(
+      supabase,
+      hrQueued.id,
+      options.provider,
+      requestedModelName,
+    );
+  }
+
+  const hrPrepared = await loadAttemptReportRow(supabase, attempt.id, "hr");
+
+  if (!hrPrepared) {
+    throw new Error(`HR attempt_report disappeared before provider enforcement for ${attempt.id}.`);
+  }
+
+  if (hrPrepared.generator_type !== options.provider) {
+    if (options.provider === "openai" && hrPrepared.generator_type === "mock") {
+      throw new Error(
+        "Requested provider openai, but lifecycle selected mock. Configure runtime provider or update test harness.",
+      );
+    }
+
+    throw new Error(
+      `Requested provider ${options.provider}, but lifecycle selected ${hrPrepared.generator_type}.`,
+    );
+  }
+
   const participantStartedBefore = participantQueued?.started_at ?? null;
   const participantStatusBefore = participantQueued?.report_status ?? null;
 
   const claimedJob =
-    hrQueued.report_status === "queued"
+    hrPrepared.report_status === "queued"
       ? await claimNextReportJob({ attemptId: attempt.id, audience: "hr" })
       : null;
 
-  if (hrQueued.report_status === "queued" && !claimedJob) {
+  if (hrPrepared.report_status === "queued" && !claimedJob) {
     throw new Error(`Queued HR report for attempt ${attempt.id} could not be claimed.`);
   }
 
@@ -455,6 +542,7 @@ async function runDbLifecycleChecks(options) {
     assert.equal(claimedJob.attempt_id, attempt.id);
     assert.equal(claimedJob.report_type, "individual");
     assert.equal(claimedJob.source_type, "single_test");
+    assert.equal(claimedJob.generator_type, options.provider);
 
     await processClaimedReportJob(claimedJob);
   }
@@ -484,6 +572,7 @@ async function runDbLifecycleChecks(options) {
   assert.equal(hrAfter.report_type, "individual");
   assert.equal(hrAfter.source_type, "single_test");
   assert.equal(hrAfter.test_slug, "safran_v1");
+  assert.equal(hrAfter.generator_type, options.provider);
   assert.ok(hrAfter.report_snapshot);
 
   const hrSnapshotValidation = validateSafranHrReport(hrAfter.report_snapshot);
@@ -492,7 +581,26 @@ async function runDbLifecycleChecks(options) {
     true,
     hrSnapshotValidation.ok ? undefined : hrSnapshotValidation.errors.join(" | "),
   );
+  assert.equal(hrAfter.report_snapshot.reportType, "safran_hr_report_v1");
+  assert.equal(hrAfter.report_snapshot.audience, "hr");
+  assert.equal(hrAfter.report_snapshot.sourceType, "single_test");
+  assert.equal(hrAfter.report_snapshot.testSlug, "safran_v1");
   assertNoForbiddenHrLanguage(hrSnapshotValidation.ok ? hrSnapshotValidation.value : hrAfter.report_snapshot);
+
+  if (options.provider === "openai" && hrAfter.generator_type === "mock") {
+    throw new Error(
+      "Requested provider openai, but lifecycle selected mock. Configure runtime provider or update test harness.",
+    );
+  }
+
+  if (options.provider === "openai" && hrAfter.model_name === null) {
+    console.warn("SAFRAN HR lifecycle DB verification warning", {
+      attemptId: attempt.id,
+      requestedProvider: options.provider,
+      actualProvider: hrAfter.generator_type,
+      warning: "model_name is null after OpenAI processing.",
+    });
+  }
 
   const hrState = await getPersistedHrCompletedAssessmentReportState(attempt.id);
   assert.equal(hrState?.status, "ready");
@@ -520,6 +628,9 @@ async function runDbLifecycleChecks(options) {
 
   console.info("SAFRAN HR lifecycle DB verification passed", {
     attemptId: attempt.id,
+    requestedProvider: options.provider,
+    actualProvider: hrAfter.generator_type,
+    modelName: hrAfter.model_name ?? null,
     hrStatus: hrAfter.report_status,
     hrReportId: hrAfter.id,
     participantStatus: participantAfter?.report_status ?? null,
