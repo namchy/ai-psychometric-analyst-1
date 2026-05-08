@@ -801,30 +801,51 @@ export function buildMockSafranHrReportV1(
     },
     cognitiveSignals: {
       overall:
-        "Ovaj rezultat je najkorisnije čitati kao opšti obrazac učinka u ovom setu zadataka, bez tumačenja izvan konteksta konkretne uloge.",
+        "Ukupni rezultat je 26/54. U ovoj procjeni, taj odnos sugeriše neujednačen ritam između tipova zadataka. Za HR je korisno provjeriti kako kandidat održava kvalitet rada kada se format zadatka promijeni.",
       verbal:
-        "U HR kontekstu, verbalni dio može biti relevantan za to kako je kandidat u ovom setu zadataka prepoznavao odnose među pojmovima i pravilima izraženim riječima.",
+        "Verbalni rezultat je 12/18. U ovoj procjeni, taj signal sugeriše stabilnije snalaženje u zadacima sa pisanim pravilima i pojmovima. U intervjuu je korisno provjeriti kako kandidat brzo izdvaja bitno iz pisanih informacija.",
       figural:
-        "Za figuralni dio je korisno obratiti pažnju na to kako je kandidat u ovoj procjeni pratio obrasce i odnose među oblicima.",
+        "Figuralni rezultat je 9/18. Ovaj dio rezultata treba čitati kao signal o tome kako je kandidat u ovoj procjeni pratio obrasce među oblicima. Za HR je korisno provjeriti kako osoba prepoznaje vizuelne obrasce u konkretnim radnim zadacima.",
       numeric:
-        "Ovaj signal vrijedi provjeriti kroz razgovor ili radni zadatak kada numerički dio pokazuje kako je kandidat u ovoj procjeni prepoznavao pravilo u brojčanim nizovima.",
+        "Numerički rezultat je 5/18. U ovoj procjeni, taj dio sugeriše da je brojčani niz tražio više provjere prije zaključka. Kroz radni zadatak vrijedi provjeriti kako kandidat radi sa pravilima u tabelama, nizovima ili kvantitativnim podacima.",
     },
     pointsOfCaution: [
       {
-        signal: "Tačka opreza: razlika između domena je hipoteza za provjeru, ne zaključak o kandidatu.",
+        signal: "Ukupni rezultat može sakriti razlike između tipova zadataka.",
         whyItMatters:
-          "Ako je jedan dio mirniji od ostalih, to može uticati na način na koji kandidat pristupa zadacima koji traže drugačiji format rezonovanja.",
+          "Ako uloga traži različite oblike rezonovanja, razlika između verbalnog, figuralnog i numeričkog dijela može biti važnija od samog ukupnog utiska.",
         howToCheck:
-          "Korisno je provjeriti kroz intervju ili radni zadatak kako kandidat objašnjava pristup problemu kada pravilo nije odmah vidljivo.",
+          "U intervjuu ili kratkom zadatku korisno je provjeriti kako kandidat mijenja pristup kada se format problema promijeni.",
+      },
+      {
+        signal: "Slabiji numerički signal može biti važan ako uloga traži rad sa brojčanim podacima.",
+        whyItMatters:
+          "Ako posao uključuje tabele, nizove ili kvantitativne odluke, sporije prepoznavanje pravila može uticati na brzinu i sigurnost zaključivanja.",
+        howToCheck:
+          "Dajte kratak brojčani ili analitički zadatak i tražite da kandidat naglas objasni kako provjerava pravilo prije odluke.",
       },
     ],
     interviewQuestions: [
       {
         category: "Pristup problemu",
         question:
-          "Možete li opisati situaciju u kojoj ste morali brzo prepoznati pravilo ili obrazac prije nego što ste donijeli odluku?",
+          "Opišite situaciju kada ste morali brzo prepoznati pravilo ili obrazac. Kako ste provjerili da ste ga dobro razumjeli?",
         whatToListenFor:
           "Slušati da li kandidat jasno objašnjava korake provjere, prilagođavanje strategije i kako razlikuje pretpostavku od potvrđenog zaključka.",
+      },
+      {
+        category: "Pisane informacije",
+        question:
+          "Kada dobijete veću količinu pisanih informacija, kako izdvojite ono što je najvažnije za odluku?",
+        whatToListenFor:
+          "Slušati kako kandidat strukturira informacije, izdvaja bitno i povezuje tekst sa narednim korakom u radu.",
+      },
+      {
+        category: "Brojčani podaci",
+        question:
+          "Kako obično provjeravate da ste dobro razumjeli brojčani obrazac ili pravilo prije nego što nastavite dalje?",
+        whatToListenFor:
+          "Slušati da li kandidat ima jasan način provjere pravila, uočava greške na vrijeme i objašnjava zaključivanje korak po korak.",
       },
     ],
     onboardingGuidance: {

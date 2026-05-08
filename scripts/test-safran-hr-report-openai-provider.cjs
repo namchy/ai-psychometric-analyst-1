@@ -234,6 +234,18 @@ function main() {
   );
   assert.match(
     mandatoryGuardrails,
+    /score anchor such as 18\/18, 0\/18 or 36\/54|must include three content elements: a score anchor/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /pointsOfCaution must be concrete HR hypotheses for checking|not generic methodological notes/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /interviewQuestions must be short, natural to say aloud, open-ended|no more than two sentences/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
     /Never output forbidden literal phrases anywhere in the JSON, including negated, quoted or cautionary statements/i,
   );
   assert.match(mandatoryGuardrails, /u okviru ovog seta zadataka/i);
@@ -266,6 +278,24 @@ function main() {
     ),
     true,
   );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
+      /score anchor|brief interpretation of the signal|HR implication or check/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
+      /pointsOfCaution must be concrete HR hypotheses|methodological/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
+      /interviewQuestions must be short|two sentences|spoken interview/i.test(item),
+    ),
+    true,
+  );
 
   const allHrText = [
     validatedHrReport.executiveSummary.title,
@@ -295,6 +325,24 @@ function main() {
   const cognitiveSignalText = Object.values(validatedHrReport.cognitiveSignals).join(" ");
   const repeatedDefaultPhraseMatches = cognitiveSignalText.match(/To može ukazivati/gi) ?? [];
   assert.equal(repeatedDefaultPhraseMatches.length, 0);
+  assert.match(validatedHrReport.cognitiveSignals.overall, /\d+\/\d+/);
+  assert.match(validatedHrReport.cognitiveSignals.verbal, /\d+\/\d+/);
+  assert.match(validatedHrReport.cognitiveSignals.figural, /\d+\/\d+/);
+  assert.match(validatedHrReport.cognitiveSignals.numeric, /\d+\/\d+/);
+  assert.doesNotMatch(
+    validatedHrReport.pointsOfCaution.map((item) => item.signal).join(" "),
+    /Rizik od pogrešne interpretacije ukupnog rezultata|Pogrešno tumačenje rezultata|Ograničenja testa/i,
+  );
+  assert.equal(
+    validatedHrReport.interviewQuestions.every((item) => {
+      const sentenceCount = item.question
+        .split(/[.!?]+/)
+        .map((part) => part.trim())
+        .filter(Boolean).length;
+      return sentenceCount <= 2;
+    }),
+    true,
+  );
 
   const invalidHrReport = clone(validHrReport);
   invalidHrReport.executiveSummary.summary =
