@@ -40,7 +40,14 @@ Komande:
 | P1        | IPIP prethodno pitanje ne prikazuje odabrani odgovor | Završeno    | Assessment UX / State        | Zatvoreno nakon popravke selected-state vidljivosti pri povratku na prethodno odgovoreno IPIP pitanje. |
 | P1        | SAFRAN izgleda kao da ima default označen odgovor    | Zatvoreno / Nije reproducirano | Assessment UX / Input state  | Ne traži code work nakon ručne provjere; svježe SAFRAN pitanje se učitava bez unaprijed selektovanog odgovora. |
 | P1        | IPIP tekst na karticama dimenzija se ponavlja        | Završeno    | Report UI / Copy             | Zatvoreno nakon zamjene ponovljenog domain title body copyja kratkim descriptor tekstom u vidljivom V2 report pathu. |
-| P1        | Kompozitni AI profil IPIP + SAFRAN + MWMS            | Planirano   | Product / AI report          | Definisati input payload, schema, audience, fallback i UI strukturu.                           |
+| P1        | Explicit HR retrieval and route wiring               | Završeno    | HR report / Report pipeline  | Zatvoreno nakon dodavanja eksplicitnog HR retrieval helpera, odvajanja HR/participant route retrievala i neutralnog unavailable stanja bez HR → participant fallbacka. |
+| P1        | HR report locale / i18n readiness policy            | Završeno    | i18n / Report architecture   | Zatvoreno nakon upisa locale-aware pravila u HR report spec i backlog: MVP ostaje bs-only, ali HR architecture razlikuje assessment locale, participant report locale, HR report locale i report locale. |
+| P1        | HR report locale/i18n audit                         | Završeno    | i18n / Report pipeline audit | Zatvoreno read-only auditom koji je mapirao postojeće locale izvore, prompt-version lokalizacije, snapshot praznine i bosanski hardcoding rizike. |
+| P1        | Persisted report locale guardrails for future HR lanes | Završeno | i18n / Report pipeline | Zatvoreno nakon uvođenja centralnog `ReportLocale` / `resolveReportLocale(...)` guardraila i uklanjanja nepotrebnog `"bs"` hardcodinga iz poznatih report generation fallback path-eva. |
+| P1        | SAFRAN HR report V1                                 | Planirano   | HR report / SAFRAN           | Implementirati HR-facing SAFRAN report nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | MWMS HR report V1                                   | Planirano   | HR report / MWMS             | Implementirati HR-facing motivacijski report nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | Composite HR report data model decision             | Planirano   | Architecture / HR report storage | Odlučiti da li composite HR report ide kroz privremeni `attempt_reports` bridge ili kroz novi `assessment_reports` / assessment-level model. |
+| P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
@@ -279,12 +286,301 @@ Završeno kroz layout parity implementaciju u kojoj SAFRAN practice primjeri sad
 
 ---
 
+### P1 — Explicit HR retrieval and route wiring
+
+**Status:** Završeno  
+**Kategorija:** HR report / Report pipeline
+
+**Problem / context:**  
+Audit postojećeg HR report pipelinea pokazao je da IPIP HR report lane već postoji na contract, schema, provider, validation i worker-processing nivou, ali HR retrieval/display lane nije čisto odvojen od participant report retrievala.
+
+Trenutni rizik je da HR route može koristiti participant-biased loader path i tiho prikazati participant artefakt umjesto HR artefakta.
+
+**Scope:**
+- dodati eksplicitne HR report retrieval helpere filtrirane po:
+  - audience = hr
+  - report_type = individual
+  - source_type = single_test
+- osigurati da participant route čita samo audience = participant
+- osigurati da HR route čita samo audience = hr
+- ukloniti tihi HR → participant fallback
+- za missing HR report prikazati neutralno unavailable stanje
+- verifikovati postojeći IPIP HR lane kroz dashboard attempt route
+
+**Out of scope:**
+- SAFRAN HR report
+- MWMS HR report
+- composite HR report
+- DB migracija za assessment_reports
+- prompt rewrite
+- UI redesign
+- full i18n implementation
+
+**Acceptance criteria:**
+- HR route čita samo HR artefakt.
+- Participant route čita samo participant artefakt.
+- IPIP HR snapshot se može dohvatiti i prikazati iz dashboard patha.
+- Missing HR artifact prikazuje neutralno unavailable stanje, ne participant fallback.
+- Nema miješanja audience vrijednosti u route/retrieval sloju.
+
+**Completion note:**  
+Završeno kroz dodavanje `loadPersistedHrReportSnapshot(attemptId)` helpera, povezivanje HR dashboard attempt route-a na HR-only retrieval, zadržavanje participant route-a na participant-only retrievalu i uklanjanje tihog HR → participant fallbacka. Kada HR report ne postoji ili nije ready, HR route sada prikazuje neutralno unavailable stanje. Mijenjani su `lib/assessment/reports.ts`, `lib/assessment/protected-attempts.ts` i `app/(protected)/dashboard/attempts/[attemptId]/page.tsx`. `npm run typecheck` je prošao.
+
+---
+
+### P1 — HR report locale / i18n readiness policy
+
+**Status:** Završeno  
+**Kategorija:** i18n / Report architecture
+
+**Problem / context:**  
+Deep Profile će kasnije biti višejezična aplikacija. Trenutno je app MVP na bosanskom jeziku, ali HR report architecture ne smije zabetonirati pretpostavku da je bosanski jedini mogući jezik.
+
+Višejezičnost se ne implementira u punom obimu sada, ali HR report pipeline mora biti locale-aware od početka.
+
+**Scope:**
+- zapisati pravilo da svaki HR report input mora uključiti locale
+- zapisati pravilo da svaki report snapshot mora očuvati locale korišten pri generisanju
+- schema ključevi moraju ostati jezički neutralni, preferirano engleski
+- human-facing content se generiše/renderuje u target locale-u
+- prompt/version selection mora biti spreman za buduće locale varijante
+- section titles i standard labels trebaju dolaziti iz kontrolisanog lokalizovanog copy sloja, ne iz AI improvizacije
+- postojeći report snapshot se ne smije automatski prevoditi kada se promijeni app locale
+- MVP podržava bs; budući jezici mogu uključiti hr, sr i en
+
+**Out of scope:**
+- prevođenje svih reportova na hr/sr/en
+- UI za izbor jezika reporta
+- automatska regeneracija reporta na drugom jeziku
+- translation management sistem
+- full app i18n implementation
+
+**Acceptance criteria:**
+- todo dokument bilježi da HR report pipeline mora biti locale-aware
+- HR Report Architecture Spec sadrži locale sekciju
+- novi HR report taskovi ne smiju hardcodirati bosanski kao jedini mogući jezik u schema/contract dizajnu
+- MVP i dalje ostaje bs-only
+
+**Completion note:**  
+Završeno dokumentacionom odlukom da HR report architecture mora biti locale-aware od početka iako MVP ostaje bosanski-only. U backlogu i HR spec-u sada je eksplicitno razlikovano `assessmentLocale`, `participantReportLocale`, `hrReportLocale` i `reportLocale`, uz radnu odluku da `attempt.locale` u MVP-u može služiti kao fallback, ali ne i kao dugoročni jedini source of truth za buduće HR reportove.
+
+---
+
+### P1 — HR report locale/i18n audit
+
+**Status:** Završeno  
+**Kategorija:** i18n / Report pipeline audit
+
+**Problem / context:**  
+Potrebno je provjeriti koliko postojeći report pipeline već nosi locale i gdje postoje hardcodirane pretpostavke o bosanskom jeziku.
+
+**Scope:**
+- provjeriti da li postojeći report inputi nose locale
+- provjeriti da li attempt_reports čuva locale kroz input_snapshot/report_snapshot
+- provjeriti da li IPIP participant i HR report lane razlikuju locale
+- provjeriti da li promptovi/report contracti hardcodiraju bosanski
+- provjeriti da li schema koristi jezički neutralne ključeve
+- provjeriti da li renderer hardcodira section title tekstove
+- mapirati dijelove pipelinea koji bi tražili refactor kada uvedemo hr/sr/en
+- preporučiti najmanji zdrav način da novi HR report architecture ostane locale-aware
+
+**Out of scope:**
+- implementacija višejezičnosti
+- prevođenje sadržaja
+- promjena report schema
+- DB migracije
+
+**Acceptance criteria:**
+- postoji audit nalaz u razgovoru ili dokumentu
+- nalaz jasno kaže gdje locale postoji, gdje se gubi i gdje je hardcodiran
+- nalaz preporučuje najmanji zdrav sljedeći korak
+- nema izmjena koda u audit tasku
+
+**Completion note:**  
+Završeno read-only auditom. Nalaz je potvrdio da postoje `attempts.locale`, locale normalizacija/fallback, `prompt_version_localizations` i locale-aware prompt selection, te da report input layer za IPIP, SAFRAN i MWMS većinom nosi locale. Audit je takođe potvrdio da snapshot arhitektura još nije dosljedno locale-aware, da `attempt_reports` nema posebno locale polje i da su neki fallback/non-worker path-evi hardcodirali `"bs"`. Audit nije mijenjao fajlove.
+
+---
+
+### P1 — Persisted report locale guardrails for future HR lanes
+
+**Status:** Završeno  
+**Kategorija:** i18n / Report pipeline
+
+**Problem / context:**  
+Audit je pokazao da MVP može ostati bosanski-only, ali da budući HR report lane-ovi ne smiju ući u pipeline bez eksplicitnog locale guardraila u input/snapshot sloju. Posebno je trebalo ukloniti nepotreban `"bs"` hardcoding iz poznatih fallback/non-worker path-eva kada je locale već dostupan kroz request ili attempt context.
+
+**Scope:**
+- dodati centralni locale guardrail/helper za report locale
+- ograničiti fallback `"bs"` na slučajeve kada locale stvarno nije poznat
+- ukloniti nepotreban `"bs"` hardcoding iz `buildCompletedAssessmentReportRequest(...)`
+- ukloniti nepotreban `"bs"` hardcoding iz MWMS input snapshot path-a u `enqueueCompletedAssessmentReports(...)`
+- ukloniti nepotreban `"bs"` hardcoding iz participant fallback generation path-a u `persistCompletedAssessmentReport(...)`
+- ne uvoditi full i18n
+- ne uvoditi DB locale kolonu u `attempt_reports`
+
+**Out of scope:**
+- SAFRAN HR report
+- MWMS HR report
+- composite report
+- schema rewrite
+- renderer refactor
+- prevođenje postojećih reportova
+
+**Acceptance criteria:**
+- postoji centralni locale guardrail ili shared helper za report locale
+- fallback `"bs"` ostaje samo kada locale nije poznat
+- report generation path ne hardcodira `"bs"` kada je locale poznat u request/attempt kontekstu
+- worker path ostaje funkcionalan
+
+**Completion note:**  
+Završeno kroz uvođenje centralnog `ReportLocale = AssessmentLocale` i `resolveReportLocale(...)` guardraila u `lib/assessment/locale.ts`, te kroz uske izmjene u `lib/assessment/reports.ts`. `buildCompletedAssessmentReportRequest(...)` više ne radi direktni `options?.locale ?? "bs"`, MWMS input snapshot path više ne hardcodira `locale: "bs"` kada `attempt.locale` postoji, a participant fallback generation path više ne hardcodira `"bs"` kada je locale poznat kroz context. `npm run typecheck` je prošao.
+
+---
+
+### P1 — SAFRAN HR report V1
+
+**Status:** Planirano  
+**Kategorija:** HR report / SAFRAN
+
+**Problem / context:**  
+SAFRAN trenutno ima participant report lane, ali nema HR report lane. HR report mora koristiti opreznu interpretaciju kognitivnih signala bez IQ-a, percentila i normativnog jezika.
+
+**Scope:**
+- HR-facing SAFRAN report contract
+- schema/validator
+- input builder
+- provider routing
+- mock/OpenAI parity gdje je primjenjivo
+- renderer support
+- guardrails bez IQ, percentila, normi i hire/no-hire jezika
+- HR sekcije: kognitivni signali, tačke opreza, intervju pitanja, onboarding/role implications
+
+**Out of scope:**
+- composite HR report
+- normativni scoring
+- IQ interpretacija
+- hiring recommendation score
+- full HR dashboard redesign
+
+**Acceptance criteria:**
+- SAFRAN HR report generiše se samo za audience = hr
+- participant SAFRAN report ostaje odvojen
+- report koristi deterministic SAFRAN scores kao input
+- AI ne računa niti mijenja score/band
+- report nema IQ, percentile, norme ili hire/no-hire odluke
+
+---
+
+### P1 — MWMS HR report V1
+
+**Status:** Planirano  
+**Kategorija:** HR report / MWMS
+
+**Problem / context:**  
+MWMS trenutno ima participant report lane, ali nema HR report lane. HR verzija treba prevesti motivacijski profil u HR-relevantne uvide za angažman, intervju, onboarding i menadžersku podršku.
+
+**Scope:**
+- HR-facing MWMS report contract
+- schema/validator
+- input builder
+- provider routing
+- motivacijski drajveri
+- moguće tačke frikcije
+- menadžerske smjernice
+- intervju pitanja
+- onboarding preporuke
+
+**Out of scope:**
+- composite HR report
+- hiring decision score
+- full role/job context model
+
+**Acceptance criteria:**
+- MWMS HR report generiše se samo za audience = hr
+- participant MWMS report ostaje odvojen
+- report koristi deterministic MWMS dimension_scores kao input
+- AI ne mijenja score/band
+- report daje HR hipoteze i preporuke, ne presude
+
+---
+
+### P1 — Composite HR report data model decision
+
+**Status:** Planirano  
+**Kategorija:** Architecture / HR report storage
+
+**Problem / context:**  
+Audit je pokazao da je attempt_reports upotrebljiv za single-test HR reportove, ali composite HR report nema prirodan jedan attempt_id. Privremeni bridge kroz attempt_reports je moguć, ali semantički slab.
+
+**Scope:**
+- procijeniti attempt_reports bridge opciju
+- procijeniti novu assessment_reports tabelu
+- procijeniti potrebu za assessment_assignment / assessment_assignment_attempts modelom
+- definisati storage ownership za composite HR report
+- definisati lifecycle za composite report readiness/generation/retry
+- definisati minimalni MVP model i dugoročni model
+
+**Out of scope:**
+- implementacija composite reporta
+- SAFRAN/MWMS HR report implementation
+- HR dashboard redesign
+
+**Acceptance criteria:**
+- donesena je jasna odluka o storage modelu za composite HR report
+- odluka uključuje tradeoffe
+- odluka ne veže dugoročno composite report za nasumični attempt bez eksplicitne racionalizacije
+- nakon odluke može se pisati implementation prompt za Composite HR report V1
+
+---
+
+### P1 — Composite HR report V1
+
+**Status:** Planirano  
+**Kategorija:** Product / AI report
+
+**Problem / context:**  
+Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAFRAN i MWMS u jedan HR-facing profil za selekciju, intervju, onboarding i menadžersku podršku.
+
+**Scope:**
+- composite input builder za IPIP + SAFRAN + MWMS
+- composite schema
+- provider routing
+- validation
+- renderer
+- HR dashboard access
+- fallback states
+- guardrails bez hire/no-hire odluka
+- locale-aware design, MVP bs-only
+
+**Out of scope:**
+- team-fit report
+- role-specific benchmark
+- organization-specific success model
+- hiring recommendation score
+- PDF/export
+
+**Acceptance criteria:**
+- composite HR report koristi deterministic rezultate kao input
+- AI ne računa score i ne izmišlja podatke
+- report jasno odvaja radne obrasce, motivaciju, kognitivne signale, tačke opreza, intervju pitanja i onboarding/manager guidance
+- report je audience = hr
+- report je locale-aware u strukturi, iako MVP content ostaje bs
+
+---
+
 | Prioritet | Tema                       | Status    | Kratak opis                                                                                                                  | Sljedeći korak                                                                                |
 | --------- | -------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | P1        | MWMS pitanja / item UX     | Završeno  | MWMS itemi trenutno mogu zvučati čudno jer su zavisni od zajedničkog uvodnog pitanja, a prikazuju se kao samostalna pitanja. | Zatvoreno nakon redizajna MWMS item prikaza kao zajednički stem + “Mogući razlog” + item tvrdnja + jasna 1–7 instrukcija skale. |
 | P1        | IPIP radar chart           | Završeno  | Radar chart je postojao u ranijoj IPIP verziji, ali je vjerovatno ispao iz novog AI/V2 render patha.                         | Zatvoreno nakon vraćanja radar chart-a u IPIP V2 participant report kao deterministic visual summary iz display_score vrijednosti. |
 | P1        | Oblik obraćanja            | Otvoreno  | Korisnik treba odabrati muški ili ženski jezički oblik obraćanja, bez pitanja o spolu.                                       | Definisati arhitekturu preference za muški/ženski jezički oblik, uključujući modal, DB/snapshot model i pravila za participant AI promptove. |
-| P1        | Kompozitni AI profil       | Planirano | Glavni diferencijator je AI sinteza IPIP + SAFRAN + MWMS.                                                                    | Prvo definisati input payload, schema, audience, UI strukturu i fallback.                     |
+| P1        | Explicit HR retrieval and route wiring | Završeno | IPIP HR lane postoji u contract/provider/worker sloju, ali retrieval/display nije end-to-end odvojen od participant patha. | Zatvoreno nakon HR-only retrieval helpera, route wiring-a i unavailable state-a bez participant fallbacka. |
+| P1        | HR report locale / i18n readiness policy | Završeno | HR report architecture mora ostati locale-aware od početka iako MVP ostaje bosanski. | Zatvoreno nakon dokumentovanja locale modela i pravila za assessment/report locale razdvajanje u backlogu i HR spec-u. |
+| P1        | HR report locale/i18n audit | Završeno | Treba mapirati gdje report pipeline već nosi locale, a gdje hardcodira bosanski sadržaj. | Zatvoreno read-only auditom koji je mapirao locale izvore, snapshot praznine i bosanski hardcoding rizike. |
+| P1        | Persisted report locale guardrails for future HR lanes | Završeno | Budući HR report lane-ovi ne smiju ulaziti u pipeline bez centralnog locale guardraila i bez kontrole fallback `"bs"` ponašanja. | Zatvoreno nakon `ReportLocale` / `resolveReportLocale(...)` guardraila i uklanjanja nepotrebnog `"bs"` hardcodinga iz poznatih fallback path-eva. |
+| P1        | SAFRAN HR report V1       | Planirano | SAFRAN ima participant lane, ali nema HR-facing report sa opreznim kognitivnim guardrailima. | Raditi nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | MWMS HR report V1         | Planirano | MWMS ima participant lane, ali nema HR-facing motivacijski report za intervju/onboarding/management uvide. | Raditi nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | Composite HR report data model decision | Planirano | Composite HR report nema prirodan jedan attempt_id i traži storage odluku prije implementacije. | Procijeniti `attempt_reports` bridge naspram `assessment_reports` / assessment-level modela. |
+| P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
 | P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
 
@@ -397,6 +693,30 @@ Razlog za sljedeći prioritet:
 * Body copy ne treba ponavljati naziv domena.
 * Detaljna interpretacija ostaje u report sekcijama i detail panelu.
 
+### 5.10 HR report i višejezičnost
+
+* MVP aplikacija i HR report sadržaj trenutno ostaju na bosanskom jeziku.
+* HR report architecture mora biti locale-aware od početka.
+* `assessmentLocale` označava jezik na kojem kandidat rješava test.
+* `participantReportLocale` označava jezik candidate reporta.
+* `hrReportLocale` označava jezik HR reporta i/ili HR interfejsa.
+* `reportLocale` označava target jezik konkretnog report artefakta.
+* Ovi jezici ne moraju uvijek biti isti.
+* U MVP-u `attempt.locale` može služiti kao fallback.
+* Future HR report generation ne smije dugoročno zavisiti isključivo od `attempt.locale`.
+* Za HR report target locale treba dolaziti iz HR user/workspace/report-request locale-a kada takav izvor postoji.
+* `attempt.locale` smije biti fallback, ne jedini source of truth.
+* Svaki HR report input mora nositi locale.
+* Svaki report snapshot mora očuvati jezik u kojem je generisan.
+* JSON/schema ključevi trebaju ostati jezički neutralni, preferirano engleski.
+* Human-facing vrijednosti se generišu ili renderuju u target locale-u.
+* Prompt/version selection mora podržati buduće locale varijante.
+* Section titles i standard labels trebaju dolaziti iz kontrolisanog lokalizovanog copy sloja, ne iz AI improvizacije.
+* Postojeći snapshot se ne prevodi automatski kada korisnik promijeni app jezik.
+* Regeneracija reporta na drugom jeziku je buduća funkcionalnost.
+* Budući jezici mogu uključiti hr, sr i en.
+* Future HR/composite report input treba moći nositi i assessment locale i report locale kada se razlikuju.
+
 ---
 
 ## 6. Tehnički dug
@@ -472,6 +792,48 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-07 — HR report taskovi grupisani nakon pipeline audita
+
+Dogovoreno:
+
+* HR report rad se razbija na jasne taskove umjesto jednog preširokog “kompozitnog reporta”.
+* Sljedeći implementation task je Explicit HR retrieval and route wiring.
+* SAFRAN HR report i MWMS HR report ostaju planirani, ali se ne rade prije sigurnog HR/participant retrieval odvajanja.
+* Composite HR report ne ide u implementaciju dok se ne donese data model odluka.
+* attempt_reports ostaje prihvatljiv za single-test HR reportove.
+* Composite HR report vjerovatno traži assessment-level report model.
+* Višejezičnost se uzima u obzir sada arhitektonski, ali MVP ostaje bosanski.
+* Locale/i18n readiness dobija zaseban backlog trag da se ne zaboravi.
+
+Racionala:
+
+* Audit je pokazao da IPIP HR report lane postoji, ali HR retrieval/display nije end-to-end sigurno odvojen od participant report patha.
+
+### 2026-05-07 — HR retrieval, locale audit i locale guardrails zatvoreni
+
+Dogovoreno:
+
+* `Explicit HR retrieval and route wiring` je završen.
+* HR route sada čita samo `audience='hr'`.
+* Participant route ostaje `audience='participant'`.
+* Nema HR → participant fallbacka.
+* Missing ili non-ready HR report prikazuje neutralni unavailable state.
+* `HR report locale/i18n audit` je završen kao read-only audit, bez izmjena fajlova.
+* `Persisted report locale guardrails for future HR lanes` je završen kroz centralni `ReportLocale` / `resolveReportLocale(...)` guardrail i uklanjanje nepotrebnog `"bs"` hardcodinga iz poznatih fallback path-eva.
+* Radna odluka je da `ReportLocale = AssessmentLocale` trenutno znači samo TypeScript union podržanih locale vrijednosti `bs/hr/sr/en`.
+* To ne znači da report locale uvijek mora biti isti kao assessment/test locale.
+* Budući HR reportovi moraju razlikovati `assessmentLocale`, `participantReportLocale`, `hrReportLocale` i `reportLocale`.
+* U MVP-u `attempt.locale` može služiti kao fallback, ali ne smije ostati dugoročni jedini source of truth za HR report locale.
+
+Racionala:
+
+* Pipeline je sada sigurniji za postojeći single-test HR path jer HR route više ne može tiho prikazati participant artefakt.
+* Audit je pokazao da locale infrastruktura već postoji, ali da snapshot i renderer slojevi još nisu dosljedno locale-aware.
+* Uvedeni guardrails štite buduće SAFRAN HR i MWMS HR lane-ove od ulaska u pipeline bez eksplicitnog locale pravila, bez uvođenja full i18n sistema sada.
+* SAFRAN i MWMS imaju participant report lane, ali ne HR lane.
+* Composite report nema prirodan jedan attempt_id i ne treba ga prerano gurati kroz semantički slab storage model.
+* Ako HR report pipeline sada hardcodira bosanski kao jedini jezik, kasnija višejezičnost će tražiti skupe refaktore.
 
 ### 2026-05-07 — MWMS participant polish, prompt ton i IPIP radar
 
