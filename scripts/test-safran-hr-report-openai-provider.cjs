@@ -223,6 +223,14 @@ function main() {
   );
   assert.match(hrFinalPrompt, /SAFRAN HR mandatory guardrails/);
   assert.match(mandatoryGuardrails, /executiveSummary\.summary/);
+  assert.match(mandatoryGuardrails, /Forbidden phrases are validation blockers/i);
+  assert.match(
+    mandatoryGuardrails,
+    /Never output forbidden literal phrases anywhere in the JSON, including negated, quoted or cautionary statements/i,
+  );
+  assert.match(mandatoryGuardrails, /u okviru ovog seta zadataka/i);
+  assert.match(mandatoryGuardrails, /ne koristiti za rangiranje osobe u odnosu na druge/i);
+  assert.match(mandatoryGuardrails, /ne čitati kao poređenje sa širom populacijom/i);
   assert.doesNotMatch(participantFinalPrompt, /SAFRAN HR mandatory guardrails/);
   assert.doesNotMatch(participantFinalPrompt, /cautious HR hypothesis|role context/);
 
@@ -232,6 +240,12 @@ function main() {
   assert.doesNotMatch(participantPrompt.instructions.output_contract, /safran_hr_report_v1/);
 
   const validHrReport = buildMockSafranHrReportV1(hrInput.promptInput);
+  validHrReport.interpretationLimits = [
+    "SAFRAN rezultat treba čitati samo u okviru ovog seta zadataka i čitati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
+    "Izvještaj nije odluka o zapošljavanju i ne treba ga koristiti za rangiranje osobe u odnosu na druge.",
+    "Nalaz ne treba čitati kao poređenje sa širom populacijom; čitajte kao signal iz ove procjene.",
+    "Kognitivni signal je hipoteza za provjeru, ne konačan zaključak.",
+  ];
   const validatedHrReport = validateStructuredReport(validHrReport, hrInput);
   assert.equal(validatedHrReport.reportType, "safran_hr_report_v1");
   assert.equal(validatedHrReport.audience, "hr");
@@ -270,6 +284,14 @@ function main() {
     "IQ i percentil ukazuju da je ovo idealni kandidat i preporučuje se zapošljavanje.";
   assert.throws(
     () => validateStructuredReport(invalidHrReport, hrInput),
+    /SAFRAN HR report validation/i,
+  );
+
+  const invalidHrNormativeReport = clone(validHrReport);
+  invalidHrNormativeReport.interpretationLimits[1] =
+    "SAFRAN rezultat nije mjera opće sposobnosti kroz normativno poređenje i ne treba ga tumačiti kao rangiranje osobe u odnosu na druge.";
+  assert.throws(
+    () => validateStructuredReport(invalidHrNormativeReport, hrInput),
     /SAFRAN HR report validation/i,
   );
 
