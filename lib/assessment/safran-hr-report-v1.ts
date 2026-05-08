@@ -797,7 +797,7 @@ export function buildMockSafranHrReportV1(
     executiveSummary: {
       title: "Sažetak za HR čitanje",
       summary:
-        "Rezultat može ukazivati na to da kandidat u ovom setu zadataka pokazuje različit ritam između verbalnog, figuralnog i numeričkog dijela. Ovaj signal treba provjeriti kroz intervju ili radni zadatak i čitati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
+        "Ovaj rezultat treba čitati kao opreznu HR hipotezu, ne kao zaključak o kandidatu. Rezultat može ukazivati na to da kandidat u ovom setu zadataka pokazuje različit ritam između verbalnog, figuralnog i numeričkog dijela, a ovaj signal treba provjeriti kroz intervju ili radni zadatak i čitati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
     },
     cognitiveSignals: {
       overall:

@@ -215,7 +215,7 @@ function main() {
   assert.match(hrFinalPrompt, /interpretationLimits/);
   assert.match(
     hrFinalPrompt,
-    /cautious HR hypothesis|Ovaj rezultat može ukazivati|hipotezu za provjeru/i,
+    /cautious HR hypothesis|Ovaj rezultat može ukazivati|hipotezu za provjeru|opreznu HR hipotezu/i,
   );
   assert.match(
     hrFinalPrompt,
@@ -223,6 +223,15 @@ function main() {
   );
   assert.match(hrFinalPrompt, /SAFRAN HR mandatory guardrails/);
   assert.match(mandatoryGuardrails, /executiveSummary\.summary/);
+  assert.match(mandatoryGuardrails, /opreznu HR hipotezu/i);
+  assert.match(
+    mandatoryGuardrails,
+    /Ovaj rezultat treba čitati kao opreznu HR hipotezu|Ovaj sažetak treba koristiti kao hipotezu za provjeru|Ovi signali mogu pomoći HR-u da formira hipoteze koje treba provjeriti/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /ovaj signal treba provjeriti|čitati zajedno sa iskustvom, intervjuom i kontekstom uloge/i,
+  );
   assert.match(mandatoryGuardrails, /Forbidden phrases are validation blockers/i);
   assert.match(
     mandatoryGuardrails,
@@ -275,6 +284,12 @@ function main() {
   assert.equal(
     hrPrompt.instructions.field_level_rules.some((item) =>
       /do not repeat the same opening phrase|To može ukazivati/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
+      /opreznu HR hipotezu|hipotezu za provjeru|ovaj signal treba provjeriti/i.test(item),
     ),
     true,
   );
@@ -350,6 +365,14 @@ function main() {
   assert.throws(
     () => validateStructuredReport(invalidHrReport, hrInput),
     /SAFRAN HR report validation/i,
+  );
+
+  const invalidHrSummaryWithoutHypothesis = clone(validHrReport);
+  invalidHrSummaryWithoutHypothesis.executiveSummary.summary =
+    "Profil pokazuje jače verbalne i figuralne signale, uz slabiji numerički signal. To je pregled trenutnog obrasca rezultata po oblastima.";
+  assert.throws(
+    () => validateStructuredReport(invalidHrSummaryWithoutHypothesis, hrInput),
+    /executiveSummary\.summary: Must frame the interpretation as a cautious HR hypothesis/i,
   );
 
   const invalidHrNormativeReport = clone(validHrReport);
