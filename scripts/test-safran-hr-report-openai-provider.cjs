@@ -226,6 +226,14 @@ function main() {
   assert.match(mandatoryGuardrails, /Forbidden phrases are validation blockers/i);
   assert.match(
     mandatoryGuardrails,
+    /do not repeat the same opening phrase across all four items|do not repeat the same opening phrase across overall, verbal, figural and numeric/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /do not use "To može ukazivati" more than once|do not use "To može ukazivati" as the default start/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
     /Never output forbidden literal phrases anywhere in the JSON, including negated, quoted or cautionary statements/i,
   );
   assert.match(mandatoryGuardrails, /u okviru ovog seta zadataka/i);
@@ -252,6 +260,12 @@ function main() {
   assert.equal(validatedHrReport.sourceType, "single_test");
   assert.equal(validatedHrReport.testSlug, "safran_v1");
   assert.deepEqual(hrInput.promptInput, hrPromptInputBefore);
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
+      /do not repeat the same opening phrase|To može ukazivati/i.test(item),
+    ),
+    true,
+  );
 
   const allHrText = [
     validatedHrReport.executiveSummary.title,
@@ -278,6 +292,9 @@ function main() {
     ),
     false,
   );
+  const cognitiveSignalText = Object.values(validatedHrReport.cognitiveSignals).join(" ");
+  const repeatedDefaultPhraseMatches = cognitiveSignalText.match(/To može ukazivati/gi) ?? [];
+  assert.equal(repeatedDefaultPhraseMatches.length, 0);
 
   const invalidHrReport = clone(validHrReport);
   invalidHrReport.executiveSummary.summary =

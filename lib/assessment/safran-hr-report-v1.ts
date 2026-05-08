@@ -801,13 +801,13 @@ export function buildMockSafranHrReportV1(
     },
     cognitiveSignals: {
       overall:
-        "Rezultat može ukazivati na opšti obrazac učinka u ovom setu zadataka, ali ne treba ga tumačiti izvan konteksta konkretne uloge.",
+        "Ovaj rezultat je najkorisnije čitati kao opšti obrazac učinka u ovom setu zadataka, bez tumačenja izvan konteksta konkretne uloge.",
       verbal:
-        "Verbalni signal može ukazivati na to koliko je kandidat u ovom setu zadataka brzo prepoznavao odnose među pojmovima i pravilima izraženim riječima.",
+        "U HR kontekstu, verbalni dio može biti relevantan za to kako je kandidat u ovom setu zadataka prepoznavao odnose među pojmovima i pravilima izraženim riječima.",
       figural:
-        "Figuralni signal može ukazivati na to kako je kandidat u ovom setu zadataka pratio obrasce i odnose među oblicima.",
+        "Za figuralni dio je korisno obratiti pažnju na to kako je kandidat u ovoj procjeni pratio obrasce i odnose među oblicima.",
       numeric:
-        "Numerički signal može ukazivati na to kako je kandidat u ovom setu zadataka prepoznavao pravilo u brojčanim nizovima, uz tačku opreza da ga je korisno dodatno provjeriti.",
+        "Ovaj signal vrijedi provjeriti kroz razgovor ili radni zadatak kada numerički dio pokazuje kako je kandidat u ovoj procjeni prepoznavao pravilo u brojčanim nizovima.",
     },
     pointsOfCaution: [
       {
