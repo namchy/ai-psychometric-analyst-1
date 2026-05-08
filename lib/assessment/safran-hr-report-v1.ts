@@ -797,17 +797,17 @@ export function buildMockSafranHrReportV1(
     executiveSummary: {
       title: "Sažetak za HR čitanje",
       summary:
-        "Ovaj rezultat treba čitati kao opreznu HR hipotezu, ne kao zaključak o kandidatu. Rezultat može ukazivati na to da kandidat u ovom setu zadataka pokazuje različit ritam između verbalnog, figuralnog i numeričkog dijela, a ovaj signal treba provjeriti kroz intervju ili radni zadatak i čitati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
+        "Ovaj sažetak treba koristiti kao hipotezu za provjeru, ne kao konačan sud o osobi. Rezultat može ukazivati na stabilniji verbalni i figuralni signal, uz slabiji numerički signal. HR treba provjeriti koliko uloga traži brzo brojčano zaključivanje kroz intervju, iskustvo i konkretan radni zadatak.",
     },
     cognitiveSignals: {
       overall:
-        "Ukupni rezultat je 26/54. U ovoj procjeni, taj odnos sugeriše neujednačen ritam između tipova zadataka. Za HR je korisno provjeriti kako kandidat održava kvalitet rada kada se format zadatka promijeni.",
+        "Ukupni rezultat je 26/54. Taj odnos sugeriše neujednačen ritam između tipova zadataka. Provjerite kako kandidat održava kvalitet rada kada se format problema promijeni.",
       verbal:
-        "Verbalni rezultat je 12/18. U ovoj procjeni, taj signal sugeriše stabilnije snalaženje u zadacima sa pisanim pravilima i pojmovima. U intervjuu je korisno provjeriti kako kandidat brzo izdvaja bitno iz pisanih informacija.",
+        "Verbalni rezultat je 12/18. Signal upućuje na stabilnije snalaženje sa pisanim pravilima i pojmovima. U intervjuu provjerite kako kandidat izdvaja bitno iz pisanih informacija.",
       figural:
-        "Figuralni rezultat je 9/18. Ovaj dio rezultata treba čitati kao signal o tome kako je kandidat u ovoj procjeni pratio obrasce među oblicima. Za HR je korisno provjeriti kako osoba prepoznaje vizuelne obrasce u konkretnim radnim zadacima.",
+        "Figuralni rezultat je 9/18. Ovaj dio rezultata govori o praćenju obrazaca među oblicima. Provjerite kako osoba prepoznaje vizuelne obrasce u konkretnim radnim zadacima.",
       numeric:
-        "Numerički rezultat je 5/18. U ovoj procjeni, taj dio sugeriše da je brojčani niz tražio više provjere prije zaključka. Kroz radni zadatak vrijedi provjeriti kako kandidat radi sa pravilima u tabelama, nizovima ili kvantitativnim podacima.",
+        "Numerički rezultat je 5/18. Taj dio sugeriše da je brojčani niz tražio više provjere prije zaključka. Ako uloga uključuje rad sa brojčanim podacima, tabelama, procjenama ili brzim kvantitativnim odlukama, ovaj signal treba dodatno provjeriti kroz kratak praktični zadatak.",
     },
     pointsOfCaution: [
       {
@@ -850,13 +850,13 @@ export function buildMockSafranHrReportV1(
     ],
     onboardingGuidance: {
       first30Days: [
-        "U prvih 30 dana dati jasne prioritete, očekivane ishode i kratke provjere razumijevanja zadataka.",
+        "Jasno postaviti očekivanja, prioritete i kriterije uspješnog rada kroz konkretne zadatke i kratke provjere razumijevanja.",
       ],
       days60: [
-        "Do 60. dana korisno je postepeno širiti složenost zadataka i pratiti kako kandidat objašnjava odluke i provjerava pretpostavke.",
+        "Ako uloga uključuje brojčane podatke, koristiti jasne primjere, kontrolne korake i kratke provjere tačnosti prije samostalnog rada.",
       ],
       days90: [
-        "Do 90. dana korisno je povezati signal sa stvarnim radnim primjerima i povratnom informacijom iz konteksta uloge.",
+        "Koristiti vizuelne primjere, procesne mape ili jasne obrasce kada zadatak uključuje više koraka.",
       ],
     },
     interpretationLimits: [

@@ -226,6 +226,10 @@ function main() {
   assert.match(mandatoryGuardrails, /opreznu HR hipotezu/i);
   assert.match(
     mandatoryGuardrails,
+    /three short functions|not be one long validator-driven sentence|must not list scores without a work implication/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
     /Ovaj rezultat treba čitati kao opreznu HR hipotezu|Ovaj sažetak treba koristiti kao hipotezu za provjeru|Ovi signali mogu pomoći HR-u da formira hipoteze koje treba provjeriti/i,
   );
   assert.match(
@@ -247,11 +251,31 @@ function main() {
   );
   assert.match(
     mandatoryGuardrails,
+    /reduce repeated phrases such as "u ovoj procjeni"|brzim kvantitativnim odlukama/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
     /pointsOfCaution must be concrete HR hypotheses for checking|not generic methodological notes/i,
   );
   assert.match(
     mandatoryGuardrails,
+    /do not place positive signals there just because they are high|Vrlo snažan verbalni signal|total result hiding differences between task types/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
     /interviewQuestions must be short, natural to say aloud, open-ended|no more than two sentences/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /onboardingGuidance must be tied to the concrete profile|clear instructions, visual examples, process maps, control steps/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /Nalaze ne treba koristiti za rangiranje osobe u odnosu na druge|explicitly negative/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /professional HR decision-support artifact|not an academic test explanation or generic AI text/i,
   );
   assert.match(
     mandatoryGuardrails,
@@ -272,6 +296,7 @@ function main() {
   validHrReport.interpretationLimits = [
     "SAFRAN rezultat treba čitati samo u okviru ovog seta zadataka i čitati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
     "Izvještaj nije odluka o zapošljavanju i ne treba ga koristiti za rangiranje osobe u odnosu na druge.",
+    "Nalaze ne treba koristiti za rangiranje osobe u odnosu na druge.",
     "Nalaz ne treba čitati kao poređenje sa širom populacijom; čitajte kao signal iz ove procjene.",
     "Kognitivni signal je hipoteza za provjeru, ne konačan zaključak.",
   ];
@@ -295,6 +320,12 @@ function main() {
   );
   assert.equal(
     hrPrompt.instructions.field_level_rules.some((item) =>
+      /three short functions|validator-driven sentence|work implication/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
       /score anchor|brief interpretation of the signal|HR implication or check/i.test(item),
     ),
     true,
@@ -307,7 +338,25 @@ function main() {
   );
   assert.equal(
     hrPrompt.instructions.field_level_rules.some((item) =>
+      /positive signals|Vrlo snažan verbalni signal|work-context check/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
       /interviewQuestions must be short|two sentences|spoken interview/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
+      /onboardingGuidance must be tied to the concrete profile|control steps|accuracy checks/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    hrPrompt.instructions.field_level_rules.some((item) =>
+      /Nalaze ne treba koristiti za rangiranje osobe u odnosu na druge|Ranking statements/i.test(item),
     ),
     true,
   );
@@ -340,13 +389,19 @@ function main() {
   const cognitiveSignalText = Object.values(validatedHrReport.cognitiveSignals).join(" ");
   const repeatedDefaultPhraseMatches = cognitiveSignalText.match(/To može ukazivati/gi) ?? [];
   assert.equal(repeatedDefaultPhraseMatches.length, 0);
+  const repeatedAssessmentPhraseMatches = cognitiveSignalText.match(/u ovoj procjeni/gi) ?? [];
+  assert.ok(repeatedAssessmentPhraseMatches.length <= 1);
   assert.match(validatedHrReport.cognitiveSignals.overall, /\d+\/\d+/);
   assert.match(validatedHrReport.cognitiveSignals.verbal, /\d+\/\d+/);
   assert.match(validatedHrReport.cognitiveSignals.figural, /\d+\/\d+/);
   assert.match(validatedHrReport.cognitiveSignals.numeric, /\d+\/\d+/);
+  assert.match(
+    validatedHrReport.cognitiveSignals.numeric,
+    /brojčanim podacima|tabelama|kvantitativnim odlukama|praktični zadatak/i,
+  );
   assert.doesNotMatch(
     validatedHrReport.pointsOfCaution.map((item) => item.signal).join(" "),
-    /Rizik od pogrešne interpretacije ukupnog rezultata|Pogrešno tumačenje rezultata|Ograničenja testa/i,
+    /Rizik od pogrešne interpretacije ukupnog rezultata|Pogrešno tumačenje rezultata|Ograničenja testa|Vrlo snažan verbalni signal|Vrlo snažan figuralni signal/i,
   );
   assert.equal(
     validatedHrReport.interviewQuestions.every((item) => {
@@ -356,6 +411,19 @@ function main() {
         .filter(Boolean).length;
       return sentenceCount <= 2;
     }),
+    true,
+  );
+  assert.equal(
+    validatedHrReport.onboardingGuidance.first30Days
+      .concat(validatedHrReport.onboardingGuidance.days60)
+      .concat(validatedHrReport.onboardingGuidance.days90)
+      .some((item) => /brojčane podatke|kontrolne korake|vizuelne primjere|procesne mape|konkretne zadatke/i.test(item)),
+    true,
+  );
+  assert.equal(
+    validatedHrReport.interpretationLimits.some((item) =>
+      /Nalaze ne treba koristiti za rangiranje osobe u odnosu na druge/i.test(item),
+    ),
     true,
   );
 
