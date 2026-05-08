@@ -151,6 +151,19 @@ function main() {
     hrPrompt.instructions.interpretation_rule,
     /moze ukazivati|korisno je provjeriti|u ovom setu zadataka/i,
   );
+  assert.ok(Array.isArray(hrPrompt.instructions.field_level_rules));
+  assert.match(
+    hrPrompt.instructions.field_level_rules.join(" "),
+    /cautious HR hypothesis|Ovaj rezultat može ukazivati|hipotezu za provjeru/i,
+  );
+  assert.match(
+    hrPrompt.instructions.field_level_rules.join(" "),
+    /experience|interview|role context|iskustvom, intervjuom i kontekstom uloge/i,
+  );
+  assert.match(
+    hrPrompt.instructions.structure_rules.join(" "),
+    /interpretationLimits.*experience.*interview.*role context|čitati zajedno sa iskustvom, intervjuom i kontekstom uloge/i,
+  );
   assert.equal(
     hrPrompt.instructions.hard_guardrails.some((item) => /participant/i.test(item)),
     false,
