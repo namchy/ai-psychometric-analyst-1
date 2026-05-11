@@ -189,7 +189,7 @@ function main() {
     {
       state: "ready",
       statusLabel: "Dostupno",
-      body: "HR izvještaj je dostupan za pregled.",
+      body: "HR izvještaj je spreman za pregled.",
       visualVariant: "success",
       cta: {
         label: "Otvori HR izvještaj",
@@ -382,11 +382,11 @@ function main() {
     },
     {
       state: "queued",
-      statusLabel: "Generiše se",
-      body: "HR izvještaj se trenutno priprema.",
+      statusLabel: "Čeka generisanje",
+      body: "HR izvještaj je poslan na generisanje i čeka obradu.",
       visualVariant: "progress",
       cta: {
-        label: "Generiše se",
+        label: "Čeka generisanje",
         href: null,
         disabled: true,
       },
@@ -614,7 +614,7 @@ function main() {
   });
   const ipipCard1 = model1.cards.find((card) => card.slug === "ipip-neo-120-v1");
   const safranCard1 = model1.cards.find((card) => card.slug === "safran_v1");
-  assert.equal(ipipCard1?.statusLabel, "Generiše se");
+  assert.equal(ipipCard1?.statusLabel, "Čeka generisanje");
   assert.equal(ipipCard1?.visualVariant, "progress");
   assert.equal(safranCard1?.statusLabel, "Dostupno");
   assert.equal(safranCard1?.cta.disabled, false);
@@ -681,7 +681,7 @@ function main() {
   assert.equal(model3.cards.some((card) => card.cta.disabled === false), false);
   assert.equal(
     model3.cards.find((card) => card.slug === "ipip-neo-120-v1")?.statusLabel,
-    "Generiše se",
+    "Čeka generisanje",
   );
   assert.equal(
     model3.cards.find((card) => card.slug === "safran_v1")?.statusLabel,

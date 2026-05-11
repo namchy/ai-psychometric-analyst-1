@@ -119,6 +119,7 @@ export type HrCandidateAssessmentCard = {
   state: HrCandidateAssessmentCardState;
   statusLabel:
     | "Dostupno"
+    | "Čeka generisanje"
     | "Generiše se"
     | "Greška pri generisanju"
     | "Još nije podržano"
@@ -151,7 +152,7 @@ export type HrCandidateAssessmentCard = {
         disabled: false;
       }
     | {
-        label: "Generiše se" | "Nije dostupno";
+        label: "Čeka generisanje" | "Generiše se" | "Nije dostupno";
         href: null;
         disabled: true;
       };
@@ -397,7 +398,7 @@ export function resolveHrReportCardState(input: {
       return {
         state: "ready",
         statusLabel: "Dostupno",
-        body: "HR izvještaj je dostupan za pregled.",
+        body: "HR izvještaj je spreman za pregled.",
         visualVariant: "success",
         cta: {
           label: "Otvori HR izvještaj",
@@ -410,11 +411,11 @@ export function resolveHrReportCardState(input: {
     if (report.report_status === "queued") {
       return {
         state: "queued",
-        statusLabel: "Generiše se",
-        body: "HR izvještaj se trenutno priprema.",
+        statusLabel: "Čeka generisanje",
+        body: "HR izvještaj je poslan na generisanje i čeka obradu.",
         visualVariant: "progress",
         cta: {
-          label: "Generiše se",
+          label: "Čeka generisanje",
           href: null,
           disabled: true,
         },
