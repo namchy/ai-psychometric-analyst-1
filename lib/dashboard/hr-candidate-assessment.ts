@@ -1,3 +1,5 @@
+import { getReportGenerationCapability } from "@/lib/assessment/report-capabilities";
+
 export type HrCandidateAssessmentAttemptLifecycle =
   | "completed"
   | "in_progress"
@@ -128,6 +130,18 @@ export type HrCandidateAssessmentCard = {
     | "Nije generisano";
   body: string;
   visualVariant: HrCandidateAssessmentCardVisualVariant;
+  action:
+    | {
+        label: "Generiši HR izvještaj" | "Ponovo generiši";
+        kind: "generate" | "retry";
+        enabled: true;
+      }
+    | {
+        label: null;
+        kind: null;
+        enabled: false;
+        reason: string | null;
+      };
   attempt: HrCandidateAssessmentAttempt | null;
   report: HrCandidateAttemptReportSummary | null;
   cta:
@@ -274,6 +288,70 @@ function selectLatestHrReportForAttempt(
 
     return right.id.localeCompare(left.id);
   })[0] ?? null;
+}
+
+export function resolveHrReportRecoveryAction(input: {
+  attempt: HrCandidateAssessmentAttempt | null;
+  report: HrCandidateAttemptReportSummary | null;
+  capability: {
+    active: boolean;
+    status: "active" | "planned" | "inactive";
+  };
+}): HrCandidateAssessmentCard["action"] {
+  const { attempt, report, capability } = input;
+
+  if (!attempt) {
+    return {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "Attempt ne postoji.",
+    };
+  }
+
+  if (attempt.lifecycle !== "completed") {
+    return {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "HR izvještaj se može pokrenuti tek nakon završetka procjene.",
+    };
+  }
+
+  if (!capability.active) {
+    return {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason:
+        capability.status === "planned"
+          ? "HR izvještaj za ovu procjenu još nije podržan."
+          : "HR izvještaj trenutno nije dostupan za ovu procjenu.",
+    };
+  }
+
+  if (!report) {
+    return {
+      label: "Generiši HR izvještaj",
+      kind: "generate",
+      enabled: true,
+    };
+  }
+
+  if (report.report_status === "failed") {
+    return {
+      label: "Ponovo generiši",
+      kind: "retry",
+      enabled: true,
+    };
+  }
+
+  return {
+    label: null,
+    kind: null,
+    enabled: false,
+    reason: "HR izvještaj je već pokrenut ili dostupan.",
+  };
 }
 
 export function resolveHrReportCardState(input: {
@@ -480,6 +558,16 @@ export function buildHrCandidateReportCards(input: {
     const report = attempt
       ? selectLatestHrReportForAttempt(reportsByAttemptId.get(attempt.id) ?? [])
       : null;
+    const recoveryAction = resolveHrReportRecoveryAction({
+      attempt,
+      report,
+      capability: getReportGenerationCapability({
+        testSlug: test.slug,
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    });
     const resolvedState = resolveHrReportCardState({
       attempt,
       report,
@@ -492,6 +580,7 @@ export function buildHrCandidateReportCards(input: {
         title: test.shortLabel,
         subtitle: test.subtitle,
         ...resolvedState,
+        action: recoveryAction,
         attempt,
         report: resolvedState.state === "completed_without_report" ? null : report,
       };
@@ -502,6 +591,7 @@ export function buildHrCandidateReportCards(input: {
       title: test.shortLabel,
       subtitle: test.subtitle,
       ...resolvedState,
+      action: recoveryAction,
       attempt: null,
       report: null,
     };

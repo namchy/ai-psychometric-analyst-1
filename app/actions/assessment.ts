@@ -9,12 +9,14 @@ import {
 import {
   getActiveOrganizationForUser,
   getAttemptForOrganization,
+  getAttemptsForParticipantInOrganization,
   getParticipantForOrganization,
 } from "@/lib/b2b/organizations";
 import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
 import {
   enqueueCompletedAssessmentReports,
   persistCompletedAssessmentReport,
+  recoverHrAttemptReport,
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
 import type { PostCompletionReportLanePlan } from "@/lib/assessment/report-capabilities";
@@ -766,6 +768,58 @@ export async function createB2BAttempt(formData: FormData) {
   }
 
   redirect(`/dashboard?success=attempt-created&attemptId=${data.id}`);
+}
+
+export async function recoverHrCandidateAttemptReport(formData: FormData) {
+  const participantId = String(formData.get("participantId") ?? "").trim();
+  const attemptId = String(formData.get("attemptId") ?? "").trim();
+  const returnPath = String(formData.get("returnPath") ?? "").trim();
+  const testSlug = String(formData.get("testSlug") ?? "").trim();
+  const fallbackPath = participantId
+    ? `/dashboard/participants/${participantId}/reports`
+    : "/dashboard";
+
+  try {
+    const user = await requireAuthenticatedUser();
+    const organization = await getActiveOrganizationForUser(user.id);
+
+    if (!organization || !participantId || !attemptId) {
+      redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+    }
+
+    const participant = await getParticipantForOrganization(organization.id, participantId);
+
+    if (!participant) {
+      redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+    }
+
+    const attempts = await getAttemptsForParticipantInOrganization(organization.id, participantId);
+    const attempt = attempts.find((entry: { id: string; tests?: { slug: string } | null }) => entry.id === attemptId);
+
+    if (!attempt) {
+      redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+    }
+
+    const result = await recoverHrAttemptReport(attemptId);
+    revalidateAttemptAllPaths(attemptId);
+    revalidatePath(`/dashboard/participants/${participantId}/reports`);
+
+    const target = encodeURIComponent(testSlug || attempt.tests?.slug || "");
+    redirect(
+      `${returnPath || fallbackPath}?reportRecovery=${encodeURIComponent(result.action)}&target=${target}`,
+    );
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error("recoverHrCandidateAttemptReport failed", {
+      participantId,
+      attemptId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+  }
 }
 
 export async function setProtectedAttemptLocale(formData: FormData) {

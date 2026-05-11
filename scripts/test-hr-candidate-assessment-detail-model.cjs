@@ -62,7 +62,11 @@ const {
   buildHrCandidateAssessmentDetailModel,
   buildParticipantAssessmentRows,
   resolveHrReportCardState,
+  resolveHrReportRecoveryAction,
 } = require("../lib/dashboard/hr-candidate-assessment.ts");
+const {
+  getReportGenerationCapability,
+} = require("../lib/assessment/report-capabilities.ts");
 
 function buildParticipant(id, fullName, email) {
   return {
@@ -143,6 +147,10 @@ function assertResolvedState(input, expected) {
   assert.deepEqual(resolveHrReportCardState(input), expected);
 }
 
+function assertRecoveryAction(input, expected) {
+  assert.deepEqual(resolveHrReportRecoveryAction(input), expected);
+}
+
 function main() {
   const completedAttempt = buildAttempt({
     id: "attempt-completed",
@@ -188,6 +196,176 @@ function main() {
         href: `/dashboard/attempts/${completedAttempt.id}`,
         disabled: false,
       },
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-failed-retry",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "failed",
+      }),
+      capability: getReportGenerationCapability({
+        testSlug: "ipip-neo-120-v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: "Ponovo generiši",
+      kind: "retry",
+      enabled: true,
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedAttempt,
+      report: null,
+      capability: getReportGenerationCapability({
+        testSlug: "safran_v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: "Generiši HR izvještaj",
+      kind: "generate",
+      enabled: true,
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-ready-no-retry",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "ready",
+      }),
+      capability: getReportGenerationCapability({
+        testSlug: "ipip-neo-120-v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "HR izvještaj je već pokrenut ili dostupan.",
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-queued-no-retry",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "queued",
+      }),
+      capability: getReportGenerationCapability({
+        testSlug: "ipip-neo-120-v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "HR izvještaj je već pokrenut ili dostupan.",
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-processing-no-retry",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "processing",
+      }),
+      capability: getReportGenerationCapability({
+        testSlug: "ipip-neo-120-v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "HR izvještaj je već pokrenut ili dostupan.",
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedAttempt,
+      report: null,
+      capability: getReportGenerationCapability({
+        testSlug: "mwms_v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "HR izvještaj za ovu procjenu još nije podržan.",
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: helperInProgressAttempt,
+      report: null,
+      capability: getReportGenerationCapability({
+        testSlug: "safran_v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "HR izvještaj se može pokrenuti tek nakon završetka procjene.",
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: abandonedAttempt,
+      report: null,
+      capability: getReportGenerationCapability({
+        testSlug: "mwms_v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: null,
+      kind: null,
+      enabled: false,
+      reason: "HR izvještaj se može pokrenuti tek nakon završetka procjene.",
     },
   );
 
@@ -442,6 +620,8 @@ function main() {
   assert.equal(safranCard1?.cta.disabled, false);
   assert.equal(safranCard1?.cta.href, "/dashboard/attempts/fb749b5a-b0c8-4495-bf0c-abe99bf90095");
   assert.equal(safranCard1?.cta.label, "Otvori HR izvještaj");
+  assert.equal(ipipCard1?.action.enabled, false);
+  assert.equal(safranCard1?.action.enabled, false);
 
   const participant2 = buildParticipant("participant-2", "User 2", "user2@example.com");
   const ipipReadyAttempt = buildAttempt({
@@ -539,6 +719,10 @@ function main() {
     model4.cards.find((card) => card.slug === "safran_v1")?.statusLabel,
     "Nije generisano",
   );
+  assert.equal(
+    model4.cards.find((card) => card.slug === "safran_v1")?.action.kind,
+    "generate",
+  );
 
   const participant5 = buildParticipant("participant-5", "Amra", "amra@example.com");
   const ipipFailedAttempt = buildAttempt({
@@ -598,6 +782,18 @@ function main() {
   assert.equal(
     amraModel.cards.find((card) => card.slug === "mwms_v1")?.statusLabel,
     "Još nije podržano",
+  );
+  assert.equal(
+    amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.action.kind,
+    "retry",
+  );
+  assert.equal(
+    amraModel.cards.find((card) => card.slug === "safran_v1")?.action.kind,
+    "generate",
+  );
+  assert.equal(
+    amraModel.cards.find((card) => card.slug === "mwms_v1")?.action.enabled,
+    false,
   );
   assert.equal(
     amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.body.includes("Cannot read properties"),

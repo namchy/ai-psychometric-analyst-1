@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { recoverHrCandidateAttemptReport } from "@/app/actions/assessment";
 import {
   AuthenticatedAppMainContent,
 } from "@/components/app/authenticated-app-chrome";
@@ -25,6 +26,10 @@ type CandidateReportsPageProps = {
   params: {
     participantId: string;
   };
+  searchParams?: {
+    reportRecovery?: string;
+    target?: string;
+  };
 };
 
 function getCardStatusClassName(visualVariant: HrCandidateAssessmentCardVisualVariant): string {
@@ -43,8 +48,62 @@ function getCardStatusClassName(visualVariant: HrCandidateAssessmentCardVisualVa
 
 export const dynamic = "force-dynamic";
 
+function getReportRecoveryMessage(searchParams?: CandidateReportsPageProps["searchParams"]): {
+  tone: "success" | "neutral" | "error";
+  body: string;
+} | null {
+  const action = searchParams?.reportRecovery;
+  const target = searchParams?.target?.toUpperCase() || "HR izvještaj";
+
+  switch (action) {
+    case "generate":
+      return {
+        tone: "success",
+        body: `${target} je dodat u red za generisanje.`,
+      };
+    case "retry_failed":
+      return {
+        tone: "success",
+        body: `${target} je ponovo dodat u red za generisanje.`,
+      };
+    case "noop_ready":
+      return {
+        tone: "neutral",
+        body: `${target} je već dostupan.`,
+      };
+    case "noop_active_job":
+      return {
+        tone: "neutral",
+        body: `${target} se već generiše.`,
+      };
+    case "noop_inactive_capability":
+      return {
+        tone: "neutral",
+        body: `${target} još nije podržan za ovu procjenu.`,
+      };
+    case "noop_incomplete_attempt":
+      return {
+        tone: "neutral",
+        body: `${target} se može pokrenuti tek nakon završetka procjene.`,
+      };
+    case "noop_existing_unavailable":
+      return {
+        tone: "neutral",
+        body: `${target} trenutno nije dostupan za ponovni pokušaj.`,
+      };
+    case "error":
+      return {
+        tone: "error",
+        body: "Pokretanje HR izvještaja nije uspjelo. Pokušajte ponovo.",
+      };
+    default:
+      return null;
+  }
+}
+
 export default async function CandidateReportsPage({
   params,
+  searchParams,
 }: CandidateReportsPageProps) {
   const user = await requireAuthenticatedUser();
   const organization = await getActiveOrganizationForUser(user.id);
@@ -70,6 +129,7 @@ export default async function CandidateReportsPage({
     hrReports,
     organizationName: organization.name,
   });
+  const recoveryMessage = getReportRecoveryMessage(searchParams);
 
   return (
     <AuthenticatedAppMainContent
@@ -156,6 +216,20 @@ export default async function CandidateReportsPage({
             titleClassName="text-[1.35rem]"
           />
 
+          {recoveryMessage ? (
+            <div
+              className={`mt-4 rounded-[1.2rem] border px-4 py-3 text-sm ${
+                recoveryMessage.tone === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : recoveryMessage.tone === "error"
+                    ? "border-rose-200 bg-rose-50 text-rose-800"
+                    : "border-slate-200 bg-slate-50 text-slate-700"
+              }`}
+            >
+              {recoveryMessage.body}
+            </div>
+          ) : null}
+
           <div className="mt-6 grid gap-4 xl:grid-cols-3">
             {model.cards.map((card) => (
               <DashboardInfoCardShell
@@ -196,18 +270,39 @@ export default async function CandidateReportsPage({
                 </div>
 
                 <div className="mt-6">
-                  {card.cta.disabled ? (
-                    <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                      {card.cta.label}
-                    </span>
-                  ) : (
-                    <Link
-                      className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition hover:-translate-y-0.5 hover:bg-teal-700"
-                      href={card.cta.href}
-                    >
-                      {card.cta.label}
-                    </Link>
-                  )}
+                  <div className="flex flex-wrap gap-3">
+                    {card.cta.disabled ? (
+                      <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                        {card.cta.label}
+                      </span>
+                    ) : (
+                      <Link
+                        className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition hover:-translate-y-0.5 hover:bg-teal-700"
+                        href={card.cta.href}
+                      >
+                        {card.cta.label}
+                      </Link>
+                    )}
+
+                    {card.action.enabled && card.attempt ? (
+                      <form action={recoverHrCandidateAttemptReport}>
+                        <input name="participantId" type="hidden" value={participant.id} />
+                        <input name="attemptId" type="hidden" value={card.attempt.id} />
+                        <input name="testSlug" type="hidden" value={card.slug} />
+                        <input
+                          name="returnPath"
+                          type="hidden"
+                          value={`/dashboard/participants/${participant.id}/reports`}
+                        />
+                        <button
+                          className="inline-flex min-h-0 rounded-full border border-slate-300 bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+                          type="submit"
+                        >
+                          {card.action.label}
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
                 </div>
               </DashboardInfoCardShell>
             ))}
