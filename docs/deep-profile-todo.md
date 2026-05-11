@@ -52,7 +52,8 @@ Komande:
 | P1        | Automatic HR report enqueue / capability registry   | Završeno    | Report pipeline / HR report orchestration | Zatvoreno nakon uvođenja capability registry-ja i centralnog post-completion enqueue planiranja za active HR lane-ove. |
 | P1        | HR report recovery actions                          | Završeno    | HR dashboard / Report recovery | Zatvoreno nakon dodavanja per-card recovery flow-a za failed i missing single-test HR reportove. |
 | P1        | IPIP HR report content contract V2                  | Završeno    | HR report / IPIP / Content contract | Zatvoreno nakon prelaska na `ipip_neo_120_hr_v2`, HR-operativni content shape i display fallback za legacy V1 snapshotove. |
-| P1        | MWMS HR report V1                                   | Planirano   | HR report / MWMS             | Implementirati HR-facing motivacijski report nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | MWMS HR report V1                                   | Završeno    | HR report / MWMS             | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI provider routinga, renderer-a, capability aktivacije, worker podrške, status/recovery ponašanja, prompt aktivacije i realnog DB lifecycle/OpenAI smoke-a. |
+| P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Planirano | Assessment UX / Persistence  | Implementirati prvi uski slice: candidate-only, single-choice/Likert auto-advance za IPIP i MWMS, React state + localStorage pending queue + background flush + blocking final submit flush. |
 | P1        | Composite HR report data model decision             | Planirano   | Architecture / HR report storage | Odlučiti da li composite HR report ide kroz privremeni `attempt_reports` bridge ili kroz novi `assessment_reports` / assessment-level model. |
 | P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
@@ -60,13 +61,14 @@ Komande:
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
 | P1        | SAFRAN novi stimulus asseti                          | Otvoreno    | Assessment assets / UX       | Ubaciti nove SAFRAN stimulus slike sa većim, čitljivijim tekstom.                              |
 | P1        | Globalni app header i footer                         | Završeno    | App shell / UI system        | Zatvoreno nakon uvođenja protected app-wide chrome i focus chrome moda za assessment execution rute. |
-| P1        | Logo u headeru                                       | Otvoreno    | Branding / UI                | Dodati postojeći Deep Profile logo u globalni header.                                          |
+| P1        | Logo u headeru                                       | Završeno    | Branding / UI                | Zatvoreno nakon zamjene tekstualnog Deep Profile prikaza PNG logoom u protected app headeru.   |
 | P1        | MWMS licenca                                         | Otvoreno    | Legal / Product risk         | Pravno očistiti komercijalnu upotrebu MWMS-a prije produkcijskog rollouta.                     |
 | P2        | Login screen UI polish                               | Otvoreno    | Auth UI / Visual consistency | Uskladiti login ekran sa ostatkom aplikacije i popraviti font promjenu pri fokusu email polja. |
 | P2        | IPIP poddimenzije prikaz                             | Otvoreno    | Report UI / Visualization    | Skratiti prikaz poddimenzija i razmotriti bars umjesto predugog tekstualnog prikaza.           |
 | P2        | Candidate dashboard labels                           | Završeno    | UX copy                      | Kartice sada koriste user-facing title kao glavni naziv procjene, a instrument kao subtitle.   |
 | P2        | Candidate dashboard CTA hover contrast               | Završeno    | Dashboard UI / Accessibility | Zatvoreno nakon popravke shared CTA hover/focus stilova za Započni procjenu, Nastavi procjenu i Pogledaj rezultate. |
 | P2        | MWMS AI report copy ton                              | Završeno    | Report copy / Tone           | Zatvoreno nakon usklađivanja MWMS participant reporta na “ti” formu kroz prompt pravila, renderer safety net, display smoke test i regenerisani testni report. |
+| P2        | SAFRAN participant domain copy polish                | Završeno    | SAFRAN / Candidate report / Copy | Zatvoreno nakon uvođenja controlled copy helpera za “Pregled po oblastima”, bez promjene scoringa, layouta ili AI/report pipeline-a. |
 | P2        | Report visual language po testovima                  | Planirano   | Report UI                    | IPIP radar, MWMS bar profile, SAFRAN score cards, composite mapa.                              |
 | P2        | Worker/report auto-processing orchestration          | Otvoreno / Tech debt | Tech debt / Ops       | Definisati kako queued report prelazi u processing/ready/failed bez ručnog `npm run process-report-jobs` dev koraka. |
 | P3        | HR-facing MWMS AI report                             | Parking lot | HR report                    | Razmotriti nakon composite arhitekture ili HR dashboard prioriteta.                            |
@@ -621,12 +623,12 @@ Nakon završetka participant attempta nije postojao centralni capability-driven 
 **Acceptance criteria:**
 - capability registry odlučuje koji report lane može biti generisan
 - IPIP i SAFRAN HR lane-ovi mogu automatski ući u queued nakon participant completiona
-- MWMS HR lane ostaje planned/not_implemented, ne trajno isključen
+- MWMS HR lane sada je active single-test HR lane, nakon zatvaranja ranijeg planned/not_implemented stanja
 - completion flow ne kreira duplikat reda ako report već postoji
 - failed red se ne retry-a automatski
 
 **Completion note:**  
-Završeno kroz centralni capability registry i post-completion planning helper. Trenutni registry mapira `ipip-neo-120-v1` i `safran_v1` kao `participant individual single_test: active` i `hr individual single_test: active`, dok `mwms_v1` ostaje `participant individual single_test: active` i `hr individual single_test: planned / not_implemented`. Odluka je da MWMS nije trajno isključen iz HR chain-a; kada MWMS HR V1 bude implementiran, registry se samo prebacuje u `active` i ulazi u isti automatski chain. Completion flow ne pravi duplikate ako report red već postoji i ne retry-a automatski failed redove.
+Završeno kroz centralni capability registry i post-completion planning helper. Trenutni registry mapira `ipip-neo-120-v1`, `safran_v1` i `mwms_v1` kao `participant individual single_test: active` i `hr individual single_test: active`. Odluka je da svi single-test HR lane-ovi ulaze u isti capability-driven chain kada su aktivni. Completion flow ne pravi duplikate ako report red već postoji i ne retry-a automatski failed redove.
 
 ---
 
@@ -715,7 +717,7 @@ Završeno u components/dashboard/candidate-dashboard.tsx kroz shared CTA class b
 
 ### P1 — MWMS HR report V1
 
-**Status:** Planirano  
+**Status:** Završeno  
 **Kategorija:** HR report / MWMS
 
 **Problem / context:**  
@@ -743,6 +745,66 @@ MWMS trenutno ima participant report lane, ali nema HR report lane. HR verzija t
 - report koristi deterministic MWMS dimension_scores kao input
 - AI ne mijenja score/band
 - report daje HR hipoteze i preporuke, ne presude
+
+**Completion note:**  
+Završeno kroz šest uskih slice-ova: MWMS HR V1 contract/schema/validator, deterministic HR input builder iz MWMS dimension_scores, score/band/label mutation checks, mock provider generation, runtime union wiring, OpenAI provider routing, prompt package wiring, renderer/display adapter, capability activation, worker processing support i generic dashboard/status/recovery ponašanje. MWMS HR lane sada je active za audience='hr', report_type='individual' i source_type='single_test'. Prompt activation je verifikovan nakon standardnog import:assessment-package za assessment-packages/mwms_v1; DB prompt mwms_hr_report_v1 je aktivan u verziji v1, sa bs i hr lokalizacijama. Real Supabase lifecycle smoke je prošao na completed MWMS attemptu: completed MWMS attempt → queued HR report → worker claim/process → ready snapshot → HR static render. Real OpenAI smoke je prošao sa modelom gpt-5.4, a report_snapshot je validiran kao mwms_hr_report_v1 uz expectedInput score/band/label mutation checks. Scoring, MWMS participant report behavior, DB schema, composite report i assessment-level model nisu mijenjani.
+
+---
+
+### P1 — Non-blocking autosave za candidate IPIP/MWMS Likert flow
+
+**Status:** Planirano  
+**Kategorija:** Assessment UX / Persistence / Candidate flow
+
+**Problem / context:**  
+Trenutni assessment answer persistence je DB-first i blocking. Nakon klika na odgovor aplikacija čeka persistSelections/saveAction prije prelaska na sljedeće pitanje, što može usporiti korisnika 1–2 sekunde po pitanju. Kod IPIP/MWMS Likert flow-a to značajno narušava osjećaj brzog, fokusiranog rješavanja testa.
+
+**Scope:**
+- samo candidate protected run flow `/app/attempts/[attemptId]/run`
+- samo single-choice/Likert auto-advance flow
+- primarno IPIP i MWMS
+- React state kao immediate UI truth
+- localStorage pending queue po attemptId, key `assessment-pending:<attemptId>`
+- background flush prema postojećem save action payload formatu
+- debounce/batch save
+- hydration merge: server initialSelections + local pending queue, gdje pending pobjeđuje
+- final submit mora obavezno flushati pending queue prije completion/scoringa
+- clear local queue nakon uspješnog completiona
+
+**Out of scope:**
+- SAFRAN step flow
+- numeric/text/multiple_choice non-blocking save
+- HR run flow
+- scoring
+- report generation
+- DB schema/migracije
+- service worker
+- IndexedDB
+- dashboard progress refactor
+- worker/report pipeline
+
+**Acceptance criteria:**
+- IPIP/MWMS single-choice klik odmah prelazi na sljedeće pitanje bez čekanja DB save-a
+- odgovor se odmah upisuje u React state i localStorage queue
+- background flush uspješno persista pending odgovore
+- failed flush ostavlja queue i prikazuje diskretan sync status
+- refresh koristi merged server + pending selections state
+- final submit blokira completion ako pending queue nije uspješno flushan
+- scoring i report generation i dalje rade nad DB truth nakon final flush-a
+- SAFRAN i HR run flow ostaju nepromijenjeni u prvom slice-u
+
+---
+
+### P2 — SAFRAN participant domain copy polish
+
+**Status:** Završeno  
+**Kategorija:** SAFRAN / Candidate report / Copy
+
+**Problem / context:**  
+U SAFRAN participant reportu opisi za verbalni, figuralni i numerički rezultat počinjali su previše slično i djelovali šablonski. Trebalo ih je učiniti prirodnijim, malo bogatijim i korisnijim za kandidata.
+
+**Completion note:**  
+Završeno kroz controlled copy helper u `lib/assessment/safran-participant-report-display.ts` i test `scripts/test-safran-participant-report-display.cjs`. Verbalni, figuralni i numerički opisi u “Pregled po oblastima” sada ne dolaze direktno iz starog šablonskog/AI domain teksta u prikazu, nego iz kontrolisanog display sloja. Score, band, layout, HR report, provider routing, promptovi, baza i attempt_reports pipeline nisu mijenjani. Postojeći AI snapshot može i dalje sadržavati stari domain tekst, ali UI koristi controlled copy pri renderovanju.
 
 ---
 
@@ -824,16 +886,19 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 | P0        | Candidate dashboard attempt lifecycle hardening | Završeno | Candidate dashboard primary attempt selection i standard battery provisioning sada više ne dozvoljavaju da prazan noviji SAFRAN attempt sakrije completed rezultat. | Zatvoreno nakon lifecycle priority fixa, standard battery guarda i povratka na dashboard sa completed results screena. |
 | P1        | HR report card status mapping | Završeno | HR kartice sada razlikuju ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant fallbacka. | Zatvoreno nakon jasnog status UX mapiranja za IPIP, SAFRAN i MWMS lane-ove. |
 | P1        | Queued vs processing HR report status UX | Završeno | `queued` i `processing` više nisu spojeni u isto značenje na HR kartici. | Zatvoreno nakon razdvajanja `Čeka generisanje` i `Generiše se` labela, opisa i disabled CTA-a. |
-| P1        | Automatic HR report enqueue / capability registry | Završeno | Post-completion HR enqueue sada je capability-driven umjesto hardcodiran po testu. | Zatvoreno nakon registry-ja za IPIP/SAFRAN active i MWMS planned HR lane. |
+| P1        | Automatic HR report enqueue / capability registry | Završeno | Post-completion HR enqueue sada je capability-driven umjesto hardcodiran po testu. | Zatvoreno nakon registry-ja za IPIP/SAFRAN/MWMS active HR lane-ove. |
 | P1        | HR report recovery actions | Završeno | HR detail page sada ima recovery akcije za failed i missing single-test HR reportove. | Zatvoreno nakon retry/reset istog reda i explicit create path-a za missing HR report. |
 | P1        | IPIP HR report content contract V2 | Završeno | IPIP HR report je prešao na HR-operativni `ipip_neo_120_hr_v2` contract uz legacy display fallback. | Zatvoreno nakon schema/provider/mock/validator V2 shape-a i realnog smoke-a. |
-| P1        | MWMS HR report V1         | Planirano | MWMS ima participant lane, ali HR lane ostaje planned/not_implemented, ne trajno isključen. | Sljedeći veliki feature nakon zatvorenih HR infrastructure taskova. |
+| P1        | MWMS HR report V1         | Završeno | MWMS sada ima i active HR single-test lane uz potvrđen realni DB lifecycle i OpenAI smoke. | Zatvoreno nakon realnog DB lifecycle-a i OpenAI smoke-a. |
+| P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Planirano | Trenutni answer persistence je i dalje DB-first i blocking, pa Likert klikovi čekaju save prije prelaska na sljedeće pitanje. | Implementirati candidate-only prvi slice sa React state + localStorage pending queue + background flush + blocking final submit flush. |
 | P1        | Composite HR report data model decision | Planirano | Composite HR report nema prirodan jedan attempt_id i traži storage odluku prije implementacije. | Procijeniti `attempt_reports` bridge naspram `assessment_reports` / assessment-level modela. |
 | P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
 | P2        | Candidate dashboard CTA hover contrast | Završeno | Completed CTA više ne gubi kontrast na hoveru, a shared CTA hover/focus sistem je usklađen za sve candidate dashboard kartice. | Zatvoreno nakon shared CTA hover/focus contrast fixa u candidate dashboard karticama. |
 | P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
+| P2        | SAFRAN participant domain copy polish | Završeno | SAFRAN participant “Pregled po oblastima” sada koristi controlled display copy umjesto starog šablonskog domain teksta. | Zatvoreno nakon controlled copy helpera bez promjene scoringa, layouta ili AI/report pipeline-a. |
 | P2        | Worker/report auto-processing orchestration | Otvoreno / Tech debt | Recovery i automatic enqueue ostavljaju report u `queued`, ali dev/local worker ne obrađuje job bez ručnog pokretanja. | Odlučiti background worker trigger, polling/realtime update i produkcijsku orchestration strategiju. |
+| P2        | Non-blocking autosave follow-up za SAFRAN step flow | Planirano | Nakon dokazivanja Likert path-a, SAFRAN step flow traži poseban non-blocking autosave slice za visual/verbal single-choice i numeric input. | Proširiti autosave na SAFRAN uz final submit flush guard i refresh/resume sigurnost. |
 
 ---
 
@@ -867,9 +932,17 @@ MWMS V1 sada ima:
 * forbidden-form smoke test
 * regenerisan testni report nakon aktivacije prompta
 * motivacijski bar profil sa mikro-objašnjenjima subskala
+* HR-facing MWMS report V1
+* active HR single-test lane
+* MWMS HR contract/schema/validator
+* deterministic HR input builder iz dimension_scores
+* mock i OpenAI provider support
+* HR renderer/display adapter
+* capability-driven dashboard/status/recovery support
+* real DB lifecycle smoke potvrđen
+* real OpenAI smoke potvrđen
 
-MWMS HR report nije podržan u V1 i `unsupported_audience` je očekivano ponašanje.
-To je planned/not_implemented stanje, ne trajna zabrana MWMS HR lane-a.
+MWMS HR report je sada podržan u V1 kao active single-test HR lane. Ranije unsupported/planned stanje je zatvoreno nakon MWMS HR V1 implementacije i realnog lifecycle smoke-a.
 
 ### 5.3 Oblik obraćanja
 
@@ -917,20 +990,37 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. MWMS HR report V1
+1. Non-blocking autosave za candidate IPIP/MWMS Likert flow
 2. Composite HR report data model decision
 3. Composite HR report V1
 4. Worker/report auto-processing orchestration
 5. Oblik obraćanja: muški/ženski jezički oblik
 6. Report visual language po testovima
 7. SAFRAN novi stimulus asseti
-8. Logo u headeru
-9. Login screen UI polish
+8. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
-* Nakon zatvaranja HR report status mappinga, capability-driven enqueue-a, recovery flow-a i IPIP HR V2 contracta, najlogičniji sljedeći veliki feature ostaje MWMS HR report V1, kako bi single-test HR temelji bili pokriveni prije composite HR report data model odluke i composite reporta.
-* Worker/report auto-processing orchestration ostaje odmah iza glavnih report feature taskova kao zaseban tech debt, jer queued job i dalje ne znači da ga worker automatski obrađuje u dev/local toku.
+* Non-blocking autosave je sada visok UX prioritet jer trenutni DB-first save flow usporava rješavanje testa nakon svakog klika.
+* Nakon završetka IPIP, SAFRAN i MWMS single-test HR lane-ova, composite HR report data model decision ostaje sljedeći veliki arhitektonski task.
+* Composite ne treba implementirati prije jasne odluke da li ide kroz privremeni attempt_reports bridge ili novi assessment-level model.
+* Worker/report auto-processing orchestration ostaje poseban tech debt jer queued job i dalje ne znači automatsku obradu bez worker procesa.
+
+### 5.14 Assessment autosave UX politika
+
+* Tokom rješavanja testa UI ne treba čekati DB save za svaki Likert/single-choice klik.
+* Lokalni React state je immediate UI truth.
+* localStorage pending queue služi kao kratkotrajna zaštita od refresha prije DB sync-a.
+* Baza ostaje source of truth za completion, scoring, report generation i dashboard progress.
+* Final submit mora biti blocking i mora flushati sve pending odgovore prije completion/scoringa.
+* Prvi rollout je candidate-only IPIP/MWMS Likert flow.
+* SAFRAN, numeric/text/multiple_choice i HR run flow ostaju blocking dok ne dobiju zasebne slice-ove.
+* Ne uvoditi service worker, IndexedDB ili veliki offline-first sistem za prvi MVP slice.
+
+### 5.15 Terminologija za reporte
+
+* U tehničkom razgovoru koristiti `reporti` kao množinu riječi report, ne `reportovi`.
+* U korisničkom UI-u preferirati `izvještaji` kada je prirodnije i jasnije.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -1001,9 +1091,10 @@ Razlog za sljedeći prioritet:
 
 * Capability registry odlučuje koji report lane smije biti generisan.
 * `ipip-neo-120-v1` i `safran_v1` trenutno imaju active participant i active HR single-test lane.
-* `mwms_v1` trenutno ima active participant lane i planned/not_implemented HR lane.
-* MWMS HR lane nije trajno isključen; kada MWMS HR V1 bude spreman, registry se prebacuje u `active`.
-* Completion flow ne smije hardcodirati MWMS kao trajni izuzetak.
+* `mwms_v1` sada ima active participant lane i active HR single-test lane.
+* Completion flow za MWMS HR sada koristi isti capability-driven chain kao IPIP i SAFRAN.
+* Failed MWMS HR report se ne retry-a automatski; recovery ostaje ručna akcija.
+* Participant report nije HR fallback i nije HR source.
 * Completion flow ne smije kreirati duplikat ako HR report red već postoji.
 * Completion flow ne retry-a automatski failed HR report red.
 
@@ -1014,7 +1105,7 @@ Razlog za sljedeći prioritet:
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
-| P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
+| P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. MWMS HR sada koristi postojeći worker i capability-driven chain, ali šira orchestration strategija i dalje nije riješena. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P2        | Attempt creation audit metadata | Novi attempti trenutno mogu imati metadata = {}, što otežava dijagnostiku izvora kreiranja attempta. | Dodati minimalni audit trag, npr. created_by_flow, source, created_by_user_id i reason, posebno za HR standard battery planner i candidate provisioning tokove. |
 | P2        | Branch features                 | Trenutno se radi na branchu `features`; main ostaje stabilan.                                | Ne mergati dok report/copy/pitanja nisu dotjerani. |
@@ -1078,12 +1169,76 @@ Zaključak:
 | Tema                   | Ideja                                                          | Kada razmatrati                                                   |
 | ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Composite report UI    | Dizajnirati poseban composite ekran, ne samo još jedan report. | Nakon definisanja composite input/schema.                         |
-| HR-facing MWMS report  | MWMS HR report V1 je sada P1 aktivni task; parking lot zadržava samo kasnije napredne varijante, npr. role-specific MWMS guidance. | Nakon zatvaranja MWMS HR reporta V1 i osnovnog HR report lane-a. |
+| HR-facing MWMS report  | MWMS HR report — osnovni V1 je završen; parking lot zadržava kasnije napredne varijante kao role-specific MWMS guidance ili dublju organizacijsku interpretaciju. | Nakon osnovnog MWMS HR reporta V1 i active HR lane-a. |
 | Report visual language | Svaki test treba imati svoj prikladan vizuelni summary.        | Nakon zatvaranja addressing taska i definisanja narednog participant polish sloja. |
 
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-11 — MWMS HR V1, OpenAI smoke, header logo i autosave odluka
+
+Završeno:
+
+* MWMS HR report V1 end-to-end
+* MWMS HR capability activation
+* MWMS HR prompt activation i real DB lifecycle smoke
+* real OpenAI smoke za MWMS HR
+* SAFRAN HR report za Amru regenerisan preko OpenAI providera
+* MWMS HR za Amru potvrđen kao OpenAI ready
+* IPIP i MWMS participant reporti za Amru potvrđeni kao OpenAI ready
+* SAFRAN participant AI lane potvrđen kao postojeći i funkcionalan; za Amrin historijski attempt ručno je kreiran queued participant report job za backfill
+* protected app header logo zamijenjen PNG logoom
+* SAFRAN participant “Pregled po oblastima” copy prebačen na controlled display copy
+
+Odluke:
+
+* MWMS HR lane je sada active single-test HR lane.
+* `.env.local` kontroliše nove report jobove, ali postojeći `attempt_reports.generator_type` određuje postojeći job/snapshot.
+* Ready/mock snapshot se ne mijenja sam od sebe promjenom `.env.local`; za promjenu providera potreban je reset/regenerate flow.
+* Za budućnost treba izbjeći ručni SQL backfill i razmotriti kontrolisanu recovery/backfill akciju za missing participant report artefakte.
+* Candidate assessment UX treba preći sa blocking DB-first save-a na non-blocking autosave za IPIP/MWMS Likert flow.
+* Final submit mora ostati blocking i mora flushati pending odgovore prije scoringa.
+* SAFRAN participant domain copy u “Pregled po oblastima” dolazi iz controlled display sloja, ne iz raw AI domain teksta.
+* U tehničkoj terminologiji koristiti “reporti”, dok UI preferira “izvještaji”.
+
+Racionala:
+
+* Single-test HR temelji su sada pokriveni kroz IPIP, SAFRAN i MWMS.
+* Sljedeći veliki arhitektonski task ostaje composite HR report data model decision, ali UX usporenje tokom testiranja je sada dovoljno važno da non-blocking autosave bude prvi praktični naredni task.
+* OpenAI quality review zahtijeva stvarne OpenAI snapshotove, ne mock output.
+* Ručni SQL backfill je prihvatljiv za dijagnostiku, ali nije dugoročni product workflow.
+
+### 2026-05-11 — MWMS HR report V1 završen
+
+Završeno:
+- MWMS HR V1 contract/schema/validator
+- deterministic HR input builder iz MWMS dimension_scores
+- score/band/label mutation checks
+- mock provider generation
+- OpenAI provider routing i prompt package wiring
+- MWMS HR display adapter i renderer branch
+- MWMS HR capability activation
+- worker support za MWMS HR queued job
+- generic HR dashboard/status/recovery ponašanje za MWMS HR
+- prompt activation verification nakon import:assessment-package
+- real Supabase DB lifecycle smoke
+- real OpenAI smoke
+- HR static render readiness
+
+Odluke:
+- MWMS HR lane je sada active za single-test HR reportove.
+- MWMS HR koristi deterministic dimension_scores kao izvor istine.
+- AI ne računa i ne mijenja score, band ili label.
+- MWMS HR report daje HR hipoteze, intervju/onboarding/manager guidance i tačke opreza, ne presude.
+- Participant MWMS report ostaje odvojen i nije HR fallback.
+- Composite HR report se i dalje ne implementira prije data model odluke.
+- Worker orchestration šire od postojećeg worker procesa ostaje zaseban tech debt.
+
+Racionala:
+- Nakon IPIP i SAFRAN HR lane-ova, MWMS HR zatvara treći single-test HR temelj.
+- Time su osnovni pojedinačni HR reportovi spremni za sljedeću fazu: Composite HR report data model decision.
+- Real DB lifecycle i real OpenAI smoke potvrđuju da MWMS HR V1 nije samo offline contract, nego funkcionalan end-to-end single-test HR lane.
 
 ### 2026-05-11 — HR report infrastructure, recovery i IPIP HR v2 content contract
 
