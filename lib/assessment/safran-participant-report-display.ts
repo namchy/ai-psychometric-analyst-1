@@ -99,6 +99,41 @@ const SAFRAN_NEXT_STEPS: SafranParticipantReportNextStepSection["items"] = [
 const SAFRAN_AI_OVERALL_CARD_SUMMARY =
   "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.";
 
+function buildSafranParticipantDomainSummary(
+  scoreKey: SafranParticipantReportDomainRow["scoreKey"],
+  scores: SafranCandidateInterpretationScores,
+): string {
+  const verbalScore = scores.verbal_score ?? null;
+  const figuralScore = scores.figural_score ?? null;
+  const numericalScore = scores.numerical_series_score ?? null;
+  const isFiguralLowerThanBoth =
+    isFiniteScore(figuralScore) &&
+    isFiniteScore(verbalScore) &&
+    isFiniteScore(numericalScore) &&
+    figuralScore < verbalScore &&
+    figuralScore < numericalScore;
+  const isNumericalHighest =
+    isFiniteScore(numericalScore) &&
+    isFiniteScore(verbalScore) &&
+    isFiniteScore(figuralScore) &&
+    numericalScore > verbalScore &&
+    numericalScore > figuralScore;
+
+  if (scoreKey === "verbal_score") {
+    return "Verbalni dio govori o tome kako si u ovom setu zadataka pratio ili pratila značenja pojmova i odnose među njima. U praktičnom kontekstu može biti relevantan za razumijevanje pisanih informacija, razlikovanje nijansi u značenju i povezivanje pojmova. Korisno ga je čitati kao signal iz ovih zadataka, zajedno s figuralnim i numeričkim dijelom profila.";
+  }
+
+  if (scoreKey === "figural_score") {
+    return isFiguralLowerThanBoth
+      ? "Figuralni rezultat ukazuje na prepoznavanje obrazaca, odnosa i promjena među oblicima u ovom setu zadataka. U odnosu na verbalni i numerički dio, ovdje se vidi blaži kontrast, što može značiti da su vizuelni odnosi tražili više provjere prije odgovora. Ovaj dio je najbolje čitati kao specifičan signal iz ove vrste zadataka, ne kao opštu procjenu vizuelnog mišljenja."
+      : "Figuralni rezultat ukazuje na prepoznavanje obrazaca, odnosa i promjena među oblicima u ovom setu zadataka. U praktičnom kontekstu može biti relevantan za situacije u kojima treba uočiti pravilo, pratiti promjenu i provjeriti odnos između elemenata. Ovaj dio je najbolje čitati kao specifičan signal iz ove vrste zadataka, ne kao opštu procjenu vizuelnog mišljenja.";
+  }
+
+  return isNumericalHighest
+    ? "Numerički rezultat se izdvaja kao najizraženiji dio ovog profila. U zadacima sa nizovima pokazuje kako si pratio ili pratila pravila i odnose među elementima. Ovakav rezultat može biti relevantan u situacijama gdje je važno brzo uočiti brojčani obrazac, provjeriti logiku niza ili raditi sa strukturisanim kvantitativnim informacijama."
+    : "Numerički dio opisuje kako si u ovom setu zadataka pratio ili pratila pravila u nizovima i odnose među elementima. U praktičnom kontekstu može biti relevantan za rad sa strukturisanim brojčanim informacijama, posebno kada treba provjeriti logiku obrasca prije zaključka. Korisno ga je čitati kao signal iz numeričkih nizova, bez zaključka o opštoj matematičkoj sposobnosti.";
+}
+
 function normalizeSafranDisplayText(value: string): string {
   return value
     .replace(/\bjedan slabiji dio\b/gi, "jedan izdvojen rezultat")
@@ -236,7 +271,9 @@ function getDomainRow(
     score,
     maxPossible,
     helper: domain?.bandLabelBs ?? fallback,
-    summary: domain?.textBs ?? fallback,
+    summary: isOutOfRange || !domain
+      ? fallback
+      : buildSafranParticipantDomainSummary(scoreKey, scores),
   };
 }
 
@@ -329,22 +366,40 @@ export function buildSafranParticipantReportDisplayFromAiReport(
   report: SafranParticipantAiReport,
 ): SafranParticipantReportDisplay {
   const overallScore = parseScoreLabel(report.summary.scoreLabel, 54);
+  const verbalScore = parseScoreLabel(
+    report.domains.find((domain) => domain.code === "verbal")?.scoreLabel ?? "",
+    18,
+  ).score;
+  const figuralScore = parseScoreLabel(
+    report.domains.find((domain) => domain.code === "figural")?.scoreLabel ?? "",
+    18,
+  ).score;
+  const numericalScore = parseScoreLabel(
+    report.domains.find((domain) => domain.code === "numeric")?.scoreLabel ?? "",
+    18,
+  ).score;
+  const domainScores: SafranCandidateInterpretationScores = {
+    verbal_score: verbalScore,
+    figural_score: figuralScore,
+    numerical_series_score: numericalScore,
+  };
   const domainRows: SafranParticipantReportDomainsSection["rows"] = report.domains.map(
     (domain) => {
       const score = parseScoreLabel(domain.scoreLabel, 18);
+      const scoreKey =
+        domain.code === "verbal"
+          ? "verbal_score"
+          : domain.code === "figural"
+            ? "figural_score"
+            : "numerical_series_score";
 
       return {
-        scoreKey:
-          domain.code === "verbal"
-            ? "verbal_score"
-            : domain.code === "figural"
-              ? "figural_score"
-              : "numerical_series_score",
+        scoreKey,
         label: domain.title,
         score: score.score,
         maxPossible: score.maxPossible,
         helper: domain.bandLabel,
-        summary: domain.interpretation,
+        summary: buildSafranParticipantDomainSummary(scoreKey, domainScores),
       };
     },
   ) as SafranParticipantReportDomainsSection["rows"];

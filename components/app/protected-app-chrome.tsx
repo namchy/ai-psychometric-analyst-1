@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -21,6 +22,7 @@ type ProtectedChromeVariant = "candidate" | "hr";
 type ProtectedChromeMode = "standard" | "focus";
 
 const PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
+const HEADER_LOGO_CLASS_NAME = "h-7 w-auto max-w-[180px] object-contain md:h-8 md:max-w-[210px] lg:h-9 lg:max-w-[230px]";
 
 function getProtectedChromeVariant(pathname: string | null): ProtectedChromeVariant {
   return pathname?.startsWith("/app") ? "candidate" : "hr";
@@ -61,6 +63,21 @@ function getInitials(userName?: string | null, userEmail?: string | null) {
     .join("");
 }
 
+function DeepProfileHeaderLogo({ href, className }: { href: string; className?: string }) {
+  return (
+    <Link href={href} className={`shrink-0 transition-opacity hover:opacity-90 ${className ?? ""}`.trim()}>
+      <Image
+        src="/brand/deep-profile-menu-logo-1.png"
+        alt="Deep Profile"
+        width={800}
+        height={130}
+        priority
+        className={HEADER_LOGO_CLASS_NAME}
+      />
+    </Link>
+  );
+}
+
 function CandidateSiteHeader({
   showHrLink,
   userEmail,
@@ -75,12 +92,7 @@ function CandidateSiteHeader({
   return (
     <AuthenticatedAppHeaderShell>
       <div className="flex min-w-0 items-center gap-4 lg:gap-10">
-        <Link
-          href="/app"
-          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-[var(--dp-text)] transition-opacity hover:opacity-90 sm:text-xl"
-        >
-          Deep Profile
-        </Link>
+        <DeepProfileHeaderLogo href="/app" />
 
         <nav aria-label="Primary" className="hidden items-center gap-2 lg:flex">
           {PRIMARY_NAV_ITEMS.map((item) => (
@@ -156,12 +168,7 @@ function HrSiteHeader() {
   return (
     <AuthenticatedAppHeaderShell>
       <div className="flex min-w-0 items-center gap-4">
-        <Link
-          href="/dashboard"
-          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
-        >
-          Deep Profile
-        </Link>
+        <DeepProfileHeaderLogo href="/dashboard" />
         <span className="hidden rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] lg:inline-flex">
           HR Workspace
         </span>

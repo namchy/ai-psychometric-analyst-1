@@ -415,9 +415,27 @@ assert.equal(
 );
 assert.equal(
   aiRenderOutput.includes(
-    "Numerički dio se ovdje jasno odvaja od verbalno-figuralnog obrasca i traži oprezniju interpretaciju.",
+    "Verbalni dio govori o tome kako si u ovom setu zadataka pratio ili pratila značenja pojmova i odnose među njima.",
   ),
   true,
+);
+assert.equal(
+  aiRenderOutput.includes(
+    "Figuralni rezultat ukazuje na prepoznavanje obrazaca, odnosa i promjena među oblicima u ovom setu zadataka.",
+  ),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes(
+    "Numerički dio opisuje kako si u ovom setu zadataka pratio ili pratila pravila u nizovima i odnose među elementima.",
+  ),
+  true,
+);
+assert.equal(
+  aiRenderOutput.includes(
+    "Numerički dio se ovdje jasno odvaja od verbalno-figuralnog obrasca i traži oprezniju interpretaciju.",
+  ),
+  false,
 );
 assert.equal(
   aiRenderOutput.includes(
