@@ -47,6 +47,11 @@ Komande:
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
+| P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
+| P1        | Queued vs processing HR report status UX            | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon razdvajanja `queued = Čeka generisanje` i `processing = Generiše se` u status labeli, opisu i disabled CTA-u. |
+| P1        | Automatic HR report enqueue / capability registry   | Završeno    | Report pipeline / HR report orchestration | Zatvoreno nakon uvođenja capability registry-ja i centralnog post-completion enqueue planiranja za active HR lane-ove. |
+| P1        | HR report recovery actions                          | Završeno    | HR dashboard / Report recovery | Zatvoreno nakon dodavanja per-card recovery flow-a za failed i missing single-test HR reportove. |
+| P1        | IPIP HR report content contract V2                  | Završeno    | HR report / IPIP / Content contract | Zatvoreno nakon prelaska na `ipip_neo_120_hr_v2`, HR-operativni content shape i display fallback za legacy V1 snapshotove. |
 | P1        | MWMS HR report V1                                   | Planirano   | HR report / MWMS             | Implementirati HR-facing motivacijski report nakon eksplicitnog HR retrievala i locale readiness pravila. |
 | P1        | Composite HR report data model decision             | Planirano   | Architecture / HR report storage | Odlučiti da li composite HR report ide kroz privremeni `attempt_reports` bridge ili kroz novi `assessment_reports` / assessment-level model. |
 | P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
@@ -63,7 +68,7 @@ Komande:
 | P2        | Candidate dashboard CTA hover contrast               | Završeno    | Dashboard UI / Accessibility | Zatvoreno nakon popravke shared CTA hover/focus stilova za Započni procjenu, Nastavi procjenu i Pogledaj rezultate. |
 | P2        | MWMS AI report copy ton                              | Završeno    | Report copy / Tone           | Zatvoreno nakon usklađivanja MWMS participant reporta na “ti” formu kroz prompt pravila, renderer safety net, display smoke test i regenerisani testni report. |
 | P2        | Report visual language po testovima                  | Planirano   | Report UI                    | IPIP radar, MWMS bar profile, SAFRAN score cards, composite mapa.                              |
-| P2        | Worker/report monitoring                             | Otvoreno    | Tech debt / Ops              | Pratiti queued/processing/ready/failed prelaze za AI report worker.                            |
+| P2        | Worker/report auto-processing orchestration          | Otvoreno / Tech debt | Tech debt / Ops       | Definisati kako queued report prelazi u processing/ready/failed bez ručnog `npm run process-report-jobs` dev koraka. |
 | P3        | HR-facing MWMS AI report                             | Parking lot | HR report                    | Razmotriti nakon composite arhitekture ili HR dashboard prioriteta.                            |
 
 > Ova tabela je operativni pregled. Detalji, kontekst i odluke za svaki task ostaju u tijelu dokumenta ispod.
@@ -546,6 +551,140 @@ Završeno kroz izmjene u lib/assessment/attempt-lifecycle.ts, lib/assessment/sta
 
 ---
 
+### P1 — HR report card status mapping
+
+**Status:** Završeno  
+**Kategorija:** HR dashboard / Report status UX
+
+**Problem / context:**  
+HR candidate assessment detail page je ranije miješao različita stanja HR report artefakta, attempt lifecycle-a i nepodržanog capability lane-a. To je pravilo lažne ekvivalencije između completed attempta, queued reporta i stvarno spremnog HR reporta.
+
+**Scope:**
+- jasno razlikovati ready, queued, processing, failed i unavailable status kartice
+- razlikovati completed attempt bez HR report artefakta od incomplete/not assigned/abandoned stanja
+- prikazati planned / unsupported HR lane kao zasebno stanje
+- ne koristiti participant report kao HR fallback
+- zadržati postojeću strukturu kartica i single-test HR routing
+
+**Acceptance criteria:**
+- failed HR report prikazuje `Greška pri generisanju`
+- completed attempt bez HR reporta prikazuje `Nije generisano`
+- unsupported/planned lane prikazuje `Još nije podržano`
+- queued i processing nisu isti status
+- participant report se ne koristi kao HR fallback
+
+**Completion note:**  
+Završeno kroz stabilizovan status mapping na HR candidate assessment detail page-u. Single-test HR report kartice sada jasno razlikuju `ready`, `queued`, `processing`, `failed`, `unavailable / unsupported_audience`, completed attempt bez HR report artefakta i incomplete / not assigned / abandoned stanje. Potvrđeni realni scenariji uključuju Amrin IPIP failed HR report → `Greška pri generisanju`, SAFRAN completed attempt bez HR reporta → `Nije generisano` i MWMS planned/not implemented HR lane → `Još nije podržano`. Participant report se ne koristi kao HR fallback.
+
+---
+
+### P1 — Queued vs processing HR report status UX
+
+**Status:** Završeno  
+**Kategorija:** HR dashboard / Report status UX
+
+**Problem / context:**  
+`queued` i `processing` su ranije zvučali kao isto stanje, iako predstavljaju različite faze pipelinea. To je u HR UI-ju stvaralo lažno očekivanje da worker već generiše report čim je job samo enqueue-an.
+
+**Scope:**
+- razdvojiti user-facing značenje `queued` i `processing`
+- poravnati status label, description i disabled CTA sa stvarnim worker state-om
+- ne mijenjati worker implementaciju u ovom UX tasku
+
+**Acceptance criteria:**
+- `queued` prikazuje `Čeka generisanje`
+- `processing` prikazuje `Generiše se`
+- oba stanja imaju različit opis i disabled CTA
+- UI ne sugeriše processing dok job još samo čeka worker
+
+**Completion note:**  
+Završeno kroz eksplicitno razdvajanje `queued = Čeka generisanje` i `processing = Generiše se`. Mapping je stabilizovan za statusLabel, description i disabled CTA: `queued` opisuje da je HR izvještaj poslan na generisanje i čeka obradu, dok `processing` znači da worker aktivno priprema report. Odluka ostaje da queued ne znači aktivno generisanje, nego samo red za obradu.
+
+---
+
+### P1 — Automatic HR report enqueue / capability registry
+
+**Status:** Završeno  
+**Kategorija:** Report pipeline / HR report orchestration
+
+**Problem / context:**  
+Nakon završetka participant attempta nije postojao centralni capability-driven mehanizam koji odlučuje da li single-test HR lane treba automatski enqueue-ati. To je rizikovalo hardcodirane izuzetke po testu i nekonzistentan completion flow.
+
+**Scope:**
+- uvesti centralni report capability registry
+- uvesti post-completion planning helper za automatic enqueue
+- podržati automatic HR enqueue samo za active HR lane-ove
+- izbjeći duplikate kada `attempt_reports` red već postoji
+- ne retry-ati failed HR red automatski u completion flow-u
+- ne koristiti participant report kao HR source ili fallback
+
+**Acceptance criteria:**
+- capability registry odlučuje koji report lane može biti generisan
+- IPIP i SAFRAN HR lane-ovi mogu automatski ući u queued nakon participant completiona
+- MWMS HR lane ostaje planned/not_implemented, ne trajno isključen
+- completion flow ne kreira duplikat reda ako report već postoji
+- failed red se ne retry-a automatski
+
+**Completion note:**  
+Završeno kroz centralni capability registry i post-completion planning helper. Trenutni registry mapira `ipip-neo-120-v1` i `safran_v1` kao `participant individual single_test: active` i `hr individual single_test: active`, dok `mwms_v1` ostaje `participant individual single_test: active` i `hr individual single_test: planned / not_implemented`. Odluka je da MWMS nije trajno isključen iz HR chain-a; kada MWMS HR V1 bude implementiran, registry se samo prebacuje u `active` i ulazi u isti automatski chain. Completion flow ne pravi duplikate ako report red već postoji i ne retry-a automatski failed redove.
+
+---
+
+### P1 — HR report recovery actions
+
+**Status:** Završeno  
+**Kategorija:** HR dashboard / Report recovery
+
+**Problem / context:**  
+Historijski failed ili missing single-test HR reportovi nisu imali per-card recovery flow na HR candidate assessment detail page-u. To je HR korisnika ostavljalo bez kontrolisanog načina da ponovo pokrene artefakt ili da ga prvi put generiše kada completed attempt postoji bez HR reda.
+
+**Scope:**
+- dodati recovery akciju za failed HR report sa active capability-jem
+- dodati recovery akciju za missing HR report kada completed attempt postoji i capability je active
+- ne prikazivati recovery akcije za ready / queued / processing
+- ne prikazivati recovery akcije za planned/inactive capability lane-ove ni incomplete attemptove
+- reset failed reda raditi nad istim postojećim `attempt_reports` redom
+- missing report generate raditi eksplicitnim insertom novog queued HR reda
+
+**Acceptance criteria:**
+- failed HR report + active capability prikazuje `Ponovo generiši`
+- missing HR report + completed attempt + active capability prikazuje `Generiši HR izvještaj`
+- ready / queued / processing nemaju recovery akciju
+- planned/inactive capability i incomplete attempt nemaju recovery akciju
+- duplicate conflict se tretira kao race/no-op i reloaduje postojeći red
+
+**Completion note:**  
+Završeno kroz per-card recovery flow za single-test HR reportove. Retry failed reporta resetuje isti postojeći `attempt_reports` red u `queued`, čisti `failure_code`, `failure_reason` i `report_snapshot`, te resetuje `started_at` i `completed_at` bez kreiranja novog reda. Missing report generate kreira novi queued HR red eksplicitnim insertom, a duplicate conflict se tretira kao race/no-op i reloaduje postojeći red. Realno potvrđeni scenariji: Amrin IPIP failed HR report je resetovan u `queued` i nakon ručnog worker procesiranja prešao u `ready`; SAFRAN missing HR report je kreiran kao queued HR red; duplicate provjera za SAFRAN vratila je `report_count = 1`. Participant report se ne koristi kao HR fallback ni kao izvor.
+
+---
+
+### P1 — IPIP HR report content contract V2
+
+**Status:** Završeno  
+**Kategorija:** HR report / IPIP / Content contract
+
+**Problem / context:**  
+IPIP NEO-120 HR report više nije trebao ostati generički workplace narrative shape. HR lane je trebao preći na eksplicitno HR-operativni contract koristan za intervju, onboarding i timski kontekst.
+
+**Scope:**
+- uvesti novi `contract_version = ipip_neo_120_hr_v2`
+- zadržati runtime/display normalization fallback za legacy `ipip_neo_120_hr_v1` snapshotove
+- novi provider/schema/mock/validator prebaciti na V2 shape
+- zaključati HR-operativne sekcije i očekivane cardinality guardraile
+- zadržati zabranu AI scoringa, band izmjena, hire/no-hire preporuke, dijagnostičkog jezika i zaštićenih atributa
+
+**Acceptance criteria:**
+- novi IPIP HR report koristi `ipip_neo_120_hr_v2`
+- legacy `ipip_neo_120_hr_v1` snapshotovi ostaju podržani kroz display fallback
+- report sadrži headline, executive_summary, `key_hr_signals = 3`, `verification_focus = 3`, `interview_questions = 5`, `domain_overview = 5` i druge zaključane HR sekcije
+- `decision_support_note` jasno kaže da report nije samostalna hiring odluka
+- AI ne računa score niti izmišlja domene/facete
+
+**Completion note:**  
+Završeno kroz prelazak IPIP HR lane-a na `contract_version = ipip_neo_120_hr_v2`. Novi HR-operativni model uključuje `headline`, `executive_summary`, tačno 3 `key_hr_signals`, tačno 3 `verification_focus`, tačno 5 `interview_questions`, 2 do 3 `strengths_and_overuse_risks`, tačno 5 `domain_overview`, tačno 4 `onboarding_and_management_guidance`, tačno 3 `team_fit_notes`, 2 do 4 `decision_support_note` i `interpretation_note`. Legacy `ipip_neo_120_hr_v1` snapshotovi ostaju podržani kroz runtime/display normalization fallback. Realni smoke je potvrdio Amrin IPIP HR report sa `contract_version = ipip_neo_120_hr_v2`, `interview_questions = 5`, `key_hr_signals = 3`, prisutnim `verification_focus`, `strengths_and_overuse_risks` i `decision_support_note`.
+
+---
+
 ### P2 — Candidate dashboard CTA hover contrast
 
 **Status:** Završeno  
@@ -683,12 +822,18 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 | P1        | SAFRAN HR report V1       | Završeno | SAFRAN HR report lane je zatvoren sa contract/input/validator slojem, mock/OpenAI runtime-om, HR-only retrievalom i browser potvrdom. | Zatvoreno nakon realnog OpenAI smoke-a, HR route prikaza i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page | Završeno | Dashboard CTA sada vodi na participant-level pregled procjene umjesto na nasumični ili primarni attempt. | Zatvoreno nakon detail stranice sa IPIP/SAFRAN/MWMS karticama i composite placeholderom. |
 | P0        | Candidate dashboard attempt lifecycle hardening | Završeno | Candidate dashboard primary attempt selection i standard battery provisioning sada više ne dozvoljavaju da prazan noviji SAFRAN attempt sakrije completed rezultat. | Zatvoreno nakon lifecycle priority fixa, standard battery guarda i povratka na dashboard sa completed results screena. |
-| P1        | MWMS HR report V1         | Planirano | MWMS ima participant lane, ali nema HR-facing motivacijski report za intervju/onboarding/management uvide. | Raditi nakon eksplicitnog HR retrievala i locale readiness pravila. |
+| P1        | HR report card status mapping | Završeno | HR kartice sada razlikuju ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant fallbacka. | Zatvoreno nakon jasnog status UX mapiranja za IPIP, SAFRAN i MWMS lane-ove. |
+| P1        | Queued vs processing HR report status UX | Završeno | `queued` i `processing` više nisu spojeni u isto značenje na HR kartici. | Zatvoreno nakon razdvajanja `Čeka generisanje` i `Generiše se` labela, opisa i disabled CTA-a. |
+| P1        | Automatic HR report enqueue / capability registry | Završeno | Post-completion HR enqueue sada je capability-driven umjesto hardcodiran po testu. | Zatvoreno nakon registry-ja za IPIP/SAFRAN active i MWMS planned HR lane. |
+| P1        | HR report recovery actions | Završeno | HR detail page sada ima recovery akcije za failed i missing single-test HR reportove. | Zatvoreno nakon retry/reset istog reda i explicit create path-a za missing HR report. |
+| P1        | IPIP HR report content contract V2 | Završeno | IPIP HR report je prešao na HR-operativni `ipip_neo_120_hr_v2` contract uz legacy display fallback. | Zatvoreno nakon schema/provider/mock/validator V2 shape-a i realnog smoke-a. |
+| P1        | MWMS HR report V1         | Planirano | MWMS ima participant lane, ali HR lane ostaje planned/not_implemented, ne trajno isključen. | Sljedeći veliki feature nakon zatvorenih HR infrastructure taskova. |
 | P1        | Composite HR report data model decision | Planirano | Composite HR report nema prirodan jedan attempt_id i traži storage odluku prije implementacije. | Procijeniti `attempt_reports` bridge naspram `assessment_reports` / assessment-level modela. |
 | P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
 | P2        | Candidate dashboard CTA hover contrast | Završeno | Completed CTA više ne gubi kontrast na hoveru, a shared CTA hover/focus sistem je usklađen za sve candidate dashboard kartice. | Zatvoreno nakon shared CTA hover/focus contrast fixa u candidate dashboard karticama. |
 | P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
+| P2        | Worker/report auto-processing orchestration | Otvoreno / Tech debt | Recovery i automatic enqueue ostavljaju report u `queued`, ali dev/local worker ne obrađuje job bez ručnog pokretanja. | Odlučiti background worker trigger, polling/realtime update i produkcijsku orchestration strategiju. |
 
 ---
 
@@ -724,6 +869,7 @@ MWMS V1 sada ima:
 * motivacijski bar profil sa mikro-objašnjenjima subskala
 
 MWMS HR report nije podržan u V1 i `unsupported_audience` je očekivano ponašanje.
+To je planned/not_implemented stanje, ne trajna zabrana MWMS HR lane-a.
 
 ### 5.3 Oblik obraćanja
 
@@ -774,16 +920,17 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 1. MWMS HR report V1
 2. Composite HR report data model decision
 3. Composite HR report V1
-4. Oblik obraćanja: muški/ženski jezički oblik
-5. Report visual language po testovima
-6. SAFRAN novi stimulus asseti
-7. Logo u headeru
-8. Login screen UI polish
+4. Worker/report auto-processing orchestration
+5. Oblik obraćanja: muški/ženski jezički oblik
+6. Report visual language po testovima
+7. SAFRAN novi stimulus asseti
+8. Logo u headeru
+9. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
-* Nakon zatvaranja SAFRAN HR reporta V1 i HR candidate assessment detail flow-a, najlogičniji nastavak HR report lane-a je MWMS HR report V1, kako bi single-test HR temelji bili pokriveni prije composite HR report data model odluke i composite reporta.
-* Nakon zatvaranja candidate dashboard lifecycle buga i CTA kontrast polish-a, nema aktivnog blockera na candidate dashboardu koji bi trebao odgoditi MWMS HR report V1.
+* Nakon zatvaranja HR report status mappinga, capability-driven enqueue-a, recovery flow-a i IPIP HR V2 contracta, najlogičniji sljedeći veliki feature ostaje MWMS HR report V1, kako bi single-test HR temelji bili pokriveni prije composite HR report data model odluke i composite reporta.
+* Worker/report auto-processing orchestration ostaje odmah iza glavnih report feature taskova kao zaseban tech debt, jer queued job i dalje ne znači da ga worker automatski obrađuje u dev/local toku.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -835,6 +982,31 @@ Razlog za sljedeći prioritet:
 * Abandoned attempt se ne koristi kao primarni dashboard attempt osim ako nema nijednog relevantnijeg zapisa i treba prikazati historijsko/neutralno stanje.
 * Dok ne postoji assessment_assignment model, prazan noviji attempt ne smije automatski značiti novu procjenu/rundu.
 
+### 5.12 HR report status i recovery politika
+
+* `ready` znači da HR report artefakt postoji i može se otvoriti.
+* `queued` znači `Čeka generisanje`, ne `Generiše se`.
+* `processing` znači da worker aktivno obrađuje report.
+* `failed` prikazuje `Greška pri generisanju`.
+* Completed attempt bez HR report artefakta prikazuje `Nije generisano`.
+* Planned / unsupported HR lane prikazuje `Još nije podržano`.
+* Incomplete / not assigned / abandoned attempt stanje ne smije izgledati kao missing gotov report.
+* Participant report nije HR fallback i nije HR source.
+* Failed HR report sa active capability-jem dobija `Ponovo generiši`.
+* Missing HR report sa completed attemptom i active capability-jem dobija `Generiši HR izvještaj`.
+* Ready / queued / processing nemaju recovery akciju.
+* Planned/inactive capability i incomplete attempt nemaju recovery akciju.
+
+### 5.13 HR capability registry politika
+
+* Capability registry odlučuje koji report lane smije biti generisan.
+* `ipip-neo-120-v1` i `safran_v1` trenutno imaju active participant i active HR single-test lane.
+* `mwms_v1` trenutno ima active participant lane i planned/not_implemented HR lane.
+* MWMS HR lane nije trajno isključen; kada MWMS HR V1 bude spreman, registry se prebacuje u `active`.
+* Completion flow ne smije hardcodirati MWMS kao trajni izuzetak.
+* Completion flow ne smije kreirati duplikat ako HR report red već postoji.
+* Completion flow ne retry-a automatski failed HR report red.
+
 ---
 
 ## 6. Tehnički dug
@@ -842,7 +1014,7 @@ Razlog za sljedeći prioritet:
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
-| P1        | MWMS prompt/pipeline monitoring | Treba pratiti queued/processing/ready/failed prelaze za report worker.                       | Posebno prije produkcije.                          |
+| P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P2        | Attempt creation audit metadata | Novi attempti trenutno mogu imati metadata = {}, što otežava dijagnostiku izvora kreiranja attempta. | Dodati minimalni audit trag, npr. created_by_flow, source, created_by_user_id i reason, posebno za HR standard battery planner i candidate provisioning tokove. |
 | P2        | Branch features                 | Trenutno se radi na branchu `features`; main ostaje stabilan.                                | Ne mergati dok report/copy/pitanja nisu dotjerani. |
@@ -912,6 +1084,40 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-11 — HR report infrastructure, recovery i IPIP HR v2 content contract
+
+Završeno:
+
+* HR report card status mapping za failed/missing/unsupported/ready/queued/processing
+* queued vs processing UX razdvajanje
+* report capability registry
+* automatic HR enqueue after participant completion za active HR lane-ove
+* HR report recovery actions za failed i missing single-test HR reportove
+* IPIP HR report content contract V2
+* legacy IPIP HR v1 display compatibility
+* realni smoke za Amrin IPIP HR v2 report
+* realni smoke za SAFRAN missing HR report recovery create path
+
+Odluke:
+
+* `queued` znači `Čeka generisanje`, ne `Generiše se`
+* `processing` znači da worker aktivno obrađuje report
+* MWMS HR lane je planned/not_implemented, ne trajno isključen
+* retry failed reporta resetuje isti `attempt_reports` red, ne pravi duplikat
+* missing HR report recovery kreira queued HR red eksplicitnim insertom
+* novi IPIP HR-operational shape koristi `contract_version = ipip_neo_120_hr_v2`
+* stari `ipip_neo_120_hr_v1` snapshotovi ostaju podržani kroz display fallback
+* participant report nije HR fallback i nije HR source
+
+Racionala:
+
+* HR korisnik mora vidjeti stvarno stanje report artefakata.
+* Completed test nije isto što i ready HR report.
+* Report pipeline mora biti capability-driven, ne hardcodiran po testovima.
+* Recovery flow je potreban za historijske failed/missing reportove.
+* IPIP HR report mora biti HR-operativan, sa intervju pitanjima, verification focusom i decision-support okvirom.
+* Worker orchestration ostaje poseban tehnički dug jer queued job ne znači da se job trenutno obrađuje.
 
 ### 2026-05-10 — Candidate dashboard lifecycle i CTA contrast fix
 
