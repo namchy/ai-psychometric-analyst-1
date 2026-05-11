@@ -67,11 +67,19 @@ export type HrCandidateAssessmentCardState =
   | "queued"
   | "processing"
   | "failed"
+  | "unsupported"
+  | "unavailable"
   | "in_progress"
   | "not_started"
   | "abandoned"
   | "not_assigned"
   | "completed_without_report";
+
+export type HrCandidateAssessmentCardVisualVariant =
+  | "success"
+  | "progress"
+  | "error"
+  | "info";
 
 export type HrFriendlyTestStatus =
   | "Završeno"
@@ -108,21 +116,23 @@ export type HrCandidateAssessmentCard = {
   subtitle: string;
   state: HrCandidateAssessmentCardState;
   statusLabel:
-    | "Spreman"
-    | "U redu čekanja"
+    | "Dostupno"
     | "Generiše se"
-    | "Greška"
+    | "Greška pri generisanju"
+    | "Još nije podržano"
+    | "Nije dostupno"
     | "U toku"
     | "Čeka kandidata"
-    | "Arhivirano"
+    | "Prekinuto"
     | "Nije dodijeljeno"
-    | "Nije spreman";
+    | "Nije generisano";
   body: string;
+  visualVariant: HrCandidateAssessmentCardVisualVariant;
   attempt: HrCandidateAssessmentAttempt | null;
   report: HrCandidateAttemptReportSummary | null;
   cta:
     | {
-        label: "Otvori izvještaj";
+        label: "Otvori HR izvještaj";
         href: string;
         disabled: false;
       }
@@ -266,6 +276,171 @@ function selectLatestHrReportForAttempt(
   })[0] ?? null;
 }
 
+export function resolveHrReportCardState(input: {
+  attempt: HrCandidateAssessmentAttempt | null;
+  report: HrCandidateAttemptReportSummary | null;
+  readyHref: string | null;
+}): Pick<
+  HrCandidateAssessmentCard,
+  "state" | "statusLabel" | "body" | "visualVariant" | "cta"
+> {
+  const { attempt, report, readyHref } = input;
+
+  if (!attempt) {
+    return {
+      state: "not_assigned",
+      statusLabel: "Nije dodijeljeno",
+      body: "Ova procjena još nije dodijeljena kandidatu.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    };
+  }
+
+  if (attempt.lifecycle === "completed") {
+    if (!report) {
+      return {
+        state: "completed_without_report",
+        statusLabel: "Nije generisano",
+        body: "Rezultati su završeni, ali HR izvještaj još nije generisan.",
+        visualVariant: "info",
+        cta: {
+          label: "Nije dostupno",
+          href: null,
+          disabled: true,
+        },
+      };
+    }
+
+    if (report.report_status === "ready" && readyHref) {
+      return {
+        state: "ready",
+        statusLabel: "Dostupno",
+        body: "HR izvještaj je dostupan za pregled.",
+        visualVariant: "success",
+        cta: {
+          label: "Otvori HR izvještaj",
+          href: readyHref,
+          disabled: false,
+        },
+      };
+    }
+
+    if (report.report_status === "queued") {
+      return {
+        state: "queued",
+        statusLabel: "Generiše se",
+        body: "HR izvještaj se trenutno priprema.",
+        visualVariant: "progress",
+        cta: {
+          label: "Generiše se",
+          href: null,
+          disabled: true,
+        },
+      };
+    }
+
+    if (report.report_status === "processing") {
+      return {
+        state: "processing",
+        statusLabel: "Generiše se",
+        body: "HR izvještaj se trenutno priprema.",
+        visualVariant: "progress",
+        cta: {
+          label: "Generiše se",
+          href: null,
+          disabled: true,
+        },
+      };
+    }
+
+    if (report.report_status === "failed") {
+      return {
+        state: "failed",
+        statusLabel: "Greška pri generisanju",
+        body: "Rezultati su sačuvani, ali HR izvještaj nije uspješno generisan.",
+        visualVariant: "error",
+        cta: {
+          label: "Nije dostupno",
+          href: null,
+          disabled: true,
+        },
+      };
+    }
+
+    if (report.report_status === "unavailable") {
+      if (report.failure_code === "unsupported_audience") {
+        return {
+          state: "unsupported",
+          statusLabel: "Još nije podržano",
+          body: "Rezultati su završeni, ali HR izvještaj za ovu procjenu još nije podržan.",
+          visualVariant: "info",
+          cta: {
+            label: "Nije dostupno",
+            href: null,
+            disabled: true,
+          },
+        };
+      }
+
+      return {
+        state: "unavailable",
+        statusLabel: "Nije dostupno",
+        body: "HR izvještaj trenutno nije dostupan.",
+        visualVariant: "info",
+        cta: {
+          label: "Nije dostupno",
+          href: null,
+          disabled: true,
+        },
+      };
+    }
+  }
+
+  if (attempt.lifecycle === "in_progress") {
+    return {
+      state: "in_progress",
+      statusLabel: "U toku",
+      body: "Kandidat još nije završio ovu procjenu.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    };
+  }
+
+  if (attempt.lifecycle === "not_started") {
+    return {
+      state: "not_started",
+      statusLabel: "Čeka kandidata",
+      body: "Kandidat još nije započeo ovu procjenu.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    };
+  }
+
+  return {
+    state: "abandoned",
+    statusLabel: "Prekinuto",
+    body: "Ova procjena je prekinuta ili zamijenjena novijom procjenom.",
+    visualVariant: "info",
+    cta: {
+      label: "Nije dostupno",
+      href: null,
+      disabled: true,
+    },
+  };
+}
+
 export function buildHrCandidateReportCards(input: {
   attempts: HrCandidateAssessmentAttempt[];
   hrReports: HrCandidateAttemptReportSummary[];
@@ -305,148 +480,20 @@ export function buildHrCandidateReportCards(input: {
     const report = attempt
       ? selectLatestHrReportForAttempt(reportsByAttemptId.get(attempt.id) ?? [])
       : null;
+    const resolvedState = resolveHrReportCardState({
+      attempt,
+      report,
+      readyHref: attempt ? `/dashboard/attempts/${attempt.id}` : null,
+    });
 
-    if (!attempt) {
+    if (attempt) {
       return {
         slug: test.slug,
         title: test.shortLabel,
         subtitle: test.subtitle,
-        state: "not_assigned",
-        statusLabel: "Nije dodijeljeno",
-        body: "Ovaj test nije dodijeljen kandidatu.",
-        attempt: null,
-        report: null,
-        cta: {
-          label: "Nije dostupno",
-          href: null,
-          disabled: true,
-        },
-      };
-    }
-
-    if (attempt.lifecycle === "completed") {
-      if (report?.report_status === "ready") {
-        return {
-          slug: test.slug,
-          title: test.shortLabel,
-          subtitle: test.subtitle,
-          state: "ready",
-          statusLabel: "Spreman",
-          body: "HR izvještaj je dostupan za pregled.",
-          attempt,
-          report,
-          cta: {
-            label: "Otvori izvještaj",
-            href: `/dashboard/attempts/${attempt.id}`,
-            disabled: false,
-          },
-        };
-      }
-
-      if (report?.report_status === "queued") {
-        return {
-          slug: test.slug,
-          title: test.shortLabel,
-          subtitle: test.subtitle,
-          state: "queued",
-          statusLabel: "U redu čekanja",
-          body: "HR izvještaj je u redu čekanja.",
-          attempt,
-          report,
-          cta: {
-            label: "Generiše se",
-            href: null,
-            disabled: true,
-          },
-        };
-      }
-
-      if (report?.report_status === "processing") {
-        return {
-          slug: test.slug,
-          title: test.shortLabel,
-          subtitle: test.subtitle,
-          state: "processing",
-          statusLabel: "Generiše se",
-          body: "HR izvještaj se trenutno generiše.",
-          attempt,
-          report,
-          cta: {
-            label: "Generiše se",
-            href: null,
-            disabled: true,
-          },
-        };
-      }
-
-      if (report?.report_status === "failed" || report?.report_status === "unavailable") {
-        return {
-          slug: test.slug,
-          title: test.shortLabel,
-          subtitle: test.subtitle,
-          state: "failed",
-          statusLabel: "Greška",
-          body: "Rezultati su sačuvani, ali HR izvještaj nije uspješno generisan.",
-          attempt,
-          report,
-          cta: {
-            label: "Nije dostupno",
-            href: null,
-            disabled: true,
-          },
-        };
-      }
-
-      return {
-        slug: test.slug,
-        title: test.shortLabel,
-        subtitle: test.subtitle,
-        state: "completed_without_report",
-        statusLabel: "Nije spreman",
-        body: "Rezultati su završeni, ali HR izvještaj još nije dostupan.",
+        ...resolvedState,
         attempt,
-        report: null,
-        cta: {
-          label: "Nije dostupno",
-          href: null,
-          disabled: true,
-        },
-      };
-    }
-
-    if (attempt.lifecycle === "in_progress") {
-      return {
-        slug: test.slug,
-        title: test.shortLabel,
-        subtitle: test.subtitle,
-        state: "in_progress",
-        statusLabel: "U toku",
-        body: "Izvještaj će biti dostupan nakon završetka testa.",
-        attempt,
-        report: null,
-        cta: {
-          label: "Nije dostupno",
-          href: null,
-          disabled: true,
-        },
-      };
-    }
-
-    if (attempt.lifecycle === "not_started") {
-      return {
-        slug: test.slug,
-        title: test.shortLabel,
-        subtitle: test.subtitle,
-        state: "not_started",
-        statusLabel: "Čeka kandidata",
-        body: "Izvještaj će biti dostupan nakon završetka testa.",
-        attempt,
-        report: null,
-        cta: {
-          label: "Nije dostupno",
-          href: null,
-          disabled: true,
-        },
+        report: resolvedState.state === "completed_without_report" ? null : report,
       };
     }
 
@@ -454,16 +501,9 @@ export function buildHrCandidateReportCards(input: {
       slug: test.slug,
       title: test.shortLabel,
       subtitle: test.subtitle,
-      state: "abandoned",
-      statusLabel: "Arhivirano",
-      body: "Za ovaj test postoji samo historijski pokušaj bez dostupnog HR izvještaja.",
-      attempt,
+      ...resolvedState,
+      attempt: null,
       report: null,
-      cta: {
-        label: "Nije dostupno",
-        href: null,
-        disabled: true,
-      },
     };
   });
 }

@@ -16,7 +16,10 @@ import {
   getParticipantForOrganization,
   getAttemptsForParticipantInOrganization,
 } from "@/lib/b2b/organizations";
-import { buildHrCandidateAssessmentDetailModel } from "@/lib/dashboard/hr-candidate-assessment";
+import {
+  buildHrCandidateAssessmentDetailModel,
+  type HrCandidateAssessmentCardVisualVariant,
+} from "@/lib/dashboard/hr-candidate-assessment";
 
 type CandidateReportsPageProps = {
   params: {
@@ -24,22 +27,15 @@ type CandidateReportsPageProps = {
   };
 };
 
-function getCardStatusClassName(statusLabel: string): string {
-  switch (statusLabel) {
-    case "Spreman":
+function getCardStatusClassName(visualVariant: HrCandidateAssessmentCardVisualVariant): string {
+  switch (visualVariant) {
+    case "success":
       return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "U redu čekanja":
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    case "Generiše se":
-    case "U toku":
+    case "progress":
       return "border-sky-200 bg-sky-50 text-sky-700";
-    case "Greška":
+    case "error":
       return "border-rose-200 bg-rose-50 text-rose-700";
-    case "Čeka kandidata":
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    case "Arhivirano":
-    case "Nije dodijeljeno":
-    case "Nije spreman":
+    case "info":
     default:
       return "border-slate-200 bg-slate-50 text-slate-600";
   }
@@ -175,7 +171,7 @@ export default async function CandidateReportsPage({
                       <p className="mt-1 text-sm text-slate-600">{card.subtitle}</p>
                     </div>
                     <span
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(card.statusLabel)}`}
+                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(card.visualVariant)}`}
                     >
                       {card.statusLabel}
                     </span>

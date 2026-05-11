@@ -61,6 +61,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 const {
   buildHrCandidateAssessmentDetailModel,
   buildParticipantAssessmentRows,
+  resolveHrReportCardState,
 } = require("../lib/dashboard/hr-candidate-assessment.ts");
 
 function buildParticipant(id, fullName, email) {
@@ -114,7 +115,15 @@ function buildAttempt({
   };
 }
 
-function buildHrReport({ id, attemptId, testSlug, status, audience = "hr" }) {
+function buildHrReport({
+  id,
+  attemptId,
+  testSlug,
+  status,
+  audience = "hr",
+  failureCode = null,
+  failureReason = null,
+}) {
   return {
     id,
     attempt_id: attemptId,
@@ -125,12 +134,262 @@ function buildHrReport({ id, attemptId, testSlug, status, audience = "hr" }) {
     report_status: status,
     generated_at: "2026-01-02T10:00:00.000Z",
     completed_at: status === "ready" ? "2026-01-02T10:05:00.000Z" : null,
-    failure_code: status === "failed" ? "generation_failed" : null,
-    failure_reason: status === "failed" ? "Failed" : null,
+    failure_code: failureCode ?? (status === "failed" ? "generation_failed" : null),
+    failure_reason: failureReason ?? (status === "failed" ? "Failed" : null),
   };
 }
 
+function assertResolvedState(input, expected) {
+  assert.deepEqual(resolveHrReportCardState(input), expected);
+}
+
 function main() {
+  const completedAttempt = buildAttempt({
+    id: "attempt-completed",
+    participantId: "participant-resolve",
+    slug: "ipip-neo-120-v1",
+    lifecycle: "completed",
+    startedAt: "2026-01-01T09:00:00.000Z",
+    completedAt: "2026-01-01T10:00:00.000Z",
+  });
+  const helperInProgressAttempt = buildAttempt({
+    id: "attempt-in-progress",
+    participantId: "participant-resolve",
+    slug: "safran_v1",
+    lifecycle: "in_progress",
+    startedAt: "2026-01-01T09:00:00.000Z",
+  });
+  const abandonedAttempt = buildAttempt({
+    id: "attempt-abandoned",
+    participantId: "participant-resolve",
+    slug: "mwms_v1",
+    lifecycle: "abandoned",
+    startedAt: "2026-01-01T09:00:00.000Z",
+  });
+
+  assertResolvedState(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-ready",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "ready",
+      }),
+      readyHref: `/dashboard/attempts/${completedAttempt.id}`,
+    },
+    {
+      state: "ready",
+      statusLabel: "Dostupno",
+      body: "HR izvještaj je dostupan za pregled.",
+      visualVariant: "success",
+      cta: {
+        label: "Otvori HR izvještaj",
+        href: `/dashboard/attempts/${completedAttempt.id}`,
+        disabled: false,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-queued",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "queued",
+      }),
+      readyHref: `/dashboard/attempts/${completedAttempt.id}`,
+    },
+    {
+      state: "queued",
+      statusLabel: "Generiše se",
+      body: "HR izvještaj se trenutno priprema.",
+      visualVariant: "progress",
+      cta: {
+        label: "Generiše se",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-processing",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "processing",
+      }),
+      readyHref: `/dashboard/attempts/${completedAttempt.id}`,
+    },
+    {
+      state: "processing",
+      statusLabel: "Generiše se",
+      body: "HR izvještaj se trenutno priprema.",
+      visualVariant: "progress",
+      cta: {
+        label: "Generiše se",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-failed",
+        attemptId: completedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "failed",
+        failureReason: "Cannot read properties of undefined (reading 'map')",
+      }),
+      readyHref: `/dashboard/attempts/${completedAttempt.id}`,
+    },
+    {
+      state: "failed",
+      statusLabel: "Greška pri generisanju",
+      body: "Rezultati su sačuvani, ali HR izvještaj nije uspješno generisan.",
+      visualVariant: "error",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-unsupported",
+        attemptId: completedAttempt.id,
+        testSlug: "mwms_v1",
+        status: "unavailable",
+        failureCode: "unsupported_audience",
+        failureReason: "MWMS V1 supports participant reports only.",
+      }),
+      readyHref: `/dashboard/attempts/${completedAttempt.id}`,
+    },
+    {
+      state: "unsupported",
+      statusLabel: "Još nije podržano",
+      body: "Rezultati su završeni, ali HR izvještaj za ovu procjenu još nije podržan.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: completedAttempt,
+      report: buildHrReport({
+        id: "report-unavailable",
+        attemptId: completedAttempt.id,
+        testSlug: "safran_v1",
+        status: "unavailable",
+      }),
+      readyHref: `/dashboard/attempts/${completedAttempt.id}`,
+    },
+    {
+      state: "unavailable",
+      statusLabel: "Nije dostupno",
+      body: "HR izvještaj trenutno nije dostupan.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: completedAttempt,
+      report: null,
+      readyHref: `/dashboard/attempts/${completedAttempt.id}`,
+    },
+    {
+      state: "completed_without_report",
+      statusLabel: "Nije generisano",
+      body: "Rezultati su završeni, ali HR izvještaj još nije generisan.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: helperInProgressAttempt,
+      report: null,
+      readyHref: `/dashboard/attempts/${helperInProgressAttempt.id}`,
+    },
+    {
+      state: "in_progress",
+      statusLabel: "U toku",
+      body: "Kandidat još nije završio ovu procjenu.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: null,
+      report: null,
+      readyHref: null,
+    },
+    {
+      state: "not_assigned",
+      statusLabel: "Nije dodijeljeno",
+      body: "Ova procjena još nije dodijeljena kandidatu.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertResolvedState(
+    {
+      attempt: abandonedAttempt,
+      report: null,
+      readyHref: `/dashboard/attempts/${abandonedAttempt.id}`,
+    },
+    {
+      state: "abandoned",
+      statusLabel: "Prekinuto",
+      body: "Ova procjena je prekinuta ili zamijenjena novijom procjenom.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
   const participant1 = buildParticipant("participant-1", "User 1", "user1@example.com");
   const ipipQueuedAttempt = buildAttempt({
     id: "attempt-ipip-queued",
@@ -177,10 +436,12 @@ function main() {
   });
   const ipipCard1 = model1.cards.find((card) => card.slug === "ipip-neo-120-v1");
   const safranCard1 = model1.cards.find((card) => card.slug === "safran_v1");
-  assert.equal(ipipCard1?.statusLabel, "U redu čekanja");
-  assert.equal(safranCard1?.statusLabel, "Spreman");
+  assert.equal(ipipCard1?.statusLabel, "Generiše se");
+  assert.equal(ipipCard1?.visualVariant, "progress");
+  assert.equal(safranCard1?.statusLabel, "Dostupno");
   assert.equal(safranCard1?.cta.disabled, false);
   assert.equal(safranCard1?.cta.href, "/dashboard/attempts/fb749b5a-b0c8-4495-bf0c-abe99bf90095");
+  assert.equal(safranCard1?.cta.label, "Otvori HR izvještaj");
 
   const participant2 = buildParticipant("participant-2", "User 2", "user2@example.com");
   const ipipReadyAttempt = buildAttempt({
@@ -205,7 +466,7 @@ function main() {
     organizationName: "Org 1",
   });
   const ipipCard2 = model2.cards.find((card) => card.slug === "ipip-neo-120-v1");
-  assert.equal(ipipCard2?.statusLabel, "Spreman");
+  assert.equal(ipipCard2?.statusLabel, "Dostupno");
   assert.equal(ipipCard2?.cta.href, `/dashboard/attempts/${ipipReadyAttempt.id}`);
 
   const participant3 = buildParticipant("participant-3", "User 3", "user3@example.com");
@@ -240,7 +501,7 @@ function main() {
   assert.equal(model3.cards.some((card) => card.cta.disabled === false), false);
   assert.equal(
     model3.cards.find((card) => card.slug === "ipip-neo-120-v1")?.statusLabel,
-    "U redu čekanja",
+    "Generiše se",
   );
   assert.equal(
     model3.cards.find((card) => card.slug === "safran_v1")?.statusLabel,
@@ -276,7 +537,71 @@ function main() {
   });
   assert.equal(
     model4.cards.find((card) => card.slug === "safran_v1")?.statusLabel,
-    "Nije spreman",
+    "Nije generisano",
+  );
+
+  const participant5 = buildParticipant("participant-5", "Amra", "amra@example.com");
+  const ipipFailedAttempt = buildAttempt({
+    id: "attempt-ipip-failed",
+    participantId: participant5.id,
+    slug: "ipip-neo-120-v1",
+    lifecycle: "completed",
+    startedAt: "2026-01-06T09:00:00.000Z",
+    completedAt: "2026-01-06T10:00:00.000Z",
+  });
+  const safranMissingAttempt = buildAttempt({
+    id: "attempt-safran-missing",
+    participantId: participant5.id,
+    slug: "safran_v1",
+    lifecycle: "completed",
+    startedAt: "2026-01-06T11:00:00.000Z",
+    completedAt: "2026-01-06T12:00:00.000Z",
+  });
+  const mwmsUnsupportedAttempt = buildAttempt({
+    id: "attempt-mwms-unsupported",
+    participantId: participant5.id,
+    slug: "mwms_v1",
+    lifecycle: "completed",
+    startedAt: "2026-01-06T13:00:00.000Z",
+    completedAt: "2026-01-06T14:00:00.000Z",
+  });
+  const amraModel = buildHrCandidateAssessmentDetailModel({
+    participant: participant5,
+    attempts: [ipipFailedAttempt, safranMissingAttempt, mwmsUnsupportedAttempt],
+    hrReports: [
+      buildHrReport({
+        id: "report-ipip-failed",
+        attemptId: ipipFailedAttempt.id,
+        testSlug: "ipip-neo-120-v1",
+        status: "failed",
+        failureReason: "Cannot read properties of undefined (reading 'map')",
+      }),
+      buildHrReport({
+        id: "report-mwms-unsupported",
+        attemptId: mwmsUnsupportedAttempt.id,
+        testSlug: "mwms_v1",
+        status: "unavailable",
+        failureCode: "unsupported_audience",
+        failureReason: "MWMS V1 supports participant reports only.",
+      }),
+    ],
+    organizationName: "Org 1",
+  });
+  assert.equal(
+    amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.statusLabel,
+    "Greška pri generisanju",
+  );
+  assert.equal(
+    amraModel.cards.find((card) => card.slug === "safran_v1")?.statusLabel,
+    "Nije generisano",
+  );
+  assert.equal(
+    amraModel.cards.find((card) => card.slug === "mwms_v1")?.statusLabel,
+    "Još nije podržano",
+  );
+  assert.equal(
+    amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.body.includes("Cannot read properties"),
+    false,
   );
 
   console.log("HR candidate assessment detail model tests passed.");
