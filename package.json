@@ -55,6 +55,7 @@
     "test:mwms-availability": "node scripts/test-mwms-availability.cjs",
     "test:mwms-package": "node scripts/test-mwms-package.cjs",
     "test:mwms-scoring": "node scripts/test-mwms-scoring.cjs",
+    "test:report-capabilities": "node scripts/test-report-capabilities.cjs",
     "test:safran-interpretation": "node scripts/test-safran-interpretation.cjs",
     "test:safran-stimuli": "node --env-file=.env.local scripts/audit-safran-stimuli.cjs",
     "test:standard-battery-active": "node scripts/test-standard-battery-active.cjs",

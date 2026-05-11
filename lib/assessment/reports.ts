@@ -2,6 +2,12 @@ import "server-only";
 
 import { loadAssessmentCompletionState } from "@/lib/assessment/completion-server";
 import { resolveReportLocale, type AssessmentLocale } from "@/lib/assessment/locale";
+import {
+  getReportGenerationCapability,
+  planPostCompletionReportJobs,
+  type ExistingAttemptReportArtifact,
+  type PostCompletionReportPlan,
+} from "@/lib/assessment/report-capabilities";
 import { getAiReportConfig, type AiReportConfig } from "@/lib/assessment/report-config";
 import { buildPreparedReportGenerationInput } from "@/lib/assessment/report-provider-helpers";
 import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
@@ -41,6 +47,11 @@ type AttemptReportRow = {
   failure_code: string | null;
   failure_reason: string | null;
   report_snapshot: unknown;
+};
+
+type AttemptReportQueueRow = ExistingAttemptReportArtifact & {
+  id: string;
+  attempt_id: string;
 };
 
 const PARTICIPANT_REPORT_TYPE = "individual";
@@ -115,6 +126,11 @@ export type ReportGenerationOverrides = Partial<
 > & {
   promptVersionId?: string | null;
   promptTemplate?: ActivePromptVersion | null;
+};
+
+export type EnqueueCompletedAssessmentReportsSummary = {
+  testSlug: string | null;
+  plan: PostCompletionReportPlan | null;
 };
 
 function resolveAiReportConfig(overrides?: ReportGenerationOverrides): AiReportConfig {
@@ -533,16 +549,60 @@ export async function getPersistedHrCompletedAssessmentReportState(
   return loadPersistedHrReportSnapshot(attemptId);
 }
 
-export async function enqueueCompletedAssessmentReports(attemptId: string): Promise<void> {
+async function loadAttemptReportQueueRows(
+  attemptId: string,
+): Promise<AttemptReportQueueRow[]> {
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.rpc("enqueue_individual_reports", {
-    p_attempt_id: attemptId,
-  });
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select("id, attempt_id, test_slug, audience, report_type, source_type, report_status")
+    .eq("attempt_id", attemptId)
+    .order("generated_at", { ascending: false })
+    .order("id", { ascending: false });
 
   if (error) {
-    throw new Error(`Failed to enqueue attempt reports: ${error.message}`);
+    throw new Error(`Failed to load attempt report queue rows: ${error.message}`);
   }
 
+  return (data ?? []) as AttemptReportQueueRow[];
+}
+
+async function deleteQueuedInactiveLane(attemptId: string, audience: ReportAudience): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("attempt_reports")
+    .delete()
+    .eq("attempt_id", attemptId)
+    .eq("report_type", PARTICIPANT_REPORT_TYPE)
+    .eq("audience", audience)
+    .eq("source_type", PARTICIPANT_REPORT_SOURCE_TYPE)
+    .eq("report_status", "queued");
+
+  if (error) {
+    throw new Error(`Failed to remove queued inactive ${audience} report lane: ${error.message}`);
+  }
+}
+
+async function reconcileInactivePostCompletionLanes(
+  attemptId: string,
+  testSlug: string,
+): Promise<void> {
+  const hrCapability = getReportGenerationCapability({
+    testSlug,
+    audience: HR_REPORT_AUDIENCE,
+    reportType: HR_REPORT_TYPE,
+    sourceType: HR_REPORT_SOURCE_TYPE,
+  });
+
+  if (!hrCapability.active) {
+    await deleteQueuedInactiveLane(attemptId, HR_REPORT_AUDIENCE);
+  }
+}
+
+export async function enqueueCompletedAssessmentReports(
+  attemptId: string,
+): Promise<EnqueueCompletedAssessmentReportsSummary> {
+  const supabase = createSupabaseAdminClient();
   const { data: attemptData, error: attemptError } = await supabase
     .from("attempts")
     .select("test_id, locale, tests(slug)")
@@ -562,7 +622,40 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
     ? attempt?.tests[0]?.slug
     : attempt?.tests?.slug;
 
-  if (attempt?.test_id && testSlug && isMwmsTestSlug(testSlug)) {
+  if (!attempt?.test_id || !testSlug) {
+    return {
+      testSlug: testSlug ?? null,
+      plan: null,
+    };
+  }
+
+  const existingReports = await loadAttemptReportQueueRows(attemptId);
+  const plan = planPostCompletionReportJobs({
+    testSlug,
+    existingReports,
+  });
+
+  if (plan.jobsToEnqueue.length > 0) {
+    const { error } = await supabase.rpc("enqueue_individual_reports", {
+      p_attempt_id: attemptId,
+    });
+
+    if (error) {
+      throw new Error(`Failed to enqueue attempt reports: ${error.message}`);
+    }
+
+    try {
+      await reconcileInactivePostCompletionLanes(attemptId, testSlug);
+    } catch (error) {
+      console.error("Failed to reconcile inactive post-completion report lanes", {
+        attemptId,
+        testSlug,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  if (isMwmsTestSlug(testSlug)) {
     const request = await buildCompletedAssessmentReportRequest(attempt.test_id, attemptId, {
       audience: PARTICIPANT_REPORT_AUDIENCE,
       locale: resolveReportLocale(attempt.locale),
@@ -584,25 +677,6 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
         throw new Error(`Failed to persist MWMS report input snapshot: ${inputSnapshotError.message}`);
       }
     }
-
-    const { error: hrDisableError } = await supabase
-      .from("attempt_reports")
-      .update({
-        report_status: "unavailable",
-        completed_at: new Date().toISOString(),
-        failure_code: "unsupported_audience",
-        failure_reason: "MWMS V1 supports participant reports only.",
-        report_snapshot: null,
-      })
-      .eq("attempt_id", attemptId)
-      .eq("report_type", PARTICIPANT_REPORT_TYPE)
-      .eq("audience", "hr")
-      .eq("source_type", PARTICIPANT_REPORT_SOURCE_TYPE)
-      .eq("report_status", "queued");
-
-    if (hrDisableError) {
-      throw new Error(`Failed to disable unsupported MWMS HR report job: ${hrDisableError.message}`);
-    }
   }
 
   const runtimeConfig = await getActiveReportRuntimeConfig({
@@ -613,7 +687,10 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
   });
 
   if (!runtimeConfig?.modelName) {
-    return;
+    return {
+      testSlug,
+      plan,
+    };
   }
 
   const { error: freezeError } = await supabase
@@ -632,6 +709,11 @@ export async function enqueueCompletedAssessmentReports(attemptId: string): Prom
   if (freezeError) {
     throw new Error(`Failed to freeze queued attempt report model: ${freezeError.message}`);
   }
+
+  return {
+    testSlug,
+    plan,
+  };
 }
 
 export async function persistCompletedAssessmentReport(

@@ -17,6 +17,7 @@ import {
   persistCompletedAssessmentReport,
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
+import type { PostCompletionReportLanePlan } from "@/lib/assessment/report-capabilities";
 import { claimNextReportJob, processClaimedReportJob } from "@/lib/assessment/report-job-worker";
 import {
   normalizeAssessmentLocale,
@@ -130,6 +131,37 @@ const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
 
 function shouldGenerateCompletedAssessmentReport(results: CompletedAssessmentResults | null): boolean {
   return results?.scoringMethod === "likert_sum";
+}
+
+function shouldQueueParticipantReportFromPlan(
+  plan: Awaited<ReturnType<typeof enqueueCompletedAssessmentReports>>["plan"],
+): boolean {
+  if (!plan) {
+    return false;
+  }
+
+  const participantLane = plan.lanes.find(
+    (lane: PostCompletionReportLanePlan) => lane.audience === "participant",
+  );
+  return (
+    participantLane?.shouldEnqueue === true ||
+    participantLane?.existingStatus === "queued" ||
+    participantLane?.existingStatus === "processing"
+  );
+}
+
+function shouldTriggerQueuedParticipantReportProcessingFromPlan(
+  plan: Awaited<ReturnType<typeof enqueueCompletedAssessmentReports>>["plan"],
+): boolean {
+  if (!plan) {
+    return false;
+  }
+
+  const participantLane = plan.lanes.find(
+    (lane: PostCompletionReportLanePlan) => lane.audience === "participant",
+  );
+
+  return participantLane?.shouldEnqueue === true || participantLane?.existingStatus === "queued";
 }
 
 function revalidateAttemptRunPaths(attemptId: string) {
@@ -852,6 +884,17 @@ export async function completeAssessmentAttempt(
       ? await persistCompletedAssessmentReport(input.testId, persistResult.attemptId)
       : null;
 
+    if (results) {
+      try {
+        await enqueueCompletedAssessmentReports(persistResult.attemptId);
+      } catch (error) {
+        console.error("completeAssessmentAttempt post-completion enqueue failed", {
+          attemptId: persistResult.attemptId,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
     cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, persistResult.attemptId, {
       httpOnly: true,
       sameSite: "lax",
@@ -946,17 +989,23 @@ export async function completeProtectedAssessmentAttempt(
     }
 
     const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
-    const report: CompletedAssessmentReportState | null = shouldGenerateCompletedAssessmentReport(results)
-      ? {
+    let enqueueSummary: Awaited<ReturnType<typeof enqueueCompletedAssessmentReports>> | null = null;
+    let report: CompletedAssessmentReportState | null = null;
+
+    if (results) {
+      enqueueSummary = await enqueueCompletedAssessmentReports(persistResult.attemptId);
+
+      if (shouldQueueParticipantReportFromPlan(enqueueSummary.plan)) {
+        report = {
           status: "queued",
           generatorType: null,
           generatedAt: new Date().toISOString(),
           completedAt: null,
-        }
-      : null;
+        };
+      }
+    }
 
-    if (shouldGenerateCompletedAssessmentReport(results)) {
-      await enqueueCompletedAssessmentReports(persistResult.attemptId);
+    if (shouldTriggerQueuedParticipantReportProcessingFromPlan(enqueueSummary?.plan ?? null)) {
       await triggerQueuedParticipantReportProcessing(persistResult.attemptId);
     }
 
