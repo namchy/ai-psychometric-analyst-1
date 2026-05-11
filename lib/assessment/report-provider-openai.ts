@@ -392,24 +392,38 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
       instructions: {
         output_contract: "Return one HR report in the exact schema.",
         audience_behavior:
-          "Write in bosanski, ijekavica, latinica, for HR and hiring stakeholders. Keep the tone neutral, operational, workplace-oriented, and non-clinical.",
+          "Write in bosanski, ijekavica, latinica, for HR stakeholders. Keep the tone formal, operational, calm, workplace-oriented, and non-clinical.",
         structure_rules: [
-          "Use 5 workplace_signals.",
-          "Use exactly 5 domains with one entry for each of N, E, O, A, and C.",
-          "Each domain must contain exactly 6 facets.",
-          "Each domain must contain exactly 2 workplace_strengths, 2 workplace_watchouts, and 2 management_notes.",
-          "Use exactly 3 team_watchouts and exactly 3 onboarding_or_management_recommendations.",
+          "headline must be 1 sentence with at most 22 words and must name a practical HR signal plus one implication for interview or work context.",
+          "executive_summary must contain 2 to 3 sentences: dominant work pattern, what HR should verify, and optional use in interview or onboarding.",
+          "Use exactly 3 key_hr_signals. Each item must include title, evidence, and hr_implication.",
+          "Use exactly 3 verification_focus items. Each item must include area, why_it_matters, and how_to_check.",
+          "Use exactly 5 interview_questions. Each item must include question, evaluates, and what_good_answer_may_show.",
+          "Use 2 to 3 strengths_and_overuse_risks items. Each item must include exactly 3 possible_strengths and exactly 3 possible_overuse_risks.",
+          "Use exactly 5 domain_overview items in this order: Ekstraverzija, Ugodnost, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
+          "Each domain_overview item must use exactly 1 sentence for concise_meaning, exactly 1 sentence for hr_relevance, and exactly 1 sentence for check_in_interview.",
+          "Each domain_overview item may include at most 2 top_facets.",
+          "Use exactly 4 onboarding_and_management_guidance items.",
+          "Use exactly 3 team_fit_notes items.",
+          "Use 2 to 4 decision_support_note bullets.",
+          "Use 1 to 2 sentences for interpretation_note.",
         ],
         source_rule:
-          "Use only the provided deterministic scoring input. Do not calculate from raw answers and do not invent extra dimensions, metrics, or hiring decisions.",
+          "Use only the provided deterministic scoring input. Do not calculate from raw answers, do not change bands, and do not invent extra domains, facets, metrics, or hiring decisions.",
         terminology_rule:
-          "Use the provided domain and facet labels and stay within workplace interpretation.",
+          "Use the provided domain and facet labels, stay within workplace interpretation, and make each section answer what HR can do with the finding.",
         guardrails: [
           "Do not diagnose or use clinical language.",
           "Do not give hire/no-hire recommendations.",
+          "Do not say employ, hire, reject, or recommend employment.",
           "Do not infer protected traits.",
           "Do not treat the report as final truth about the person.",
           "Do not use absolute statements such as always, never, or definitely proves.",
+          'Do not use the phrases "najistaknutiji profesionalni signal", "djeluje kao najstabilniji izvor radnog ritma", or "može pomoći finijem razumijevanju".',
+          "Do not use diagnostic, medical, or protected-attribute language.",
+          "Do not reveal or mention candidate scores in interview questions.",
+          "decision_support_note must clearly say the report is not a standalone hiring decision and should be combined with interview, experience, references, and role requirements.",
+          "interpretation_note must say the report is not a diagnosis, is not a hiring decision, does not confirm protected traits, and must be read with role context and other information sources.",
         ],
         dimension_hint_text: buildDimensionHintText(input),
       },
@@ -1121,7 +1135,10 @@ export function validateStructuredReport(
   }
 
   if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120HrPromptInput(input.promptInput)) {
-    const validationResult = validateIpipNeo120HrReportV1(report);
+    const validationResult = validateIpipNeo120HrReportV1(report, {
+      strictContract: true,
+      enforceGuardrails: true,
+    });
 
     if (!validationResult.ok) {
       throw new Error(

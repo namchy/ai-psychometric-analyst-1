@@ -33,6 +33,7 @@
     "verify:ipip-neo-120-participant-v2-openai-segmented-smoke": "node --env-file=.env.local scripts/verify-ipip-neo-120-participant-v2-openai-segmented-smoke.cjs",
     "verify:ipip-neo-120-participant-v2-candidate-reflection": "node scripts/verify-ipip-neo-120-participant-v2-candidate-reflection.cjs",
     "verify:ipip-neo-120-participant-v2-neuroticism-display": "node scripts/verify-ipip-neo-120-participant-v2-neuroticism-display.cjs",
+    "test:ipip-neo-120-hr-report": "node scripts/test-ipip-neo-120-hr-report.cjs",
     "test:attempt-lifecycle": "node scripts/test-attempt-lifecycle.cjs",
     "test:assessment-locales": "node scripts/test-assessment-locales.cjs",
     "test:detailed-report-v1": "node scripts/test-detailed-report-v1.mjs",

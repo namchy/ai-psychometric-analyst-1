@@ -9,6 +9,7 @@ import {
 import {
   IPIP_NEO_120_DOMAIN_ORDER,
   IPIP_NEO_120_FACETS_BY_DOMAIN,
+  getIpipNeo120DomainLabel,
   getIpipNeo120FacetLabel,
   type IpipNeo120DomainCode,
 } from "@/lib/assessment/ipip-neo-120-labels";
@@ -499,14 +500,117 @@ function buildIpipNeo120HrMockReport(
     (left, right) => right.score - left.score || left.domain_code.localeCompare(right.domain_code),
   );
   const highestDomain = rankedDomains[0] ?? null;
-  const lowestDomain = rankedDomains[rankedDomains.length - 1] ?? null;
   const topFacets = neoPromptInput.domains
     .flatMap((domain) => (Array.isArray(domain.facets) ? domain.facets : []))
     .sort((left, right) => right.score - left.score || left.facet_code.localeCompare(right.facet_code))
     .slice(0, 5);
+  const topFacetLabel = topFacets[0]?.label?.toLowerCase() ?? "ključne facete";
+  const secondFacetLabel = topFacets[1]?.label?.toLowerCase() ?? "radne reakcije";
+  const topThreeDomains = rankedDomains.slice(0, 3);
+  const domainByCode = new Map(
+    neoPromptInput.domains.map((domain) => [domain.domain_code, domain] as const),
+  );
+
+  function buildDomainMeaning(domainCode: IpipNeo120DomainCode, band: "low" | "moderate" | "high") {
+    const label = getIpipNeo120DomainLabel(domainCode) ?? domainCode;
+
+    if (domainCode === "AGREEABLENESS") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Pokazuje izraženiji saradnički i obziran stil u odnosima s drugima.",
+          hrRelevance: "Za HR je važno provjeriti kako održava saradnju kada mora postaviti granicu ili dati direktan feedback.",
+          checkInInterview: "Tražiti primjer neslaganja, zaštite prioriteta i davanja neugodnog feedbacka.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može djelovati direktnije i manje popustljivo u svakodnevnoj saradnji.",
+          hrRelevance: "Za HR je korisno provjeriti kako balansira jasnoću stava i kvalitet odnosa u timu.",
+          checkInInterview: "Tražiti primjer kada je morala uskladiti odlučnost sa odnosom prema kolegama.",
+        };
+      }
+    }
+
+    if (domainCode === "CONSCIENTIOUSNESS") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Profil sugeriše veću usmjerenost na standard, obaveze i dovršavanje zadataka.",
+          hrRelevance: "Za HR je važno povezati ovaj domen sa rokovima, prioritetima i tolerancijom na promjenu plana.",
+          checkInInterview: "Provjeriti kako reaguje kada rokovi ostanu isti, ali se prioriteti ili zahtjevi promijene.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može tražiti više strukture da bi ritam rada ostao stabilan pod više paralelnih zahtjeva.",
+          hrRelevance: "Za HR je korisno provjeriti kako organizuje zadatke, prati rokove i traži pojašnjenje.",
+          checkInInterview: "Tražiti primjer organizacije rada kada je istovremeno vodila više obaveza.",
+        };
+      }
+    }
+
+    if (domainCode === "NEUROTICISM") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Rezultat sugeriše osjetljiviji odgovor na pritisak, neizvjesnost ili zasićenje zahtjevima.",
+          hrRelevance: "Za HR je posebno važno provjeriti samoregulaciju, traženje podrške i stabilnost ponašanja pod pritiskom.",
+          checkInInterview: "Tražiti primjer rada pod pritiskom i kako je održala fokus, ritam i komunikaciju.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može djelovati smirenije i stabilnije kada su zahtjevi, pritisak ili nejasnoća pojačani.",
+          hrRelevance: "Za HR je korisno provjeriti da li ta stabilnost ostaje prisutna i u dužem periodu većeg opterećenja.",
+          checkInInterview: "Tražiti primjer zahtjevnog perioda i kako je održala energiju, fokus i kvalitet odluka.",
+        };
+      }
+    }
+
+    if (domainCode === "EXTRAVERSION") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Profil sugeriše energičniji i vidljiviji stil u interakciji, iniciranju i timskom prisustvu.",
+          hrRelevance: "Za HR je važno provjeriti kako ovu energiju prevodi u saradnju, slušanje i praktične odluke.",
+          checkInInterview: "Provjeriti primjer kada je trebalo balansirati inicijativu sa slušanjem drugih perspektiva.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može preferirati mirniji, promišljeniji i manje upadljiv način uključivanja u tim.",
+          hrRelevance: "Za HR je korisno provjeriti kako se uključuje kada uloga traži više vidljivosti, inicijative ili uticaja.",
+          checkInInterview: "Tražiti primjer kada je morala aktivnije zauzeti prostor ili preuzeti riječ u grupi.",
+        };
+      }
+    }
+
+    if (band === "high") {
+      return {
+        conciseMeaning: `${label} je izraženija i vjerovatno snažnije oblikuje svakodnevni radni obrazac.`,
+        hrRelevance: `Za HR je korisno provjeriti kako se ${label.toLowerCase()} vidi u konkretnoj ulozi, tempu rada i odnosima u timu.`,
+        checkInInterview: `Tražiti primjer ponašanja koji potvrđuje kako se ${label.toLowerCase()} pokazuje u realnom radnom kontekstu.`,
+      };
+    }
+
+    if (band === "low") {
+      return {
+        conciseMeaning: `${label} je manje izražena i može tražiti više konteksta da bi se pravilno tumačila u radu.`,
+        hrRelevance: `Za HR je važno provjeriti gdje tiši signal iz ${label.toLowerCase()} postaje relevantan za zahtjeve konkretne uloge.`,
+        checkInInterview: `Tražiti primjer situacije u kojoj je uloga ipak tražila više ${label.toLowerCase()} nego što je bilo prirodno.`,
+      };
+    }
+
+    return {
+      conciseMeaning: `${label} djeluje uravnoteženo i vjerovatno se prilagođava zahtjevima konteksta bez jasnog ekstrema.`,
+      hrRelevance: `Za HR je korisno provjeriti kada ${label.toLowerCase()} ostaje stabilna, a kada zavisi od vrste zadatka i okruženja.`,
+      checkInInterview: `Tražiti primjer različitih radnih situacija da se vidi kako se ${label.toLowerCase()} mijenja kroz kontekst.`,
+    };
+  }
 
   const report = {
-    contract_version: "ipip_neo_120_hr_v1",
+    contract_version: "ipip_neo_120_hr_v2",
     test: {
       code: "ipip_neo_120",
       name: "IPIP-NEO-120",
@@ -516,26 +620,118 @@ function buildIpipNeo120HrMockReport(
       audience: "hr",
     },
     headline: highestDomain
-      ? `${highestDomain.label} trenutno daje najuočljiviji profesionalni signal u profilu.`
-      : "Profil pokazuje uravnotežen profesionalni pregled bez jedne potpuno dominantne domene.",
-    executive_summary:
-      highestDomain && lowestDomain && highestDomain.domain_code !== lowestDomain.domain_code
-        ? `Najizraženiji signal trenutno se vidi u domeni ${highestDomain.label.toLowerCase()}, dok domena ${lowestDomain.label.toLowerCase()} traži nešto pažljivije upravljanje kroz kontekst, očekivanja i razvojnu podršku.`
-        : "Ovaj HR pregled koristi već izračunate IPIP-NEO-120 rezultate kako bi opisao radni stil, saradnju, komunikaciju i praktične razvojne signale bez hiring presuda.",
-    workplace_signals: [
-      highestDomain
-        ? `${highestDomain.label} djeluje kao najstabilniji izvor radnog ritma i profesionalnog tona.`
-        : "Profil pokazuje nekoliko uravnoteženih profesionalnih signala bez jedne dominantne domene.",
-      topFacets[0]
-        ? `Najizraženija faceta trenutno je ${topFacets[0].label.toLowerCase()}, što može pomoći finijem razumijevanju svakodnevnog radnog stila.`
-        : "Facete nude dodatni sloj za operativno čitanje svakodnevnog ponašanja i saradnje.",
-      "Profil je najkorisnije čitati kao razvojni i radni signal, ne kao fiksnu etiketu.",
-      "Najviše vrijednosti obično daju najjasnije obrasce ponašanja pod tipičnim radnim zahtjevima.",
-      lowestDomain
-        ? `Domena ${lowestDomain.label.toLowerCase()} može biti dobar fokus za razvojnu podršku i situacionu fleksibilnost.`
-        : "Mirniji dijelovi profila mogu biti koristan razvojni fokus kada uloga traži širi raspon ponašanja.",
-    ] as IpipNeo120HrReportV1["workplace_signals"],
-    domains: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+      ? `Profil ukazuje na ${highestDomain.label.toLowerCase()} kao važan radni signal koji vrijedi provjeriti kroz konkretne situacije saradnje i odlučivanja.`
+      : "Profil ukazuje na više ravnotežnih radnih obrazaca koje vrijedi provjeriti kroz konkretne situacije uloge.",
+    executive_summary: highestDomain
+      ? `Profil sugeriše da ${highestDomain.label.toLowerCase()} snažnije oblikuje svakodnevni radni obrazac, posebno kroz ${topFacetLabel} i ${secondFacetLabel}. U intervjuu vrijedi provjeriti kako se taj obrazac vidi kada osoba mora zaštititi prioritet, dati direktan feedback ili reagovati na pritisak. Nalaz je najkorisnije prevesti u strukturirana pitanja i rani onboarding razgovor.`
+      : "Profil sugeriše više uravnoteženih obrazaca rada bez jedne potpuno dominantne domene. U intervjuu vrijedi provjeriti kako osoba održava saradnju, ritam rada i reakciju na pritisak kroz konkretne primjere. Nalaz je najkorisnije koristiti kao vodič za strukturirani intervju i rani onboarding razgovor.",
+    key_hr_signals: [
+      {
+        title: highestDomain
+          ? `${highestDomain.label} kao dominantni radni obrazac`
+          : "Dominantni radni obrazac traži kontekstualnu provjeru",
+        evidence: highestDomain
+          ? `Najizraženiji domen u inputu je ${highestDomain.label}, uz dodatni signal iz faceta poput ${topFacetLabel}.`
+          : "Najviši domeni su bliski, pa profil traži provjeru kroz više konkretnih radnih situacija.",
+        hr_implication:
+          "Koristiti strukturirana pitanja da se provjeri kako se ovaj obrazac vidi u stvarnoj saradnji, prioritizaciji i donošenju odluka.",
+      },
+      {
+        title: "Provjera ponašanja pod pritiskom",
+        evidence: domainByCode.get("NEUROTICISM")
+          ? `Domen Neuroticizam i povezane facete daju signal kako osoba može reagovati kada su pritisak ili nejasnoća veći.`
+          : "Rad pod pritiskom vrijedi provjeriti i kada nema ekstremnog signala, jer kontekst uloge može pojačati razlike u ponašanju.",
+        hr_implication:
+          "U intervjuu tražiti primjer zahtjevnog perioda i kako je osoba održala fokus, komunikaciju i kvalitet odluka.",
+      },
+      {
+        title: "Prevesti profil u onboarding prakse",
+        evidence:
+          "Kombinacija dominantnih domena i faceta daje najviše vrijednosti kada se poveže sa stvarnim zadacima, povratnom informacijom i timskim očekivanjima.",
+        hr_implication:
+          "Rano dogovoriti očekivanja, granice saradnje i ritam kratkih check-in razgovora u prvih 30 dana.",
+      },
+    ] as IpipNeo120HrReportV1["key_hr_signals"],
+    verification_focus: [
+      {
+        area: "Postavljanje granica",
+        why_it_matters:
+          "Dominantni stil saradnje ili usmjerenosti na odnos vrijedi provjeriti i kroz situacije kada osoba mora zaštititi prioritet ili reći ne.",
+        how_to_check:
+          "U intervjuu tražiti primjer neslaganja, odbijanja zahtjeva ili zaštite prioriteta pod vremenskim pritiskom.",
+      },
+      {
+        area: "Direktna povratna informacija",
+        why_it_matters:
+          "Jače izražene interpersonalne osobine mogu izgledati drugačije kada osoba mora dati jasan i neugodan feedback.",
+        how_to_check:
+          "Kroz behavioral pitanje ili reference provjeriti kako osoba vodi zahtjevne razgovore i zadržava jasnoću poruke.",
+      },
+      {
+        area: "Reakcija na pritisak",
+        why_it_matters:
+          "Signal iz Neuroticizma i povezanih faceta vrijedi tumačiti kroz stvarni posao, posebno kada se rokovi, nejasnoća ili opterećenje povećaju.",
+        how_to_check:
+          "Tražiti konkretan primjer rada pod pritiskom ili kratki case zadatak sa promjenom prioriteta i naknadnom refleksijom.",
+      },
+    ] as IpipNeo120HrReportV1["verification_focus"],
+    interview_questions: [
+      {
+        question: "Opišite situaciju kada se niste slagali s odlukom tima. Kako ste reagovali?",
+        evaluates: "Postavljanje granica, neslaganje i zaštitu stava pod socijalnim pritiskom.",
+        what_good_answer_may_show:
+          "Da osoba može ostati saradljiva, ali i jasno obrazložiti stav te preuzeti odgovornost za posljedice odluke.",
+      },
+      {
+        question: "Kada pomažete kolegama, kako odlučujete gdje je granica između podrške i preuzimanja tuđeg posla?",
+        evaluates: "Balans saradnje, prioriteta i lične odgovornosti.",
+        what_good_answer_may_show:
+          "Da osoba prepoznaje granice podrške, štiti prioritete i ne gubi fokus na vlastite obaveze.",
+      },
+      {
+        question: "Kako reagujete kada morate dati direktnu, neugodnu povratnu informaciju?",
+        evaluates: "Direktnu komunikaciju, emocionalnu zrelost i sposobnost vođenja teških razgovora.",
+        what_good_answer_may_show:
+          "Da osoba zna biti jasna, poštena i profesionalna čak i kada razgovor nije ugodan.",
+      },
+      {
+        question: "Recite primjer kada ste morali braniti svoj stav iako je većina mislila drugačije.",
+        evaluates: "Samostalnost u odlučivanju i otpornost na grupni pritisak.",
+        what_good_answer_may_show:
+          "Da osoba razlikuje saradnju od popuštanja i zna argumentovano ostati pri stavu kada za to postoji osnov.",
+      },
+      {
+        question: "Kako balansirate dobar odnos s timom i potrebu da se donese brza odluka?",
+        evaluates: "Balans odnosa, brzine odluke i praktičnog prosuđivanja u timskom kontekstu.",
+        what_good_answer_may_show:
+          "Da osoba zna kada graditi saglasnost, a kada skratiti proces i preuzeti odgovornost za odluku.",
+      },
+    ] as IpipNeo120HrReportV1["interview_questions"],
+    strengths_and_overuse_risks: topThreeDomains.map((domain) => ({
+      trait_or_pattern:
+        domain.domain_code === "AGREEABLENESS"
+          ? "Izraženija saradničnost"
+          : domain.domain_code === "CONSCIENTIOUSNESS"
+            ? "Naglašena savjesnost i usmjerenost na standard"
+            : domain.domain_code === "EXTRAVERSION"
+              ? "Vidljiviji i energičniji stil uključivanja"
+              : domain.domain_code === "NEUROTICISM"
+                ? "Osjetljiviji odgovor na pritisak"
+                : `Relevantan obrazac u domeni ${domain.label.toLowerCase()}`,
+      possible_strengths: [
+        `Može podržati situacije u kojima je ${domain.label.toLowerCase()} direktno važna za ulogu.`,
+        `Može dati prepoznatljiv obrazac rada koji je timu i menadžeru lakše operativno pratiti.`,
+        `Može pomoći boljem uklapanju u dio posla gdje ova osobina nosi stvarnu radnu vrijednost.`,
+      ] as [string, string, string],
+      possible_overuse_risks: [
+        `U određenim kontekstima ${domain.label.toLowerCase()} može otići u pretjerivanje ako zahtjevi uloge nisu dobro postavljeni.`,
+        "Vrijedi provjeriti kako se obrazac mijenja kada poraste pritisak, nejasnoća ili međuzavisnost u timu.",
+        "Ako se tumači bez radnog konteksta, nalaz može izgledati šire nego što stvarno jeste.",
+      ] as [string, string, string],
+      hr_handling_tip:
+        `U intervjuu i onboardingu povezati ${domain.label.toLowerCase()} sa konkretnim zadacima, granicama odgovornosti i načinom davanja feedbacka.`,
+    })) as IpipNeo120HrReportV1["strengths_and_overuse_risks"],
+    domain_overview: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
       const domain = neoPromptInput.domains.find(
         (item: IpipNeo120HrReportPromptInput["domains"][number]) => item.domain_code === domainCode,
       );
@@ -544,71 +740,91 @@ function buildIpipNeo120HrMockReport(
         throw new Error(`Missing neo HR prompt domain ${domainCode}.`);
       }
 
-      const inputFacets = Array.isArray(domain.facets) ? domain.facets : [];
-      const inputFacetByCode = new Map(inputFacets.map((facet) => [facet.facet_code, facet]));
-      const facets = IPIP_NEO_120_FACETS_BY_DOMAIN[domainCode].map((facetCode) => {
-        const facet = inputFacetByCode.get(facetCode);
-
-        return {
-          code: facetCode,
-          label: getIpipNeo120FacetLabel(facetCode) ?? facetCode,
-          score_band: facet?.score_band ?? domain.score_band,
-          summary: facet
-            ? `${facet.label} djeluje kao radno relevantna faceta koja dodatno nijansira ovu domenu u profesionalnom kontekstu.`
-            : `${(getIpipNeo120FacetLabel(facetCode) ?? facetCode).toLowerCase()} služi kao pomoćni signal za čitanje ove domene u radnom kontekstu kada detaljniji facet podaci nisu dostupni.`,
-        };
-      });
+      const overview = buildDomainMeaning(domain.domain_code, domain.score_band);
+      const topDomainFacets = [...domain.facets]
+        .sort((left, right) => right.score - left.score || left.facet_code.localeCompare(right.facet_code))
+        .slice(0, 2);
 
       return {
-        code:
-          domain.domain_code === "NEUROTICISM"
-            ? "N"
-            : domain.domain_code === "EXTRAVERSION"
-              ? "E"
-              : domain.domain_code === "OPENNESS_TO_EXPERIENCE"
-                ? "O"
-                : domain.domain_code === "AGREEABLENESS"
-                  ? "A"
-                  : "C",
-        label: domain.label,
-        score_band: domain.score_band,
-        summary: `${domain.label} trenutno daje prepoznatljiv profesionalni signal koji vrijedi čitati kroz radni kontekst, očekivanja i nivo podrške.`,
-        workplace_strengths: [
-          `Kada je ${domain.label.toLowerCase()} dobro usklađena s ulogom, može podržati stabilniji ritam rada i jasnije prioritete.`,
-          `Ova domena može pomoći u predvidivijem ponašanju i lakšem usklađivanju sa zahtjevima radnog okruženja.`,
-        ] as [string, string],
-        workplace_watchouts: [
-          `Vrijedi pratiti kako se ${domain.label.toLowerCase()} pokazuje pod pritiskom, promjenom prioriteta ili pojačanom međuzavisnošću.`,
-          `Bez jasnog konteksta, ova domena se može tumačiti preširoko umjesto kroz konkretna radna ponašanja.`,
-        ] as [string, string],
-        management_notes: [
-          `Koristan je konkretan feedback o tome kako se ${domain.label.toLowerCase()} vidi u svakodnevnom radu i saradnji.`,
-          `Najviše koristi daje kada su očekivanja, odgovornosti i razvojni fokus vezani za stvarne situacije iz uloge.`,
-        ] as [string, string],
-        facets: facets as IpipNeo120HrReportV1["domains"][number]["facets"],
+        domain_name: domain.label,
+        score_label_or_band: domain.score_band,
+        concise_meaning: overview.conciseMeaning,
+        hr_relevance: overview.hrRelevance,
+        check_in_interview: overview.checkInInterview,
+        top_facets: topDomainFacets.map((facet) => ({
+          facet_name: facet.label || getIpipNeo120FacetLabel(facet.facet_code) || facet.facet_code,
+          score_label_or_band: facet.score_band,
+          relevance: `${facet.label} daje dodatni signal za praktičnu provjeru ovog domena u radnom kontekstu.`,
+        })),
       };
-    }) as IpipNeo120HrReportV1["domains"],
-    collaboration_style:
-      "Stil saradnje je najkorisnije tumačiti kroz kombinaciju izraženijih i mirnijih domena, posebno tamo gdje rad traži usklađivanje sa drugima, dijeljenje odgovornosti i stabilan ritam komunikacije.",
-    communication_style:
-      "Komunikacijski stil vjerovatno odražava dominantnije obrasce iz profila, ali ga vrijedi čitati situaciono: kroz zahtjeve uloge, timsku dinamiku i način na koji osoba reaguje na povratnu informaciju.",
-    leadership_and_influence:
-      "Uticaj i vođstvo ne proizlaze iz jedne domene izolovano, nego iz kombinacije prioriteta, samoregulacije, energije, otvorenosti i odnosa prema drugima u konkretnom okruženju rada.",
-    team_watchouts: [
-      "Preusko tumačenje jednog izraženog signala može zamagliti širu sliku o tome kako osoba funkcioniše kroz različite zadatke i timove.",
-      "Timska očekivanja, tempo rada i stil saradnje vrijedi rano uskladiti kako bi se smanjila pogrešna čitanja profila.",
-      "Profil je korisniji kao okvir za razgovor i podršku nego kao samostalan zaključak o učinku ili potencijalu.",
-    ] as [string, string, string],
-    onboarding_or_management_recommendations: [
-      "U prvim sedmicama definišite jasan ritam feedbacka i nekoliko konkretnih radnih očekivanja koja olakšavaju tumačenje profila kroz praksu.",
-      "Povežite razvojni razgovor s jednom izraženijom i jednom mirnijom domenom kako bi fokus ostao praktičan i upotrebljiv.",
-      "Profil koristite kao ulaz za upravljanje saradnjom, komunikacijom i podrškom, a ne kao zamjenu za posmatranje stvarnog ponašanja u radu.",
-    ] as [string, string, string],
+    }) as IpipNeo120HrReportV1["domain_overview"],
+    onboarding_and_management_guidance: [
+      {
+        recommendation: "U prvim sedmicama dogovoriti očekivanja oko prioriteta i granica saradnje.",
+        why:
+          "To pomaže da dominantni interpersonalni i radni obrasci budu čitani kroz konkretan posao, a ne kroz apstraktan opis ličnosti.",
+        first_30_days_application:
+          "Na prvom ili drugom check-in razgovoru pregledati kako osoba štiti prioritete i kako traži pomoć ili pojašnjenje.",
+      },
+      {
+        recommendation: "Uvesti ritam kratkog feedbacka nakon prvih timskih interakcija.",
+        why:
+          "Rani feedback pokazuje kako profil izgleda u stvarnoj saradnji i gdje se javljaju jače ili tiše reakcije od očekivanih.",
+        first_30_days_application:
+          "Nakon prvih sastanaka ili zajedničkih zadataka tražiti osvrt na saradnju, jasnoću poruke i upravljanje neslaganjem.",
+      },
+      {
+        recommendation: "Provjeriti kako osoba reaguje na nejasne zadatke prije nego se uloga potpuno stabilizuje.",
+        why:
+          "To je operativno važan test samoregulacije, traženja pojašnjenja i preuzimanja odgovornosti kada struktura nije potpuna.",
+        first_30_days_application:
+          "U prvom mjesecu uključiti barem jedan zadatak sa djelimično otvorenim parametrima i kasnije ga kratko analizirati.",
+      },
+      {
+        recommendation: "Povezati onboarding razgovore sa načinom davanja i primanja direktnog feedbacka.",
+        why:
+          "Dominantne osobine daju veću praktičnu vrijednost kada se rano vidi kako osoba vodi zahtjevne razgovore i štiti standard rada.",
+        first_30_days_application:
+          "Nakon prve zahtjevnije situacije pregledati šta je osoba uradila, šta je zaštitila i kako bi drugi put postupila.",
+      },
+    ] as IpipNeo120HrReportV1["onboarding_and_management_guidance"],
+    team_fit_notes: [
+      {
+        fit_condition: "Tim sa visokom potrebom za saradnjom",
+        may_work_well_when:
+          "Uloga traži koordinaciju, razmjenu informacija i održavanje stabilnih odnosa u svakodnevnom radu.",
+        watchout:
+          "Provjeriti da li tim istovremeno traži česte direktne konflikte, brze rezove ili snažno suprotstavljanje bez mnogo pripreme.",
+      },
+      {
+        fit_condition: "Okruženje sa jasnim standardima i odgovornostima",
+        may_work_well_when:
+          "Radni okvir dovoljno jasno pokazuje šta znači dobar rezultat i kako se donose odluke.",
+        watchout:
+          "Ako je uloga stalno nejasna ili promjenjiva, vrijedi provjeriti kako osoba održava fokus, tempo i komunikaciju.",
+      },
+      {
+        fit_condition: "Tim koji koristi strukturirani feedback",
+        may_work_well_when:
+          "Menadžer i tim rano prevode zapažanja u konkretno ponašanje, primjere i razvojne dogovore.",
+        watchout:
+          "Bez takvog ritma profil može ostati previše opšti i izgubiti praktičnu vrijednost za vođenje i onboarding.",
+      },
+    ] as IpipNeo120HrReportV1["team_fit_notes"],
+    decision_support_note: [
+      "Ne koristiti ovaj profil kao samostalnu odluku o kandidatu.",
+      "Koristiti ga za pripremu strukturiranog intervjua i provjeru ponašanja u relevantnim radnim situacijama.",
+      "Posebno provjeriti kako osoba postavlja granice, komunicira neslaganje i reaguje na pritisak.",
+      "Zaključke kombinovati sa iskustvom, intervjuom, referencama i zahtjevima konkretne uloge.",
+    ] as IpipNeo120HrReportV1["decision_support_note"],
     interpretation_note:
-      "Ovaj izvještaj je profesionalni razvojni pregled IPIP-NEO-120 rezultata. Ne predstavlja dijagnozu, ne potvrđuje zaštićene osobine i ne daje hiring odluku ili konačnu istinu o osobi.",
+      "Ovaj izvještaj nije dijagnoza niti odluka o zapošljavanju, ne potvrđuje zaštićene osobine i treba ga čitati uz kontekst uloge i druge izvore informacija.",
   };
 
-  const validationResult = validateIpipNeo120HrReportV1(report);
+  const validationResult = validateIpipNeo120HrReportV1(report, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
 
   if (!validationResult.ok) {
     throw new Error(
