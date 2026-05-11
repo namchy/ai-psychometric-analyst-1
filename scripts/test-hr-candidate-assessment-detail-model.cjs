@@ -324,10 +324,9 @@ function main() {
       }),
     },
     {
-      label: null,
-      kind: null,
-      enabled: false,
-      reason: "HR izvještaj za ovu procjenu još nije podržan.",
+      label: "Generiši HR izvještaj",
+      kind: "generate",
+      enabled: true,
     },
   );
 
@@ -391,6 +390,128 @@ function main() {
         disabled: true,
       },
     },
+  );
+
+  const completedMwmsAttempt = buildAttempt({
+    id: "attempt-mwms-completed-statuses",
+    participantId: "participant-resolve",
+    slug: "mwms_v1",
+    lifecycle: "completed",
+    startedAt: "2026-01-01T11:00:00.000Z",
+    completedAt: "2026-01-01T12:00:00.000Z",
+  });
+
+  assertResolvedState(
+    {
+      attempt: completedMwmsAttempt,
+      report: null,
+      readyHref: `/dashboard/attempts/${completedMwmsAttempt.id}`,
+    },
+    {
+      state: "completed_without_report",
+      statusLabel: "Nije generisano",
+      body: "Rezultati su završeni, ali HR izvještaj još nije generisan.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedMwmsAttempt,
+      report: null,
+      capability: getReportGenerationCapability({
+        testSlug: "mwms_v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: "Generiši HR izvještaj",
+      kind: "generate",
+      enabled: true,
+    },
+  );
+
+  assertRecoveryAction(
+    {
+      attempt: completedMwmsAttempt,
+      report: buildHrReport({
+        id: "report-mwms-failed-retry",
+        attemptId: completedMwmsAttempt.id,
+        testSlug: "mwms_v1",
+        status: "failed",
+      }),
+      capability: getReportGenerationCapability({
+        testSlug: "mwms_v1",
+        audience: "hr",
+        reportType: "individual",
+        sourceType: "single_test",
+      }),
+    },
+    {
+      label: "Ponovo generiši",
+      kind: "retry",
+      enabled: true,
+    },
+  );
+
+  assert.equal(
+    resolveHrReportCardState({
+      attempt: completedMwmsAttempt,
+      report: buildHrReport({
+        id: "report-mwms-queued",
+        attemptId: completedMwmsAttempt.id,
+        testSlug: "mwms_v1",
+        status: "queued",
+      }),
+      readyHref: `/dashboard/attempts/${completedMwmsAttempt.id}`,
+    }).statusLabel,
+    "Čeka generisanje",
+  );
+  assert.equal(
+    resolveHrReportCardState({
+      attempt: completedMwmsAttempt,
+      report: buildHrReport({
+        id: "report-mwms-processing",
+        attemptId: completedMwmsAttempt.id,
+        testSlug: "mwms_v1",
+        status: "processing",
+      }),
+      readyHref: `/dashboard/attempts/${completedMwmsAttempt.id}`,
+    }).statusLabel,
+    "Generiše se",
+  );
+  assert.equal(
+    resolveHrReportCardState({
+      attempt: completedMwmsAttempt,
+      report: buildHrReport({
+        id: "report-mwms-failed",
+        attemptId: completedMwmsAttempt.id,
+        testSlug: "mwms_v1",
+        status: "failed",
+      }),
+      readyHref: `/dashboard/attempts/${completedMwmsAttempt.id}`,
+    }).statusLabel,
+    "Greška pri generisanju",
+  );
+  assert.equal(
+    resolveHrReportCardState({
+      attempt: completedMwmsAttempt,
+      report: buildHrReport({
+        id: "report-mwms-ready",
+        attemptId: completedMwmsAttempt.id,
+        testSlug: "mwms_v1",
+        status: "ready",
+      }),
+      readyHref: `/dashboard/attempts/${completedMwmsAttempt.id}`,
+    }).cta.label,
+    "Otvori HR izvještaj",
   );
 
   assertResolvedState(
@@ -741,8 +862,8 @@ function main() {
     startedAt: "2026-01-06T11:00:00.000Z",
     completedAt: "2026-01-06T12:00:00.000Z",
   });
-  const mwmsUnsupportedAttempt = buildAttempt({
-    id: "attempt-mwms-unsupported",
+  const mwmsMissingAttempt = buildAttempt({
+    id: "attempt-mwms-missing",
     participantId: participant5.id,
     slug: "mwms_v1",
     lifecycle: "completed",
@@ -751,7 +872,7 @@ function main() {
   });
   const amraModel = buildHrCandidateAssessmentDetailModel({
     participant: participant5,
-    attempts: [ipipFailedAttempt, safranMissingAttempt, mwmsUnsupportedAttempt],
+    attempts: [ipipFailedAttempt, safranMissingAttempt, mwmsMissingAttempt],
     hrReports: [
       buildHrReport({
         id: "report-ipip-failed",
@@ -759,14 +880,6 @@ function main() {
         testSlug: "ipip-neo-120-v1",
         status: "failed",
         failureReason: "Cannot read properties of undefined (reading 'map')",
-      }),
-      buildHrReport({
-        id: "report-mwms-unsupported",
-        attemptId: mwmsUnsupportedAttempt.id,
-        testSlug: "mwms_v1",
-        status: "unavailable",
-        failureCode: "unsupported_audience",
-        failureReason: "MWMS V1 supports participant reports only.",
       }),
     ],
     organizationName: "Org 1",
@@ -781,7 +894,7 @@ function main() {
   );
   assert.equal(
     amraModel.cards.find((card) => card.slug === "mwms_v1")?.statusLabel,
-    "Još nije podržano",
+    "Nije generisano",
   );
   assert.equal(
     amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.action.kind,
@@ -792,8 +905,8 @@ function main() {
     "generate",
   );
   assert.equal(
-    amraModel.cards.find((card) => card.slug === "mwms_v1")?.action.enabled,
-    false,
+    amraModel.cards.find((card) => card.slug === "mwms_v1")?.action.kind,
+    "generate",
   );
   assert.equal(
     amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.body.includes("Cannot read properties"),

@@ -10,6 +10,7 @@ import {
   MWMS_PARTICIPANT_REPORT_CONTRACT,
   isMwmsTestSlug,
 } from "@/lib/assessment/mwms-report-contract";
+import { MWMS_HR_REPORT_V1_CONTRACT } from "@/lib/assessment/mwms-hr-report-v1";
 import {
   SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT,
   isSafranTestSlug,
@@ -387,11 +388,13 @@ async function loadPromptVersionForJob(
           ? IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.promptKey
           : isMwmsTestSlug(job.test_slug) && job.audience === "participant"
             ? MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey
-            : isSafranTestSlug(job.test_slug) && job.audience === "participant"
-              ? SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey
-          : isIpcTestSlug(job.test_slug)
-            ? getIpcPromptContract(job.audience).promptKey
-            : REPORT_PROMPT_KEY,
+            : isMwmsTestSlug(job.test_slug) && job.audience === "hr"
+              ? MWMS_HR_REPORT_V1_CONTRACT.promptKey
+              : isSafranTestSlug(job.test_slug) && job.audience === "participant"
+                ? SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey
+                : isIpcTestSlug(job.test_slug)
+                  ? getIpcPromptContract(job.audience).promptKey
+                  : REPORT_PROMPT_KEY,
     }, {
       locale,
     });
@@ -541,13 +544,6 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   snapshot: RuntimeCompletedAssessmentReport;
   modelName: string | null;
 }> {
-  if (isMwmsTestSlug(job.test_slug) && job.audience !== "participant") {
-    throw new ReportJobError(
-      "CONFIG_ERROR",
-      "MWMS V1 supports participant reports only.",
-    );
-  }
-
   const attemptContext = await loadAttemptContext(job.attempt_id);
   const [runtimeConfig, activePromptVersion] = await Promise.all([
     loadRuntimeConfigForJob(job),

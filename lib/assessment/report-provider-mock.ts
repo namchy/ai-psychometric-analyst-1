@@ -33,6 +33,13 @@ import {
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { IpcReportPromptInput } from "@/lib/assessment/ipc-report-contract";
 import type { MwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-report-contract";
+import type { MwmsHrReportInput } from "@/lib/assessment/mwms-hr-report-v1";
+import {
+  MWMS_HR_REPORT_CONTRACT_VERSION,
+  MWMS_HR_REPORT_TYPE,
+  formatMwmsHrReportValidationErrors,
+  validateMwmsHrReportV1,
+} from "@/lib/assessment/mwms-hr-report-v1";
 import {
   MWMS_PARTICIPANT_REPORT_SCHEMA_VERSION,
   formatMwmsParticipantReportV1ValidationErrors,
@@ -1268,6 +1275,238 @@ function buildMwmsParticipantMockReport(
   return validationResult.value;
 }
 
+function buildMwmsHrMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as MwmsHrReportInput;
+  const dimensions = promptInput.dimensions.map(({ code, label, rawScore, band, bandLabel }) => ({
+    code,
+    label,
+    rawScore,
+    band,
+    bandLabel,
+  })) as MwmsHrReportInput["dimensions"];
+  const scoreByCode = new Map(promptInput.dimensions.map((dimension) => [dimension.code, dimension]));
+  const dominantLabels = promptInput.derivedProfile.dominantDimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+  const lowerLabels = promptInput.derivedProfile.lowerDimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+
+  const report = {
+    contractVersion: MWMS_HR_REPORT_CONTRACT_VERSION,
+    reportType: MWMS_HR_REPORT_TYPE,
+    testSlug: "mwms_v1",
+    audience: "hr",
+    sourceType: "single_test",
+    locale: promptInput.locale,
+    meta: {
+      language: promptInput.locale,
+      generatedAt: new Date().toISOString(),
+    },
+    motivation_profile_snapshot: {
+      scale: promptInput.scale,
+      dimensions,
+      derivedProfile: promptInput.derivedProfile,
+    },
+    key_motivational_drivers: [
+      {
+        title: "Vidljivi motivacijski oslonci",
+        evidence: dominantLabels
+          ? `Najizrazeniji signali u profilu su ${dominantLabels.toLowerCase()}.`
+          : "Profil pokazuje vise izvora radne motivacije bez jednog dominantnog oslonca.",
+        hrImplication:
+          "U razgovoru vrijedi provjeriti koji zadaci najlakse povezuju trud sa smislom, interesom ili jasnim ishodom.",
+      },
+      {
+        title: "Autonomni izvori motivacije",
+        evidence:
+          `Autonomni motivacijski skor je ${promptInput.derivedProfile.autonomousMotivationScore.toFixed(2)} na skali 1-7.`,
+        hrImplication:
+          "Korisno je istraziti koliko osoba rad povezuje sa vrijednoscu posla, odgovornoscu i interesom za zadatke.",
+      },
+      {
+        title: "Kontrolisani izvori motivacije",
+        evidence:
+          `Kontrolisani motivacijski skor je ${promptInput.derivedProfile.controlledMotivationScore.toFixed(2)} na skali 1-7.`,
+        hrImplication:
+          "Jasni kriteriji, ritam povratne informacije i predvidiva ocekivanja mogu biti vazan dio radnog okvira.",
+      },
+    ],
+    potential_friction_points: [
+      {
+        signal: lowerLabels
+          ? `Tisi signali u profilu su ${lowerLabels.toLowerCase()}.`
+          : "Neki motivacijski izvori mogu biti manje vidljivi u trenutnom profilu.",
+        whyItMayMatter:
+          "Manje izrazeni izvori mogu ukazivati na kontekste u kojima angazman trazi dodatnu jasnocu ili podrsku.",
+        howToCheck:
+          "Pitati za konkretne situacije u kojima osobi opada energija, interes ili osjecaj svrhe.",
+      },
+      {
+        signal: promptInput.derivedProfile.cautionFlags.elevatedAmotivation
+          ? "Amotivacijski signal je izrazeniji i trazi oprezno kontekstualno citanje."
+          : "Amotivacijski signal treba citati kao jedan dio sireg motivacijskog profila.",
+        whyItMayMatter:
+          "Ovaj signal moze biti povezan sa jasnocom uloge, energijom i uslovima rada.",
+        howToCheck:
+          "Provjeriti sta osobi pomaze da prepozna razlog za ulaganje truda u manje zanimljive zadatke.",
+      },
+      {
+        signal: promptInput.derivedProfile.cautionFlags.highControlledRelativeToAutonomous
+          ? "Kontrolisani izvori su vidljivo jaci od autonomnih izvora."
+          : "Autonomni i kontrolisani izvori treba citati zajedno.",
+        whyItMayMatter:
+          "Motivacija moze biti stabilnija kada su vanjski zahtjevi povezani sa jasnom svrhom rada.",
+        howToCheck:
+          "U intervjuu traziti primjere rada pod pritiskom, uz rokove, standarde ili promjenjiva ocekivanja.",
+      },
+    ],
+    work_context_hypotheses: [
+      {
+        context: "Uloge sa jasnim ciljevima",
+        hypothesis:
+          "Profil moze dobiti bolji oslonac kada su svrha zadatka i kriteriji uspjeha eksplicitni.",
+        verification:
+          "Provjeriti kroz primjere zadataka u kojima je osoba brzo razumjela zasto je rad vazan.",
+      },
+      {
+        context: "Uloge sa promjenjivim prioritetima",
+        hypothesis:
+          "Motivacijski profil moze traziti cesce uskladjivanje ocekivanja i povratne informacije.",
+        verification:
+          "Pitati kako osoba odrzava trud kada se prioriteti ili pravila promijene.",
+      },
+      {
+        context: "Uloge sa samostalnim radom",
+        hypothesis:
+          "Autonomni izvori motivacije mogu biti korisni kada osoba ima dovoljno konteksta i prostor za nacin rada.",
+        verification:
+          "Provjeriti koliko osobi pomazu jasni okviri prije samostalnog preuzimanja zadatka.",
+      },
+    ],
+    manager_support_guidance: [
+      {
+        focus: "Svrha zadataka",
+        recommendation:
+          "Povezati zadatke sa korisnikom, ciljem ili poslovnim ishodom prije ulaska u detalje izvedbe.",
+        rationale:
+          "Identificirana i intrinzicna motivacija se lakse koriste kada osoba vidi zasto je rad bitan.",
+      },
+      {
+        focus: "Jasni kriteriji",
+        recommendation:
+          "Dogovoriti standarde, rokove i ritam povratne informacije na pocetku rada.",
+        rationale:
+          "Vanjski i kontrolisani izvori motivacije mogu biti funkcionalni kada su ocekivanja stabilna.",
+      },
+      {
+        focus: "Autonomija u nacinu rada",
+        recommendation:
+          "Dati okvir za rezultat, a gdje je moguce ostaviti izbor u nacinu dolaska do rezultata.",
+        rationale:
+          "Takav pristup podrzava motivaciju kroz odgovornost i osjecaj izbora.",
+      },
+      {
+        focus: "Rani razgovor o energiji",
+        recommendation:
+          "U prvim sedmicama provjeriti koji zadaci osobi daju energiju, a koji traze dodatnu jasnocu.",
+        rationale:
+          "Motivacijske frikcije se sigurnije tumace kroz konkretan radni kontekst.",
+      },
+    ],
+    interview_questions: [
+      {
+        question: "Koji tip zadataka vam najbrze postane smislen i zbog cega?",
+        evaluates: "Vezu izmedju vrijednosti, interesa i radnog angazmana.",
+        whatToListenFor:
+          "Konkretne primjere svrhe, odgovornosti i interesa u stvarnom radu.",
+      },
+      {
+        question: "Kako odrzavate trud kada zadatak nije licno zanimljiv?",
+        evaluates: "Balans autonomnih i kontrolisanih izvora motivacije.",
+        whatToListenFor:
+          "Strategije povezivanja zadatka sa ciljem, standardom ili korisnim ishodom.",
+      },
+      {
+        question: "Kakva povratna informacija vam najvise pomaze da ostanete usmjereni?",
+        evaluates: "Ulogu priznanja, jasnih kriterija i socijalnog konteksta.",
+        whatToListenFor:
+          "Prakticne potrebe za ritmom, jasnocom i vrstom povratne informacije.",
+      },
+      {
+        question: "Sta vam u novoj ulozi najvise pomaze da uhvatite radni ritam?",
+        evaluates: "Onboarding uslove koji mogu podrzati rani angazman.",
+        whatToListenFor:
+          "Potrebu za strukturom, autonomijom, primjerima ili razgovorom o svrsi.",
+      },
+      {
+        question: "U kojim situacijama vam najvise opadne osjecaj razloga za ulaganje truda?",
+        evaluates: "Moguce motivacijske frikcije i kontekstualne okidace.",
+        whatToListenFor:
+          "Konkretne okolnosti koje uticu na jasnocu, energiju i osjecaj vrijednosti rada.",
+      },
+    ],
+    onboarding_recommendations: [
+      {
+        phase: "Prvih 30 dana",
+        recommendation:
+          "Razjasniti svrhu uloge, kriterije uspjeha i najvaznije kratkorocne prioritete.",
+        why:
+          "Profil se lakse tumaci kada osoba zna zasto su prvi zadaci vazni.",
+      },
+      {
+        phase: "Prvih 30 dana",
+        recommendation:
+          "Uvesti kratak sedmicni razgovor o napretku, preprekama i jasnoci ocekivanja.",
+        why:
+          "Rani feedback moze pomoci da se vanjski i autonomni izvori bolje povezu.",
+      },
+      {
+        phase: "60 dana",
+        recommendation:
+          "Provjeriti koji zadaci najvise podrzavaju angazman, a koji traze dodatni kontekst.",
+        why:
+          "Motivacijski signali su korisniji kada se povezu sa stvarnim zadacima.",
+      },
+      {
+        phase: "90 dana",
+        recommendation:
+          "Uskladiti nivo autonomije, jasnih ciljeva i priznanja za naredni period.",
+        why:
+          "Kombinovani profil moze traziti balans izmedju smisla, strukture i vidljivih ishoda.",
+      },
+    ],
+    decision_support_note: [
+      "Ovaj izvjestaj daje HR hipoteze za razgovor, onboarding i menadzersku podrsku.",
+      "Nalaze treba citati zajedno sa intervjuom, iskustvom i kontekstom konkretne uloge.",
+    ],
+    interpretation_note:
+      "MWMS HR izvjestaj koristi vec izracunate rezultate kao motivacijski profil. Score, band i label ostaju deterministic vrijednosti iz inputa.",
+    safety_checks: {
+      noScoreRecalculation: true,
+      noScoreMutation: true,
+      noHireNoHireDecision: true,
+      noDiagnosticLanguage: true,
+      hypothesesOnly: true,
+      singleTestOnly: true,
+    },
+  };
+
+  const validationResult = validateMwmsHrReportV1(report, {
+    expectedInput: promptInput,
+  });
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock MWMS HR report failed validation: ${formatMwmsHrReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
 function buildSafranParticipantMockReport(
   input: PreparedReportGenerationInput,
 ): RuntimeCompletedAssessmentReport {
@@ -1315,6 +1554,10 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
     }
 
     return buildIpipNeo120MockReport(input);
+  }
+
+  if ("dimensions" in input.promptInput && "testSlug" in input.promptInput && input.promptInput.testSlug === "mwms_v1") {
+    return buildMwmsHrMockReport(input);
   }
 
   if ("dimensions" in input.promptInput && input.promptInput.test_slug === "mwms_v1") {

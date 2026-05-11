@@ -34,6 +34,7 @@ import {
   type IpcReportPromptInput,
 } from "@/lib/assessment/ipc-report-contract";
 import { buildMwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-participant-ai-input-v1";
+import { buildMwmsHrReportInput } from "@/lib/assessment/mwms-hr-report-v1";
 import { isMwmsTestSlug } from "@/lib/assessment/mwms-report-contract";
 import {
   buildSafranHrReportInput,
@@ -449,8 +450,15 @@ export function buildReportPromptInput(
       : buildIpipNeo120HrPromptInput(input);
   }
 
-  if (isMwmsTestSlug(input.testSlug) && input.audience === "participant") {
-    return buildMwmsParticipantReportPromptInput(input);
+  if (isMwmsTestSlug(input.testSlug)) {
+    if (input.audience === "participant") {
+      return buildMwmsParticipantReportPromptInput(input);
+    }
+
+    return buildMwmsHrReportInput({
+      ...input,
+      audience: "hr",
+    });
   }
 
   if (isSafranTestSlug(input.testSlug)) {

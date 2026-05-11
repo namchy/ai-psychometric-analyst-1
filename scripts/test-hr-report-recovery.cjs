@@ -152,8 +152,21 @@ function main() {
       capability: capability("mwms_v1"),
       existingStatus: null,
     }),
-    "noop_inactive_capability",
+    "generate",
   );
+
+  const mwmsQueuePayload = buildHrAttemptReportQueueInsertPayload({
+    attemptId: "6dd2ef0f-9393-48d5-8f6f-d64c80ba5f40",
+    testSlug: "mwms_v1",
+    generatorType: "mock",
+    modelName: null,
+    generatedAt: "2026-05-11T10:05:00.000Z",
+  });
+  assert.equal(mwmsQueuePayload.test_slug, "mwms_v1");
+  assert.equal(mwmsQueuePayload.audience, "hr");
+  assert.equal(mwmsQueuePayload.report_type, "individual");
+  assert.equal(mwmsQueuePayload.source_type, "single_test");
+  assert.equal(mwmsQueuePayload.report_status, "queued");
 
   assert.equal(
     resolveHrReportRecoveryOperation({

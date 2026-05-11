@@ -125,7 +125,7 @@ function main() {
       reportType: "individual",
       sourceType: "single_test",
     }),
-    { active: false, status: "planned", reason: "not_implemented" },
+    { active: true, status: "active" },
   );
   assert.deepEqual(
     getReportGenerationCapability({
@@ -161,11 +161,11 @@ function main() {
   });
   assert.deepEqual(
     mwmsPlan.jobsToEnqueue.map((job) => job.audience),
-    ["participant"],
+    ["participant", "hr"],
   );
   assert.equal(
     mwmsPlan.lanes.find((lane) => lane.audience === "hr")?.capability.status,
-    "planned",
+    "active",
   );
 
   const duplicateHrPlan = planPostCompletionReportJobs({

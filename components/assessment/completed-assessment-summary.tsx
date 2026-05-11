@@ -18,6 +18,7 @@ import { coerceIpipNeo120HrReportV1ForDisplay } from "@/lib/assessment/ipip-neo-
 import type { IpipNeo120ParticipantReportV2 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
+import type { MwmsHrReportV1 } from "@/lib/assessment/mwms-hr-report-v1";
 import type { MwmsParticipantReportV1 } from "@/lib/assessment/mwms-participant-report-v1";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
 import type { SafranHrReportV1 } from "@/lib/assessment/safran-hr-report-v1";
@@ -48,6 +49,9 @@ import {
 import {
   resolveSafranHrReportDisplay,
 } from "@/lib/assessment/safran-hr-report-display";
+import {
+  resolveMwmsHrReportDisplay,
+} from "@/lib/assessment/mwms-hr-report-display";
 import { zodiak } from "@/lib/fonts";
 
 type CompletedAssessmentSummaryProps = {
@@ -99,6 +103,7 @@ type ReportRendererSelection =
   | { kind: "big_five_hr_v1"; report: DetailedReportV1 }
   | { kind: "ipc_participant_v1"; report: IpcParticipantReportV1 }
   | { kind: "ipc_hr_v1"; report: IpcHrReportV1 }
+  | { kind: "mwms_hr_report_v1"; report: MwmsHrReportV1 }
   | { kind: "mwms_participant_report_v1"; report: MwmsParticipantReportV1 }
   | { kind: "safran_participant_ai_report_v1"; report: SafranParticipantAiReport }
   | { kind: "safran_hr_report_v1"; report: SafranHrReportV1 }
@@ -444,6 +449,10 @@ function isMwmsParticipantReport(report: unknown): report is MwmsParticipantRepo
   );
 }
 
+function isMwmsHrReport(report: unknown): report is MwmsHrReportV1 {
+  return resolveMwmsHrReportDisplay(report) !== null;
+}
+
 function isSafranParticipantAiReport(report: unknown): report is SafranParticipantAiReport {
   return validateSafranParticipantAiReport(report).ok;
 }
@@ -541,6 +550,14 @@ function selectReportRenderer(
             kind: "shape_mismatch",
             message:
               "Report render format označava MWMS participant izvještaj, ali snapshot shape ne odgovara tom rendereru.",
+          };
+    case "mwms_hr_report_v1":
+      return isMwmsHrReport(reportState.report)
+        ? { kind: "mwms_hr_report_v1", report: reportState.report }
+        : {
+            kind: "shape_mismatch",
+            message:
+              "Report render format označava MWMS HR izvještaj, ali snapshot shape ne odgovara tom rendereru.",
           };
     case "safran_participant_ai_report_v1":
       return isSafranParticipantAiReport(reportState.report)
@@ -1727,6 +1744,236 @@ function SafranHrReportSummary({
         </div>
         <ul className="results-insight-list text-sm text-slate-700">
           {display.interpretationLimits.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function MwmsHrReportSummary({
+  completedAt,
+  organizationName,
+  participantName,
+  report,
+}: {
+  completedAt?: string | null;
+  organizationName?: string | null;
+  participantName?: string | null;
+  report: MwmsHrReportV1;
+}) {
+  const display = resolveMwmsHrReportDisplay(report);
+
+  if (!display) {
+    return renderReportFallbackCard(
+      "MWMS HR izvještaj nije dostupan",
+      "HR snapshot postoji, ali njegov shape ne odgovara očekivanom MWMS HR contractu.",
+    );
+  }
+
+  const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
+
+  return (
+    <div className="results-report stack-md">
+      <section className="results-report__hero border border-slate-300/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,248,251,0.96))] px-5 py-5 shadow-[0_18px_38px_rgba(15,23,42,0.06)] sm:px-6 sm:py-5">
+        <div className="results-report__hero-copy gap-2.5">
+          <p className="results-report__eyebrow text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            {display.header.eyebrow}
+          </p>
+          <h2>{display.header.title}</h2>
+          <p className="results-report__section-body text-[15px] text-slate-600">
+            {display.header.subtitle}
+          </p>
+          <p className="inline-flex w-fit items-center rounded-full border border-[rgba(15,23,42,0.12)] bg-[rgba(248,250,252,0.9)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+            Namijenjeno HR-u
+          </p>
+
+          <div className="results-report__hero-meta-wrap">
+            <dl className="results-report__hero-meta">
+              {participantName ? (
+                <div className={`${primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"} border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]`}>
+                  <dt>Kandidat</dt>
+                  <dd>{participantName}</dd>
+                </div>
+              ) : null}
+              {organizationName ? (
+                <div className={`${primaryMetaCount === 1 ? "results-report__hero-meta-item results-report__hero-meta-item--wide" : "results-report__hero-meta-item"} border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]`}>
+                  <dt>Organizacija</dt>
+                  <dd>{organizationName}</dd>
+                </div>
+              ) : null}
+              <div className="results-report__hero-meta-item results-report__hero-meta-item--wide border border-[rgba(148,163,184,0.18)] bg-[rgba(255,255,255,0.78)]">
+                <dt>Završeno</dt>
+                <dd>{formatCompletedAt(completedAt)}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.motivationProfile}</h3>
+        </div>
+        <p className="results-report__section-body text-[15px] leading-7 text-slate-700">
+          Deterministički MWMS scorevi ostaju prikazani kao profil motivacijskih izvora, bez ukupne ocjene.
+        </p>
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {display.dimensions.map((dimension) => (
+            <article
+              key={dimension.code}
+              className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-[1rem] font-semibold text-slate-900">{dimension.label}</h4>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{dimension.meaning}</p>
+                </div>
+                <span className="rounded-full border border-[rgba(15,23,42,0.12)] bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                  {dimension.bandLabel}
+                </span>
+              </div>
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  <span>{display.scaleLabel}</span>
+                  <span>{dimension.scoreLabel}</span>
+                </div>
+                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200/80" role="img" aria-label={`${dimension.label} ${dimension.scoreLabel}`}>
+                  <span
+                    className="block h-full rounded-full bg-[linear-gradient(90deg,#94a3b8,#0f766e)]"
+                    style={{ width: `${Math.max(dimension.width, 4)}%` }}
+                  />
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.keyMotivationalDrivers}</h3>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {display.keyMotivationalDrivers.map((item) => (
+            <article key={`${item.title}-${item.evidence}`} className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4">
+              <h4 className="text-[1rem] font-semibold text-slate-900">{item.title}</h4>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{item.evidence}</p>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                HR implikacija
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.hrImplication}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.potentialFrictionPoints}</h3>
+        </div>
+        <div className="stack-sm">
+          {display.potentialFrictionPoints.map((item) => (
+            <article key={`${item.signal}-${item.howToCheck}`} className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4">
+              <h4 className="text-[1rem] font-semibold text-slate-900">{item.signal}</h4>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{item.whyItMayMatter}</p>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Kako provjeriti
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.howToCheck}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.workContextHypotheses}</h3>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {display.workContextHypotheses.map((item) => (
+            <article key={`${item.context}-${item.hypothesis}`} className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {item.context}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{item.hypothesis}</p>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Provjera u razgovoru
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.verification}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.managerSupportGuidance}</h3>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {display.managerSupportGuidance.map((item) => (
+            <article key={`${item.focus}-${item.recommendation}`} className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {item.focus}
+              </p>
+              <h4 className="mt-3 text-[1rem] font-semibold text-slate-900">{item.recommendation}</h4>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{item.rationale}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.interviewQuestions}</h3>
+        </div>
+        <div className="stack-sm">
+          {display.interviewQuestions.map((item, index) => (
+            <article key={`${item.question}-${index}`} className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Pitanje {index + 1}
+              </p>
+              <h4 className="mt-3 text-[1rem] font-semibold text-slate-900">{item.question}</h4>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Procjenjuje
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.evaluates}</p>
+              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Šta slušati u odgovoru
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.whatToListenFor}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(255,255,255,0.98)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.28)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.onboardingRecommendations}</h3>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {display.onboardingRecommendations.map((item) => (
+            <article key={`${item.phase}-${item.recommendation}`} className="rounded-[18px] border border-[rgba(226,232,240,0.95)] bg-[rgba(248,250,252,0.86)] px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {item.phase}
+              </p>
+              <h4 className="mt-3 text-[1rem] font-semibold text-slate-900">{item.recommendation}</h4>
+              <p className="mt-3 text-sm leading-6 text-slate-700">{item.why}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(203,213,225,0.9)] bg-[rgba(248,250,252,0.74)] px-5 py-5 shadow-[0_20px_48px_-44px_rgba(15,23,42,0.22)] sm:px-6">
+        <div className="results-report__section-heading">
+          <h3>{display.sections.notes}</h3>
+        </div>
+        <p className="results-report__section-body text-sm leading-6 text-slate-600">
+          {display.interpretationNote}
+        </p>
+        <ul className="results-insight-list mt-3 text-sm text-slate-600">
+          {display.decisionSupportNote.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -3207,6 +3454,7 @@ export function CompletedAssessmentSummary({
   const ipcParticipantReport =
     reportRenderer.kind === "ipc_participant_v1" ? reportRenderer.report : null;
   const ipcHrReport = reportRenderer.kind === "ipc_hr_v1" ? reportRenderer.report : null;
+  const mwmsHrReport = reportRenderer.kind === "mwms_hr_report_v1" ? reportRenderer.report : null;
   const mwmsParticipantReport =
     reportRenderer.kind === "mwms_participant_report_v1" ? reportRenderer.report : null;
   const safranParticipantAiReport =
@@ -3218,7 +3466,8 @@ export function CompletedAssessmentSummary({
     !ipipNeo120ParticipantReport &&
     !ipipNeo120HrReport &&
     !safranParticipantAiReport &&
-    !safranHrReport;
+    !safranHrReport &&
+    !mwmsHrReport;
 
   const maxRawScore =
     results && results.dimensions.length > 0
@@ -3328,6 +3577,17 @@ export function CompletedAssessmentSummary({
         testName={testName}
         results={results}
         aiReport={safranParticipantAiReport}
+      />
+    );
+  }
+
+  if (mwmsHrReport) {
+    return (
+      <MwmsHrReportSummary
+        completedAt={completedAt}
+        organizationName={organizationName}
+        participantName={participantName}
+        report={mwmsHrReport}
       />
     );
   }

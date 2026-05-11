@@ -22,6 +22,12 @@ import {
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { MwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-report-contract";
 import {
+  formatMwmsHrReportValidationErrors,
+  mwmsHrReportV1OpenAiSchema,
+  validateMwmsHrReportV1,
+  type MwmsHrReportInput,
+} from "@/lib/assessment/mwms-hr-report-v1";
+import {
   formatMwmsParticipantReportV1ValidationErrors,
   mwmsParticipantReportV1OpenAiSchema,
   validateMwmsParticipantReportV1,
@@ -86,8 +92,20 @@ function isMwmsParticipantPromptInput(
 ): promptInput is MwmsParticipantReportPromptInput {
   return (
     "dimensions" in promptInput &&
+    "test_slug" in promptInput &&
     promptInput.test_slug === "mwms_v1" &&
     promptInput.audience === "participant"
+  );
+}
+
+function isMwmsHrPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is MwmsHrReportInput {
+  return (
+    "dimensions" in promptInput &&
+    "testSlug" in promptInput &&
+    promptInput.testSlug === "mwms_v1" &&
+    promptInput.audience === "hr"
   );
 }
 
@@ -292,6 +310,15 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
         .join(" | ");
     }
 
+    if (isMwmsHrPromptInput(input.promptInput)) {
+      return input.promptInput.dimensions
+        .map(
+          (dimension) =>
+            `${dimension.code} (${dimension.label}): raw_score=${dimension.rawScore}, band=${dimension.band}, band_label=${dimension.bandLabel}`,
+        )
+        .join(" | ");
+    }
+
     if (isSafranHrPromptInput(input.promptInput)) {
       return [
         `overall=${input.promptInput.scores.overall.scoreLabel}/${input.promptInput.scores.overall.bandLabel}`,
@@ -299,6 +326,10 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
         `figural=${input.promptInput.scores.figural.scoreLabel}/${input.promptInput.scores.figural.bandLabel}`,
         `numeric=${input.promptInput.scores.numeric.scoreLabel}/${input.promptInput.scores.numeric.bandLabel}`,
       ].join(" | ");
+    }
+
+    if (!("derived" in input.promptInput) || !("rawOctants" in input.promptInput)) {
+      return "";
     }
 
     return [
@@ -618,6 +649,53 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
       });
     }
 
+    if (isMwmsHrPromptInput(input.promptInput)) {
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one MWMS HR report in contractVersion and reportType mwms_hr_report_v1.",
+          audience_behavior:
+            "Write in the locale from input.locale for an HR professional. Keep the tone concise, operational and careful.",
+          source_rule:
+            "Use only the provided deterministic MWMS input. Do not use participant report text, raw answers, item-level data, other tests or any profile outside this input.",
+          score_integrity_rule:
+            "Copy every dimension code, label, rawScore, band and bandLabel exactly from input.dimensions into motivation_profile_snapshot.dimensions. Copy derivedProfile exactly from input. Do not calculate, infer, rename, round, reorder or replace those values.",
+          single_test_rule:
+            "This is a single-test MWMS report. Do not connect it with other assessments, composite profiles, role models or organization-specific context not present in the input.",
+          interpretation_rule:
+            "Frame narrative text as cautious HR hypotheses for engagement, interview, onboarding and manager support. Use practical wording such as moze biti korisno provjeriti, vrijedi istraziti, u razgovoru provjeriti and citati kao motivacijski profil.",
+          structure_rules: [
+            "Return valid JSON only.",
+            "Keep identity fields exact: contractVersion mwms_hr_report_v1, reportType mwms_hr_report_v1, testSlug mwms_v1, audience hr, sourceType single_test.",
+            "meta.language must match input.locale.",
+            "motivation_profile_snapshot.scale must be min 1 and max 7.",
+            "motivation_profile_snapshot.dimensions must contain exactly the six input dimensions and must preserve each code, label, rawScore, band and bandLabel exactly.",
+            "motivation_profile_snapshot.derivedProfile must preserve all scores, dominantDimensions, lowerDimensions and cautionFlags exactly.",
+            "key_motivational_drivers must contain exactly 3 items.",
+            "potential_friction_points must contain exactly 3 items.",
+            "work_context_hypotheses must contain exactly 3 items.",
+            "manager_support_guidance must contain exactly 4 items.",
+            "interview_questions must contain exactly 5 items.",
+            "onboarding_recommendations must contain exactly 4 items.",
+            "decision_support_note must contain 2 or 3 short items.",
+            "safety_checks values must all be true.",
+          ],
+          content_rules: [
+            "Focus on engagement, interview checks, onboarding needs, manager support and possible motivation friction.",
+            "Do not make a selection verdict, ranking, fit score or performance forecast.",
+            "Do not use clinical, medical or fixed-trait language.",
+            "Do not claim the result proves motivation or causes future behavior.",
+            "Do not mention other assessment names, composite reporting, protected attributes, AI or model limitations.",
+            "Keep all generated text short and HR-operational.",
+          ],
+          output_validation_rule:
+            "Output must satisfy the provided MWMS HR JSON schema and runtime validator with expected input score and band checks.",
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
+    }
+
     return JSON.stringify({
       instructions: {
         output_contract: "Return one IPC report in the exact schema.",
@@ -762,6 +840,10 @@ export function resolveOpenAiResponseFormatSchemaForInput(
 
   if (isMwmsParticipantPromptInput(input.promptInput)) {
     return mwmsParticipantReportV1OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isMwmsHrPromptInput(input.promptInput)) {
+    return mwmsHrReportV1OpenAiSchema as Record<string, unknown>;
   }
 
   if (isSafranParticipantPromptInput(input.promptInput)) {
@@ -1155,6 +1237,20 @@ export function validateStructuredReport(
     if (!validationResult.ok) {
       throw new Error(
         `OpenAI response JSON failed MWMS participant report validation: ${formatMwmsParticipantReportV1ValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  if (input.testSlug === "mwms_v1" && isMwmsHrPromptInput(input.promptInput)) {
+    const validationResult = validateMwmsHrReportV1(report, {
+      expectedInput: input.promptInput,
+    });
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed MWMS HR report validation: ${formatMwmsHrReportValidationErrors(validationResult.errors)}`,
       );
     }
 

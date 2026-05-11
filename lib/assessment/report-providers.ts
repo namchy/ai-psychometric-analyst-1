@@ -41,6 +41,13 @@ import {
   type MwmsParticipantReportPromptInput,
 } from "@/lib/assessment/mwms-report-contract";
 import {
+  MWMS_HR_REPORT_V1_CONTRACT,
+  formatMwmsHrReportValidationErrors,
+  validateMwmsHrReportV1,
+  type MwmsHrReportInput,
+  type MwmsHrReportV1,
+} from "@/lib/assessment/mwms-hr-report-v1";
+import {
   SAFRAN_HR_REPORT_V1_CONTRACT,
   validateSafranHrReport,
   type SafranHrReportInput,
@@ -81,6 +88,7 @@ export type ReportRenderFormat =
   | "ipc_participant_v1"
   | "ipc_hr_v1"
   | "mwms_participant_report_v1"
+  | "mwms_hr_report_v1"
   | "safran_participant_ai_report_v1"
   | "safran_hr_report_v1";
 export type AttemptReportStatus =
@@ -98,6 +106,7 @@ export type RuntimeCompletedAssessmentReport =
   | IpipNeo120ParticipantReportV2
   | IpcCompletedAssessmentReport
   | MwmsParticipantReportV1
+  | MwmsHrReportV1
   | SafranParticipantAiReport
   | SafranHrReportV1;
 export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
@@ -146,6 +155,7 @@ export type ReportPromptInput =
   | IpipNeo120ParticipantReportPromptInput
   | IpcReportPromptInput
   | MwmsParticipantReportPromptInput
+  | MwmsHrReportInput
   | SafranAiReportInput
   | SafranHrReportInput;
 
@@ -191,7 +201,8 @@ export function isCompletedAssessmentReport(value: unknown): value is CompletedA
     validateIpipNeo120ParticipantReportV2(value).ok ||
     validateIpcParticipantReportV1(value).ok ||
     validateIpcHrReportV1(value).ok ||
-    validateMwmsParticipantReportV1(value).ok
+    validateMwmsParticipantReportV1(value).ok ||
+    validateMwmsHrReportV1(value).ok
     || validateSafranParticipantAiReport(value).ok
     || validateSafranHrReport(value).ok
   );
@@ -247,6 +258,18 @@ export function resolveReportContract(
       schemaName: MWMS_PARTICIPANT_REPORT_CONTRACT.schemaId,
       outputSchemaJson:
         MWMS_PARTICIPANT_REPORT_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
+  if (isMwmsTestSlug(testSlug) && audience === "hr") {
+    return {
+      family: "mwms",
+      reportType: MWMS_HR_REPORT_V1_CONTRACT.reportType,
+      sourceType: MWMS_HR_REPORT_V1_CONTRACT.sourceType,
+      promptKey: MWMS_HR_REPORT_V1_CONTRACT.promptKey,
+      schemaName: MWMS_HR_REPORT_V1_CONTRACT.schemaId,
+      outputSchemaJson:
+        MWMS_HR_REPORT_V1_CONTRACT.outputSchemaJson as Record<string, unknown>,
     };
   }
 
@@ -325,6 +348,8 @@ export function resolveReportSignal(context: {
         : "ipip_neo_120_participant_v1"
       : isMwmsTestSlug(context.testSlug) && context.audience === "participant"
         ? "mwms_participant_report_v1"
+      : isMwmsTestSlug(context.testSlug) && context.audience === "hr"
+        ? "mwms_hr_report_v1"
       : isSafranTestSlug(context.testSlug) && context.audience === "participant"
         ? "safran_participant_ai_report_v1"
       : isSafranTestSlug(context.testSlug) && context.audience === "hr"
@@ -361,6 +386,8 @@ export function resolveReportRenderFormat(context: {
       return "ipc_hr_v1";
     case "mwms:participant:v1":
       return "mwms_participant_report_v1";
+    case "mwms:hr:v1":
+      return "mwms_hr_report_v1";
     case "safran:participant:v1":
       return "safran_participant_ai_report_v1";
     case "safran:hr:v1":
@@ -451,6 +478,22 @@ export function validateRuntimeCompletedAssessmentReport(
       return {
         ok: false,
         reason: formatMwmsParticipantReportV1ValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isMwmsTestSlug(context.testSlug) && context.audience === "hr") {
+    const validationResult = validateMwmsHrReportV1(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: formatMwmsHrReportValidationErrors(validationResult.errors),
       };
     }
 

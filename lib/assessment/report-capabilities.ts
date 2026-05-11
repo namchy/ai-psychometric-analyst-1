@@ -63,9 +63,7 @@ function resolveKnownTestCapability(testSlug: string, audience: ReportAudience):
   }
 
   if (isMwmsTestSlug(testSlug)) {
-    return audience === "participant"
-      ? { active: true, status: "active" }
-      : { active: false, status: "planned", reason: "not_implemented" };
+    return { active: true, status: "active" };
   }
 
   return { active: false, status: "inactive", reason: "unknown_test" };
