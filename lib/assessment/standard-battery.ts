@@ -74,6 +74,11 @@ export function planStandardAssessmentBatteryCreation(
   }
 
   const runnableTestIds = new Set(runnableTests.map((test) => test.id));
+  const completedAttemptTestIds = new Set(
+    input.existingAttempts
+      .filter((attempt) => attempt.status === "completed" && runnableTestIds.has(attempt.test_id))
+      .map((attempt) => attempt.test_id),
+  );
   const attemptIdsToAbandon = input.existingAttempts
     .filter(
       (attempt) =>
@@ -81,7 +86,9 @@ export function planStandardAssessmentBatteryCreation(
         runnableTestIds.has(attempt.test_id),
     )
     .map((attempt) => attempt.id);
-  const attemptsToInsert = runnableTests.map((test) => ({
+  const attemptsToInsert = runnableTests
+    .filter((test) => !completedAttemptTestIds.has(test.id))
+    .map((test) => ({
       organization_id: input.organizationId,
       participant_id: input.participantId,
       test_id: test.id,

@@ -46,6 +46,7 @@ Komande:
 | P1        | Persisted report locale guardrails for future HR lanes | Završeno | i18n / Report pipeline | Zatvoreno nakon uvođenja centralnog `ReportLocale` / `resolveReportLocale(...)` guardraila i uklanjanja nepotrebnog `"bs"` hardcodinga iz poznatih report generation fallback path-eva. |
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
+| P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | MWMS HR report V1                                   | Planirano   | HR report / MWMS             | Implementirati HR-facing motivacijski report nakon eksplicitnog HR retrievala i locale readiness pravila. |
 | P1        | Composite HR report data model decision             | Planirano   | Architecture / HR report storage | Odlučiti da li composite HR report ide kroz privremeni `attempt_reports` bridge ili kroz novi `assessment_reports` / assessment-level model. |
 | P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
@@ -59,6 +60,7 @@ Komande:
 | P2        | Login screen UI polish                               | Otvoreno    | Auth UI / Visual consistency | Uskladiti login ekran sa ostatkom aplikacije i popraviti font promjenu pri fokusu email polja. |
 | P2        | IPIP poddimenzije prikaz                             | Otvoreno    | Report UI / Visualization    | Skratiti prikaz poddimenzija i razmotriti bars umjesto predugog tekstualnog prikaza.           |
 | P2        | Candidate dashboard labels                           | Završeno    | UX copy                      | Kartice sada koriste user-facing title kao glavni naziv procjene, a instrument kao subtitle.   |
+| P2        | Candidate dashboard CTA hover contrast               | Završeno    | Dashboard UI / Accessibility | Zatvoreno nakon popravke shared CTA hover/focus stilova za Započni procjenu, Nastavi procjenu i Pogledaj rezultate. |
 | P2        | MWMS AI report copy ton                              | Završeno    | Report copy / Tone           | Zatvoreno nakon usklađivanja MWMS participant reporta na “ti” formu kroz prompt pravila, renderer safety net, display smoke test i regenerisani testni report. |
 | P2        | Report visual language po testovima                  | Planirano   | Report UI                    | IPIP radar, MWMS bar profile, SAFRAN score cards, composite mapa.                              |
 | P2        | Worker/report monitoring                             | Otvoreno    | Tech debt / Ops              | Pratiti queued/processing/ready/failed prelaze za AI report worker.                            |
@@ -507,6 +509,71 @@ Završeno uvođenjem /dashboard/participants/[participantId]/reports detail stra
 
 ---
 
+### P0 — Candidate dashboard attempt lifecycle hardening
+
+**Status:** Završeno  
+**Kategorija:** Candidate dashboard / Attempt lifecycle / SAFRAN
+
+**Problem / context:**  
+Tokom ručnog testiranja kandidatkinja je završila SAFRAN i vidjela ispravan results/report ekran, ali se nakon povratka na dashboard prikazalo “Započni procjenu” umjesto “Pogledaj rezultate”. SQL provjera je pokazala da validan completed SAFRAN attempt postoji sa 45 odgovora, ali je nakon njega postojao noviji prazan in_progress SAFRAN attempt sa 0 odgovora i null scored_started_at.
+
+**Root cause:**
+- primary attempt selection je ranije davala prioritet in_progress attemptu nad completed attemptom, čak i kada je in_progress bio potpuno prazan
+- standard battery planner je mogao kreirati novi in_progress attempt za test koji već ima completed attempt
+- browser Back nije kreirao bug; samo je razotkrio lošu selekciju postojećih attemptova
+
+**Scope:**
+- popraviti attempt lifecycle priority
+- completed attempt mora pobijediti nad praznim in_progress attemptom
+- active in_progress attempt smije pobijediti samo ako ima response_count > 0 ili, za SAFRAN, scored_started_at != null
+- empty in_progress smije pobijediti samo ako nema completed attempta i nema active progress attempta
+- abandoned je najniži prioritet
+- standard battery planner ne smije praviti novi in_progress attempt za test koji već ima completed attempt
+- dodati “Nazad na dashboard” na completed report/results screen
+- ne mijenjati scoring, report generation, provider routing ili report validator
+
+**Acceptance criteria:**
+- completed SAFRAN + noviji empty in_progress SAFRAN prikazuje “Pogledaj rezultate”
+- samo empty in_progress prikazuje “Započni procjenu”
+- in_progress sa response_count > 0 prikazuje “Nastavi procjenu”
+- SAFRAN in_progress sa scored_started_at != null prikazuje “Nastavi procjenu”
+- abandoned attempt ne pobjeđuje completed ili active in_progress attempt
+- standard battery planner ne reinserta test koji već ima completed attempt
+- completed report/results ekran ima jasan povratak na dashboard
+
+**Completion note:**  
+Završeno kroz izmjene u lib/assessment/attempt-lifecycle.ts, lib/assessment/standard-battery.ts, app/(protected)/app/attempts/[attemptId]/report/page.tsx, scripts/test-attempt-lifecycle.cjs i scripts/test-standard-assessment-battery.cjs. Dodani su testovi za completed + newer empty in_progress scenario, empty-only scenario, SAFRAN scored_started_at resume scenario, response_count resume scenario i abandoned edge case. Standard battery planner sada ne kreira novi in_progress attempt za test koji već ima completed attempt. SAFRAN scoring, report generation, report worker, provider routing i validator nisu mijenjani.
+
+---
+
+### P2 — Candidate dashboard CTA hover contrast
+
+**Status:** Završeno  
+**Kategorija:** Dashboard UI / Accessibility / Visual polish
+
+**Problem / context:**  
+Na candidate dashboard test karticama, posebno za completed testove, CTA “Pogledaj rezultate” je na hoveru dobijao tamnu pozadinu, dok su tekst i ikona ostajali tamni. To je proizvodilo slab kontrast i dugme je djelovalo skoro disabled.
+
+**Scope:**
+- popraviti shared CTA stil na candidate dashboard test karticama
+- hover za completed CTA mora imati dovoljan kontrast
+- icon color mora pratiti text color preko currentColor
+- focus-visible mora imati jasan ring bez pada kontrasta
+- provjeriti CTA varijante: Započni procjenu, Nastavi procjenu, Pogledaj rezultate
+- ne mijenjati lifecycle, scoring, report generation, route logiku ili copy
+
+**Acceptance criteria:**
+- “Pogledaj rezultate” na hoveru ostaje jasno čitljiv
+- tekst i ikona su sinhronizovani
+- dugme ne izgleda disabled
+- focus-visible je vidljiv i pristupačan
+- sve tri CTA varijante imaju konzistentan hover/focus kontrast
+
+**Completion note:**  
+Završeno u components/dashboard/candidate-dashboard.tsx kroz shared CTA class builder. “Pogledaj rezultate” na hoveru prelazi na tamniju pozadinu uz bijel tekst i ikonu, focus-visible dobija jasan ring, a Započni procjenu i Nastavi procjenu koriste isti konzistentan hover/focus sistem. Lifecycle logika, scoring, report generation i route logika nisu mijenjani.
+
+---
+
 ### P1 — MWMS HR report V1
 
 **Status:** Planirano  
@@ -615,10 +682,12 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 | P1        | Persisted report locale guardrails for future HR lanes | Završeno | Budući HR report lane-ovi ne smiju ulaziti u pipeline bez centralnog locale guardraila i bez kontrole fallback `"bs"` ponašanja. | Zatvoreno nakon `ReportLocale` / `resolveReportLocale(...)` guardraila i uklanjanja nepotrebnog `"bs"` hardcodinga iz poznatih fallback path-eva. |
 | P1        | SAFRAN HR report V1       | Završeno | SAFRAN HR report lane je zatvoren sa contract/input/validator slojem, mock/OpenAI runtime-om, HR-only retrievalom i browser potvrdom. | Zatvoreno nakon realnog OpenAI smoke-a, HR route prikaza i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page | Završeno | Dashboard CTA sada vodi na participant-level pregled procjene umjesto na nasumični ili primarni attempt. | Zatvoreno nakon detail stranice sa IPIP/SAFRAN/MWMS karticama i composite placeholderom. |
+| P0        | Candidate dashboard attempt lifecycle hardening | Završeno | Candidate dashboard primary attempt selection i standard battery provisioning sada više ne dozvoljavaju da prazan noviji SAFRAN attempt sakrije completed rezultat. | Zatvoreno nakon lifecycle priority fixa, standard battery guarda i povratka na dashboard sa completed results screena. |
 | P1        | MWMS HR report V1         | Planirano | MWMS ima participant lane, ali nema HR-facing motivacijski report za intervju/onboarding/management uvide. | Raditi nakon eksplicitnog HR retrievala i locale readiness pravila. |
 | P1        | Composite HR report data model decision | Planirano | Composite HR report nema prirodan jedan attempt_id i traži storage odluku prije implementacije. | Procijeniti `attempt_reports` bridge naspram `assessment_reports` / assessment-level modela. |
 | P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
+| P2        | Candidate dashboard CTA hover contrast | Završeno | Completed CTA više ne gubi kontrast na hoveru, a shared CTA hover/focus sistem je usklađen za sve candidate dashboard kartice. | Zatvoreno nakon shared CTA hover/focus contrast fixa u candidate dashboard karticama. |
 | P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
 
 ---
@@ -714,6 +783,7 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 Razlog za sljedeći prioritet:
 
 * Nakon zatvaranja SAFRAN HR reporta V1 i HR candidate assessment detail flow-a, najlogičniji nastavak HR report lane-a je MWMS HR report V1, kako bi single-test HR temelji bili pokriveni prije composite HR report data model odluke i composite reporta.
+* Nakon zatvaranja candidate dashboard lifecycle buga i CTA kontrast polish-a, nema aktivnog blockera na candidate dashboardu koji bi trebao odgoditi MWMS HR report V1.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -756,6 +826,15 @@ Razlog za sljedeći prioritet:
 * Budući jezici mogu uključiti hr, sr i en.
 * Future HR/composite report input treba moći nositi i assessment locale i report locale kada se razlikuju.
 
+### 5.11 Candidate dashboard attempt selection policy
+
+* Candidate dashboard ne smije birati primarni attempt samo po najnovijem created_at.
+* Active in_progress attempt pobjeđuje ako ima stvarni napredak: response_count > 0 ili, za SAFRAN, scored_started_at != null.
+* Completed attempt pobjeđuje nad praznim in_progress attemptom.
+* Empty in_progress attempt je validan za “Započni procjenu” samo ako nema completed attempta i nema active progress attempta za isti participant/test.
+* Abandoned attempt se ne koristi kao primarni dashboard attempt osim ako nema nijednog relevantnijeg zapisa i treba prikazati historijsko/neutralno stanje.
+* Dok ne postoji assessment_assignment model, prazan noviji attempt ne smije automatski značiti novu procjenu/rundu.
+
 ---
 
 ## 6. Tehnički dug
@@ -764,6 +843,8 @@ Razlog za sljedeći prioritet:
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
 | P1        | MWMS prompt/pipeline monitoring | Treba pratiti queued/processing/ready/failed prelaze za report worker.                       | Posebno prije produkcije.                          |
+| P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
+| P2        | Attempt creation audit metadata | Novi attempti trenutno mogu imati metadata = {}, što otežava dijagnostiku izvora kreiranja attempta. | Dodati minimalni audit trag, npr. created_by_flow, source, created_by_user_id i reason, posebno za HR standard battery planner i candidate provisioning tokove. |
 | P2        | Branch features                 | Trenutno se radi na branchu `features`; main ostaje stabilan.                                | Ne mergati dok report/copy/pitanja nisu dotjerani. |
 | P2        | MWMS licenca                    | MWMS tehnički radi, ali komercijalni rollout zavisi od licencnog/pravno-poslovnog odobrenja. | Nije dev blocker, jeste produkcijski blocker.      |
 
@@ -831,6 +912,36 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-10 — Candidate dashboard lifecycle i CTA contrast fix
+
+Završeno:
+
+* popravljeno primary attempt selection pravilo za candidate dashboard
+* completed attempt sada pobjeđuje nad novijim praznim in_progress attemptom
+* active in_progress pobjeđuje samo kada ima response_count > 0 ili, za SAFRAN, scored_started_at != null
+* standard battery planner više ne kreira novi in_progress attempt za test koji već ima completed attempt
+* dodan “Nazad na dashboard” link/dugme na completed report/results screen
+* popravljeno hover/focus stanje CTA dugmadi na candidate dashboard test karticama
+* “Pogledaj rezultate” više ne prikazuje taman tekst na tamnoj pozadini
+* icon/text color sync riješen kroz currentColor
+* typecheck prošao
+* lint prošao uz postojeće nepovezane warninge za @next/next/no-img-element u components/assessment/assessment-form.tsx
+
+Odluke:
+
+* browser Back nije root cause; samo je razotkrio lošu selection logiku
+* prazni in_progress attempt ne smije sakriti validan completed rezultat
+* bez assessment_assignment entiteta ne smijemo pretpostaviti da svaki noviji prazan attempt predstavlja novu legitimnu rundu procjene
+* standard battery planner mora biti defanzivan i ne reinserta test koji već ima completed attempt
+* CTA hover/focus kontrast je accessibility issue, ne samo vizuelni polish
+
+Racionala:
+
+* Kandidat mora vidjeti stabilno i tačno stanje procjene nakon završetka testa.
+* Dashboard mora biti izvor povjerenja, ne ekran koji “zaboravi” završen test zbog praznog duplikat attempta.
+* Dok ne postoji assessment-level model, attempt lifecycle pravila moraju biti konzervativna i štititi completed rezultate.
+* CTA dugmad su primarna navigacija na dashboardu i moraju ostati čitljiva u svim interaktivnim stanjima.
 
 ### 2026-05-08 — SAFRAN HR report V1 i HR candidate assessment detail završeni
 

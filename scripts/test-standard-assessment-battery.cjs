@@ -175,7 +175,7 @@ assert.equal(replacementRoundPlan.locale, "hr");
 assert.deepEqual(replacementRoundPlan.attemptIdsToAbandon, ["attempt-ipip-1"]);
 assert.deepEqual(
   replacementRoundPlan.attemptsToInsert.map((attempt) => attempt.test_id),
-  ["test-ipip", "test-safran", "test-mwms"],
+  ["test-ipip", "test-mwms"],
 );
 
 const multipleInProgressPlan = planStandardAssessmentBatteryCreation({
@@ -201,7 +201,26 @@ assert.deepEqual(multipleInProgressPlan.attemptIdsToAbandon, [
 ]);
 assert.deepEqual(
   multipleInProgressPlan.attemptsToInsert.map((attempt) => attempt.test_id),
-  ["test-ipip", "test-safran", "test-mwms"],
+  ["test-ipip", "test-mwms"],
+);
+
+const completedSafranIsNotReinsertedPlan = planStandardAssessmentBatteryCreation({
+  availableTests,
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  existingAttempts: [
+    { id: "attempt-safran-completed", test_id: "test-safran", status: "completed" },
+  ],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+assert.deepEqual(completedSafranIsNotReinsertedPlan.attemptIdsToAbandon, []);
+assert.deepEqual(
+  completedSafranIsNotReinsertedPlan.attemptsToInsert.map((attempt) => attempt.test_id),
+  ["test-ipip", "test-mwms"],
 );
 
 const noRunnablePlan = planStandardAssessmentBatteryCreation({
