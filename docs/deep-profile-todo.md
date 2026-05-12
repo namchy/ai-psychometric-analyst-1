@@ -61,10 +61,11 @@ Komande:
 | P1        | Composite HR report contract/schema/provider | Završeno | Composite HR report / Contract / Mock provider | Zatvoreno nakon uvođenja Composite HR report V1 contracta, runtime validatora i mock providera; renderer i OpenAI provider su sada uvedeni, a sljedeći korak je V1 polish / QA. |
 | P1        | Composite HR report renderer | Završeno | Composite HR report / Renderer / HR dashboard | Zatvoreno nakon uvođenja assessment-level renderer route-a za ready mock-backed Composite HR report snapshot. Sljedeći korak je V1 polish / QA i real OpenAI smoke kada env bude spreman. |
 | P1        | OpenAI provider za Composite HR report | Završeno | Composite HR report / OpenAI provider / AI generation | Zatvoreno nakon dodavanja OpenAI providera koji koristi postojeći CompositeHrInputSnapshot, proizvodi postojeći CompositeHrReportSnapshot contract i prolazi runtime validator. Sljedeći korak je Composite HR report V1 polish / QA nad mock i OpenAI outputom. |
-| P1        | Composite HR report V1 QA audit / copy polish       | Završeno / Runtime blocker ostaje | Composite HR report / QA / UX copy | Zatvoreno za code-level QA/copy polish; sljedeći fokus je Supabase migration/schema cache verification za composite tabele i DB-backed end-to-end smoke. |
+| P1        | Composite HR report V1 QA audit / copy polish       | Završeno / Runtime blocker zatvoren | Composite HR report / QA / UX copy | Zatvoreno za code-level QA/copy polish; sljedeći fokus je DB-backed end-to-end smoke sa stvarnim queued reportom. |
+| P1        | Supabase migration/schema cache verification za composite tabele | Završeno / DB queued smoke još preostaje | Infrastructure / Supabase / Composite runtime | Zatvoreno za schema/table visibility: runtime Supabase sada vidi `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports`, a worker više ne pada na schema cache grešci. Sljedeći korak je DB-backed composite smoke sa stvarnim queued reportom. |
 | P1        | Assessment report worker path za composite          | Završeno    | Composite HR report / Worker lifecycle | Zatvoreno kao lifecycle proof: worker claim-a queued assessment_reports row, gradi input_snapshot kroz composite input builder i kontrolisano završava kao failed sa COMPOSITE_PROVIDER_NOT_IMPLEMENTED dok provider ne postoji. |
 | P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Zatvoreno nakon assessment_reports storage/readiness slice-a. |
-| P1        | Composite HR report V1                              | Planirano / QA-polish phase | Product / AI report | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Sljedeći slice je provjera Supabase migracija/schema cache-a za composite tabele i DB-backed end-to-end smoke; core pipeline u kodu postoji, ali runtime DB smoke nije potvrđen. |
+| P1        | Composite HR report V1                              | Planirano / QA-polish phase | Product / AI report | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Sljedeći slice je DB-backed end-to-end smoke sa stvarnim queued reportom; core pipeline u kodu postoji, a runtime schema/table visibility blocker je zatvoren. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
@@ -1031,7 +1032,7 @@ Završeno kroz OpenAI provider slice za Composite HR report. Dodani su `lib/asse
 **Kategorija:** Product / AI report
 
 **Problem / context:**  
-Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAFRAN i MWMS u jedan HR-facing profil za selekciju, intervju, onboarding i menadžersku podršku. Core pipeline sada postoji u kodu, uključujući storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. QA audit je pokazao da nema code-level blockera u contract/provider/renderer sloju, ali DB-backed smoke još nije potvrđen zbog Supabase runtime/schema cache problema. Sljedeći fokus nakon code-level polish-a je Supabase migracija/schema cache verifikacija i DB-backed end-to-end smoke.
+Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAFRAN i MWMS u jedan HR-facing profil za selekciju, intervju, onboarding i menadžersku podršku. Core pipeline sada postoji u kodu, uključujući storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. QA audit je pokazao da nema code-level blockera u contract/provider/renderer sloju, a runtime schema/table visibility blocker je sada zatvoren. Sljedeći fokus je DB-backed end-to-end smoke sa stvarnim queued reportom.
 
 **Scope:**
 - DB-backed end-to-end smoke nakon runtime verifikacije
@@ -1062,7 +1063,7 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 
 ### P1 — Composite HR report V1 QA audit / copy polish
 
-**Status:** Završeno / Runtime blocker ostaje  
+**Status:** Završeno / Runtime blocker zatvoren  
 **Kategorija:** Composite HR report / QA / UX copy
 
 **Problem / context:**  
@@ -1092,7 +1093,40 @@ Nakon uvođenja Composite HR report storage-a, readiness-a, queue akcija, input 
 - DB-backed smoke blocker je jasno zabilježen ako migracije/schema cache nisu spremni
 
 **Completion note:**  
-Završen je Composite HR V1 QA audit/copy polish. Lokalni test set prolazi i nema code-level blockera u contract/provider/renderer sloju. OpenAI provider smoke nad fixture inputom prošao je runtime validator i forbidden-wording assertion. Urađen je minimalni HR-facing copy cleanup u `lib/dashboard/hr-candidate-assessment.ts` i `components/dashboard/composite-hr-report-view.tsx`: uklonjen je stale tekst o generate/retry akcijama koje “dolaze u sljedećem koraku”, a tehnički izrazi poput “snapshot”, “generator metadata”, “linked attemptova” i “ASSESSMENT-LEVEL HR REPORT” zamijenjeni su korisnički razumljivijim formulacijama. Logika, provider, worker, contract/schema, scoring i `attempt_reports` nisu mijenjani. Full DB-backed worker smoke nije potvrđen jer runtime Supabase okruženje nije vidjelo `public.assessment_reports` u schema cache-u; to ostaje zaseban runtime/migration blocker prije produkcijskog end-to-end testiranja.
+Završen je Composite HR V1 QA audit/copy polish. Lokalni test set prolazi i nema code-level blockera u contract/provider/renderer sloju. OpenAI provider smoke nad fixture inputom prošao je runtime validator i forbidden-wording assertion. Urađen je minimalni HR-facing copy cleanup u `lib/dashboard/hr-candidate-assessment.ts` i `components/dashboard/composite-hr-report-view.tsx`: uklonjen je stale tekst o generate/retry akcijama koje “dolaze u sljedećem koraku”, a tehnički izrazi poput “snapshot”, “generator metadata”, “linked attemptova” i “ASSESSMENT-LEVEL HR REPORT” zamijenjeni su korisnički razumljivijim formulacijama. Logika, provider, worker, contract/schema, scoring i `attempt_reports` nisu mijenjani. Full DB-backed worker smoke sa stvarnim queued reportom još nije potvrđen u ovom tasku; runtime schema/cache blocker za `public.assessment_reports` je sada zatvoren.
+
+### P1 — Supabase migration/schema cache verification za composite tabele
+
+**Status:** Završeno / DB queued smoke još preostaje  
+**Kategorija:** Infrastructure / Supabase / Composite runtime
+
+**Problem / context:**  
+Composite HR V1 code pipeline je postojao, ali DB-backed worker smoke nije mogao proći jer runtime Supabase/PostgREST nije vidio `public.assessment_reports`. Audit je pokazao da app `.env.local` cilja projekat `njczzzxmjwzjbtzwwsda`, dok je CLI ranije bio linkovan na drugi projekat. Dodatno, remote migration history je imao drift: stare tabele su postojale u bazi, ali migracije nisu bile upisane kao applied, dok composite tabele stvarno nisu postojale u runtime DB-u.
+
+**Scope:**
+- potvrditi pravi Supabase runtime project ref
+- re-linkovati Supabase CLI na runtime projekat
+- auditirati migration history drift
+- ne pokretati `supabase db push` naslijepo
+- konzervativno repair-ati samo migracije sa jakim DB dokazom
+- ručno primijeniti tri composite migracije kroz Supabase SQL Editor
+- potvrditi REST visibility za composite tabele
+- označiti tri composite migracije kao applied
+- pokrenuti worker smoke da potvrdi da schema cache/table visibility blocker više ne postoji
+
+**Acceptance criteria:**
+- CLI project ref odgovara `.env.local` runtime projectu
+- `assessment_assignments` postoji i REST ga vidi
+- `assessment_assignment_attempts` postoji i REST ga vidi
+- `assessment_reports` postoji i REST ga vidi
+- composite migracije su označene kao applied u remote migration history
+- worker više ne pada sa PGRST205 / schema cache greškom
+- `npm run process-assessment-report-jobs` uredno završava ako nema queued reporta
+- uncertain stare migracije nisu repair-ane bez dodatnog dokaza
+- `supabase db push` nije pokrenut naslijepo
+
+**Completion note:**  
+Zatvoren je runtime schema/table visibility blocker za composite tabele. Supabase CLI je usklađen sa runtime projektom `njczzzxmjwzjbtzwwsda`, potvrđeno je da composite migracije postoje u repou, a tri composite tabele nisu postojale u runtime DB-u prije intervencije. Zbog postojećeg migration history drifta nije rađen `supabase db push`; umjesto toga, urađen je konzervativni repair samo za migracije sa jakim DB dokazom, a tri composite migracije su ručno primijenjene kroz Supabase SQL Editor. REST provjera preko `.env.local` sada vraća OK za `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports`. Tri composite migracije su označene kao applied u remote migration history. `npm run process-assessment-report-jobs` više ne puca na schema cache i uredno završava sa “No queued composite assessment report found”. Preostaje DB-backed smoke sa stvarnim queued composite reportom.
 
 ### P1 — Composite readiness / assessment_reports storage model
 
@@ -1356,28 +1390,29 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Supabase migration/schema cache verification za composite tabele
-2. DB-backed end-to-end smoke za Composite HR report
-3. Composite HR report V1 final copy/UX polish
-4. Production worker/report orchestration
-5. Assignment-aware dashboard model za nove assessment cikluse
-6. Oblik obraćanja: muški/ženski jezički oblik
-7. Report visual language po testovima
-8. SAFRAN novi stimulus asseti
-9. Login screen UI polish
+1. DB-backed end-to-end smoke za Composite HR report sa stvarnim queued reportom
+2. Composite HR report V1 final copy/UX polish
+3. Production worker/report orchestration
+4. Assignment-aware dashboard model za nove assessment cikluse
+5. Oblik obraćanja: muški/ženski jezički oblik
+6. Report visual language po testovima
+7. SAFRAN novi stimulus asseti
+8. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
 * Composite HR V1 code-level QA/copy polish je završen.
-* Core pipeline u kodu postoji, uključujući OpenAI provider i renderer.
-* Prvi blocker sada nije nova arhitektura nego runtime DB/migration stanje: `public.assessment_reports` nije bio dostupan u Supabase schema cache-u tokom DB-backed smoke-a.
-* Prije production orchestrationa i assignment-aware dashboarda treba potvrditi da composite migracije postoje u runtime Supabase okruženju i da DB-backed end-to-end smoke prolazi.
-* Production worker orchestration ostaje poseban tehnički task nakon što DB-backed smoke bude stabilan.
+* Supabase schema/table visibility blocker za composite tabele je riješen.
+* Runtime sada vidi `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports`.
+* `npm run process-assessment-report-jobs` više ne puca zbog schema cache-a.
+* Sljedeći najmanji sigurni korak je DB-backed smoke sa stvarnim queued composite reportom.
+* Smoke treba potvrditi putanju HR generate → queued → worker → ready → renderer.
+* Production worker orchestration dolazi tek nakon što stvarni queued DB smoke prođe.
 * Non-blocking autosave za IPIP/MWMS Likert flow je završen i uklonio je najveće trenutno UX usporenje tokom rješavanja testova.
 * Manual composite generate/retry queue flow je završen.
 * Composite input builder iz deterministic score rezultata je završen.
 * Sistem sada ima definisan `input_snapshot` ugovor za budući Composite HR report.
-* Worker path i input snapshot lifecycle su već stabilni; sljedeći korak je runtime DB verification i DB-backed smoke.
+* Worker path i input snapshot lifecycle su već stabilni; sljedeći korak je queued DB smoke.
 * Worker/report auto-processing orchestration ostaje tech debt, ali nije prvi sljedeći task.
 
 ### 5.14 Assessment autosave UX politika
@@ -1422,6 +1457,12 @@ Razlog za sljedeći prioritet:
 * Builderovi summary signals moraju biti neutralni i traceable na score podatke.
 * AI kasnije smije interpretirati input, ali ne smije mijenjati score vrijednosti, bandove ili source attempts.
 * Composite HR report ne koristi `attempt_reports`.
+* Runtime Supabase projekat za composite flow je `njczzzxmjwzjbtzwwsda`.
+* Composite runtime zahtijeva da `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports` postoje u runtime DB-u i budu vidljivi kroz PostgREST.
+* Schema cache greška za `assessment_reports` je zatvorena nakon ručne primjene composite migracija i REST visibility provjere.
+* `supabase db push` se ne smije pokretati naslijepo dok postoje stare uncertain migracije sa history driftom.
+* Composite migracije `20260512110000`, `20260512111000` i `20260512120000` su ručno primijenjene i označene kao applied.
+* Stare uncertain migracije ostaju posebna migration-history cleanup tema i nisu blocker za composite smoke dok runtime objekti postoje.
 * Composite HR report koristi assessment-level storage kroz `assessment_reports`.
 * `assessment_reports` je HR-only artefakt u V1.
 * Participant/candidate ne dobija read access na HR composite report u V1.
@@ -1566,8 +1607,8 @@ Razlog za sljedeći prioritet:
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
-| P1        | Composite runtime DB/migration verification | Composite HR report code pipeline postoji, ali DB-backed smoke nije potvrđen jer runtime Supabase okruženje nije vidjelo `public.assessment_reports` u schema cache-u. Potrebno je provjeriti i primijeniti migracije za `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports` u Supabase okruženju koje aplikacija koristi, zatim ponoviti DB-backed composite smoke. | Riješiti prije production worker orchestrationa i prije ozbiljnog end-to-end testiranja na remote/runtime okruženju. |
-| P1        | Composite report generation pipeline | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. I dalje nedostaju runtime DB/migration usklađivanje, DB-backed smoke, finalni HR copy polish i production orchestration za worker. | OpenAI provider mora koristiti postojeći contract, runtime validator i renderer shape. Ne uvoditi novi shape mimo validiranog mock-backed contracta bez eksplicitne odluke. |
+| P1        | Composite runtime DB/migration verification | Composite schema/table visibility blocker je riješen. Preostaje DB-backed smoke sa stvarnim queued composite reportom. | Runtime Supabase sada vidi composite tabele; ne koristiti `supabase db push` naslijepo dok stare uncertain migracije imaju drift. |
+| P1        | Composite report generation pipeline | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Preostaju DB-backed smoke sa stvarnim queued reportom, finalni HR copy polish i production orchestration za worker. | OpenAI provider mora koristiti postojeći contract, runtime validator i renderer shape. Ne uvoditi novi shape mimo validiranog mock-backed contracta bez eksplicitne odluke. |
 | P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. MWMS HR sada koristi postojeći worker i capability-driven chain, ali šira orchestration strategija i dalje nije riješena. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
@@ -1640,6 +1681,37 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-12 — Supabase composite schema/table visibility blocker zatvoren
+
+Završeno:
+
+* potvrđeno da `.env.local` i runtime app ciljaju Supabase projekat `njczzzxmjwzjbtzwwsda`
+* Supabase CLI je linkovan na isti runtime projekat
+* potvrđen migration history drift
+* nije rađen `supabase db push` naslijepo
+* konzervativno su repair-ane samo migracije sa jakim DB dokazom
+* tri composite migracije su ručno primijenjene kroz Supabase SQL Editor
+* `assessment_assignments` sada postoji u runtime DB-u i REST ga vidi
+* `assessment_assignment_attempts` sada postoji u runtime DB-u i REST ga vidi
+* `assessment_reports` sada postoji u runtime DB-u i REST ga vidi
+* composite migracije `20260512110000`, `20260512111000` i `20260512120000` označene su kao applied u migration history
+* `npm run process-assessment-report-jobs` više ne puca na schema cache grešci
+* worker runner uredno završava sa “No queued composite assessment report found” kada nema queued reporta
+
+Odluke:
+
+* Composite schema cache problem bio je posljedica neprimijenjenih composite migracija na runtime DB-u, ne provider/worker bug.
+* `NOTIFY pgrst, 'reload schema'` je smislen tek nakon stvarnog kreiranja tabela.
+* `supabase db push` ne koristiti naslijepo dok postoje uncertain pending migracije.
+* Stare uncertain migracije ostaju zasebna migration-history cleanup tema.
+* Sljedeći QA korak je DB-backed composite smoke sa stvarnim queued reportom.
+
+Racionala:
+
+* Unit/local testovi nisu dovoljni ako runtime baza nema potrebne composite tabele.
+* Ručna primjena samo tri composite migracije bila je sigurnija od `db push`, jer remote migration history još ima drift za stare uncertain migracije.
+* Worker sada može pristupiti `assessment_reports`, pa schema/table blocker više ne blokira DB-backed smoke.
 
 ### 2026-05-12 — Composite HR V1 QA audit i copy polish završen
 
