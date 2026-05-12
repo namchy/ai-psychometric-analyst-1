@@ -60,6 +60,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   buildHrCandidateAssessmentDetailModel,
+  buildCompositeCard,
   buildParticipantAssessmentRows,
   resolveHrReportCardState,
   resolveHrReportRecoveryAction,
@@ -67,6 +68,9 @@ const {
 const {
   getReportGenerationCapability,
 } = require("../lib/assessment/report-capabilities.ts");
+const {
+  buildCompositeReadinessFromLinkedAttempts,
+} = require("../lib/assessment/assessment-reports.ts");
 
 function buildParticipant(id, fullName, email) {
   return {
@@ -141,6 +145,92 @@ function buildHrReport({
     failure_code: failureCode ?? (status === "failed" ? "generation_failed" : null),
     failure_reason: failureReason ?? (status === "failed" ? "Failed" : null),
   };
+}
+
+function buildCompositeAssignment(id, participantId) {
+  return {
+    id,
+    organization_id: "org-1",
+    participant_id: participantId,
+    assignment_type: "standard_battery",
+    status: "active",
+    locale: "bs",
+    created_by_user_id: "user-1",
+    created_at: "2026-01-02T00:00:00.000Z",
+    updated_at: "2026-01-02T00:00:00.000Z",
+    completed_at: null,
+    metadata: {},
+  };
+}
+
+function buildCompositeLink({
+  assignmentId,
+  attemptId,
+  testSlug,
+  status,
+  completedAt = null,
+  requiredForComposite = true,
+  position = 0,
+}) {
+  return {
+    assessment_assignment_id: assignmentId,
+    attempt_id: attemptId,
+    test_slug: testSlug,
+    required_for_composite: requiredForComposite,
+    position,
+    attempts: {
+      status,
+      completed_at: completedAt,
+    },
+  };
+}
+
+function buildAssessmentReport({
+  id,
+  assignmentId,
+  participantId,
+  status,
+  failureCode = null,
+  failureReason = null,
+}) {
+  return {
+    id,
+    assessment_assignment_id: assignmentId,
+    organization_id: "org-1",
+    participant_id: participantId,
+    report_type: "composite",
+    audience: "hr",
+    source_type: "assessment",
+    report_status: status,
+    generator_type: null,
+    contract_version: null,
+    prompt_version_id: null,
+    model_name: null,
+    generator_version: null,
+    input_snapshot: null,
+    report_snapshot: status === "ready" ? {} : null,
+    failure_code: failureCode,
+    failure_reason: failureReason,
+    queued_at: status === "queued" ? "2026-01-02T10:00:00.000Z" : null,
+    started_at: status === "processing" ? "2026-01-02T10:01:00.000Z" : null,
+    completed_at: status === "ready" || status === "failed" ? "2026-01-02T10:05:00.000Z" : null,
+    generated_at: status === "ready" ? "2026-01-02T10:05:00.000Z" : null,
+    created_at: "2026-01-02T10:00:00.000Z",
+    updated_at: "2026-01-02T10:05:00.000Z",
+    metadata: {},
+  };
+}
+
+function buildDetailModel(input) {
+  return buildHrCandidateAssessmentDetailModel({
+    participant: input.participant,
+    attempts: input.attempts,
+    hrReports: input.hrReports,
+    organizationName: "Org 1",
+    activeCompositeAssignment: input.activeCompositeAssignment ?? null,
+    compositeReadiness: input.compositeReadiness ?? null,
+    compositeReport: input.compositeReport ?? null,
+  });
 }
 
 function assertResolvedState(input, expected) {
@@ -714,7 +804,7 @@ function main() {
   assert.equal(rows1[0].primaryAction.kind, "link");
   assert.equal(rows1[0].primaryAction.href, `/dashboard/participants/${participant1.id}/reports`);
 
-  const model1 = buildHrCandidateAssessmentDetailModel({
+  const model1 = buildDetailModel({
     participant: participant1,
     attempts: [ipipQueuedAttempt, safranReadyAttempt],
     hrReports: [
@@ -731,7 +821,6 @@ function main() {
         status: "ready",
       }),
     ],
-    organizationName: "Org 1",
   });
   const ipipCard1 = model1.cards.find((card) => card.slug === "ipip-neo-120-v1");
   const safranCard1 = model1.cards.find((card) => card.slug === "safran_v1");
@@ -753,7 +842,7 @@ function main() {
     startedAt: "2026-01-03T09:00:00.000Z",
     completedAt: "2026-01-03T10:00:00.000Z",
   });
-  const model2 = buildHrCandidateAssessmentDetailModel({
+  const model2 = buildDetailModel({
     participant: participant2,
     attempts: [ipipReadyAttempt],
     hrReports: [
@@ -764,7 +853,6 @@ function main() {
         status: "ready",
       }),
     ],
-    organizationName: "Org 1",
   });
   const ipipCard2 = model2.cards.find((card) => card.slug === "ipip-neo-120-v1");
   assert.equal(ipipCard2?.statusLabel, "Dostupno");
@@ -786,7 +874,7 @@ function main() {
     lifecycle: "in_progress",
     startedAt: "2026-01-04T09:00:00.000Z",
   });
-  const model3 = buildHrCandidateAssessmentDetailModel({
+  const model3 = buildDetailModel({
     participant: participant3,
     attempts: [queuedAttempt, inProgressAttempt],
     hrReports: [
@@ -797,7 +885,6 @@ function main() {
         status: "queued",
       }),
     ],
-    organizationName: "Org 1",
   });
   assert.equal(model3.cards.some((card) => card.cta.disabled === false), false);
   assert.equal(
@@ -822,7 +909,7 @@ function main() {
     startedAt: "2026-01-05T09:00:00.000Z",
     completedAt: "2026-01-05T10:00:00.000Z",
   });
-  const model4 = buildHrCandidateAssessmentDetailModel({
+  const model4 = buildDetailModel({
     participant: participant4,
     attempts: [participantOnlyAttempt],
     hrReports: [
@@ -834,7 +921,6 @@ function main() {
         audience: "participant",
       }),
     ],
-    organizationName: "Org 1",
   });
   assert.equal(
     model4.cards.find((card) => card.slug === "safran_v1")?.statusLabel,
@@ -870,7 +956,7 @@ function main() {
     startedAt: "2026-01-06T13:00:00.000Z",
     completedAt: "2026-01-06T14:00:00.000Z",
   });
-  const amraModel = buildHrCandidateAssessmentDetailModel({
+  const amraModel = buildDetailModel({
     participant: participant5,
     attempts: [ipipFailedAttempt, safranMissingAttempt, mwmsMissingAttempt],
     hrReports: [
@@ -882,7 +968,6 @@ function main() {
         failureReason: "Cannot read properties of undefined (reading 'map')",
       }),
     ],
-    organizationName: "Org 1",
   });
   assert.equal(
     amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.statusLabel,
@@ -912,6 +997,196 @@ function main() {
     amraModel.cards.find((card) => card.slug === "ipip-neo-120-v1")?.body.includes("Cannot read properties"),
     false,
   );
+
+  const noAssignmentCard = buildCompositeCard({
+    assignment: null,
+    readiness: null,
+    report: null,
+  });
+  assert.equal(noAssignmentCard.state, "no_assignment");
+
+  const incompleteAssignment = buildCompositeAssignment("assignment-incomplete", participant1.id);
+  const incompleteReadiness = buildCompositeReadinessFromLinkedAttempts([
+    buildCompositeLink({
+      assignmentId: incompleteAssignment.id,
+      attemptId: "attempt-ipip-linked",
+      testSlug: "ipip-neo-120-v1",
+      status: "completed",
+      completedAt: "2026-01-02T10:00:00.000Z",
+      position: 0,
+    }),
+    buildCompositeLink({
+      assignmentId: incompleteAssignment.id,
+      attemptId: "attempt-safran-linked",
+      testSlug: "safran_v1",
+      status: "in_progress",
+      position: 1,
+    }),
+  ]);
+  assert.equal(incompleteReadiness.status, "incomplete");
+  assert.equal(incompleteReadiness.completedCount, 1);
+
+  const incompleteModel = buildDetailModel({
+    participant: participant1,
+    attempts: [ipipQueuedAttempt, safranReadyAttempt],
+    hrReports: [],
+    activeCompositeAssignment: incompleteAssignment,
+    compositeReadiness: incompleteReadiness,
+  });
+  assert.equal(incompleteModel.compositeCard.state, "incomplete");
+  assert.equal(incompleteModel.compositeCard.statusLabel, "Nije spremno");
+
+  const partialCompatibilityAssignment = buildCompositeAssignment("assignment-partial", participant2.id);
+  const partialReadiness = buildCompositeReadinessFromLinkedAttempts([
+    buildCompositeLink({
+      assignmentId: partialCompatibilityAssignment.id,
+      attemptId: ipipReadyAttempt.id,
+      testSlug: "ipip-neo-120-v1",
+      status: "completed",
+      completedAt: "2026-01-03T10:00:00.000Z",
+      position: 0,
+    }),
+  ], {
+    expectedRequiredTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+  });
+  assert.equal(partialReadiness.status, "incomplete");
+  const noFallbackModel = buildDetailModel({
+    participant: participant2,
+    attempts: [
+      ipipReadyAttempt,
+      buildAttempt({
+        id: "historical-safran-completed",
+        participantId: participant2.id,
+        slug: "safran_v1",
+        lifecycle: "completed",
+        startedAt: "2025-12-01T09:00:00.000Z",
+        completedAt: "2025-12-01T10:00:00.000Z",
+      }),
+      buildAttempt({
+        id: "historical-mwms-completed",
+        participantId: participant2.id,
+        slug: "mwms_v1",
+        lifecycle: "completed",
+        startedAt: "2025-12-01T11:00:00.000Z",
+        completedAt: "2025-12-01T12:00:00.000Z",
+      }),
+    ],
+    hrReports: [],
+    activeCompositeAssignment: partialCompatibilityAssignment,
+    compositeReadiness: partialReadiness,
+  });
+  assert.equal(noFallbackModel.compositeCard.state, "incomplete");
+
+  const noRequiredReadiness = buildCompositeReadinessFromLinkedAttempts([]);
+  assert.equal(noRequiredReadiness.status, "no_required_components");
+  const noRequiredModel = buildDetailModel({
+    participant: participant3,
+    attempts: [queuedAttempt],
+    hrReports: [],
+    activeCompositeAssignment: buildCompositeAssignment("assignment-no-required", participant3.id),
+    compositeReadiness: noRequiredReadiness,
+  });
+  assert.equal(noRequiredModel.compositeCard.state, "incomplete");
+
+  const readyAssignment = buildCompositeAssignment("assignment-ready", participant4.id);
+  const readyReadiness = buildCompositeReadinessFromLinkedAttempts([
+    buildCompositeLink({
+      assignmentId: readyAssignment.id,
+      attemptId: "attempt-ipip-complete",
+      testSlug: "ipip-neo-120-v1",
+      status: "completed",
+      completedAt: "2026-01-02T10:00:00.000Z",
+      position: 0,
+    }),
+    buildCompositeLink({
+      assignmentId: readyAssignment.id,
+      attemptId: "attempt-safran-complete",
+      testSlug: "safran_v1",
+      status: "completed",
+      completedAt: "2026-01-02T11:00:00.000Z",
+      position: 1,
+    }),
+    buildCompositeLink({
+      assignmentId: readyAssignment.id,
+      attemptId: "attempt-mwms-complete",
+      testSlug: "mwms_v1",
+      status: "completed",
+      completedAt: "2026-01-02T12:00:00.000Z",
+      position: 2,
+    }),
+  ], {
+    expectedRequiredTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+  });
+  const readyToGenerateModel = buildDetailModel({
+    participant: participant4,
+    attempts: [participantOnlyAttempt],
+    hrReports: [],
+    activeCompositeAssignment: readyAssignment,
+    compositeReadiness: readyReadiness,
+  });
+  assert.equal(readyToGenerateModel.compositeCard.state, "ready_to_generate");
+
+  const queuedCompositeModel = buildDetailModel({
+    participant: participant4,
+    attempts: [participantOnlyAttempt],
+    hrReports: [],
+    activeCompositeAssignment: readyAssignment,
+    compositeReadiness: readyReadiness,
+    compositeReport: buildAssessmentReport({
+      id: "assessment-report-queued",
+      assignmentId: readyAssignment.id,
+      participantId: participant4.id,
+      status: "queued",
+    }),
+  });
+  assert.equal(queuedCompositeModel.compositeCard.state, "queued");
+
+  const processingCompositeModel = buildDetailModel({
+    participant: participant4,
+    attempts: [participantOnlyAttempt],
+    hrReports: [],
+    activeCompositeAssignment: readyAssignment,
+    compositeReadiness: readyReadiness,
+    compositeReport: buildAssessmentReport({
+      id: "assessment-report-processing",
+      assignmentId: readyAssignment.id,
+      participantId: participant4.id,
+      status: "processing",
+    }),
+  });
+  assert.equal(processingCompositeModel.compositeCard.state, "processing");
+
+  const readyCompositeModel = buildDetailModel({
+    participant: participant4,
+    attempts: [participantOnlyAttempt],
+    hrReports: [],
+    activeCompositeAssignment: readyAssignment,
+    compositeReadiness: readyReadiness,
+    compositeReport: buildAssessmentReport({
+      id: "assessment-report-ready",
+      assignmentId: readyAssignment.id,
+      participantId: participant4.id,
+      status: "ready",
+    }),
+  });
+  assert.equal(readyCompositeModel.compositeCard.state, "ready");
+
+  const failedCompositeModel = buildDetailModel({
+    participant: participant4,
+    attempts: [participantOnlyAttempt],
+    hrReports: [],
+    activeCompositeAssignment: readyAssignment,
+    compositeReadiness: readyReadiness,
+    compositeReport: buildAssessmentReport({
+      id: "assessment-report-failed",
+      assignmentId: readyAssignment.id,
+      participantId: participant4.id,
+      status: "failed",
+      failureCode: "generation_failed",
+      failureReason: "Failed",
+    }),
+  });
+  assert.equal(failedCompositeModel.compositeCard.state, "failed");
 
   console.log("HR candidate assessment detail model tests passed.");
 }

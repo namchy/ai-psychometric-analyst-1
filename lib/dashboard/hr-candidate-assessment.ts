@@ -1,4 +1,9 @@
 import { getReportGenerationCapability } from "@/lib/assessment/report-capabilities";
+import type {
+  ActiveStandardAssessmentAssignment,
+  AssessmentReportRecord,
+  CompositeReadinessState,
+} from "@/lib/assessment/assessment-reports";
 
 export type HrCandidateAssessmentAttemptLifecycle =
   | "completed"
@@ -83,6 +88,15 @@ export type HrCandidateAssessmentCardVisualVariant =
   | "error"
   | "info";
 
+export type HrCandidateCompositeCardState =
+  | "no_assignment"
+  | "incomplete"
+  | "ready_to_generate"
+  | "queued"
+  | "processing"
+  | "ready"
+  | "failed";
+
 export type HrFriendlyTestStatus =
   | "Završeno"
   | "U toku"
@@ -156,6 +170,30 @@ export type HrCandidateAssessmentCard = {
         href: null;
         disabled: true;
       };
+};
+
+export type HrCandidateCompositeCard = {
+  title: "Kompozitni HR izvještaj";
+  subtitle: "Integrisani profil kandidata";
+  state: HrCandidateCompositeCardState;
+  statusLabel:
+    | "Nije dostupno"
+    | "Nije spremno"
+    | "Spremno za generisanje"
+    | "Čeka generisanje"
+    | "Generiše se"
+    | "Spremno za pregled"
+    | "Greška pri generisanju";
+  body: string;
+  visualVariant: HrCandidateAssessmentCardVisualVariant;
+  cta: {
+    label: string;
+    href: null;
+    disabled: true;
+  };
+  assignment: ActiveStandardAssessmentAssignment | null;
+  readiness: CompositeReadinessState | null;
+  report: AssessmentReportRecord | null;
 };
 
 export type ParticipantAssessmentRow = {
@@ -722,10 +760,14 @@ export function buildHrCandidateAssessmentDetailModel(input: {
   attempts: HrCandidateAssessmentAttempt[];
   hrReports: HrCandidateAttemptReportSummary[];
   organizationName: string;
+  activeCompositeAssignment: ActiveStandardAssessmentAssignment | null;
+  compositeReadiness: CompositeReadinessState | null;
+  compositeReport: AssessmentReportRecord | null;
 }): {
   participant: HrCandidateAssessmentParticipant;
   organizationName: string;
   cards: HrCandidateAssessmentCard[];
+  compositeCard: HrCandidateCompositeCard;
   completedTests: number;
   readyHrReports: number;
   completedLabel: string;
@@ -744,15 +786,167 @@ export function buildHrCandidateAssessmentDetailModel(input: {
       : readyHrReports > 0
         ? "Djelimično dostupno"
         : "Čeka rezultate";
+  const compositeCard = buildCompositeCard({
+    assignment: input.activeCompositeAssignment,
+    readiness: input.compositeReadiness,
+    report: input.compositeReport,
+  });
 
   return {
     participant: input.participant,
     organizationName: input.organizationName,
     cards,
+    compositeCard,
     completedTests,
     readyHrReports,
     completedLabel: `${completedTests}/${cards.length} testova završeno`,
     readyLabel: `${readyHrReports} HR izvještaja dostupno`,
     availabilityLabel,
+  };
+}
+
+export function buildCompositeCard(input: {
+  assignment: ActiveStandardAssessmentAssignment | null;
+  readiness: CompositeReadinessState | null;
+  report: AssessmentReportRecord | null;
+}): HrCandidateCompositeCard {
+  if (!input.assignment) {
+    return {
+      title: "Kompozitni HR izvještaj",
+      subtitle: "Integrisani profil kandidata",
+      state: "no_assignment",
+      statusLabel: "Nije dostupno",
+      body: "Kompozitni HR izvještaj nije dostupan jer ne postoji aktivan procjenski ciklus.",
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+      assignment: null,
+      readiness: null,
+      report: null,
+    };
+  }
+
+  const readiness = input.readiness;
+
+  if (!readiness || readiness.status !== "ready") {
+    const completedCount = readiness?.completedCount ?? 0;
+    const requiredCount = readiness?.requiredCount ?? 0;
+    const readinessSummary =
+      requiredCount > 0
+        ? ` Trenutno je završeno ${completedCount}/${requiredCount} potrebnih testova iz ovog ciklusa.`
+        : "";
+
+    return {
+      title: "Kompozitni HR izvještaj",
+      subtitle: "Integrisani profil kandidata",
+      state: "incomplete",
+      statusLabel: "Nije spremno",
+      body: `Kompozitni HR izvještaj se može pripremiti tek kada su svi potrebni testovi završeni unutar istog procjenskog ciklusa.${readinessSummary}`,
+      visualVariant: "info",
+      cta: {
+        label: "Nije dostupno",
+        href: null,
+        disabled: true,
+      },
+      assignment: input.assignment,
+      readiness: readiness ?? null,
+      report: input.report,
+    };
+  }
+
+  if (!input.report) {
+    return {
+      title: "Kompozitni HR izvještaj",
+      subtitle: "Integrisani profil kandidata",
+      state: "ready_to_generate",
+      statusLabel: "Spremno za generisanje",
+      body: "Svi potrebni testovi iz ovog procjenskog ciklusa su završeni. Generisanje kompozitnog HR izvještaja dolazi u sljedećem koraku.",
+      visualVariant: "success",
+      cta: {
+        label: "Dolazi uskoro",
+        href: null,
+        disabled: true,
+      },
+      assignment: input.assignment,
+      readiness,
+      report: null,
+    };
+  }
+
+  if (input.report.report_status === "queued") {
+    return {
+      title: "Kompozitni HR izvještaj",
+      subtitle: "Integrisani profil kandidata",
+      state: "queued",
+      statusLabel: "Čeka generisanje",
+      body: "Kompozitni HR izvještaj je dodat u red za generisanje i čeka obradu.",
+      visualVariant: "progress",
+      cta: {
+        label: "Dolazi uskoro",
+        href: null,
+        disabled: true,
+      },
+      assignment: input.assignment,
+      readiness,
+      report: input.report,
+    };
+  }
+
+  if (input.report.report_status === "processing") {
+    return {
+      title: "Kompozitni HR izvještaj",
+      subtitle: "Integrisani profil kandidata",
+      state: "processing",
+      statusLabel: "Generiše se",
+      body: "Kompozitni HR izvještaj se trenutno priprema.",
+      visualVariant: "progress",
+      cta: {
+        label: "Dolazi uskoro",
+        href: null,
+        disabled: true,
+      },
+      assignment: input.assignment,
+      readiness,
+      report: input.report,
+    };
+  }
+
+  if (input.report.report_status === "ready") {
+    return {
+      title: "Kompozitni HR izvještaj",
+      subtitle: "Integrisani profil kandidata",
+      state: "ready",
+      statusLabel: "Spremno za pregled",
+      body: "Kompozitni HR izvještaj je generisan. Pregled izvještaja dolazi u sljedećem koraku.",
+      visualVariant: "success",
+      cta: {
+        label: "Dolazi uskoro",
+        href: null,
+        disabled: true,
+      },
+      assignment: input.assignment,
+      readiness,
+      report: input.report,
+    };
+  }
+
+  return {
+    title: "Kompozitni HR izvještaj",
+    subtitle: "Integrisani profil kandidata",
+    state: "failed",
+    statusLabel: "Greška pri generisanju",
+    body: "Kompozitni HR izvještaj nije uspješno generisan. Oporavak i ponovno pokretanje dolaze u sljedećem koraku.",
+    visualVariant: "error",
+    cta: {
+      label: "Nije dostupno",
+      href: null,
+      disabled: true,
+    },
+    assignment: input.assignment,
+    readiness,
+    report: input.report,
   };
 }

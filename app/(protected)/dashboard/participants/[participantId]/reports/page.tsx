@@ -18,6 +18,11 @@ import {
   getAttemptsForParticipantInOrganization,
 } from "@/lib/b2b/organizations";
 import {
+  buildCompositeReadinessForAssignment,
+  loadLatestActiveStandardAssessmentAssignment,
+  loadLatestCompositeHrAssessmentReport,
+} from "@/lib/assessment/assessment-reports";
+import {
   buildHrCandidateAssessmentDetailModel,
   type HrCandidateAssessmentCardVisualVariant,
 } from "@/lib/dashboard/hr-candidate-assessment";
@@ -123,11 +128,28 @@ export default async function CandidateReportsPage({
     participant.id,
   );
   const hrReports = await getHrAttemptReportsForAttemptIds(attempts.map((attempt) => attempt.id));
+  const activeCompositeAssignment = await loadLatestActiveStandardAssessmentAssignment({
+    organizationId: organization.id,
+    participantId: participant.id,
+  });
+  const [compositeReadiness, compositeReport] = activeCompositeAssignment
+    ? await Promise.all([
+        buildCompositeReadinessForAssignment({
+          assessmentAssignmentId: activeCompositeAssignment.id,
+        }),
+        loadLatestCompositeHrAssessmentReport({
+          assessmentAssignmentId: activeCompositeAssignment.id,
+        }),
+      ])
+    : [null, null];
   const model = buildHrCandidateAssessmentDetailModel({
     participant,
     attempts,
     hrReports,
     organizationName: organization.name,
+    activeCompositeAssignment,
+    compositeReadiness,
+    compositeReport,
   });
   const recoveryMessage = getReportRecoveryMessage(searchParams);
 
@@ -313,8 +335,8 @@ export default async function CandidateReportsPage({
           <DashboardSectionHeader
             eyebrow="Kompozitni HR izvještaj"
             eyebrowClassName="text-teal-800/80"
-            title="Kompozitni HR izvještaj"
-            description="Integrisani profil kandidata"
+            title={model.compositeCard.title}
+            description={model.compositeCard.subtitle}
             className="gap-2"
             titleClassName="text-[1.35rem]"
           />
@@ -324,20 +346,21 @@ export default async function CandidateReportsPage({
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                    Kompozitni HR izvještaj
+                    {model.compositeCard.title}
                   </h3>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
-                    Nije spreman
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(model.compositeCard.visualVariant)}`}
+                  >
+                    {model.compositeCard.statusLabel}
                   </span>
                 </div>
                 <p className="text-sm leading-6 text-slate-600">
-                  Kompozitni izvještaj će povezati IPIP, SAFRAN i MWMS rezultate kada composite
-                  report bude podržan.
+                  {model.compositeCard.body}
                 </p>
               </div>
 
               <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                Nije dostupno
+                {model.compositeCard.cta.label}
               </span>
             </div>
           </DashboardInfoCardShell>
