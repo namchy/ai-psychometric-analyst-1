@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const Module = require("node:module");
+const React = require("react");
+const { renderToStaticMarkup } = require("react-dom/server");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
@@ -68,6 +70,7 @@ require.extensions[".tsx"] = function compileTsx(module, filename) {
 };
 
 const {
+  CompositeHrReportView,
   buildCompositeHrReportViewModel,
 } = require("../components/dashboard/composite-hr-report-view.tsx");
 const {
@@ -252,16 +255,75 @@ function main() {
 
   assert.equal(model.title, "Kompozitni HR izvještaj");
   assert.equal(model.statusLabel, "Spremno za pregled");
+  assert.equal(
+    model.description,
+    "Ovaj prikaz koristi već generisan izvještaj i ne mijenja rezultate procjena.",
+  );
   assert.equal(model.participantReportsHref, "/dashboard/participants/participant-1/reports");
   assert.equal(model.source.assessmentAssignmentId, "assignment-1");
-  assert.deepEqual(model.source.testSlugs, ["ipip-neo-120-v1", "safran_v1", "mwms_v1"]);
+  assert.equal(model.source.assessmentCycleLabel, "Standardna baterija procjena");
+  assert.equal(model.source.assessmentCycleIdLabel, "ID: assignme...");
+  assert.equal(model.source.assessmentCountLabel, "3 završene procjene");
+  assert.deepEqual(model.source.testLabels, [
+    "Procjena ličnosti",
+    "Kognitivna procjena",
+    "Motivacija za rad",
+  ]);
+  assert.equal(model.source.generationModeLabel, "Testni prikaz");
+  assert.equal(model.source.sourceAttemptCount, 3);
   assert.equal(model.summary.headline, snapshot.summary.headline);
   assert.equal(model.summary.profileOverview, snapshot.summary.profileOverview);
   assert.equal(model.integratedSignals.length > 0, true);
+  assert.equal(
+    model.integratedSignals.flatMap((signal) => signal.evidence).some((item) => item.displayTestLabel === "Ličnost"),
+    true,
+  );
+  assert.equal(
+    model.integratedSignals
+      .flatMap((signal) => signal.evidence)
+      .some((item) => item.displayTestLabel === "Kognitivni rezultat"),
+    true,
+  );
+  assert.equal(
+    model.integratedSignals
+      .flatMap((signal) => signal.evidence)
+      .some((item) => item.displayTestLabel === "Motivacija"),
+    true,
+  );
   assert.equal(model.interviewGuidance.focusAreas.length > 0, true);
   assert.equal(model.onboardingGuidance.managementTips.length > 0, true);
   assert.equal(model.onboardingGuidance.supportNeeds.length > 0, true);
   assert.equal(model.limitations.length > 0, true);
+  assert.equal(
+    model.limitations.some((item) => item.includes("source attempts") || item.includes("score vrijednosti")),
+    false,
+  );
+
+  const html = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot,
+    }),
+  );
+
+  assert.equal(html.includes("Procjene uključene u izvještaj"), true);
+  assert.equal(html.includes("Procjena ličnosti"), true);
+  assert.equal(html.includes("Kognitivna procjena"), true);
+  assert.equal(html.includes("Motivacija za rad"), true);
+  assert.equal(html.includes("Ličnost:"), true);
+  assert.equal(html.includes("Kognitivni rezultat:"), true);
+  assert.equal(html.includes("Motivacija:"), true);
+  assert.equal(html.includes("3 završene procjene"), true);
+  assert.equal(html.includes("Testni prikaz"), true);
+  assert.equal(html.includes("mock / v1"), false);
+  assert.equal(html.includes("linked attemptova"), false);
+  assert.equal(html.includes("snapshot"), false);
+  assert.equal(html.includes("renderer"), false);
+  assert.equal(html.includes("source attempts"), false);
+  assert.equal(html.includes("3 povezana pokušaja"), false);
+  assert.equal(html.includes("ipip-neo-120-v1"), false);
+  assert.equal(html.includes("safran_v1"), false);
+  assert.equal(html.includes("mwms_v1"), false);
 
   const invalid = resolveReadyCompositeHrAssessmentReport(
     buildReadyReport({

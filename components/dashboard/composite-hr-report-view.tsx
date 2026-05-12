@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { AssessmentReportRecord } from "@/lib/assessment/assessment-reports";
 import type { CompositeHrReportSnapshot } from "@/lib/assessment/composite-hr-report-contract";
+import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
@@ -15,22 +16,87 @@ type CompositeHrReportViewProps = {
 export type CompositeHrReportViewModel = {
   title: "Kompozitni HR izvještaj";
   statusLabel: "Spremno za pregled";
+  description: string;
   participantReportsHref: string;
   source: {
     assessmentAssignmentId: string;
-    testSlugs: string[];
+    assessmentCycleLabel: string;
+    assessmentCycleIdLabel: string;
+    assessmentCountLabel: string;
+    testLabels: string[];
+    generationModeLabel: string | null;
     sourceAttemptCount: number;
-    provider: string;
-    providerVersion: string;
     generatedAt: string;
     locale: string;
   };
   summary: CompositeHrReportSnapshot["summary"];
-  integratedSignals: CompositeHrReportSnapshot["integratedSignals"];
+  integratedSignals: Array<
+    Omit<CompositeHrReportSnapshot["integratedSignals"][number], "evidence"> & {
+      evidence: Array<
+        CompositeHrReportSnapshot["integratedSignals"][number]["evidence"][number] & {
+          displayTestLabel: string;
+        }
+      >;
+    }
+  >;
   interviewGuidance: CompositeHrReportSnapshot["interviewGuidance"];
   onboardingGuidance: CompositeHrReportSnapshot["onboardingGuidance"];
-  limitations: CompositeHrReportSnapshot["limitations"];
+  limitations: string[];
 };
+
+const SOURCE_TEST_LABELS: Record<string, string> = {
+  "ipip-neo-120-v1": "Procjena ličnosti",
+  safran_v1: "Kognitivna procjena",
+  mwms_v1: "Motivacija za rad",
+};
+
+const EVIDENCE_TEST_LABELS: Record<string, string> = {
+  "ipip-neo-120-v1": "Ličnost",
+  safran_v1: "Kognitivni rezultat",
+  mwms_v1: "Motivacija",
+};
+
+function formatAssessmentCountLabel(count: number): string {
+  return `${count} završene procjene`;
+}
+
+function formatAssessmentCycleIdLabel(value: string): string {
+  if (value.length <= 10) {
+    return `ID: ${value}`;
+  }
+
+  return `ID: ${value.slice(0, 8)}...`;
+}
+
+function getSourceTestLabel(slug: string): string {
+  return SOURCE_TEST_LABELS[slug] ?? getAssessmentDisplayName({ slug });
+}
+
+function getEvidenceTestLabel(slug: string): string {
+  return EVIDENCE_TEST_LABELS[slug] ?? getAssessmentDisplayName({ slug });
+}
+
+function getGenerationModeLabel(provider: string): string | null {
+  switch (provider.trim().toLowerCase()) {
+    case "mock":
+      return "Testni prikaz";
+    case "openai":
+      return "AI interpretacija";
+    default:
+      return null;
+  }
+}
+
+function sanitizeLimitationCopy(value: string): string {
+  return value
+    .replace(/source attempts/gi, "izvorne procjene")
+    .replace(/assessment ciklusa/gi, "procjenskog ciklusa")
+    .replace(/score vrijednosti/gi, "rezultate procjena");
+}
+
+function sanitizeDisplayCopy(value: string): string {
+  return sanitizeLimitationCopy(value).replace(/linked attemptova/gi, "povezanih procjena");
+}
 
 export function buildCompositeHrReportViewModel(input: {
   report: AssessmentReportRecord;
@@ -39,21 +105,54 @@ export function buildCompositeHrReportViewModel(input: {
   return {
     title: "Kompozitni HR izvještaj",
     statusLabel: "Spremno za pregled",
+    description: "Ovaj prikaz koristi već generisan izvještaj i ne mijenja rezultate procjena.",
     participantReportsHref: `/dashboard/participants/${input.report.participant_id}/reports`,
     source: {
       assessmentAssignmentId: input.snapshot.generatedFor.assessmentAssignmentId,
-      testSlugs: [...input.snapshot.source.testSlugs],
+      assessmentCycleLabel: "Standardna baterija procjena",
+      assessmentCycleIdLabel: formatAssessmentCycleIdLabel(
+        input.snapshot.generatedFor.assessmentAssignmentId,
+      ),
+      assessmentCountLabel: formatAssessmentCountLabel(input.snapshot.source.sourceAttemptIds.length),
+      testLabels: input.snapshot.source.testSlugs.map((slug) => getSourceTestLabel(slug)),
+      generationModeLabel: getGenerationModeLabel(input.snapshot.metadata.provider),
       sourceAttemptCount: input.snapshot.source.sourceAttemptIds.length,
-      provider: input.snapshot.metadata.provider,
-      providerVersion: input.snapshot.metadata.providerVersion,
       generatedAt: input.snapshot.metadata.generatedAt,
       locale: input.snapshot.locale,
     },
-    summary: input.snapshot.summary,
-    integratedSignals: input.snapshot.integratedSignals,
-    interviewGuidance: input.snapshot.interviewGuidance,
-    onboardingGuidance: input.snapshot.onboardingGuidance,
-    limitations: input.snapshot.limitations,
+    summary: {
+      headline: sanitizeDisplayCopy(input.snapshot.summary.headline),
+      profileOverview: sanitizeDisplayCopy(input.snapshot.summary.profileOverview),
+      keyStrengths: input.snapshot.summary.keyStrengths.map((item) => sanitizeDisplayCopy(item)),
+      watchouts: input.snapshot.summary.watchouts.map((item) => sanitizeDisplayCopy(item)),
+    },
+    integratedSignals: input.snapshot.integratedSignals.map((signal) => ({
+      ...signal,
+      title: sanitizeDisplayCopy(signal.title),
+      body: sanitizeDisplayCopy(signal.body),
+      evidence: signal.evidence.map((evidence) => ({
+        ...evidence,
+        label: sanitizeDisplayCopy(evidence.label),
+        value: sanitizeDisplayCopy(evidence.value),
+        displayTestLabel: getEvidenceTestLabel(evidence.testSlug),
+      })),
+    })),
+    interviewGuidance: {
+      focusAreas: input.snapshot.interviewGuidance.focusAreas.map((focusArea) => ({
+        title: sanitizeDisplayCopy(focusArea.title),
+        rationale: sanitizeDisplayCopy(focusArea.rationale),
+        questions: focusArea.questions.map((question) => sanitizeDisplayCopy(question)),
+      })),
+    },
+    onboardingGuidance: {
+      managementTips: input.snapshot.onboardingGuidance.managementTips.map((tip) =>
+        sanitizeDisplayCopy(tip),
+      ),
+      supportNeeds: input.snapshot.onboardingGuidance.supportNeeds.map((need) =>
+        sanitizeDisplayCopy(need),
+      ),
+    },
+    limitations: input.snapshot.limitations.map((item) => sanitizeDisplayCopy(item)),
   };
 }
 
@@ -82,7 +181,7 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               eyebrow="KOMPOZITNI HR IZVJEŠTAJ"
               eyebrowClassName="text-teal-800/90"
               title={model.title}
-              description="Prikaz se zasniva na već pripremljenom izvještaju i ne generiše novi sadržaj."
+              description={model.description}
               className="gap-2"
               titleClassName="text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
               descriptionClassName="text-base text-slate-600"
@@ -106,10 +205,10 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
 
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
         <DashboardSectionHeader
-          eyebrow="Izvor procjene"
+          eyebrow="OSNOVA IZVJEŠTAJA"
           eyebrowClassName="text-teal-800/80"
-          title="Izvor i trag podataka"
-          description="Diskretan pregled izvora i podataka o generisanju ovog izvještaja."
+          title="Procjene uključene u izvještaj"
+          description="Izvještaj je pripremljen na osnovu tri završene procjene iz istog procjenskog ciklusa."
           className="gap-2"
           titleClassName="text-[1.35rem]"
         />
@@ -117,26 +216,21 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Procjenski ciklus
+              Ciklus procjene
             </p>
-            <p className="mt-2 break-all text-[14px] font-semibold text-slate-950">
-              {model.source.assessmentAssignmentId}
+            <p className="mt-2 text-[14px] font-semibold text-slate-950">
+              {model.source.assessmentCycleLabel}
+            </p>
+            <p className="mt-1 break-all text-xs text-slate-500" title={model.source.assessmentAssignmentId}>
+              {model.source.assessmentCycleIdLabel}
             </p>
           </div>
           <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Izvori
+              Uključene procjene
             </p>
             <p className="mt-2 text-[14px] font-semibold text-slate-950">
-              {model.source.sourceAttemptCount} povezana pokušaja
-            </p>
-          </div>
-          <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Provider
-            </p>
-            <p className="mt-2 text-[14px] font-semibold text-slate-950">
-              {model.source.provider} / {model.source.providerVersion}
+              {model.source.assessmentCountLabel}
             </p>
           </div>
           <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
@@ -147,15 +241,25 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               {formatTimestamp(model.source.generatedAt)}
             </p>
           </div>
+          {model.source.generationModeLabel ? (
+            <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Način generisanja
+              </p>
+              <p className="mt-2 text-[14px] font-semibold text-slate-950">
+                {model.source.generationModeLabel}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {model.source.testSlugs.map((slug) => (
+          {model.source.testLabels.map((label) => (
             <span
-              key={slug}
+              key={label}
               className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600"
             >
-              {slug}
+              {label}
             </span>
           ))}
         </div>
@@ -221,7 +325,7 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
                     key={`${signal.id}-${evidence.testSlug}-${evidence.label}`}
                     className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-700"
                   >
-                    {evidence.testSlug}: {evidence.label} - {evidence.value}
+                    {evidence.displayTestLabel}: {evidence.label} - {evidence.value}
                   </span>
                 ))}
               </div>
