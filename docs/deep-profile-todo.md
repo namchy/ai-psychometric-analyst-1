@@ -58,11 +58,12 @@ Komande:
 | P1        | Manual composite generate/retry action za assessment_reports | Završeno | Composite HR report / Queue lifecycle | Zatvoreno nakon dodavanja manual generate/retry akcija koje kreiraju ili resetuju `assessment_reports` row u `queued`, bez AI generation-a, worker-a, input buildera, provider routinga ili renderer-a. |
 | P1        | Composite readiness / assessment_reports storage model | Završeno | Architecture / Composite HR report storage | Zatvoreno nakon uvođenja `assessment_reports` storage-a, composite readiness helpera i realnog composite card state-a na HR participant detail stranici, bez AI generation-a, worker-a ili generate/retry akcija. |
 | P1        | Composite input builder iz deterministic score rezultata | Završeno | Composite HR report / Input builder | Zatvoreno nakon uvođenja deterministic composite input_snapshot buildera za IPIP/SAFRAN/MWMS linked attempts, bez AI generation-a, worker-a, provider routinga, schema/validatora ili renderer-a. |
-| P1        | Composite HR report contract/schema/provider | Završeno | Composite HR report / Contract / Mock provider | Zatvoreno nakon uvođenja Composite HR report V1 contracta, runtime validatora i mock providera koji omogućava workeru da queued assessment_reports row završi kao ready sa validnim report_snapshot-om, bez OpenAI providera i bez renderera. |
-| P1        | Composite HR report renderer | Završeno | Composite HR report / Renderer / HR dashboard | Zatvoreno nakon uvođenja assessment-level renderer route-a za ready mock-backed Composite HR report snapshot. Sljedeći korak je OpenAI provider za isti contract i validator. |
+| P1        | Composite HR report contract/schema/provider | Završeno | Composite HR report / Contract / Mock provider | Zatvoreno nakon uvođenja Composite HR report V1 contracta, runtime validatora i mock providera; renderer i OpenAI provider su sada uvedeni, a sljedeći korak je V1 polish / QA. |
+| P1        | Composite HR report renderer | Završeno | Composite HR report / Renderer / HR dashboard | Zatvoreno nakon uvođenja assessment-level renderer route-a za ready mock-backed Composite HR report snapshot. Sljedeći korak je V1 polish / QA i real OpenAI smoke kada env bude spreman. |
+| P1        | OpenAI provider za Composite HR report | Završeno | Composite HR report / OpenAI provider / AI generation | Zatvoreno nakon dodavanja OpenAI providera koji koristi postojeći CompositeHrInputSnapshot, proizvodi postojeći CompositeHrReportSnapshot contract i prolazi runtime validator. Sljedeći korak je Composite HR report V1 polish / QA nad mock i OpenAI outputom. |
 | P1        | Assessment report worker path za composite          | Završeno    | Composite HR report / Worker lifecycle | Zatvoreno kao lifecycle proof: worker claim-a queued assessment_reports row, gradi input_snapshot kroz composite input builder i kontrolisano završava kao failed sa COMPOSITE_PROVIDER_NOT_IMPLEMENTED dok provider ne postoji. |
 | P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Zatvoreno nakon assessment_reports storage/readiness slice-a. |
-| P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Sljedeći slice je OpenAI provider za Composite HR report koji mora poštovati postojeći contract, runtime validator i renderer shape. |
+| P1        | Composite HR report V1                              | Planirano / QA-polish phase | Product / AI report | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Sljedeći slice je V1 polish / QA: end-to-end provjera, HR copy polish, status UX, real OpenAI smoke kada env bude spreman i production orchestration odluka. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
@@ -974,21 +975,71 @@ Nakon uvođenja `assessment_reports`, manual queue flow-a, composite input build
 **Completion note:**  
 Završeno kroz Composite HR report V1 contract, runtime validator i deterministic mock provider. Dodani su `lib/assessment/composite-hr-report-contract.ts`, `lib/assessment/composite-hr-report-provider-mock.ts` i `scripts/test-composite-hr-report-contract.cjs`, a `lib/assessment/assessment-report-worker.ts` je ažuriran tako da queued composite assessment report može proći kroz `processing`, izgraditi `input_snapshot`, dobiti validan mock `report_snapshot`, proći runtime validaciju i završiti kao `ready`. `generated_at` se postavlja tek kada postoji validan `report_snapshot`. Ako input builder nije spreman, worker završava sa `COMPOSITE_INPUT_NOT_READY`; ako provider output ne prođe validaciju, završava sa `COMPOSITE_REPORT_VALIDATION_FAILED`. OpenAI provider nije dodan, renderer nije dodan, `attempt_reports` nije mijenjan, postojeći attempt worker nije refaktorisan i scoring nije mijenjan. Testovi potvrđuju contract shape, mock provider output, forbidden phrasing guardrails i worker ready path.
 
+### P1 — OpenAI provider za Composite HR report
+
+**Status:** Završeno  
+**Kategorija:** Composite HR report / OpenAI provider / AI generation
+
+**Problem / context:**  
+Nakon uvođenja Composite HR report contracta, runtime validatora, mock providera, assessment report workera i renderer-a, sistem je mogao generisati i prikazati validan mock-backed `report_snapshot`, ali nije imao pravi OpenAI provider. Trebao je provider koji koristi isti deterministic `CompositeHrInputSnapshot`, proizvodi isti runtime-validirani `CompositeHrReportSnapshot` contract i ostaje unutar postojećih source-of-truth guardraila.
+
+**Scope:**
+- dodati OpenAI provider za Composite HR report
+- koristiti `CompositeHrInputSnapshot` kao jedini source
+- proizvoditi `CompositeHrReportSnapshot` po postojećem contractu
+- koristiti postojeći runtime validator kao finalnu kapiju
+- dodati minimalni provider selector
+- zadržati mock provider kao default/dev/test provider
+- koristiti postojeći env standard `AI_REPORT_PROVIDER`, `AI_REPORT_MODEL`, `OPENAI_API_KEY`
+- integrisati provider selector u assessment report worker
+- upisivati generator metadata prema stvarnom provideru
+- testirati OpenAI provider path offline kroz fake structured response
+- ne mijenjati renderer shape
+- ne mijenjati scoring
+- ne mijenjati `attempt_reports`
+- ne mijenjati single-test report pipeline
+- ne uvoditi assignment-first dashboard
+- ne dodavati PDF/export
+
+**Acceptance criteria:**
+- postoji `lib/assessment/composite-hr-report-provider-openai.ts`
+- postoji minimalni provider selector
+- default provider je mock
+- OpenAI path se koristi samo kada env kaže `AI_REPORT_PROVIDER=openai`
+- provider koristi samo `CompositeHrInputSnapshot`
+- provider ne čita `attempt_reports`
+- provider ne koristi single-test AI report narrative
+- provider ne mijenja source attempts
+- provider ne mijenja score/band vrijednosti
+- provider output prolazi `validateCompositeHrReportSnapshot`
+- immutable source polja se provjeravaju
+- forbidden phrasing se odbija
+- worker koristi provider selector
+- worker ready path i dalje zahtijeva validan `report_snapshot`
+- invalid provider output završava kao `COMPOSITE_REPORT_VALIDATION_FAILED`
+- mock worker path i dalje prolazi
+- renderer shape nije mijenjan
+- testovi prolaze
+
+**Completion note:**  
+Završeno kroz OpenAI provider slice za Composite HR report. Dodani su `lib/assessment/composite-hr-report-provider-openai.ts`, `lib/assessment/composite-hr-report-provider.ts` i `scripts/test-composite-hr-report-provider-openai.cjs`, a assessment report worker je ažuriran da koristi provider selector umjesto direktnog mock provider poziva. Provider selector koristi postojeći env standard `AI_REPORT_PROVIDER=mock|openai`, `AI_REPORT_MODEL` i `OPENAI_API_KEY`, uz `mock` kao default. OpenAI provider prima samo `CompositeHrInputSnapshot`, proizvodi `CompositeHrReportSnapshot` po postojećem contractu, validira output runtime validatorom i dodatno provjerava immutable source polja. Provider ne koristi `attempt_reports`, ne koristi single-test AI report narrative, ne mijenja score/band/source vrijednosti i odbija forbidden phrasing kao što su hire/no-hire, “zaposliti”, “ne zaposliti”, “fit score” i “idealni kandidat”. Worker sada zapisuje generator metadata prema odabranom provideru i ne završava kao ready ako provider output ne prođe validaciju. Renderer shape, scoring, `attempt_reports`, single-test report pipeline i dashboard model nisu mijenjani. Real OpenAI smoke nije pokrenut u ovom tasku; offline provider test pokriva OpenAI path kroz fake structured response.
+
 ### P1 — Composite HR report V1
 
-**Status:** Planirano  
+**Status:** Planirano / QA-polish phase  
 **Kategorija:** Product / AI report
 
 **Problem / context:**  
-Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAFRAN i MWMS u jedan HR-facing profil za selekciju, intervju, onboarding i menadžersku podršku. Contract/schema/provider slice je već završen; ovaj backlog item sada prati preostali renderer/pregled i kasniji OpenAI provider.
+Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAFRAN i MWMS u jedan HR-facing profil za selekciju, intervju, onboarding i menadžersku podršku. Pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Sljedeći slice je V1 polish / QA: end-to-end provjera, HR copy polish, status UX, real OpenAI smoke kada env bude spreman i production orchestration odluka.
 
 **Scope:**
-- renderer
-- HR dashboard access
-- fallback states
+- end-to-end QA nad mock i OpenAI outputom
+- HR copy polish
+- status UX
+- real OpenAI smoke kada env bude spreman
+- production orchestration odluka
 - guardrails bez hire/no-hire odluka
 - locale-aware design, MVP bs-only
-- OpenAI provider nakon renderera
 
 **Out of scope:**
 - team-fit report
@@ -998,10 +1049,11 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 - PDF/export
 
 **Acceptance criteria:**
-- renderer zna prikazati validan Composite HR report snapshot
+- mock i OpenAI output prolaze end-to-end provjeru kroz postojeći contract i validator
 - report i dalje koristi deterministic rezultate kao source
-- AI provider se ne uvodi prije renderera
-- report jasno odvaja radne obrasce, motivaciju, kognitivne signale, tačke opreza, intervju pitanja i onboarding/manager guidance
+- status UX ostaje jasan za ready/queued/processing/failed
+- HR copy je dovoljno dobar za V1 uz planirani polish
+- real OpenAI smoke može se pokrenuti kada env bude spreman
 - report je audience = hr
 - report je locale-aware u strukturi, iako MVP content ostaje bs
 
@@ -1164,10 +1216,11 @@ Završeno kao assessment-level worker lifecycle proof. Dodan je `lib/assessment/
 | P1        | Composite readiness / assessment_reports storage model | Završeno | Uveden je assessment-level storage i derived readiness/card state za budući Composite HR report. | Implementirati manual generate/retry queue flow za `assessment_reports` bez AI generation-a. |
 | P1        | Composite HR report data model decision | Završeno / Prvi slice implementiran | Composite HR report nema prirodan jedan attempt_id; donesena je odluka da ne ide u `attempt_reports`, a prvi ownership slice je uveden kroz `assessment_assignments` i `assessment_assignment_attempts`. | Zatvoreno nakon assessment_reports storage/readiness slice-a. |
 | P1        | Composite input builder iz deterministic score rezultata | Završeno | Uveden je deterministic input_snapshot builder za budući Composite HR report, zasnovan na linked IPIP/SAFRAN/MWMS attemptovima iz istog assignment ciklusa. | Implementirati assessment report worker path za composite koji će koristiti builder za popunjavanje input_snapshot-a i kasniju obradu queued row-a. |
-| P1        | Composite HR report contract/schema/provider | Završeno | Uveden je Composite HR report V1 contract, runtime validator i mock provider; assessment report worker sada može završiti queued composite row kao ready sa validnim report_snapshot-om. | Implementirati Composite HR report renderer/pregled za ready mock report_snapshot, prije OpenAI providera. |
-| P1        | Composite HR report renderer | Završeno | Ready mock-backed Composite HR report snapshot sada ima assessment-level HR pregled. | Implementirati OpenAI provider za postojeći Composite HR report contract i validator. |
+| P1        | Composite HR report contract/schema/provider | Završeno | Uveden je Composite HR report V1 contract, runtime validator i mock provider; assessment report worker sada može završiti queued composite row kao ready sa validnim report_snapshot-om. | Zatvoreno nakon uvođenja contracta, runtime validatora, mock providera, renderera i OpenAI providera; sljedeći korak je V1 polish / QA. |
+| P1        | Composite HR report renderer | Završeno | Ready mock-backed Composite HR report snapshot sada ima assessment-level HR pregled. | Zatvoreno nakon assessment-level renderera; sljedeći korak je V1 polish / QA i real OpenAI smoke kada env bude spreman. |
+| P1        | OpenAI provider za Composite HR report | Završeno | OpenAI provider koristi deterministic CompositeHrInputSnapshot i proizvodi runtime-validirani CompositeHrReportSnapshot. | Zatvoreno nakon OpenAI provider slice-a; sljedeći korak je V1 polish / QA. |
 | P1        | Assessment report worker path za composite | Završeno | Queued assessment_reports row sada može biti claim-an, obrađen do `input_snapshot` i kontrolisano završen kao failed dok provider ne postoji. | Zatvoreno kao lifecycle proof; sljedeći sigurni korak je Composite HR report contract/schema/provider sloj. |
-| P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task; contract/schema/provider slice je završen, a worker lifecycle i deterministic input_snapshot path su već uvedeni. | Sljedeći slice je OpenAI provider za Composite HR report koji mora poštovati postojeći contract, runtime validator i renderer shape. |
+| P1        | Composite HR report V1    | Planirano / QA-polish phase | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task; contract/schema/provider, worker lifecycle, renderer i OpenAI provider su uvedeni. | Sljedeći slice je V1 polish / QA: end-to-end provjera, HR copy polish, status UX, real OpenAI smoke kada env bude spreman i production orchestration odluka. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
 | P2        | Candidate dashboard CTA hover contrast | Završeno | Completed CTA više ne gubi kontrast na hoveru, a shared CTA hover/focus sistem je usklađen za sve candidate dashboard kartice. | Zatvoreno nakon shared CTA hover/focus contrast fixa u candidate dashboard karticama. |
 | P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
@@ -1265,30 +1318,30 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. OpenAI provider za Composite HR report
-2. Composite HR report V1 polish / QA
-3. Assignment-aware dashboard model za nove assessment cikluse
-4. Worker/report auto-processing orchestration
-5. Oblik obraćanja: muški/ženski jezički oblik
-6. Report visual language po testovima
-7. SAFRAN novi stimulus asseti
-8. Login screen UI polish
+1. Composite HR report V1 polish / QA
+2. Assignment-aware dashboard model za nove assessment cikluse
+3. Worker/report auto-processing orchestration
+4. Oblik obraćanja: muški/ženski jezički oblik
+5. Report visual language po testovima
+6. SAFRAN novi stimulus asseti
+7. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
 * Composite HR report renderer je završen.
 * Mock-backed ready report_snapshot sada se može pregledati u HR UI-u.
-* Finalna AI generacija još ne postoji.
-* Sljedeći najmanji sigurni korak je OpenAI provider koji mora proizvoditi isti contract i proći runtime validator.
+* OpenAI provider za Composite HR report je završen.
+* Composite HR report pipeline sada ima mock i OpenAI provider path pod istim contractom i validatorom.
+* Sljedeći najmanji sigurni korak je V1 polish / QA, ne nova arhitektura.
+* QA treba pokriti mock i OpenAI output, real smoke kada env bude spreman, renderer prikaz, status UX i copy kvalitet.
 * Renderer je namjerno uveden prije OpenAI providera da se provjeri UI shape contracta.
 * Assignment-aware dashboard model ostaje poseban task jer dashboard read path i dalje nije assignment-first.
-* Composite HR report V1 i dalje nije finalno završen dok ne postoji OpenAI provider i QA/polish.
+* Composite HR report V1 i dalje nije finalno završen dok ne prođe V1 polish / QA.
 * Non-blocking autosave za IPIP/MWMS Likert flow je završen i uklonio je najveće trenutno UX usporenje tokom rješavanja testova.
 * Manual composite generate/retry queue flow je završen.
 * Composite input builder iz deterministic score rezultata je završen.
 * Sistem sada ima definisan `input_snapshot` ugovor za budući Composite HR report.
-* Worker path i input snapshot lifecycle su već stabilni; sljedeći korak je OpenAI provider i V1 polish/QA.
-* Assignment-aware dashboard model je poseban budući task jer trenutni dashboard read path i dalje radi attempt-based.
+* Worker path i input snapshot lifecycle su već stabilni; sljedeći korak je V1 polish/QA.
 * Worker/report auto-processing orchestration ostaje tech debt, ali nije prvi sljedeći task.
 
 ### 5.14 Assessment autosave UX politika
@@ -1338,10 +1391,18 @@ Razlog za sljedeći prioritet:
 * Participant/candidate ne dobija read access na HR composite report u V1.
 * Composite HR report V1 contract je uveden kroz runtime-validirani `report_snapshot`.
 * Mock provider je prvi provider i služi za provjeru contracta, workera i budućeg renderera.
+* Mock provider ostaje default/dev/test provider.
 * Mock provider koristi `CompositeHrInputSnapshot` kao source.
 * Mock provider ne zove OpenAI.
 * Mock provider ne koristi `attempt_reports`.
 * Mock provider ne mijenja score vrijednosti, bandove ili source attempts.
+* Provider selection koristi postojeći `AI_REPORT_PROVIDER` i `AI_REPORT_MODEL` project standard.
+* OpenAI provider za Composite HR report koristi isti `CompositeHrInputSnapshot` kao mock provider.
+* OpenAI provider mora proizvoditi isti `CompositeHrReportSnapshot` contract koji renderer već očekuje.
+* Runtime validator ostaje finalna kapija prije `ready` statusa.
+* OpenAI output ne smije mijenjati source attempt IDs, score vrijednosti, bandove ili `generatedFor` identity.
+* OpenAI output ne smije sadržavati hire/no-hire odluku, fit score ili automatsku preporuku za zapošljavanje.
+* Real OpenAI smoke treba raditi kao QA/polish korak, ne kao dio samog provider implementation slice-a.
 * Composite HR report ne smije sadržavati hire/no-hire odluku, fit score ili automatsku preporuku za zapošljavanje.
 * Composite HR report pregled koristi assessment-level route `/dashboard/assessment-reports/[reportId]`.
 * Composite report se ne prikazuje kroz `/dashboard/attempts/[attemptId]`.
@@ -1463,7 +1524,7 @@ Razlog za sljedeći prioritet:
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
-| P1        | Composite report generation pipeline | Composite HR report renderer sada postoji i može prikazati validan ready mock-backed `report_snapshot`. I dalje nedostaju OpenAI provider, finalni HR copy polish, QA nad stvarnim AI outputom i production orchestration za worker. | OpenAI provider mora koristiti postojeći contract, runtime validator i renderer shape. Ne uvoditi novi shape mimo validiranog mock-backed contracta bez eksplicitne odluke. |
+| P1        | Composite report generation pipeline | Composite HR report renderer sada postoji i može prikazati validan ready mock-backed `report_snapshot`. I dalje nedostaju V1 polish / QA, real OpenAI smoke kada env bude spreman, finalni HR copy polish i production orchestration za worker. | OpenAI provider mora koristiti postojeći contract, runtime validator i renderer shape. Ne uvoditi novi shape mimo validiranog mock-backed contracta bez eksplicitne odluke. |
 | P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. MWMS HR sada koristi postojeći worker i capability-driven chain, ali šira orchestration strategija i dalje nije riješena. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
@@ -1536,6 +1597,45 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-12 — OpenAI provider za Composite HR report uveden
+
+Završeno:
+
+* dodan `lib/assessment/composite-hr-report-provider-openai.ts`
+* dodan minimalni provider selector `lib/assessment/composite-hr-report-provider.ts`
+* assessment report worker sada koristi provider selector
+* mock provider ostaje default/dev/test provider
+* OpenAI provider se aktivira kroz `AI_REPORT_PROVIDER=openai`
+* provider koristi postojeći `AI_REPORT_MODEL` i `OPENAI_API_KEY` pattern
+* OpenAI provider prima samo `CompositeHrInputSnapshot`
+* OpenAI provider proizvodi `CompositeHrReportSnapshot`
+* output prolazi runtime validator
+* immutable source fields se dodatno provjeravaju
+* forbidden phrasing se odbija
+* worker zapisuje generator metadata prema stvarno odabranom provideru
+* invalid provider output završava kao `COMPOSITE_REPORT_VALIDATION_FAILED`
+* renderer shape nije mijenjan
+* `attempt_reports` nije mijenjan
+* scoring i single-test report pipeline nisu mijenjani
+* offline OpenAI provider test prolazi kroz fake structured response
+
+Odluke:
+
+* Koristiti postojeći `AI_REPORT_PROVIDER` / `AI_REPORT_MODEL` standard, bez composite-specific env duplikata.
+* Mock provider ostaje default kako bi dev/test flow bio stabilan.
+* OpenAI provider mora poštovati isti contract i validator kao mock provider.
+* Runtime validator je finalna kapija prije `ready` statusa.
+* Real OpenAI smoke ide u sljedeći QA/polish slice.
+* OpenAI provider ne smije koristiti pojedinačne AI reportove kao source.
+* OpenAI provider ne smije mijenjati score vrijednosti, bandove ili source attempts.
+
+Racionala:
+
+* Composite HR report je sada povezan na pravi AI provider, ali pod postojećim contractom, validatorom i rendererom.
+* Jedan provider selector smanjuje konfiguracijsku fragmentaciju.
+* Mock default omogućava stabilan lokalni/dev workflow.
+* Offline test pokriva OpenAI path bez zavisnosti od live API-ja, dok real smoke ostaje kontrolisan QA korak.
 
 ### 2026-05-12 — Composite HR report renderer uveden
 
