@@ -57,8 +57,9 @@ Komande:
 | P1        | Assessment assignment ownership za standard battery | Završeno    | Architecture / Assessment ownership | Zatvoreno kao compatibility slice nakon uvođenja `assessment_assignments` i `assessment_assignment_attempts`, uz linkovanje samo novokreiranih attempts i zadržavanje attempt-based dashboard read patha. |
 | P1        | Manual composite generate/retry action za assessment_reports | Završeno | Composite HR report / Queue lifecycle | Zatvoreno nakon dodavanja manual generate/retry akcija koje kreiraju ili resetuju `assessment_reports` row u `queued`, bez AI generation-a, worker-a, input buildera, provider routinga ili renderer-a. |
 | P1        | Composite readiness / assessment_reports storage model | Završeno | Architecture / Composite HR report storage | Zatvoreno nakon uvođenja `assessment_reports` storage-a, composite readiness helpera i realnog composite card state-a na HR participant detail stranici, bez AI generation-a, worker-a ili generate/retry akcija. |
+| P1        | Composite input builder iz deterministic score rezultata | Završeno | Composite HR report / Input builder | Zatvoreno nakon uvođenja deterministic composite input_snapshot buildera za IPIP/SAFRAN/MWMS linked attempts, bez AI generation-a, worker-a, provider routinga, schema/validatora ili renderer-a. |
 | P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Zatvoreno nakon assessment_reports storage/readiness slice-a. |
-| P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Raditi kroz sljedeće odvojene slice-ove: composite input builder iz deterministic score rezultata, assessment report worker path, contract/schema/provider sloj i renderer. |
+| P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Raditi kroz sljedeće odvojene slice-ove: assessment report worker path za composite, Composite HR report contract/schema/provider sloj i renderer. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
@@ -994,6 +995,51 @@ Nakon uvođenja `assessment_assignments` i `assessment_assignment_attempts`, Com
 **Completion note:**  
 Završeno kroz assessment-level storage/readiness slice. Dodana je migracija za `assessment_reports`, uveden je `lib/assessment/assessment-reports.ts`, a HR participant detail model sada računa composite readiness isključivo iz `assessment_assignment_attempts` linked attempts u istom assignment ciklusu. Historical completed attempts, “najnoviji completed attempt po testu”, pojedinačni AI reporti i `attempt_reports` se ne koriste za readiness. Composite card na HR participant detail stranici sada prikazuje derived state-ove `no_assignment`, `incomplete`, `ready_to_generate`, `queued`, `processing`, `ready` i `failed`, bez generate/retry akcija i bez renderer route-a. `assessment_reports` ima HR-only organization member read policy i ne daje participant/candidate read access u V1. AI generation, worker, composite input builder, provider routing, scoring, report pipeline i `attempt_reports` nisu mijenjani. `npm run typecheck`, `node scripts/test-assessment-reports.cjs`, `node scripts/test-assessment-assignments.cjs`, `node scripts/test-hr-candidate-assessment-detail-model.cjs`, `node scripts/test-report-capabilities.cjs` i `node scripts/test-hr-report-recovery.cjs` prolaze.
 
+### P1 — Composite input builder iz deterministic score rezultata
+
+**Status:** Završeno  
+**Kategorija:** Composite HR report / Input builder / Deterministic source of truth
+
+**Problem / context:**  
+Nakon uvođenja `assessment_reports` storage-a i manual generate/retry queue flow-a, sistem je mogao kreirati `queued` composite artefakt, ali još nije postojao kontrolisani input snapshot koji definira šta budući Composite HR report smije koristiti kao izvor. Prije worker-a i AI provider sloja bilo je potrebno zaključati deterministic input builder kako bi composite interpretacija kasnije bila vezana za score rezultate, bandove, labele i traceable linked attempts iz istog assessment ciklusa.
+
+**Scope:**
+- dodati server-side composite input builder
+- graditi `input_snapshot` za budući Composite HR report
+- koristiti samo linked attempts iz `assessment_assignment_attempts`
+- koristiti samo `required_for_composite = true` linked attempts
+- uključiti assignment metadata
+- uključiti source attempt traceability
+- uključiti coverage podatke
+- uključiti deterministic IPIP score/facet/domain podatke
+- uključiti deterministic SAFRAN overall/domain podatke
+- uključiti deterministic MWMS dimension podatke
+- uključiti neutralne controlled summary signals
+- uključiti guardrails koji eksplicitno zabranjuju historical fallback i AI-report-as-source pristup
+- ne koristiti `attempt_reports`
+- ne koristiti pojedinačne AI report narrative kao primary source
+- ne mijenjati scoring
+- ne uvoditi worker, AI generation, provider routing, schema/validator ili renderer
+
+**Acceptance criteria:**
+- postoji `lib/assessment/composite-input.ts`
+- builder vraća stabilan `input_snapshot` shape
+- snapshot sadrži `contractVersion`, `targetReportContractVersion`, `sourceType`, `reportType`, `audience`, `locale`, `generatedFor`, `assessmentAssignment`, `sourceAttempts`, `coverage`, `deterministicInputs`, `summarySignals`, `guardrails` i `metadata`
+- source attempts imaju `attemptId`, `testId`, `testSlug`, `status`, `completedAt`, `requiredForComposite`, `requiredForTeamFit` i `position`
+- IPIP input sadrži deterministic domain/facet score podatke
+- SAFRAN input sadrži overall, verbal, figural i numeric deterministic podatke
+- MWMS input sadrži svih 6 dimension score vrijednosti i motivation structure signale
+- builder koristi samo linked completed attempts iz istog assignment ciklusa
+- historical completed attempts nisu fallback
+- `attempt_reports` nije source inputa
+- single-test AI report tekstovi nisu primary source
+- summary signals su neutralni i traceable na score podatke
+- snapshot je locale-aware
+- builder nije povezan na worker u ovom tasku
+
+**Completion note:**  
+Završeno kroz novi server-side composite input builder u `lib/assessment/composite-input.ts`. Builder za spreman `assessment_assignment_id` gradi deterministic `input_snapshot` za budući Composite HR report, koristeći samo linked `required_for_composite` attempts iz istog assignment ciklusa. Snapshot uključuje assignment metadata, source attempt traceability, coverage, deterministic IPIP/SAFRAN/MWMS input, neutralne summary signals i eksplicitne guardrails. Historical completed attempts, “najnoviji completed attempt po testu”, `attempt_reports` i pojedinačni AI report narrative se ne koriste kao source. AI generation, worker, provider routing, schema/validator, renderer, scoring i report pipeline nisu mijenjani. `npm run typecheck`, `node scripts/test-composite-input-builder.cjs`, `node scripts/test-assessment-reports.cjs`, `node scripts/test-assessment-assignments.cjs`, `node scripts/test-hr-candidate-assessment-detail-model.cjs`, `node scripts/test-report-capabilities.cjs` i `node scripts/test-hr-report-recovery.cjs` prolaze.
+
 ---
 
 | Prioritet | Tema                       | Status    | Kratak opis                                                                                                                  | Sljedeći korak                                                                                |
@@ -1019,7 +1065,8 @@ Završeno kroz assessment-level storage/readiness slice. Dodana je migracija za 
 | P1        | Manual composite generate/retry action za assessment_reports | Završeno | HR sada može ručno kreirati ili resetovati composite assessment_report u `queued` statusu. | Implementirati composite input builder iz deterministic IPIP/SAFRAN/MWMS score rezultata. |
 | P1        | Composite readiness / assessment_reports storage model | Završeno | Uveden je assessment-level storage i derived readiness/card state za budući Composite HR report. | Implementirati manual generate/retry queue flow za `assessment_reports` bez AI generation-a. |
 | P1        | Composite HR report data model decision | Završeno / Prvi slice implementiran | Composite HR report nema prirodan jedan attempt_id; donesena je odluka da ne ide u `attempt_reports`, a prvi ownership slice je uveden kroz `assessment_assignments` i `assessment_assignment_attempts`. | Zatvoreno nakon assessment_reports storage/readiness slice-a. |
-| P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi kroz sljedeće odvojene slice-ove: composite input builder iz deterministic score rezultata, assessment report worker path, contract/schema/provider sloj i renderer. |
+| P1        | Composite input builder iz deterministic score rezultata | Završeno | Uveden je deterministic input_snapshot builder za budući Composite HR report, zasnovan na linked IPIP/SAFRAN/MWMS attemptovima iz istog assignment ciklusa. | Implementirati assessment report worker path za composite koji će koristiti builder za popunjavanje input_snapshot-a i kasniju obradu queued row-a. |
+| P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi kroz sljedeće odvojene slice-ove: assessment report worker path za composite, Composite HR report contract/schema/provider sloj i renderer. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
 | P2        | Candidate dashboard CTA hover contrast | Završeno | Completed CTA više ne gubi kontrast na hoveru, a shared CTA hover/focus sistem je usklađen za sve candidate dashboard kartice. | Zatvoreno nakon shared CTA hover/focus contrast fixa u candidate dashboard karticama. |
 | P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
@@ -1117,25 +1164,25 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Composite input builder iz deterministic score rezultata
-2. Assessment report worker path za composite
-3. Composite HR report contract/schema/provider
-4. Composite HR report renderer
-5. Assignment-aware dashboard model za nove assessment cikluse
-6. Worker/report auto-processing orchestration
-7. Oblik obraćanja: muški/ženski jezički oblik
-8. Report visual language po testovima
-9. SAFRAN novi stimulus asseti
-10. Login screen UI polish
+1. Assessment report worker path za composite
+2. Composite HR report contract/schema/provider
+3. Composite HR report renderer
+4. Assignment-aware dashboard model za nove assessment cikluse
+5. Worker/report auto-processing orchestration
+6. Oblik obraćanja: muški/ženski jezički oblik
+7. Report visual language po testovima
+8. SAFRAN novi stimulus asseti
+9. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
 * Non-blocking autosave za IPIP/MWMS Likert flow je završen i uklonio je najveće trenutno UX usporenje tokom rješavanja testova.
 * Manual composite generate/retry queue flow je završen.
-* HR sada može kreirati ili resetovati `assessment_reports` row u `queued`, ali queued row se još ne obrađuje.
-* Sljedeći najmanji sigurni korak je composite input builder iz deterministic score rezultata.
-* Worker se još ne uvodi dok ne znamo tačan `input_snapshot`.
-* AI generation/provider sloj i renderer dolaze tek nakon input buildera i assessment report worker path-a.
+* Composite input builder iz deterministic score rezultata je završen.
+* Sistem sada ima definisan `input_snapshot` ugovor za budući Composite HR report.
+* Sljedeći najmanji sigurni korak je assessment report worker path za composite.
+* Worker treba koristiti composite input builder da popuni `input_snapshot` i kasnije pripremi obradu queued `assessment_reports` row-a.
+* AI generation/provider sloj i renderer dolaze tek nakon što worker path i input snapshot lifecycle budu stabilni.
 * Composite HR report V1 se i dalje implementira kroz odvojene slice-ove, ne kao jedan veliki task.
 * Assignment-aware dashboard model je poseban budući task jer trenutni dashboard read path i dalje radi attempt-based.
 * Worker/report auto-processing orchestration ostaje tech debt, ali nije prvi sljedeći task.
@@ -1172,6 +1219,15 @@ Razlog za sljedeći prioritet:
 
 ### 5.17 Composite readiness i assessment_reports politika
 
+* Composite input builder je deterministic source-of-truth sloj između score rezultata i buduće AI interpretacije.
+* Builder koristi samo linked `required_for_composite` attempts iz istog assignment ciklusa.
+* Builder ne koristi historical completed attempts kao fallback.
+* Builder ne koristi `attempt_reports`.
+* Builder ne koristi pojedinačne AI report narrative kao primary source.
+* Builder mora sadržati source attempt reference za svaki instrument.
+* Builder mora sadržati deterministic score/band/label podatke za IPIP, SAFRAN i MWMS.
+* Builderovi summary signals moraju biti neutralni i traceable na score podatke.
+* AI kasnije smije interpretirati input, ali ne smije mijenjati score vrijednosti, bandove ili source attempts.
 * Composite HR report ne koristi `attempt_reports`.
 * Composite HR report koristi assessment-level storage kroz `assessment_reports`.
 * `assessment_reports` je HR-only artefakt u V1.
@@ -1278,7 +1334,7 @@ Razlog za sljedeći prioritet:
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
-| P1        | Composite report generation pipeline | Manual generate/retry queue flow sada postoji i može kreirati/resetovati `assessment_reports` row u `queued`, ali nema obrade queued row-a. I dalje nedostaju composite input builder, assessment report worker path, contract/schema/provider sloj, AI generation i renderer. | Sljedeći tehnički korak je definisati deterministic `input_snapshot` kroz composite input builder prije worker-a i AI providera. |
+| P1        | Composite report generation pipeline | Composite input builder sada postoji i definiše deterministic `input_snapshot`, ali još nije povezan na worker. I dalje nedostaju assessment report worker path, contract/schema/provider sloj, AI generation i renderer. | Sljedeći tehnički korak je worker path koji će claim/process queued `assessment_reports` row i koristiti composite input builder za `input_snapshot`, bez refaktorisanja postojećeg attempt report pipeline-a više nego što je potrebno. |
 | P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. MWMS HR sada koristi postojeći worker i capability-driven chain, ali šira orchestration strategija i dalje nije riješena. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
@@ -1351,6 +1407,40 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-12 — Composite input builder iz deterministic score rezultata uveden
+
+Završeno:
+
+* uveden `lib/assessment/composite-input.ts`
+* dodan deterministic composite input builder za budući Composite HR report
+* dodan `scripts/test-composite-input-builder.cjs`
+* builder gradi stable `input_snapshot`
+* snapshot uključuje assignment metadata, source attempt references, coverage, deterministicInputs, summarySignals, guardrails i metadata
+* IPIP input uključuje domain/facet score podatke
+* SAFRAN input uključuje overall/verbal/figural/numeric deterministic score podatke
+* MWMS input uključuje svih 6 dimension score vrijednosti i motivation structure signale
+* builder koristi samo linked required attempts iz istog assessment assignment ciklusa
+* historical completed attempts nisu fallback
+* `attempt_reports` se ne čita kao source
+* pojedinačni AI report narrative se ne koristi kao primary source
+* summary signals su neutralni i deterministic
+* typecheck i relevantni script testovi prolaze
+
+Odluke:
+
+* Composite AI input se gradi iz deterministic score rezultata, ne iz pojedinačnih AI reporta.
+* `input_snapshot` mora sadržati traceable source attempt IDs.
+* AI kasnije ne smije računati ili mijenjati score/band vrijednosti.
+* Composite input builder nije worker.
+* Queued `assessment_reports` row se još ne obrađuje.
+* Worker, provider, contract/schema i renderer ostaju zasebni slice-ovi.
+
+Racionala:
+
+* Prije worker-a i AI generation-a mora biti jasno šta je source of truth za Composite HR report.
+* Builder sprečava da budući composite provider improvizuje input ili miješa pokušaje iz različitih ciklusa.
+* Deterministic `input_snapshot` postaje ugovor između score rezultata i buduće AI interpretacije.
 
 ### 2026-05-12 — Manual composite generate/retry queue flow uveden
 
