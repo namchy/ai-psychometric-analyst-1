@@ -12,8 +12,15 @@ import { CompletedAssessmentSummary } from "@/components/assessment/completed-as
 import { ReportGenerationLoadingScreen } from "@/components/assessment/report-generation-loading-screen";
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState, isQuestionAnswered } from "@/lib/assessment/completion";
+import { IPIP_NEO_120_TEST_SLUG } from "@/lib/assessment/ipip-neo-120-labels";
 import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
 import { MWMS_V1_TEST_SLUG } from "@/lib/assessment/mwms-scoring";
+import {
+  clearPendingSelections,
+  readPendingSelections,
+  removeFlushedSelections,
+  upsertPendingSelection,
+} from "@/lib/assessment/pending-autosave";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import {
   DEFAULT_ASSESSMENT_LOCALE,
@@ -28,6 +35,7 @@ import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
 
 type AssessmentFormProps = {
   executionMode?: "public" | "protected";
+  runContext?: "candidate" | "hr" | "public";
   layoutMode?: "classic" | "step";
   completionRedirectPath?: string | null;
   assessmentDisplayName?: string | null;
@@ -48,7 +56,9 @@ type AssessmentFormProps = {
 type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
 type SaveStatus = "idle" | "saving" | "saved" | "completing" | "completed" | "error";
 type ProtectedCompletionUiPhase = "processing" | "redirecting" | null;
+type PendingAutosaveStatus = "idle" | "saving" | "saved" | "error";
 const MANUAL_SAVE_SUCCESS_DURATION_MS = 1600;
+const PENDING_AUTOSAVE_DEBOUNCE_MS = 250;
 const MWMS_SHARED_STEM = "Zašto ulažeš trud u svoj posao?";
 const MWMS_REASON_LABEL = "Mogući razlog";
 const MWMS_SCALE_INSTRUCTION = "U kojoj mjeri se ovaj razlog odnosi na tebe?";
@@ -197,6 +207,26 @@ function getLikertAssessmentCode(assessmentDisplayName?: string | null): string 
 
 function isMwmsAssessmentSlug(slug: string | null | undefined): boolean {
   return slug === MWMS_V1_TEST_SLUG;
+}
+
+function isNonBlockingLikertAutosaveSlug(slug: string | null | undefined): boolean {
+  return slug === IPIP_NEO_120_TEST_SLUG || slug === MWMS_V1_TEST_SLUG;
+}
+
+function getPendingAutosaveMessage(status: PendingAutosaveStatus, hasPendingSelections: boolean): string | null {
+  if (status === "saving") {
+    return "Spremam odgovore…";
+  }
+
+  if (status === "saved") {
+    return "Odgovori su spremljeni";
+  }
+
+  if (status === "error" || hasPendingSelections) {
+    return "Neki odgovori još nisu sinhronizovani";
+  }
+
+  return null;
 }
 
 function parseNumericSequenceQuestionText(text: string): { prompt: string; tokens: string[] } | null {
@@ -1268,6 +1298,12 @@ function AssessmentDashboardSkinStyles() {
         color: rgb(190, 24, 93);
       }
 
+      .assessment-run-page--dashboard-skin .assessment-inline-message--muted {
+        border-color: rgba(148, 163, 184, 0.24);
+        background: rgba(248, 250, 252, 0.92);
+        color: rgb(71, 85, 105);
+      }
+
       .assessment-run-page--dashboard-skin .button-secondary,
       .assessment-run-page--dashboard-skin .assessment-step-actions__button--ghost,
       .assessment-run-page--dashboard-skin .assessment-step-actions__button--save {
@@ -1592,6 +1628,7 @@ function AssessmentDashboardSkinStyles() {
 
 export function AssessmentForm({
   executionMode = "public",
+  runContext = "public",
   layoutMode = "classic",
   completionRedirectPath = null,
   assessmentDisplayName = null,
@@ -1632,10 +1669,15 @@ export function AssessmentForm({
     useState<ProtectedCompletionUiPhase>(null);
   const [stepValidationMessage, setStepValidationMessage] = useState<string | null>(null);
   const requestInFlightRef = useRef(false);
+  const pendingFlushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingFlushInFlightRef = useRef(false);
+  const isHydratingPendingSelectionsRef = useRef(false);
   const manualSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const numericInputRef = useRef<HTMLInputElement | null>(null);
   const effectiveSelections = getEffectiveSelections(selections);
   const [showManualSaveSuccess, setShowManualSaveSuccess] = useState(false);
+  const [pendingAutosaveStatus, setPendingAutosaveStatus] = useState<PendingAutosaveStatus>("idle");
+  const [hasPendingAutosaveSelections, setHasPendingAutosaveSelections] = useState(false);
 
   const isCompleted = attemptStatus === "completed";
   const isBusy = saveStatus === "saving" || saveStatus === "completing";
@@ -1656,6 +1698,13 @@ export function AssessmentForm({
   const progressPercent =
     questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
   const isInteractionLocked = isBusy || requestInFlightRef.current;
+  const isProtectedCandidateRun = executionMode === "protected" && runContext === "candidate";
+  const isEligibleNonBlockingLikertTest =
+    isProtectedCandidateRun && isNonBlockingLikertAutosaveSlug(testSlug);
+  const pendingAutosaveMessage = getPendingAutosaveMessage(
+    pendingAutosaveStatus,
+    hasPendingAutosaveSelections,
+  );
 
   function clearManualSaveSuccessFeedback() {
     if (manualSaveResetTimeoutRef.current) {
@@ -1676,6 +1725,10 @@ export function AssessmentForm({
   }
 
   useEffect(() => () => {
+    if (pendingFlushTimeoutRef.current) {
+      clearTimeout(pendingFlushTimeoutRef.current);
+    }
+
     if (manualSaveResetTimeoutRef.current) {
       clearTimeout(manualSaveResetTimeoutRef.current);
     }
@@ -1684,6 +1737,47 @@ export function AssessmentForm({
   useEffect(() => {
     clearManualSaveSuccessFeedback();
   }, [currentQuestionIndex, currentQuestion?.id]);
+
+  useEffect(() => {
+    if (!isEligibleNonBlockingLikertTest || !attemptId || isCompleted) {
+      setHasPendingAutosaveSelections(false);
+      setPendingAutosaveStatus("idle");
+      return;
+    }
+
+    const pendingSelections = readPendingSelections(attemptId);
+    const pendingSelectionCount = Object.keys(pendingSelections).length;
+
+    if (pendingSelectionCount === 0) {
+      setHasPendingAutosaveSelections(false);
+      return;
+    }
+
+    isHydratingPendingSelectionsRef.current = true;
+
+    const mergedSelections = {
+      ...initialSelections,
+      ...pendingSelections,
+    };
+
+    setSelections((currentSelections) => ({
+      ...currentSelections,
+      ...pendingSelections,
+    }));
+    setCurrentQuestionIndex(getInitialQuestionIndex(questions, mergedSelections));
+    setHasPendingAutosaveSelections(true);
+    setPendingAutosaveStatus("error");
+
+    const hydrationResetTimer = window.setTimeout(() => {
+      isHydratingPendingSelectionsRef.current = false;
+      void flushPendingSelections();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(hydrationResetTimer);
+      isHydratingPendingSelectionsRef.current = false;
+    };
+  }, [attemptId, initialSelections, isCompleted, isEligibleNonBlockingLikertTest, questions]);
 
   useEffect(() => {
     if (
@@ -1702,6 +1796,116 @@ export function AssessmentForm({
       window.clearTimeout(focusTimer);
     };
   }, [isStepLayout, currentQuestion?.id, currentQuestion?.renderer_type, isInteractionLocked]);
+
+  async function flushPendingSelections(): Promise<boolean> {
+    if (!isEligibleNonBlockingLikertTest || !attemptId || isCompleted) {
+      return true;
+    }
+
+    if (pendingFlushTimeoutRef.current) {
+      clearTimeout(pendingFlushTimeoutRef.current);
+      pendingFlushTimeoutRef.current = null;
+    }
+
+    if (pendingFlushInFlightRef.current) {
+      await new Promise((resolve) => {
+        const waitForFlush = () => {
+          if (!pendingFlushInFlightRef.current) {
+            resolve(undefined);
+            return;
+          }
+
+          window.setTimeout(waitForFlush, 50);
+        };
+
+        waitForFlush();
+      });
+
+      return flushPendingSelections();
+    }
+
+    const pendingSelections = readPendingSelections(attemptId);
+
+    if (Object.keys(pendingSelections).length === 0) {
+      setHasPendingAutosaveSelections(false);
+      if (pendingAutosaveStatus === "saving") {
+        setPendingAutosaveStatus("saved");
+      }
+      return true;
+    }
+
+    pendingFlushInFlightRef.current = true;
+    setPendingAutosaveStatus("saving");
+    setHasPendingAutosaveSelections(true);
+
+    try {
+      const result = await saveAction({
+        attemptId,
+        testId,
+        locale,
+        selections: pendingSelections,
+      });
+
+      if (!result.ok) {
+        setPendingAutosaveStatus("error");
+        return false;
+      }
+
+      setAttemptId(result.attemptId);
+      setAttemptStatus("in_progress");
+      setCompletedAt(null);
+      setResults(null);
+      setReportState(null);
+
+      const remainingSelections = removeFlushedSelections(result.attemptId, pendingSelections);
+      const hasRemainingSelections = Object.keys(remainingSelections).length > 0;
+
+      setHasPendingAutosaveSelections(hasRemainingSelections);
+      setPendingAutosaveStatus(hasRemainingSelections ? "error" : "saved");
+
+      return !hasRemainingSelections;
+    } catch {
+      setPendingAutosaveStatus("error");
+      return false;
+    } finally {
+      pendingFlushInFlightRef.current = false;
+    }
+  }
+
+  function schedulePendingSelectionsFlush() {
+    if (!isEligibleNonBlockingLikertTest || !attemptId || isCompleted) {
+      return;
+    }
+
+    if (pendingFlushTimeoutRef.current) {
+      clearTimeout(pendingFlushTimeoutRef.current);
+    }
+
+    pendingFlushTimeoutRef.current = setTimeout(() => {
+      pendingFlushTimeoutRef.current = null;
+      void flushPendingSelections();
+    }, PENDING_AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  useEffect(() => {
+    if (
+      !isEligibleNonBlockingLikertTest ||
+      !attemptId ||
+      isCompleted ||
+      !hasPendingAutosaveSelections ||
+      isHydratingPendingSelectionsRef.current
+    ) {
+      return;
+    }
+
+    schedulePendingSelectionsFlush();
+  }, [
+    attemptId,
+    hasPendingAutosaveSelections,
+    isCompleted,
+    isEligibleNonBlockingLikertTest,
+    selections,
+  ]);
 
   async function persistSelections(
     nextSelections: SelectionState,
@@ -1769,6 +1973,18 @@ export function AssessmentForm({
       return;
     }
 
+    if (isEligibleNonBlockingLikertTest) {
+      const didFlushPendingSelections = await flushPendingSelections();
+
+      if (!didFlushPendingSelections) {
+        setSaveStatus("error");
+        setSaveMessage(
+          "Nismo uspjeli sinhronizovati sve odgovore prije završetka. Pokušajte ponovo za nekoliko trenutaka.",
+        );
+        return;
+      }
+    }
+
     requestInFlightRef.current = true;
     setSaveStatus("completing");
     setSaveMessage(null);
@@ -1794,6 +2010,9 @@ export function AssessmentForm({
       setCompletedAt(result.completedAt);
       setResults(result.results);
       setReportState(result.report);
+      clearPendingSelections(result.attemptId);
+      setHasPendingAutosaveSelections(false);
+      setPendingAutosaveStatus("idle");
       setSaveStatus("completed");
       setSaveMessage(result.message);
 
@@ -1832,6 +2051,26 @@ export function AssessmentForm({
 
     const nextSelections = updateSelection(currentQuestion.id, optionId);
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
+    const currentQuestionOptions = answerOptionsByQuestionId[currentQuestion.id] ?? [];
+    const shouldUseNonBlockingAutosave =
+      isEligibleNonBlockingLikertTest &&
+      !!attemptId &&
+      isLikertScaleQuestion(currentQuestion, currentQuestionOptions) &&
+      !isLastQuestion;
+
+    if (shouldUseNonBlockingAutosave) {
+      setSelections(nextSelections);
+
+      if (attemptId) {
+        upsertPendingSelection(attemptId, currentQuestion.id, optionId);
+        setHasPendingAutosaveSelections(true);
+        setPendingAutosaveStatus("saving");
+      }
+
+      setCurrentQuestionIndex((currentIndex) => Math.min(currentIndex + 1, questions.length - 1));
+      return;
+    }
+
     const didSave = await persistSelections(nextSelections, {
       selections: getQuestionSelectionDelta(nextSelections, currentQuestion.id),
     });
@@ -1880,6 +2119,17 @@ export function AssessmentForm({
       }
 
       await handleComplete();
+      return;
+    }
+
+    const currentQuestionOptions = answerOptionsByQuestionId[currentQuestion.id] ?? [];
+    const shouldUseNonBlockingAutosave =
+      isEligibleNonBlockingLikertTest &&
+      !!attemptId &&
+      isLikertScaleQuestion(currentQuestion, currentQuestionOptions);
+
+    if (shouldUseNonBlockingAutosave) {
+      setCurrentQuestionIndex((currentIndex) => Math.min(currentIndex + 1, questions.length - 1));
       return;
     }
 
@@ -2294,6 +2544,11 @@ export function AssessmentForm({
           </section>
 
           <div className="assessment-step-layout__footer">
+            {pendingAutosaveMessage ? (
+              <p className="assessment-inline-message assessment-inline-message--muted">
+                {pendingAutosaveMessage}
+              </p>
+            ) : null}
             <div className="assessment-step-layout__actions-row">
               <div className="assessment-step-layout__actions-secondary">
                 <button

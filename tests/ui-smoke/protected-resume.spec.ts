@@ -252,3 +252,47 @@ test("protected IPIP back navigation preserves visibly selected answers", async 
     await fixture.cleanup();
   }
 });
+
+test("protected candidate run hydrates pending local selections before server resume state", async ({
+  page,
+}) => {
+  const fixture = await prepareProtectedResumeAttempt();
+
+  try {
+    await loginForDashboard(page, "candidate");
+    await page.goto("/app");
+
+    await page.evaluate(
+      ({ attemptId, pendingSelections }) => {
+        window.localStorage.setItem(
+          `assessment-pending:${attemptId}`,
+          JSON.stringify(pendingSelections),
+        );
+      },
+      {
+        attemptId: fixture.attemptId,
+        pendingSelections: fixture.questions.slice(0, 2).reduce<Record<string, string>>(
+          (selections, question, index) => {
+            const optionId = fixture.answerOptionIdsByQuestionId.get(question.id)?.[index + 1];
+
+            if (!optionId) {
+              throw new Error(`Missing answer option fixture for question ${question.id}.`);
+            }
+
+            selections[question.id] = optionId;
+            return selections;
+          },
+          {},
+        ),
+      },
+    );
+
+    await page.goto(`/app/attempts/${fixture.attemptId}/run`);
+    await expect(page.getByText("Pitanje 3 od")).toBeVisible();
+  } finally {
+    await page.evaluate((attemptId) => {
+      window.localStorage.removeItem(`assessment-pending:${attemptId}`);
+    }, fixture.attemptId);
+    await fixture.cleanup();
+  }
+});

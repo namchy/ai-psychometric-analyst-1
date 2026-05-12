@@ -53,6 +53,7 @@ export default async function ProtectedAttemptRunPage({
       <section className="assessment-run-shell">
         <AssessmentForm
           executionMode="protected"
+          runContext="hr"
           layoutMode="step"
           completionRedirectPath={`/dashboard/attempts/${attempt.id}`}
           assessmentDisplayName={runPageData.assessmentName}

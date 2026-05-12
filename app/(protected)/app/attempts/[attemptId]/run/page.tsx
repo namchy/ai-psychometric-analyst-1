@@ -92,6 +92,7 @@ export default async function CandidateAttemptRunPage({
         <div className="grid gap-6">
           <AssessmentForm
             executionMode="protected"
+            runContext="candidate"
             layoutMode="step"
             completionRedirectPath={`/app/attempts/${attempt.id}/report`}
             assessmentDisplayName={runPageData.assessmentName}
