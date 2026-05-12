@@ -54,7 +54,8 @@ Komande:
 | P1        | IPIP HR report content contract V2                  | Završeno    | HR report / IPIP / Content contract | Zatvoreno nakon prelaska na `ipip_neo_120_hr_v2`, HR-operativni content shape i display fallback za legacy V1 snapshotove. |
 | P1        | MWMS HR report V1                                   | Završeno    | HR report / MWMS             | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI provider routinga, renderer-a, capability aktivacije, worker podrške, status/recovery ponašanja, prompt aktivacije i realnog DB lifecycle/OpenAI smoke-a. |
 | P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Završeno | Assessment UX / Persistence  | Zatvoreno nakon candidate-only non-blocking autosave slice-a za IPIP/MWMS Likert auto-advance flow, uz React state, localStorage pending queue, background flush i blocking final submit flush. |
-| P1        | Composite HR report data model decision             | Planirano   | Architecture / HR report storage | Odlučiti da li composite HR report ide kroz privremeni `attempt_reports` bridge ili kroz novi `assessment_reports` / assessment-level model. |
+| P1        | Assessment assignment ownership za standard battery | Završeno    | Architecture / Assessment ownership | Zatvoreno kao compatibility slice nakon uvođenja `assessment_assignments` i `assessment_assignment_attempts`, uz linkovanje samo novokreiranih attempts i zadržavanje attempt-based dashboard read patha. |
+| P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Sljedeće je composite readiness / `assessment_reports` storage odluka. |
 | P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
@@ -838,7 +839,43 @@ Audit je pokazao da je attempt_reports upotrebljiv za single-test HR reportove, 
 - odluka ne veže dugoročno composite report za nasumični attempt bez eksplicitne racionalizacije
 - nakon odluke može se pisati implementation prompt za Composite HR report V1
 
+**Completion note:**  
+Donesena je odluka da se Composite HR report ne sprema u `attempt_reports`, jer composite ne pripada prirodno jednom `attempt_id`. `attempt_reports` ostaje za single-test participant/HR reportove. Kao prvi assessment-level ownership compatibility slice uvedene su tabele `assessment_assignments` i `assessment_assignment_attempts`. HR standard battery create flow sada kreira assessment assignment ciklus i linkuje samo attempts koji su stvarno novokreirani u tom flow-u. Existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test dok dashboard ostaje attempt-based. Historical completed attempts se ne linkuju u novi assignment. Prethodni active standard_battery assignment se abandonuje, a novi assignment se cleanup-uje u `cancelled` ako flow pukne nakon njegovog kreiranja. `assessment_reports`, Composite HR report generation, scoring, report pipeline, `attempt_reports` i dashboard read path nisu mijenjani. Fresh attempts za već completed testove i puni assignment-first dashboard model ostaju budući task.
+
 ---
+
+### P1 — Assessment assignment ownership za standard battery
+
+**Status:** Završeno  
+**Kategorija:** Architecture / Assessment ownership / Standard battery
+
+**Problem / context:**  
+Standardna procjena kandidata se ranije implicitno modelirala kao skup IPIP/SAFRAN/MWMS attemptova bez parent entiteta. To je bilo dovoljno za single-test reportove, ali nije dobar temelj za Composite HR report jer composite ne pripada jednom attemptu. Trebao je minimalni assessment-level ownership sloj koji uvodi procjenski ciklus bez prebacivanja dashboarda i report pipeline-a na novi model u istom slice-u.
+
+**Scope:**
+- dodati `assessment_assignments`
+- dodati `assessment_assignment_attempts`
+- dodati helper sloj za kreiranje standard battery assignmenta i linkova
+- povezati HR standard battery create flow sa assignment ownership modelom
+- linkovati samo attempts koji su stvarno novokreirani u tom flow-u
+- zadržati existing completed attempt guard dok dashboard ostaje attempt-based
+- ne raditi historical backfill
+- ne uvoditi `assessment_reports`
+- ne implementirati Composite HR report
+- ne mijenjati `attempt_reports`, scoring, report pipeline ili dashboard read path
+
+**Acceptance criteria:**
+- HR standard battery create flow kreira `assessment_assignments` red za novi standard_battery ciklus
+- novokreirani attempts se linkuju u `assessment_assignment_attempts`
+- existing completed attempts se ne linkuju u novi assignment
+- existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u ovom compatibility slice-u
+- prethodni active standard_battery assignment prelazi u `abandoned`
+- ako flow pukne nakon kreiranja assignmenta, novi assignment se označava kao `cancelled`
+- dashboard i single-test reportovi nastavljaju raditi attempt-based
+- model ne pretpostavlja tačno tri testa i ostavlja prostor za budući team-fit/DATCH test
+
+**Completion note:**  
+Završeno kao prvi assessment-level ownership compatibility slice. Dodane su migracije za `assessment_assignments` i `assessment_assignment_attempts`, uveden je `lib/assessment/assignments.ts`, a HR standard battery create flow sada kreira parent assignment i linkuje samo novokreirane attempts. Existing completed attempts se ne reuse-aju kao linkovi u novi assignment i i dalje blokiraju kreiranje novog praznog attempta za isti test dok dashboard ostaje attempt-based. Prethodni active assignment se abandonuje, a novi assignment se cleanup-uje u `cancelled` ako flow pukne nakon njegovog kreiranja. `attempt_reports`, `assessment_reports`, Composite HR report generation, scoring, report pipeline i dashboard read path nisu mijenjani. `npm run typecheck`, `node scripts/test-assessment-assignments.cjs`, `node scripts/test-standard-assessment-battery.cjs` i `node scripts/test-attempt-lifecycle.cjs` prolaze.
 
 ### P1 — Composite HR report V1
 
@@ -894,7 +931,8 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 | P1        | IPIP HR report content contract V2 | Završeno | IPIP HR report je prešao na HR-operativni `ipip_neo_120_hr_v2` contract uz legacy display fallback. | Zatvoreno nakon schema/provider/mock/validator V2 shape-a i realnog smoke-a. |
 | P1        | MWMS HR report V1         | Završeno | MWMS sada ima i active HR single-test lane uz potvrđen realni DB lifecycle i OpenAI smoke. | Zatvoreno nakon realnog DB lifecycle-a i OpenAI smoke-a. |
 | P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Završeno | Trenutni DB-first blocking persistence je uklonjen za candidate IPIP/MWMS Likert auto-advance flow kroz uski autosave slice. | Zatvoreno nakon candidate-only IPIP/MWMS Likert autosave slice-a sa immediate React state update-om, localStorage pending queue-om, background flushom i blocking final submit flushom. |
-| P1        | Composite HR report data model decision | Planirano | Composite HR report nema prirodan jedan attempt_id i traži storage odluku prije implementacije. | Procijeniti `attempt_reports` bridge naspram `assessment_reports` / assessment-level modela. |
+| P1        | Assessment assignment ownership za standard battery | Završeno | Standard battery sada ima prvi assessment-level parent ownership sloj kroz `assessment_assignments` i `assessment_assignment_attempts`. | Nastaviti sa composite readiness / `assessment_reports` storage modelom, bez prebacivanja dashboarda na assignment-first dok ne bude zaseban task. |
+| P1        | Composite HR report data model decision | Završeno / Prvi slice implementiran | Composite HR report nema prirodan jedan attempt_id; donesena je odluka da ne ide u `attempt_reports`, a prvi ownership slice je uveden kroz `assessment_assignments` i `assessment_assignment_attempts`. | Sljedeće je composite readiness i `assessment_reports` storage model. |
 | P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
 | P2        | Candidate dashboard CTA hover contrast | Završeno | Completed CTA više ne gubi kontrast na hoveru, a shared CTA hover/focus sistem je usklađen za sve candidate dashboard kartice. | Zatvoreno nakon shared CTA hover/focus contrast fixa u candidate dashboard karticama. |
@@ -993,20 +1031,24 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Composite HR report data model decision
+1. Composite readiness / assessment_reports storage model
 2. Composite HR report V1
-3. Worker/report auto-processing orchestration
-4. Oblik obraćanja: muški/ženski jezički oblik
-5. Report visual language po testovima
-6. SAFRAN novi stimulus asseti
-7. Login screen UI polish
+3. Assignment-aware dashboard model za nove assessment cikluse
+4. Worker/report auto-processing orchestration
+5. Oblik obraćanja: muški/ženski jezički oblik
+6. Report visual language po testovima
+7. SAFRAN novi stimulus asseti
+8. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
 * Non-blocking autosave za IPIP/MWMS Likert flow je završen i uklonio je najveće trenutno UX usporenje tokom rješavanja testova.
-* Nakon završetka single-test HR lane-ova i autosave UX slice-a, Composite HR report data model decision je sada prvi sljedeći arhitektonski task.
-* Composite ne treba implementirati prije jasne odluke da li ide kroz privremeni attempt_reports bridge ili novi assessment-level model.
-* Worker/report auto-processing orchestration ostaje poseban tech debt jer queued job i dalje ne znači automatsku obradu bez worker procesa.
+* Composite HR report data model decision je donesena: composite ne ide u `attempt_reports`.
+* Prvi assessment-level ownership compatibility slice je implementiran kroz `assessment_assignments` i `assessment_assignment_attempts`.
+* Sljedeći arhitektonski korak je composite readiness i `assessment_reports` storage model.
+* Composite HR report V1 se ne implementira prije `assessment_reports` storage/readiness odluke.
+* Assignment-aware dashboard model je poseban budući task jer trenutni dashboard read path i dalje radi attempt-based.
+* Worker/report auto-processing orchestration ostaje tech debt, ali nije prvi sljedeći task.
 
 ### 5.14 Assessment autosave UX politika
 
@@ -1024,6 +1066,19 @@ Razlog za sljedeći prioritet:
 
 * U tehničkom razgovoru koristiti `reporti` kao množinu riječi report, ne `reportovi`.
 * U korisničkom UI-u preferirati `izvještaji` kada je prirodnije i jasnije.
+
+### 5.16 Assessment assignment ownership politika
+
+* `assessment_assignments` predstavlja jedan procjenski ciklus kandidata.
+* `assessment_assignment_attempts` povezuje taj ciklus sa attempts koji su stvarno kreirani u tom flow-u.
+* U ovom compatibility slice-u existing completed attempts se ne linkuju u novi assignment.
+* Existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test dok dashboard ostaje attempt-based.
+* Fresh attempts za već completed testove dolaze tek kada candidate/HR dashboard postane assignment-aware.
+* `attempt_reports` ostaje single-test report storage.
+* Composite HR report ne ide u `attempt_reports`.
+* Budući Composite HR report treba assessment-level storage, vjerovatno `assessment_reports`.
+* Model mora podržati budući četvrti/team-fit test bez promjene osnovne strukture.
+* Ne raditi agresivan historical backfill bez jasnog deterministic grouping pravila.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -1110,6 +1165,7 @@ Razlog za sljedeći prioritet:
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
 | P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. MWMS HR sada koristi postojeći worker i capability-driven chain, ali šira orchestration strategija i dalje nije riješena. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
+| P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
 | P2        | Attempt creation audit metadata | Novi attempti trenutno mogu imati metadata = {}, što otežava dijagnostiku izvora kreiranja attempta. | Dodati minimalni audit trag, npr. created_by_flow, source, created_by_user_id i reason, posebno za HR standard battery planner i candidate provisioning tokove. |
 | P2        | Branch features                 | Trenutno se radi na branchu `features`; main ostaje stabilan.                                | Ne mergati dok report/copy/pitanja nisu dotjerani. |
 | P2        | MWMS licenca                    | MWMS tehnički radi, ali komercijalni rollout zavisi od licencnog/pravno-poslovnog odobrenja. | Nije dev blocker, jeste produkcijski blocker.      |
@@ -1174,10 +1230,46 @@ Zaključak:
 | Composite report UI    | Dizajnirati poseban composite ekran, ne samo još jedan report. | Nakon definisanja composite input/schema.                         |
 | HR-facing MWMS report  | MWMS HR report — osnovni V1 je završen; parking lot zadržava kasnije napredne varijante kao role-specific MWMS guidance ili dublju organizacijsku interpretaciju. | Nakon osnovnog MWMS HR reporta V1 i active HR lane-a. |
 | Report visual language | Svaki test treba imati svoj prikladan vizuelni summary.        | Nakon zatvaranja addressing taska i definisanja narednog participant polish sloja. |
+| Team-fit / DATCH readiness | Assessment assignment model je namjerno fleksibilan i ne pretpostavlja tačno tri testa. Budući team-fit/DATCH test može se dodati kao dodatni linked attempt kroz `assessment_assignment_attempts`, uz `role_in_assignment` i `required_for_team_fit` signal. | Kada se bude planirao četvrti test ili team-fit sloj. |
 
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-12 — Assessment assignment ownership za standard battery uveden
+
+Završeno:
+
+* uveden `assessment_assignments` parent model za standard battery procjenski ciklus
+* uveden `assessment_assignment_attempts` link model za povezivanje assignmenta sa novokreiranim attempts
+* dodan server-only helper sloj `lib/assessment/assignments.ts`
+* HR standard battery create flow sada kreira assessment assignment
+* novokreirani IPIP/SAFRAN/MWMS attempts se linkuju u assignment kada su stvarno kreirani
+* prethodni active standard_battery assignment se označava kao `abandoned`
+* novi assignment se označava kao `cancelled` ako flow pukne nakon njegovog kreiranja
+* existing completed attempts se ne linkuju u novi assignment
+* existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test dok dashboard ostaje attempt-based
+* dodan helper test za assignment insert/link payload i standard battery plan compatibility
+* `typecheck`, assignment helper test, standard battery test i attempt lifecycle test prolaze
+
+Odluke:
+
+* Composite HR report ne ide u `attempt_reports`.
+* `attempt_reports` ostaje za single-test participant/HR reportove.
+* `assessment_assignments` je prvi parent ownership sloj za budući composite model.
+* `assessment_reports` se ne uvodi u ovom tasku.
+* Dashboard read path ostaje attempt-based u ovom slice-u.
+* Fresh attempts za već completed testove se odgađaju dok dashboard ne postane assignment-aware.
+* Historical attempts bez assignmenta ostaju podržani.
+* Ne radi se agresivan backfill.
+* Model ostaje fleksibilan za budući četvrti/team-fit test.
+
+Racionala:
+
+* Composite HR report nema prirodan jedan `attempt_id`, pa ga ne treba vezivati za nasumični IPIP/SAFRAN/MWMS attempt.
+* Prvi slice uvodi ownership bez razbijanja postojećeg candidate dashboarda i single-test reportova.
+* Compatibility režim sprečava da novi prazan attempt iz novog ciklusa bude sakriven iza starog completed attempta u attempt-based dashboard selection logici.
+* Assignment-first dashboard i `assessment_reports` storage su sljedeće zasebne arhitektonske stepenice.
 
 ### 2026-05-12 — Non-blocking autosave za IPIP/MWMS Likert flow završen
 
