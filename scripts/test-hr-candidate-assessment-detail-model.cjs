@@ -1004,6 +1004,8 @@ function main() {
     report: null,
   });
   assert.equal(noAssignmentCard.state, "no_assignment");
+  assert.equal(noAssignmentCard.cta.disabled, true);
+  assert.equal(noAssignmentCard.cta.action, null);
 
   const incompleteAssignment = buildCompositeAssignment("assignment-incomplete", participant1.id);
   const incompleteReadiness = buildCompositeReadinessFromLinkedAttempts([
@@ -1035,6 +1037,8 @@ function main() {
   });
   assert.equal(incompleteModel.compositeCard.state, "incomplete");
   assert.equal(incompleteModel.compositeCard.statusLabel, "Nije spremno");
+  assert.equal(incompleteModel.compositeCard.cta.disabled, true);
+  assert.equal(incompleteModel.compositeCard.cta.action, null);
 
   const partialCompatibilityAssignment = buildCompositeAssignment("assignment-partial", participant2.id);
   const partialReadiness = buildCompositeReadinessFromLinkedAttempts([
@@ -1076,6 +1080,7 @@ function main() {
     compositeReadiness: partialReadiness,
   });
   assert.equal(noFallbackModel.compositeCard.state, "incomplete");
+  assert.equal(noFallbackModel.compositeCard.cta.action, null);
 
   const noRequiredReadiness = buildCompositeReadinessFromLinkedAttempts([]);
   assert.equal(noRequiredReadiness.status, "no_required_components");
@@ -1087,6 +1092,7 @@ function main() {
     compositeReadiness: noRequiredReadiness,
   });
   assert.equal(noRequiredModel.compositeCard.state, "incomplete");
+  assert.equal(noRequiredModel.compositeCard.cta.action, null);
 
   const readyAssignment = buildCompositeAssignment("assignment-ready", participant4.id);
   const readyReadiness = buildCompositeReadinessFromLinkedAttempts([
@@ -1125,6 +1131,12 @@ function main() {
     compositeReadiness: readyReadiness,
   });
   assert.equal(readyToGenerateModel.compositeCard.state, "ready_to_generate");
+  assert.equal(readyToGenerateModel.compositeCard.cta.disabled, false);
+  assert.equal(readyToGenerateModel.compositeCard.cta.action, "generate_composite");
+  assert.equal(
+    readyToGenerateModel.compositeCard.cta.label,
+    "Generiši kompozitni HR izvještaj",
+  );
 
   const queuedCompositeModel = buildDetailModel({
     participant: participant4,
@@ -1140,6 +1152,9 @@ function main() {
     }),
   });
   assert.equal(queuedCompositeModel.compositeCard.state, "queued");
+  assert.equal(queuedCompositeModel.compositeCard.cta.disabled, true);
+  assert.equal(queuedCompositeModel.compositeCard.cta.action, null);
+  assert.equal(queuedCompositeModel.compositeCard.cta.label, "Čeka generisanje");
 
   const processingCompositeModel = buildDetailModel({
     participant: participant4,
@@ -1155,6 +1170,9 @@ function main() {
     }),
   });
   assert.equal(processingCompositeModel.compositeCard.state, "processing");
+  assert.equal(processingCompositeModel.compositeCard.cta.disabled, true);
+  assert.equal(processingCompositeModel.compositeCard.cta.action, null);
+  assert.equal(processingCompositeModel.compositeCard.cta.label, "Generiše se");
 
   const readyCompositeModel = buildDetailModel({
     participant: participant4,
@@ -1170,6 +1188,9 @@ function main() {
     }),
   });
   assert.equal(readyCompositeModel.compositeCard.state, "ready");
+  assert.equal(readyCompositeModel.compositeCard.cta.disabled, true);
+  assert.equal(readyCompositeModel.compositeCard.cta.action, null);
+  assert.equal(readyCompositeModel.compositeCard.cta.label, "Pregled dolazi uskoro");
 
   const failedCompositeModel = buildDetailModel({
     participant: participant4,
@@ -1187,6 +1208,9 @@ function main() {
     }),
   });
   assert.equal(failedCompositeModel.compositeCard.state, "failed");
+  assert.equal(failedCompositeModel.compositeCard.cta.disabled, false);
+  assert.equal(failedCompositeModel.compositeCard.cta.action, "retry_composite");
+  assert.equal(failedCompositeModel.compositeCard.cta.label, "Ponovo generiši");
 
   console.log("HR candidate assessment detail model tests passed.");
 }

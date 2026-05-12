@@ -19,6 +19,10 @@ import {
   recoverHrAttemptReport,
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
+import {
+  createQueuedCompositeAssessmentReport,
+  retryFailedCompositeAssessmentReport,
+} from "@/lib/assessment/assessment-reports";
 import type { PostCompletionReportLanePlan } from "@/lib/assessment/report-capabilities";
 import { claimNextReportJob, processClaimedReportJob } from "@/lib/assessment/report-job-worker";
 import {
@@ -819,6 +823,131 @@ export async function recoverHrCandidateAttemptReport(formData: FormData) {
       errorMessage: error instanceof Error ? error.message : String(error),
     });
     redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+  }
+}
+
+export async function generateCompositeHrReportAction(formData: FormData) {
+  const participantId = String(formData.get("participantId") ?? "").trim();
+  const assessmentAssignmentId = String(formData.get("assessmentAssignmentId") ?? "").trim();
+  const fallbackPath = participantId
+    ? `/dashboard/participants/${participantId}/reports`
+    : "/dashboard";
+
+  try {
+    const user = await requireAuthenticatedUser();
+    const organization = await getActiveOrganizationForUser(user.id);
+
+    if (!organization || !participantId || !assessmentAssignmentId) {
+      redirect(`${fallbackPath}?error=composite-create-failed`);
+    }
+
+    const participant = await getParticipantForOrganization(organization.id, participantId);
+
+    if (!participant) {
+      redirect(`${fallbackPath}?error=composite-create-failed`);
+    }
+
+    const canonicalReturnPath = `/dashboard/participants/${participant.id}/reports`;
+
+    const result = await createQueuedCompositeAssessmentReport({
+      organizationId: organization.id,
+      participantId: participant.id,
+      assessmentAssignmentId,
+      requestedByUserId: user.id,
+    });
+
+    revalidatePath(`/dashboard/participants/${participant.id}/reports`);
+
+    if (result.action === "queued") {
+      redirect(`${canonicalReturnPath}?success=composite-queued`);
+    }
+
+    if (result.action === "noop_not_ready") {
+      redirect(`${canonicalReturnPath}?error=composite-not-ready`);
+    }
+
+    if (result.action === "noop_ready") {
+      redirect(`${canonicalReturnPath}?success=composite-already-ready`);
+    }
+
+    if (result.action === "noop_failed") {
+      redirect(`${canonicalReturnPath}?success=composite-retry-required`);
+    }
+
+    redirect(`${canonicalReturnPath}?success=composite-already-queued`);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error("generateCompositeHrReportAction failed", {
+      participantId,
+      assessmentAssignmentId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    redirect(`${fallbackPath}?error=composite-create-failed`);
+  }
+}
+
+export async function retryCompositeHrReportAction(formData: FormData) {
+  const participantId = String(formData.get("participantId") ?? "").trim();
+  const assessmentAssignmentId = String(formData.get("assessmentAssignmentId") ?? "").trim();
+  const assessmentReportId = String(formData.get("assessmentReportId") ?? "").trim();
+  const fallbackPath = participantId
+    ? `/dashboard/participants/${participantId}/reports`
+    : "/dashboard";
+
+  try {
+    const user = await requireAuthenticatedUser();
+    const organization = await getActiveOrganizationForUser(user.id);
+
+    if (!organization || !participantId || !assessmentAssignmentId) {
+      redirect(`${fallbackPath}?error=composite-retry-failed`);
+    }
+
+    const participant = await getParticipantForOrganization(organization.id, participantId);
+
+    if (!participant) {
+      redirect(`${fallbackPath}?error=composite-retry-failed`);
+    }
+
+    const canonicalReturnPath = `/dashboard/participants/${participant.id}/reports`;
+
+    const result = await retryFailedCompositeAssessmentReport({
+      organizationId: organization.id,
+      participantId: participant.id,
+      assessmentAssignmentId,
+      assessmentReportId: assessmentReportId || null,
+      requestedByUserId: user.id,
+    });
+
+    revalidatePath(`/dashboard/participants/${participant.id}/reports`);
+
+    if (result.action === "queued") {
+      redirect(`${canonicalReturnPath}?success=composite-queued`);
+    }
+
+    if (result.action === "noop_not_ready") {
+      redirect(`${canonicalReturnPath}?error=composite-not-ready`);
+    }
+
+    if (result.action === "noop_ready") {
+      redirect(`${canonicalReturnPath}?success=composite-already-ready`);
+    }
+
+    redirect(`${canonicalReturnPath}?success=composite-already-queued`);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error("retryCompositeHrReportAction failed", {
+      participantId,
+      assessmentAssignmentId,
+      assessmentReportId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    redirect(`${fallbackPath}?error=composite-retry-failed`);
   }
 }
 

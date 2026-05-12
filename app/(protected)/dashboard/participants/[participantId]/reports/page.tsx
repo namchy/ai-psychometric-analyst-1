@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { recoverHrCandidateAttemptReport } from "@/app/actions/assessment";
+import {
+  generateCompositeHrReportAction,
+  recoverHrCandidateAttemptReport,
+  retryCompositeHrReportAction,
+} from "@/app/actions/assessment";
 import {
   AuthenticatedAppMainContent,
 } from "@/components/app/authenticated-app-chrome";
@@ -34,6 +38,8 @@ type CandidateReportsPageProps = {
   searchParams?: {
     reportRecovery?: string;
     target?: string;
+    success?: string;
+    error?: string;
   };
 };
 
@@ -106,6 +112,56 @@ function getReportRecoveryMessage(searchParams?: CandidateReportsPageProps["sear
   }
 }
 
+function getCompositeQueueMessage(searchParams?: CandidateReportsPageProps["searchParams"]): {
+  tone: "success" | "neutral" | "error";
+  body: string;
+} | null {
+  switch (searchParams?.success) {
+    case "composite-queued":
+      return {
+        tone: "success",
+        body: "Kompozitni HR izvještaj je dodat u red za generisanje.",
+      };
+    case "composite-already-queued":
+      return {
+        tone: "neutral",
+        body: "Kompozitni HR izvještaj je već u redu za generisanje ili se već priprema.",
+      };
+    case "composite-already-ready":
+      return {
+        tone: "neutral",
+        body: "Kompozitni HR izvještaj je već spreman.",
+      };
+    case "composite-retry-required":
+      return {
+        tone: "neutral",
+        body: "Kompozitni HR izvještaj je pao pri zadnjem generisanju. Koristite ponovno generisanje.",
+      };
+    default:
+      break;
+  }
+
+  switch (searchParams?.error) {
+    case "composite-not-ready":
+      return {
+        tone: "error",
+        body: "Kompozitni HR izvještaj se može staviti u red tek kada su svi potrebni testovi završeni u istom ciklusu.",
+      };
+    case "composite-create-failed":
+      return {
+        tone: "error",
+        body: "Dodavanje kompozitnog HR izvještaja u red nije uspjelo. Pokušajte ponovo.",
+      };
+    case "composite-retry-failed":
+      return {
+        tone: "error",
+        body: "Ponovno dodavanje kompozitnog HR izvještaja u red nije uspjelo. Pokušajte ponovo.",
+      };
+    default:
+      return null;
+  }
+}
+
 export default async function CandidateReportsPage({
   params,
   searchParams,
@@ -152,6 +208,7 @@ export default async function CandidateReportsPage({
     compositeReport,
   });
   const recoveryMessage = getReportRecoveryMessage(searchParams);
+  const compositeQueueMessage = getCompositeQueueMessage(searchParams);
 
   return (
     <AuthenticatedAppMainContent
@@ -342,6 +399,20 @@ export default async function CandidateReportsPage({
           />
 
           <DashboardInfoCardShell className="mt-6 rounded-[1.4rem] border-slate-200/80 p-5">
+            {compositeQueueMessage ? (
+              <div
+                className={`mb-4 rounded-[1.2rem] border px-4 py-3 text-sm ${
+                  compositeQueueMessage.tone === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : compositeQueueMessage.tone === "error"
+                      ? "border-rose-200 bg-rose-50 text-rose-800"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                }`}
+              >
+                {compositeQueueMessage.body}
+              </div>
+            ) : null}
+
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -359,9 +430,42 @@ export default async function CandidateReportsPage({
                 </p>
               </div>
 
-              <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                {model.compositeCard.cta.label}
-              </span>
+              {model.compositeCard.cta.action && !model.compositeCard.cta.disabled ? (
+                <form
+                  action={
+                    model.compositeCard.cta.action === "generate_composite"
+                      ? generateCompositeHrReportAction
+                      : retryCompositeHrReportAction
+                  }
+                >
+                  <input name="participantId" type="hidden" value={participant.id} />
+                  <input
+                    name="assessmentAssignmentId"
+                    type="hidden"
+                    value={model.compositeCard.assignment?.id ?? ""}
+                  />
+                  <input
+                    name="assessmentReportId"
+                    type="hidden"
+                    value={model.compositeCard.report?.id ?? ""}
+                  />
+                  <input
+                    name="returnPath"
+                    type="hidden"
+                    value={`/dashboard/participants/${participant.id}/reports`}
+                  />
+                  <button
+                    className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition hover:-translate-y-0.5 hover:bg-teal-700"
+                    type="submit"
+                  >
+                    {model.compositeCard.cta.label}
+                  </button>
+                </form>
+              ) : (
+                <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                  {model.compositeCard.cta.label}
+                </span>
+              )}
             </div>
           </DashboardInfoCardShell>
         </DashboardSectionShell>

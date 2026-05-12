@@ -186,11 +186,19 @@ export type HrCandidateCompositeCard = {
     | "Greška pri generisanju";
   body: string;
   visualVariant: HrCandidateAssessmentCardVisualVariant;
-  cta: {
-    label: string;
-    href: null;
-    disabled: true;
-  };
+  cta:
+    | {
+        label: string;
+        href: null;
+        disabled: false;
+        action: "generate_composite" | "retry_composite";
+      }
+    | {
+        label: string;
+        href: null;
+        disabled: true;
+        action: null;
+      };
   assignment: ActiveStandardAssessmentAssignment | null;
   readiness: CompositeReadinessState | null;
   report: AssessmentReportRecord | null;
@@ -822,6 +830,7 @@ export function buildCompositeCard(input: {
         label: "Nije dostupno",
         href: null,
         disabled: true,
+        action: null,
       },
       assignment: null,
       readiness: null,
@@ -850,6 +859,7 @@ export function buildCompositeCard(input: {
         label: "Nije dostupno",
         href: null,
         disabled: true,
+        action: null,
       },
       assignment: input.assignment,
       readiness: readiness ?? null,
@@ -866,9 +876,10 @@ export function buildCompositeCard(input: {
       body: "Svi potrebni testovi iz ovog procjenskog ciklusa su završeni. Generisanje kompozitnog HR izvještaja dolazi u sljedećem koraku.",
       visualVariant: "success",
       cta: {
-        label: "Dolazi uskoro",
+        label: "Generiši kompozitni HR izvještaj",
         href: null,
-        disabled: true,
+        disabled: false,
+        action: "generate_composite",
       },
       assignment: input.assignment,
       readiness,
@@ -885,9 +896,10 @@ export function buildCompositeCard(input: {
       body: "Kompozitni HR izvještaj je dodat u red za generisanje i čeka obradu.",
       visualVariant: "progress",
       cta: {
-        label: "Dolazi uskoro",
+        label: "Čeka generisanje",
         href: null,
         disabled: true,
+        action: null,
       },
       assignment: input.assignment,
       readiness,
@@ -904,9 +916,10 @@ export function buildCompositeCard(input: {
       body: "Kompozitni HR izvještaj se trenutno priprema.",
       visualVariant: "progress",
       cta: {
-        label: "Dolazi uskoro",
+        label: "Generiše se",
         href: null,
         disabled: true,
+        action: null,
       },
       assignment: input.assignment,
       readiness,
@@ -923,9 +936,10 @@ export function buildCompositeCard(input: {
       body: "Kompozitni HR izvještaj je generisan. Pregled izvještaja dolazi u sljedećem koraku.",
       visualVariant: "success",
       cta: {
-        label: "Dolazi uskoro",
+        label: "Pregled dolazi uskoro",
         href: null,
         disabled: true,
+        action: null,
       },
       assignment: input.assignment,
       readiness,
@@ -941,9 +955,10 @@ export function buildCompositeCard(input: {
     body: "Kompozitni HR izvještaj nije uspješno generisan. Oporavak i ponovno pokretanje dolaze u sljedećem koraku.",
     visualVariant: "error",
     cta: {
-      label: "Nije dostupno",
+      label: "Ponovo generiši",
       href: null,
-      disabled: true,
+      disabled: false,
+      action: "retry_composite",
     },
     assignment: input.assignment,
     readiness,
