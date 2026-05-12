@@ -4,6 +4,17 @@ import {
   buildCompositeHrInputSnapshot,
   type CompositeHrInputSnapshot,
 } from "@/lib/assessment/composite-input";
+import {
+  COMPOSITE_HR_REPORT_CONTRACT_VERSION,
+  formatCompositeHrReportValidationErrors,
+  validateCompositeHrReportSnapshot,
+  type CompositeHrReportSnapshot,
+} from "@/lib/assessment/composite-hr-report-contract";
+import {
+  COMPOSITE_HR_REPORT_MOCK_PROVIDER,
+  COMPOSITE_HR_REPORT_MOCK_PROVIDER_VERSION,
+  generateMockCompositeHrReport,
+} from "@/lib/assessment/composite-hr-report-provider-mock";
 import type { AssessmentReportRecord } from "@/lib/assessment/assessment-reports";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -16,6 +27,8 @@ type AssessmentReportQueryOptions = {
 type AssessmentReportWorkerDependencies = {
   createSupabaseClient?: typeof createSupabaseAdminClient;
   buildCompositeInputSnapshot?: typeof buildCompositeHrInputSnapshot;
+  generateCompositeHrReport?: typeof generateMockCompositeHrReport;
+  validateCompositeHrReport?: typeof validateCompositeHrReportSnapshot;
   now?: () => string;
   logger?: Pick<Console, "info" | "warn" | "error">;
 };
@@ -28,6 +41,7 @@ export type ClaimedAssessmentReportJob = AssessmentReportRow & {
 
 export type AssessmentReportWorkerFailureCode =
   | "COMPOSITE_INPUT_NOT_READY"
+  | "COMPOSITE_REPORT_VALIDATION_FAILED"
   | "COMPOSITE_PROVIDER_NOT_IMPLEMENTED";
 
 export type AssessmentReportWorkerFailure = {
@@ -36,6 +50,11 @@ export type AssessmentReportWorkerFailure = {
 };
 
 export type ProcessClaimedAssessmentReportJobResult =
+  | {
+      status: "ready";
+      reportId: string;
+      snapshot: CompositeHrReportSnapshot;
+    }
   | {
       status: "failed";
       reportId: string;
@@ -225,6 +244,35 @@ async function updateAssessmentReportInputSnapshot(
   }
 }
 
+async function completeAssessmentReportJob(
+  job: ClaimedAssessmentReportJob,
+  reportSnapshot: CompositeHrReportSnapshot,
+  deps?: AssessmentReportWorkerDependencies,
+): Promise<void> {
+  const supabase = getSupabaseClient(deps);
+  const completedAt = getNow(deps);
+  const { error } = await supabase
+    .from("assessment_reports")
+    .update({
+      report_status: "ready",
+      report_snapshot: reportSnapshot,
+      completed_at: completedAt,
+      generated_at: completedAt,
+      failure_code: null,
+      failure_reason: null,
+      model_name: null,
+      generator_type: COMPOSITE_HR_REPORT_MOCK_PROVIDER,
+      generator_version: COMPOSITE_HR_REPORT_MOCK_PROVIDER_VERSION,
+      contract_version: COMPOSITE_HR_REPORT_CONTRACT_VERSION,
+    })
+    .eq("id", job.id)
+    .eq("report_status", "processing");
+
+  if (error) {
+    throw new Error(`Failed to complete composite assessment report: ${error.message}`);
+  }
+}
+
 async function failAssessmentReportJob(
   job: ClaimedAssessmentReportJob,
   failure: AssessmentReportWorkerFailure,
@@ -262,10 +310,10 @@ function buildInputNotReadyFailure(error: unknown): AssessmentReportWorkerFailur
   };
 }
 
-function buildProviderNotImplementedFailure(): AssessmentReportWorkerFailure {
+function buildReportValidationFailure(reason: string): AssessmentReportWorkerFailure {
   return {
-    code: "COMPOSITE_PROVIDER_NOT_IMPLEMENTED",
-    reason: "Composite HR report provider is not implemented yet.",
+    code: "COMPOSITE_REPORT_VALIDATION_FAILED",
+    reason: trimReason(reason),
   };
 }
 
@@ -356,18 +404,68 @@ export async function processClaimedAssessmentReportJob(
     contractVersion: inputSnapshot.targetReportContractVersion,
   });
 
-  const failure = buildProviderNotImplementedFailure();
-  await failAssessmentReportJob(job, failure, deps);
+  const generateReport = deps?.generateCompositeHrReport ?? generateMockCompositeHrReport;
+  const validateReport = deps?.validateCompositeHrReport ?? validateCompositeHrReportSnapshot;
+  let reportSnapshot: CompositeHrReportSnapshot | unknown;
 
-  logger.info("Composite assessment report marked failed because provider is missing", {
+  try {
+    reportSnapshot = await generateReport(inputSnapshot);
+  } catch (error) {
+    const failure = buildReportValidationFailure(
+      error instanceof Error ? error.message : "Composite HR report provider returned invalid output.",
+    );
+
+    logger.warn("Composite assessment report provider failed before validation", {
+      reportId: job.id,
+      assessmentAssignmentId: job.assessment_assignment_id,
+      failureCode: failure.code,
+      failureReason: failure.reason,
+    });
+
+    await failAssessmentReportJob(job, failure, deps);
+
+    return {
+      status: "failed",
+      reportId: job.id,
+      failure,
+    };
+  }
+
+  const validation = validateReport(reportSnapshot);
+
+  if (!validation.ok) {
+    const failure = buildReportValidationFailure(
+      formatCompositeHrReportValidationErrors(validation.errors),
+    );
+
+    logger.warn("Composite assessment report failed runtime validation", {
+      reportId: job.id,
+      assessmentAssignmentId: job.assessment_assignment_id,
+      failureCode: failure.code,
+      failureReason: failure.reason,
+    });
+
+    await failAssessmentReportJob(job, failure, deps);
+
+    return {
+      status: "failed",
+      reportId: job.id,
+      failure,
+    };
+  }
+
+  await completeAssessmentReportJob(job, validation.value, deps);
+
+  logger.info("Composite assessment report completed with mock provider", {
     reportId: job.id,
     assessmentAssignmentId: job.assessment_assignment_id,
-    failureCode: failure.code,
+    contractVersion: validation.value.contractVersion,
+    provider: validation.value.metadata.provider,
   });
 
   return {
-    status: "failed",
+    status: "ready",
     reportId: job.id,
-    failure,
+    snapshot: validation.value,
   };
 }

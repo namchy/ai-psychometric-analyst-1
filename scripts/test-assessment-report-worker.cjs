@@ -67,6 +67,9 @@ const {
   claimNextAssessmentReportJob,
   processClaimedAssessmentReportJob,
 } = require("../lib/assessment/assessment-report-worker.ts");
+const {
+  validateCompositeHrReportSnapshot,
+} = require("../lib/assessment/composite-hr-report-contract.ts");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -247,7 +250,146 @@ function createFakeAssessmentReportsClient(initialRows) {
   };
 }
 
-function createFakeDeps({ rows, snapshot, buildError = null }) {
+function buildCompositeInputSnapshotFixture(overrides = {}) {
+  return {
+    contractVersion: "composite_hr_input_v1",
+    targetReportContractVersion: "composite_hr_v1",
+    sourceType: "assessment",
+    reportType: "composite",
+    audience: "hr",
+    locale: "hr",
+    generatedFor: {
+      organizationId: "org-1",
+      participantId: "participant-1",
+      assessmentAssignmentId: "assignment-1",
+    },
+    assessmentAssignment: {
+      id: "assignment-1",
+      assignmentType: "standard_battery",
+      status: "active",
+      locale: "hr",
+      createdAt: "2026-05-12T06:00:00.000Z",
+    },
+    sourceAttempts: [
+      {
+        attemptId: "attempt-ipip",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        status: "completed",
+        completedAt: "2026-05-12T06:30:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 0,
+      },
+      {
+        attemptId: "attempt-safran",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        status: "completed",
+        completedAt: "2026-05-12T06:45:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 1,
+      },
+      {
+        attemptId: "attempt-mwms",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        status: "completed",
+        completedAt: "2026-05-12T07:00:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 2,
+      },
+    ],
+    coverage: {
+      requiredCount: 3,
+      completedCount: 3,
+      requiredTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      completedTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      missingTestSlugs: [],
+    },
+    deterministicInputs: {
+      ipip: {
+        attemptId: "attempt-ipip",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        scale: { min: 1, max: 5 },
+        domains: [],
+        summarySignals: {
+          rankedDomains: ["CONSCIENTIOUSNESS", "AGREEABLENESS", "EXTRAVERSION"],
+          highestDomains: ["CONSCIENTIOUSNESS"],
+          lowestDomains: ["NEUROTICISM"],
+          balancedDomains: [],
+          topFacets: [],
+          lowestFacets: [],
+        },
+      },
+      safran: {
+        attemptId: "attempt-safran",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        overall: { rawScore: 36, maxScore: 54, band: "moderate_raw", interpretation: "moderate" },
+        verbal: { rawScore: 14, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        figural: { rawScore: 10, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        numeric: { rawScore: 12, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        summarySignals: {
+          strongestDomain: "verbal",
+          lowestDomain: "figural",
+        },
+      },
+      mwms: {
+        attemptId: "attempt-mwms",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        scale: { min: 1, max: 7 },
+        dimensions: [],
+        motivationStructure: {
+          autonomousMotivationScore: 6,
+          controlledMotivationScore: 3.5,
+          amotivationScore: 1.8,
+        },
+        summarySignals: {
+          dominantDrivers: ["intrinsic", "identified"],
+          lowerDrivers: ["amotivation", "external_social"],
+          cautionFlags: {
+            elevatedAmotivation: false,
+            highControlledRelativeToAutonomous: false,
+            mixedProfile: false,
+          },
+        },
+      },
+    },
+    summarySignals: {
+      personalityHighestDomains: ["CONSCIENTIOUSNESS"],
+      personalityLowestDomains: ["NEUROTICISM"],
+      cognitiveStrongestDomain: "verbal",
+      cognitiveLowestDomain: "figural",
+      motivationHighestDrivers: ["intrinsic", "identified"],
+      motivationLowestDrivers: ["amotivation", "external_social"],
+      crossInstrumentFlags: [],
+    },
+    guardrails: {
+      usesOnlyLinkedAssignmentAttempts: true,
+      usesHistoricalAttemptFallback: false,
+      usesSingleTestAiReportsAsPrimaryInput: false,
+      aiMayNotChangeScores: true,
+    },
+    metadata: {
+      builtAt: "2026-05-12T09:00:00.000Z",
+      builderVersion: "v1",
+    },
+    ...overrides,
+  };
+}
+
+function createFakeDeps({
+  rows,
+  snapshot,
+  buildError = null,
+  generateCompositeHrReport,
+  validateCompositeHrReport,
+}) {
   const client = createFakeAssessmentReportsClient(rows);
   const builderCalls = [];
 
@@ -265,6 +407,8 @@ function createFakeDeps({ rows, snapshot, buildError = null }) {
 
         return clone(snapshot);
       },
+      ...(generateCompositeHrReport ? { generateCompositeHrReport } : {}),
+      ...(validateCompositeHrReport ? { validateCompositeHrReport } : {}),
       now: () => "2026-05-12T10:10:00.000Z",
       logger: {
         info() {},
@@ -339,64 +483,17 @@ async function testClaimQueryAndDecision() {
   assert.equal(/from\("dimension_scores"\)/.test(source), false);
   assert.equal(/generateCompletedAssessmentReport/.test(source), false);
   assert.equal(/createSelectedReportProvider/.test(source), false);
-  assert.equal(/mockReportProvider/.test(source), false);
   assert.equal(/report-provider-openai/.test(source), false);
 }
 
-async function testSuccessToControlledFailed() {
+async function testSuccessToReadyWithMockProvider() {
   const initialRow = buildAssessmentReportRow({
     id: "report-success",
     queued_at: "2026-05-12T07:00:00.000Z",
   });
   const { client, builderCalls, deps } = createFakeDeps({
     rows: [initialRow],
-    snapshot: {
-      contractVersion: "composite_hr_input_v1",
-      targetReportContractVersion: "composite_hr_v1",
-      sourceType: "assessment",
-      reportType: "composite",
-      audience: "hr",
-      locale: "hr",
-      generatedFor: {
-        organizationId: "org-1",
-        participantId: "participant-1",
-        assessmentAssignmentId: "assignment-1",
-      },
-      assessmentAssignment: {
-        id: "assignment-1",
-        assignmentType: "standard_battery",
-        status: "active",
-        locale: "hr",
-        createdAt: "2026-05-12T06:00:00.000Z",
-      },
-      sourceAttempts: [],
-      coverage: {
-        requiredCount: 3,
-        completedCount: 3,
-        requiredTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
-        completedTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
-        missingTestSlugs: [],
-      },
-      deterministicInputs: {},
-      summarySignals: {
-        personalityHighestDomains: [],
-        personalityLowestDomains: [],
-        cognitiveStrongestDomain: null,
-        cognitiveLowestDomain: null,
-        motivationHighestDrivers: [],
-        motivationLowestDrivers: [],
-        crossInstrumentFlags: [],
-      },
-      guardrails: {
-        usesOnlyLinkedAssignmentAttempts: true,
-        usesHistoricalAttemptFallback: false,
-        usesSingleTestAiReportsAsPrimaryInput: false,
-        aiMayNotChangeScores: true,
-      },
-      metadata: {
-        builderVersion: "v1",
-      },
-    },
+    snapshot: buildCompositeInputSnapshotFixture(),
   });
 
   const claimedJob = await claimNextAssessmentReportJob({}, deps);
@@ -406,9 +503,13 @@ async function testSuccessToControlledFailed() {
 
   const result = await processClaimedAssessmentReportJob(claimedJob, deps);
 
-  assert.equal(result.status, "failed");
-  assert.equal(result.failure.code, "COMPOSITE_PROVIDER_NOT_IMPLEMENTED");
-  assert.equal(result.failure.reason, "Composite HR report provider is not implemented yet.");
+  assert.equal(result.status, "ready");
+  assert.equal(result.snapshot.contractVersion, "composite_hr_v1");
+  assert.equal(result.snapshot.source.sourceAttemptIds.join("|"), [
+    "attempt-ipip",
+    "attempt-safran",
+    "attempt-mwms",
+  ].join("|"));
   assert.equal(builderCalls.length, 1);
   assert.deepEqual(builderCalls[0], {
     assessmentAssignmentId: "assignment-1",
@@ -418,16 +519,23 @@ async function testSuccessToControlledFailed() {
 
   const persistedRow = client.rows.find((row) => row.id === "report-success");
 
-  assert.equal(persistedRow.report_status, "failed");
-  assert.equal(persistedRow.failure_code, "COMPOSITE_PROVIDER_NOT_IMPLEMENTED");
-  assert.equal(persistedRow.failure_reason, "Composite HR report provider is not implemented yet.");
+  assert.equal(persistedRow.report_status, "ready");
+  assert.equal(persistedRow.failure_code, null);
+  assert.equal(persistedRow.failure_reason, null);
   assert.equal(persistedRow.input_snapshot.targetReportContractVersion, "composite_hr_v1");
   assert.equal(persistedRow.contract_version, "composite_hr_v1");
   assert.equal(persistedRow.generator_version, "v1");
   assert.equal(persistedRow.model_name, null);
   assert.equal(persistedRow.prompt_version_id, null);
-  assert.equal(persistedRow.report_snapshot, null);
-  assert.equal(persistedRow.generated_at, null);
+  assert.equal(persistedRow.generator_type, "mock");
+  assert.equal(persistedRow.report_snapshot.contractVersion, "composite_hr_v1");
+  assert.equal(
+    persistedRow.report_snapshot.source.sourceAttemptIds.join("|"),
+    persistedRow.input_snapshot.sourceAttempts.map((attempt) => attempt.attemptId).join("|"),
+  );
+  const validation = validateCompositeHrReportSnapshot(persistedRow.report_snapshot);
+  assert.equal(validation.ok, true);
+  assert.equal(typeof persistedRow.generated_at, "string");
   assert.equal(persistedRow.started_at, "2026-05-12T10:10:00.000Z");
   assert.equal(persistedRow.completed_at, "2026-05-12T10:10:00.000Z");
 }
@@ -476,10 +584,58 @@ async function testInputNotReady() {
   assert.equal(persistedRow.completed_at, "2026-05-12T10:10:00.000Z");
 }
 
+async function testInvalidProviderOutput() {
+  const initialRow = buildAssessmentReportRow({
+    id: "report-invalid-provider-output",
+    assessment_assignment_id: "assignment-3",
+    organization_id: "org-3",
+    participant_id: "participant-3",
+    queued_at: "2026-05-12T07:20:00.000Z",
+  });
+  const { client, deps } = createFakeDeps({
+    rows: [initialRow],
+    snapshot: buildCompositeInputSnapshotFixture({
+      generatedFor: {
+        organizationId: "org-3",
+        participantId: "participant-3",
+        assessmentAssignmentId: "assignment-3",
+      },
+      assessmentAssignment: {
+        id: "assignment-3",
+        assignmentType: "standard_battery",
+        status: "active",
+        locale: "hr",
+        createdAt: "2026-05-12T06:00:00.000Z",
+      },
+    }),
+    generateCompositeHrReport: async () => ({
+      contractVersion: "broken",
+      reportType: "composite",
+    }),
+    validateCompositeHrReport: validateCompositeHrReportSnapshot,
+  });
+
+  const claimedJob = await claimNextAssessmentReportJob({}, deps);
+  const result = await processClaimedAssessmentReportJob(claimedJob, deps);
+
+  assert.equal(result.status, "failed");
+  assert.equal(result.failure.code, "COMPOSITE_REPORT_VALIDATION_FAILED");
+  assert.equal(result.failure.reason.includes("contractVersion"), true);
+
+  const persistedRow = client.rows.find((row) => row.id === "report-invalid-provider-output");
+
+  assert.equal(persistedRow.report_status, "failed");
+  assert.equal(persistedRow.failure_code, "COMPOSITE_REPORT_VALIDATION_FAILED");
+  assert.equal(persistedRow.report_snapshot, null);
+  assert.equal(typeof persistedRow.input_snapshot, "object");
+  assert.equal(persistedRow.generated_at, null);
+}
+
 async function main() {
   await testClaimQueryAndDecision();
-  await testSuccessToControlledFailed();
+  await testSuccessToReadyWithMockProvider();
   await testInputNotReady();
+  await testInvalidProviderOutput();
 
   console.log("Assessment report worker tests passed.");
 }
