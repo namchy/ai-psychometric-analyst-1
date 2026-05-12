@@ -53,7 +53,7 @@ Komande:
 | P1        | HR report recovery actions                          | Završeno    | HR dashboard / Report recovery | Zatvoreno nakon dodavanja per-card recovery flow-a za failed i missing single-test HR reportove. |
 | P1        | IPIP HR report content contract V2                  | Završeno    | HR report / IPIP / Content contract | Zatvoreno nakon prelaska na `ipip_neo_120_hr_v2`, HR-operativni content shape i display fallback za legacy V1 snapshotove. |
 | P1        | MWMS HR report V1                                   | Završeno    | HR report / MWMS             | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI provider routinga, renderer-a, capability aktivacije, worker podrške, status/recovery ponašanja, prompt aktivacije i realnog DB lifecycle/OpenAI smoke-a. |
-| P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Planirano | Assessment UX / Persistence  | Implementirati prvi uski slice: candidate-only, single-choice/Likert auto-advance za IPIP i MWMS, React state + localStorage pending queue + background flush + blocking final submit flush. |
+| P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Završeno | Assessment UX / Persistence  | Zatvoreno nakon candidate-only non-blocking autosave slice-a za IPIP/MWMS Likert auto-advance flow, uz React state, localStorage pending queue, background flush i blocking final submit flush. |
 | P1        | Composite HR report data model decision             | Planirano   | Architecture / HR report storage | Odlučiti da li composite HR report ide kroz privremeni `attempt_reports` bridge ili kroz novi `assessment_reports` / assessment-level model. |
 | P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
@@ -753,7 +753,7 @@ Završeno kroz šest uskih slice-ova: MWMS HR V1 contract/schema/validator, dete
 
 ### P1 — Non-blocking autosave za candidate IPIP/MWMS Likert flow
 
-**Status:** Planirano  
+**Status:** Završeno  
 **Kategorija:** Assessment UX / Persistence / Candidate flow
 
 **Problem / context:**  
@@ -792,6 +792,9 @@ Trenutni assessment answer persistence je DB-first i blocking. Nakon klika na od
 - final submit blokira completion ako pending queue nije uspješno flushan
 - scoring i report generation i dalje rade nad DB truth nakon final flush-a
 - SAFRAN i HR run flow ostaju nepromijenjeni u prvom slice-u
+
+**Completion note:**  
+Završeno kroz candidate-only non-blocking autosave slice za IPIP/MWMS Likert auto-advance flow u protected candidate run kontekstu. Klik na eligible Likert odgovor sada odmah ažurira React state, upisuje pending odgovor u `localStorage` queue `assessment-pending:<attemptId>` i prelazi na sljedeće pitanje bez čekanja DB save-a. Background flush koristi postojeći protected save action payload format, refresh merge-a server `initialSelections` sa pending lokalnim odgovorima, a pending lokalni odgovor pobjeđuje za isti `questionId`. Final submit radi blocking flush pending queue-a prije completion/scoringa i prekida completion ako flush ne uspije. Nakon uspješnog completiona queue se čisti. SAFRAN, HR flow, scoring, report pipeline i DB schema nisu mijenjani. `npm run typecheck` i `node scripts/test-pending-autosave.cjs` prolaze; ručni browser smoke je potvrdio brži UI i očuvanje odgovora nakon refresha. Playwright protected-resume spec je dodat, ali lokalno je ostao blokiran `config.webServer` problemom prije izvršavanja spec-a.
 
 ---
 
@@ -890,7 +893,7 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 | P1        | HR report recovery actions | Završeno | HR detail page sada ima recovery akcije za failed i missing single-test HR reportove. | Zatvoreno nakon retry/reset istog reda i explicit create path-a za missing HR report. |
 | P1        | IPIP HR report content contract V2 | Završeno | IPIP HR report je prešao na HR-operativni `ipip_neo_120_hr_v2` contract uz legacy display fallback. | Zatvoreno nakon schema/provider/mock/validator V2 shape-a i realnog smoke-a. |
 | P1        | MWMS HR report V1         | Završeno | MWMS sada ima i active HR single-test lane uz potvrđen realni DB lifecycle i OpenAI smoke. | Zatvoreno nakon realnog DB lifecycle-a i OpenAI smoke-a. |
-| P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Planirano | Trenutni answer persistence je i dalje DB-first i blocking, pa Likert klikovi čekaju save prije prelaska na sljedeće pitanje. | Implementirati candidate-only prvi slice sa React state + localStorage pending queue + background flush + blocking final submit flush. |
+| P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Završeno | Trenutni DB-first blocking persistence je uklonjen za candidate IPIP/MWMS Likert auto-advance flow kroz uski autosave slice. | Zatvoreno nakon candidate-only IPIP/MWMS Likert autosave slice-a sa immediate React state update-om, localStorage pending queue-om, background flushom i blocking final submit flushom. |
 | P1        | Composite HR report data model decision | Planirano | Composite HR report nema prirodan jedan attempt_id i traži storage odluku prije implementacije. | Procijeniti `attempt_reports` bridge naspram `assessment_reports` / assessment-level modela. |
 | P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
@@ -990,19 +993,18 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Non-blocking autosave za candidate IPIP/MWMS Likert flow
-2. Composite HR report data model decision
-3. Composite HR report V1
-4. Worker/report auto-processing orchestration
-5. Oblik obraćanja: muški/ženski jezički oblik
-6. Report visual language po testovima
-7. SAFRAN novi stimulus asseti
-8. Login screen UI polish
+1. Composite HR report data model decision
+2. Composite HR report V1
+3. Worker/report auto-processing orchestration
+4. Oblik obraćanja: muški/ženski jezički oblik
+5. Report visual language po testovima
+6. SAFRAN novi stimulus asseti
+7. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
-* Non-blocking autosave je sada visok UX prioritet jer trenutni DB-first save flow usporava rješavanje testa nakon svakog klika.
-* Nakon završetka IPIP, SAFRAN i MWMS single-test HR lane-ova, composite HR report data model decision ostaje sljedeći veliki arhitektonski task.
+* Non-blocking autosave za IPIP/MWMS Likert flow je završen i uklonio je najveće trenutno UX usporenje tokom rješavanja testova.
+* Nakon završetka single-test HR lane-ova i autosave UX slice-a, Composite HR report data model decision je sada prvi sljedeći arhitektonski task.
 * Composite ne treba implementirati prije jasne odluke da li ide kroz privremeni attempt_reports bridge ili novi assessment-level model.
 * Worker/report auto-processing orchestration ostaje poseban tech debt jer queued job i dalje ne znači automatsku obradu bez worker procesa.
 
@@ -1014,6 +1016,7 @@ Razlog za sljedeći prioritet:
 * Baza ostaje source of truth za completion, scoring, report generation i dashboard progress.
 * Final submit mora biti blocking i mora flushati sve pending odgovore prije completion/scoringa.
 * Prvi rollout je candidate-only IPIP/MWMS Likert flow.
+* Prvi rollout za candidate IPIP/MWMS Likert auto-advance flow je završen; SAFRAN, numeric/text/multiple_choice i HR run flow ostaju van ovog slice-a i čekaju zasebne odluke/implementacije.
 * SAFRAN, numeric/text/multiple_choice i HR run flow ostaju blocking dok ne dobiju zasebne slice-ove.
 * Ne uvoditi service worker, IndexedDB ili veliki offline-first sistem za prvi MVP slice.
 
@@ -1175,6 +1178,37 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-12 — Non-blocking autosave za IPIP/MWMS Likert flow završen
+
+Završeno:
+
+* candidate-only non-blocking autosave slice za IPIP/MWMS Likert auto-advance flow
+* `runContext="candidate"` / `runContext="hr"` razdvajanje da HR run flow ne aktivira candidate autosave ponašanje
+* `localStorage` pending queue pod ključem `assessment-pending:<attemptId>`
+* immediate React state update prije auto-advance-a
+* background flush kroz postojeći protected save action payload format
+* refresh merge server `initialSelections` + pending lokalni odgovori
+* blocking final submit flush prije completion/scoringa
+* queue cleanup nakon uspješnog completiona
+* pending autosave helper i helper test
+* protected resume smoke spec dodat, uz napomenu da je lokalno blokiran `config.webServer` problemom
+* ručni browser smoke potvrdio brži UI i očuvanje odgovora nakon refresha
+
+Odluke:
+
+* UI ne čeka DB save za svaki IPIP/MWMS Likert klik.
+* Baza ostaje source of truth za completion, scoring, report generation i dashboard progress.
+* Final submit ostaje blocking i mora flushati pending odgovore prije scoringa.
+* SAFRAN step flow ne ulazi u ovaj slice i ostaje zaseban follow-up.
+* HR run flow ne koristi non-blocking candidate autosave ponašanje.
+* Failed background flush ne briše pending queue i ne dozvoljava final completion dok se pending odgovori ne sinhronizuju.
+
+Racionala:
+
+* Ovo uklanja najveće trenutno UX usporenje tokom rješavanja IPIP/MWMS testova bez promjene scoringa, report pipeline-a ili DB schema-e.
+* Local pending queue je kratkotrajna zaštita od refresha i mrežnih prekida, ne puni offline-first sistem.
+* Ovaj uski slice potvrđuje obrazac koji se kasnije može pažljivo proširiti na SAFRAN step flow, ali tek kroz poseban task.
 
 ### 2026-05-11 — MWMS HR V1, OpenAI smoke, header logo i autosave odluka
 

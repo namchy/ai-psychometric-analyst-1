@@ -214,16 +214,8 @@ function isNonBlockingLikertAutosaveSlug(slug: string | null | undefined): boole
 }
 
 function getPendingAutosaveMessage(status: PendingAutosaveStatus, hasPendingSelections: boolean): string | null {
-  if (status === "saving") {
-    return "Spremam odgovore…";
-  }
-
-  if (status === "saved") {
-    return "Odgovori su spremljeni";
-  }
-
-  if (status === "error" || hasPendingSelections) {
-    return "Neki odgovori još nisu sinhronizovani";
+  if (status === "error" && hasPendingSelections) {
+    return "Neki odgovori još nisu sinhronizovani. Nastavi rješavati, pokušat ćemo ponovo automatski.";
   }
 
   return null;
