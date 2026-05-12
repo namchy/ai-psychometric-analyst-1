@@ -879,7 +879,7 @@ export function buildCompositeCard(input: {
       subtitle: "Integrisani profil kandidata",
       state: "ready_to_generate",
       statusLabel: "Spremno za generisanje",
-      body: "Svi potrebni testovi iz ovog procjenskog ciklusa su završeni. Generisanje kompozitnog HR izvještaja dolazi u sljedećem koraku.",
+      body: "Svi potrebni testovi iz ovog procjenskog ciklusa su završeni. Možete pokrenuti generisanje kompozitnog HR izvještaja.",
       visualVariant: "success",
       cta: {
         label: "Generiši kompozitni HR izvještaj",
@@ -958,7 +958,7 @@ export function buildCompositeCard(input: {
     subtitle: "Integrisani profil kandidata",
     state: "failed",
     statusLabel: "Greška pri generisanju",
-    body: "Kompozitni HR izvještaj nije uspješno generisan. Oporavak i ponovno pokretanje dolaze u sljedećem koraku.",
+    body: "Kompozitni HR izvještaj nije uspješno generisan. Možete pokušati ponovno generisanje.",
     visualVariant: "error",
     cta: {
       label: "Ponovo generiši",

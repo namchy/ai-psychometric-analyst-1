@@ -79,10 +79,10 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             <DashboardSectionHeader
-              eyebrow="ASSESSMENT-LEVEL HR REPORT"
+              eyebrow="KOMPOZITNI HR IZVJEŠTAJ"
               eyebrowClassName="text-teal-800/90"
               title={model.title}
-              description="Prikaz se zasniva na gotovom report snapshotu i ne generiše novi sadržaj."
+              description="Prikaz se zasniva na već pripremljenom izvještaju i ne generiše novi sadržaj."
               className="gap-2"
               titleClassName="text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
               descriptionClassName="text-base text-slate-600"
@@ -109,7 +109,7 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
           eyebrow="Izvor procjene"
           eyebrowClassName="text-teal-800/80"
           title="Izvor i trag podataka"
-          description="Diskretan pregled izvora i generator metadata za ovaj snapshot."
+          description="Diskretan pregled izvora i podataka o generisanju ovog izvještaja."
           className="gap-2"
           titleClassName="text-[1.35rem]"
         />
@@ -128,7 +128,7 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               Izvori
             </p>
             <p className="mt-2 text-[14px] font-semibold text-slate-950">
-              {model.source.sourceAttemptCount} linked attemptova
+              {model.source.sourceAttemptCount} povezana pokušaja
             </p>
           </div>
           <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
@@ -297,7 +297,7 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
           eyebrow="Ograničenja"
           eyebrowClassName="text-slate-600"
           title="Napomene za čitanje izvještaja"
-          description="Ove napomene ostaju sekundarne, ali su važne za pravilnu interpretaciju snapshot-a."
+          description="Ove napomene ostaju sekundarne, ali su važne za pravilnu interpretaciju izvještaja."
           className="gap-2"
           titleClassName="text-[1.2rem]"
           descriptionClassName="text-sm text-slate-600"
