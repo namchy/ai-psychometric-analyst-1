@@ -55,8 +55,9 @@ Komande:
 | P1        | MWMS HR report V1                                   | Završeno    | HR report / MWMS             | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI provider routinga, renderer-a, capability aktivacije, worker podrške, status/recovery ponašanja, prompt aktivacije i realnog DB lifecycle/OpenAI smoke-a. |
 | P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Završeno | Assessment UX / Persistence  | Zatvoreno nakon candidate-only non-blocking autosave slice-a za IPIP/MWMS Likert auto-advance flow, uz React state, localStorage pending queue, background flush i blocking final submit flush. |
 | P1        | Assessment assignment ownership za standard battery | Završeno    | Architecture / Assessment ownership | Zatvoreno kao compatibility slice nakon uvođenja `assessment_assignments` i `assessment_assignment_attempts`, uz linkovanje samo novokreiranih attempts i zadržavanje attempt-based dashboard read patha. |
-| P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Sljedeće je composite readiness / `assessment_reports` storage odluka. |
-| P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Implementirati composite HR report tek nakon data model odluke i single-test HR report temelja. |
+| P1        | Composite readiness / assessment_reports storage model | Završeno | Architecture / Composite HR report storage | Zatvoreno nakon uvođenja `assessment_reports` storage-a, composite readiness helpera i realnog composite card state-a na HR participant detail stranici, bez AI generation-a, worker-a ili generate/retry akcija. |
+| P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Zatvoreno nakon assessment_reports storage/readiness slice-a. |
+| P1        | Composite HR report V1                              | Planirano   | Product / AI report          | Raditi tek nakon manual generate/retry queue flow-a, composite input buildera, assessment report worker path-a, contract/schema/provider sloja i renderer-a. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
@@ -910,6 +911,48 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 - report je audience = hr
 - report je locale-aware u strukturi, iako MVP content ostaje bs
 
+### P1 — Composite readiness / assessment_reports storage model
+
+**Status:** Završeno  
+**Kategorija:** Architecture / Composite HR report storage / HR dashboard
+
+**Problem / context:**  
+Nakon uvođenja `assessment_assignments` i `assessment_assignment_attempts`, Composite HR report je dobio parent ownership model, ali još nije imao assessment-level storage ni realan readiness/status prikaz na HR participant detail stranici. Postojeći `attempt_reports` ostaje attempt-level storage za single-test reportove i nije prikladan za composite artefakt. Trebao je novi assessment-level storage i strogi readiness helper koji ne miješa pokušaje iz različitih procjenskih ciklusa.
+
+**Scope:**
+- dodati `assessment_reports` tabelu
+- dodati assessment-level report constants/tipove/helper sloj
+- dodati helper za latest active standard_battery assignment
+- dodati composite readiness helper
+- readiness računati samo iz `assessment_assignment_attempts` linked attemptova
+- koristiti samo `required_for_composite = true` linked attempts
+- dodati helper za latest composite HR assessment report row
+- zamijeniti hardcoded composite placeholder realnim derived composite card state-om
+- podržati HR card state-ove: `no_assignment`, `incomplete`, `ready_to_generate`, `queued`, `processing`, `ready`, `failed`
+- očistiti user-facing copy na “Kompozitni HR izvještaj”
+- ne uvoditi AI generation
+- ne uvoditi worker
+- ne uvoditi generate/retry akcije
+- ne mijenjati `attempt_reports`, scoring, report pipeline ili single-test HR reportove
+
+**Acceptance criteria:**
+- `assessment_reports` tabela postoji i koristi `assessment_assignment_id` kao owner
+- `assessment_reports` ima HR-only read policy za organization members
+- participant/candidate read policy ne postoji u V1
+- `missing` i `incomplete` nisu DB statusi nego UI-derived statusi
+- DB statusi su `queued`, `processing`, `ready`, `failed`
+- readiness koristi samo linked attempts iz istog assignment ciklusa
+- historical completed attempts se ne koriste kao fallback
+- partial assignment ostaje `incomplete`
+- HR participant detail page prikazuje realan composite card state
+- ready_to_generate ne dodaje aktivnu generate akciju
+- ready ne dodaje aktivnu renderer rutu
+- failed ne dodaje aktivan retry
+- AI generation, worker i provider routing ostaju van scope-a
+
+**Completion note:**  
+Završeno kroz assessment-level storage/readiness slice. Dodana je migracija za `assessment_reports`, uveden je `lib/assessment/assessment-reports.ts`, a HR participant detail model sada računa composite readiness isključivo iz `assessment_assignment_attempts` linked attempts u istom assignment ciklusu. Historical completed attempts, “najnoviji completed attempt po testu”, pojedinačni AI reporti i `attempt_reports` se ne koriste za readiness. Composite card na HR participant detail stranici sada prikazuje derived state-ove `no_assignment`, `incomplete`, `ready_to_generate`, `queued`, `processing`, `ready` i `failed`, bez generate/retry akcija i bez renderer route-a. `assessment_reports` ima HR-only organization member read policy i ne daje participant/candidate read access u V1. AI generation, worker, composite input builder, provider routing, scoring, report pipeline i `attempt_reports` nisu mijenjani. `npm run typecheck`, `node scripts/test-assessment-reports.cjs`, `node scripts/test-assessment-assignments.cjs`, `node scripts/test-hr-candidate-assessment-detail-model.cjs`, `node scripts/test-report-capabilities.cjs` i `node scripts/test-hr-report-recovery.cjs` prolaze.
+
 ---
 
 | Prioritet | Tema                       | Status    | Kratak opis                                                                                                                  | Sljedeći korak                                                                                |
@@ -932,8 +975,9 @@ Composite HR report je glavni B2B artefakt Deep Profile-a. On povezuje IPIP, SAF
 | P1        | MWMS HR report V1         | Završeno | MWMS sada ima i active HR single-test lane uz potvrđen realni DB lifecycle i OpenAI smoke. | Zatvoreno nakon realnog DB lifecycle-a i OpenAI smoke-a. |
 | P1        | Non-blocking autosave za candidate IPIP/MWMS Likert flow | Završeno | Trenutni DB-first blocking persistence je uklonjen za candidate IPIP/MWMS Likert auto-advance flow kroz uski autosave slice. | Zatvoreno nakon candidate-only IPIP/MWMS Likert autosave slice-a sa immediate React state update-om, localStorage pending queue-om, background flushom i blocking final submit flushom. |
 | P1        | Assessment assignment ownership za standard battery | Završeno | Standard battery sada ima prvi assessment-level parent ownership sloj kroz `assessment_assignments` i `assessment_assignment_attempts`. | Nastaviti sa composite readiness / `assessment_reports` storage modelom, bez prebacivanja dashboarda na assignment-first dok ne bude zaseban task. |
-| P1        | Composite HR report data model decision | Završeno / Prvi slice implementiran | Composite HR report nema prirodan jedan attempt_id; donesena je odluka da ne ide u `attempt_reports`, a prvi ownership slice je uveden kroz `assessment_assignments` i `assessment_assignment_attempts`. | Sljedeće je composite readiness i `assessment_reports` storage model. |
-| P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon data model odluke i single-test HR report temelja. |
+| P1        | Composite readiness / assessment_reports storage model | Završeno | Uveden je assessment-level storage i derived readiness/card state za budući Composite HR report. | Implementirati manual generate/retry queue flow za `assessment_reports` bez AI generation-a. |
+| P1        | Composite HR report data model decision | Završeno / Prvi slice implementiran | Composite HR report nema prirodan jedan attempt_id; donesena je odluka da ne ide u `attempt_reports`, a prvi ownership slice je uveden kroz `assessment_assignments` i `assessment_assignment_attempts`. | Zatvoreno nakon assessment_reports storage/readiness slice-a. |
+| P1        | Composite HR report V1    | Planirano | Historijski “Kompozitni AI profil” sada se vodi kao jasniji composite HR report task. | Raditi tek nakon manual generate/retry queue flow-a, composite input buildera, assessment report worker path-a, contract/schema/provider sloja i renderer-a. |
 | P2        | Candidate dashboard labels | Završeno  | Kartice na candidate dashboardu sada prikazuju šta procjena mjeri kao glavni title, a naziv instrumenta kao subtitle.        | Commit/push nakon lokalne potvrde.                                                            |
 | P2        | Candidate dashboard CTA hover contrast | Završeno | Completed CTA više ne gubi kontrast na hoveru, a shared CTA hover/focus sistem je usklađen za sve candidate dashboard kartice. | Zatvoreno nakon shared CTA hover/focus contrast fixa u candidate dashboard karticama. |
 | P2        | MWMS AI report copy ton    | Završeno  | MWMS AI report koristi formalno “Vaš/Vam”; treba odlučiti da li candidate app ide na “ti” ili formalniji stil.               | Zatvoreno nakon prompt update-a, normalizeMwmsCopy safety net-a, forbidden-form smoke testa i regeneracije testnog MWMS participant reporta. |
@@ -1031,22 +1075,27 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Composite readiness / assessment_reports storage model
-2. Composite HR report V1
-3. Assignment-aware dashboard model za nove assessment cikluse
-4. Worker/report auto-processing orchestration
-5. Oblik obraćanja: muški/ženski jezički oblik
-6. Report visual language po testovima
-7. SAFRAN novi stimulus asseti
-8. Login screen UI polish
+1. Manual composite generate/retry action za assessment_reports
+2. Composite input builder iz deterministic score rezultata
+3. Assessment report worker path za composite
+4. Composite HR report contract/schema/provider
+5. Composite HR report renderer
+6. Assignment-aware dashboard model za nove assessment cikluse
+7. Worker/report auto-processing orchestration
+8. Oblik obraćanja: muški/ženski jezički oblik
+9. Report visual language po testovima
+10. SAFRAN novi stimulus asseti
+11. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
 * Non-blocking autosave za IPIP/MWMS Likert flow je završen i uklonio je najveće trenutno UX usporenje tokom rješavanja testova.
-* Composite HR report data model decision je donesena: composite ne ide u `attempt_reports`.
-* Prvi assessment-level ownership compatibility slice je implementiran kroz `assessment_assignments` i `assessment_assignment_attempts`.
-* Sljedeći arhitektonski korak je composite readiness i `assessment_reports` storage model.
-* Composite HR report V1 se ne implementira prije `assessment_reports` storage/readiness odluke.
+* Composite readiness / `assessment_reports` storage model je završen.
+* Sljedeći najmanji sigurni korak je manual generate/retry action koji kreira ili resetuje `assessment_reports` row u `queued`.
+* AI generation se još ne uvodi.
+* Worker se još ne uvodi.
+* Composite input builder treba doći nakon što postoji manual queue flow.
+* Composite HR report V1 se ne implementira kao jedan veliki task, nego kroz odvojene slice-ove: generate/retry, input builder, worker, contract/provider i renderer.
 * Assignment-aware dashboard model je poseban budući task jer trenutni dashboard read path i dalje radi attempt-based.
 * Worker/report auto-processing orchestration ostaje tech debt, ali nije prvi sljedeći task.
 
@@ -1079,6 +1128,24 @@ Razlog za sljedeći prioritet:
 * Budući Composite HR report treba assessment-level storage, vjerovatno `assessment_reports`.
 * Model mora podržati budući četvrti/team-fit test bez promjene osnovne strukture.
 * Ne raditi agresivan historical backfill bez jasnog deterministic grouping pravila.
+
+### 5.17 Composite readiness i assessment_reports politika
+
+* Composite HR report ne koristi `attempt_reports`.
+* Composite HR report koristi assessment-level storage kroz `assessment_reports`.
+* `assessment_reports` je HR-only artefakt u V1.
+* Participant/candidate ne dobija read access na HR composite report u V1.
+* Composite readiness se računa samo iz `assessment_assignment_attempts` linked attempts u istom assignment ciklusu.
+* Readiness koristi samo linked attempts sa `required_for_composite = true`.
+* Historical completed attempts nisu automatski fallback.
+* “Najnoviji completed attempt po testu” nije validan composite source.
+* Pojedinačni AI reporti nisu primary source za composite readiness ili budući composite input.
+* `missing`, `incomplete` i `ready_to_generate` su UI-derived state-ovi.
+* DB storage statusi za `assessment_reports` su `queued`, `processing`, `ready`, `failed`.
+* `ready_to_generate` znači da su linked required attempts završeni i da report row još ne postoji.
+* `incomplete` znači da assignment nema sve required linked completed attempts iz istog ciklusa.
+* Compatibility assignment može ostati incomplete ako je existing completed attempt blokirao kreiranje/linkovanje novog attempta.
+* Generate/retry, worker, AI provider i renderer dolaze kao zasebni slice-ovi.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -1163,6 +1230,7 @@ Razlog za sljedeći prioritet:
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
+| P1        | Composite report generation pipeline | `assessment_reports` storage i composite readiness/card state postoje, ali nema manual generate/retry action-a, worker-a, AI generation-a, input buildera, contract/schema/provider sloja ni renderer-a. Composite HR report treba implementirati kroz odvojene slice-ove kako se ne bi destabilizovao postojeći single-test report pipeline. | Ne refaktorisati postojeći attempt report worker prerano. Za composite generation preferirati poseban assessment report worker path ili jasno odvojen branch kada storage, readiness i manual queue flow budu stabilni. |
 | P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. MWMS HR sada koristi postojeći worker i capability-driven chain, ali šira orchestration strategija i dalje nije riješena. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
@@ -1227,7 +1295,7 @@ Zaključak:
 
 | Tema                   | Ideja                                                          | Kada razmatrati                                                   |
 | ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Composite report UI    | Dizajnirati poseban composite ekran, ne samo još jedan report. | Nakon definisanja composite input/schema.                         |
+| Composite report UI route | Kada composite report dobije renderer, ne gurati ga u `/dashboard/attempts/[attemptId]`. Composite nema prirodan attempt_id. Razmotriti route po `assessment_report_id` ili `assessment_assignment_id`, npr. `/dashboard/assessment-reports/[reportId]`. | Nakon definisanja composite input/schema i renderer sloja. |
 | HR-facing MWMS report  | MWMS HR report — osnovni V1 je završen; parking lot zadržava kasnije napredne varijante kao role-specific MWMS guidance ili dublju organizacijsku interpretaciju. | Nakon osnovnog MWMS HR reporta V1 i active HR lane-a. |
 | Report visual language | Svaki test treba imati svoj prikladan vizuelni summary.        | Nakon zatvaranja addressing taska i definisanja narednog participant polish sloja. |
 | Team-fit / DATCH readiness | Assessment assignment model je namjerno fleksibilan i ne pretpostavlja tačno tri testa. Budući team-fit/DATCH test može se dodati kao dodatni linked attempt kroz `assessment_assignment_attempts`, uz `role_in_assignment` i `required_for_team_fit` signal. | Kada se bude planirao četvrti test ili team-fit sloj. |
@@ -1270,6 +1338,42 @@ Racionala:
 * Prvi slice uvodi ownership bez razbijanja postojećeg candidate dashboarda i single-test reportova.
 * Compatibility režim sprečava da novi prazan attempt iz novog ciklusa bude sakriven iza starog completed attempta u attempt-based dashboard selection logici.
 * Assignment-first dashboard i `assessment_reports` storage su sljedeće zasebne arhitektonske stepenice.
+
+### 2026-05-12 — assessment_reports storage i composite readiness card uvedeni
+
+Završeno:
+
+* dodana tabela `assessment_reports` za buduće assessment-level composite HR report artefakte
+* uveden `lib/assessment/assessment-reports.ts`
+* dodan helper za latest active standard_battery assignment
+* dodan composite readiness helper
+* readiness se računa samo iz linked attempts u `assessment_assignment_attempts`
+* required set koristi `required_for_composite = true`
+* historical completed attempts se ne koriste kao fallback
+* pojedinačni AI reporti i `attempt_reports` se ne koriste za composite readiness
+* dodan latest composite HR assessment report retrieval
+* hardcoded composite placeholder na HR participant detail stranici zamijenjen realnim derived card state-om
+* composite card podržava `no_assignment`, `incomplete`, `ready_to_generate`, `queued`, `processing`, `ready` i `failed`
+* user-facing copy koristi “Kompozitni HR izvještaj” i ne koristi interni izraz “Renderer”
+* `assessment_reports` RLS dozvoljava read samo organization memberima
+* participant/candidate read policy nije dodan
+
+Odluke:
+
+* Composite HR report koristi `assessment_reports`, ne `attempt_reports`.
+* `missing`, `incomplete` i `ready_to_generate` su UI-derived state-ovi.
+* DB statusi za `assessment_reports` su `queued`, `processing`, `ready`, `failed`.
+* Readiness mora biti vezan za isti assessment assignment ciklus.
+* Nema automatskog fallbacka na historical completed attempts.
+* Nema AI generation-a, worker-a, generate/retry akcija ili renderer route-a u ovom slice-u.
+* Manual generate/retry queue flow je sljedeći fokusirani task.
+
+Racionala:
+
+* Composite HR report nema prirodan jedan `attempt_id`, pa mora imati assessment-level storage.
+* Stroga readiness logika sprečava miješanje pokušaja iz različitih ciklusa.
+* HR participant detail page je prvi siguran UI consumer jer već grupiše pojedinačne IPIP/SAFRAN/MWMS HR report kartice.
+* Ovaj slice uvodi mjesto gdje composite živi i kada je spreman, bez destabilizacije postojećeg single-test report pipeline-a.
 
 ### 2026-05-12 — Non-blocking autosave za IPIP/MWMS Likert flow završen
 
