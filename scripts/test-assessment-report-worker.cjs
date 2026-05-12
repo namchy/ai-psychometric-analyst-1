@@ -388,6 +388,7 @@ function createFakeDeps({
   snapshot,
   buildError = null,
   generateCompositeHrReport,
+  providerConfig,
   validateCompositeHrReport,
 }) {
   const client = createFakeAssessmentReportsClient(rows);
@@ -407,7 +408,16 @@ function createFakeDeps({
 
         return clone(snapshot);
       },
-      ...(generateCompositeHrReport ? { generateCompositeHrReport } : {}),
+      ...(generateCompositeHrReport
+        ? {
+            generateCompositeHrReport,
+          }
+        : {}),
+      ...(providerConfig
+        ? {
+            providerConfig,
+          }
+        : {}),
       ...(validateCompositeHrReport ? { validateCompositeHrReport } : {}),
       now: () => "2026-05-12T10:10:00.000Z",
       logger: {
@@ -609,8 +619,13 @@ async function testInvalidProviderOutput() {
       },
     }),
     generateCompositeHrReport: async () => ({
-      contractVersion: "broken",
-      reportType: "composite",
+      snapshot: {
+        contractVersion: "broken",
+        reportType: "composite",
+      },
+      generatorType: "openai",
+      generatorVersion: "v1",
+      modelName: "gpt-5.5",
     }),
     validateCompositeHrReport: validateCompositeHrReportSnapshot,
   });
@@ -631,11 +646,114 @@ async function testInvalidProviderOutput() {
   assert.equal(persistedRow.generated_at, null);
 }
 
+async function testOpenAiPathMetadata() {
+  const initialRow = buildAssessmentReportRow({
+    id: "report-openai",
+    assessment_assignment_id: "assignment-4",
+    organization_id: "org-4",
+    participant_id: "participant-4",
+    queued_at: "2026-05-12T07:30:00.000Z",
+  });
+  const openAiSnapshot = {
+    contractVersion: "composite_hr_v1",
+    reportType: "composite",
+    audience: "hr",
+    sourceType: "assessment",
+    locale: "hr",
+    generatedFor: {
+      organizationId: "org-4",
+      participantId: "participant-4",
+      assessmentAssignmentId: "assignment-4",
+    },
+    source: {
+      inputContractVersion: "composite_hr_input_v1",
+      sourceAttemptIds: ["attempt-ipip", "attempt-safran", "attempt-mwms"],
+      testSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+    },
+    summary: {
+      headline: "Integrisani HR pregled signala",
+      profileOverview:
+        "Profil objedinjene signale treba koristiti kao hipotezu za intervju i onboarding, ne kao automatski zakljucak.",
+      keyStrengths: ["Jasna tragljivost izvora.", "Signal podrzava strukturisan intervju."],
+      watchouts: ["Potrebna je provjera kroz konkretne primjere rada."],
+    },
+    integratedSignals: [
+      {
+        id: "signal-1",
+        title: "Ponasanje i struktura rada",
+        body: "Signal sugerise temu za provjeru kroz stvarne radne situacije.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Najizrazeniji domen licnosti",
+            value: "CONSCIENTIOUSNESS",
+          },
+        ],
+      },
+    ],
+    interviewGuidance: {
+      focusAreas: [
+        {
+          title: "Primjeri organizacije rada",
+          rationale: "Ovo je korisno provjeriti kroz prethodne zadatke i promjene prioriteta.",
+          questions: ["Kako organizujete rad kada se prioriteti promijene u kratkom roku?"],
+        },
+      ],
+    },
+    onboardingGuidance: {
+      managementTips: ["Rano uskladiti ocekivanja i kriterije kvaliteta."],
+      supportNeeds: ["Vrijedi provjeriti ritam povratne informacije u prvim sedmicama rada."],
+    },
+    limitations: [
+      "Ovaj izvjestaj je pomoc za interpretaciju deterministic inputa, ne automatska odluka.",
+    ],
+    metadata: {
+      provider: "openai",
+      providerVersion: "v1",
+      generatedAt: "2026-05-12T10:10:00.000Z",
+    },
+  };
+  const { client, deps } = createFakeDeps({
+    rows: [initialRow],
+    snapshot: buildCompositeInputSnapshotFixture({
+      generatedFor: {
+        organizationId: "org-4",
+        participantId: "participant-4",
+        assessmentAssignmentId: "assignment-4",
+      },
+      assessmentAssignment: {
+        id: "assignment-4",
+        assignmentType: "standard_battery",
+        status: "active",
+        locale: "hr",
+        createdAt: "2026-05-12T06:00:00.000Z",
+      },
+    }),
+    generateCompositeHrReport: async () => ({
+      snapshot: clone(openAiSnapshot),
+      generatorType: "openai",
+      generatorVersion: "v1",
+      modelName: "gpt-5.5",
+    }),
+  });
+
+  const claimedJob = await claimNextAssessmentReportJob({}, deps);
+  const result = await processClaimedAssessmentReportJob(claimedJob, deps);
+
+  assert.equal(result.status, "ready");
+  const persistedRow = client.rows.find((row) => row.id === "report-openai");
+  assert.equal(persistedRow.generator_type, "openai");
+  assert.equal(persistedRow.generator_version, "v1");
+  assert.equal(persistedRow.model_name, "gpt-5.5");
+  assert.equal(persistedRow.report_snapshot.metadata.provider, "openai");
+}
+
 async function main() {
   await testClaimQueryAndDecision();
   await testSuccessToReadyWithMockProvider();
   await testInputNotReady();
   await testInvalidProviderOutput();
+  await testOpenAiPathMetadata();
 
   console.log("Assessment report worker tests passed.");
 }

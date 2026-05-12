@@ -11,10 +11,9 @@ import {
   type CompositeHrReportSnapshot,
 } from "@/lib/assessment/composite-hr-report-contract";
 import {
-  COMPOSITE_HR_REPORT_MOCK_PROVIDER,
-  COMPOSITE_HR_REPORT_MOCK_PROVIDER_VERSION,
-  generateMockCompositeHrReport,
-} from "@/lib/assessment/composite-hr-report-provider-mock";
+  generateCompositeHrReportSnapshot,
+  type CompositeHrReportGenerationResult,
+} from "@/lib/assessment/composite-hr-report-provider";
 import type { AssessmentReportRecord } from "@/lib/assessment/assessment-reports";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -27,7 +26,7 @@ type AssessmentReportQueryOptions = {
 type AssessmentReportWorkerDependencies = {
   createSupabaseClient?: typeof createSupabaseAdminClient;
   buildCompositeInputSnapshot?: typeof buildCompositeHrInputSnapshot;
-  generateCompositeHrReport?: typeof generateMockCompositeHrReport;
+  generateCompositeHrReport?: typeof generateCompositeHrReportSnapshot;
   validateCompositeHrReport?: typeof validateCompositeHrReportSnapshot;
   now?: () => string;
   logger?: Pick<Console, "info" | "warn" | "error">;
@@ -247,6 +246,7 @@ async function updateAssessmentReportInputSnapshot(
 async function completeAssessmentReportJob(
   job: ClaimedAssessmentReportJob,
   reportSnapshot: CompositeHrReportSnapshot,
+  generation: Pick<CompositeHrReportGenerationResult, "generatorType" | "generatorVersion" | "modelName">,
   deps?: AssessmentReportWorkerDependencies,
 ): Promise<void> {
   const supabase = getSupabaseClient(deps);
@@ -260,9 +260,9 @@ async function completeAssessmentReportJob(
       generated_at: completedAt,
       failure_code: null,
       failure_reason: null,
-      model_name: null,
-      generator_type: COMPOSITE_HR_REPORT_MOCK_PROVIDER,
-      generator_version: COMPOSITE_HR_REPORT_MOCK_PROVIDER_VERSION,
+      model_name: generation.modelName,
+      generator_type: generation.generatorType,
+      generator_version: generation.generatorVersion,
       contract_version: COMPOSITE_HR_REPORT_CONTRACT_VERSION,
     })
     .eq("id", job.id)
@@ -404,12 +404,12 @@ export async function processClaimedAssessmentReportJob(
     contractVersion: inputSnapshot.targetReportContractVersion,
   });
 
-  const generateReport = deps?.generateCompositeHrReport ?? generateMockCompositeHrReport;
+  const generateReport = deps?.generateCompositeHrReport ?? generateCompositeHrReportSnapshot;
   const validateReport = deps?.validateCompositeHrReport ?? validateCompositeHrReportSnapshot;
-  let reportSnapshot: CompositeHrReportSnapshot | unknown;
+  let generatedReport: CompositeHrReportGenerationResult;
 
   try {
-    reportSnapshot = await generateReport(inputSnapshot);
+    generatedReport = await generateReport(inputSnapshot);
   } catch (error) {
     const failure = buildReportValidationFailure(
       error instanceof Error ? error.message : "Composite HR report provider returned invalid output.",
@@ -431,7 +431,7 @@ export async function processClaimedAssessmentReportJob(
     };
   }
 
-  const validation = validateReport(reportSnapshot);
+  const validation = validateReport(generatedReport.snapshot);
 
   if (!validation.ok) {
     const failure = buildReportValidationFailure(
@@ -454,13 +454,14 @@ export async function processClaimedAssessmentReportJob(
     };
   }
 
-  await completeAssessmentReportJob(job, validation.value, deps);
+  await completeAssessmentReportJob(job, validation.value, generatedReport, deps);
 
-  logger.info("Composite assessment report completed with mock provider", {
+  logger.info("Composite assessment report completed", {
     reportId: job.id,
     assessmentAssignmentId: job.assessment_assignment_id,
     contractVersion: validation.value.contractVersion,
     provider: validation.value.metadata.provider,
+    generatorType: generatedReport.generatorType,
   });
 
   return {
