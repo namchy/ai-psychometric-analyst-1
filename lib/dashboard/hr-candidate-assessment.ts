@@ -189,6 +189,12 @@ export type HrCandidateCompositeCard = {
   cta:
     | {
         label: string;
+        href: string;
+        disabled: false;
+        action: null;
+      }
+    | {
+        label: string;
         href: null;
         disabled: false;
         action: "generate_composite" | "retry_composite";
@@ -933,12 +939,12 @@ export function buildCompositeCard(input: {
       subtitle: "Integrisani profil kandidata",
       state: "ready",
       statusLabel: "Spremno za pregled",
-      body: "Kompozitni HR izvještaj je generisan. Pregled izvještaja dolazi u sljedećem koraku.",
+      body: "Kompozitni HR izvještaj je spreman za pregled.",
       visualVariant: "success",
       cta: {
-        label: "Pregled dolazi uskoro",
-        href: null,
-        disabled: true,
+        label: "Pogledaj kompozitni izvještaj",
+        href: `/dashboard/assessment-reports/${input.report.id}`,
+        disabled: false,
         action: null,
       },
       assignment: input.assignment,

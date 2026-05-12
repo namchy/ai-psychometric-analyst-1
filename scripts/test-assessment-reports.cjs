@@ -62,8 +62,145 @@ const {
   buildCompositeReadinessFromLinkedAttempts,
   buildQueuedCompositeAssessmentReportInsert,
   buildRetryFailedCompositeAssessmentReportPatch,
+  resolveReadyCompositeHrAssessmentReport,
   resolveCompositeReportQueueDecision,
 } = require("../lib/assessment/assessment-reports.ts");
+const {
+  generateMockCompositeHrReport,
+} = require("../lib/assessment/composite-hr-report-provider-mock.ts");
+
+function buildCompositeInputSnapshotFixture(overrides = {}) {
+  return {
+    contractVersion: "composite_hr_input_v1",
+    targetReportContractVersion: "composite_hr_v1",
+    sourceType: "assessment",
+    reportType: "composite",
+    audience: "hr",
+    locale: "bs",
+    generatedFor: {
+      organizationId: "org-1",
+      participantId: "participant-1",
+      assessmentAssignmentId: "assignment-ready",
+    },
+    assessmentAssignment: {
+      id: "assignment-ready",
+      assignmentType: "standard_battery",
+      status: "active",
+      locale: "bs",
+      createdAt: "2026-01-03T08:00:00.000Z",
+    },
+    sourceAttempts: [
+      {
+        attemptId: "attempt-ipip",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        status: "completed",
+        completedAt: "2026-01-03T09:00:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 0,
+      },
+      {
+        attemptId: "attempt-safran",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        status: "completed",
+        completedAt: "2026-01-03T09:10:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 1,
+      },
+      {
+        attemptId: "attempt-mwms",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        status: "completed",
+        completedAt: "2026-01-03T09:20:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 2,
+      },
+    ],
+    coverage: {
+      requiredCount: 3,
+      completedCount: 3,
+      requiredTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      completedTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      missingTestSlugs: [],
+    },
+    deterministicInputs: {
+      ipip: {
+        attemptId: "attempt-ipip",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        scale: { min: 1, max: 5 },
+        domains: [],
+        summarySignals: {
+          rankedDomains: ["CONSCIENTIOUSNESS", "AGREEABLENESS", "EXTRAVERSION"],
+          highestDomains: ["CONSCIENTIOUSNESS"],
+          lowestDomains: ["NEUROTICISM"],
+          balancedDomains: [],
+          topFacets: [],
+          lowestFacets: [],
+        },
+      },
+      safran: {
+        attemptId: "attempt-safran",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        overall: { rawScore: 36, maxScore: 54, band: "moderate_raw", interpretation: "moderate" },
+        verbal: { rawScore: 14, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        figural: { rawScore: 10, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        numeric: { rawScore: 12, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        summarySignals: {
+          strongestDomain: "verbal",
+          lowestDomain: "figural",
+        },
+      },
+      mwms: {
+        attemptId: "attempt-mwms",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        scale: { min: 1, max: 7 },
+        dimensions: [],
+        motivationStructure: {
+          autonomousMotivationScore: 6,
+          controlledMotivationScore: 3.5,
+          amotivationScore: 1.8,
+        },
+        summarySignals: {
+          dominantDrivers: ["intrinsic", "identified"],
+          lowerDrivers: ["amotivation", "external_social"],
+          cautionFlags: {
+            elevatedAmotivation: false,
+            highControlledRelativeToAutonomous: false,
+            mixedProfile: false,
+          },
+        },
+      },
+    },
+    summarySignals: {
+      personalityHighestDomains: ["CONSCIENTIOUSNESS"],
+      personalityLowestDomains: ["NEUROTICISM"],
+      cognitiveStrongestDomain: "verbal",
+      cognitiveLowestDomain: "figural",
+      motivationHighestDrivers: ["intrinsic", "identified"],
+      motivationLowestDrivers: ["amotivation", "external_social"],
+      crossInstrumentFlags: [],
+    },
+    guardrails: {
+      usesOnlyLinkedAssignmentAttempts: true,
+      usesHistoricalAttemptFallback: false,
+      usesSingleTestAiReportsAsPrimaryInput: false,
+      aiMayNotChangeScores: true,
+    },
+    metadata: {
+      builtAt: "2026-01-03T09:30:00.000Z",
+      builderVersion: "v1",
+    },
+    ...overrides,
+  };
+}
 
 function buildLink({
   assignmentId = "assignment-1",
@@ -350,6 +487,101 @@ function main() {
   });
   assert.equal(notReadyDecision.allowed, false);
   assert.equal(notReadyDecision.operation, "not_ready");
+
+  const validCompositeSnapshot = generateMockCompositeHrReport(buildCompositeInputSnapshotFixture());
+  const readyCompositeResult = resolveReadyCompositeHrAssessmentReport({
+    id: "assessment-report-ready-valid",
+    assessment_assignment_id: "assignment-ready",
+    organization_id: "org-1",
+    participant_id: "participant-1",
+    report_type: "composite",
+    audience: "hr",
+    source_type: "assessment",
+    report_status: "ready",
+    generator_type: "mock",
+    contract_version: "composite_hr_v1",
+    prompt_version_id: null,
+    model_name: null,
+    generator_version: "v1",
+    input_snapshot: null,
+    report_snapshot: validCompositeSnapshot,
+    failure_code: null,
+    failure_reason: null,
+    queued_at: null,
+    started_at: "2026-01-03T09:31:00.000Z",
+    completed_at: "2026-01-03T09:32:00.000Z",
+    generated_at: "2026-01-03T09:32:00.000Z",
+    created_at: "2026-01-03T09:30:00.000Z",
+    updated_at: "2026-01-03T09:32:00.000Z",
+    metadata: {},
+  });
+  assert.equal(readyCompositeResult.status, "ready");
+  assert.equal(readyCompositeResult.snapshot.contractVersion, "composite_hr_v1");
+
+  const invalidCompositeResult = resolveReadyCompositeHrAssessmentReport({
+    id: "assessment-report-invalid-snapshot",
+    assessment_assignment_id: "assignment-ready",
+    organization_id: "org-1",
+    participant_id: "participant-1",
+    report_type: "composite",
+    audience: "hr",
+    source_type: "assessment",
+    report_status: "ready",
+    generator_type: "mock",
+    contract_version: "composite_hr_v1",
+    prompt_version_id: null,
+    model_name: null,
+    generator_version: "v1",
+    input_snapshot: null,
+    report_snapshot: {
+      ...validCompositeSnapshot,
+      contractVersion: "broken_contract",
+    },
+    failure_code: null,
+    failure_reason: null,
+    queued_at: null,
+    started_at: "2026-01-03T09:31:00.000Z",
+    completed_at: "2026-01-03T09:32:00.000Z",
+    generated_at: "2026-01-03T09:32:00.000Z",
+    created_at: "2026-01-03T09:30:00.000Z",
+    updated_at: "2026-01-03T09:32:00.000Z",
+    metadata: {},
+  });
+  assert.equal(invalidCompositeResult.status, "invalid_snapshot");
+  assert.equal(invalidCompositeResult.message.includes("snapshot"), true);
+  assert.equal(
+    invalidCompositeResult.validationErrors.some((error) => error.includes("contractVersion")),
+    true,
+  );
+
+  const notReadyCompositeResult = resolveReadyCompositeHrAssessmentReport({
+    id: "assessment-report-queued-preview",
+    assessment_assignment_id: "assignment-ready",
+    organization_id: "org-1",
+    participant_id: "participant-1",
+    report_type: "composite",
+    audience: "hr",
+    source_type: "assessment",
+    report_status: "queued",
+    generator_type: null,
+    contract_version: null,
+    prompt_version_id: null,
+    model_name: null,
+    generator_version: null,
+    input_snapshot: null,
+    report_snapshot: null,
+    failure_code: null,
+    failure_reason: null,
+    queued_at: "2026-01-03T09:00:00.000Z",
+    started_at: null,
+    completed_at: null,
+    generated_at: null,
+    created_at: "2026-01-03T09:00:00.000Z",
+    updated_at: "2026-01-03T09:00:00.000Z",
+    metadata: {},
+  });
+  assert.equal(notReadyCompositeResult.status, "not_ready");
+  assert.equal(notReadyCompositeResult.message, "Izvještaj još nije spreman za pregled.");
 
   console.log("Assessment reports readiness helper tests passed.");
 }

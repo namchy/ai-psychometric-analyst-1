@@ -1133,6 +1133,7 @@ function main() {
   assert.equal(readyToGenerateModel.compositeCard.state, "ready_to_generate");
   assert.equal(readyToGenerateModel.compositeCard.cta.disabled, false);
   assert.equal(readyToGenerateModel.compositeCard.cta.action, "generate_composite");
+  assert.equal(readyToGenerateModel.compositeCard.cta.href, null);
   assert.equal(
     readyToGenerateModel.compositeCard.cta.label,
     "Generiši kompozitni HR izvještaj",
@@ -1154,6 +1155,7 @@ function main() {
   assert.equal(queuedCompositeModel.compositeCard.state, "queued");
   assert.equal(queuedCompositeModel.compositeCard.cta.disabled, true);
   assert.equal(queuedCompositeModel.compositeCard.cta.action, null);
+  assert.equal(queuedCompositeModel.compositeCard.cta.href, null);
   assert.equal(queuedCompositeModel.compositeCard.cta.label, "Čeka generisanje");
 
   const processingCompositeModel = buildDetailModel({
@@ -1172,6 +1174,7 @@ function main() {
   assert.equal(processingCompositeModel.compositeCard.state, "processing");
   assert.equal(processingCompositeModel.compositeCard.cta.disabled, true);
   assert.equal(processingCompositeModel.compositeCard.cta.action, null);
+  assert.equal(processingCompositeModel.compositeCard.cta.href, null);
   assert.equal(processingCompositeModel.compositeCard.cta.label, "Generiše se");
 
   const readyCompositeModel = buildDetailModel({
@@ -1188,9 +1191,17 @@ function main() {
     }),
   });
   assert.equal(readyCompositeModel.compositeCard.state, "ready");
-  assert.equal(readyCompositeModel.compositeCard.cta.disabled, true);
+  assert.equal(readyCompositeModel.compositeCard.cta.disabled, false);
   assert.equal(readyCompositeModel.compositeCard.cta.action, null);
-  assert.equal(readyCompositeModel.compositeCard.cta.label, "Pregled dolazi uskoro");
+  assert.equal(readyCompositeModel.compositeCard.cta.label, "Pogledaj kompozitni izvještaj");
+  assert.equal(
+    readyCompositeModel.compositeCard.cta.href,
+    "/dashboard/assessment-reports/assessment-report-ready",
+  );
+  assert.equal(
+    readyCompositeModel.compositeCard.cta.href.includes("/dashboard/attempts/"),
+    false,
+  );
 
   const failedCompositeModel = buildDetailModel({
     participant: participant4,
@@ -1211,6 +1222,7 @@ function main() {
   assert.equal(failedCompositeModel.compositeCard.cta.disabled, false);
   assert.equal(failedCompositeModel.compositeCard.cta.action, "retry_composite");
   assert.equal(failedCompositeModel.compositeCard.cta.label, "Ponovo generiši");
+  assert.equal(failedCompositeModel.compositeCard.cta.href, null);
 
   console.log("HR candidate assessment detail model tests passed.");
 }

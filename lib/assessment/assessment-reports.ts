@@ -1,6 +1,10 @@
 import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  validateCompositeHrReportSnapshot,
+  type CompositeHrReportSnapshot,
+} from "@/lib/assessment/composite-hr-report-contract";
 import { STANDARD_ASSESSMENT_BATTERY_SLUGS } from "@/lib/assessment/standard-battery";
 
 export const ASSESSMENT_REPORT_TYPES = ["composite"] as const;
@@ -141,6 +145,24 @@ export type CompositeAssessmentReportQueueResult = {
   readiness: CompositeReadinessState;
   report: AssessmentReportRecord | null;
 };
+
+export type ReadyCompositeHrAssessmentReportResult =
+  | {
+      status: "ready";
+      report: AssessmentReportRecord;
+      snapshot: CompositeHrReportSnapshot;
+    }
+  | {
+      status: "not_ready";
+      report: AssessmentReportRecord;
+      message: string;
+    }
+  | {
+      status: "invalid_snapshot";
+      report: AssessmentReportRecord;
+      message: string;
+      validationErrors: string[];
+    };
 
 type AssessmentAssignmentIdentityRow = {
   id: string;
@@ -359,6 +381,67 @@ export async function loadLatestCompositeHrAssessmentReport(input: {
   }
 
   return ((data ?? []) as AssessmentReportRecord[])[0] ?? null;
+}
+
+export function resolveReadyCompositeHrAssessmentReport(
+  report: AssessmentReportRecord,
+): ReadyCompositeHrAssessmentReportResult {
+  if (report.report_status !== "ready") {
+    return {
+      status: "not_ready",
+      report,
+      message: "Izvještaj još nije spreman za pregled.",
+    };
+  }
+
+  const validation = validateCompositeHrReportSnapshot(report.report_snapshot);
+
+  if (!validation.ok) {
+    return {
+      status: "invalid_snapshot",
+      report,
+      message: "Izvještaj nije moguće prikazati jer snapshot ne prolazi validaciju.",
+      validationErrors: validation.errors,
+    };
+  }
+
+  return {
+    status: "ready",
+    report,
+    snapshot: validation.value,
+  };
+}
+
+export async function getReadyCompositeHrAssessmentReportForOrganization(input: {
+  reportId: string;
+  organizationId: string;
+}): Promise<ReadyCompositeHrAssessmentReportResult | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("assessment_reports")
+    .select(
+      "id, assessment_assignment_id, organization_id, participant_id, report_type, audience, source_type, report_status, generator_type, contract_version, prompt_version_id, model_name, generator_version, input_snapshot, report_snapshot, failure_code, failure_reason, queued_at, started_at, completed_at, generated_at, created_at, updated_at, metadata",
+    )
+    .eq("id", input.reportId)
+    .eq("organization_id", input.organizationId)
+    .eq("report_type", "composite")
+    .eq("audience", "hr")
+    .eq("source_type", "assessment")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Failed to load composite assessment report ${input.reportId}: ${error.message}`,
+    );
+  }
+
+  const report = data as AssessmentReportRecord | null;
+
+  if (!report) {
+    return null;
+  }
+
+  return resolveReadyCompositeHrAssessmentReport(report);
 }
 
 export function resolveCompositeReportQueueDecision(input: {

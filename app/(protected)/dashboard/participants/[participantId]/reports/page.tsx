@@ -461,6 +461,13 @@ export default async function CandidateReportsPage({
                     {model.compositeCard.cta.label}
                   </button>
                 </form>
+              ) : model.compositeCard.cta.href && !model.compositeCard.cta.disabled ? (
+                <Link
+                  className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition hover:-translate-y-0.5 hover:bg-teal-700"
+                  href={model.compositeCard.cta.href}
+                >
+                  {model.compositeCard.cta.label}
+                </Link>
               ) : (
                 <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                   {model.compositeCard.cta.label}
