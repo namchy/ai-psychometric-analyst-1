@@ -67,6 +67,11 @@ const {
 const {
   generateOpenAiCompositeHrReport,
 } = require("../lib/assessment/composite-hr-report-provider-openai.ts");
+const {
+  COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
+  COMPOSITE_HR_BHS_LANGUAGE_RULES,
+  COMPOSITE_HR_BHS_REVIEWER_RULES,
+} = require("../lib/assessment/report-language-quality.ts");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -297,8 +302,21 @@ function buildOpenAiSnapshotFixture(inputSnapshot, overrides = {}) {
   };
 }
 
-function buildFetchResponse(payload) {
+function buildReviewerResponseFixture(overrides = {}) {
+  return {
+    approved: true,
+    issues: [],
+    summary: "Output passes language and HR safety review.",
+    ...overrides,
+  };
+}
+
+function buildFetchResponse(...payloads) {
+  const queue = payloads.length > 0 ? [...payloads] : [{}];
+
   return async function fetchImpl() {
+    const payload = queue.length > 1 ? queue.shift() : queue[0];
+
     return {
       ok: true,
       status: 200,
@@ -320,13 +338,15 @@ function buildFetchResponse(payload) {
   };
 }
 
-function buildCapturingFetchResponse(payload) {
+function buildCapturingFetchResponse(...payloads) {
   const calls = [];
+  const queue = payloads.length > 0 ? [...payloads] : [{}];
 
   return {
     calls,
     fetchImpl: async function fetchImpl(_url, requestInit) {
       calls.push(requestInit);
+      const payload = queue.length > 1 ? queue.shift() : queue[0];
 
       return {
         ok: true,
@@ -396,7 +416,7 @@ async function testOpenAiPathReturnsValidSnapshot() {
     generateOpenAiReport: async (snapshot, options) =>
       generateOpenAiCompositeHrReport(snapshot, {
         ...options,
-        fetchImpl: buildFetchResponse(reportSnapshot),
+        fetchImpl: buildFetchResponse(reportSnapshot, buildReviewerResponseFixture()),
         now: () => "2026-05-12T10:15:00.000Z",
       }),
   });
@@ -422,7 +442,7 @@ async function testOpenAiInvalidOutputFailsValidation() {
       generateOpenAiCompositeHrReport(inputSnapshot, {
         apiKey: "test-key",
         model: "gpt-5.5",
-        fetchImpl: buildFetchResponse(invalidSnapshot),
+        fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
         now: () => "2026-05-12T10:15:00.000Z",
       }),
     /failed validation|contractVersion/i,
@@ -444,7 +464,7 @@ async function testSourceImmutabilityFailsOnMutatedSource() {
       generateOpenAiCompositeHrReport(inputSnapshot, {
         apiKey: "test-key",
         model: "gpt-5.5",
-        fetchImpl: buildFetchResponse(invalidSnapshot),
+        fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
         now: () => "2026-05-12T10:15:00.000Z",
       }),
     /sourceAttemptIds do not match/i,
@@ -471,8 +491,365 @@ async function testForbiddenWordingRejected() {
         fetchImpl: buildFetchResponse(invalidSnapshot),
         now: () => "2026-05-12T10:15:00.000Z",
       }),
-    /forbidden phrasing/i,
+    /language quality validation failed|zaposliti/i,
   );
+}
+
+async function testRokoviVisokiRejected() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    summary: {
+      headline: "Integrisani HR pregled",
+      profileOverview: "Glavni rizik zvuci kao rokovi visoki u svim situacijama.",
+      keyStrengths: ["Jasna tragljivost izvora."],
+      watchouts: ["Potrebna je provjera kroz primjere rada."],
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(invalidSnapshot),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /rokovi visoki/i,
+  );
+}
+
+async function testAgreeablenessGlossaryViolationsRejected() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+
+  for (const forbiddenPhrase of ["Ugodnost", "Saradljivost"]) {
+    const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+      summary: {
+        headline: "Integrisani HR pregled",
+        profileOverview: `${forbiddenPhrase} se navodi kao glavni domen za timski rad.`,
+        keyStrengths: ["Jasna tragljivost izvora."],
+        watchouts: ["Potrebna je provjera kroz primjere rada."],
+      },
+    });
+
+    await assert.rejects(
+      () =>
+        generateOpenAiCompositeHrReport(inputSnapshot, {
+          apiKey: "test-key",
+          model: "gpt-5.5",
+          fetchImpl: buildFetchResponse(invalidSnapshot),
+          now: () => "2026-05-12T10:15:00.000Z",
+        }),
+      new RegExp(forbiddenPhrase, "i"),
+    );
+  }
+}
+
+async function testAgreeablenessLabelReplacementRejectedButNarrativeSaradnjaAllowed() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+
+  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    integratedSignals: [
+      {
+        id: "signal-collaboration",
+        title: "Timski signal",
+        body: "U timskoj saradnji vrijedi provjeriti kako osoba gradi povjerenje i ritam rada.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Saradnja",
+            value: "izrazen signal",
+          },
+        ],
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(invalidSnapshot),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /Saradnja|Spremnost na saradnju/i,
+  );
+
+  const validSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    integratedSignals: [
+      {
+        id: "signal-collaboration",
+        title: "Timski signal",
+        body: "U timskoj saradnji vrijedi provjeriti kako osoba gradi povjerenje i ritam rada.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Spremnost na saradnju",
+            value: "izrazen signal",
+          },
+        ],
+      },
+    ],
+  });
+
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(validSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(result.integratedSignals[0].body.includes("saradnji"), true);
+  assert.equal(result.integratedSignals[0].evidence[0].label, "Spremnost na saradnju");
+}
+
+async function testForbiddenHiringTermsRejected() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+
+  for (const forbiddenText of [
+    "Ovo je fit score za ulogu.",
+    "Ovo je idealni kandidat za tim.",
+    "Treba ga zaposliti odmah.",
+    "Ne zaposliti bez dodatnog razgovora.",
+  ]) {
+    const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+      summary: {
+        headline: "Integrisani HR pregled",
+        profileOverview: forbiddenText,
+        keyStrengths: ["Jasna tragljivost izvora."],
+        watchouts: ["Potrebna je provjera kroz primjere rada."],
+      },
+    });
+
+    await assert.rejects(
+      () =>
+        generateOpenAiCompositeHrReport(inputSnapshot, {
+          apiKey: "test-key",
+          model: "gpt-5.5",
+          fetchImpl: buildFetchResponse(invalidSnapshot),
+          now: () => "2026-05-12T10:15:00.000Z",
+        }),
+      /fit score|idealni kandidat|zaposliti|ne zaposliti/i,
+    );
+  }
+}
+
+async function testReviewerApprovedPathPasses() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(
+      buildOpenAiSnapshotFixture(inputSnapshot),
+      buildReviewerResponseFixture(),
+    ),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(snapshot).ok, true);
+}
+
+async function testReviewerRejectedPathFailsProvider() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(
+          buildOpenAiSnapshotFixture(inputSnapshot),
+          buildReviewerResponseFixture({
+            approved: false,
+            issues: [
+              {
+                code: "UNNATURAL_BHS_LANGUAGE",
+                severity: "blocking",
+                message: "Contains awkward phrase that should not pass.",
+              },
+            ],
+            summary: "Output should not be accepted.",
+          }),
+        ),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /reviewer rejected report|UNNATURAL_BHS_LANGUAGE/i,
+  );
+}
+
+async function testReviewerCanRejectUserFacingTechnicalLanguage() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(
+          buildOpenAiSnapshotFixture(inputSnapshot, {
+            summary: {
+              headline: "Integrisani HR pregled",
+              profileOverview:
+                "Profil ostaje citljiv, ali jedan dio teksta spominje linked attempts i source attempts.",
+              keyStrengths: ["Jasna tragljivost izvora."],
+              watchouts: ["Potrebna je provjera kroz primjere rada."],
+            },
+          }),
+          buildReviewerResponseFixture({
+            approved: false,
+            issues: [
+              {
+                code: "TECHNICAL_USER_FACING_LANGUAGE",
+                severity: "blocking",
+                message: "User-facing copy mentions linked attempts.",
+              },
+            ],
+            summary: "Output should not be accepted.",
+          }),
+        ),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /TECHNICAL_USER_FACING_LANGUAGE|linked attempts/i,
+  );
+}
+
+async function testReviewerCanRejectHrSafetyIssue() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(
+          buildOpenAiSnapshotFixture(inputSnapshot),
+          buildReviewerResponseFixture({
+            approved: false,
+            issues: [
+              {
+                code: "HIRING_DECISION_LANGUAGE",
+                severity: "blocking",
+                message: "Review detected prescriptive hiring decision framing.",
+              },
+            ],
+            summary: "Output should not be accepted.",
+          }),
+        ),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /HIRING_DECISION_LANGUAGE|reviewer rejected report/i,
+  );
+}
+
+async function testReviewerDoesNotFailBecauseOfSourceSnapshotLegacyLabels() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture({
+    deterministicInputs: {
+      ipip: {
+        attemptId: "attempt-ipip",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        scale: { min: 1, max: 5 },
+        domains: [
+          {
+            label: "Ugodnost",
+            facets: [{ label: "Saradljivost" }],
+          },
+        ],
+        summarySignals: {
+          rankedDomains: ["CONSCIENTIOUSNESS", "AGREEABLENESS", "EXTRAVERSION"],
+          highestDomains: ["CONSCIENTIOUSNESS"],
+          lowestDomains: ["NEUROTICISM"],
+          balancedDomains: [],
+          topFacets: [],
+          lowestFacets: [],
+        },
+      },
+      safran: {
+        attemptId: "attempt-safran",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        overall: { rawScore: 36, maxScore: 54, band: "moderate_raw", interpretation: "moderate" },
+        verbal: { rawScore: 14, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        figural: { rawScore: 10, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        numeric: { rawScore: 12, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        summarySignals: {
+          strongestDomain: "verbal",
+          lowestDomain: "figural",
+        },
+      },
+      mwms: {
+        attemptId: "attempt-mwms",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        scale: { min: 1, max: 7 },
+        dimensions: [],
+        motivationStructure: {
+          autonomousMotivationScore: 6,
+          controlledMotivationScore: 3.5,
+          amotivationScore: 1.8,
+        },
+        summarySignals: {
+          dominantDrivers: ["intrinsic", "identified"],
+          lowerDrivers: ["amotivation", "external_social"],
+          cautionFlags: {
+            elevatedAmotivation: false,
+            highControlledRelativeToAutonomous: false,
+            mixedProfile: false,
+          },
+        },
+      },
+    },
+  });
+
+  const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(
+      buildOpenAiSnapshotFixture(inputSnapshot, {
+        integratedSignals: [
+          {
+            id: "signal-collaboration",
+            title: "Timski signal",
+            body: "U timskoj saradnji vrijedi provjeriti kako osoba gradi povjerenje i ritam rada.",
+            evidence: [
+              {
+                testSlug: "ipip-neo-120-v1",
+                label: "Spremnost na saradnju",
+                value: "izrazen signal",
+              },
+            ],
+          },
+        ],
+      }),
+      buildReviewerResponseFixture(),
+    ),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(snapshot).ok, true);
+}
+
+async function testAsciiPerformancePressurePasses() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(
+      buildOpenAiSnapshotFixture(inputSnapshot, {
+        summary: {
+          headline: "Integrisani HR pregled",
+          profileOverview:
+            "Profil ostaje stabilan, ali vrijedi provjeriti kako osoba reaguje na pritisak ucinka u zahtjevnim sedmicama.",
+          keyStrengths: ["Jasna tragljivost izvora."],
+          watchouts: ["Potrebna je provjera kroz primjere rada."],
+        },
+      }),
+      buildReviewerResponseFixture(),
+    ),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(snapshot).ok, true);
 }
 
 async function testValidOutputHasNoForbiddenWords() {
@@ -480,19 +857,30 @@ async function testValidOutputHasNoForbiddenWords() {
   const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
     apiKey: "test-key",
     model: "gpt-5.5",
-    fetchImpl: buildFetchResponse(buildOpenAiSnapshotFixture(inputSnapshot)),
+    fetchImpl: buildFetchResponse(
+      buildOpenAiSnapshotFixture(inputSnapshot),
+      buildReviewerResponseFixture(),
+    ),
     now: () => "2026-05-12T10:15:00.000Z",
   });
 
   const allText = collectStrings(snapshot).join(" ");
-  assert.equal(/zaposliti|ne zaposliti|fit score|idealni kandidat/i.test(allText), false);
+  assert.equal(
+    /zaposliti|ne zaposliti|fit score|idealni kandidat|rokovi visoki|ugodnost|saradljivost/i.test(
+      allText,
+    ),
+    false,
+  );
 }
 
 async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   const inputSnapshot = buildCompositeInputSnapshotFixture({
     addressingForm: "feminine",
   });
-  const capture = buildCapturingFetchResponse(buildOpenAiSnapshotFixture(inputSnapshot));
+  const capture = buildCapturingFetchResponse(
+    buildOpenAiSnapshotFixture(inputSnapshot),
+    buildReviewerResponseFixture(),
+  );
 
   await generateOpenAiCompositeHrReport(inputSnapshot, {
     apiKey: "test-key",
@@ -501,23 +889,31 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
     now: () => "2026-05-12T10:15:00.000Z",
   });
 
-  assert.equal(capture.calls.length, 1);
-  const requestBody = JSON.parse(capture.calls[0].body);
-  const messages = requestBody.messages ?? [];
-  const systemPrompt = messages.find((message) => message.role === "system")?.content ?? "";
-  const userPrompt = messages.find((message) => message.role === "user")?.content ?? "";
+  assert.equal(capture.calls.length, 2);
+  const generationRequestBody = JSON.parse(capture.calls[0].body);
+  const generationMessages = generationRequestBody.messages ?? [];
+  const systemPrompt =
+    generationMessages.find((message) => message.role === "system")?.content ?? "";
+  const userPrompt =
+    generationMessages.find((message) => message.role === "user")?.content ?? "";
   const combinedPrompt = `${systemPrompt}\n${userPrompt}`;
+  const reviewerRequestBody = JSON.parse(capture.calls[1].body);
+  const reviewerMessages = reviewerRequestBody.messages ?? [];
+  const reviewerSystemPrompt =
+    reviewerMessages.find((message) => message.role === "system")?.content ?? "";
+  const reviewerUserPrompt =
+    reviewerMessages.find((message) => message.role === "user")?.content ?? "";
+  const combinedReviewerPrompt = `${reviewerSystemPrompt}\n${reviewerUserPrompt}`;
 
-  assert.equal(/(?:^|\W)saradljiv(?:\W|$)/i.test(combinedPrompt), false);
   assert.equal(/addressingForm/i.test(combinedPrompt), true);
   assert.equal(/Use it only for grammatical form|only for grammatical agreement/i.test(combinedPrompt), true);
   assert.equal(/must never change scoring|Do not change, reinterpret or normalize score values/i.test(combinedPrompt), true);
-  assert.equal(
-    /spreman na saradnju|saradnička orijentacija|kooperativan|otvoren za saradnju|sklon saradnji/i.test(
-      combinedPrompt,
-    ),
-    true,
-  );
+  for (const rule of COMPOSITE_HR_BHS_LANGUAGE_RULES) {
+    assert.equal(combinedPrompt.includes(rule), true);
+  }
+  for (const rule of COMPOSITE_HR_BHS_GLOSSARY_PROMPT) {
+    assert.equal(combinedPrompt.includes(rule), true);
+  }
   assert.equal(
     /premium B2B tone|stručan, jasan, praktičan, bez hype-a/i.test(combinedPrompt),
     true,
@@ -556,11 +952,22 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   );
   assert.equal(/Do not repeat the phrase korisno je provjeriti/i.test(combinedPrompt), true);
   assert.equal(
-    /zaposliti, ne zaposliti, hire, no-hire, fit score, idealni kandidat or konačna odluka/i.test(
+    /Spremnost na saradnju|Ugodnost|Saradljivost|rokovi visoki|fit score|hire\/no-hire/i.test(
       combinedPrompt,
     ),
     true,
   );
+  for (const rule of COMPOSITE_HR_BHS_REVIEWER_RULES) {
+    assert.equal(combinedReviewerPrompt.includes(rule), true);
+  }
+  assert.equal(/Spremnost na saradnju/i.test(combinedReviewerPrompt), true);
+  assert.equal(/Ugodnost/i.test(combinedReviewerPrompt), true);
+  assert.equal(/Saradljivost/i.test(combinedReviewerPrompt), true);
+  assert.equal(/Saradnja/i.test(combinedReviewerPrompt), true);
+  assert.equal(/rokovi visoki/i.test(combinedReviewerPrompt), true);
+  assert.equal(/fit score/i.test(combinedReviewerPrompt), true);
+  assert.equal(/hire\/no-hire|hire-no-hire|hire\/no hire/i.test(combinedReviewerPrompt), true);
+  assert.equal(/ordinary narrative uses of the word 'saradnja'|obicnu rijec 'saradnja'/i.test(combinedReviewerPrompt), true);
 }
 
 async function testFeminineMismatchIsRejected() {
@@ -582,11 +989,50 @@ async function testFeminineMismatchIsRejected() {
       generateOpenAiCompositeHrReport(inputSnapshot, {
         apiKey: "test-key",
         model: "gpt-5.5",
-        fetchImpl: buildFetchResponse(invalidSnapshot),
+        fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
         now: () => "2026-05-12T10:15:00.000Z",
       }),
     /feminine addressing mismatch/i,
   );
+}
+
+async function testFeminineNarrativePassesAndNeutralEvidenceDoesNotTripGuardrail() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture({
+    addressingForm: "feminine",
+  });
+
+  const validSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    summary: {
+      headline: "Integrisani HR pregled",
+      profileOverview:
+        "Spremna na saradnju i vjerovatno konstruktivna u timskim odnosima. Ostatak nalaza ostaje oprezna hipoteza.",
+      keyStrengths: ["Jasna tragljivost izvora."],
+      watchouts: ["Potrebna je provjera kroz primjere rada."],
+    },
+    integratedSignals: [
+      {
+        id: "signal-neutral",
+        title: "Kontekst saradnje",
+        body: "U timskoj saradnji vrijedi provjeriti kako osoba uskladjuje ritam rada sa drugima.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Spremnost na saradnju",
+            value: "izrazen signal",
+          },
+        ],
+      },
+    ],
+  });
+
+  const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(validSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(snapshot).ok, true);
 }
 
 async function main() {
@@ -595,9 +1041,20 @@ async function main() {
   await testOpenAiInvalidOutputFailsValidation();
   await testSourceImmutabilityFailsOnMutatedSource();
   await testForbiddenWordingRejected();
+  await testRokoviVisokiRejected();
+  await testAgreeablenessGlossaryViolationsRejected();
+  await testAgreeablenessLabelReplacementRejectedButNarrativeSaradnjaAllowed();
+  await testForbiddenHiringTermsRejected();
+  await testReviewerApprovedPathPasses();
+  await testReviewerRejectedPathFailsProvider();
+  await testReviewerCanRejectUserFacingTechnicalLanguage();
+  await testReviewerCanRejectHrSafetyIssue();
+  await testReviewerDoesNotFailBecauseOfSourceSnapshotLegacyLabels();
+  await testAsciiPerformancePressurePasses();
   await testValidOutputHasNoForbiddenWords();
   await testPromptGuidanceEnforcesCompositeHrCopyRules();
   await testFeminineMismatchIsRejected();
+  await testFeminineNarrativePassesAndNeutralEvidenceDoesNotTripGuardrail();
 
   console.log("Composite HR OpenAI provider tests passed.");
 }

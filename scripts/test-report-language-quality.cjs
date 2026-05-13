@@ -1,0 +1,255 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const Module = require("node:module");
+const ts = require("typescript");
+
+const projectRoot = path.resolve(__dirname, "..");
+const emptyModulePath = path.join(__dirname, "empty-module.cjs");
+const originalResolveFilename = Module._resolveFilename;
+
+function resolveWithExtensions(candidatePath) {
+  if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
+    return candidatePath;
+  }
+
+  for (const extension of [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"]) {
+    const withExtension = `${candidatePath}${extension}`;
+
+    if (fs.existsSync(withExtension)) {
+      return withExtension;
+    }
+  }
+
+  return candidatePath;
+}
+
+Module._resolveFilename = function resolveFilename(request, parent, isMain, options) {
+  if (request === "server-only") {
+    return emptyModulePath;
+  }
+
+  if (request.startsWith("@/")) {
+    return originalResolveFilename.call(
+      this,
+      resolveWithExtensions(path.join(projectRoot, request.slice(2))),
+      parent,
+      isMain,
+      options,
+    );
+  }
+
+  return originalResolveFilename.call(this, request, parent, isMain, options);
+};
+
+require.extensions[".ts"] = function compileTypeScript(module, filename) {
+  const source = fs.readFileSync(filename, "utf8");
+  const transpiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      moduleResolution: ts.ModuleResolutionKind.NodeJs,
+      target: ts.ScriptTarget.ES2022,
+      esModuleInterop: true,
+      resolveJsonModule: true,
+    },
+    fileName: filename,
+  });
+
+  module._compile(transpiled.outputText, filename);
+};
+
+const {
+  validateReportLanguageQuality,
+  assertReportLanguageQuality,
+} = require("../lib/assessment/report-language-quality.ts");
+
+function validateCompositeHrText(text, locale = "bs") {
+  return validateReportLanguageQuality({
+    text,
+    locale,
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+}
+
+function expectIssue(text, expected) {
+  const result = validateCompositeHrText(text);
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.issues.some(
+      (issue) =>
+        issue.code === expected.code &&
+        issue.phrase === expected.phrase &&
+        (expected.suggestion ? issue.suggestion === expected.suggestion : true),
+    ),
+    true,
+  );
+}
+
+function testValidTextPasses() {
+  const result = validateCompositeHrText(
+    [
+      "HR pregled opisuje Spremnost na saradnju kao stabilan signal za timski rad.",
+      "U kontekstu pritiska rokova vrijedi provjeriti kako osoba cuva kvalitet isporuke.",
+      "Nalaz sluzi kao hipoteza za intervju i onboarding, ne kao presuda.",
+    ].join(" "),
+  );
+
+  assert.deepEqual(result, { ok: true, issues: [] });
+}
+
+function testForbiddenCompositeHrPhrasesFail() {
+  expectIssue("U tekstu stoji rokovi visoki kao glavni rizik.", {
+    code: "FORBIDDEN_PHRASE",
+    phrase: "rokovi visoki",
+    suggestion: "pritisak rokova",
+  });
+  expectIssue("Ugodnost se ovdje navodi kao domen.", {
+    code: "GLOSSARY_VIOLATION",
+    phrase: "ugodnost",
+    suggestion: "Spremnost na saradnju",
+  });
+  expectIssue("Saradljivost je glavni signal u timu.", {
+    code: "GLOSSARY_VIOLATION",
+    phrase: "saradljivost",
+    suggestion: "Spremnost na saradnju",
+  });
+}
+
+function testAgreeablenessLabelStrictness() {
+  const result = validateReportLanguageQuality({
+    snapshot: {
+      integratedSignals: [
+        {
+          evidence: [
+            {
+              label: "Saradnja",
+            },
+          ],
+        },
+      ],
+    },
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.issues.some(
+      (issue) =>
+        issue.code === "GLOSSARY_VIOLATION" &&
+        issue.phrase === "Saradnja" &&
+        issue.suggestion === "Spremnost na saradnju",
+    ),
+    true,
+  );
+
+  const validResult = validateReportLanguageQuality({
+    snapshot: {
+      integratedSignals: [
+        {
+          evidence: [
+            {
+              label: "Spremnost na saradnju",
+            },
+          ],
+        },
+      ],
+    },
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.deepEqual(validResult, { ok: true, issues: [] });
+}
+
+function testNarrativeSaradnjaAllowed() {
+  const result = validateCompositeHrText(
+    "U timskoj saradnji i saradnji sa kolegama vrijedi provjeriti kako osoba gradi povjerenje.",
+  );
+
+  assert.deepEqual(result, { ok: true, issues: [] });
+}
+
+function testAsciiPerformancePressureAllowed() {
+  const asciiResult = validateCompositeHrText(
+    "Vrijedi provjeriti kako osoba reaguje na pritisak ucinka u zahtjevnim sedmicama.",
+  );
+  const diacriticsResult = validateCompositeHrText(
+    "Vrijedi provjeriti kako osoba reaguje na pritisak učinka u zahtjevnim sedmicama.",
+  );
+
+  assert.deepEqual(asciiResult, { ok: true, issues: [] });
+  assert.deepEqual(diacriticsResult, { ok: true, issues: [] });
+}
+
+function testForbiddenHiringTermsFail() {
+  expectIssue("Ovo izgleda kao fit score za ulogu.", {
+    code: "FORBIDDEN_TERM",
+    phrase: "fit score",
+  });
+  expectIssue("Ovo je idealni kandidat za tim.", {
+    code: "FORBIDDEN_HIRING_DECISION",
+    phrase: "idealni kandidat",
+  });
+  expectIssue("Treba ga zaposliti odmah.", {
+    code: "FORBIDDEN_HIRING_DECISION",
+    phrase: "zaposliti",
+  });
+  expectIssue("Ne zaposliti ovu osobu bez daljeg razgovora.", {
+    code: "FORBIDDEN_HIRING_DECISION",
+    phrase: "ne zaposliti",
+  });
+}
+
+function testStructuredSnapshotPathAndAssertWrapper() {
+  const snapshot = {
+    summary: {
+      headline: "HR pregled",
+      profileOverview: "Spremnost na saradnju ostaje stabilan signal.",
+      keyStrengths: ["Jasna struktura rada."],
+      watchouts: ["Vrijedi dodatno provjeriti reakciju na pritisak rokova."],
+    },
+  };
+
+  const result = validateReportLanguageQuality({
+    snapshot,
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.deepEqual(result, { ok: true, issues: [] });
+
+  assert.throws(
+    () =>
+      assertReportLanguageQuality({
+        text: "Ovo je structured output debug poruka sa fit score odlukom.",
+        locale: "bs",
+        audience: "hr",
+        reportType: "composite",
+        context: "composite_hr_report",
+      }),
+    /FORBIDDEN_DEBUG_LANGUAGE|FORBIDDEN_TERM/i,
+  );
+}
+
+function main() {
+  testValidTextPasses();
+  testForbiddenCompositeHrPhrasesFail();
+  testAgreeablenessLabelStrictness();
+  testNarrativeSaradnjaAllowed();
+  testAsciiPerformancePressureAllowed();
+  testForbiddenHiringTermsFail();
+  testStructuredSnapshotPathAndAssertWrapper();
+
+  console.log("Report language quality tests passed.");
+}
+
+main();

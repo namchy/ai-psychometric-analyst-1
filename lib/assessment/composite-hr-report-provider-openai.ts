@@ -10,6 +10,12 @@ import {
   validateCompositeHrReportSnapshot,
   type CompositeHrReportSnapshot,
 } from "@/lib/assessment/composite-hr-report-contract";
+import {
+  assertReportLanguageQuality,
+  COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
+  COMPOSITE_HR_BHS_LANGUAGE_RULES,
+  COMPOSITE_HR_BHS_REVIEWER_RULES,
+} from "@/lib/assessment/report-language-quality";
 
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER = "openai" as const;
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION = "v1" as const;
@@ -26,18 +32,17 @@ type ErrorWithCause = Error & {
   cause?: unknown;
 };
 
-const FORBIDDEN_TEXT_PATTERNS = [
-  /(?:^|\W)saradljiv(?:\W|$)/i,
-  /(?:^|\W)zaposliti(?:\W|$)/i,
-  /ne\s+zaposliti/i,
-  /(?:^|\W)hire(?:\W|$)/i,
-  /(?:^|\W)no-hire(?:\W|$)/i,
-  /idealni kandidat/i,
-  /fit score/i,
-  /konačna odluka/i,
-  /konačna preporuka za zapošljavanje/i,
-  /clinical|kliničk|klinic|medicinsk/i,
-];
+type CompositeHrReviewIssue = {
+  code: string;
+  severity: "blocking" | "warning";
+  message: string;
+};
+
+type CompositeHrReviewResult = {
+  approved: boolean;
+  issues: CompositeHrReviewIssue[];
+  summary: string;
+};
 
 const FEMININE_ADDRESSING_MISMATCH_PATTERNS = [
   /\bspreman na saradnju\b/i,
@@ -45,6 +50,24 @@ const FEMININE_ADDRESSING_MISMATCH_PATTERNS = [
   /\borijentisan\b/i,
   /\bsklon\s/i,
 ];
+
+function collectNarrativeStrings(snapshot: CompositeHrReportSnapshot): string[] {
+  return [
+    snapshot.summary.headline,
+    snapshot.summary.profileOverview,
+    ...snapshot.summary.keyStrengths,
+    ...snapshot.summary.watchouts,
+    ...snapshot.integratedSignals.flatMap((signal) => [signal.title, signal.body]),
+    ...snapshot.interviewGuidance.focusAreas.flatMap((area) => [
+      area.title,
+      area.rationale,
+      ...area.questions,
+    ]),
+    ...snapshot.onboardingGuidance.managementTips,
+    ...snapshot.onboardingGuidance.supportNeeds,
+    ...snapshot.limitations,
+  ];
+}
 
 function buildOpenAiSchemaName(schemaName: string): string {
   const sanitized = schemaName
@@ -86,39 +109,6 @@ function buildLocaleInstruction(locale: CompositeHrInputSnapshot["locale"]): str
   }
 }
 
-function collectStrings(value: unknown, output: string[] = []): string[] {
-  if (typeof value === "string") {
-    output.push(value);
-    return output;
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      collectStrings(item, output);
-    }
-
-    return output;
-  }
-
-  if (value && typeof value === "object") {
-    for (const nestedValue of Object.values(value)) {
-      collectStrings(nestedValue, output);
-    }
-  }
-
-  return output;
-}
-
-function assertForbiddenPhrasing(snapshot: CompositeHrReportSnapshot): void {
-  const text = collectStrings(snapshot).join("\n");
-
-  for (const pattern of FORBIDDEN_TEXT_PATTERNS) {
-    if (pattern.test(text)) {
-      throw new Error(`Composite HR report contains forbidden phrasing: ${pattern}`);
-    }
-  }
-}
-
 function assertAddressingFormConsistency(
   snapshot: CompositeHrReportSnapshot,
   input: CompositeHrInputSnapshot,
@@ -127,7 +117,7 @@ function assertAddressingFormConsistency(
     return;
   }
 
-  const text = collectStrings(snapshot).join("\n");
+  const text = collectNarrativeStrings(snapshot).join("\n");
 
   for (const pattern of FEMININE_ADDRESSING_MISMATCH_PATTERNS) {
     if (pattern.test(text)) {
@@ -190,12 +180,13 @@ function buildCompositeHrOpenAiSystemPrompt(input: CompositeHrInputSnapshot): st
     "Do not change scores, bands, evidence, interpretation, risk level or recommendation because of addressingForm.",
     "For feminine addressingForm, use feminine forms such as spremna, konstruktivna, orijentisana, sklona, stabilna, pouzdana and kandidatkinja where natural.",
     "For feminine addressingForm, avoid masculine-only forms such as spreman, konstruktivan, orijentisan or sklon when directly referring to the person.",
+    "For feminine addressingForm, never output phrases like 'spreman na saradnju', 'konstruktivan u', 'orijentisan' or 'sklon' when they describe the person.",
     "For masculine addressingForm, use masculine forms such as spreman, konstruktivan, orijentisan, sklon, stabilan, pouzdan and kandidat where natural.",
     "Prefer neutral nouns such as osoba or profil where that produces more natural BHS business language.",
     "Do not overuse gendered wording when a neutral formulation is more natural.",
     "Use premium Bosnian/Croatian/Serbian business language: natural, precise, practical, without hype or generic AI phrasing.",
-    "Do not use the low-quality literal adjective that sometimes appears as a direct translation of collaborative in BHS business copy.",
-    "Prefer formulations such as spreman na saradnju, saradnička orijentacija, kooperativan, otvoren za saradnju or sklon saradnji when the evidence supports them.",
+    ...COMPOSITE_HR_BHS_LANGUAGE_RULES,
+    ...COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
     "Avoid awkward literal translations, vague abstractions and overly long sentences.",
     buildLocaleInstruction(input.locale),
   ].join(" ");
@@ -215,8 +206,8 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         `Input contains addressingForm=${input.addressingForm}. Use it only for grammatical form when directly describing the candidate/person.`,
       content_rules: [
         "Do not write hire/no-hire decisions.",
-        "Do not use the low-quality literal adjective that sometimes appears as a direct translation of collaborative in BHS business copy.",
-        "Do not use forbidden literal phrases such as zaposliti, ne zaposliti, hire, no-hire, fit score, idealni kandidat or konačna odluka.",
+        ...COMPOSITE_HR_BHS_LANGUAGE_RULES,
+        ...COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
         "Do not make medical, clinical or protected-trait claims.",
         "Do not present results as absolute truth.",
         "Do not add evidence that is not directly traceable to the input snapshot.",
@@ -224,10 +215,12 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
       style_rules: [
         "Use premium B2B tone: stručan, jasan, praktičan, bez hype-a.",
         "Write in natural Bosnian/Croatian/Serbian business language, not in direct or awkward translationese.",
-        "Prefer formulations such as spreman na saradnju, saradnička orijentacija, kooperativan, otvoren za saradnju or sklon saradnji when the evidence supports them.",
-        "Avoid that low-quality literal adjective and avoid generic AI phrasing.",
+        ...COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
+        "Prefer formulations such as spreman na saradnju, saradnicka orijentacija, kooperativan, otvoren za saradnju or sklon saradnji when the evidence supports them.",
+        "Avoid generic AI phrasing and awkward literal translations.",
         "Use addressingForm only for grammatical agreement, not for any interpretive change.",
         "For feminine, prefer forms such as spremna, konstruktivna, orijentisana, sklona, stabilna and pouzdana when directly describing the person.",
+        "For feminine, never use masculine phrases such as 'spreman na saradnju', 'konstruktivan u', 'orijentisan' or 'sklon' for the person.",
         "For masculine, prefer forms such as spreman, konstruktivan, orijentisan, sklon, stabilan and pouzdan when directly describing the person.",
         "Prefer neutral nouns such as osoba or profil when they read more naturally than repeated gendered wording.",
         "Avoid overly long sentences; keep sentences readable and controlled.",
@@ -275,6 +268,170 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
     },
     input,
   });
+}
+
+function buildCompositeHrReviewerSystemPrompt(): string {
+  return [
+    "You review a candidate HR-facing composite assessment report before it is accepted.",
+    "Return only JSON matching the supplied schema exactly.",
+    "Reject the report if there is any blocking language, HR safety, source integrity or user-facing clarity issue.",
+    "Use blocking severity for issues that should prevent acceptance.",
+    "Evaluate forbidden language and user-facing clarity only in candidateReportSnapshot.",
+    "Use sourceSnapshot only to verify source integrity such as identifiers, scores, bands and referenced instruments.",
+    "Do not reject because sourceSnapshot contains legacy or internal labels if candidateReportSnapshot itself uses correct user-facing terminology.",
+    "ASCII-only BHS spellings without diacritics are acceptable if the wording is otherwise natural and terminologically correct.",
+    "For AGREEABLENESS labels in candidateReportSnapshot, only 'Spremnost na saradnju' is valid.",
+    "Do not use 'Saradnja' as an AGREEABLENESS domain label or evidence label.",
+    "Do not reject ordinary narrative uses of the word 'saradnja' when they do not replace the AGREEABLENESS label.",
+    ...COMPOSITE_HR_BHS_LANGUAGE_RULES,
+    ...COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
+    ...COMPOSITE_HR_BHS_REVIEWER_RULES,
+  ].join(" ");
+}
+
+function buildCompositeHrReviewerUserPrompt(
+  input: CompositeHrInputSnapshot,
+  snapshot: CompositeHrReportSnapshot,
+): string {
+  return JSON.stringify({
+    instructions: {
+      audience: "HR reviewer only",
+      decision_rule: "Approve only when the candidate snapshot is safe, natural, source-faithful and HR-appropriate.",
+      blocking_rule: "Any blocking issue means approved=false.",
+      candidate_report_scope_rule:
+        "Review forbidden terminology, hiring language and user-facing clarity only inside candidateReportSnapshot.",
+      source_snapshot_scope_rule:
+        "Use sourceSnapshot only for deterministic source integrity checks. Do not block on legacy/internal labels that appear only in sourceSnapshot.",
+      ascii_bhs_rule:
+        "Do not reject candidateReportSnapshot only because preferred BHS wording appears without diacritics when the wording is otherwise natural and terminologically correct.",
+      agreeableness_label_rule:
+        "Inside candidateReportSnapshot, AGREEABLENESS domain/evidence labels must use 'Spremnost na saradnju'. 'Saradnja' is not allowed as the label replacement.",
+      saradnja_narrative_rule:
+        "Do not reject ordinary narrative uses of the word 'saradnja' when they are not acting as AGREEABLENESS labels.",
+      review_rules: COMPOSITE_HR_BHS_REVIEWER_RULES,
+      glossary_rules: COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
+      language_rules: COMPOSITE_HR_BHS_LANGUAGE_RULES,
+    },
+    sourceSnapshot: {
+      generatedFor: input.generatedFor,
+      sourceAttempts: input.sourceAttempts.map((attempt) => ({
+        attemptId: attempt.attemptId,
+        testSlug: attempt.testSlug,
+      })),
+      completedTestSlugs: input.coverage.completedTestSlugs,
+      deterministicInputs: input.deterministicInputs,
+      summarySignals: input.summarySignals,
+    },
+    candidateReportSnapshot: snapshot,
+  });
+}
+
+const compositeHrReviewOpenAiSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["approved", "issues", "summary"],
+  properties: {
+    approved: {
+      type: "boolean",
+    },
+    issues: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["code", "severity", "message"],
+        properties: {
+          code: { type: "string", minLength: 1 },
+          severity: {
+            type: "string",
+            enum: ["blocking", "warning"],
+          },
+          message: { type: "string", minLength: 1 },
+        },
+      },
+    },
+    summary: {
+      type: "string",
+      minLength: 1,
+    },
+  },
+} as const satisfies Record<string, unknown>;
+
+function validateCompositeHrReviewResult(value: unknown): CompositeHrReviewResult {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Composite HR reviewer returned invalid payload root.");
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  if (typeof candidate.approved !== "boolean") {
+    throw new Error("Composite HR reviewer payload missing approved boolean.");
+  }
+
+  if (typeof candidate.summary !== "string" || candidate.summary.trim().length === 0) {
+    throw new Error("Composite HR reviewer payload missing summary.");
+  }
+
+  if (!Array.isArray(candidate.issues)) {
+    throw new Error("Composite HR reviewer payload missing issues array.");
+  }
+
+  const issues = candidate.issues.map((issue, index) => {
+    if (!issue || typeof issue !== "object" || Array.isArray(issue)) {
+      throw new Error(`Composite HR reviewer issue ${index} is invalid.`);
+    }
+
+    const candidateIssue = issue as Record<string, unknown>;
+
+    if (typeof candidateIssue.code !== "string" || candidateIssue.code.trim().length === 0) {
+      throw new Error(`Composite HR reviewer issue ${index} missing code.`);
+    }
+
+    if (candidateIssue.severity !== "blocking" && candidateIssue.severity !== "warning") {
+      throw new Error(`Composite HR reviewer issue ${index} missing severity.`);
+    }
+
+    const severity: CompositeHrReviewIssue["severity"] = candidateIssue.severity;
+
+    if (typeof candidateIssue.message !== "string" || candidateIssue.message.trim().length === 0) {
+      throw new Error(`Composite HR reviewer issue ${index} missing message.`);
+    }
+
+    return {
+      code: candidateIssue.code,
+      severity,
+      message: candidateIssue.message,
+    };
+  });
+
+  return {
+    approved: candidate.approved,
+    issues,
+    summary: candidate.summary,
+  };
+}
+
+async function reviewCompositeHrOpenAiReport(
+  input: CompositeHrInputSnapshot,
+  snapshot: CompositeHrReportSnapshot,
+  options: OpenAiCompositeHrProviderOptions,
+): Promise<void> {
+  const rawReview = await requestOpenAiStructuredJson(options, {
+    label: "composite HR report review",
+    schemaName: "composite_hr_report_review_v1",
+    schema: compositeHrReviewOpenAiSchema as Record<string, unknown>,
+    systemPrompt: buildCompositeHrReviewerSystemPrompt(),
+    userPrompt: buildCompositeHrReviewerUserPrompt(input, snapshot),
+  });
+
+  const review = validateCompositeHrReviewResult(rawReview);
+
+  if (!review.approved) {
+    const details = review.issues.length > 0
+      ? review.issues.map((issue) => `${issue.severity}:${issue.code}:${issue.message}`).join("; ")
+      : review.summary;
+    throw new Error(`Composite HR reviewer rejected report: ${details}`);
+  }
 }
 
 export const compositeHrReportOpenAiSchema = {
@@ -531,14 +688,14 @@ async function requestOpenAiStructuredJson(
     const content = responsePayload.choices?.[0]?.message?.content;
 
     if (typeof content !== "string") {
-      throw new Error("OpenAI composite HR report response did not contain structured content.");
+      throw new Error(`OpenAI ${payload.label} response did not contain structured content.`);
     }
 
     return parseStructuredContent(content);
   } catch (error) {
     const normalizedError = error instanceof Error ? (error as ErrorWithCause) : null;
     throw new Error(
-      `OpenAI composite HR report failed: ${normalizedError?.message ?? String(error)}`,
+      `OpenAI ${payload.label} failed: ${normalizedError?.message ?? String(error)}`,
     );
   } finally {
     clearTimeout(timeout);
@@ -566,7 +723,13 @@ export async function generateOpenAiCompositeHrReport(
   }
 
   assertImmutableSource(initialValidation.value, input);
-  assertForbiddenPhrasing(initialValidation.value);
+  assertReportLanguageQuality({
+    snapshot: initialValidation.value,
+    locale: initialValidation.value.locale,
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
   assertAddressingFormConsistency(initialValidation.value, input);
 
   const normalizedReport: CompositeHrReportSnapshot = {
@@ -584,6 +747,8 @@ export async function generateOpenAiCompositeHrReport(
       `OpenAI composite HR report failed normalized validation: ${formatCompositeHrReportValidationErrors(normalizedValidation.errors)}`,
     );
   }
+
+  await reviewCompositeHrOpenAiReport(input, normalizedValidation.value, options);
 
   return normalizedValidation.value;
 }
