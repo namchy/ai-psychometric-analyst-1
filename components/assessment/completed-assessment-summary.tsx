@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -124,6 +123,8 @@ const MWMS_NEXT_STEPS = [
   "Povezati motivacijski profil sa očekivanjima konkretne uloge, načinom vođenja i uslovima rada.",
   "Ne koristiti pojedinačnu skalu kao eliminacioni kriterij.",
 ] as const;
+
+const TECHNICAL_REPORT_TEXT_MARKERS = new Set(["paragraphs_placeholder_removed"]);
 
 type MwmsBandLabel = "Nisko" | "Umjereno" | "Izraženo" | "Vrlo izraženo";
 
@@ -316,6 +317,24 @@ function normalizeMwmsCopy(text: string): string {
     .replace(/\bVaš\b/g, "Tvoj")
     .replace(/\bvaš\b/g, "tvoj")
     .trim();
+}
+
+function sanitizeTechnicalReportText(text: string | null | undefined): string | null {
+  if (typeof text !== "string") {
+    return null;
+  }
+
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  if (TECHNICAL_REPORT_TEXT_MARKERS.has(trimmed.toLowerCase())) {
+    return null;
+  }
+
+  return trimmed;
 }
 
 function getMwmsSummaryHeadline(dimensionCards: DimensionViewModel[]): string {
@@ -2576,6 +2595,9 @@ function IpipNeo120ParticipantReportV2Sections({
 }: {
   report: IpipNeo120ParticipantReportV2;
 }) {
+  const workStyleParagraphs = report.work_style.paragraphs
+    .map((paragraph) => sanitizeTechnicalReportText(paragraph))
+    .filter((paragraph): paragraph is string => Boolean(paragraph));
   const [activeDomainCode, setActiveDomainCode] = useState<string | null>(null);
   const overviewSectionRef = useRef<HTMLElement | null>(null);
   const detailPanelRef = useRef<HTMLDivElement | null>(null);
@@ -2678,16 +2700,18 @@ function IpipNeo120ParticipantReportV2Sections({
         </div>
       </section>
 
-      <section className="results-report__section results-report__panel card stack-sm">
-        <div className="results-report__section-heading">
-          <h3>{report.work_style.title}</h3>
-        </div>
-        <div className="results-report__section-body stack-xs">
-          {report.work_style.paragraphs.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
-        </div>
-      </section>
+      {workStyleParagraphs.length > 0 ? (
+        <section className="results-report__section results-report__panel card stack-sm">
+          <div className="results-report__section-heading">
+            <h3>{report.work_style.title}</h3>
+          </div>
+          <div className="results-report__section-body stack-xs">
+            {workStyleParagraphs.map((paragraph, index) => (
+              <p key={`${index}-${paragraph}`}>{paragraph}</p>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section
         ref={overviewSectionRef}
@@ -3594,18 +3618,6 @@ export function CompletedAssessmentSummary({
 
   return (
     <div className="results-report stack-md">
-      {ipipNeo120ParticipantReport ? (
-        <div className="mb-3">
-          <Link
-            href="/app"
-            className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.01em] text-slate-700 transition-colors duration-200 hover:text-slate-900"
-          >
-            <span aria-hidden="true">←</span>
-            <span>Nazad na dashboard</span>
-          </Link>
-        </div>
-      ) : null}
-
       <section
         className={
           ipipNeo120ParticipantReport
