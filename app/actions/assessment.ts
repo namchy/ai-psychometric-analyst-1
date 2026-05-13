@@ -41,6 +41,7 @@ import type {
   AttemptStatus,
   QuestionType,
 } from "@/lib/assessment/types";
+import { resolveAddressingForm } from "@/lib/auth/addressing-form";
 import {
   AuthenticationRequiredError,
   requireAuthenticatedUser,
@@ -118,6 +119,10 @@ type ResponseSelectionInsert = {
   answer_option_id: string;
 };
 
+type ParticipantAddressingFormRow = {
+  addressing_form: unknown;
+};
+
 type PersistSelectionsResult =
   | {
       ok: true;
@@ -134,6 +139,46 @@ type PersistAssessmentSelectionsOptions = {
 };
 
 const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
+
+async function resolveAttemptAddressingFormSnapshot(
+  ownershipContext: AttemptOwnershipContext | undefined,
+): Promise<ReturnType<typeof resolveAddressingForm>> {
+  const participantId = ownershipContext?.participantId?.trim();
+  const userId = ownershipContext?.userId?.trim();
+  const organizationId = ownershipContext?.organizationId?.trim();
+
+  if (!participantId && !userId) {
+    return resolveAddressingForm(null);
+  }
+
+  const supabase = createSupabaseAdminClient();
+  let query = supabase
+    .from("participants")
+    .select("addressing_form")
+    .eq("status", "active")
+    .limit(1);
+
+  if (participantId) {
+    query = query.eq("id", participantId);
+  }
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  if (organizationId) {
+    query = query.eq("organization_id", organizationId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    throw new Error(`Unable to resolve participant addressing form: ${error.message}`);
+  }
+
+  // Temporary fallback until every candidate entry path is guaranteed to collect the preference first.
+  return resolveAddressingForm((data as ParticipantAddressingFormRow | null)?.addressing_form);
+}
 
 function shouldGenerateCompletedAssessmentReport(results: CompletedAssessmentResults | null): boolean {
   return results?.scoringMethod === "likert_sum";
@@ -506,6 +551,7 @@ async function persistAssessmentSelections(
       };
     }
 
+    const addressingFormSnapshot = await resolveAttemptAddressingFormSnapshot(input.ownershipContext);
     const { data: createdAttemptData, error: createAttemptError } = await supabase
       .from("attempts")
       .insert({
@@ -514,6 +560,7 @@ async function persistAssessmentSelections(
         user_id: input.ownershipContext?.userId ?? null,
         organization_id: input.ownershipContext?.organizationId ?? null,
         participant_id: input.ownershipContext?.participantId ?? null,
+        addressing_form_snapshot: addressingFormSnapshot,
       })
       .select("id")
       .single();
@@ -755,6 +802,7 @@ export async function createB2BAttempt(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const addressingFormSnapshot = resolveAddressingForm(participant.addressing_form);
   const { data, error } = await supabase
     .from("attempts")
     .insert({
@@ -762,6 +810,7 @@ export async function createB2BAttempt(formData: FormData) {
       user_id: user.id,
       organization_id: organization.id,
       participant_id: participant.id,
+      addressing_form_snapshot: addressingFormSnapshot,
     })
     .select("id")
     .single();

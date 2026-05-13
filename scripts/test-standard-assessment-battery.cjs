@@ -104,6 +104,7 @@ const initialPlan = planStandardAssessmentBatteryCreation({
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "feminine",
   locale: "de",
   startedAt: STARTED_AT,
 });
@@ -121,6 +122,7 @@ assert.deepEqual(
     participant_id: attempt.participant_id,
     test_id: attempt.test_id,
     locale: attempt.locale,
+    addressing_form_snapshot: attempt.addressing_form_snapshot,
     user_id: attempt.user_id,
     status: attempt.status,
     started_at: attempt.started_at,
@@ -131,6 +133,7 @@ assert.deepEqual(
       participant_id: PARTICIPANT_ID,
       test_id: "test-ipip",
       locale: "bs",
+      addressing_form_snapshot: "feminine",
       user_id: PARTICIPANT_USER_ID,
       status: "in_progress",
       started_at: STARTED_AT,
@@ -140,6 +143,7 @@ assert.deepEqual(
       participant_id: PARTICIPANT_ID,
       test_id: "test-safran",
       locale: "bs",
+      addressing_form_snapshot: "feminine",
       user_id: PARTICIPANT_USER_ID,
       status: "in_progress",
       started_at: STARTED_AT,
@@ -149,6 +153,7 @@ assert.deepEqual(
       participant_id: PARTICIPANT_ID,
       test_id: "test-mwms",
       locale: "bs",
+      addressing_form_snapshot: "feminine",
       user_id: PARTICIPANT_USER_ID,
       status: "in_progress",
       started_at: STARTED_AT,
@@ -166,6 +171,7 @@ const replacementRoundPlan = planStandardAssessmentBatteryCreation({
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
   locale: "hr",
   startedAt: STARTED_AT,
 });
@@ -190,6 +196,7 @@ const multipleInProgressPlan = planStandardAssessmentBatteryCreation({
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
   locale: "bs",
   startedAt: STARTED_AT,
 });
@@ -213,6 +220,7 @@ const completedSafranIsNotReinsertedPlan = planStandardAssessmentBatteryCreation
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
   locale: "bs",
   startedAt: STARTED_AT,
 });
@@ -230,6 +238,7 @@ const noRunnablePlan = planStandardAssessmentBatteryCreation({
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: undefined,
   locale: "bs",
   startedAt: STARTED_AT,
 });
@@ -238,5 +247,24 @@ assert.equal(noRunnablePlan.outcome, "battery-no-runnable-tests");
 assert.deepEqual(noRunnablePlan.runnableTests, []);
 assert.deepEqual(noRunnablePlan.attemptIdsToAbandon, []);
 assert.deepEqual(noRunnablePlan.attemptsToInsert, []);
+
+const fallbackAddressingFormPlan = planStandardAssessmentBatteryCreation({
+  availableTests,
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  existingAttempts: [],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: undefined,
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+assert.equal(
+  fallbackAddressingFormPlan.attemptsToInsert.every(
+    (attempt) => attempt.addressing_form_snapshot === "masculine",
+  ),
+  true,
+);
 
 console.log("Standard assessment battery tests passed.");

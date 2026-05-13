@@ -4,7 +4,7 @@ import { randomInt } from "node:crypto";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { normalizeAddressingForm } from "@/lib/auth/addressing-form";
+import { normalizeAddressingForm, resolveAddressingForm } from "@/lib/auth/addressing-form";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 import type { CreateAssessmentModalState } from "@/components/dashboard/create-assessment-modal-state";
 import { normalizeAssessmentLocale } from "@/lib/assessment/locale";
@@ -367,6 +367,7 @@ async function createStandardAssessmentBatteryForParticipant(params: {
     organizationId: params.organizationId,
     participantId: participant.id,
     participantUserId: participant.user_id,
+    participantAddressingForm: participant.addressing_form,
     locale: params.locale,
     startedAt: new Date().toISOString(),
   });
@@ -578,11 +579,14 @@ export async function createAssessmentAttempt(formData: FormData) {
     redirect(`/dashboard?error=attempt-test-not-available&openAttemptFor=${encodeURIComponent(participantId)}`);
   }
 
+  // Temporary fallback until every candidate entry path is guaranteed to collect the preference first.
+  const addressingFormSnapshot = resolveAddressingForm(participant.addressing_form);
   const { error } = await supabase.from("attempts").insert({
     organization_id: organization.id,
     participant_id: participant.id,
     test_id: testId,
     locale,
+    addressing_form_snapshot: addressingFormSnapshot,
     user_id: participant.user_id,
     status: "in_progress",
     started_at: new Date().toISOString(),
@@ -695,6 +699,7 @@ export async function createStandardAssessmentBattery(formData: FormData) {
     organizationId: organization.id,
     participantId: participant.id,
     participantUserId: participant.user_id,
+    participantAddressingForm: participant.addressing_form,
     locale: rawLocale,
     startedAt: new Date().toISOString(),
   });

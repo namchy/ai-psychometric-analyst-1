@@ -59,11 +59,15 @@ const {
   resolveAddressingForm,
 } = require("../lib/auth/addressing-form.ts");
 
+const protectedAppActionsPath = path.join(projectRoot, "app/(protected)/app/actions.ts");
+const assessmentActionsPath = path.join(projectRoot, "app/actions/assessment.ts");
 const participantActionsPath = path.join(projectRoot, "app/actions/participants.ts");
 const migrationPath = path.join(
   projectRoot,
   "supabase/migrations/20260513100000_add_addressing_form_preference.sql",
 );
+const protectedAppActionsContents = fs.readFileSync(protectedAppActionsPath, "utf8");
+const assessmentActionsContents = fs.readFileSync(assessmentActionsPath, "utf8");
 const participantActionsContents = fs.readFileSync(participantActionsPath, "utf8");
 const migrationContents = fs.readFileSync(migrationPath, "utf8");
 
@@ -82,7 +86,18 @@ assert.equal(resolveAddressingForm("invalid"), "masculine");
 
 assert.match(participantActionsContents, /normalizeAddressingForm\(rawAddressingForm\)/);
 assert.match(participantActionsContents, /Odaberi jedan od ponuđenih oblika obraćanja\./);
+assert.match(protectedAppActionsContents, /addressing_form_snapshot:\s*addressingFormSnapshot/);
+assert.match(protectedAppActionsContents, /resolveAddressingForm\(/);
+assert.match(participantActionsContents, /addressing_form_snapshot:\s*addressingFormSnapshot/);
+assert.match(participantActionsContents, /participantAddressingForm:\s*participant\.addressing_form/);
+assert.match(assessmentActionsContents, /addressing_form_snapshot:\s*addressingFormSnapshot/);
+assert.match(assessmentActionsContents, /resolveAttemptAddressingFormSnapshot/);
+assert.doesNotMatch(protectedAppActionsContents, /update\(\{[^}]*addressing_form_snapshot/s);
+assert.doesNotMatch(participantActionsContents, /update\(\{[^}]*addressing_form_snapshot/s);
+assert.doesNotMatch(assessmentActionsContents, /update\(\{[^}]*addressing_form_snapshot/s);
+assert.doesNotMatch(protectedAppActionsContents, /["'`](male|female|gender)["'`]/i);
 assert.doesNotMatch(participantActionsContents, /["'`](male|female|gender)["'`]/i);
+assert.doesNotMatch(assessmentActionsContents, /["'`](male|female|gender)["'`]/i);
 
 assert.match(migrationContents, /alter table public\.participants/i);
 assert.match(migrationContents, /add column if not exists addressing_form text/i);
