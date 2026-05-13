@@ -68,7 +68,7 @@ Komande:
 | P1        | Assessment report worker path za composite          | Završeno    | Composite HR report / Worker lifecycle | Zatvoreno kao lifecycle proof: worker claim-a queued assessment_reports row, gradi input_snapshot kroz composite input builder i kontrolisano završava kao failed sa COMPOSITE_PROVIDER_NOT_IMPLEMENTED dok provider ne postoji. |
 | P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Zatvoreno nakon assessment_reports storage/readiness slice-a. |
 | P1        | Composite HR report V1                              | Završeno / Runtime smoke potvrđen | Product / AI report | Mock-backed DB smoke, final renderer copy/UX polish i OpenAI DB-backed smoke su završeni kroz postojeći assessment_reports lifecycle. Sljedeći korak: eventualni mali provider prompt/copy polish i/ili production worker orchestration odluka. |
-| P1        | Oblik obraćanja: muški/ženski jezički oblik          | Otvoreno    | UX / i18n / AI promptovi     | Prvo uraditi product/technical discovery za addressing_form preferencu: modal, DB polje, participant preference, snapshot na attempt/report nivou i uticaj na AI promptove za participant reporte. |
+| P1        | Oblik obraćanja: muški/ženski jezički oblik          | Discovery / Spec spreman | UX / i18n / AI promptovi     | Discovery je definisao UI naziv preferencije, modal timing, participant-level polje, attempt/report snapshot princip i buduće AI input wiring. Sljedeći korak je uska implementacija kroz migration/constants → modal → snapshot → participant report wiring. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
 | P1        | SAFRAN novi stimulus asseti                          | Otvoreno    | Assessment assets / UX       | Ubaciti nove SAFRAN stimulus slike sa većim, čitljivijim tekstom.                              |
@@ -1170,6 +1170,188 @@ Nakon uspješnog DB-backed mock smoke-a, Composite HR report renderer je radio i
 **Completion note:**  
 Završen je Composite HR report V1 final copy/UX polish nad mock-backed rendererom. Promjene su ograničene na `components/dashboard/composite-hr-report-view.tsx` i `scripts/test-composite-hr-report-renderer.cjs`. Source/traceability blok je preimenovan u “Osnova izvještaja” i “Procjene uključene u izvještaj”, “3 povezana pokušaja” je zamijenjeno sa “3 završene procjene”, raw provider `mock / v1` je zamijenjen HR-facing prikazom “Testni prikaz”, a raw test slugovi su mapirani na “Procjena ličnosti”, “Kognitivna procjena” i “Motivacija za rad”. Evidence chipovi sada koriste kraće HR-facing oznake “Ličnost”, “Kognitivni rezultat” i “Motivacija”. Dodan je mali display sanitizer za očigledne tehničke izraze poput “source attempts”, “assessment ciklusa”, “score vrijednosti” i “linked attemptova”. Provider, worker, contract/schema, scoring, assessment lifecycle, route/access guard i `attempt_reports` nisu mijenjani. Testovi prolaze. OpenAI DB-backed smoke je naknadno završen kroz postojeći lifecycle; eventualni mali provider-copy/prompt polish ostaje opcioni sljedeći korak.
 
+---
+
+### P1 — Oblik obraćanja: muški/ženski jezički oblik
+
+**Status:** Discovery / Spec spreman  
+**Kategorija:** UX / i18n / AI promptovi / Participant experience
+
+**Problem / context:**  
+Deep Profile kandidat-facing iskustvo većinom koristi bosanski jezik i često koristi direktnu “ti” formu. Kako participant reportovi i dio UI copyja postaju prirodniji i bogatiji, raste rizik da rečenice zvuče gramatički neprirodno ako sistem nema kontrolisanu preferencu za jezički oblik obraćanja. Ova preferenca ne smije biti tretirana kao identitetska ili scoring dimenzija; treba služiti samo za prirodniju formulaciju pitanja, pomoćnog teksta i participant report narativa. Postojeći runtime već ima dobar obrazac za `locale`: app-level cookie, `attempts.locale`, locale-aware input builderi, `prompt_version_localizations`, prompt selection i snapshot report outputi. Discovery cilj je da addressing form slijedi isti obrazac: participant-level preference + attempt/report snapshot, bez retroaktivnog mijenjanja starih artefakata.
+
+**Read-only audit nalaz:**
+- `app/actions/auth.ts` i [app-locale.ts](/home/naima/code/ai-psychometric-analyst-1/lib/auth/app-locale.ts) trenutno čuvaju samo app locale cookie; ne postoji zasebna user preference za obraćanje.
+- Candidate attempt creation i standard battery create flow već imaju obrazac za upis preference u `attempts.locale` kroz [app/(protected)/app/actions.ts](/home/naima/code/ai-psychometric-analyst-1/app/(protected)/app/actions.ts) i [participants.ts](/home/naima/code/ai-psychometric-analyst-1/app/actions/participants.ts).
+- [locale.ts](/home/naima/code/ai-psychometric-analyst-1/lib/assessment/locale.ts) i [reports.ts](/home/naima/code/ai-psychometric-analyst-1/lib/assessment/reports.ts) već implementiraju normalize/resolve/fallback obrazac za locale koji je dobar model i za addressing form resolver.
+- Participant AI/report inputi već nose `locale`, ali ne nose addressing form:
+  - [ipip-neo-120-participant-ai-input-v2.ts](/home/naima/code/ai-psychometric-analyst-1/lib/assessment/ipip-neo-120-participant-ai-input-v2.ts)
+  - [mwms-participant-ai-input-v1.ts](/home/naima/code/ai-psychometric-analyst-1/lib/assessment/mwms-participant-ai-input-v1.ts)
+  - [safran-participant-ai-report-v1.ts](/home/naima/code/ai-psychometric-analyst-1/lib/assessment/safran-participant-ai-report-v1.ts)
+- [report-provider-openai.ts](/home/naima/code/ai-psychometric-analyst-1/lib/assessment/report-provider-openai.ts) već ima locale-aware prompt konstrukciju i participant-direct tone guardrails, ali nema adresni gramatički signal.
+- DB schema trenutno nema addressing-form polje ni na `participants`, ni na `attempts`, ni u `attempt_reports` / `assessment_reports` snapshot kolonama; migracije pokazuju da je `locale` evoluirao upravo kroz model koji sada želimo ponoviti za addressing form.
+- Candidate UX entry points su mapirani:
+  - login: [page.tsx](/home/naima/code/ai-psychometric-analyst-1/app/login/page.tsx), [login-form.tsx](/home/naima/code/ai-psychometric-analyst-1/components/auth/login-form.tsx)
+  - dashboard: [app/page.tsx](/home/naima/code/ai-psychometric-analyst-1/app/(protected)/app/page.tsx)
+  - attempt intro/run/report: [attempt intro](/home/naima/code/ai-psychometric-analyst-1/app/(protected)/app/attempts/[attemptId]/page.tsx), [run](/home/naima/code/ai-psychometric-analyst-1/app/(protected)/app/attempts/[attemptId]/run/page.tsx), [report](/home/naima/code/ai-psychometric-analyst-1/app/(protected)/app/attempts/[attemptId]/report/page.tsx)
+- Participant renderers već imaju mjesta sa direktnim obraćanjem i budućim rizikom gramatičkog neslaganja, posebno u [completed-assessment-summary.tsx](/home/naima/code/ai-psychometric-analyst-1/components/assessment/completed-assessment-summary.tsx), [safran-participant-report-display.ts](/home/naima/code/ai-psychometric-analyst-1/lib/assessment/safran-participant-report-display.ts) i MWMS/IPIP participant copy helperima.
+
+**A) Product decision**
+
+- UI naziv preference:
+  - `Oblik obraćanja`
+- Opcije u MVP-u:
+  - `Muški oblik`
+  - `Ženski oblik`
+- Preporučena objašnjavajuća rečenica u modalu:
+  - `Ovaj izbor koristimo samo da pitanja i izvještaji zvuče prirodnije. Ne utiče na rezultat procjene.`
+- Šta eksplicitno ne pitamo:
+  - ne pitamo `spol`
+  - ne pitamo `rod`
+  - ne pitamo `gender`
+- Product pravilo:
+  - izbor utiče samo na gramatičku formu participant-facing copyja i AI narativa
+  - izbor ne utiče na scoring, interpretaciju, band, readiness, queue ili report status
+
+**B) UX flow prijedlog**
+
+- Preporuka za prvi prikaz:
+  - mali obavezni modal pri prvom ulasku na candidate dashboard ili neposredno prije prvog testa, prije nego nastane prvi participant attempt
+- Ne prikazivati:
+  - tokom aktivnog testa
+  - tokom report loading flow-a
+  - usred resume flow-a
+- Buduća promjena:
+  - omogućiti kasniju promjenu u profile/settings zoni kada taj surface postoji
+- Fallback ako preferenca nije postavljena:
+  - prije prvog testa tražiti izbor kroz modal
+  - ako historijski attempt/report postoji bez preference, koristiti controlled fallback `masculine` samo kao tehnički fallback u resolveru, ali to ne nuditi kao user-facing “default preporuku”
+- Zašto ne tokom testa:
+  - trenutni run flow je fokusiran i oslanja se na `attempt.locale`; novi obavezni modal usred rješavanja bi remetio tok i povećao rizik od nedosljednog snapshotovanja
+
+**C) Data model prijedlog**
+
+- Participant/user-level preference:
+  - preporučeno ime polja: `addressing_form`
+  - alternativno prihvatljivo: `grammatical_addressing_form`
+  - preporuka je kraće `addressing_form`, jer je dovoljno jasno i lakše za šire korištenje kroz UI/input/snapshot slojeve
+- Vrijednosti:
+  - `masculine`
+  - `feminine`
+- Attempt-level snapshot:
+  - preporučeno polje: `addressing_form_snapshot`
+  - mjesto: `attempts` kolona ili `attempts.metadata` kao privremeni korak, ali preporuka za zdraviji model je eksplicitna kolona kada implementacija krene
+- Report-level snapshot:
+  - `input_snapshot.addressingForm`
+  - i/ili `report_snapshot.meta.addressing_form_used`
+- Zašto snapshot na attempt/report nivou:
+  - participant može kasnije promijeniti preferencu
+  - stari attempt i report moraju ostati gramatički stabilni i reproducibilni
+  - prompt smoke i renderer regresije se lakše testiraju kada je korištena vrijednost upisana u artefakt
+  - isti princip već važi za locale-aware report stabilnost
+
+**D) Prompt/input impact**
+
+- IPIP participant AI input V2:
+  - dodati `addressing_form`
+  - dopuniti `language_rules` ili sličan blok sa jasnim signalom koju gramatičku formu koristiti
+- MWMS participant AI input:
+  - dodati `addressing_form`
+  - koristiti ga samo za formu obraćanja u summary/observations/reflection copyju
+- SAFRAN participant AI input/report:
+  - dodati `addressing_form`
+  - primijeniti ga na participant-facing interpretaciju i next-step copy
+- Budući composite participant report, ako ikada postoji:
+  - treba naslijediti isti signal od starta
+- Tvrdo pravilo za AI:
+  - AI ne smije mijenjati score, band, interpretaciju, readiness ili zaključke na osnovu addressing form preference
+  - addressing form smije uticati samo na gramatičku formu obraćanja
+
+**E) Renderer/copy impact**
+
+- Površine najvećeg rizika:
+  - intro copy sa glagolima u prošlom vremenu i participima
+  - SAFRAN participant display copy sa frazama poput `radio ili radila`, `imao ili imala`
+  - MWMS participant copy helperi i safety net koji već ručno normalizuju “ti/tvoj” formu
+  - IPIP participant AI V2 summary, work-style i reflection copy
+  - completed report/loading summary ekrani sa direktnim obraćanjem kandidatu
+- Preporuka:
+  - ne pokušavati odmah “ispraviti svaku rečenicu”
+  - prvo mapirati površine koje koriste eksplicitne glagolske oblike
+  - gdje je moguće koristiti neutralniji copy, ali bez pretvaranja cijelog sistema u generički neutralni stil ako je cilj prirodniji jezik
+
+**F) i18n impact**
+
+- `bs`:
+  - puni addressing-form signal potreban
+- `hr`:
+  - isti signal potreban; većina konstrukcija ima isti problem kao u `bs`
+- `sr`:
+  - isti signal potreban, uz napomenu da kasniji sr rendering može imati dodatne lokalne gramatičke razlike
+- `en`:
+  - može ignorisati vrijednost ili je tretirati kao neutralan no-op u većini rečenica
+- Preporuka:
+  - resolver i snapshot model neka budu locale-agnostic
+  - copy/prompt sloj neka addressing form primjenjuje samo za `bs` / `hr` / `sr`
+
+**G) Implementation slicing**
+
+1. DB migration + types/constants
+2. onboarding/pre-test modal
+3. attempt snapshot
+4. participant report AI input wiring
+5. renderer/copy safety pass
+6. tests
+7. docs/todo update
+
+**H) Test plan**
+
+- preference resolver tests
+  - normalize/validate/fallback za `masculine` / `feminine`
+- DB snapshot tests
+  - participant preference → attempt snapshot → report input snapshot
+- participant report input builder tests
+  - IPIP participant input
+  - MWMS participant input
+  - SAFRAN participant input
+- provider prompt smoke
+  - provider dobija isti score input uz različit addressing form i mijenja samo gramatičku formu
+- renderer smoke
+  - masculine path
+  - feminine path
+- fallback test kada preference nedostaje
+  - historijski attempt/report bez addressing form
+
+**I) Risks / anti-patterns**
+
+- ne pitati korisnika za `spol`
+- ne koristiti preferencu za scoring
+- ne retroaktivno mijenjati stare report snapshotove
+- ne uvoditi identitetsku dimenziju proizvoda izvan gramatičkog UI signala
+- ne lomiti postojeće reporte dok addressing form nije snapshotovan
+- ne širiti scope na puni personalization engine
+- ne miješati ovu preferencu sa locale selectorom, iako obje trebaju sličan resolver/snapshot obrazac
+
+**J) Recommended MVP decision**
+
+- Naziv polja:
+  - `addressing_form`
+- Vrijednosti:
+  - `masculine`
+  - `feminine`
+- Gdje prikazati modal:
+  - pri prvom ulasku na candidate dashboard ili neposredno prije prvog testa, prije kreiranja prvog participant attempta
+- Gdje snapshotovati:
+  - participant-level preference kao source of truth
+  - `attempt` snapshot za stabilnost execution konteksta
+  - `input_snapshot` / `report_snapshot` za stabilnost report artefakta
+- Šta se ne radi u MVP-u:
+  - nema novih opcija osim `muški oblik` i `ženski oblik`
+  - nema promjene scoringa
+  - nema retroaktivnog rewrite-a starih reportova
+  - nema širenja na HR reportove u prvom slice-u
+  - nema spajanja sa full profile/settings sistemom prije nego settings surface stvarno postoji
+
 ### P1 — Supabase migration/schema cache verification za composite tabele
 
 **Status:** Završeno / DB queued smoke još preostaje  
@@ -1342,7 +1524,7 @@ Završeno kao assessment-level worker lifecycle proof. Dodan je `lib/assessment/
 | --------- | -------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | P1        | MWMS pitanja / item UX     | Završeno  | MWMS itemi trenutno mogu zvučati čudno jer su zavisni od zajedničkog uvodnog pitanja, a prikazuju se kao samostalna pitanja. | Zatvoreno nakon redizajna MWMS item prikaza kao zajednički stem + “Mogući razlog” + item tvrdnja + jasna 1–7 instrukcija skale. |
 | P1        | IPIP radar chart           | Završeno  | Radar chart je postojao u ranijoj IPIP verziji, ali je vjerovatno ispao iz novog AI/V2 render patha.                         | Zatvoreno nakon vraćanja radar chart-a u IPIP V2 participant report kao deterministic visual summary iz display_score vrijednosti. |
-| P1        | Oblik obraćanja            | Otvoreno  | Korisnik treba odabrati muški ili ženski jezički oblik obraćanja, bez pitanja o spolu.                                       | Definisati arhitekturu preference za muški/ženski jezički oblik, uključujući modal, DB/snapshot model i pravila za participant AI promptove. |
+| P1        | Oblik obraćanja            | Discovery / Spec spreman  | Korisnik treba odabrati muški ili ženski jezički oblik obraćanja, bez pitanja o spolu.                                       | Implementirati uski MVP slice: `addressing_form` preference, pre-test modal, attempt/report snapshot i participant report input wiring. |
 | P1        | Explicit HR retrieval and route wiring | Završeno | IPIP HR lane postoji u contract/provider/worker sloju, ali retrieval/display nije end-to-end odvojen od participant patha. | Zatvoreno nakon HR-only retrieval helpera, route wiring-a i unavailable state-a bez participant fallbacka. |
 | P1        | HR report locale / i18n readiness policy | Završeno | HR report architecture mora ostati locale-aware od početka iako MVP ostaje bosanski. | Zatvoreno nakon dokumentovanja locale modela i pravila za assessment/report locale razdvajanje u backlogu i HR spec-u. |
 | P1        | HR report locale/i18n audit | Završeno | Treba mapirati gdje report pipeline već nosi locale, a gdje hardcodira bosanski sadržaj. | Zatvoreno read-only auditom koji je mapirao locale izvore, snapshot praznine i bosanski hardcoding rizike. |
@@ -1480,7 +1662,7 @@ Razlog za sljedeći prioritet:
 * Mock-backed DB smoke, final renderer copy/UX polish i OpenAI DB-backed smoke su završeni.
 * Composite HR report je sada tehnički funkcionalan i dovoljno stabilan za interni demo.
 * Ako demo ide uskoro, mali provider prompt/copy polish je najbrži high-leverage korak.
-* Ako nema hitnog demo-a, prioritet se može prebaciti na veći P1 discovery task za oblik obraćanja.
+* Ako nema hitnog demo-a, prioritet se može prebaciti na veći P1 task za oblik obraćanja; discovery/spec za taj task je sada spreman.
 * Production worker orchestration ostaje odvojeni operativni korak nakon ovog milestone-a.
 
 ### 5.14 Assessment autosave UX politika
