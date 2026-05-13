@@ -27,11 +27,14 @@ type ErrorWithCause = Error & {
 };
 
 const FORBIDDEN_TEXT_PATTERNS = [
+  /(?:^|\W)saradljiv(?:\W|$)/i,
   /(?:^|\W)zaposliti(?:\W|$)/i,
   /ne\s+zaposliti/i,
+  /(?:^|\W)hire(?:\W|$)/i,
+  /(?:^|\W)no-hire(?:\W|$)/i,
   /idealni kandidat/i,
   /fit score/i,
-  /hire\/no-hire/i,
+  /konačna odluka/i,
   /konačna preporuka za zapošljavanje/i,
   /clinical|kliničk|klinic|medicinsk/i,
 ];
@@ -156,9 +159,13 @@ function buildCompositeHrOpenAiSystemPrompt(input: CompositeHrInputSnapshot): st
     "Do not change scores, bands, source attempts, completed test slugs, coverage or generatedFor identifiers.",
     "Do not invent source attempts, tests, evidence or hidden attributes.",
     "Do not produce hire/no-hire advice, fit scores, rankings, medical claims, clinical language, protected-trait inferences or absolute statements.",
-    "Write cautious decision-support text for HR, focused on interpretation, interview structure and onboarding guidance.",
+    "Write decision-support text for HR, focused on interpretation, interview structure and onboarding guidance.",
     "Every integrated signal must be traceable to evidence from the provided tests.",
     "Keep limitations explicit and present.",
+    "Use premium Bosnian/Croatian/Serbian business language: natural, precise, practical, without hype or generic AI phrasing.",
+    "Do not use the low-quality literal adjective that sometimes appears as a direct translation of collaborative in BHS business copy.",
+    "Prefer formulations such as spreman na saradnju, saradnička orijentacija, kooperativan, otvoren za saradnju or sklon saradnji when the evidence supports them.",
+    "Avoid awkward literal translations, vague abstractions and overly long sentences.",
     buildLocaleInstruction(input.locale),
   ].join(" ");
 }
@@ -175,14 +182,26 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         "Do not change, reinterpret or normalize score values, bands, coverage or source attempts.",
       content_rules: [
         "Do not write hire/no-hire decisions.",
-        "Do not use forbidden literal phrases such as zaposliti, ne zaposliti, idealni kandidat or fit score.",
+        "Do not use the low-quality literal adjective that sometimes appears as a direct translation of collaborative in BHS business copy.",
+        "Do not use forbidden literal phrases such as zaposliti, ne zaposliti, hire, no-hire, fit score, idealni kandidat or konačna odluka.",
         "Do not make medical, clinical or protected-trait claims.",
         "Do not present results as absolute truth.",
         "Do not add evidence that is not directly traceable to the input snapshot.",
       ],
+      style_rules: [
+        "Use premium B2B tone: stručan, jasan, praktičan, bez hype-a.",
+        "Write in natural Bosnian/Croatian/Serbian business language, not in direct or awkward translationese.",
+        "Prefer formulations such as spreman na saradnju, saradnička orijentacija, kooperativan, otvoren za saradnju or sklon saradnji when the evidence supports them.",
+        "Avoid that low-quality literal adjective and avoid generic AI phrasing.",
+        "Avoid overly long sentences; keep sentences readable and controlled.",
+      ],
       structure_rules: [
         "summary.headline should be one short HR-facing headline.",
-        "summary.profileOverview should be a short integrated overview for HR interpretation.",
+        "summary.profileOverview should be a short executive summary for HR interpretation.",
+        "summary.profileOverview should usually contain 2 or 3 short sentences, not one overloaded sentence.",
+        "The first sentence should state the main integrated signal.",
+        "The second sentence should state the main point of caution.",
+        "The optional third sentence should explain how HR should use the finding in interview, role-scoping or onboarding.",
         "summary.keyStrengths should contain 2 to 4 concise items.",
         "summary.watchouts should contain 2 to 4 cautious watchout items.",
         "integratedSignals should contain 3 to 5 items with evidence arrays tied to real tests from the input.",
@@ -195,6 +214,25 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         "metadata.provider must be openai",
         "metadata.providerVersion must be v1",
         "metadata.generatedAt must be an ISO timestamp string",
+      ],
+      integration_rules: [
+        "Explicitly integrate IPIP as the behavioural/personality signal, SAFRAN as the cognitive signal and MWMS as the motivational signal.",
+        "Do not merely list each test separately; explain the combination, reinforcement or tension between signals.",
+        "Translate combinations into practical HR meaning, such as reliability in collaboration/execution, pressure risks or task-fit questions.",
+        "A strong overall cognitive result with a relatively lower figural result must be treated as a task-shape question, not as a general cognitive deficit claim.",
+      ],
+      hr_translation_rules: [
+        "Each key strength should be translated into a plausible work behaviour.",
+        "Each watchout should be translated into an interview theme, verification question or management checkpoint.",
+        "Avoid abstract statements that have no operational HR use.",
+      ],
+      anti_repetition_rules: [
+        "Do not repeat the phrase korisno je provjeriti across the report.",
+        "Vary formulations such as: U intervjuu vrijedi razjasniti..., Preporučuje se tražiti konkretan primjer..., Za menadžera je važno pratiti..., U radnom kontekstu ovo se može pokazati kao..., Rizik nastaje ako....",
+      ],
+      safety_rules: [
+        "The report does not decide whether the candidate should be hired.",
+        "The report is for interview structure, working-condition checks and management guidance.",
       ],
     },
     input,

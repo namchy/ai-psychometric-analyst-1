@@ -319,6 +319,36 @@ function buildFetchResponse(payload) {
   };
 }
 
+function buildCapturingFetchResponse(payload) {
+  const calls = [];
+
+  return {
+    calls,
+    fetchImpl: async function fetchImpl(_url, requestInit) {
+      calls.push(requestInit);
+
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify(payload),
+                },
+              },
+            ],
+          };
+        },
+        async text() {
+          return JSON.stringify(payload);
+        },
+      };
+    },
+  };
+}
+
 function collectStrings(value) {
   if (typeof value === "string") {
     return [value];
@@ -457,6 +487,68 @@ async function testValidOutputHasNoForbiddenWords() {
   assert.equal(/zaposliti|ne zaposliti|fit score|idealni kandidat/i.test(allText), false);
 }
 
+async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const capture = buildCapturingFetchResponse(buildOpenAiSnapshotFixture(inputSnapshot));
+
+  await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: capture.fetchImpl,
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(capture.calls.length, 1);
+  const requestBody = JSON.parse(capture.calls[0].body);
+  const messages = requestBody.messages ?? [];
+  const systemPrompt = messages.find((message) => message.role === "system")?.content ?? "";
+  const userPrompt = messages.find((message) => message.role === "user")?.content ?? "";
+  const combinedPrompt = `${systemPrompt}\n${userPrompt}`;
+
+  assert.equal(/(?:^|\W)saradljiv(?:\W|$)/i.test(combinedPrompt), false);
+  assert.equal(
+    /spreman na saradnju|saradnička orijentacija|kooperativan|otvoren za saradnju|sklon saradnji/i.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(
+    /premium B2B tone|stručan, jasan, praktičan, bez hype-a/i.test(combinedPrompt),
+    true,
+  );
+  assert.equal(/Avoid overly long sentences|keep sentences readable/i.test(combinedPrompt), true);
+  assert.equal(
+    /first sentence should state the main integrated signal|second sentence should state the main point of caution/i.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(
+    /IPIP as the behavioural\/personality signal.*SAFRAN as the cognitive signal.*MWMS as the motivational signal/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(/Do not merely list each test separately; explain the combination/i.test(combinedPrompt), true);
+  assert.equal(
+    /Each key strength should be translated into a plausible work behaviour/i.test(combinedPrompt),
+    true,
+  );
+  assert.equal(
+    /Each watchout should be translated into an interview theme, verification question or management checkpoint/i.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(/Do not repeat the phrase korisno je provjeriti/i.test(combinedPrompt), true);
+  assert.equal(
+    /zaposliti, ne zaposliti, hire, no-hire, fit score, idealni kandidat or konačna odluka/i.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+}
+
 async function main() {
   await testProviderSelectorDefaultUsesMock();
   await testOpenAiPathReturnsValidSnapshot();
@@ -464,6 +556,7 @@ async function main() {
   await testSourceImmutabilityFailsOnMutatedSource();
   await testForbiddenWordingRejected();
   await testValidOutputHasNoForbiddenWords();
+  await testPromptGuidanceEnforcesCompositeHrCopyRules();
 
   console.log("Composite HR OpenAI provider tests passed.");
 }
