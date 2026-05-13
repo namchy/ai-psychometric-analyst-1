@@ -39,6 +39,13 @@ const FORBIDDEN_TEXT_PATTERNS = [
   /clinical|kliničk|klinic|medicinsk/i,
 ];
 
+const FEMININE_ADDRESSING_MISMATCH_PATTERNS = [
+  /\bspreman na saradnju\b/i,
+  /\bkonstruktivan u\b/i,
+  /\borijentisan\b/i,
+  /\bsklon\s/i,
+];
+
 function buildOpenAiSchemaName(schemaName: string): string {
   const sanitized = schemaName
     .trim()
@@ -112,6 +119,23 @@ function assertForbiddenPhrasing(snapshot: CompositeHrReportSnapshot): void {
   }
 }
 
+function assertAddressingFormConsistency(
+  snapshot: CompositeHrReportSnapshot,
+  input: CompositeHrInputSnapshot,
+): void {
+  if (input.addressingForm !== "feminine") {
+    return;
+  }
+
+  const text = collectStrings(snapshot).join("\n");
+
+  for (const pattern of FEMININE_ADDRESSING_MISMATCH_PATTERNS) {
+    if (pattern.test(text)) {
+      throw new Error(`Composite HR report contains feminine addressing mismatch: ${pattern}`);
+    }
+  }
+}
+
 function assertImmutableSource(snapshot: CompositeHrReportSnapshot, input: CompositeHrInputSnapshot): void {
   const expectedAttemptIds = input.sourceAttempts.map((attempt) => attempt.attemptId);
   const expectedTestSlugs = input.coverage.completedTestSlugs.length > 0
@@ -162,6 +186,13 @@ function buildCompositeHrOpenAiSystemPrompt(input: CompositeHrInputSnapshot): st
     "Write decision-support text for HR, focused on interpretation, interview structure and onboarding guidance.",
     "Every integrated signal must be traceable to evidence from the provided tests.",
     "Keep limitations explicit and present.",
+    `Input contains addressingForm=${input.addressingForm}. Use it only for grammatical form when directly describing the candidate/person.`,
+    "Do not change scores, bands, evidence, interpretation, risk level or recommendation because of addressingForm.",
+    "For feminine addressingForm, use feminine forms such as spremna, konstruktivna, orijentisana, sklona, stabilna, pouzdana and kandidatkinja where natural.",
+    "For feminine addressingForm, avoid masculine-only forms such as spreman, konstruktivan, orijentisan or sklon when directly referring to the person.",
+    "For masculine addressingForm, use masculine forms such as spreman, konstruktivan, orijentisan, sklon, stabilan, pouzdan and kandidat where natural.",
+    "Prefer neutral nouns such as osoba or profil where that produces more natural BHS business language.",
+    "Do not overuse gendered wording when a neutral formulation is more natural.",
     "Use premium Bosnian/Croatian/Serbian business language: natural, precise, practical, without hype or generic AI phrasing.",
     "Do not use the low-quality literal adjective that sometimes appears as a direct translation of collaborative in BHS business copy.",
     "Prefer formulations such as spreman na saradnju, saradnička orijentacija, kooperativan, otvoren za saradnju or sklon saradnji when the evidence supports them.",
@@ -180,6 +211,8 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         "sourceAttemptIds, testSlugs and generatedFor identifiers must match the provided input exactly.",
       score_integrity_rule:
         "Do not change, reinterpret or normalize score values, bands, coverage or source attempts.",
+      addressing_form_rule:
+        `Input contains addressingForm=${input.addressingForm}. Use it only for grammatical form when directly describing the candidate/person.`,
       content_rules: [
         "Do not write hire/no-hire decisions.",
         "Do not use the low-quality literal adjective that sometimes appears as a direct translation of collaborative in BHS business copy.",
@@ -193,6 +226,10 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         "Write in natural Bosnian/Croatian/Serbian business language, not in direct or awkward translationese.",
         "Prefer formulations such as spreman na saradnju, saradnička orijentacija, kooperativan, otvoren za saradnju or sklon saradnji when the evidence supports them.",
         "Avoid that low-quality literal adjective and avoid generic AI phrasing.",
+        "Use addressingForm only for grammatical agreement, not for any interpretive change.",
+        "For feminine, prefer forms such as spremna, konstruktivna, orijentisana, sklona, stabilna and pouzdana when directly describing the person.",
+        "For masculine, prefer forms such as spreman, konstruktivan, orijentisan, sklon, stabilan and pouzdan when directly describing the person.",
+        "Prefer neutral nouns such as osoba or profil when they read more naturally than repeated gendered wording.",
         "Avoid overly long sentences; keep sentences readable and controlled.",
       ],
       structure_rules: [
@@ -233,6 +270,7 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
       safety_rules: [
         "The report does not decide whether the candidate should be hired.",
         "The report is for interview structure, working-condition checks and management guidance.",
+        "addressingForm must never change scoring, interpretation, evidence, risk level or recommendation.",
       ],
     },
     input,
@@ -529,6 +567,7 @@ export async function generateOpenAiCompositeHrReport(
 
   assertImmutableSource(initialValidation.value, input);
   assertForbiddenPhrasing(initialValidation.value);
+  assertAddressingFormConsistency(initialValidation.value, input);
 
   const normalizedReport: CompositeHrReportSnapshot = {
     ...initialValidation.value,

@@ -36,6 +36,11 @@ import {
   type CompletedAssessmentResults,
 } from "@/lib/assessment/scoring";
 import { STANDARD_ASSESSMENT_BATTERY_SLUGS } from "@/lib/assessment/standard-battery";
+import {
+  normalizeAddressingForm,
+  resolveAddressingForm,
+  type AddressingForm,
+} from "@/lib/auth/addressing-form";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const COMPOSITE_HR_INPUT_CONTRACT_VERSION = "composite_hr_input_v1" as const;
@@ -192,6 +197,7 @@ export type CompositeHrInputSnapshot = {
   reportType: typeof COMPOSITE_HR_REPORT_TYPE;
   audience: typeof COMPOSITE_HR_AUDIENCE;
   locale: ReportLocale;
+  addressingForm: AddressingForm;
   generatedFor: {
     organizationId: string;
     participantId: string;
@@ -240,10 +246,12 @@ export type CompositeInputLinkedAttemptRecord = {
     | {
         status: CompositeInputAttemptStatus;
         completed_at: string | null;
+        addressing_form_snapshot: AddressingForm | null;
       }
     | Array<{
         status: CompositeInputAttemptStatus;
         completed_at: string | null;
+        addressing_form_snapshot: AddressingForm | null;
       }>
     | null;
 };
@@ -255,6 +263,7 @@ export type CompositeInputPreparedAttempt = {
   testSlug: string;
   status: CompositeInputAttemptStatus;
   completedAt: string | null;
+  addressingFormSnapshot: AddressingForm | null;
   requiredForComposite: boolean;
   requiredForTeamFit: boolean;
   position: number | null;
@@ -264,18 +273,50 @@ export type CompositeInputPreparedAttempt = {
 export type CompositeHrInputBuilderData = {
   assignment: CompositeInputAssignmentRecord;
   linkedAttempts: CompositeInputPreparedAttempt[];
+  participantAddressingForm?: unknown;
   locale?: string | null;
   builtAt?: string;
 };
 
 function normalizeAttemptRelation(
   value: CompositeInputLinkedAttemptRecord["attempts"],
-): { status: CompositeInputAttemptStatus; completed_at: string | null } | null {
+): {
+  status: CompositeInputAttemptStatus;
+  completed_at: string | null;
+  addressing_form_snapshot: AddressingForm | null;
+} | null {
   if (!value) {
     return null;
   }
 
   return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function resolveCompositeHrInputAddressingForm(input: {
+  attempts: CompositeInputPreparedAttempt[];
+  participantAddressingForm?: unknown;
+}): AddressingForm {
+  const normalizedAttemptForms = input.attempts
+    .map((attempt) => normalizeAddressingForm(attempt.addressingFormSnapshot))
+    .filter((value): value is AddressingForm => value !== null);
+  const uniqueAttemptForms = [...new Set(normalizedAttemptForms)];
+
+  if (
+    input.attempts.length > 0 &&
+    normalizedAttemptForms.length === input.attempts.length &&
+    uniqueAttemptForms.length === 1
+  ) {
+    return uniqueAttemptForms[0];
+  }
+
+  const participantAddressingForm = normalizeAddressingForm(input.participantAddressingForm);
+
+  if (participantAddressingForm) {
+    return participantAddressingForm;
+  }
+
+  // Temporary fallback until older attempts are fully covered by stored snapshots or onboarding preference.
+  return resolveAddressingForm(undefined);
 }
 
 function getExpectedRequiredTestSlugs(assignmentType: CompositeInputAssignmentType): readonly string[] {
@@ -556,6 +597,7 @@ function normalizePreparedAttemptForReadiness(
     attempts: {
       status: attempt.status,
       completed_at: attempt.completedAt,
+      addressing_form_snapshot: attempt.addressingFormSnapshot,
     },
   };
 }
@@ -601,6 +643,10 @@ export function buildCompositeHrInputSnapshotFromLoadedData(
     safran: buildSafranCompositeInput(safranAttempt, locale),
     mwms: buildMwmsCompositeInput(mwmsAttempt, locale),
   } satisfies CompositeHrDeterministicInputs;
+  const addressingForm = resolveCompositeHrInputAddressingForm({
+    attempts: requiredAttempts,
+    participantAddressingForm: input.participantAddressingForm,
+  });
 
   return {
     contractVersion: COMPOSITE_HR_INPUT_CONTRACT_VERSION,
@@ -609,6 +655,7 @@ export function buildCompositeHrInputSnapshotFromLoadedData(
     reportType: COMPOSITE_HR_REPORT_TYPE,
     audience: COMPOSITE_HR_AUDIENCE,
     locale,
+    addressingForm,
     generatedFor: {
       organizationId: input.assignment.organization_id,
       participantId: input.assignment.participant_id,
@@ -693,12 +740,22 @@ export async function buildCompositeHrInputSnapshot(input: {
   const { data: linkedAttemptData, error: linkedAttemptError } = await supabase
     .from("assessment_assignment_attempts")
     .select(
-      "assessment_assignment_id, attempt_id, test_id, test_slug, required_for_composite, required_for_team_fit, position, attempts(status, completed_at)",
+      "assessment_assignment_id, attempt_id, test_id, test_slug, required_for_composite, required_for_team_fit, position, attempts(status, completed_at, addressing_form_snapshot)",
     )
     .eq("assessment_assignment_id", input.assessmentAssignmentId);
 
   if (linkedAttemptError) {
     throw new Error(`Failed to load linked attempts for composite HR input: ${linkedAttemptError.message}`);
+  }
+
+  const { data: participantData, error: participantError } = await supabase
+    .from("participants")
+    .select("addressing_form")
+    .eq("id", assignment.participant_id)
+    .maybeSingle();
+
+  if (participantError) {
+    throw new Error(`Failed to load participant addressing form for composite HR input: ${participantError.message}`);
   }
 
   const linkedAttempts = await Promise.all(
@@ -724,6 +781,7 @@ export async function buildCompositeHrInputSnapshot(input: {
         testSlug: row.test_slug,
         status: attempt.status,
         completedAt: attempt.completed_at,
+        addressingFormSnapshot: attempt.addressing_form_snapshot,
         requiredForComposite: row.required_for_composite,
         requiredForTeamFit: row.required_for_team_fit,
         position: row.position,
@@ -735,6 +793,7 @@ export async function buildCompositeHrInputSnapshot(input: {
   return buildCompositeHrInputSnapshotFromLoadedData({
     assignment,
     linkedAttempts,
+    participantAddressingForm: (participantData as { addressing_form?: unknown } | null)?.addressing_form,
     locale: input.locale,
   });
 }

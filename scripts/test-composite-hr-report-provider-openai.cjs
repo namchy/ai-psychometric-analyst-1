@@ -80,6 +80,7 @@ function buildCompositeInputSnapshotFixture(overrides = {}) {
     reportType: "composite",
     audience: "hr",
     locale: "bs",
+    addressingForm: "masculine",
     generatedFor: {
       organizationId: "org-1",
       participantId: "participant-1",
@@ -488,7 +489,9 @@ async function testValidOutputHasNoForbiddenWords() {
 }
 
 async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
-  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const inputSnapshot = buildCompositeInputSnapshotFixture({
+    addressingForm: "feminine",
+  });
   const capture = buildCapturingFetchResponse(buildOpenAiSnapshotFixture(inputSnapshot));
 
   await generateOpenAiCompositeHrReport(inputSnapshot, {
@@ -506,6 +509,9 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   const combinedPrompt = `${systemPrompt}\n${userPrompt}`;
 
   assert.equal(/(?:^|\W)saradljiv(?:\W|$)/i.test(combinedPrompt), false);
+  assert.equal(/addressingForm/i.test(combinedPrompt), true);
+  assert.equal(/Use it only for grammatical form|only for grammatical agreement/i.test(combinedPrompt), true);
+  assert.equal(/must never change scoring|Do not change, reinterpret or normalize score values/i.test(combinedPrompt), true);
   assert.equal(
     /spreman na saradnju|saradnička orijentacija|kooperativan|otvoren za saradnju|sklon saradnji/i.test(
       combinedPrompt,
@@ -514,6 +520,14 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   );
   assert.equal(
     /premium B2B tone|stručan, jasan, praktičan, bez hype-a/i.test(combinedPrompt),
+    true,
+  );
+  assert.equal(
+    /spremna|konstruktivna|orijentisana|sklona|stabilna|pouzdana/i.test(combinedPrompt),
+    true,
+  );
+  assert.equal(
+    /spreman|konstruktivan|orijentisan|sklon|stabilan|pouzdan/i.test(combinedPrompt),
     true,
   );
   assert.equal(/Avoid overly long sentences|keep sentences readable/i.test(combinedPrompt), true);
@@ -549,6 +563,32 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   );
 }
 
+async function testFeminineMismatchIsRejected() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture({
+    addressingForm: "feminine",
+  });
+  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    summary: {
+      headline: "Integrisani HR pregled",
+      profileOverview:
+        "Spreman na saradnju i vjerovatno konstruktivan u timskim odnosima. Ostatak nalaza ostaje isti.",
+      keyStrengths: ["Jasna tragljivost izvora."],
+      watchouts: ["Potrebna je provjera kroz primjere rada."],
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(invalidSnapshot),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /feminine addressing mismatch/i,
+  );
+}
+
 async function main() {
   await testProviderSelectorDefaultUsesMock();
   await testOpenAiPathReturnsValidSnapshot();
@@ -557,6 +597,7 @@ async function main() {
   await testForbiddenWordingRejected();
   await testValidOutputHasNoForbiddenWords();
   await testPromptGuidanceEnforcesCompositeHrCopyRules();
+  await testFeminineMismatchIsRejected();
 
   console.log("Composite HR OpenAI provider tests passed.");
 }

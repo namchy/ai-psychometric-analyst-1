@@ -84,6 +84,7 @@ function buildPreparedAttempt({
   position,
   status = "completed",
   completedAt = "2026-05-12T10:30:00.000Z",
+  addressingFormSnapshot = null,
   requiredForComposite = true,
   requiredForTeamFit = false,
   results,
@@ -95,6 +96,7 @@ function buildPreparedAttempt({
     testSlug,
     status,
     completedAt,
+    addressingFormSnapshot,
     requiredForComposite,
     requiredForTeamFit,
     position,
@@ -224,6 +226,7 @@ function main() {
   assert.equal(snapshot.sourceType, "assessment");
   assert.equal(snapshot.audience, "hr");
   assert.equal(snapshot.locale, "hr");
+  assert.equal(snapshot.addressingForm, "masculine");
   assert.equal(snapshot.assessmentAssignment.id, "assignment-1");
   assert.equal(snapshot.sourceAttempts.length, 3);
   assert.deepEqual(snapshot.coverage.requiredTestSlugs, [
@@ -268,6 +271,110 @@ function main() {
   assert.equal(serializedSnapshot.includes("executiveSummary"), false);
   assert.equal(serializedSnapshot.includes("narrative"), false);
 
+  const feminineFromAttemptSnapshots = buildCompositeHrInputSnapshotFromLoadedData({
+    assignment,
+    linkedAttempts: [
+      buildPreparedAttempt({
+        attemptId: "attempt-ipip-f",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        position: 0,
+        addressingFormSnapshot: "feminine",
+        results: buildIpipResults(),
+      }),
+      buildPreparedAttempt({
+        attemptId: "attempt-safran-f",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        position: 1,
+        addressingFormSnapshot: "feminine",
+        results: buildSafranResults(),
+      }),
+      buildPreparedAttempt({
+        attemptId: "attempt-mwms-f",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        position: 2,
+        addressingFormSnapshot: "feminine",
+        results: buildMwmsResults(),
+      }),
+    ],
+  });
+  assert.equal(feminineFromAttemptSnapshots.addressingForm, "feminine");
+  assert.deepEqual(
+    feminineFromAttemptSnapshots.sourceAttempts.map((attempt) => attempt.attemptId),
+    ["attempt-ipip-f", "attempt-safran-f", "attempt-mwms-f"],
+  );
+
+  const feminineFromParticipantPreference = buildCompositeHrInputSnapshotFromLoadedData({
+    assignment,
+    participantAddressingForm: "feminine",
+    linkedAttempts: [
+      buildPreparedAttempt({
+        attemptId: "attempt-ipip-null",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        position: 0,
+        results: buildIpipResults(),
+      }),
+      buildPreparedAttempt({
+        attemptId: "attempt-safran-null",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        position: 1,
+        results: buildSafranResults(),
+      }),
+      buildPreparedAttempt({
+        attemptId: "attempt-mwms-null",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        position: 2,
+        results: buildMwmsResults(),
+      }),
+    ],
+  });
+  assert.equal(feminineFromParticipantPreference.addressingForm, "feminine");
+  assert.deepEqual(
+    feminineFromParticipantPreference.coverage.completedTestSlugs,
+    ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+  );
+  assert.deepEqual(
+    feminineFromParticipantPreference.sourceAttempts.map((attempt) => attempt.testSlug),
+    ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+  );
+  assert.equal(feminineFromParticipantPreference.deterministicInputs.safran.overall.rawScore, 36);
+
+  const conflictFallsBackToParticipantPreference = buildCompositeHrInputSnapshotFromLoadedData({
+    assignment,
+    participantAddressingForm: "feminine",
+    linkedAttempts: [
+      buildPreparedAttempt({
+        attemptId: "attempt-ipip-conflict",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        position: 0,
+        addressingFormSnapshot: "masculine",
+        results: buildIpipResults(),
+      }),
+      buildPreparedAttempt({
+        attemptId: "attempt-safran-conflict",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        position: 1,
+        addressingFormSnapshot: "feminine",
+        results: buildSafranResults(),
+      }),
+      buildPreparedAttempt({
+        attemptId: "attempt-mwms-conflict",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        position: 2,
+        results: buildMwmsResults(),
+      }),
+    ],
+  });
+  assert.equal(conflictFallsBackToParticipantPreference.addressingForm, "feminine");
+
   const noHistoricalFallbackSnapshot = buildCompositeHrInputSnapshotFromLoadedData({
     assignment,
     linkedAttempts: [
@@ -298,6 +405,7 @@ function main() {
     noHistoricalFallbackSnapshot.sourceAttempts.map((attempt) => attempt.attemptId),
     ["attempt-ipip-linked", "attempt-safran-linked", "attempt-mwms-linked"],
   );
+  assert.equal(noHistoricalFallbackSnapshot.addressingForm, "masculine");
 
   assert.throws(
     () =>
