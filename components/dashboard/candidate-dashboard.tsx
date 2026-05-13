@@ -5,6 +5,7 @@ import { FileText, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createAssessmentAttempt } from "@/app/(protected)/app/actions";
+import { AddressingFormSelectionModal } from "@/components/dashboard/addressing-form-selection-modal";
 import {
   getCandidateAssessmentAvailability,
   getCandidateAssessmentCatalogKey,
@@ -111,6 +112,7 @@ type CandidateDashboardViewProps = {
   hasLinkedParticipant: boolean;
   linkedOrganizationId?: string | null;
   initialAttempts: CandidateDashboardInitialAttempt[];
+  needsAddressingFormSelection: boolean;
 };
 
 type DashboardAttemptStatus = "in_progress" | "completed" | "abandoned";
@@ -1409,6 +1411,7 @@ export function CandidateDashboardView({
   hasLinkedParticipant,
   linkedOrganizationId,
   initialAttempts,
+  needsAddressingFormSelection,
 }: CandidateDashboardViewProps) {
   const [isLoading, setIsLoading] = useState(hasLinkedParticipant);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1601,6 +1604,7 @@ export function CandidateDashboardView({
         : undefined;
   return (
     <AuthenticatedAppMainContent topPaddingClassName="pt-0">
+      {needsAddressingFormSelection ? <AddressingFormSelectionModal /> : null}
       {hasLinkedParticipant ? (
         isLoading && !loadError ? (
           <DashboardSkeleton />

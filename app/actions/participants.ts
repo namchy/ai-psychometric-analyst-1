@@ -4,6 +4,7 @@ import { randomInt } from "node:crypto";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { normalizeAddressingForm } from "@/lib/auth/addressing-form";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 import type { CreateAssessmentModalState } from "@/components/dashboard/create-assessment-modal-state";
 import { normalizeAssessmentLocale } from "@/lib/assessment/locale";
@@ -30,6 +31,10 @@ type InsertedAttemptWithTestSlugRow = {
   id: string;
   test_id: string;
 };
+
+export type SaveParticipantAddressingFormResult =
+  | { ok: true }
+  | { ok: false; message: string };
 
 async function cancelAssessmentAssignment(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
@@ -94,6 +99,50 @@ function generateTemporaryPassword(length = 14): string {
   }
 
   return requiredCharacters.join("");
+}
+
+export async function saveParticipantAddressingForm(
+  rawAddressingForm: unknown,
+): Promise<SaveParticipantAddressingFormResult> {
+  const user = await requireAuthenticatedUserForAction();
+  const addressingForm = normalizeAddressingForm(rawAddressingForm);
+
+  if (!addressingForm) {
+    return { ok: false, message: "Odaberi jedan od ponuđenih oblika obraćanja." };
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data: participant, error: participantError } = await supabase
+    .from("participants")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (participantError) {
+    return { ok: false, message: "Nije moguće učitati profil za spremanje izbora." };
+  }
+
+  if (!participant?.id) {
+    return { ok: false, message: "Povezani participant profil nije pronađen." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("participants")
+    .update({ addressing_form: addressingForm })
+    .eq("id", participant.id)
+    .eq("user_id", user.id);
+
+  if (updateError) {
+    return { ok: false, message: "Spremanje izbora nije uspjelo. Pokušaj ponovo." };
+  }
+
+  revalidatePath("/app");
+
+  return { ok: true };
 }
 
 type CreateParticipantResult =

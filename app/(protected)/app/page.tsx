@@ -30,6 +30,7 @@ export default async function CandidateAppEntryPage() {
       hasLinkedParticipant={Boolean(linkedParticipant)}
       initialAttempts={initialAttempts}
       linkedOrganizationId={linkedParticipant?.organization_id ?? null}
+      needsAddressingFormSelection={Boolean(linkedParticipant && !linkedParticipant.addressing_form)}
     />
   );
 }

@@ -4,6 +4,7 @@ import { getAssessmentAttemptLifecycle, type AssessmentAttemptLifecycle } from "
 import type { AttemptReportStatus } from "@/lib/assessment/report-providers";
 import { STANDARD_ASSESSMENT_BATTERY_SLUGS } from "@/lib/assessment/standard-battery";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
+import type { AddressingForm } from "@/lib/auth/addressing-form";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type OrganizationSummary = {
@@ -27,6 +28,7 @@ export type ParticipantSummary = {
   user_id: string | null;
   email: string;
   full_name: string;
+  addressing_form: AddressingForm | null;
   participant_type: "employee" | "candidate";
   status: "active" | "inactive";
   created_at: string;
@@ -268,7 +270,7 @@ export async function getParticipantsForOrganization(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .select("id, organization_id, user_id, email, full_name, addressing_form, participant_type, status, created_at")
     .eq("organization_id", organizationId)
     .eq("status", "active")
     .order("created_at", { ascending: true })
@@ -288,7 +290,7 @@ export async function getParticipantForOrganization(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .select("id, organization_id, user_id, email, full_name, addressing_form, participant_type, status, created_at")
     .eq("organization_id", organizationId)
     .eq("id", participantId)
     .eq("status", "active")
@@ -398,7 +400,7 @@ export async function getLinkedParticipantForUser(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .select("id, organization_id, user_id, email, full_name, addressing_form, participant_type, status, created_at")
     .eq("user_id", userId)
     .eq("status", "active")
     .order("created_at", { ascending: true })
