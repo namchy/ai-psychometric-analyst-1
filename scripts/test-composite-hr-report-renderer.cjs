@@ -264,16 +264,26 @@ function main() {
   assert.equal(model.source.assessmentCycleLabel, "Standardna baterija procjena");
   assert.equal(model.source.assessmentCycleIdLabel, "ID: assignme...");
   assert.equal(model.source.assessmentCountLabel, "3 završene procjene");
-  assert.deepEqual(model.source.testLabels, [
-    "Procjena ličnosti",
-    "Kognitivna procjena",
-    "Motivacija za rad",
-  ]);
-  assert.equal(model.source.generationModeLabel, "Testni prikaz");
   assert.equal(model.source.sourceAttemptCount, 3);
+  assert.equal(
+    model.source.overviewDescription,
+    "Ovaj izvještaj povezuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan praktičan HR pregled.",
+  );
   assert.equal(model.summary.headline, snapshot.summary.headline);
   assert.equal(model.summary.profileOverview, snapshot.summary.profileOverview);
+  assert.deepEqual(model.structuredSummaryBlocks, [
+    {
+      label: "Glavni signal",
+      body: "Ovaj pregled koristi deterministic rezultate kao osnovu za HR interpretaciju, intervju i onboarding planiranje.",
+    },
+    {
+      label: "Tačka opreza",
+      body: "Signal treba koristiti kao hipotezu za provjeru kroz razgovor i radne primjere, a ne kao automatski zakljucak.",
+    },
+  ]);
   assert.equal(model.integratedSignals.length > 0, true);
+  assert.equal(model.integratedSignals[0].structuredBody.primary !== null, true);
+  assert.equal(model.integratedSignals[0].evidenceGroups.length > 0, true);
   assert.equal(
     model.integratedSignals.flatMap((signal) => signal.evidence).some((item) => item.displayTestLabel === "Ličnost"),
     true,
@@ -306,15 +316,41 @@ function main() {
     }),
   );
 
-  assert.equal(html.includes("Procjene uključene u izvještaj"), true);
-  assert.equal(html.includes("Procjena ličnosti"), true);
-  assert.equal(html.includes("Kognitivna procjena"), true);
-  assert.equal(html.includes("Motivacija za rad"), true);
-  assert.equal(html.includes("Ličnost:"), true);
-  assert.equal(html.includes("Kognitivni rezultat:"), true);
-  assert.equal(html.includes("Motivacija:"), true);
+  assert.equal(html.includes("Kratki pregled izvještaja"), true);
+  assert.equal(
+    html.includes("Ovaj izvještaj povezuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan praktičan HR pregled."),
+    true,
+  );
+  assert.equal(html.includes("Glavni signal"), true);
+  assert.equal(html.includes("Tačka opreza"), true);
+  assert.equal(html.includes("Kako koristiti nalaz"), false);
+  assert.equal(html.includes("Šta ovo znači u radu"), true);
+  assert.equal(html.includes("Šta HR treba provjeriti"), false);
+  assert.equal(html.includes("Dokazi iz procjena"), true);
+  assert.equal(html.includes("integrated-signal-interpretation-grid"), true);
+  assert.equal(html.includes("integrated-signal-meaning-card"), true);
+  assert.equal(html.includes("integrated-signal-evidence-groups"), true);
+  assert.equal(html.includes(snapshot.summary.headline), true);
+  assert.equal(html.includes("Procjene uključene u izvještaj"), false);
+  assert.equal(html.includes("procjenski"), false);
+  assert.equal(html.includes("procjenskog"), false);
+  assert.equal(html.includes("ponašajni"), false);
+  assert.equal(html.includes("saradljiv"), false);
+  assert.equal(html.includes("Način generisanja"), false);
+  assert.equal(html.includes("AI interpretacija"), false);
+  assert.equal(html.includes("Obuhvat"), true);
+  assert.equal(html.includes("Datum izvještaja"), true);
+  assert.equal(html.includes("Svrha izvještaja"), false);
+  assert.equal(html.includes("HR pregled za intervju i uvođenje u posao"), false);
+  assert.equal(html.includes("ponašajni"), false);
+  assert.equal(html.includes("ponašajni obrasci i saradnja"), false);
+  assert.equal(html.includes("zaključivanje i rad sa informacijama"), false);
+  assert.equal(html.includes("pokretači angažmana"), false);
+  assert.equal(html.includes(">Ličnost<"), true);
+  assert.equal(html.includes(">Kognitivni rezultat<"), true);
+  assert.equal(html.includes(">Motivacija<"), true);
   assert.equal(html.includes("3 završene procjene"), true);
-  assert.equal(html.includes("Testni prikaz"), true);
+  assert.equal(html.includes("Generisano"), false);
   assert.equal(html.includes("mock / v1"), false);
   assert.equal(html.includes("linked attemptova"), false);
   assert.equal(html.includes("snapshot"), false);
@@ -324,6 +360,59 @@ function main() {
   assert.equal(html.includes("ipip-neo-120-v1"), false);
   assert.equal(html.includes("safran_v1"), false);
   assert.equal(html.includes("mwms_v1"), false);
+
+  const longOverviewSnapshot = {
+    ...snapshot,
+    summary: {
+      ...snapshot.summary,
+      profileOverview:
+        "Prva rečenica opisuje glavni integrisani signal. Druga rečenica opisuje glavnu tačku opreza. Treća rečenica objašnjava kako HR treba koristiti nalaz. Četvrta rečenica dodaje dodatni kontekst za upotrebu u intervjuu.",
+    },
+  };
+  const longOverviewHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot: longOverviewSnapshot,
+    }),
+  );
+
+  assert.equal(longOverviewHtml.includes("Glavni signal"), true);
+  assert.equal(longOverviewHtml.includes("Tačka opreza"), true);
+  assert.equal(longOverviewHtml.includes("Kako koristiti nalaz"), true);
+  assert.equal(
+    longOverviewHtml.includes(
+      "Treća rečenica objašnjava kako HR treba koristiti nalaz. Četvrta rečenica dodaje dodatni kontekst za upotrebu u intervjuu.",
+    ),
+    true,
+  );
+
+  const multiSentenceSignalSnapshot = {
+    ...snapshot,
+    integratedSignals: snapshot.integratedSignals.map((signal, index) =>
+      index === 0
+        ? {
+            ...signal,
+            body: "Prva rečenica objašnjava značenje u radu. Druga rečenica opisuje šta HR treba dodatno provjeriti.",
+          }
+        : signal,
+    ),
+  };
+  const multiSentenceSignalHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot: multiSentenceSignalSnapshot,
+    }),
+  );
+
+  assert.equal(multiSentenceSignalHtml.includes("Šta ovo znači u radu"), true);
+  assert.equal(multiSentenceSignalHtml.includes("Šta HR treba provjeriti"), true);
+  assert.equal(multiSentenceSignalHtml.includes("integrated-signal-verification-card"), true);
+  assert.equal(
+    multiSentenceSignalHtml.includes(
+      "Druga rečenica opisuje šta HR treba dodatno provjeriti.",
+    ),
+    true,
+  );
 
   const invalid = resolveReadyCompositeHrAssessmentReport(
     buildReadyReport({
