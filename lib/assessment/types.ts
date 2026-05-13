@@ -1,4 +1,5 @@
 import type { AssessmentLocale } from "@/lib/assessment/locale";
+import type { AddressingForm } from "@/lib/auth/addressing-form";
 
 export type TestCategory = "personality" | "behavioral" | "cognitive";
 export type TestStatus = "draft" | "active" | "archived";
@@ -63,6 +64,7 @@ export type Attempt = {
   participant_id: string | null;
   test_id: string;
   locale: AssessmentLocale;
+  addressing_form_snapshot: AddressingForm | null;
   status: AttemptStatus;
   started_at: string;
   scored_started_at: string | null;
