@@ -65,6 +65,14 @@ const EVIDENCE_TEST_LABELS: Record<string, string> = {
   mwms_v1: "Motivacija",
 };
 
+const REPORT_COLORS = {
+  bubblegumPink: "#ef476f",
+  goldenPollen: "#ffd166",
+  emerald: "#06d6a0",
+  oceanBlue: "#118ab2",
+  darkTeal: "#073b4c",
+} as const;
+
 function formatAssessmentCountLabel(count: number): string {
   return `${count} završene procjene`;
 }
@@ -186,7 +194,8 @@ export function buildCompositeHrReportViewModel(input: {
   return {
     title: "Kompozitni HR izvještaj",
     statusLabel: "Spremno za pregled",
-    description: "Ovaj prikaz koristi već generisan izvještaj i ne mijenja rezultate procjena.",
+    description:
+      "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
     participantReportsHref: `/dashboard/participants/${input.report.participant_id}/reports`,
     source: {
       assessmentAssignmentId: input.snapshot.generatedFor.assessmentAssignmentId,
@@ -272,18 +281,20 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
           <div className="space-y-3">
             <DashboardSectionHeader
               eyebrow="KOMPOZITNI HR IZVJEŠTAJ"
-              eyebrowClassName="text-teal-800/90"
+              eyebrowClassName="text-[#073b4c]"
               title={model.title}
               description={model.description}
               className="gap-2"
-              titleClassName="text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
+              titleClassName="text-3xl font-extrabold tracking-[-0.05em] text-[#073b4c] sm:text-4xl"
               descriptionClassName="text-base text-slate-600"
             />
             <div className="flex flex-wrap gap-2.5">
               <DashboardStatusBadge tone="success" emphasized>
                 {model.statusLabel}
               </DashboardStatusBadge>
-              <DashboardStatusBadge>{model.source.locale.toUpperCase()}</DashboardStatusBadge>
+              <DashboardStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]">
+                {model.source.locale.toUpperCase()}
+              </DashboardStatusBadge>
             </div>
           </div>
 
@@ -294,45 +305,50 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
             Nazad na pregled kandidata
           </Link>
         </div>
-      </DashboardInfoCardShell>
-
-      <DashboardInfoCardShell className="rounded-[1.4rem] border-slate-200/80 p-5 sm:p-5.5">
-        <DashboardSectionHeader
-          eyebrow="KRATKI PREGLED IZVJEŠTAJA"
-          eyebrowClassName="text-teal-800/80"
-          title="Kratki pregled izvještaja"
-          description={model.source.overviewDescription}
-          className="gap-2"
-          titleClassName="text-[1.35rem]"
-        />
-
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-[1.2rem] border border-slate-200/90 bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.03)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Ciklus procjene
-            </p>
-            <p className="mt-2 text-[14px] font-semibold text-slate-950">
-              {model.source.assessmentCycleLabel}
-            </p>
-            <p className="mt-1 break-all text-xs text-slate-500" title={model.source.assessmentAssignmentId}>
-              {model.source.assessmentCycleIdLabel}
-            </p>
-          </div>
-          <div className="rounded-[1.2rem] border border-slate-200/90 bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.03)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Obuhvat
-            </p>
-            <p className="mt-2 text-[14px] font-semibold text-slate-950">
-              {model.source.assessmentCountLabel}
-            </p>
-          </div>
-          <div className="rounded-[1.2rem] border border-slate-200/90 bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.03)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Datum izvještaja
-            </p>
-            <p className="mt-2 text-[14px] font-semibold text-slate-950">
-              {formatTimestamp(model.source.generatedAt)}
-            </p>
+        <div className="metadata-strip-grid mt-6 border-t border-slate-200/80 pt-5">
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="mt-1 h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: REPORT_COLORS.darkTeal }}
+            />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#073b4c]">
+                Kratki pregled izvještaja
+              </p>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div className="rounded-[1rem] border border-slate-200/90 bg-slate-50/70 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Ciklus procjene
+                  </p>
+                  <p className="mt-1.5 text-sm font-semibold text-[#073b4c]">
+                    {model.source.assessmentCycleLabel}
+                  </p>
+                  <p
+                    className="mt-1 break-all text-xs text-slate-500"
+                    title={model.source.assessmentAssignmentId}
+                  >
+                    {model.source.assessmentCycleIdLabel}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-slate-200/90 bg-slate-50/70 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Obuhvat
+                  </p>
+                  <p className="mt-1.5 text-sm font-semibold text-[#073b4c]">
+                    {model.source.assessmentCountLabel}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-slate-200/90 bg-slate-50/70 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Datum izvještaja
+                  </p>
+                  <p className="mt-1.5 text-sm font-semibold text-[#073b4c]">
+                    {formatTimestamp(model.source.generatedAt)}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </DashboardInfoCardShell>
@@ -340,15 +356,15 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
         <DashboardSectionHeader
           eyebrow="Sažetak"
-          eyebrowClassName="text-teal-800/80"
+          eyebrowClassName="text-[#073b4c]"
           title={model.summary.headline}
           description={undefined}
           className="gap-2"
-          titleClassName="text-[1.45rem]"
+          titleClassName="text-[1.45rem] text-[#073b4c]"
         />
 
         {model.structuredSummaryBlocks.length > 0 ? (
-          <div className="mt-5 max-w-[72rem]">
+          <div className="mt-5">
             <div
               className={`grid gap-3 ${
                 model.structuredSummaryBlocks.length >= 3
@@ -361,16 +377,42 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               {model.structuredSummaryBlocks.map((block, index) => (
                 <div
                   key={`${block.label}-${index}`}
-                  className={`rounded-[1.15rem] border border-slate-200/90 bg-slate-50/70 px-4 py-4 ${
+                  className={`summary-signal-block rounded-[1.1rem] border px-4 py-4 sm:px-5 ${
                     model.structuredSummaryBlocks.length >= 3 && index === 2
                       ? "lg:col-span-2"
                       : ""
                   }`}
+                  style={
+                    block.label === "Glavni signal"
+                      ? {
+                          borderColor: `${REPORT_COLORS.emerald}55`,
+                          backgroundColor: `${REPORT_COLORS.emerald}14`,
+                        }
+                      : block.label === "Tačka opreza"
+                        ? {
+                            borderColor: `${REPORT_COLORS.goldenPollen}88`,
+                            backgroundColor: `${REPORT_COLORS.goldenPollen}20`,
+                          }
+                        : {
+                            borderColor: `${REPORT_COLORS.oceanBlue}55`,
+                            backgroundColor: `${REPORT_COLORS.oceanBlue}12`,
+                          }
+                  }
                 >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-[0.16em]"
+                    style={{
+                      color:
+                        block.label === "Glavni signal"
+                          ? REPORT_COLORS.darkTeal
+                          : block.label === "Tačka opreza"
+                            ? "#7a5600"
+                            : REPORT_COLORS.oceanBlue,
+                    }}
+                  >
                     {block.label}
                   </p>
-                  <p className="mt-2 max-w-[62ch] text-sm leading-6 text-slate-700">
+                  <p className="mt-2 max-w-[68ch] text-sm leading-6 text-slate-700">
                     {block.body}
                   </p>
                 </div>
@@ -380,8 +422,14 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
         ) : null}
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-[1.2rem] border border-emerald-200 bg-emerald-50/70 px-4 py-4">
-            <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-emerald-800">
+          <div
+            className="summary-strengths-block rounded-[1.1rem] border px-4 py-4 sm:px-5"
+            style={{
+              borderColor: `${REPORT_COLORS.emerald}55`,
+              backgroundColor: `${REPORT_COLORS.emerald}12`,
+            }}
+          >
+            <h3 className="text-sm font-bold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.darkTeal }}>
               Ključne snage
             </h3>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
@@ -390,8 +438,14 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               ))}
             </ul>
           </div>
-          <div className="rounded-[1.2rem] border border-amber-200 bg-amber-50/70 px-4 py-4">
-            <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-amber-800">
+          <div
+            className="summary-watchout-block rounded-[1.1rem] border px-4 py-4 sm:px-5"
+            style={{
+              borderColor: `${REPORT_COLORS.goldenPollen}88`,
+              backgroundColor: `${REPORT_COLORS.goldenPollen}18`,
+            }}
+          >
+            <h3 className="text-sm font-bold uppercase tracking-[0.16em]" style={{ color: "#7a5600" }}>
               Tačke opreza
             </h3>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">

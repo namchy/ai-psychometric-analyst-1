@@ -257,7 +257,7 @@ function main() {
   assert.equal(model.statusLabel, "Spremno za pregled");
   assert.equal(
     model.description,
-    "Ovaj prikaz koristi već generisan izvještaj i ne mijenja rezultate procjena.",
+    "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
   );
   assert.equal(model.participantReportsHref, "/dashboard/participants/participant-1/reports");
   assert.equal(model.source.assessmentAssignmentId, "assignment-1");
@@ -318,15 +318,27 @@ function main() {
 
   assert.equal(html.includes("Kratki pregled izvještaja"), true);
   assert.equal(
-    html.includes("Ovaj izvještaj povezuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan praktičan HR pregled."),
+    html.includes(
+      "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
+    ),
     true,
   );
+  assert.equal(
+    html.includes("Ovaj prikaz koristi već generisan izvještaj i ne mijenja rezultate procjena"),
+    false,
+  );
+  assert.equal(html.includes("Kompozitni HR izvještaj"), true);
+  assert.equal(html.includes("Spremno za pregled"), true);
   assert.equal(html.includes("Glavni signal"), true);
   assert.equal(html.includes("Tačka opreza"), true);
   assert.equal(html.includes("Kako koristiti nalaz"), false);
   assert.equal(html.includes("Šta ovo znači u radu"), true);
   assert.equal(html.includes("Šta HR treba provjeriti"), false);
   assert.equal(html.includes("Dokazi iz procjena"), true);
+  assert.equal(html.includes("metadata-strip-grid"), true);
+  assert.equal(html.includes("summary-signal-block"), true);
+  assert.equal(html.includes("summary-strengths-block"), true);
+  assert.equal(html.includes("summary-watchout-block"), true);
   assert.equal(html.includes("integrated-signal-interpretation-grid"), true);
   assert.equal(html.includes("integrated-signal-meaning-card"), true);
   assert.equal(html.includes("integrated-signal-evidence-groups"), true);
