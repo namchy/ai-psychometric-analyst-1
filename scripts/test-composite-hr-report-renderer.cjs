@@ -332,16 +332,23 @@ function main() {
   assert.equal(html.includes("Glavni signal"), true);
   assert.equal(html.includes("Tačka opreza"), true);
   assert.equal(html.includes("Kako koristiti nalaz"), false);
-  assert.equal(html.includes("Šta ovo znači u radu"), true);
+  assert.equal(html.includes("Integrisana interpretacija"), true);
+  assert.equal(html.includes("ŠTA ZNAČI U RADU"), true);
   assert.equal(html.includes("Šta HR treba provjeriti"), false);
-  assert.equal(html.includes("Dokazi iz procjena"), true);
+  assert.equal(html.includes("DOKAZI IZ PROCJENA"), true);
   assert.equal(html.includes("metadata-strip-grid"), true);
   assert.equal(html.includes("summary-signal-block"), true);
   assert.equal(html.includes("summary-strengths-block"), true);
   assert.equal(html.includes("summary-watchout-block"), true);
-  assert.equal(html.includes("integrated-signal-interpretation-grid"), true);
-  assert.equal(html.includes("integrated-signal-meaning-card"), true);
-  assert.equal(html.includes("integrated-signal-evidence-groups"), true);
+  assert.equal(html.includes("integrated-signal-module"), true);
+  assert.equal(html.includes("integrated-signal-insight-grid"), true);
+  assert.equal(html.includes("integrated-signal-meaning-panel"), true);
+  assert.equal(html.includes("integrated-signal-evidence-bar"), true);
+  assert.equal(html.includes("integrated-signal-evidence-group"), true);
+  assert.equal(html.includes("inset 3px 0 0"), false);
+  snapshot.integratedSignals.forEach((signal) => {
+    assert.equal(html.includes(signal.title), true);
+  });
   assert.equal(html.includes(snapshot.summary.headline), true);
   assert.equal(html.includes("Procjene uključene u izvještaj"), false);
   assert.equal(html.includes("procjenski"), false);
@@ -372,6 +379,8 @@ function main() {
   assert.equal(html.includes("ipip-neo-120-v1"), false);
   assert.equal(html.includes("safran_v1"), false);
   assert.equal(html.includes("mwms_v1"), false);
+  assert.equal(html.includes("Ugodnost"), false);
+  assert.equal(html.includes("AGREEABLENESS"), false);
 
   const longOverviewSnapshot = {
     ...snapshot,
@@ -416,15 +425,51 @@ function main() {
     }),
   );
 
-  assert.equal(multiSentenceSignalHtml.includes("Šta ovo znači u radu"), true);
-  assert.equal(multiSentenceSignalHtml.includes("Šta HR treba provjeriti"), true);
-  assert.equal(multiSentenceSignalHtml.includes("integrated-signal-verification-card"), true);
+  assert.equal(multiSentenceSignalHtml.includes("ŠTA ZNAČI U RADU"), true);
+  assert.equal(multiSentenceSignalHtml.includes("ŠTA HR TREBA PROVJERITI"), true);
+  assert.equal(multiSentenceSignalHtml.includes("integrated-signal-verification-panel"), true);
   assert.equal(
     multiSentenceSignalHtml.includes(
       "Druga rečenica opisuje šta HR treba dodatno provjeriti.",
     ),
     true,
   );
+  assert.equal(multiSentenceSignalHtml.includes(">Ličnost<"), true);
+  assert.equal(multiSentenceSignalHtml.includes(">Kognitivni rezultat<"), true);
+  assert.equal(multiSentenceSignalHtml.includes(">Motivacija<"), true);
+
+  const agreeablenessDisplaySnapshot = {
+    ...snapshot,
+    integratedSignals: snapshot.integratedSignals.map((signal, index) =>
+      index === 0
+        ? {
+            ...signal,
+            title: "Ugodnost i dosljednost traže provjeru kroz primjere rada.",
+            body: "Ugodnost u timu može olakšati saradnju. AGREEABLENESS signal traži provjeru granica u radu sa drugima.",
+            evidence: [
+              {
+                testSlug: "ipip-neo-120-v1",
+                label: "Ugodnost",
+                value: "4.5, AGREEABLENESS",
+              },
+              ...signal.evidence,
+            ],
+          }
+        : signal,
+    ),
+  };
+  const agreeablenessDisplayHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot: agreeablenessDisplaySnapshot,
+    }),
+  );
+
+  assert.equal(agreeablenessDisplayHtml.includes("Ugodnost"), false);
+  assert.equal(agreeablenessDisplayHtml.includes("AGREEABLENESS"), false);
+  assert.equal(agreeablenessDisplayHtml.includes("Spremnost na saradnju"), true);
+  assert.equal(agreeablenessDisplayHtml.includes("Saradljivost"), true);
+  assert.equal(agreeablenessDisplayHtml.includes("integrated-signal-evidence-bar"), true);
 
   const invalid = resolveReadyCompositeHrAssessmentReport(
     buildReadyReport({

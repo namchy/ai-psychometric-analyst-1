@@ -73,6 +73,31 @@ const REPORT_COLORS = {
   darkTeal: "#073b4c",
 } as const;
 
+const EVIDENCE_GROUP_STYLES: Record<
+  string,
+  {
+    accentColor: string;
+    borderColor: string;
+    backgroundColor: string;
+  }
+> = {
+  Ličnost: {
+    accentColor: REPORT_COLORS.darkTeal,
+    borderColor: `${REPORT_COLORS.darkTeal}18`,
+    backgroundColor: `${REPORT_COLORS.darkTeal}05`,
+  },
+  "Kognitivni rezultat": {
+    accentColor: REPORT_COLORS.oceanBlue,
+    borderColor: `${REPORT_COLORS.oceanBlue}18`,
+    backgroundColor: `${REPORT_COLORS.oceanBlue}06`,
+  },
+  Motivacija: {
+    accentColor: REPORT_COLORS.emerald,
+    borderColor: `${REPORT_COLORS.emerald}18`,
+    backgroundColor: `${REPORT_COLORS.emerald}06`,
+  },
+};
+
 function formatAssessmentCountLabel(count: number): string {
   return `${count} završene procjene`;
 }
@@ -96,8 +121,25 @@ function sanitizeLimitationCopy(value: string): string {
     .replace(/score vrijednosti/gi, "rezultate procjena");
 }
 
+function mapAgreeablenessDisplayLabel(value: string, variant: "long" | "short" = "long"): string {
+  const replacement = variant === "short" ? "Saradljivost" : "Spremnost na saradnju";
+
+  return value
+    .replace(/\bUgodnost\b/gi, replacement)
+    .replace(/\bAGREEABLENESS\b/g, replacement);
+}
+
 function sanitizeDisplayCopy(value: string): string {
-  return sanitizeLimitationCopy(value).replace(/linked attemptova/gi, "povezanih procjena");
+  return mapAgreeablenessDisplayLabel(
+    sanitizeLimitationCopy(value).replace(/linked attemptova/gi, "povezanih procjena"),
+  );
+}
+
+function sanitizeEvidenceLabel(value: string): string {
+  return mapAgreeablenessDisplayLabel(
+    sanitizeLimitationCopy(value).replace(/linked attemptova/gi, "povezanih procjena"),
+    "short",
+  );
 }
 
 function splitIntoSummarySentences(value: string): string[] {
@@ -225,7 +267,7 @@ export function buildCompositeHrReportViewModel(input: {
       body: sanitizeDisplayCopy(signal.body),
       evidence: signal.evidence.map((evidence) => ({
         ...evidence,
-        label: sanitizeDisplayCopy(evidence.label),
+        label: sanitizeEvidenceLabel(evidence.label),
         value: sanitizeDisplayCopy(evidence.value),
         displayTestLabel: getEvidenceTestLabel(evidence.testSlug),
       })),
@@ -233,7 +275,7 @@ export function buildCompositeHrReportViewModel(input: {
       evidenceGroups: buildEvidenceGroups(
         signal.evidence.map((evidence) => ({
           ...evidence,
-          label: sanitizeDisplayCopy(evidence.label),
+          label: sanitizeEvidenceLabel(evidence.label),
           value: sanitizeDisplayCopy(evidence.value),
           displayTestLabel: getEvidenceTestLabel(evidence.testSlug),
         })),
@@ -269,6 +311,16 @@ function formatTimestamp(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function getEvidenceGroupStyle(label: string) {
+  return (
+    EVIDENCE_GROUP_STYLES[label] ?? {
+      accentColor: REPORT_COLORS.darkTeal,
+      borderColor: "rgba(148, 163, 184, 0.25)",
+      backgroundColor: "rgba(248, 250, 252, 0.95)",
+    }
+  );
 }
 
 export function CompositeHrReportView({ report, snapshot }: CompositeHrReportViewProps) {
@@ -459,48 +511,66 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
 
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
         <DashboardSectionHeader
-          eyebrow="Integrisani signali"
-          eyebrowClassName="text-teal-800/80"
+          eyebrow="INTEGRISANI SIGNALI"
+          eyebrowClassName="text-[#073b4c]"
           title="Integrisana interpretacija"
           description="Signali su prikazani kao HR hipoteze za razgovor i provjeru kroz primjere ponašanja."
           className="gap-2"
-          titleClassName="text-[1.35rem]"
+          titleClassName="text-[1.45rem] font-semibold tracking-[-0.03em] text-[#073b4c]"
+          descriptionClassName="max-w-3xl text-sm leading-6 text-slate-600 sm:text-[0.95rem]"
         />
 
-        <div className="mt-6 space-y-5">
-          {model.integratedSignals.map((signal) => (
+        <div className="mt-6 space-y-5 sm:space-y-6">
+          {model.integratedSignals.map((signal, index) => (
             <div
               key={signal.id}
-              className="rounded-[1.35rem] border border-slate-200/90 bg-white px-5 py-5 shadow-[0_14px_34px_rgba(15,23,42,0.04)] sm:px-6 sm:py-6"
+              className="integrated-signal-module rounded-[1.35rem] border border-slate-200/90 bg-white px-4 py-4 sm:px-6 sm:py-6"
             >
-              <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                {signal.title}
-              </h3>
+              <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#118ab2]">
+                    Signal {index + 1}
+                  </p>
+                  <h3 className="text-[1.05rem] font-semibold tracking-[-0.03em] text-[#073b4c] sm:text-[1.15rem]">
+                    {signal.title}
+                  </h3>
+                </div>
+              </div>
 
               <div
-                className={`integrated-signal-interpretation-grid mt-4 grid gap-4 ${
+                className={`integrated-signal-insight-grid mt-4 grid items-start gap-2.5 sm:gap-3 ${
                   signal.structuredBody.primary && signal.structuredBody.hrCheck
                     ? "lg:grid-cols-2"
                     : ""
                 }`}
               >
                 {signal.structuredBody.primary ? (
-                  <div className="integrated-signal-meaning-card rounded-[1rem] border border-slate-200/90 bg-slate-50/80 px-4 py-4 sm:px-5 sm:py-[18px]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Šta ovo znači u radu
+                  <div
+                    className="integrated-signal-meaning-panel rounded-[0.95rem] border border-slate-200/70 px-3.5 py-3 sm:px-4 sm:py-3.5"
+                    style={{
+                      backgroundColor: `${REPORT_COLORS.darkTeal}04`,
+                    }}
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      ŠTA ZNAČI U RADU
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                    <p className="mt-2 text-[0.93rem] leading-[1.58] text-slate-700">
                       {signal.structuredBody.primary}
                     </p>
                   </div>
                 ) : null}
 
                 {signal.structuredBody.hrCheck ? (
-                  <div className="integrated-signal-verification-card rounded-[1rem] border border-slate-200/90 bg-slate-50/60 px-4 py-4 sm:px-5 sm:py-[18px]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Šta HR treba provjeriti
+                  <div
+                    className="integrated-signal-verification-panel rounded-[0.95rem] border border-slate-200/70 px-3.5 py-3 sm:px-4 sm:py-3.5"
+                    style={{
+                      backgroundColor: `${REPORT_COLORS.oceanBlue}04`,
+                    }}
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      ŠTA HR TREBA PROVJERITI
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                    <p className="mt-2 text-[0.93rem] leading-[1.58] text-slate-700">
                       {signal.structuredBody.hrCheck}
                     </p>
                   </div>
@@ -508,12 +578,12 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               </div>
 
               {signal.evidenceGroups.length > 0 ? (
-                <div className="integrated-signal-evidence-groups mt-4 rounded-[1rem] border border-slate-200/90 bg-slate-50/55 px-4 py-4 sm:px-5 sm:py-[18px]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Dokazi iz procjena
+                <div className="integrated-signal-evidence-bar mt-3.5 border-t border-slate-200/70 pt-3 sm:mt-4 sm:pt-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    DOKAZI IZ PROCJENA
                   </p>
                   <div
-                    className={`mt-3 grid gap-3 ${
+                    className={`mt-2.5 grid gap-2 ${
                       signal.evidenceGroups.length >= 3
                         ? "lg:grid-cols-3"
                         : signal.evidenceGroups.length === 2
@@ -524,14 +594,20 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
                     {signal.evidenceGroups.map((group) => (
                       <div
                         key={`${signal.id}-${group.label}`}
-                        className="rounded-[0.95rem] border border-slate-200/80 bg-white/90 px-3.5 py-3"
+                        className="integrated-signal-evidence-group rounded-[0.9rem] border px-3 py-2.5"
+                        style={getEvidenceGroupStyle(group.label)}
                       >
-                        <p className="text-xs font-semibold text-slate-700">{group.label}</p>
-                        <div className="flex flex-wrap gap-2">
+                        <p
+                          className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+                          style={{ color: getEvidenceGroupStyle(group.label).accentColor }}
+                        >
+                          {group.label}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {group.items.map((evidence) => (
                             <span
                               key={`${signal.id}-${group.label}-${evidence.label}`}
-                              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
+                              className="rounded-full border border-white/60 bg-white/80 px-2.5 py-1 text-[11px] font-medium leading-4 text-slate-600"
                             >
                               {evidence.label}: {evidence.value}
                             </span>
