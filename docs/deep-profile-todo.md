@@ -66,8 +66,13 @@ Komande:
 | P1        | Composite HR report V1 final copy/UX polish | Završeno / Renderer polish | Composite HR report / UX copy / Renderer polish | Zatvoreno za renderer/display polish (uklj. “Integrisana interpretacija”). Sljedeći korak: production worker/report orchestration i zaseban watchout wording/UI polish. |
 | P1        | OpenAI provider language QA guardrails za Composite HR report | Završeno | Composite HR report / OpenAI provider / Language QA | Zatvoreno nakon shared BHS language-quality helpera, Composite HR provider gate-a, reviewer pass-a, terminology stabilization-a i uspješnog OpenAI DB-backed smoke-a. |
 | P1        | Production worker/report orchestration / completion-triggered report orchestration | Završeno / runtime smoke ciklus potvrđen | Report pipeline / Completion orchestration | Zatvoreno nakon runtime smoke ciklusa: completion trigger radi za single-test i composite lane bez report-view triggera i bez manual-generate happy path-a; preostali polish je zaseban watchout wording/UI task. |
-| P2        | Composite HR report watchout wording/UI polish | Planirano | Composite HR report / UX copy / Renderer polish | Revidirati “Tačka opreza” / “Tačke opreza” wording i vizuelni tretman watchout kartica da zvuči prirodnije i manje rogobatno. |
-| P1/P2     | Composite HR report summary structure polish | Planirano | Composite HR report / Renderer / UX structure | Skraćiti summary u executive snapshot sa sekcijama: Glavni signal, Fokus za provjeru, Kako koristiti nalaz, Ključne snage; ukloniti dupli donji “Tačke opreza” blok ili ga spojiti u “Fokus za provjeru”. |
+| P1        | Composite HR integrated signals visual layout polish | Završeno | Composite HR report / Renderer / Visual hierarchy | Zatvoreno nakon redizajna “Integrisani signali” iz dokumentnog toka u analitički 3-modulni layout: Šta znači u radu / Šta HR treba provjeriti / Dokazi iz procjena. |
+| P1        | Composite HR integrated signals color semantics polish | Završeno | Composite HR report / Renderer / Color semantics | Zatvoreno nakon semantičkog mapiranja Deep Profile palete po funkciji modula (emerald/golden-pollen/ocean-blue + dark-teal autoritet). |
+| P1        | Composite HR summary visual hierarchy polish | Završeno | Composite HR report / Renderer / Summary | Zatvoreno nakon prelaska na 2x2 executive dashboard: Ključne snage, Fokus za provjeru, Glavni signal, Kako koristiti nalaz. |
+| P1        | Composite HR summary executive dashboard refinement / color polish | Završeno | Composite HR report / Renderer / Executive UI | Zatvoreno nakon pojačanja vizuelnog identiteta sekcije “Sažetak” uz čitljiv body i jaču, funkcionalnu upotrebu boje. |
+| P1        | Composite HR back link / hero cleanup | Planirano | Composite HR report / Renderer / Hero UX | Izvaditi “Nazad na pregled kandidata” iz hero kartice i prikazati mali ghost back link iznad hero sekcije; hero učiniti čistijim i autoritativnijim. |
+| P1        | Composite HR summary headline polish | Planirano | Composite HR report / Renderer / Summary headline | Bez promjene sadržaja pojačati vizuelnu težinu glavnog zaključka i bolje ga povezati sa 2x2 executive gridom. |
+| P1        | Composite HR interview/onboarding visual alignment | Planirano | Composite HR report / Renderer / Section alignment | Uskladiti Intervju i Onboarding sa novim visual language-om Sažetka i Integrisanih signala, bez contract/promjene sadržaja. |
 | P1        | Composite HR report advisory prompt polish | Završeno | Composite HR report / OpenAI provider / HR advisory copy | Zatvoreno nakon pojačanja OpenAI Composite HR prompta prema savjetodavnom HR radnom dokumentu uz jače hipoteze, provjere, interview guidance i onboarding/menadžerske smjernice, bez promjene contract/scoring guardraila. |
 | P1        | Composite HR BHS narrative casing guardrail | Završeno | Composite HR report / Language QA / BHS quality | Zatvoreno nakon uvođenja narrative casing guardraila koji dozvoljava display/evidence label “Spremnost na saradnju”, ali u narativu zahtijeva “spremnost na saradnju”; evidence/display labeli su izuzeti iz pravila. |
 | P1        | Composite HR concise advisory writing polish | Završeno | Composite HR report / HR advisory copy / Readability | Zatvoreno nakon pojačanja provider prompta i minimalnog summary writing guardraila: kraći headline, jasniji 3-rečenični profileOverview, akcijski fokus za provjeru, konkretniji “Šta HR treba provjeriti” i operativnije onboarding/menadžerske smjernice. |
@@ -1718,33 +1723,45 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Kratka stabilizacija i commit/push ciklus nakon Composite HR concise advisory writing polish taska
-2. Demo readiness odluka (kratki QA/prolaz i odluka o narednom fokusu)
-3. Composite HR report summary structure polish
-4. Composite HR report watchout wording/UI polish
-5. Composite HR interview guidance V2 (veći task)
-6. Composite HR onboarding 30/60/90 format (veći task)
-7. Composite HR visual readability polish (sitniji tekst/evidence čipovi)
-8. Assignment-aware dashboard model za nove assessment cikluse
-9. Oblik obraćanja: muški/ženski jezički oblik
-10. Report visual language po testovima
-11. SAFRAN novi stimulus asseti
-12. Login screen UI polish
+1. Composite HR back link / hero cleanup (mali renderer/display task)
+2. Composite HR summary headline polish
+3. Composite HR interview/onboarding visual alignment
+4. Composite HR interview guidance V2 (veći task)
+5. Composite HR onboarding 30/60/90 format (veći task)
+6. Assignment-aware dashboard model za nove assessment cikluse
+7. Oblik obraćanja: muški/ženski jezički oblik
+8. Report visual language po testovima
+9. SAFRAN novi stimulus asseti
+10. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
-* Runtime smoke ciklus za completion-triggered orchestration je završen.
-* MWMS completion-triggered smoke je prošao: protected completion flow je bez report-view triggera proizveo HR `attempt_report` i završio ga kao `ready`.
-* Composite completion-triggered smoke je prvo bio PARTIAL, ali su oba provider/reviewer blockera zatvorena:
-  * Neuroticism source-integrity mismatch (`3.83` vs `2.17`) kroz deterministic evidence lock.
-  * AGREEABLENESS glossary drift kroz canonicalization na `Spremnost na saradnju`.
-* Ponovljeni composite worker smoke za `assessment_report_id=fe22ed8b-460c-4273-9dd8-6bee56d8c645` završio je `ready` sa `generator_type=openai`, `model_name=gpt-5.4`, `failure_code=null`, `failure_reason=null`.
-* Report view nije trigger; manual generate/retry nije korišten kao happy path.
-* Završen je Composite HR AI polish ciklus: advisory prompt je pojačan, a BHS narrative casing guardrail je uveden i QA-validiran.
-* Amrin Composite HR report je regenerisan preko OpenAI-ja nakon prompt/casing izmjena i output je vidljivo savjetodavniji (jači executive summary, konkretniji fokus za provjeru, bolji interview guidance, operativnije onboarding/menadžerske smjernice).
-* `Composite HR concise advisory writing polish` je završen: provider prompt i language QA sada ciljano forsiraju kraći, skenabilniji i akcijski HR stil bez promjene contract/scoring/orchestration/worker/DB sloja.
-* Amrin Composite HR report je regenerisan nakon ovih promjena; pregled potvrđuje kraći headline, akcijski fokus za provjeru, jasniji glavni signal i operativniji onboarding jezik.
-* Novi preporučeni korak nije odmah novi veliki Composite HR refactor, nego kratka stabilizacija i commit/push ciklus, pa odluka da li sljedeći fokus ide na demo readiness ili Interview Guidance V2.
+* Današnji Composite HR visual/UI polish ciklus je završen i ostao je striktno u renderer/display sloju.
+* “Integrisani signali” su redizajnirani iz dokumentnog toka u analitički 3-modulni layout:
+  * Šta znači u radu
+  * Šta HR treba provjeriti
+  * Dokazi iz procjena
+* User-facing “hipoteza” wording je uklonjen iz te sekcije; koristi se konkretniji framing “radni signali”.
+* Signal 1/2/3 badgevi su smireni, a signal title je postavljen kao glavni vizuelni info.
+* Evidence je pojačan kao skenabilan data/evidence panel u trećem modulu.
+* “Sažetak” je redizajniran u 2x2 executive dashboard:
+  * Ključne snage
+  * Fokus za provjeru
+  * Glavni signal
+  * Kako koristiti nalaz
+* Deep Profile paleta sada ima jasniju semantiku i vidljiviji identitet:
+  * emerald = Šta znači u radu
+  * golden-pollen = Šta HR treba provjeriti
+  * ocean-blue = Dokazi iz procjena
+  * dark-teal = autoritet/naslovi
+* Report sada izgleda znatno zrelije za internu demo prezentaciju, ali još nije finalni premium UI.
+* Preostali vidljivi problemi:
+  * hero/header dio još izgleda generički
+  * “Nazad na pregled kandidata” treba izvaditi iz hero kartice i prikazati kao ghost back link iznad hero sekcije
+  * summary headline treba bolju vizuelnu težinu i vezu sa executive gridom
+  * Intervju i Onboarding vizuelno zaostaju za novim Sažetkom i Integrisanim signalima
+  * report i dalje ima dosta “mekanih/mliječnih” površina i traži jasniju hijerarhiju u narednim polish koracima
+* Novi preporučeni sljedeći korak: `Composite HR back link / hero cleanup` kao mali, fokusiran renderer/display task.
 
 ### 5.14 Assessment autosave UX politika
 
@@ -1947,7 +1964,13 @@ Razlog za sljedeći prioritet:
   * automatsku preporuku za zapošljavanje
   * pretjerano defanzivan jezik koji stalno zvuči kao “možda”
 * Report je sada dovoljno dobar za demo HR pregled.
-* Naredni operativni korak: kratka stabilizacija i commit/push ciklus, pa odluka između demo readiness fokusa i većeg Interview Guidance V2 taska.
+* Završen je i današnji vizuelni/UI polish ciklus za Composite HR report:
+  * “Integrisani signali” imaju 3-modulni analitički layout sa jačim semantic color tretmanom.
+  * “Sažetak” je 2x2 executive dashboard sa jačom vizuelnom hijerarhijom.
+  * Signal title je glavni vizuelni info, signal badge je sekundaran, a evidence je data/evidence panel.
+  * Uklonjen je user-facing “hipoteza” framing iz Integrisanih signala i zamijenjen konkretnijim “radni signali”.
+* Ograničenje ovog ciklusa: promjene su samo renderer/display; nije diran provider/prompt/contract/scoring/orchestration/worker/DB/routing sloj.
+* Novi preporučeni operativni korak: `Composite HR back link / hero cleanup` kao uski renderer/display task.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -2038,8 +2061,9 @@ Razlog za sljedeći prioritet:
 | P1        | Automatic report generation orchestration after assessment completion | Completion-triggered orchestration runtime smoke ciklus je završen za MWMS single-test i Composite HR lane; completion event ostaje trigger, report view nije trigger, manual generate/retry nije happy path. | Zatvoreno za runtime potvrdu trenutnog slice-a; dalje širenje trigger modela je posebna buduća odluka i ne ulazi u ovaj ciklus. |
 | P1        | Scripted composite smoke requeue utility | Finalni smoke i dalje koristi kontrolisani requeue postojećeg `assessment_reports` row-a jer insert novog row-a za isti assignment udara na `assessment_reports_artifact_identity_unique`; reusable utility script nije dodat u ovom ciklusu. | Nije bug: unique constraint je očekivan. Cilj ostaje reproducibilan QA smoke workflow bez ručnih inline komandi. |
 | P1/P2     | Composite provider-copy polish after OpenAI smoke | Kritični runtime blockeri su zatvoreni kroz provider source/evidence lock i AGREEABLENESS canonicalization; OpenAI completion-triggered composite smoke sada završava `ready`. | Ostaviti kao optional quality pass samo ako budući demo/smoke output pokaže novu potrebu; ne vraćati scope na contract/scoring/orchestration. |
-| P2        | Composite watchout wording/UI | “Tačka opreza” i “Tačke opreza” u trenutnom Composite HR UI-u djeluju rogobatno. Potrebno je izabrati prirodniji HR-facing wording i eventualno smiriti vizuelni tretman oprez kartica. | Ovo je sada preporučeni sljedeći mali task: renderer/copy polish bez promjene provider/contract/scoring/orchestration sloja. |
-| P1/P2     | Composite summary structure polish | Composite summary trenutno ima previše slojeva i duplira watchout funkciju kroz “Tačka opreza” i “Tačke opreza”. Treba ga svesti na kraći executive snapshot: Glavni signal, Fokus za provjeru, Kako koristiti nalaz, Ključne snage. | Out of scope ostaje provider/contract/scoring/orchestration/DB schema/worker. |
+| P1        | Composite HR back link / hero cleanup | Hero dio još izgleda generički, a “Nazad na pregled kandidata” trenutno je na pogrešnom mjestu u hero kartici. | Ovo je sada preporučeni sljedeći mali task: izvaditi back link iz hero kartice i postaviti ga kao mali ghost link iznad hero sekcije, bez promjene sadržaja i bez pipeline promjena. |
+| P1        | Composite HR summary headline polish | Summary headline je funkcionalan, ali još nema punu vizuelnu težinu niti jasnu vezu sa novim executive 2x2 gridom. | Renderer/display polish bez promjene sadržaja reporta, providera, contracta, scoringa ili orchestrationa. |
+| P1        | Composite HR interview/onboarding visual alignment | Intervju i Onboarding sekcije trenutno vizuelno zaostaju iza novog jezika Sažetka i Integrisanih signala. | Uskladiti donje sekcije sa novim visual language-om, bez contract/promjene sadržaja i bez pipeline promjena. |
 | P1        | Composite advisory prompt polish | Advisory prompt ciklus je završen: Composite HR OpenAI provider sada vodi prema savjetodavnijem HR radnom dokumentu sa čvršćim hipotezama, konkretnijim provjerama i operativnijim smjernicama. | Safety/source guardraili su zadržani: bez hire/no-hire, fit score-a, automatske preporuke zapošljavanja i bez promjene score/band/evidence source podataka. |
 | P1        | Composite BHS narrative casing guardrail | Narrative casing guardrail je završen: u narativu je obavezan prirodan BHS lower-case za domene/dimenzije usred rečenice, dok su display/evidence labeli izuzeti. | QA sada hvata neprirodnu kapitalizaciju u user-facing narativu bez lomljenja labela/čipova. |
 | P1        | Composite concise advisory writing polish | Task je završen: prompt i language QA su podešeni za kraći, skenabilniji i akcijski HR izlaz (kraći headline, jasniji profileOverview ritam, akcijski fokus za provjeru, konkretniji onboarding glagoli). | Bez promjene contract/scoring/orchestration/worker/DB; postojeći source/evidence/casing guardraili ostali aktivni i potvrđeni testovima. |
@@ -2119,6 +2143,60 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-14 — Composite HR report visual/UI polish ciklus završen (Sažetak + Integrisani signali)
+
+Završeno:
+
+* Composite HR report je nakon AI/content polish-a prebačen u vizuelno zreliji report UI.
+* Sekcija “Integrisani signali” je redizajnirana iz dokumentnog toka u analitički 3-modulni layout:
+  * Šta znači u radu
+  * Šta HR treba provjeriti
+  * Dokazi iz procjena
+* Uklonjen je user-facing “hipoteza” copy iz sekcije i zamijenjen konkretnijim “radni signali” framingom.
+* Signal 1/2/3 badgevi su smireni i sekundarni; naslov signala je glavni vizuelni info.
+* Evidence je prebačen u treći modul i prikazuje se kao skenabilan data/evidence panel.
+* Uvedena je semantička upotreba Deep Profile palete:
+  * emerald za “Šta znači u radu”
+  * golden-pollen za “Šta HR treba provjeriti”
+  * ocean-blue za “Dokazi iz procjena”
+  * dark-teal za autoritet/naslove
+* Sekcija “Sažetak” je redizajnirana u 2x2 executive dashboard:
+  * Ključne snage
+  * Fokus za provjeru
+  * Glavni signal
+  * Kako koristiti nalaz
+* “Ključne snage” su pomjerene na prvo mjesto i vizuelno pojačane kao glavni pozitivni executive ulaz.
+* “Fokus za provjeru” koristi golden-pollen kao interview attention bez warning/alert tona.
+* “Glavni signal” koristi ocean-blue kao analitički/interpretativni signal.
+* “Kako koristiti nalaz” koristi dark-teal/blue-teal action/use treatment.
+* Sve promjene su ostale u renderer/display sloju.
+
+Promijenjeni fajlovi:
+
+* `components/dashboard/composite-hr-report-view.tsx`
+* `scripts/test-composite-hr-report-renderer.cjs`
+
+Verifikacija:
+
+* `npm run typecheck`
+* `node scripts/test-composite-hr-report-renderer.cjs`
+
+Trenutna procjena:
+
+* Report sada ima znatno bolji vizuelni identitet i dovoljno je dobar za internu demo prezentaciju.
+* Integrisani signali i Sažetak sada više liče na HR intelligence report, a manje na običan dokument.
+* Još nije finalni premium UI.
+* Preostali vidljivi problemi:
+  * hero/header još izgleda generički
+  * “Nazad na pregled kandidata” treba biti ghost back link iznad hero sekcije
+  * summary headline treba bolju vizuelnu težinu i vezu sa executive gridom
+  * Intervju i Onboarding vizuelno zaostaju
+  * report i dalje ima dosta mekih/mliječnih površina
+
+Novi preporučeni sljedeći korak:
+
+* `Composite HR back link / hero cleanup` kao mali, fokusiran renderer/display task.
 
 ### 2026-05-14 — Composite HR concise advisory writing polish završen
 
