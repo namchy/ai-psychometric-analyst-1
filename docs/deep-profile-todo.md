@@ -65,6 +65,7 @@ Komande:
 | P1        | DB-backed end-to-end smoke za Composite HR report | Završeno / Mock + OpenAI potvrđeni | Composite HR report / Runtime smoke / QA | Zatvoreno nakon realnog OpenAI DB-backed smoke-a kroz existing assessment_reports lifecycle, provider language QA, reviewer pass i HR renderer route. |
 | P1        | Composite HR report V1 final copy/UX polish | Završeno / Renderer polish | Composite HR report / UX copy / Renderer polish | Zatvoreno za renderer/display polish (uklj. “Integrisana interpretacija”). Sljedeći korak: production worker/report orchestration i zaseban watchout wording/UI polish. |
 | P1        | OpenAI provider language QA guardrails za Composite HR report | Završeno | Composite HR report / OpenAI provider / Language QA | Zatvoreno nakon shared BHS language-quality helpera, Composite HR provider gate-a, reviewer pass-a, terminology stabilization-a i uspješnog OpenAI DB-backed smoke-a. |
+| P1        | Production worker/report orchestration / completion-triggered report orchestration | Završeno / prvi best-effort completion slice | Report pipeline / Completion orchestration | Zatvoreno za prvi uski slice: completion flow sada best-effort orchestration poziva server helper, pokušava scoped enqueue/process za single-test i composite lane-ove bez rušenja completion flow-a. Sljedeći korak: runtime smoke completion-triggered toka bez report-view triggera i bez manual-generate happy path-a. |
 | P2        | Composite HR report watchout wording/UI polish | Planirano | Composite HR report / UX copy / Renderer polish | Revidirati “Tačka opreza” / “Tačke opreza” wording i vizuelni tretman watchout kartica da zvuči prirodnije i manje rogobatno. |
 | P1        | Supabase migration/schema cache verification za composite tabele | Završeno / DB queued smoke još preostaje | Infrastructure / Supabase / Composite runtime | Zatvoreno za schema/table visibility: runtime Supabase sada vidi `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports`, a worker više ne pada na schema cache grešci. Sljedeći korak je DB-backed composite smoke sa stvarnim queued reportom. |
 | P1        | Assessment report worker path za composite          | Završeno    | Composite HR report / Worker lifecycle | Zatvoreno kao lifecycle proof: worker claim-a queued assessment_reports row, gradi input_snapshot kroz composite input builder i kontrolisano završava kao failed sa COMPOSITE_PROVIDER_NOT_IMPLEMENTED dok provider ne postoji. |
@@ -84,7 +85,7 @@ Komande:
 | P2        | MWMS AI report copy ton                              | Završeno    | Report copy / Tone           | Zatvoreno nakon usklađivanja MWMS participant reporta na “ti” formu kroz prompt pravila, renderer safety net, display smoke test i regenerisani testni report. |
 | P2        | SAFRAN participant domain copy polish                | Završeno    | SAFRAN / Candidate report / Copy | Zatvoreno nakon uvođenja controlled copy helpera za “Pregled po oblastima”, bez promjene scoringa, layouta ili AI/report pipeline-a. |
 | P2        | Report visual language po testovima                  | Planirano   | Report UI                    | IPIP radar, MWMS bar profile, SAFRAN score cards, composite mapa.                              |
-| P2        | Worker/report auto-processing orchestration          | Otvoreno / Tech debt | Tech debt / Ops       | Definisati kako queued report prelazi u processing/ready/failed bez ručnog `npm run process-report-jobs` dev koraka. |
+| P2        | Worker/report auto-processing orchestration          | Aktivno / Nakon prvog completion slice-a | Tech debt / Ops       | Nakon completion-triggered best-effort slice-a potvrditi runtime smoke i odlučiti da li je potreban dodatni production trigger model izvan postojećeg worker procesa. |
 | P3        | HR-facing MWMS AI report                             | Parking lot | HR report                    | Razmotriti nakon composite arhitekture ili HR dashboard prioriteta.                            |
 
 > Ova tabela je operativni pregled. Detalji, kontekst i odluke za svaki task ostaju u tijelu dokumenta ispod.
@@ -1710,7 +1711,7 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Production worker/report orchestration
+1. Runtime smoke za completion-triggered orchestration
 2. Composite HR report watchout wording/UI polish
 3. Provider-copy polish za Composite HR report, ako budući demo/smoke output pokaže generičke ili previše oprezne formulacije
 4. Assignment-aware dashboard model za nove assessment cikluse
@@ -1723,11 +1724,11 @@ Razlog za sljedeći prioritet:
 
 * Composite HR report sada ima potvrđen mock + OpenAI runtime path.
 * Language QA foundation, reviewer pass, terminology stabilization i OpenAI DB-backed smoke su završeni.
-* Sljedeći fokus je automatic report generation orchestration nakon completion eventa.
-* Single-test HR report lane treba automatski enqueue/processing nakon svakog validnog completed attempta kada je HR lane active.
-* Composite HR report treba automatski enqueue/processing kada assignment postane composite-ready (sva required linked attempts completed u istom assignmentu).
+* Prvi uski production worker/report orchestration slice je završen kroz completion-triggered best-effort helper.
+* Sljedeći fokus je runtime smoke kojim dokazujemo da completed attempt pokreće očekivani enqueue/processing tok bez oslanjanja na report view i bez manual-generate happy path-a.
+* Single-test HR lane i composite lane su sada wired na completion event; potrebno je runtime potvrditi ponašanje u stvarnom toku.
 * Report view nije trigger; report view je konzumacija već pripremljenog artefakta.
-* Preostali runtime rizik je produkcijska orchestration strategija za queued jobove, ne provider/contract smoke.
+* Preostali runtime rizik nakon ovog slice-a je operativna potvrda completion-triggered toka i eventualni dodatni production trigger model, ne provider/contract smoke.
 * Watchout wording/UI polish ostaje zaseban renderer UX/copy task.
 * Provider-copy polish ostaje opcionalan i evidence-driven ako budući output pokaže potrebu.
 
@@ -1806,11 +1807,19 @@ Razlog za sljedeći prioritet:
 * OpenAI DB-backed smoke je potvrđen kroz realni assessment_reports row sa `AI_REPORT_PROVIDER=openai`.
 * OpenAI smoke je potvrdio `queued → processing → ready` flow, persisted `input_snapshot`/`report_snapshot` i HR renderer route.
 * OpenAI DB-backed smoke potvrđuje da stvarni provider output dobro prolazi kroz isti renderer nakon provider language QA sloja.
-* Production worker/report orchestration ostaje odvojeni otvoreni task.
+* Production worker/report orchestration ima završen prvi uski best-effort completion-triggered slice.
 * Completion event je trigger za report orchestration; report view nije trigger.
 * Composite HR report treba automatski ući u queued/generation flow čim su required linked attempts completed u istom assessment assignmentu.
 * Manual generate/retry ostaje recovery alat, ne normalni happy path.
 * HR korisnik u normalnom flow-u treba zateći ready report, ne čekati generisanje nakon otvaranja detail stranice.
+* Server-side helper `lib/assessment/report-orchestration.ts` je centralni completion-triggered bridge za ovaj prvi slice.
+* Completion flow poziva orchestration helper tek nakon uspješnog scoring/results persistence-a.
+* Helper je best-effort i ne smije srušiti completion flow ako enqueue/worker dio padne.
+* Single-test completion path koristi postojeći `attempt_reports` worker chain za scoped claim/process pokušaj nakon completion eventa.
+* Composite enqueue/process pokušava se samo kada assignment postane composite-ready u istom ciklusu.
+* Failed reportovi se ne retry-aju automatski.
+* Existing `queued`/`processing`/`ready` reportovi se ne dupliciraju.
+* Nisu mijenjani DB schema, scoring, provider contracti, renderer ni dashboard UI.
 * Composite HR report koristi assessment-level storage kroz `assessment_reports`.
 * `assessment_reports` je HR-only artefakt u V1.
 * Participant/candidate ne dobija read access na HR composite report u V1.
@@ -1958,11 +1967,11 @@ Razlog za sljedeći prioritet:
 | P1        | Composite runtime DB/migration verification | Composite schema/table visibility blocker je riješen, a DB-backed mock smoke sa stvarnim queued reportom je potvrđen. | Runtime Supabase vidi composite tabele; ne koristiti `supabase db push` naslijepo dok stare uncertain migracije imaju drift. |
 | P1        | Composite report generation pipeline | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Mock-backed i OpenAI DB-backed smoke sada prolaze. | Preostali fokus je production worker/report orchestration i eventualno širenje shared language QA sloja na druge report lane-ove. |
 | P1        | Composite OpenAI language QA | Foundation + reviewer pass + terminology stabilization su završeni za Composite HR OpenAI provider i potvrđeni OpenAI DB-backed smoke-om. | Renderer ne širiti u generički lektor; provider/language QA sloj ostaje mjesto za AI output kvalitet. Budući dug je rollout shared QA sloja na druge lane-ove kada dođe red. |
-| P1        | Automatic report generation orchestration after assessment completion | Definisati i implementirati kako completion event automatski enqueue-a i/ili pokreće processing za participant/single-test HR reportove i Composite HR report, bez oslanjanja na report view kao trigger. | Single-test HR reportovi se pokreću nakon completed attempta; Composite HR report se pokreće kada assignment postane composite-ready. Manual generate/retry ostaje recovery. |
+| P1        | Automatic report generation orchestration after assessment completion | Prvi best-effort completion-triggered slice je implementiran: server helper pozvan iz completion flow-a nakon scoring/results persistence-a pokušava enqueue/process za single-test i composite lane-ove bez rušenja completion flow-a. | Sljedeći korak: runtime smoke potvrda completion-triggered toka bez report-view triggera i bez manual-generate happy path-a. |
 | P1        | Scripted composite smoke requeue utility | Finalni smoke i dalje koristi kontrolisani requeue postojećeg `assessment_reports` row-a jer insert novog row-a za isti assignment udara na `assessment_reports_artifact_identity_unique`; reusable utility script nije dodat u ovom ciklusu. | Nije bug: unique constraint je očekivan. Cilj ostaje reproducibilan QA smoke workflow bez ručnih inline komandi. |
 | P1/P2     | Composite provider-copy polish after OpenAI smoke | Renderer display layer je poliran nad mock-backed reportom. Ako OpenAI output u smoke-u ili demo iteracijama pokaže generičke, tehničke ili previše oprezne formulacije, provider prompt/copy treba posebno polirati bez mijenjanja report contracta. | Ne proširivati renderer sanitizer u generički rewrite engine. Preferirati provider prompt/copy polish ako problem dolazi iz AI outputa. |
 | P2        | Composite watchout wording/UI | “Tačka opreza” i “Tačke opreza” u trenutnom Composite HR UI-u djeluju rogobatno. Potrebno je izabrati prirodniji HR-facing wording i eventualno smiriti vizuelni tretman oprez kartica. | Zaseban renderer UX/copy task; ne miješati sa OpenAI provider language QA slojem. |
-| P1        | Worker/report auto-processing orchestration | Recovery i automatic enqueue sada korektno stavljaju HR report u `queued`, ali u dev/local toku queued job se ne procesira sam od sebe dok se ne pokrene `npm run process-report-jobs`. MWMS HR sada koristi postojeći worker i capability-driven chain, ali šira orchestration strategija i dalje nije riješena. Dugoročno treba odlučiti kako se worker pokreće u produkciji, da li recovery/generate treba auto-trigger, te da li treba polling/realtime update ili background job infrastruktura. | Ne miješati sa recovery flow-om: recovery samo vraća ili kreira queued job; worker orchestration je zaseban task. |
+| P1        | Worker/report auto-processing orchestration | Prvi completion-triggered best-effort orchestration slice je zatvorio osnovni bridge (`enqueue + scoped process attempt`) za postojeće worker path-eve bez nove infrastrukture. | Preostaje runtime smoke i operativna potvrda production ponašanja; ne širiti scope na scheduler/cron/background infrastrukturu u ovom koraku. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
 | P2        | Attempt creation audit metadata | Novi attempti trenutno mogu imati metadata = {}, što otežava dijagnostiku izvora kreiranja attempta. | Dodati minimalni audit trag, npr. created_by_flow, source, created_by_user_id i reason, posebno za HR standard battery planner i candidate provisioning tokove. |
@@ -2035,6 +2044,50 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-14 — Production worker/report orchestration: prvi best-effort completion slice
+
+Task:
+
+* Production worker/report orchestration / completion-triggered report orchestration
+
+Status:
+
+* Završeno / prvi best-effort completion slice
+
+Završeno:
+
+* dodat je server-side helper `lib/assessment/report-orchestration.ts`
+* completion flow sada poziva orchestration helper nakon uspješnog scoring/results persistence-a
+* helper je best-effort i ne ruši completion flow ako report orchestration padne
+* single-test HR reportovi se nakon completion eventa mogu enqueue/process kroz postojeći `attempt_reports` worker path
+* composite HR report enqueue/process pokušava se samo kada assignment postane composite-ready
+* composite readiness i dalje koristi samo linked required attempts iz istog `assessment_assignment` ciklusa
+* report view nije trigger
+* manual generate/retry ostaje recovery alat
+* failed reportovi se ne retry-aju automatski
+* existing `queued`/`processing`/`ready` reportovi se ne dupliciraju
+* nisu mijenjani DB schema, scoring, provider contracti, renderer ili dashboard UI
+
+Promijenjeni fajlovi:
+
+* `app/actions/assessment.ts`
+* `lib/assessment/report-orchestration.ts`
+* `scripts/test-report-orchestration.cjs`
+
+Testovi:
+
+* `npm run typecheck`
+* `node scripts/test-report-capabilities.cjs`
+* `node scripts/test-assessment-reports.cjs`
+* `node scripts/test-assessment-assignments.cjs`
+* `node scripts/test-assessment-report-worker.cjs`
+* `node scripts/test-mwms-hr-report-worker.cjs`
+* `node scripts/test-report-orchestration.cjs`
+
+Sljedeći korak:
+
+* runtime smoke za completion-triggered orchestration: dokazati da completed attempt pokreće očekivani report enqueue/processing tok bez oslanjanja na report view i bez ručnog manual generate happy patha
 
 ### 2026-05-13 — Completion event kao trigger za report orchestration
 
