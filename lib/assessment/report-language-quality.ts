@@ -9,7 +9,8 @@ export type ReportLanguageQualityIssueCode =
   | "FORBIDDEN_TERM"
   | "GLOSSARY_VIOLATION"
   | "FORBIDDEN_HIRING_DECISION"
-  | "FORBIDDEN_DEBUG_LANGUAGE";
+  | "FORBIDDEN_DEBUG_LANGUAGE"
+  | "NARRATIVE_CASING_VIOLATION";
 
 export type ReportLanguageQualityIssue = {
   code: ReportLanguageQualityIssueCode;
@@ -49,6 +50,7 @@ type PatternRule = {
 export const COMPOSITE_HR_BHS_LANGUAGE_RULES = [
   "Koristi prirodan bosanski/hrvatski/srpski HR jezik; MVP primarno bosanski.",
   "Bez bukvalnih prevoda, engleskih kalkova i rogobatnih konstrukcija poput 'rokovi visoki'.",
+  "U BHS narativnim recenicama nazive domena i dimenzija pisi malim slovom kada nisu na pocetku recenice; display/evidence labeli mogu ostati kapitalizovani.",
   "Bez tehnickog ili debug jezika u user-facing tekstu.",
   "Bez hire/no-hire preporuka, bez fit score jezika i bez tvrdnji da report samostalno odlucuje o kandidatu.",
   "Ne mijenjaj score, band, source attempt IDs, generatedFor identitet niti bilo koju deterministicku input vrijednost.",
@@ -73,6 +75,8 @@ export const COMPOSITE_HR_BHS_REVIEWER_RULES = [
   "Provjeri da li je tekst prirodan bosanski/hrvatski/srpski HR jezik, MVP primarno bosanski.",
   "Odbij bukvalne prevode, engleske kalkove i neprirodne konstrukcije poput 'rokovi visoki'.",
   "Odbij rogobatne ili polumasinski prevedene formulacije.",
+  "Odbij engleski-style title casing domena ili dimenzija usred BHS narativne recenice, npr. 'vise izrazene Savjesnosti' ili 'Spremnosti na saradnju'.",
+  "Ne odbij kapitalizovane display/evidence labele, naslove ili pocetak recenice, npr. 'Savjesnost' ili 'Spremnost na saradnju'.",
   "AGREEABLENESS mora ostati 'Spremnost na saradnju'.",
   "Odbij 'Ugodnost'.",
   "Odbij 'Saradljivost'.",
@@ -169,6 +173,58 @@ const COMPOSITE_HR_PROFILE_PATTERNS: PatternRule[] = [
   },
 ];
 
+const COMPOSITE_HR_NARRATIVE_CASING_PATTERNS: PatternRule[] = [
+  {
+    code: "NARRATIVE_CASING_VIOLATION",
+    pattern: /[a-zčćžšđ]\s+(Savjesnost(?:i)?|Savjesnosti)\b/u,
+    phrase: "Savjesnosti",
+    suggestion: "savjesnosti",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "NARRATIVE_CASING_VIOLATION",
+    pattern: /[a-zčćžšđ]\s+(Spremnost(?:i)? na saradnju|Spremnosti na saradnju)\b/u,
+    phrase: "Spremnosti na saradnju",
+    suggestion: "spremnosti na saradnju",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "NARRATIVE_CASING_VIOLATION",
+    pattern: /[a-zčćžšđ]\s+(Neuroticizam|Neuroticizma)\b/u,
+    phrase: "Neuroticizma",
+    suggestion: "neuroticizma",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "NARRATIVE_CASING_VIOLATION",
+    pattern: /[a-zčćžšđ]\s+(Ekstraverzija|Ekstraverzije)\b/u,
+    phrase: "Ekstraverzije",
+    suggestion: "ekstraverzije",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "NARRATIVE_CASING_VIOLATION",
+    pattern: /[a-zčćžšđ]\s+(Otvorenost|Otvorenosti)\b/u,
+    phrase: "Otvorenosti",
+    suggestion: "otvorenosti",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "NARRATIVE_CASING_VIOLATION",
+    pattern: /[a-zčćžšđ]\s+(Intrinzična motivacija|Intrinzične motivacije)\b/u,
+    phrase: "Intrinzične motivacije",
+    suggestion: "intrinzične motivacije",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "NARRATIVE_CASING_VIOLATION",
+    pattern: /[a-zčćžšđ]\s+(Identifikovana motivacija|Identifikovane motivacije)\b/u,
+    phrase: "Identifikovane motivacije",
+    suggestion: "identifikovane motivacije",
+    appliesToBhsOnly: true,
+  },
+];
+
 function collectStrings(value: unknown, output: string[] = []): string[] {
   if (typeof value === "string") {
     output.push(value);
@@ -210,6 +266,56 @@ function collectCompositeHrUserFacingStrings(snapshot: unknown): string[] {
       summary: candidate.summary,
       integratedSignals: candidate.integratedSignals,
       interviewGuidance: candidate.interviewGuidance,
+      onboardingGuidance: candidate.onboardingGuidance,
+      limitations: candidate.limitations,
+    },
+    [],
+  );
+}
+
+function collectCompositeHrNarrativeStrings(snapshot: unknown): string[] {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return [];
+  }
+
+  const candidate = snapshot as {
+    summary?: {
+      profileOverview?: unknown;
+      keyStrengths?: unknown;
+      watchouts?: unknown;
+    };
+    integratedSignals?: Array<{
+      body?: unknown;
+    }>;
+    interviewGuidance?: {
+      focusAreas?: Array<{
+        rationale?: unknown;
+        questions?: unknown;
+      }>;
+    };
+    onboardingGuidance?: {
+      managementTips?: unknown;
+      supportNeeds?: unknown;
+    };
+    limitations?: unknown;
+  };
+
+  return collectStrings(
+    {
+      summary: {
+        profileOverview: candidate.summary?.profileOverview,
+        keyStrengths: candidate.summary?.keyStrengths,
+        watchouts: candidate.summary?.watchouts,
+      },
+      integratedSignals: candidate.integratedSignals?.map((signal) => ({
+        body: signal?.body,
+      })),
+      interviewGuidance: {
+        focusAreas: candidate.interviewGuidance?.focusAreas?.map((area) => ({
+          rationale: area?.rationale,
+          questions: area?.questions,
+        })),
+      },
       onboardingGuidance: candidate.onboardingGuidance,
       limitations: candidate.limitations,
     },
@@ -304,6 +410,14 @@ function buildQualityText(params: ReportLanguageQualityParams): string {
   return collectStrings(params.snapshot).join("\n");
 }
 
+function buildCompositeHrNarrativeQualityText(params: ReportLanguageQualityParams): string {
+  if (typeof params.text === "string" && params.text.trim().length > 0) {
+    return params.text;
+  }
+
+  return collectCompositeHrNarrativeStrings(params.snapshot).join("\n");
+}
+
 function normalizeLabelLikeValue(value: string): string {
   return normalizeText(value)
     .replace(/^[\s:;,\-.()]+|[\s:;,\-.()]+$/g, "")
@@ -385,6 +499,12 @@ export function validateReportLanguageQuality(
   ) {
     validatePhraseRules(normalizedText, params.locale, COMPOSITE_HR_PROFILE_PHRASES, issues);
     validatePatternRules(text, params.locale, COMPOSITE_HR_PROFILE_PATTERNS, issues);
+    validatePatternRules(
+      buildCompositeHrNarrativeQualityText(params),
+      params.locale,
+      COMPOSITE_HR_NARRATIVE_CASING_PATTERNS,
+      issues,
+    );
     validateCompositeHrAgreeablenessLabelLikeValues(params.snapshot, issues);
   }
 

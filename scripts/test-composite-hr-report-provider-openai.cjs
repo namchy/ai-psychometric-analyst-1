@@ -729,6 +729,67 @@ async function testForbiddenHiringTermsRejected() {
   }
 }
 
+async function testNarrativeDomainCasingViolationRejected() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    summary: {
+      headline: "Integrisani HR pregled",
+      profileOverview:
+        "Ovdje je važna kombinacija više izražene Savjesnosti i Spremnosti na saradnju u svakodnevnom radu.",
+      keyStrengths: ["Jasna tragljivost izvora."],
+      watchouts: ["U intervjuu direktno provjerite konkretne primjere rada."],
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(invalidSnapshot),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /NARRATIVE_CASING_VIOLATION|Savjesnosti|Spremnosti na saradnju/i,
+  );
+}
+
+async function testNarrativeDomainCasingPositiveAndEvidenceLabelAllowed() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const validSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    summary: {
+      headline: "Integrisani HR pregled",
+      profileOverview:
+        "Ovdje je važna kombinacija više izražene savjesnosti i spremnosti na saradnju u svakodnevnom radu.",
+      keyStrengths: ["Savjesnost se moze navesti na pocetku recenice bez title-casing problema."],
+      watchouts: ["U intervjuu direktno provjerite konkretne primjere saradnje pod pritiskom rokova."],
+    },
+    integratedSignals: [
+      {
+        id: "signal-collaboration",
+        title: "Savjesnost i Spremnost na saradnju",
+        body: "U radu se ova kombinacija vidi kroz savjesnost i spremnost na saradnju.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Spremnost na saradnju",
+            value: "3.00 (Uravnoteženo)",
+          },
+        ],
+      },
+    ],
+  });
+
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(validSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(result).ok, true);
+  assert.equal(result.integratedSignals[0].evidence[0].label, "Spremnost na saradnju");
+}
+
 async function testReviewerApprovedPathPasses() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
   const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
@@ -1092,6 +1153,25 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   );
   assert.equal(/Avoid overly long sentences|keep sentences readable/i.test(combinedPrompt), true);
   assert.equal(
+    /BHS narrative sentences.*domain and motivation dimension names in lowercase.*mid-sentence/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(/Do not use English-style title casing/i.test(combinedPrompt), true);
+  assert.equal(
+    /Display\/evidence labels may remain capitalized.*do not lowercase evidence labels or chip labels/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(
+    /Savjesnosti.*Spremnosti na saradnju.*Neuroticizma.*Ekstraverzije.*Otvorenosti.*Intrinzične motivacije.*Identifikovane motivacije/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(
     /Najvažniji radni signal je|U intervjuu prvo provjerite|Ovaj nalaz je najkorisnije koristiti za/i.test(
       combinedPrompt,
     ),
@@ -1240,6 +1320,8 @@ async function main() {
   await testAgreeablenessLabelReplacementRejectedButNarrativeSaradnjaAllowed();
   await testAgreeablenessLegacyUgodnostEvidenceIsSourceLockedToCanonicalLabel();
   await testForbiddenHiringTermsRejected();
+  await testNarrativeDomainCasingViolationRejected();
+  await testNarrativeDomainCasingPositiveAndEvidenceLabelAllowed();
   await testReviewerApprovedPathPasses();
   await testReviewerRejectedPathFailsProvider();
   await testNeuroticismEvidenceMismatchIsSourceLocked();

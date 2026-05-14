@@ -90,7 +90,7 @@ function expectIssue(text, expected) {
 function testValidTextPasses() {
   const result = validateCompositeHrText(
     [
-      "HR pregled opisuje Spremnost na saradnju kao stabilan signal za timski rad.",
+      "HR pregled opisuje spremnost na saradnju kao stabilan signal za timski rad.",
       "U kontekstu pritiska rokova vrijedi provjeriti kako osoba cuva kvalitet isporuke.",
       "Nalaz sluzi kao hipoteza za intervju i onboarding, ne kao presuda.",
     ].join(" "),
@@ -166,6 +166,76 @@ function testAgreeablenessLabelStrictness() {
   });
 
   assert.deepEqual(validResult, { ok: true, issues: [] });
+}
+
+function testNarrativeDomainCasingViolationFails() {
+  const result = validateCompositeHrText(
+    "Ovdje je važna kombinacija više izražene Savjesnosti i Spremnosti na saradnju u svakodnevnom radu.",
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.issues.some(
+      (issue) =>
+        issue.code === "NARRATIVE_CASING_VIOLATION" &&
+        issue.phrase === "Savjesnosti" &&
+        issue.suggestion === "savjesnosti",
+    ),
+    true,
+  );
+  assert.equal(
+    result.issues.some(
+      (issue) =>
+        issue.code === "NARRATIVE_CASING_VIOLATION" &&
+        issue.phrase === "Spremnosti na saradnju" &&
+        issue.suggestion === "spremnosti na saradnju",
+    ),
+    true,
+  );
+}
+
+function testNarrativeDomainCasingPositivePasses() {
+  const result = validateCompositeHrText(
+    "Ovdje je važna kombinacija više izražene savjesnosti i spremnosti na saradnju u svakodnevnom radu.",
+  );
+
+  assert.deepEqual(result, { ok: true, issues: [] });
+}
+
+function testCompositeHrNarrativeCasingIgnoresHeadingsAndEvidenceLabels() {
+  const result = validateReportLanguageQuality({
+    snapshot: {
+      summary: {
+        headline: "Spremnost na saradnju",
+        profileOverview:
+          "Ovdje je važna kombinacija više izražene savjesnosti i spremnosti na saradnju u svakodnevnom radu.",
+        keyStrengths: ["Savjesnost se vidi kao naslovna tema samo ako pocinje recenicu."],
+        watchouts: ["U intervjuu direktno provjerite kako osoba balansira tempo i saradnju."],
+      },
+      integratedSignals: [
+        {
+          title: "Savjesnost i Spremnost na saradnju",
+          body: "U radu se ova kombinacija vidi kroz savjesnost i spremnost na saradnju.",
+          evidence: [
+            {
+              label: "Spremnost na saradnju",
+              value: "3.00 (Uravnoteženo)",
+            },
+            {
+              label: "Savjesnost",
+              value: "4.00 (Više izraženo)",
+            },
+          ],
+        },
+      ],
+    },
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.deepEqual(result, { ok: true, issues: [] });
 }
 
 function testNarrativeSaradnjaAllowed() {
@@ -284,6 +354,9 @@ function main() {
   testValidTextPasses();
   testForbiddenCompositeHrPhrasesFail();
   testAgreeablenessLabelStrictness();
+  testNarrativeDomainCasingViolationFails();
+  testNarrativeDomainCasingPositivePasses();
+  testCompositeHrNarrativeCasingIgnoresHeadingsAndEvidenceLabels();
   testNarrativeSaradnjaAllowed();
   testAsciiPerformancePressureAllowed();
   testForbiddenHiringTermsFail();
