@@ -374,11 +374,11 @@ function main() {
   assert.equal(html.includes("#ffd166"), true);
   assert.equal(html.includes("#118ab2"), true);
   assert.equal(html.includes("#073b4c"), true);
-  assert.equal(html.includes("bg-[#118ab2]/9"), true);
-  assert.equal(html.includes("h-1.5 w-1.5 rounded-full"), true);
-  assert.equal(html.includes("shadow-[0_8px_18px_rgba(15,23,42,0.035)]"), true);
-  assert.equal(html.includes("inset 0 2px 0"), true);
-  assert.equal(html.includes("bg-white/72"), true);
+  assert.equal(html.includes("rounded-[0.95rem] px-3.5 py-3"), true);
+  assert.equal(html.includes("inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase"), true);
+  assert.equal(html.includes("shadow-[0_10px_20px_rgba(15,23,42,0.035)]"), true);
+  assert.equal(html.includes("inset 0 2px 0"), false);
+  assert.equal(html.includes("bg-white/72"), false);
   assert.equal(html.includes("bg-[#073b4c]/8"), true);
   assert.equal(html.includes("text-[0.95rem] leading-7 text-slate-800"), true);
   assert.equal(html.includes("font-semibold text-[#073b4c]"), true);
