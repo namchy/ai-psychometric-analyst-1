@@ -30,7 +30,7 @@ export type CompositeHrReportViewModel = {
   };
   summary: CompositeHrReportSnapshot["summary"];
   structuredSummaryBlocks: Array<{
-    label: "Glavni signal" | "Tačka opreza" | "Kako koristiti nalaz";
+    label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz";
     body: string;
   }>;
   integratedSignals: Array<
@@ -201,8 +201,18 @@ function buildEvidenceGroups(
   return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
 }
 
-function buildStructuredSummaryBlocks(profileOverview: string): Array<{
-  label: "Glavni signal" | "Tačka opreza" | "Kako koristiti nalaz";
+function pickSummaryVerificationFocus(profileOverviewSentences: string[], watchouts: string[]): string | null {
+  const watchout =
+    watchouts.find((item) => /\bprovjer/i.test(item)) ??
+    watchouts[0] ??
+    profileOverviewSentences[1] ??
+    null;
+
+  return watchout ? splitIntoSummarySentences(watchout)[0] ?? watchout : null;
+}
+
+function buildStructuredSummaryBlocks(profileOverview: string, watchouts: string[]): Array<{
+  label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz";
   body: string;
 }> {
   const sentences = splitIntoSummarySentences(profileOverview);
@@ -211,22 +221,47 @@ function buildStructuredSummaryBlocks(profileOverview: string): Array<{
     return [];
   }
 
-  if (sentences.length === 1) {
-    return [{ label: "Glavni signal", body: sentences[0] }];
+  const verificationFocus = pickSummaryVerificationFocus(sentences, watchouts);
+  const usageGuidance =
+    watchouts.length > 0 ? sentences.slice(1).join(" ") : sentences.slice(2).join(" ");
+  const blocks: Array<{
+    label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz";
+    body: string;
+  }> = [{ label: "Glavni signal", body: sentences[0] }];
+
+  if (verificationFocus) {
+    blocks.push({ label: "Fokus za provjeru", body: verificationFocus });
   }
 
-  if (sentences.length === 2) {
-    return [
-      { label: "Glavni signal", body: sentences[0] },
-      { label: "Tačka opreza", body: sentences[1] },
-    ];
+  if (usageGuidance) {
+    blocks.push({ label: "Kako koristiti nalaz", body: usageGuidance });
   }
 
-  return [
-    { label: "Glavni signal", body: sentences[0] },
-    { label: "Tačka opreza", body: sentences[1] },
-    { label: "Kako koristiti nalaz", body: sentences.slice(2).join(" ") },
-  ];
+  return blocks;
+}
+
+function getSummaryBlockStyle(label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz") {
+  if (label === "Glavni signal") {
+    return {
+      borderColor: `${REPORT_COLORS.emerald}55`,
+      backgroundColor: `${REPORT_COLORS.emerald}14`,
+      headingColor: REPORT_COLORS.darkTeal,
+    };
+  }
+
+  if (label === "Fokus za provjeru") {
+    return {
+      borderColor: `${REPORT_COLORS.oceanBlue}36`,
+      backgroundColor: `${REPORT_COLORS.oceanBlue}08`,
+      headingColor: REPORT_COLORS.oceanBlue,
+    };
+  }
+
+  return {
+    borderColor: `${REPORT_COLORS.darkTeal}22`,
+    backgroundColor: `${REPORT_COLORS.darkTeal}05`,
+    headingColor: REPORT_COLORS.darkTeal,
+  };
 }
 
 export function buildCompositeHrReportViewModel(input: {
@@ -260,6 +295,7 @@ export function buildCompositeHrReportViewModel(input: {
     },
     structuredSummaryBlocks: buildStructuredSummaryBlocks(
       sanitizeDisplayCopy(input.snapshot.summary.profileOverview),
+      input.snapshot.summary.watchouts.map((item) => sanitizeDisplayCopy(item)),
     ),
     integratedSignals: input.snapshot.integratedSignals.map((signal) => ({
       ...signal,
@@ -415,70 +451,35 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
           titleClassName="text-[1.45rem] text-[#073b4c]"
         />
 
-        {model.structuredSummaryBlocks.length > 0 ? (
-          <div className="mt-5">
-            <div
-              className={`grid gap-3 ${
-                model.structuredSummaryBlocks.length >= 3
-                  ? "lg:grid-cols-2"
-                  : model.structuredSummaryBlocks.length === 2
-                    ? "lg:grid-cols-2"
-                    : ""
-              }`}
-            >
-              {model.structuredSummaryBlocks.map((block, index) => (
-                <div
-                  key={`${block.label}-${index}`}
-                  className={`summary-signal-block rounded-[1.1rem] border px-4 py-4 sm:px-5 ${
-                    model.structuredSummaryBlocks.length >= 3 && index === 2
-                      ? "lg:col-span-2"
-                      : ""
-                  }`}
-                  style={
-                    block.label === "Glavni signal"
-                      ? {
-                          borderColor: `${REPORT_COLORS.emerald}55`,
-                          backgroundColor: `${REPORT_COLORS.emerald}14`,
-                        }
-                      : block.label === "Tačka opreza"
-                        ? {
-                            borderColor: `${REPORT_COLORS.goldenPollen}88`,
-                            backgroundColor: `${REPORT_COLORS.goldenPollen}20`,
-                          }
-                        : {
-                            borderColor: `${REPORT_COLORS.oceanBlue}55`,
-                            backgroundColor: `${REPORT_COLORS.oceanBlue}12`,
-                          }
-                  }
-                >
-                  <p
-                    className="text-[11px] font-semibold uppercase tracking-[0.16em]"
-                    style={{
-                      color:
-                        block.label === "Glavni signal"
-                          ? REPORT_COLORS.darkTeal
-                          : block.label === "Tačka opreza"
-                            ? "#7a5600"
-                            : REPORT_COLORS.oceanBlue,
-                    }}
-                  >
-                    {block.label}
-                  </p>
-                  <p className="mt-2 max-w-[68ch] text-sm leading-6 text-slate-700">
-                    {block.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          {model.structuredSummaryBlocks.map((block, index) => {
+            const blockStyle = getSummaryBlockStyle(block.label);
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            return (
+              <div
+                key={`${block.label}-${index}`}
+                className="summary-signal-block rounded-[1.1rem] border px-4 py-4 sm:px-5"
+                style={{
+                  borderColor: blockStyle.borderColor,
+                  backgroundColor: blockStyle.backgroundColor,
+                }}
+              >
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-[0.16em]"
+                  style={{ color: blockStyle.headingColor }}
+                >
+                  {block.label}
+                </p>
+                <p className="mt-2 max-w-[68ch] text-sm leading-6 text-slate-700">{block.body}</p>
+              </div>
+            );
+          })}
+
           <div
             className="summary-strengths-block rounded-[1.1rem] border px-4 py-4 sm:px-5"
             style={{
-              borderColor: `${REPORT_COLORS.emerald}55`,
-              backgroundColor: `${REPORT_COLORS.emerald}12`,
+              borderColor: `${REPORT_COLORS.emerald}44`,
+              backgroundColor: `${REPORT_COLORS.emerald}08`,
             }}
           >
             <h3 className="text-sm font-bold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.darkTeal }}>
@@ -486,22 +487,6 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
             </h3>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
               {model.summary.keyStrengths.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div
-            className="summary-watchout-block rounded-[1.1rem] border px-4 py-4 sm:px-5"
-            style={{
-              borderColor: `${REPORT_COLORS.goldenPollen}88`,
-              backgroundColor: `${REPORT_COLORS.goldenPollen}18`,
-            }}
-          >
-            <h3 className="text-sm font-bold uppercase tracking-[0.16em]" style={{ color: "#7a5600" }}>
-              Tačke opreza
-            </h3>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-              {model.summary.watchouts.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>

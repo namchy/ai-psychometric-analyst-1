@@ -277,7 +277,11 @@ function main() {
       body: "Ovaj pregled koristi deterministic rezultate kao osnovu za HR interpretaciju, intervju i onboarding planiranje.",
     },
     {
-      label: "Tačka opreza",
+      label: "Fokus za provjeru",
+      body: "Najkorisnije je dodatno provjeriti konkretne primjere ponasanja i nacin rada pod pritiskom.",
+    },
+    {
+      label: "Kako koristiti nalaz",
       body: "Signal treba koristiti kao hipotezu za provjeru kroz razgovor i radne primjere, a ne kao automatski zakljucak.",
     },
   ]);
@@ -330,8 +334,10 @@ function main() {
   assert.equal(html.includes("Kompozitni HR izvještaj"), true);
   assert.equal(html.includes("Spremno za pregled"), true);
   assert.equal(html.includes("Glavni signal"), true);
-  assert.equal(html.includes("Tačka opreza"), true);
-  assert.equal(html.includes("Kako koristiti nalaz"), false);
+  assert.equal(html.includes("Fokus za provjeru"), true);
+  assert.equal(html.includes("Tačka opreza"), false);
+  assert.equal(html.includes("Tačke opreza"), false);
+  assert.equal(html.includes("Kako koristiti nalaz"), true);
   assert.equal(html.includes("Integrisana interpretacija"), true);
   assert.equal(html.includes("ŠTA ZNAČI U RADU"), true);
   assert.equal(html.includes("Šta HR treba provjeriti"), false);
@@ -339,7 +345,7 @@ function main() {
   assert.equal(html.includes("metadata-strip-grid"), true);
   assert.equal(html.includes("summary-signal-block"), true);
   assert.equal(html.includes("summary-strengths-block"), true);
-  assert.equal(html.includes("summary-watchout-block"), true);
+  assert.equal(html.includes("summary-watchout-block"), false);
   assert.equal(html.includes("integrated-signal-module"), true);
   assert.equal(html.includes("integrated-signal-insight-grid"), true);
   assert.equal(html.includes("integrated-signal-meaning-panel"), true);
@@ -398,11 +404,13 @@ function main() {
   );
 
   assert.equal(longOverviewHtml.includes("Glavni signal"), true);
-  assert.equal(longOverviewHtml.includes("Tačka opreza"), true);
+  assert.equal(longOverviewHtml.includes("Fokus za provjeru"), true);
+  assert.equal(longOverviewHtml.includes("Tačka opreza"), false);
+  assert.equal(longOverviewHtml.includes("Tačke opreza"), false);
   assert.equal(longOverviewHtml.includes("Kako koristiti nalaz"), true);
   assert.equal(
     longOverviewHtml.includes(
-      "Treća rečenica objašnjava kako HR treba koristiti nalaz. Četvrta rečenica dodaje dodatni kontekst za upotrebu u intervjuu.",
+      "Druga rečenica opisuje glavnu tačku opreza. Treća rečenica objašnjava kako HR treba koristiti nalaz. Četvrta rečenica dodaje dodatni kontekst za upotrebu u intervjuu.",
     ),
     true,
   );
