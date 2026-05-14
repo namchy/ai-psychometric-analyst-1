@@ -98,6 +98,30 @@ const EVIDENCE_GROUP_STYLES: Record<
   },
 };
 
+const SIGNAL_MODULE_STYLES = {
+  meaning: {
+    accentColor: REPORT_COLORS.emerald,
+    borderColor: `${REPORT_COLORS.emerald}26`,
+    backgroundColor: `${REPORT_COLORS.emerald}18`,
+    headingColor: "#0f766e",
+    topAccent: `${REPORT_COLORS.emerald}55`,
+  },
+  verification: {
+    accentColor: REPORT_COLORS.goldenPollen,
+    borderColor: `${REPORT_COLORS.goldenPollen}3d`,
+    backgroundColor: `${REPORT_COLORS.goldenPollen}24`,
+    headingColor: "#9a6700",
+    topAccent: `${REPORT_COLORS.goldenPollen}68`,
+  },
+  evidence: {
+    accentColor: REPORT_COLORS.oceanBlue,
+    borderColor: `${REPORT_COLORS.oceanBlue}2e`,
+    backgroundColor: `${REPORT_COLORS.oceanBlue}18`,
+    headingColor: REPORT_COLORS.oceanBlue,
+    topAccent: `${REPORT_COLORS.oceanBlue}60`,
+  },
+} as const;
+
 function formatAssessmentCountLabel(count: number): string {
   return `${count} završene procjene`;
 }
@@ -243,24 +267,30 @@ function buildStructuredSummaryBlocks(profileOverview: string, watchouts: string
 function getSummaryBlockStyle(label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz") {
   if (label === "Glavni signal") {
     return {
-      borderColor: `${REPORT_COLORS.emerald}55`,
-      backgroundColor: `${REPORT_COLORS.emerald}14`,
+      accentColor: REPORT_COLORS.oceanBlue,
+      borderColor: `${REPORT_COLORS.oceanBlue}28`,
+      backgroundColor: `${REPORT_COLORS.oceanBlue}15`,
       headingColor: REPORT_COLORS.darkTeal,
+      topAccent: `${REPORT_COLORS.oceanBlue}52`,
     };
   }
 
   if (label === "Fokus za provjeru") {
     return {
-      borderColor: `${REPORT_COLORS.oceanBlue}36`,
-      backgroundColor: `${REPORT_COLORS.oceanBlue}08`,
-      headingColor: REPORT_COLORS.oceanBlue,
+      accentColor: REPORT_COLORS.goldenPollen,
+      borderColor: `${REPORT_COLORS.goldenPollen}28`,
+      backgroundColor: `${REPORT_COLORS.goldenPollen}18`,
+      headingColor: REPORT_COLORS.darkTeal,
+      topAccent: `${REPORT_COLORS.goldenPollen}4d`,
     };
   }
 
   return {
-    borderColor: `${REPORT_COLORS.darkTeal}22`,
-    backgroundColor: `${REPORT_COLORS.darkTeal}05`,
+    accentColor: REPORT_COLORS.darkTeal,
+    borderColor: `${REPORT_COLORS.darkTeal}24`,
+    backgroundColor: `${REPORT_COLORS.darkTeal}10`,
     headingColor: REPORT_COLORS.darkTeal,
+    topAccent: `${REPORT_COLORS.darkTeal}5a`,
   };
 }
 
@@ -359,6 +389,20 @@ function getEvidenceGroupStyle(label: string) {
   );
 }
 
+function splitEvidenceValue(value: string): { primary: string; detail: string | null } {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(.+?)\s+(\([^)]+\))$/u);
+
+  if (!match) {
+    return { primary: trimmed, detail: null };
+  }
+
+  return {
+    primary: match[1].trim(),
+    detail: match[2].trim(),
+  };
+}
+
 export function CompositeHrReportView({ report, snapshot }: CompositeHrReportViewProps) {
   const model = buildCompositeHrReportViewModel({ report, snapshot });
 
@@ -442,167 +486,265 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
       </DashboardInfoCardShell>
 
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
-        <DashboardSectionHeader
-          eyebrow="Sažetak"
-          eyebrowClassName="text-[#073b4c]"
-          title={model.summary.headline}
-          description={undefined}
-          className="gap-2"
-          titleClassName="text-[1.45rem] text-[#073b4c]"
-        />
+        <div className="summary-executive-dashboard rounded-[1.35rem] border border-slate-200/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.99),rgba(248,250,252,0.97)_58%,rgba(241,245,249,0.95))] px-4 py-4 shadow-[0_18px_34px_rgba(15,23,42,0.045)] sm:px-5 sm:py-5">
+          <DashboardSectionHeader
+            eyebrow="Sažetak"
+            eyebrowClassName="text-[#073b4c]"
+            title={model.summary.headline}
+            description={undefined}
+            className="gap-2.5"
+            titleClassName="max-w-3xl text-[1.48rem] font-semibold leading-tight tracking-[-0.03em] text-[#073b4c]"
+          />
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {model.structuredSummaryBlocks.map((block, index) => {
-            const blockStyle = getSummaryBlockStyle(block.label);
-
-            return (
-              <div
-                key={`${block.label}-${index}`}
-                className="summary-signal-block rounded-[1.1rem] border px-4 py-4 sm:px-5"
-                style={{
-                  borderColor: blockStyle.borderColor,
-                  backgroundColor: blockStyle.backgroundColor,
-                }}
+          <div className="mt-4 grid gap-3.5 lg:grid-cols-2">
+            <div
+              className="summary-strengths-block rounded-[1.1rem] border px-4 py-4 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:px-5"
+              style={{
+                borderColor: `${REPORT_COLORS.emerald}28`,
+                backgroundColor: `${REPORT_COLORS.emerald}18`,
+                boxShadow: `inset 0 1.5px 0 ${REPORT_COLORS.emerald}5c, 0 8px 18px rgba(15,23,42,0.035)`,
+              }}
+            >
+              <h3
+                className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em]"
+                style={{ color: REPORT_COLORS.darkTeal }}
               >
-                <p
-                  className="text-[11px] font-semibold uppercase tracking-[0.16em]"
-                  style={{ color: blockStyle.headingColor }}
-                >
-                  {block.label}
-                </p>
-                <p className="mt-2 max-w-[68ch] text-sm leading-6 text-slate-700">{block.body}</p>
-              </div>
-            );
-          })}
+                <span
+                  aria-hidden="true"
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: REPORT_COLORS.emerald }}
+                />
+                <span>Ključne snage</span>
+              </h3>
+              <ul className="mt-3 space-y-2.5 text-sm leading-6 text-slate-800">
+                {model.summary.keyStrengths.map((item) => (
+                  <li key={item} className="flex gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="mt-2 h-1.5 w-1.5 flex-none rounded-full"
+                      style={{ backgroundColor: REPORT_COLORS.emerald }}
+                    />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          <div
-            className="summary-strengths-block rounded-[1.1rem] border px-4 py-4 sm:px-5"
-            style={{
-              borderColor: `${REPORT_COLORS.emerald}44`,
-              backgroundColor: `${REPORT_COLORS.emerald}08`,
-            }}
-          >
-            <h3 className="text-sm font-bold uppercase tracking-[0.16em]" style={{ color: REPORT_COLORS.darkTeal }}>
-              Ključne snage
-            </h3>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-              {model.summary.keyStrengths.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            {["Fokus za provjeru", "Glavni signal", "Kako koristiti nalaz"].flatMap((orderedLabel) =>
+              model.structuredSummaryBlocks
+                .filter((block) => block.label === orderedLabel)
+                .map((block, index) => {
+                  const blockStyle = getSummaryBlockStyle(block.label);
+
+                  return (
+                    <div
+                      key={`${orderedLabel}-${index}`}
+                      className="summary-signal-block rounded-[1.1rem] border px-4 py-4 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:px-5"
+                      style={{
+                        borderColor: blockStyle.borderColor,
+                        backgroundColor: blockStyle.backgroundColor,
+                        boxShadow: `inset 0 1.5px 0 ${blockStyle.topAccent}, 0 8px 18px rgba(15,23,42,0.035)`,
+                      }}
+                    >
+                      <p
+                        className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                        style={{ color: blockStyle.headingColor }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: blockStyle.accentColor }}
+                        />
+                        <span>{block.label}</span>
+                      </p>
+                      <p className="mt-2.5 max-w-[68ch] text-sm leading-6 text-slate-800">
+                        {block.body}
+                      </p>
+                    </div>
+                  );
+                }),
+            )}
           </div>
         </div>
       </DashboardInfoCardShell>
 
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
         <DashboardSectionHeader
-          eyebrow="INTEGRISANI SIGNALI"
-          eyebrowClassName="text-[#073b4c]"
-          title="Integrisana interpretacija"
-          description="Signali su prikazani kao HR hipoteze za razgovor i provjeru kroz primjere ponašanja."
+          title="Integrisani signali"
+          description="Radni signali povezani iz ličnosti, motivacije i kognitivnog rezultata."
           className="gap-2"
-          titleClassName="text-[1.45rem] font-semibold tracking-[-0.03em] text-[#073b4c]"
-          descriptionClassName="max-w-3xl text-sm leading-6 text-slate-600 sm:text-[0.95rem]"
+          titleClassName="text-[1.55rem] font-semibold tracking-[-0.035em] text-[#073b4c]"
+          descriptionClassName="max-w-2xl text-sm leading-6 text-slate-600 sm:text-[0.95rem]"
         />
 
         <div className="mt-6 space-y-5 sm:space-y-6">
           {model.integratedSignals.map((signal, index) => (
             <div
               key={signal.id}
-              className="integrated-signal-module rounded-[1.35rem] border border-slate-200/90 bg-white px-4 py-4 sm:px-6 sm:py-6"
+              className="integrated-signal-module rounded-[1.35rem] border border-slate-200/90 bg-[linear-gradient(145deg,rgba(255,255,255,0.99),rgba(244,248,251,0.98)_54%,rgba(241,247,250,0.96))] px-4 py-4 shadow-[0_22px_42px_rgba(15,23,42,0.065)] sm:px-6 sm:py-6"
             >
               <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#118ab2]">
+                <div className="space-y-3">
+                  <span className="inline-flex w-fit rounded-full border border-[#118ab2]/18 bg-[#118ab2]/9 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#073b4c]">
                     Signal {index + 1}
-                  </p>
-                  <h3 className="text-[1.05rem] font-semibold tracking-[-0.03em] text-[#073b4c] sm:text-[1.15rem]">
+                  </span>
+                  <h3 className="max-w-4xl text-[1.24rem] font-bold leading-tight tracking-[-0.04em] text-[#073b4c] sm:text-[1.42rem]">
                     {signal.title}
                   </h3>
                 </div>
               </div>
 
-              <div
-                className={`integrated-signal-insight-grid mt-4 grid items-start gap-2.5 sm:gap-3 ${
-                  signal.structuredBody.primary && signal.structuredBody.hrCheck
-                    ? "lg:grid-cols-2"
-                    : ""
-                }`}
-              >
+              <div className="integrated-signal-insight-grid mt-4 grid items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(18rem,1.08fr)]">
                 {signal.structuredBody.primary ? (
                   <div
-                    className="integrated-signal-meaning-panel rounded-[0.95rem] border border-slate-200/70 px-3.5 py-3 sm:px-4 sm:py-3.5"
+                    className="integrated-signal-meaning-panel rounded-[1rem] border px-3.5 py-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:px-4 sm:py-4"
                     style={{
-                      backgroundColor: `${REPORT_COLORS.darkTeal}04`,
+                      borderColor: SIGNAL_MODULE_STYLES.meaning.borderColor,
+                      backgroundColor: SIGNAL_MODULE_STYLES.meaning.backgroundColor,
+                      boxShadow: `inset 0 2px 0 ${SIGNAL_MODULE_STYLES.meaning.topAccent}, 0 8px 18px rgba(15,23,42,0.035)`,
                     }}
                   >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      ŠTA ZNAČI U RADU
+                    <p
+                      className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                      style={{ color: SIGNAL_MODULE_STYLES.meaning.headingColor }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: SIGNAL_MODULE_STYLES.meaning.accentColor }}
+                      />
+                      <span>ŠTA ZNAČI U RADU</span>
                     </p>
-                    <p className="mt-2 text-[0.93rem] leading-[1.58] text-slate-700">
+                    <p className="mt-2.5 text-[0.95rem] leading-7 text-slate-800">
                       {signal.structuredBody.primary}
                     </p>
                   </div>
                 ) : null}
 
-                {signal.structuredBody.hrCheck ? (
+                <div
+                  className="integrated-signal-verification-panel rounded-[1rem] border px-3.5 py-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:px-4 sm:py-4"
+                  style={{
+                    borderColor: SIGNAL_MODULE_STYLES.verification.borderColor,
+                    backgroundColor: SIGNAL_MODULE_STYLES.verification.backgroundColor,
+                    boxShadow: `inset 0 2px 0 ${SIGNAL_MODULE_STYLES.verification.topAccent}, 0 8px 18px rgba(15,23,42,0.035)`,
+                  }}
+                >
+                  <p
+                    className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                    style={{ color: SIGNAL_MODULE_STYLES.verification.headingColor }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: SIGNAL_MODULE_STYLES.verification.accentColor }}
+                    />
+                    <span>ŠTA HR TREBA PROVJERITI</span>
+                  </p>
+                  <p className="mt-2.5 text-[0.95rem] leading-7 text-slate-800">
+                    {signal.structuredBody.hrCheck ?? signal.structuredBody.primary ?? signal.body}
+                  </p>
+                </div>
+
+                {signal.evidenceGroups.length > 0 ? (
                   <div
-                    className="integrated-signal-verification-panel rounded-[0.95rem] border border-slate-200/70 px-3.5 py-3 sm:px-4 sm:py-3.5"
+                    className="integrated-signal-evidence-panel rounded-[1rem] border px-3.5 py-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:px-4 sm:py-4"
                     style={{
-                      backgroundColor: `${REPORT_COLORS.oceanBlue}04`,
+                      borderColor: SIGNAL_MODULE_STYLES.evidence.borderColor,
+                      backgroundColor: SIGNAL_MODULE_STYLES.evidence.backgroundColor,
+                      boxShadow: `inset 0 2px 0 ${SIGNAL_MODULE_STYLES.evidence.topAccent}, 0 8px 18px rgba(15,23,42,0.035)`,
                     }}
                   >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      ŠTA HR TREBA PROVJERITI
+                    <p
+                      className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                      style={{ color: SIGNAL_MODULE_STYLES.evidence.headingColor }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: SIGNAL_MODULE_STYLES.evidence.accentColor }}
+                      />
+                      <span>DOKAZI IZ PROCJENA</span>
                     </p>
-                    <p className="mt-2 text-[0.93rem] leading-[1.58] text-slate-700">
-                      {signal.structuredBody.hrCheck}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
+                    <div className="mt-3 space-y-2.5">
+                      {signal.evidenceGroups.map((group) => {
+                        const groupStyle = getEvidenceGroupStyle(group.label);
 
-              {signal.evidenceGroups.length > 0 ? (
-                <div className="integrated-signal-evidence-bar mt-3.5 border-t border-slate-200/70 pt-3 sm:mt-4 sm:pt-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    DOKAZI IZ PROCJENA
-                  </p>
-                  <div
-                    className={`mt-2.5 grid gap-2 ${
-                      signal.evidenceGroups.length >= 3
-                        ? "lg:grid-cols-3"
-                        : signal.evidenceGroups.length === 2
-                          ? "md:grid-cols-2"
-                          : ""
-                    }`}
-                  >
-                    {signal.evidenceGroups.map((group) => (
-                      <div
-                        key={`${signal.id}-${group.label}`}
-                        className="integrated-signal-evidence-group rounded-[0.9rem] border px-3 py-2.5"
-                        style={getEvidenceGroupStyle(group.label)}
-                      >
-                        <p
-                          className="text-[10px] font-semibold uppercase tracking-[0.14em]"
-                          style={{ color: getEvidenceGroupStyle(group.label).accentColor }}
-                        >
-                          {group.label}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {group.items.map((evidence) => (
-                            <span
-                              key={`${signal.id}-${group.label}-${evidence.label}`}
-                              className="rounded-full border border-white/60 bg-white/80 px-2.5 py-1 text-[11px] font-medium leading-4 text-slate-600"
-                            >
-                              {evidence.label}: {evidence.value}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                        return (
+                          <div
+                            key={`${signal.id}-${group.label}`}
+                            className="integrated-signal-evidence-group rounded-[0.85rem] border bg-white/84 px-3 py-2.5"
+                            style={{
+                              borderColor: `${REPORT_COLORS.oceanBlue}18`,
+                              boxShadow: "0 1px 0 rgba(15, 23, 42, 0.03)",
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                aria-hidden="true"
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: SIGNAL_MODULE_STYLES.evidence.accentColor }}
+                              />
+                              <p
+                                className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+                                style={{ color: groupStyle.accentColor }}
+                              >
+                                {group.label}
+                              </p>
+                            </div>
+                            <div className="mt-2 space-y-1.5">
+                              {group.items.map((evidence) => {
+                                const valueParts = splitEvidenceValue(evidence.value);
+
+                                return (
+                                  <div
+                                    key={`${signal.id}-${group.label}-${evidence.label}`}
+                                    className="integrated-signal-evidence-row grid gap-1 rounded-[0.7rem] border border-white/45 bg-white/72 px-2.5 py-2 text-xs leading-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                                  >
+                                    <span className="min-w-0 font-medium text-slate-600">
+                                      {evidence.label}
+                                    </span>
+                                    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-semibold text-[#073b4c] sm:justify-end sm:text-right">
+                                      <span className="inline-flex rounded-full bg-[#073b4c]/8 px-2 py-0.5 text-[11px] font-semibold text-[#073b4c]">
+                                        {valueParts.primary}
+                                      </span>
+                                      {valueParts.detail ? (
+                                        <span className="text-[11px] font-medium text-slate-500">
+                                          {valueParts.detail}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                ) : (
+                  <div
+                    className="integrated-signal-evidence-panel rounded-[1rem] border px-3.5 py-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:px-4 sm:py-4"
+                    style={{
+                      borderColor: SIGNAL_MODULE_STYLES.evidence.borderColor,
+                      backgroundColor: SIGNAL_MODULE_STYLES.evidence.backgroundColor,
+                      boxShadow: `inset 0 2px 0 ${SIGNAL_MODULE_STYLES.evidence.topAccent}, 0 8px 18px rgba(15,23,42,0.035)`,
+                    }}
+                  >
+                    <p
+                      className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em]"
+                      style={{ color: SIGNAL_MODULE_STYLES.evidence.headingColor }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: SIGNAL_MODULE_STYLES.evidence.accentColor }}
+                      />
+                      <span>DOKAZI IZ PROCJENA</span>
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

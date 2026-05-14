@@ -338,20 +338,58 @@ function main() {
   assert.equal(html.includes("Tačka opreza"), false);
   assert.equal(html.includes("Tačke opreza"), false);
   assert.equal(html.includes("Kako koristiti nalaz"), true);
-  assert.equal(html.includes("Integrisana interpretacija"), true);
+  assert.equal(html.includes("Ključne snage"), true);
+  assert.equal(html.includes("Integrisani signali"), true);
+  assert.equal(
+    html.includes("Radni signali povezani iz ličnosti, motivacije i kognitivnog rezultata."),
+    true,
+  );
+  assert.equal(html.includes("Integrisana interpretacija"), false);
+  assert.equal(html.includes("Signali su prikazani kao HR hipoteze"), false);
   assert.equal(html.includes("ŠTA ZNAČI U RADU"), true);
-  assert.equal(html.includes("Šta HR treba provjeriti"), false);
+  assert.equal(html.includes("ŠTA HR TREBA PROVJERITI"), true);
   assert.equal(html.includes("DOKAZI IZ PROCJENA"), true);
   assert.equal(html.includes("metadata-strip-grid"), true);
   assert.equal(html.includes("summary-signal-block"), true);
   assert.equal(html.includes("summary-strengths-block"), true);
   assert.equal(html.includes("summary-watchout-block"), false);
+  const summarySectionStart = html.indexOf("Sažetak");
+  const summarySectionEnd = html.indexOf("Integrisani signali", summarySectionStart);
+  assert.equal(summarySectionStart >= 0, true);
+  assert.equal(summarySectionEnd > summarySectionStart, true);
+  const summarySectionHtml = html.slice(summarySectionStart, summarySectionEnd);
+  assert.equal(summarySectionHtml.indexOf("Ključne snage") < summarySectionHtml.indexOf("Fokus za provjeru"), true);
+  assert.equal(summarySectionHtml.indexOf("Glavni signal") < summarySectionHtml.indexOf("Kako koristiti nalaz"), true);
   assert.equal(html.includes("integrated-signal-module"), true);
   assert.equal(html.includes("integrated-signal-insight-grid"), true);
   assert.equal(html.includes("integrated-signal-meaning-panel"), true);
-  assert.equal(html.includes("integrated-signal-evidence-bar"), true);
+  assert.equal(html.includes("integrated-signal-verification-panel"), true);
+  assert.equal(html.includes("integrated-signal-evidence-panel"), true);
+  assert.equal(html.includes("integrated-signal-evidence-bar"), false);
   assert.equal(html.includes("integrated-signal-evidence-group"), true);
+  assert.equal(html.includes("integrated-signal-evidence-row"), true);
+  assert.equal(html.includes("Signal 1"), true);
+  assert.equal(html.includes("lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(18rem,1.08fr)]"), true);
+  assert.equal(html.includes("#06d6a0"), true);
+  assert.equal(html.includes("#ffd166"), true);
+  assert.equal(html.includes("#118ab2"), true);
+  assert.equal(html.includes("#073b4c"), true);
+  assert.equal(html.includes("bg-[#118ab2]/9"), true);
+  assert.equal(html.includes("h-1.5 w-1.5 rounded-full"), true);
+  assert.equal(html.includes("shadow-[0_8px_18px_rgba(15,23,42,0.035)]"), true);
+  assert.equal(html.includes("inset 0 2px 0"), true);
+  assert.equal(html.includes("bg-white/72"), true);
+  assert.equal(html.includes("bg-[#073b4c]/8"), true);
+  assert.equal(html.includes("text-[0.95rem] leading-7 text-slate-800"), true);
+  assert.equal(html.includes("font-semibold text-[#073b4c]"), true);
   assert.equal(html.includes("inset 3px 0 0"), false);
+  assert.equal(html.includes("#ef476f"), false);
+  const integratedSectionStart = html.indexOf("Integrisani signali");
+  const integratedSectionEnd = html.indexOf("Intervju", integratedSectionStart);
+  assert.equal(integratedSectionStart >= 0, true);
+  assert.equal(integratedSectionEnd > integratedSectionStart, true);
+  const integratedSignalsHtml = html.slice(integratedSectionStart, integratedSectionEnd);
+  assert.equal(/hipotez/i.test(integratedSignalsHtml), false);
   snapshot.integratedSignals.forEach((signal) => {
     assert.equal(html.includes(signal.title), true);
   });
@@ -436,6 +474,7 @@ function main() {
   assert.equal(multiSentenceSignalHtml.includes("ŠTA ZNAČI U RADU"), true);
   assert.equal(multiSentenceSignalHtml.includes("ŠTA HR TREBA PROVJERITI"), true);
   assert.equal(multiSentenceSignalHtml.includes("integrated-signal-verification-panel"), true);
+  assert.equal(multiSentenceSignalHtml.includes("integrated-signal-evidence-panel"), true);
   assert.equal(
     multiSentenceSignalHtml.includes(
       "Druga rečenica opisuje šta HR treba dodatno provjeriti.",
@@ -477,7 +516,7 @@ function main() {
   assert.equal(agreeablenessDisplayHtml.includes("AGREEABLENESS"), false);
   assert.equal(agreeablenessDisplayHtml.includes("Spremnost na saradnju"), true);
   assert.equal(agreeablenessDisplayHtml.includes("Saradljivost"), true);
-  assert.equal(agreeablenessDisplayHtml.includes("integrated-signal-evidence-bar"), true);
+  assert.equal(agreeablenessDisplayHtml.includes("integrated-signal-evidence-panel"), true);
 
   const invalid = resolveReadyCompositeHrAssessmentReport(
     buildReadyReport({
