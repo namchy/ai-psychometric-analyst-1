@@ -15,6 +15,7 @@ import {
 import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
 import {
   enqueueCompletedAssessmentReports,
+  getPersistedParticipantCompletedAssessmentReportState,
   persistCompletedAssessmentReport,
   recoverHrAttemptReport,
   type CompletedAssessmentReportState,
@@ -24,7 +25,7 @@ import {
   retryFailedCompositeAssessmentReport,
 } from "@/lib/assessment/assessment-reports";
 import type { PostCompletionReportLanePlan } from "@/lib/assessment/report-capabilities";
-import { claimNextReportJob, processClaimedReportJob } from "@/lib/assessment/report-job-worker";
+import { orchestrateReportsAfterAttemptCompletion } from "@/lib/assessment/report-orchestration";
 import {
   normalizeAssessmentLocale,
   type AssessmentLocale,
@@ -201,20 +202,6 @@ function shouldQueueParticipantReportFromPlan(
   );
 }
 
-function shouldTriggerQueuedParticipantReportProcessingFromPlan(
-  plan: Awaited<ReturnType<typeof enqueueCompletedAssessmentReports>>["plan"],
-): boolean {
-  if (!plan) {
-    return false;
-  }
-
-  const participantLane = plan.lanes.find(
-    (lane: PostCompletionReportLanePlan) => lane.audience === "participant",
-  );
-
-  return participantLane?.shouldEnqueue === true || participantLane?.existingStatus === "queued";
-}
-
 function revalidateAttemptRunPaths(attemptId: string) {
   revalidatePath(`/app/attempts/${attemptId}/run`);
   revalidatePath(`/dashboard/attempts/${attemptId}/run`);
@@ -228,26 +215,6 @@ function revalidateAttemptAllPaths(attemptId: string) {
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/attempts/${attemptId}`);
   revalidatePath(`/dashboard/attempts/${attemptId}/run`);
-}
-
-async function triggerQueuedParticipantReportProcessing(attemptId: string): Promise<void> {
-  try {
-    const job = await claimNextReportJob({
-      attemptId,
-      audience: "participant",
-    });
-
-    if (!job) {
-      return;
-    }
-
-    await processClaimedReportJob(job);
-  } catch (error) {
-    console.error("triggerQueuedParticipantReportProcessing failed", {
-      attemptId,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-  }
 }
 
 function isStringArray(value: AssessmentSelectionValue): value is string[] {
@@ -1117,14 +1084,9 @@ export async function completeAssessmentAttempt(
       : null;
 
     if (results) {
-      try {
-        await enqueueCompletedAssessmentReports(persistResult.attemptId);
-      } catch (error) {
-        console.error("completeAssessmentAttempt post-completion enqueue failed", {
-          attemptId: persistResult.attemptId,
-          errorMessage: error instanceof Error ? error.message : String(error),
-        });
-      }
+      await orchestrateReportsAfterAttemptCompletion({
+        attemptId: persistResult.attemptId,
+      });
     }
 
     cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, persistResult.attemptId, {
@@ -1225,9 +1187,15 @@ export async function completeProtectedAssessmentAttempt(
     let report: CompletedAssessmentReportState | null = null;
 
     if (results) {
-      enqueueSummary = await enqueueCompletedAssessmentReports(persistResult.attemptId);
+      const orchestration = await orchestrateReportsAfterAttemptCompletion({
+        attemptId: persistResult.attemptId,
+      });
+      enqueueSummary = orchestration.enqueueSummary;
+      report = await getPersistedParticipantCompletedAssessmentReportState(
+        persistResult.attemptId,
+      );
 
-      if (shouldQueueParticipantReportFromPlan(enqueueSummary.plan)) {
+      if (!report && shouldQueueParticipantReportFromPlan(enqueueSummary?.plan ?? null)) {
         report = {
           status: "queued",
           generatorType: null,
@@ -1235,10 +1203,6 @@ export async function completeProtectedAssessmentAttempt(
           completedAt: null,
         };
       }
-    }
-
-    if (shouldTriggerQueuedParticipantReportProcessingFromPlan(enqueueSummary?.plan ?? null)) {
-      await triggerQueuedParticipantReportProcessing(persistResult.attemptId);
     }
 
     revalidateAttemptAllPaths(persistResult.attemptId);
