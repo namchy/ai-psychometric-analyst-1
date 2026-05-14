@@ -68,7 +68,9 @@ Komande:
 | P1        | Production worker/report orchestration / completion-triggered report orchestration | Završeno / runtime smoke ciklus potvrđen | Report pipeline / Completion orchestration | Zatvoreno nakon runtime smoke ciklusa: completion trigger radi za single-test i composite lane bez report-view triggera i bez manual-generate happy path-a; preostali polish je zaseban watchout wording/UI task. |
 | P2        | Composite HR report watchout wording/UI polish | Planirano | Composite HR report / UX copy / Renderer polish | Revidirati “Tačka opreza” / “Tačke opreza” wording i vizuelni tretman watchout kartica da zvuči prirodnije i manje rogobatno. |
 | P1/P2     | Composite HR report summary structure polish | Planirano | Composite HR report / Renderer / UX structure | Skraćiti summary u executive snapshot sa sekcijama: Glavni signal, Fokus za provjeru, Kako koristiti nalaz, Ključne snage; ukloniti dupli donji “Tačke opreza” blok ili ga spojiti u “Fokus za provjeru”. |
-| P1        | Composite HR report advisory strength polish | Planirano | Composite HR report / HR advisory copy | Pojačati savjetodavni ton i operativnu upotrebljivost: manje deskriptive, više jasnih HR hipoteza, provjera, intervju smjernica i menadžerskih akcija bez hire/no-hire jezika. |
+| P1        | Composite HR report advisory prompt polish | Završeno | Composite HR report / OpenAI provider / HR advisory copy | Zatvoreno nakon pojačanja OpenAI Composite HR prompta prema savjetodavnom HR radnom dokumentu uz jače hipoteze, provjere, interview guidance i onboarding/menadžerske smjernice, bez promjene contract/scoring guardraila. |
+| P1        | Composite HR BHS narrative casing guardrail | Završeno | Composite HR report / Language QA / BHS quality | Zatvoreno nakon uvođenja narrative casing guardraila koji dozvoljava display/evidence label “Spremnost na saradnju”, ali u narativu zahtijeva “spremnost na saradnju”; evidence/display labeli su izuzeti iz pravila. |
+| P1        | Composite HR concise advisory writing polish | Planirano | Composite HR report / HR advisory copy / Readability | Sljedeći mali task: kraće rečenice, manje zbijeni pasusi, headline oko 90 znakova, “Fokus za provjeru” u 1–2 direktne rečenice, “Šta HR treba provjeriti” kao akcijska instrukcija, manje konstrukcija tipa “kombinacija X, Y i Z”, bez promjene contract/scoring/orchestration/DB schema/worker/renderer sloja osim ako je neophodno. |
 | P2        | Composite HR interview guidance enhancement | Planirano | Composite HR report / Interview guidance | Intervju sekciju proširiti iz pitanja u operativni okvir: šta pitati, šta provjerava, šta slušati u odgovoru, signal potvrde i signal za dodatnu provjeru. |
 | P2        | Composite HR onboarding / manager guidance strengthening | Planirano | Composite HR report / Onboarding / Manager guidance | Učiniti onboarding i menadžerske smjernice konkretnijim kroz jasne akcije, očekivanja i 30/60/90-day fokus bez dijagnostičkog jezika. |
 | P1        | Supabase migration/schema cache verification za composite tabele | Završeno / DB queued smoke još preostaje | Infrastructure / Supabase / Composite runtime | Zatvoreno za schema/table visibility: runtime Supabase sada vidi `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports`, a worker više ne pada na schema cache grešci. Sljedeći korak je DB-backed composite smoke sa stvarnim queued reportom. |
@@ -1715,8 +1717,8 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Composite HR report summary structure polish
-2. Composite HR report advisory strength polish
+1. Composite HR concise advisory writing polish
+2. Composite HR report summary structure polish
 3. Composite HR report watchout wording/UI polish
 4. Composite HR interview guidance enhancement
 5. Composite HR onboarding / manager guidance strengthening
@@ -1735,8 +1737,9 @@ Razlog za sljedeći prioritet:
   * AGREEABLENESS glossary drift kroz canonicalization na `Spremnost na saradnju`.
 * Ponovljeni composite worker smoke za `assessment_report_id=fe22ed8b-460c-4273-9dd8-6bee56d8c645` završio je `ready` sa `generator_type=openai`, `model_name=gpt-5.4`, `failure_code=null`, `failure_reason=null`.
 * Report view nije trigger; manual generate/retry nije korišten kao happy path.
-* Nova product/copy odluka: Composite HR report je HR radni dokument sa jačom savjetodavnom ulogom, ne samo metodološki oprezan sažetak.
-* Preporučeni prvi naredni korak je `summary structure polish` kao mali renderer/display task; zatim `advisory strength polish` kao širi copy/advisory task.
+* Završen je Composite HR AI polish ciklus: advisory prompt je pojačan, a BHS narrative casing guardrail je uveden i QA-validiran.
+* Amrin Composite HR report je regenerisan preko OpenAI-ja nakon prompt/casing izmjena i output je vidljivo savjetodavniji (jači executive summary, konkretniji fokus za provjeru, bolji interview guidance, operativnije onboarding/menadžerske smjernice).
+* Sljedeći mali fokus je `Composite HR concise advisory writing polish` za čitljivost i ritam bez promjene contract/scoring/orchestration/DB/worker/renderer sloja.
 
 ### 5.14 Assessment autosave UX politika
 
@@ -1907,6 +1910,11 @@ Razlog za sljedeći prioritet:
 
 * Composite HR report nije samo metodološki oprezan sažetak psihometrijskih rezultata.
 * Composite HR report treba biti HR radni dokument sa jačom savjetodavnom ulogom.
+* Aktuelni advisory prompt polish ciklus je završen:
+  * prompt pojačan ka čvršćim HR hipotezama, konkretnijim intervju provjerama i operativnijim onboarding/menadžerskim smjernicama
+  * safety/source guardraili zadržani bez promjene (bez hire/no-hire, bez fit score-a, bez automatske preporuke zapošljavanja, bez mijenjanja score/band/evidence source podataka)
+  * uveden BHS narrative casing guardrail: label može ostati “Spremnost na saradnju”, ali narativ usred rečenice mora koristiti “spremnost na saradnju”
+  * language QA sada hvata neprirodnu BHS kapitalizaciju domena/dimenzija u narativnim user-facing poljima, dok su evidence/display labeli izuzeti iz tog pravila
 * Nakon čitanja reporta HR korisnik treba jasno znati:
   * šta je najvažniji radni signal kandidata
   * šta prvo treba provjeriti u intervjuu
@@ -1925,6 +1933,7 @@ Razlog za sljedeći prioritet:
   * fit score
   * automatsku preporuku za zapošljavanje
   * pretjerano defanzivan jezik koji stalno zvuči kao “možda”
+* Report je sada dovoljno dobar za demo pregled; sljedeći fokus ostaje concise advisory writing polish (čitljivost i ritam) bez širenja scope-a na Interview Guidance V2 ili Onboarding 30/60/90.
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -2017,7 +2026,9 @@ Razlog za sljedeći prioritet:
 | P1/P2     | Composite provider-copy polish after OpenAI smoke | Kritični runtime blockeri su zatvoreni kroz provider source/evidence lock i AGREEABLENESS canonicalization; OpenAI completion-triggered composite smoke sada završava `ready`. | Ostaviti kao optional quality pass samo ako budući demo/smoke output pokaže novu potrebu; ne vraćati scope na contract/scoring/orchestration. |
 | P2        | Composite watchout wording/UI | “Tačka opreza” i “Tačke opreza” u trenutnom Composite HR UI-u djeluju rogobatno. Potrebno je izabrati prirodniji HR-facing wording i eventualno smiriti vizuelni tretman oprez kartica. | Ovo je sada preporučeni sljedeći mali task: renderer/copy polish bez promjene provider/contract/scoring/orchestration sloja. |
 | P1/P2     | Composite summary structure polish | Composite summary trenutno ima previše slojeva i duplira watchout funkciju kroz “Tačka opreza” i “Tačke opreza”. Treba ga svesti na kraći executive snapshot: Glavni signal, Fokus za provjeru, Kako koristiti nalaz, Ključne snage. | Out of scope ostaje provider/contract/scoring/orchestration/DB schema/worker. |
-| P1        | Composite advisory strength polish | Composite copy mora biti savjetodavniji i operativniji: manje opisa, više jasnih HR hipoteza i provjera (šta prvo provjeriti, šta pitati, šta slušati, šta potvrđuje/opovrgava). | Zadržati metodološku sigurnost bez hire/no-hire, fit score i automatske odluke. |
+| P1        | Composite advisory prompt polish | Advisory prompt ciklus je završen: Composite HR OpenAI provider sada vodi prema savjetodavnijem HR radnom dokumentu sa čvršćim hipotezama, konkretnijim provjerama i operativnijim smjernicama. | Safety/source guardraili su zadržani: bez hire/no-hire, fit score-a, automatske preporuke zapošljavanja i bez promjene score/band/evidence source podataka. |
+| P1        | Composite BHS narrative casing guardrail | Narrative casing guardrail je završen: u narativu je obavezan prirodan BHS lower-case za domene/dimenzije usred rečenice, dok su display/evidence labeli izuzeti. | QA sada hvata neprirodnu kapitalizaciju u user-facing narativu bez lomljenja labela/čipova. |
+| P1        | Composite concise advisory writing polish | Report je savjetodavniji, ali i dalje povremeno pregust. Sljedeći task je mikro-polish čitljivosti i ritma: kraće rečenice, manje zbijeni pasusi, headline oko 90 znakova, “Fokus za provjeru” u 1–2 direktne rečenice i “Šta HR treba provjeriti” kao akcijska instrukcija. | Ne mijenjati contract/scoring/orchestration/DB schema/worker/renderer osim ako je neophodno. Ne širiti scope na Interview Guidance V2 ili Onboarding 30/60/90 u ovom syncu. |
 | P2        | Composite interview guidance enhancement | Intervju sekcija treba dati operativni okvir, ne samo pitanja (pitanje, šta provjerava, šta slušati, signal potvrde, signal za dodatnu provjeru). | Ako contract ne podržava željeni format, prvo uraditi renderer/copy polish i zabilježiti potencijalni contract V2 task. |
 | P2        | Composite onboarding / manager guidance strengthening | Onboarding i menadžerske smjernice trebaju više konkretnih akcija: prioriteti, očekivanja, autonomija/struktura i 30/60/90-day praćenje. | Bez presudnog ili dijagnostičkog jezika; ostati HR-operativan. |
 | P1        | Worker/report auto-processing orchestration | Prvi completion-triggered best-effort orchestration slice je zatvorio osnovni bridge (`enqueue + scoped process attempt`) za postojeće worker path-eve bez nove infrastrukture. | Preostaje runtime smoke i operativna potvrda production ponašanja; ne širiti scope na scheduler/cron/background infrastrukturu u ovom koraku. |
@@ -2093,6 +2104,39 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-14 — Composite HR AI polish ciklus zatvoren (advisory prompt + BHS narrative casing)
+
+Završeno:
+
+* Composite HR OpenAI provider prompt je pojačan da report bude više savjetodavni HR radni dokument.
+* Prompt sada traži čvršće HR hipoteze, konkretnije intervju provjere i operativnije onboarding/menadžerske smjernice.
+* Zadržani su safety/source guardraili:
+  * bez hire/no-hire presuda
+  * bez fit score-a
+  * bez automatske preporuke za zapošljavanje
+  * bez mijenjanja score vrijednosti, bandova ili evidence source podataka
+* Dodan je BHS narrative casing guardrail:
+  * display/evidence label može biti “Spremnost na saradnju”
+  * narativ usred rečenice mora koristiti “spremnost na saradnju”
+  * “Savjesnosti” / “Spremnosti na saradnju” usred rečenice ne prolazi QA
+* Language QA sada hvata neprirodnu BHS kapitalizaciju domena/dimenzija u narativnim user-facing poljima.
+* Evidence/display labeli su izuzeti iz tog casing pravila kako čipovi i labele ostaju stabilni.
+* Amrin Composite HR report je regenerisan preko OpenAI-ja nakon prompt/casing promjena.
+* Novi output je vidljivo savjetodavniji (jači executive summary, konkretniji fokus za provjeru, bolji interview guidance, operativnije onboarding/menadžerske smjernice).
+
+Verifikacija:
+
+* `npm run typecheck`
+* `node scripts/test-composite-hr-report-provider-openai.cjs`
+* `node scripts/test-report-language-quality.cjs`
+* `node scripts/test-composite-hr-report-contract.cjs`
+* `node scripts/test-report-orchestration.cjs`
+
+Sljedeći fokus:
+
+* `Composite HR concise advisory writing polish` (čitljivost i ritam) bez promjene contract/scoring/orchestration/DB schema/worker/renderer sloja osim ako je neophodno.
+* Ne širiti scope na Interview Guidance V2 ili Onboarding 30/60/90 u ovom syncu.
 
 ### 2026-05-14 — Product/copy odluka: Composite HR report kao savjetodavni HR radni dokument
 
