@@ -44,6 +44,13 @@ type CompositeHrReviewResult = {
   summary: string;
 };
 
+type LockedCompositeEvidenceEntry = {
+  testSlug: string;
+  label: string;
+  value: string;
+  sourcePath: string;
+};
+
 const FEMININE_ADDRESSING_MISMATCH_PATTERNS = [
   /\bspreman na saradnju\b/i,
   /\bkonstruktivan u\b/i,
@@ -164,6 +171,159 @@ function assertImmutableSource(snapshot: CompositeHrReportSnapshot, input: Compo
   }
 }
 
+function normalizeEvidenceKey(testSlug: string, label: string): string {
+  return `${testSlug.trim().toLowerCase()}::${label.trim().toLowerCase()}`;
+}
+
+function formatCompositeEvidenceScore(value: number): string {
+  return value.toFixed(2);
+}
+
+function buildLockedCompositeEvidenceCatalog(
+  input: CompositeHrInputSnapshot,
+): LockedCompositeEvidenceEntry[] {
+  const ipipEntries = input.deterministicInputs.ipip.domains.flatMap((domain) => {
+    if (
+      typeof domain.label !== "string" ||
+      domain.label.trim().length === 0 ||
+      typeof domain.averageScore !== "number" ||
+      !Number.isFinite(domain.averageScore) ||
+      typeof domain.bandLabel !== "string" ||
+      domain.bandLabel.trim().length === 0
+    ) {
+      return [];
+    }
+
+    return [{
+      testSlug: input.deterministicInputs.ipip.testSlug,
+      label: domain.label,
+      value: `${formatCompositeEvidenceScore(domain.averageScore)} (${domain.bandLabel})`,
+      sourcePath: `deterministicInputs.ipip.domains.${domain.domainCode}`,
+    }];
+  });
+  const mwmsEntries = input.deterministicInputs.mwms.dimensions.flatMap((dimension) => {
+    if (
+      typeof dimension.label !== "string" ||
+      dimension.label.trim().length === 0 ||
+      typeof dimension.rawScore !== "number" ||
+      !Number.isFinite(dimension.rawScore) ||
+      typeof dimension.bandLabel !== "string" ||
+      dimension.bandLabel.trim().length === 0
+    ) {
+      return [];
+    }
+
+    return [{
+      testSlug: input.deterministicInputs.mwms.testSlug,
+      label: dimension.label,
+      value: `${formatCompositeEvidenceScore(dimension.rawScore)} (${dimension.bandLabel})`,
+      sourcePath: `deterministicInputs.mwms.dimensions.${dimension.code}`,
+    }];
+  });
+  const safranEntries = [
+    {
+      testSlug: input.deterministicInputs.safran.testSlug,
+      label: "Ukupni kognitivni rezultat",
+      value: `${input.deterministicInputs.safran.overall.rawScore}/${input.deterministicInputs.safran.overall.maxScore}`,
+      sourcePath: "deterministicInputs.safran.overall",
+    },
+    {
+      testSlug: input.deterministicInputs.safran.testSlug,
+      label: "Verbalni rezultat",
+      value: `${input.deterministicInputs.safran.verbal.rawScore}/${input.deterministicInputs.safran.verbal.maxScore}`,
+      sourcePath: "deterministicInputs.safran.verbal",
+    },
+    {
+      testSlug: input.deterministicInputs.safran.testSlug,
+      label: "Figuralni rezultat",
+      value: `${input.deterministicInputs.safran.figural.rawScore}/${input.deterministicInputs.safran.figural.maxScore}`,
+      sourcePath: "deterministicInputs.safran.figural",
+    },
+    {
+      testSlug: input.deterministicInputs.safran.testSlug,
+      label: "Numericki rezultat",
+      value: `${input.deterministicInputs.safran.numeric.rawScore}/${input.deterministicInputs.safran.numeric.maxScore}`,
+      sourcePath: "deterministicInputs.safran.numeric",
+    },
+  ] satisfies LockedCompositeEvidenceEntry[];
+
+  return [...ipipEntries, ...mwmsEntries, ...safranEntries];
+}
+
+function applyLockedCompositeEvidenceValues(
+  snapshot: CompositeHrReportSnapshot,
+  input: CompositeHrInputSnapshot,
+): CompositeHrReportSnapshot {
+  const lockedEvidenceByKey = new Map(
+    buildLockedCompositeEvidenceCatalog(input).map((entry) => [
+      normalizeEvidenceKey(entry.testSlug, entry.label),
+      entry,
+    ]),
+  );
+
+  return {
+    ...snapshot,
+    integratedSignals: snapshot.integratedSignals.map((signal) => ({
+      ...signal,
+      evidence: signal.evidence.map((entry) => {
+        const lockedEntry = lockedEvidenceByKey.get(
+          normalizeEvidenceKey(entry.testSlug, entry.label),
+        );
+
+        if (!lockedEntry) {
+          return entry;
+        }
+
+        if (entry.value === lockedEntry.value) {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          value: lockedEntry.value,
+        };
+      }),
+    })),
+  };
+}
+
+function assertLockedCompositeEvidenceIntegrity(
+  snapshot: CompositeHrReportSnapshot,
+  input: CompositeHrInputSnapshot,
+): void {
+  const lockedEntries = buildLockedCompositeEvidenceCatalog(input);
+  const lockedEntryByKey = new Map(
+    lockedEntries.map((entry) => [normalizeEvidenceKey(entry.testSlug, entry.label), entry]),
+  );
+  const lockedTestSlugByNormalizedLabel = new Map(
+    lockedEntries.map((entry) => [entry.label.trim().toLowerCase(), entry.testSlug]),
+  );
+
+  for (const signal of snapshot.integratedSignals) {
+    for (const evidence of signal.evidence) {
+      const directMatch = lockedEntryByKey.get(
+        normalizeEvidenceKey(evidence.testSlug, evidence.label),
+      );
+
+      if (directMatch && evidence.value !== directMatch.value) {
+        throw new Error(
+          `Composite HR report evidence value mismatch for ${evidence.testSlug}/${evidence.label}. Expected "${directMatch.value}" from ${directMatch.sourcePath}, received "${evidence.value}".`,
+        );
+      }
+
+      const expectedTestSlug = lockedTestSlugByNormalizedLabel.get(
+        evidence.label.trim().toLowerCase(),
+      );
+
+      if (expectedTestSlug && expectedTestSlug !== evidence.testSlug) {
+        throw new Error(
+          `Composite HR report evidence label "${evidence.label}" must use testSlug ${expectedTestSlug}, received ${evidence.testSlug}.`,
+        );
+      }
+    }
+  }
+}
+
 function buildCompositeHrOpenAiSystemPrompt(input: CompositeHrInputSnapshot): string {
   return [
     "You generate HR-facing composite assessment reports.",
@@ -171,6 +331,9 @@ function buildCompositeHrOpenAiSystemPrompt(input: CompositeHrInputSnapshot): st
     "Use only the provided deterministic CompositeHrInputSnapshot.",
     "Do not read or infer any data outside the provided snapshot.",
     "Do not change scores, bands, source attempts, completed test slugs, coverage or generatedFor identifiers.",
+    "If you cite evidence labels that correspond to deterministic source facts, copy testSlug, label and value verbatim from the locked evidence catalog.",
+    "Never freehand or estimate numeric evidence values, domain scores, band labels, motivation scores or cognitive totals.",
+    "Never type a new score string for an IPIP domain. If you cite a domain such as Neuroticizam, use the exact locked value from the input catalog.",
     "Do not invent source attempts, tests, evidence or hidden attributes.",
     "Do not produce hire/no-hire advice, fit scores, rankings, medical claims, clinical language, protected-trait inferences or absolute statements.",
     "Write decision-support text for HR, focused on interpretation, interview structure and onboarding guidance.",
@@ -202,6 +365,8 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         "sourceAttemptIds, testSlugs and generatedFor identifiers must match the provided input exactly.",
       score_integrity_rule:
         "Do not change, reinterpret or normalize score values, bands, coverage or source attempts.",
+      evidence_lock_rule:
+        "When evidence cites a deterministic source fact, copy testSlug, label and value exactly from lockedEvidenceCatalog. Do not rewrite numeric values, bands or domain scores.",
       addressing_form_rule:
         `Input contains addressingForm=${input.addressingForm}. Use it only for grammatical form when directly describing the candidate/person.`,
       content_rules: [
@@ -211,6 +376,7 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         "Do not make medical, clinical or protected-trait claims.",
         "Do not present results as absolute truth.",
         "Do not add evidence that is not directly traceable to the input snapshot.",
+        "Do not improvise score strings for IPIP domains, MWMS dimensions or SAFRAN totals.",
       ],
       style_rules: [
         "Use premium B2B tone: stručan, jasan, praktičan, bez hype-a.",
@@ -266,6 +432,7 @@ function buildCompositeHrOpenAiUserPrompt(input: CompositeHrInputSnapshot): stri
         "addressingForm must never change scoring, interpretation, evidence, risk level or recommendation.",
       ],
     },
+    lockedEvidenceCatalog: buildLockedCompositeEvidenceCatalog(input),
     input,
   });
 }
@@ -278,6 +445,7 @@ function buildCompositeHrReviewerSystemPrompt(): string {
     "Use blocking severity for issues that should prevent acceptance.",
     "Evaluate forbidden language and user-facing clarity only in candidateReportSnapshot.",
     "Use sourceSnapshot only to verify source integrity such as identifiers, scores, bands and referenced instruments.",
+    "Reject any candidateReportSnapshot evidence item that changes a locked deterministic value from sourceSnapshot.lockedEvidenceCatalog.",
     "Do not reject because sourceSnapshot contains legacy or internal labels if candidateReportSnapshot itself uses correct user-facing terminology.",
     "ASCII-only BHS spellings without diacritics are acceptable if the wording is otherwise natural and terminologically correct.",
     "For AGREEABLENESS labels in candidateReportSnapshot, only 'Spremnost na saradnju' is valid.",
@@ -321,6 +489,7 @@ function buildCompositeHrReviewerUserPrompt(
       completedTestSlugs: input.coverage.completedTestSlugs,
       deterministicInputs: input.deterministicInputs,
       summarySignals: input.summarySignals,
+      lockedEvidenceCatalog: buildLockedCompositeEvidenceCatalog(input),
     },
     candidateReportSnapshot: snapshot,
   });
@@ -722,18 +891,28 @@ export async function generateOpenAiCompositeHrReport(
     );
   }
 
-  assertImmutableSource(initialValidation.value, input);
+  const lockedReport = applyLockedCompositeEvidenceValues(initialValidation.value, input);
+  const lockedValidation = validateCompositeHrReportSnapshot(lockedReport);
+
+  if (!lockedValidation.ok) {
+    throw new Error(
+      `OpenAI composite HR report failed evidence-locked validation: ${formatCompositeHrReportValidationErrors(lockedValidation.errors)}`,
+    );
+  }
+
+  assertImmutableSource(lockedValidation.value, input);
+  assertLockedCompositeEvidenceIntegrity(lockedValidation.value, input);
   assertReportLanguageQuality({
-    snapshot: initialValidation.value,
-    locale: initialValidation.value.locale,
+    snapshot: lockedValidation.value,
+    locale: lockedValidation.value.locale,
     audience: "hr",
     reportType: "composite",
     context: "composite_hr_report",
   });
-  assertAddressingFormConsistency(initialValidation.value, input);
+  assertAddressingFormConsistency(lockedValidation.value, input);
 
   const normalizedReport: CompositeHrReportSnapshot = {
-    ...initialValidation.value,
+    ...lockedValidation.value,
     metadata: {
       provider: COMPOSITE_HR_REPORT_OPENAI_PROVIDER,
       providerVersion: COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION,

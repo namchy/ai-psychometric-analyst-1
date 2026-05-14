@@ -143,7 +143,73 @@ function buildCompositeInputSnapshotFixture(overrides = {}) {
         testId: "test-ipip",
         testSlug: "ipip-neo-120-v1",
         scale: { min: 1, max: 5 },
-        domains: [],
+        domains: [
+          {
+            domainCode: "CONSCIENTIOUSNESS",
+            label: "Savjesnost",
+            rawScore: 24,
+            scoredQuestionCount: 12,
+            averageScore: 4,
+            band: "higher",
+            bandLabel: "Više izraženo",
+            displayScore: 4,
+            displayBand: "higher",
+            displayBandLabel: "Više izraženo",
+            facets: [],
+          },
+          {
+            domainCode: "AGREEABLENESS",
+            label: "Spremnost na saradnju",
+            rawScore: 18,
+            scoredQuestionCount: 12,
+            averageScore: 3,
+            band: "balanced",
+            bandLabel: "Uravnoteženo",
+            displayScore: 3,
+            displayBand: "balanced",
+            displayBandLabel: "Uravnoteženo",
+            facets: [],
+          },
+          {
+            domainCode: "EXTRAVERSION",
+            label: "Ekstraverzija",
+            rawScore: 21,
+            scoredQuestionCount: 12,
+            averageScore: 3.5,
+            band: "balanced",
+            bandLabel: "Uravnoteženo",
+            displayScore: 3.5,
+            displayBand: "balanced",
+            displayBandLabel: "Uravnoteženo",
+            facets: [],
+          },
+          {
+            domainCode: "NEUROTICISM",
+            label: "Neuroticizam",
+            rawScore: 26,
+            scoredQuestionCount: 12,
+            averageScore: 2.17,
+            band: "lower",
+            bandLabel: "Niže izraženo",
+            displayScore: 3.83,
+            displayBand: "higher",
+            displayBandLabel: "Više izraženo",
+            facets: [],
+          },
+          {
+            domainCode: "OPENNESS",
+            label: "Otvorenost",
+            rawScore: 20,
+            scoredQuestionCount: 12,
+            averageScore: 3.33,
+            band: "balanced",
+            bandLabel: "Uravnoteženo",
+            displayScore: 3.33,
+            displayBand: "balanced",
+            displayBandLabel: "Uravnoteženo",
+            facets: [],
+          },
+        ],
         summarySignals: {
           rankedDomains: ["CONSCIENTIOUSNESS", "AGREEABLENESS", "EXTRAVERSION"],
           highestDomains: ["CONSCIENTIOUSNESS"],
@@ -677,6 +743,65 @@ async function testReviewerRejectedPathFailsProvider() {
   );
 }
 
+async function testNeuroticismEvidenceMismatchIsSourceLocked() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    integratedSignals: [
+      {
+        id: "signal-neuroticism",
+        title: "Regulacija pod pritiskom",
+        body: "Vrijedi provjeriti kako osoba reaguje kada se pojavi vise paralelnih zahtjeva.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Neuroticizam",
+            value: "3.83 (Više izraženo)",
+          },
+        ],
+      },
+    ],
+  });
+
+  const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(snapshot.integratedSignals[0].evidence[0].label, "Neuroticizam");
+  assert.equal(snapshot.integratedSignals[0].evidence[0].value, "2.17 (Niže izraženo)");
+}
+
+async function testValidNeuroticismEvidencePassesUnchanged() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const validSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    integratedSignals: [
+      {
+        id: "signal-neuroticism",
+        title: "Regulacija pod pritiskom",
+        body: "Vrijedi provjeriti kako osoba reaguje kada se pojavi vise paralelnih zahtjeva.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Neuroticizam",
+            value: "2.17 (Niže izraženo)",
+          },
+        ],
+      },
+    ],
+  });
+
+  const snapshot = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(validSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(snapshot.integratedSignals[0].evidence[0].value, "2.17 (Niže izraženo)");
+}
+
 async function testReviewerCanRejectUserFacingTechnicalLanguage() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
 
@@ -908,6 +1033,8 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   assert.equal(/addressingForm/i.test(combinedPrompt), true);
   assert.equal(/Use it only for grammatical form|only for grammatical agreement/i.test(combinedPrompt), true);
   assert.equal(/must never change scoring|Do not change, reinterpret or normalize score values/i.test(combinedPrompt), true);
+  assert.equal(/lockedEvidenceCatalog|copy testSlug, label and value exactly/i.test(combinedPrompt), true);
+  assert.equal(/Never freehand or estimate numeric evidence values|Never type a new score string for an IPIP domain/i.test(combinedPrompt), true);
   for (const rule of COMPOSITE_HR_BHS_LANGUAGE_RULES) {
     assert.equal(combinedPrompt.includes(rule), true);
   }
@@ -968,6 +1095,7 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   assert.equal(/fit score/i.test(combinedReviewerPrompt), true);
   assert.equal(/hire\/no-hire|hire-no-hire|hire\/no hire/i.test(combinedReviewerPrompt), true);
   assert.equal(/ordinary narrative uses of the word 'saradnja'|obicnu rijec 'saradnja'/i.test(combinedReviewerPrompt), true);
+  assert.equal(/lockedEvidenceCatalog|changes a locked deterministic value/i.test(combinedReviewerPrompt), true);
 }
 
 async function testFeminineMismatchIsRejected() {
@@ -1047,6 +1175,8 @@ async function main() {
   await testForbiddenHiringTermsRejected();
   await testReviewerApprovedPathPasses();
   await testReviewerRejectedPathFailsProvider();
+  await testNeuroticismEvidenceMismatchIsSourceLocked();
+  await testValidNeuroticismEvidencePassesUnchanged();
   await testReviewerCanRejectUserFacingTechnicalLanguage();
   await testReviewerCanRejectHrSafetyIssue();
   await testReviewerDoesNotFailBecauseOfSourceSnapshotLegacyLabels();
