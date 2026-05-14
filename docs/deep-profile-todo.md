@@ -65,12 +65,16 @@ Komande:
 | P1        | DB-backed end-to-end smoke za Composite HR report | Završeno / Mock + OpenAI potvrđeni | Composite HR report / Runtime smoke / QA | Zatvoreno nakon realnog OpenAI DB-backed smoke-a kroz existing assessment_reports lifecycle, provider language QA, reviewer pass i HR renderer route. |
 | P1        | Composite HR report V1 final copy/UX polish | Završeno / Renderer polish | Composite HR report / UX copy / Renderer polish | Zatvoreno za renderer/display polish (uklj. “Integrisana interpretacija”). Sljedeći korak: production worker/report orchestration i zaseban watchout wording/UI polish. |
 | P1        | OpenAI provider language QA guardrails za Composite HR report | Završeno | Composite HR report / OpenAI provider / Language QA | Zatvoreno nakon shared BHS language-quality helpera, Composite HR provider gate-a, reviewer pass-a, terminology stabilization-a i uspješnog OpenAI DB-backed smoke-a. |
-| P1        | Production worker/report orchestration / completion-triggered report orchestration | Završeno / prvi best-effort completion slice | Report pipeline / Completion orchestration | Zatvoreno za prvi uski slice: completion flow sada best-effort orchestration poziva server helper, pokušava scoped enqueue/process za single-test i composite lane-ove bez rušenja completion flow-a. Sljedeći korak: runtime smoke completion-triggered toka bez report-view triggera i bez manual-generate happy path-a. |
+| P1        | Production worker/report orchestration / completion-triggered report orchestration | Završeno / runtime smoke ciklus potvrđen | Report pipeline / Completion orchestration | Zatvoreno nakon runtime smoke ciklusa: completion trigger radi za single-test i composite lane bez report-view triggera i bez manual-generate happy path-a; preostali polish je zaseban watchout wording/UI task. |
 | P2        | Composite HR report watchout wording/UI polish | Planirano | Composite HR report / UX copy / Renderer polish | Revidirati “Tačka opreza” / “Tačke opreza” wording i vizuelni tretman watchout kartica da zvuči prirodnije i manje rogobatno. |
+| P1/P2     | Composite HR report summary structure polish | Planirano | Composite HR report / Renderer / UX structure | Skraćiti summary u executive snapshot sa sekcijama: Glavni signal, Fokus za provjeru, Kako koristiti nalaz, Ključne snage; ukloniti dupli donji “Tačke opreza” blok ili ga spojiti u “Fokus za provjeru”. |
+| P1        | Composite HR report advisory strength polish | Planirano | Composite HR report / HR advisory copy | Pojačati savjetodavni ton i operativnu upotrebljivost: manje deskriptive, više jasnih HR hipoteza, provjera, intervju smjernica i menadžerskih akcija bez hire/no-hire jezika. |
+| P2        | Composite HR interview guidance enhancement | Planirano | Composite HR report / Interview guidance | Intervju sekciju proširiti iz pitanja u operativni okvir: šta pitati, šta provjerava, šta slušati u odgovoru, signal potvrde i signal za dodatnu provjeru. |
+| P2        | Composite HR onboarding / manager guidance strengthening | Planirano | Composite HR report / Onboarding / Manager guidance | Učiniti onboarding i menadžerske smjernice konkretnijim kroz jasne akcije, očekivanja i 30/60/90-day fokus bez dijagnostičkog jezika. |
 | P1        | Supabase migration/schema cache verification za composite tabele | Završeno / DB queued smoke još preostaje | Infrastructure / Supabase / Composite runtime | Zatvoreno za schema/table visibility: runtime Supabase sada vidi `assessment_assignments`, `assessment_assignment_attempts` i `assessment_reports`, a worker više ne pada na schema cache grešci. Sljedeći korak je DB-backed composite smoke sa stvarnim queued reportom. |
 | P1        | Assessment report worker path za composite          | Završeno    | Composite HR report / Worker lifecycle | Zatvoreno kao lifecycle proof: worker claim-a queued assessment_reports row, gradi input_snapshot kroz composite input builder i kontrolisano završava kao failed sa COMPOSITE_PROVIDER_NOT_IMPLEMENTED dok provider ne postoji. |
 | P1        | Composite HR report data model decision             | Završeno / Prvi slice implementiran | Architecture / HR report storage | Odluka donesena: composite ne ide u `attempt_reports`; uveden je prvi assessment-level ownership slice kroz `assessment_assignments` i `assessment_assignment_attempts`. Zatvoreno nakon assessment_reports storage/readiness slice-a. |
-| P1        | Composite HR report V1                              | Aktivno / Mock + OpenAI runtime potvrđen | Product / AI report | Mock-backed i OpenAI DB-backed runtime smoke su potvrđeni kroz postojeći assessment_reports lifecycle. Sljedeći korak: production worker/report orchestration i eventualni provider-copy polish ako budući demo/smoke output pokaže potrebu. |
+| P1        | Composite HR report V1                              | Završeno / completion-triggered runtime potvrđen | Product / AI report | Zatvoreno nakon completion-triggered runtime smoke ciklusa: initial PARTIAL blocker-i na provider/reviewer consistency su zatvoreni (Neuroticism evidence lock + AGREEABLENESS canonicalization), a composite row `fe22ed8b-460c-4273-9dd8-6bee56d8c645` je završio `ready` sa `generator_type=openai` i `model_name=gpt-5.4`. |
 | P1        | Oblik obraćanja: muški/ženski jezički oblik          | Discovery / Spec spreman | UX / i18n / AI promptovi     | Discovery je definisao UI naziv preferencije, modal timing, participant-level polje, attempt/report snapshot princip i buduće AI input wiring. Sljedeći korak je uska implementacija kroz migration/constants → modal → snapshot → participant report wiring. |
 | P1        | MWMS pitanja / item UX                               | Završeno    | Assessment UX / Copy         | Zatvoreno nakon uvođenja zajedničkog stem prikaza “Zašto ulažeš trud u svoj posao?”, labela “Mogući razlog”, jasnije MWMS skale i testSlug wiring-a u assessment run rutama. |
 | P1        | IPIP radar chart                                     | Završeno    | Report UI / Visualization    | Zatvoreno nakon vraćanja deterministic radar chart prikaza u IPIP NEO-120 participant V2 report, koristeći report.domains[].display_score bez promjene scoringa ili AI pipelinea. |
@@ -1711,26 +1715,28 @@ Razlog: smoke test treba validirati kandidat-facing iskustvo koje je dovoljno bl
 
 ### 5.7 Preporučeni sljedeći redoslijed
 
-1. Runtime smoke za completion-triggered orchestration
-2. Composite HR report watchout wording/UI polish
-3. Provider-copy polish za Composite HR report, ako budući demo/smoke output pokaže generičke ili previše oprezne formulacije
-4. Assignment-aware dashboard model za nove assessment cikluse
-5. Oblik obraćanja: muški/ženski jezički oblik
-6. Report visual language po testovima
-7. SAFRAN novi stimulus asseti
-8. Login screen UI polish
+1. Composite HR report summary structure polish
+2. Composite HR report advisory strength polish
+3. Composite HR report watchout wording/UI polish
+4. Composite HR interview guidance enhancement
+5. Composite HR onboarding / manager guidance strengthening
+6. Assignment-aware dashboard model za nove assessment cikluse
+7. Oblik obraćanja: muški/ženski jezički oblik
+8. Report visual language po testovima
+9. SAFRAN novi stimulus asseti
+10. Login screen UI polish
 
 Razlog za sljedeći prioritet:
 
-* Composite HR report sada ima potvrđen mock + OpenAI runtime path.
-* Language QA foundation, reviewer pass, terminology stabilization i OpenAI DB-backed smoke su završeni.
-* Prvi uski production worker/report orchestration slice je završen kroz completion-triggered best-effort helper.
-* Sljedeći fokus je runtime smoke kojim dokazujemo da completed attempt pokreće očekivani enqueue/processing tok bez oslanjanja na report view i bez manual-generate happy path-a.
-* Single-test HR lane i composite lane su sada wired na completion event; potrebno je runtime potvrditi ponašanje u stvarnom toku.
-* Report view nije trigger; report view je konzumacija već pripremljenog artefakta.
-* Preostali runtime rizik nakon ovog slice-a je operativna potvrda completion-triggered toka i eventualni dodatni production trigger model, ne provider/contract smoke.
-* Watchout wording/UI polish ostaje zaseban renderer UX/copy task.
-* Provider-copy polish ostaje opcionalan i evidence-driven ako budući output pokaže potrebu.
+* Runtime smoke ciklus za completion-triggered orchestration je završen.
+* MWMS completion-triggered smoke je prošao: protected completion flow je bez report-view triggera proizveo HR `attempt_report` i završio ga kao `ready`.
+* Composite completion-triggered smoke je prvo bio PARTIAL, ali su oba provider/reviewer blockera zatvorena:
+  * Neuroticism source-integrity mismatch (`3.83` vs `2.17`) kroz deterministic evidence lock.
+  * AGREEABLENESS glossary drift kroz canonicalization na `Spremnost na saradnju`.
+* Ponovljeni composite worker smoke za `assessment_report_id=fe22ed8b-460c-4273-9dd8-6bee56d8c645` završio je `ready` sa `generator_type=openai`, `model_name=gpt-5.4`, `failure_code=null`, `failure_reason=null`.
+* Report view nije trigger; manual generate/retry nije korišten kao happy path.
+* Nova product/copy odluka: Composite HR report je HR radni dokument sa jačom savjetodavnom ulogom, ne samo metodološki oprezan sažetak.
+* Preporučeni prvi naredni korak je `summary structure polish` kao mali renderer/display task; zatim `advisory strength polish` kao širi copy/advisory task.
 
 ### 5.14 Assessment autosave UX politika
 
@@ -1820,6 +1826,19 @@ Razlog za sljedeći prioritet:
 * Failed reportovi se ne retry-aju automatski.
 * Existing `queued`/`processing`/`ready` reportovi se ne dupliciraju.
 * Nisu mijenjani DB schema, scoring, provider contracti, renderer ni dashboard UI.
+* MWMS completion-triggered runtime smoke je prošao: stvarni protected completion flow je bez report-view triggera završio attempt i proizveo HR `attempt_report` koji je završio `ready`.
+* Composite completion-triggered runtime smoke je prvo bio `PARTIAL`: completion trigger, readiness, `assessment_reports` row kreiranje i worker processing su radili, ali provider/reviewer consistency je oborila report.
+* Prvi composite blocker bio je `SOURCE_INTEGRITY_MISMATCH_NEUROTICISM_VALUE` (Neuroticizam evidence value mismatch).
+* Dodan je provider source/evidence lock: deterministic evidence catalog + locked evidence values prije reviewer faze + regression test za Neuroticism mismatch.
+* Drugi composite blocker bio je AGREEABLENESS glossary violation zbog “Ugodnost”.
+* Dodan je canonicalization fix: AGREEABLENESS user-facing evidence koristi “Spremnost na saradnju”.
+* Composite language QA sada skenira user-facing report polja, ne internal/source helper objekte.
+* Ponovljeni composite worker smoke za `assessment_report_id=fe22ed8b-460c-4273-9dd8-6bee56d8c645` završio je `ready` sa:
+  * `generator_type=openai`
+  * `model_name=gpt-5.4`
+  * `failure_code=null`
+  * `failure_reason=null`
+* Orchestration helper nije mijenjan tokom provider/reviewer fix-eva.
 * Composite HR report koristi assessment-level storage kroz `assessment_reports`.
 * `assessment_reports` je HR-only artefakt u V1.
 * Participant/candidate ne dobija read access na HR composite report u V1.
@@ -1880,6 +1899,32 @@ Razlog za sljedeći prioritet:
 * Ako Supabase schema cache ne vidi `public.assessment_reports`, composite worker smoke ne može potvrditi end-to-end flow.
 * Runtime DB smoke failure zbog schema cache/migration stanja nije isto što i code-level provider/validator failure.
 * Production readiness zahtijeva DB-backed smoke, ne samo local/unit testove.
+* Composite HR report treba biti savjetodavni HR radni dokument: pored metodološke sigurnosti mora jasno voditi HR na glavni signal, prioritetnu provjeru i menadžerske implikacije.
+* U user-facing outputu ostaje zabrana hire/no-hire presude, fit score-a i automatske preporuke zapošljavanja.
+* Ton treba biti stručan, savjetodavan, konkretan i HR-operativan, bez pretjerano defanzivnog “možda” jezika kao dominantnog stila.
+
+### 5.18 Composite HR report kao savjetodavni HR radni dokument
+
+* Composite HR report nije samo metodološki oprezan sažetak psihometrijskih rezultata.
+* Composite HR report treba biti HR radni dokument sa jačom savjetodavnom ulogom.
+* Nakon čitanja reporta HR korisnik treba jasno znati:
+  * šta je najvažniji radni signal kandidata
+  * šta prvo treba provjeriti u intervjuu
+  * koje ponašajne obrasce treba potvrditi ili opovrgnuti
+  * gdje kandidat vjerovatno može dati najbolji učinak
+  * gdje mogu nastati rizici ili frikcije
+  * kako menadžer treba postaviti prioritete, očekivanja, podršku i onboarding
+* Ton reporta treba ostati:
+  * stručan
+  * savjetodavan
+  * konkretan
+  * HR-operativan
+  * metodološki siguran
+* Report ne smije sadržavati:
+  * hire/no-hire presudu
+  * fit score
+  * automatsku preporuku za zapošljavanje
+  * pretjerano defanzivan jezik koji stalno zvuči kao “možda”
 
 ### 5.8 IPIP Likert selected-state politika
 
@@ -1967,10 +2012,14 @@ Razlog za sljedeći prioritet:
 | P1        | Composite runtime DB/migration verification | Composite schema/table visibility blocker je riješen, a DB-backed mock smoke sa stvarnim queued reportom je potvrđen. | Runtime Supabase vidi composite tabele; ne koristiti `supabase db push` naslijepo dok stare uncertain migracije imaju drift. |
 | P1        | Composite report generation pipeline | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Mock-backed i OpenAI DB-backed smoke sada prolaze. | Preostali fokus je production worker/report orchestration i eventualno širenje shared language QA sloja na druge report lane-ove. |
 | P1        | Composite OpenAI language QA | Foundation + reviewer pass + terminology stabilization su završeni za Composite HR OpenAI provider i potvrđeni OpenAI DB-backed smoke-om. | Renderer ne širiti u generički lektor; provider/language QA sloj ostaje mjesto za AI output kvalitet. Budući dug je rollout shared QA sloja na druge lane-ove kada dođe red. |
-| P1        | Automatic report generation orchestration after assessment completion | Prvi best-effort completion-triggered slice je implementiran: server helper pozvan iz completion flow-a nakon scoring/results persistence-a pokušava enqueue/process za single-test i composite lane-ove bez rušenja completion flow-a. | Sljedeći korak: runtime smoke potvrda completion-triggered toka bez report-view triggera i bez manual-generate happy path-a. |
+| P1        | Automatic report generation orchestration after assessment completion | Completion-triggered orchestration runtime smoke ciklus je završen za MWMS single-test i Composite HR lane; completion event ostaje trigger, report view nije trigger, manual generate/retry nije happy path. | Zatvoreno za runtime potvrdu trenutnog slice-a; dalje širenje trigger modela je posebna buduća odluka i ne ulazi u ovaj ciklus. |
 | P1        | Scripted composite smoke requeue utility | Finalni smoke i dalje koristi kontrolisani requeue postojećeg `assessment_reports` row-a jer insert novog row-a za isti assignment udara na `assessment_reports_artifact_identity_unique`; reusable utility script nije dodat u ovom ciklusu. | Nije bug: unique constraint je očekivan. Cilj ostaje reproducibilan QA smoke workflow bez ručnih inline komandi. |
-| P1/P2     | Composite provider-copy polish after OpenAI smoke | Renderer display layer je poliran nad mock-backed reportom. Ako OpenAI output u smoke-u ili demo iteracijama pokaže generičke, tehničke ili previše oprezne formulacije, provider prompt/copy treba posebno polirati bez mijenjanja report contracta. | Ne proširivati renderer sanitizer u generički rewrite engine. Preferirati provider prompt/copy polish ako problem dolazi iz AI outputa. |
-| P2        | Composite watchout wording/UI | “Tačka opreza” i “Tačke opreza” u trenutnom Composite HR UI-u djeluju rogobatno. Potrebno je izabrati prirodniji HR-facing wording i eventualno smiriti vizuelni tretman oprez kartica. | Zaseban renderer UX/copy task; ne miješati sa OpenAI provider language QA slojem. |
+| P1/P2     | Composite provider-copy polish after OpenAI smoke | Kritični runtime blockeri su zatvoreni kroz provider source/evidence lock i AGREEABLENESS canonicalization; OpenAI completion-triggered composite smoke sada završava `ready`. | Ostaviti kao optional quality pass samo ako budući demo/smoke output pokaže novu potrebu; ne vraćati scope na contract/scoring/orchestration. |
+| P2        | Composite watchout wording/UI | “Tačka opreza” i “Tačke opreza” u trenutnom Composite HR UI-u djeluju rogobatno. Potrebno je izabrati prirodniji HR-facing wording i eventualno smiriti vizuelni tretman oprez kartica. | Ovo je sada preporučeni sljedeći mali task: renderer/copy polish bez promjene provider/contract/scoring/orchestration sloja. |
+| P1/P2     | Composite summary structure polish | Composite summary trenutno ima previše slojeva i duplira watchout funkciju kroz “Tačka opreza” i “Tačke opreza”. Treba ga svesti na kraći executive snapshot: Glavni signal, Fokus za provjeru, Kako koristiti nalaz, Ključne snage. | Out of scope ostaje provider/contract/scoring/orchestration/DB schema/worker. |
+| P1        | Composite advisory strength polish | Composite copy mora biti savjetodavniji i operativniji: manje opisa, više jasnih HR hipoteza i provjera (šta prvo provjeriti, šta pitati, šta slušati, šta potvrđuje/opovrgava). | Zadržati metodološku sigurnost bez hire/no-hire, fit score i automatske odluke. |
+| P2        | Composite interview guidance enhancement | Intervju sekcija treba dati operativni okvir, ne samo pitanja (pitanje, šta provjerava, šta slušati, signal potvrde, signal za dodatnu provjeru). | Ako contract ne podržava željeni format, prvo uraditi renderer/copy polish i zabilježiti potencijalni contract V2 task. |
+| P2        | Composite onboarding / manager guidance strengthening | Onboarding i menadžerske smjernice trebaju više konkretnih akcija: prioriteti, očekivanja, autonomija/struktura i 30/60/90-day praćenje. | Bez presudnog ili dijagnostičkog jezika; ostati HR-operativan. |
 | P1        | Worker/report auto-processing orchestration | Prvi completion-triggered best-effort orchestration slice je zatvorio osnovni bridge (`enqueue + scoped process attempt`) za postojeće worker path-eve bez nove infrastrukture. | Preostaje runtime smoke i operativna potvrda production ponašanja; ne širiti scope na scheduler/cron/background infrastrukturu u ovom koraku. |
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
@@ -2044,6 +2093,51 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-14 — Product/copy odluka: Composite HR report kao savjetodavni HR radni dokument
+
+Odluka:
+
+* Composite HR report ne treba biti samo metodološki oprezan sažetak psihometrijskih rezultata.
+* Composite HR report treba biti HR radni dokument sa jačom savjetodavnom ulogom.
+* Cilj je da HR korisnik jasno zna: najvažniji signal, šta prvo provjeriti u intervjuu, koje obrasce potvrditi/opovrgnuti, gdje je vjerovatan učinak i rizik, te kako menadžer postavlja prioritete, očekivanja, podršku i onboarding.
+* Ton ostaje stručan, savjetodavan, konkretan, HR-operativan i metodološki siguran.
+* I dalje ostaje zabrana hire/no-hire presude, fit score-a i automatske preporuke za zapošljavanje.
+* Izbjegavati pretjerano defanzivan jezik koji konstantno zvuči kao “možda”.
+
+Dogovoreni sljedeći koraci:
+
+1. Prvo `Composite HR report summary structure polish` kao mali renderer/display task.
+2. Zatim `Composite HR report advisory strength polish` kao širi copy/advisory task.
+
+### 2026-05-14 — Runtime smoke ciklus zatvoren: completion-triggered orchestration + Composite HR provider consistency
+
+Završeno:
+
+* MWMS completion-triggered orchestration runtime smoke je prošao.
+* Stvarni protected completion flow završio je MWMS attempt i bez report-view triggera proizveo HR `attempt_report` koji je završio `ready`.
+* Composite completion-triggered smoke je prvo bio `PARTIAL`: completion trigger, readiness, `assessment_reports` row kreiranje i worker processing su radili, ali OpenAI composite generation je pala na provider/reviewer consistency.
+* Prvi blocker bio je source-integrity mismatch za Neuroticizam evidence value.
+* Dodan je provider source/evidence lock:
+  * deterministic evidence catalog
+  * locked evidence values prije reviewer faze
+  * regression test za Neuroticism mismatch
+* Drugi blocker bio je AGREEABLENESS glossary violation zbog “Ugodnost”.
+* Dodan je canonicalization fix tako da AGREEABLENESS user-facing evidence koristi “Spremnost na saradnju”.
+* Composite language QA sada skenira user-facing report polja, ne internal/source helper objekte.
+* Ponovljeni composite worker smoke za `assessment_report_id=fe22ed8b-460c-4273-9dd8-6bee56d8c645` završio je `ready` sa:
+  * `generator_type=openai`
+  * `model_name=gpt-5.4`
+  * `failure_code=null`
+  * `failure_reason=null`
+* Report view nije korišten kao trigger.
+* Manual generate/retry nije korišten kao happy path.
+* Orchestration helper nije mijenjan tokom provider fix-eva.
+* DB schema, scoring, renderer i dashboard UI nisu mijenjani.
+
+Naredni korak:
+
+* Composite HR report watchout wording/UI polish kao mali renderer/copy task bez promjene provider/contract/scoring/orchestration sloja.
 
 ### 2026-05-14 — Production worker/report orchestration: prvi best-effort completion slice
 
