@@ -1071,9 +1071,17 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
     assert.equal(combinedPrompt.includes(rule), true);
   }
   assert.equal(
-    /premium B2B tone|stručan, jasan, praktičan, bez hype-a/i.test(combinedPrompt),
+    /premium B2B tone|stručan, konkretan, savjetodavan, HR-operativan, metodološki siguran/i.test(combinedPrompt),
     true,
   );
+  assert.equal(/advisory decision-support text|confident HR-advisory tone/i.test(combinedPrompt), true);
+  assert.equal(
+    /most important work signal.*verify first.*confirm or disconfirm.*performance may be strongest.*friction may emerge.*priorities, expectations, support and onboarding/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(/Prefer clear HR hypotheses over sterile hedging/i.test(combinedPrompt), true);
   assert.equal(
     /spremna|konstruktivna|orijentisana|sklona|stabilna|pouzdana/i.test(combinedPrompt),
     true,
@@ -1084,9 +1092,19 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   );
   assert.equal(/Avoid overly long sentences|keep sentences readable/i.test(combinedPrompt), true);
   assert.equal(
-    /first sentence should state the main integrated signal|second sentence should state the main point of caution/i.test(
+    /Najvažniji radni signal je|U intervjuu prvo provjerite|Ovaj nalaz je najkorisnije koristiti za/i.test(
       combinedPrompt,
     ),
+    true,
+  );
+  assert.equal(
+    /U intervjuu direktno provjerite|Prvo razjasnite|Posebno provjerite kroz primjer/i.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(
+    /Područje za dodatnu provjeru je|Vrijedi provjeriti/i.test(combinedPrompt),
     true,
   );
   assert.equal(
@@ -1101,11 +1119,30 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
     true,
   );
   assert.equal(
-    /Each watchout should be translated into an interview theme, verification question or management checkpoint/i.test(
+    /Each watchout should be translated into a concrete interview action, verification question or management checkpoint/i.test(
       combinedPrompt,
     ),
     true,
   );
+  assert.equal(
+    /Each integratedSignals item should make the body useful for HR.*what the signal likely means in work.*what HR should verify next/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(
+    /interviewGuidance questions should be direct, ready to ask.*what HR should listen for/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(
+    /onboardingGuidance should give concrete manager actions.*agree priorities.*define quality criteria.*check progress weekly/is.test(
+      combinedPrompt,
+    ),
+    true,
+  );
+  assert.equal(/limitations.*explicit, calm and short/i.test(combinedPrompt), true);
   assert.equal(/Do not repeat the phrase korisno je provjeriti/i.test(combinedPrompt), true);
   assert.equal(
     /Spremnost na saradnju|Ugodnost|Saradljivost|rokovi visoki|fit score|hire\/no-hire/i.test(
