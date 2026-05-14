@@ -240,6 +240,46 @@ function testStructuredSnapshotPathAndAssertWrapper() {
   );
 }
 
+function testCompositeHrQaIgnoresInternalLegacySourceLabels() {
+  const result = validateReportLanguageQuality({
+    snapshot: {
+      summary: {
+        headline: "HR pregled",
+        profileOverview: "Spremnost na saradnju ostaje stabilan signal.",
+        keyStrengths: ["Jasna struktura rada."],
+        watchouts: ["Vrijedi dodatno provjeriti reakciju na pritisak rokova."],
+      },
+      integratedSignals: [
+        {
+          evidence: [
+            {
+              label: "Spremnost na saradnju",
+              value: "3.00 (Uravnoteženo)",
+            },
+          ],
+        },
+      ],
+      sourceSnapshot: {
+        deterministicInputs: {
+          ipip: {
+            domains: [
+              {
+                label: "Ugodnost",
+              },
+            ],
+          },
+        },
+      },
+    },
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.deepEqual(result, { ok: true, issues: [] });
+}
+
 function main() {
   testValidTextPasses();
   testForbiddenCompositeHrPhrasesFail();
@@ -248,6 +288,7 @@ function main() {
   testAsciiPerformancePressureAllowed();
   testForbiddenHiringTermsFail();
   testStructuredSnapshotPathAndAssertWrapper();
+  testCompositeHrQaIgnoresInternalLegacySourceLabels();
 
   console.log("Report language quality tests passed.");
 }

@@ -630,16 +630,15 @@ async function testAgreeablenessLabelReplacementRejectedButNarrativeSaradnjaAllo
     ],
   });
 
-  await assert.rejects(
-    () =>
-      generateOpenAiCompositeHrReport(inputSnapshot, {
-        apiKey: "test-key",
-        model: "gpt-5.5",
-        fetchImpl: buildFetchResponse(invalidSnapshot),
-        now: () => "2026-05-12T10:15:00.000Z",
-      }),
-    /Saradnja|Spremnost na saradnju/i,
-  );
+  const correctedAliasResult = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(correctedAliasResult.integratedSignals[0].evidence[0].label, "Spremnost na saradnju");
+  assert.equal(correctedAliasResult.integratedSignals[0].evidence[0].value, "3.00 (Uravnoteženo)");
 
   const validSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
     integratedSignals: [
@@ -667,6 +666,36 @@ async function testAgreeablenessLabelReplacementRejectedButNarrativeSaradnjaAllo
 
   assert.equal(result.integratedSignals[0].body.includes("saradnji"), true);
   assert.equal(result.integratedSignals[0].evidence[0].label, "Spremnost na saradnju");
+}
+
+async function testAgreeablenessLegacyUgodnostEvidenceIsSourceLockedToCanonicalLabel() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const legacySnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    integratedSignals: [
+      {
+        id: "signal-collaboration",
+        title: "Timski signal",
+        body: "U timskoj saradnji vrijedi provjeriti kako osoba gradi povjerenje i ritam rada.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Ugodnost",
+            value: "3.00 (Uravnoteženo)",
+          },
+        ],
+      },
+    ],
+  });
+
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(legacySnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(result.integratedSignals[0].evidence[0].label, "Spremnost na saradnju");
+  assert.equal(result.integratedSignals[0].evidence[0].value, "3.00 (Uravnoteženo)");
 }
 
 async function testForbiddenHiringTermsRejected() {
@@ -1172,6 +1201,7 @@ async function main() {
   await testRokoviVisokiRejected();
   await testAgreeablenessGlossaryViolationsRejected();
   await testAgreeablenessLabelReplacementRejectedButNarrativeSaradnjaAllowed();
+  await testAgreeablenessLegacyUgodnostEvidenceIsSourceLockedToCanonicalLabel();
   await testForbiddenHiringTermsRejected();
   await testReviewerApprovedPathPasses();
   await testReviewerRejectedPathFailsProvider();

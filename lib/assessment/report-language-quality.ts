@@ -192,6 +192,31 @@ function collectStrings(value: unknown, output: string[] = []): string[] {
   return output;
 }
 
+function collectCompositeHrUserFacingStrings(snapshot: unknown): string[] {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return [];
+  }
+
+  const candidate = snapshot as {
+    summary?: unknown;
+    integratedSignals?: unknown;
+    interviewGuidance?: unknown;
+    onboardingGuidance?: unknown;
+    limitations?: unknown;
+  };
+
+  return collectStrings(
+    {
+      summary: candidate.summary,
+      integratedSignals: candidate.integratedSignals,
+      interviewGuidance: candidate.interviewGuidance,
+      onboardingGuidance: candidate.onboardingGuidance,
+      limitations: candidate.limitations,
+    },
+    [],
+  );
+}
+
 function normalizeText(value: string): string {
   return value
     .normalize("NFKC")
@@ -266,6 +291,14 @@ function validatePatternRules(
 function buildQualityText(params: ReportLanguageQualityParams): string {
   if (typeof params.text === "string" && params.text.trim().length > 0) {
     return params.text;
+  }
+
+  if (
+    params.audience === "hr" &&
+    params.reportType === "composite" &&
+    params.context === "composite_hr_report"
+  ) {
+    return collectCompositeHrUserFacingStrings(params.snapshot).join("\n");
   }
 
   return collectStrings(params.snapshot).join("\n");

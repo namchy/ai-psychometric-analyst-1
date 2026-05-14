@@ -172,7 +172,26 @@ function assertImmutableSource(snapshot: CompositeHrReportSnapshot, input: Compo
 }
 
 function normalizeEvidenceKey(testSlug: string, label: string): string {
-  return `${testSlug.trim().toLowerCase()}::${label.trim().toLowerCase()}`;
+  return `${testSlug.trim().toLowerCase()}::${normalizeCompositeEvidenceLabelForLock(
+    testSlug,
+    label,
+  )
+    .trim()
+    .toLowerCase()}`;
+}
+
+function normalizeCompositeEvidenceLabelForLock(testSlug: string, label: string): string {
+  const normalizedTestSlug = testSlug.trim().toLowerCase();
+  const normalizedLabel = label.trim().toLowerCase();
+
+  if (
+    normalizedTestSlug === "ipip-neo-120-v1" &&
+    ["ugodnost", "saradljivost", "saradnja", "agreeableness"].includes(normalizedLabel)
+  ) {
+    return "Spremnost na saradnju";
+  }
+
+  return label;
 }
 
 function formatCompositeEvidenceScore(value: number): string {
@@ -196,7 +215,10 @@ function buildLockedCompositeEvidenceCatalog(
 
     return [{
       testSlug: input.deterministicInputs.ipip.testSlug,
-      label: domain.label,
+      label:
+        domain.domainCode === "AGREEABLENESS"
+          ? "Spremnost na saradnju"
+          : domain.label,
       value: `${formatCompositeEvidenceScore(domain.averageScore)} (${domain.bandLabel})`,
       sourcePath: `deterministicInputs.ipip.domains.${domain.domainCode}`,
     }];
@@ -275,11 +297,15 @@ function applyLockedCompositeEvidenceValues(
         }
 
         if (entry.value === lockedEntry.value) {
-          return entry;
+          return {
+            ...entry,
+            label: lockedEntry.label,
+          };
         }
 
         return {
           ...entry,
+          label: lockedEntry.label,
           value: lockedEntry.value,
         };
       }),
