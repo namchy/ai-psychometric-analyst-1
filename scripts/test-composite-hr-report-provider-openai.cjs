@@ -295,23 +295,23 @@ function buildOpenAiSnapshotFixture(inputSnapshot, overrides = {}) {
       testSlugs: [...inputSnapshot.coverage.completedTestSlugs],
     },
     summary: {
-      headline: "Integrisani HR pregled",
+      headline: "Pouzdan stil rada uz dobar analiticki kapacitet",
       profileOverview:
-        "Profil kombinira ponasajne, motivacijske i kognitivne signale kao hipoteze za intervju i onboarding provjeru.",
+        "Najvazniji radni signal je pouzdan stil rada uz dobar analiticki kapacitet. U intervjuu provjerite kako osoba postavlja prioritete kada se zahtjevi promijene. Koristite ovaj nalaz za jasnije definisanje uloge i prvih onboarding ocekivanja.",
       keyStrengths: [
         "Jasna tragljivost izvora kroz linked assessment attempts.",
         "Signal omogucava strukturisanu pripremu intervjua.",
       ],
       watchouts: [
-        "Nalaze treba provjeriti kroz konkretne primjere rada i kontekst uloge.",
-        "Signal ne treba citati odvojeno od iskustva i zahtjeva pozicije.",
+        "U intervjuu provjerite konkretan primjer rada pod promjenom prioriteta.",
+        "Tražite primjer situacije u kojoj je osoba uskladila kvalitet rada sa zahtjevima pozicije.",
       ],
     },
     integratedSignals: [
       {
         id: "signal-personality",
         title: "Ponasajni fokus za razgovor",
-        body: "Najkorisnije je provjeriti kako osoba strukturise rad i nosi se sa promjenom prioriteta.",
+        body: "U radu ovo upucuje na potrebu za jasnim prioritetima. Provjerite kako osoba strukturise rad kada se prioriteti promijene.",
         evidence: [
           {
             testSlug: "ipip-neo-120-v1",
@@ -323,7 +323,7 @@ function buildOpenAiSnapshotFixture(inputSnapshot, overrides = {}) {
       {
         id: "signal-cognitive",
         title: "Kognitivni fokus za zadatke",
-        body: "Signal vrijedi provjeriti kroz kratke primjere nacina razmisljanja i provjere tacnosti.",
+        body: "Signal je najkorisniji za zadatke koji traze provjeru tacnosti. Tražite konkretan primjer nacina razmisljanja pod vremenskim ogranicenjem.",
         evidence: [
           {
             testSlug: "safran_v1",
@@ -545,7 +545,7 @@ async function testForbiddenWordingRejected() {
       profileOverview:
         "Ovaj tekst govori da treba zaposliti osobu odmah, sto je zabranjeno.",
       keyStrengths: ["Jasna tragljivost izvora."],
-      watchouts: ["Potrebna je provjera kroz primjere rada."],
+      watchouts: ["U intervjuu provjerite konkretne primjere rada."],
     },
   });
 
@@ -568,7 +568,7 @@ async function testRokoviVisokiRejected() {
       headline: "Integrisani HR pregled",
       profileOverview: "Glavni rizik zvuci kao rokovi visoki u svim situacijama.",
       keyStrengths: ["Jasna tragljivost izvora."],
-      watchouts: ["Potrebna je provjera kroz primjere rada."],
+      watchouts: ["U intervjuu provjerite konkretne primjere rada."],
     },
   });
 
@@ -593,7 +593,7 @@ async function testAgreeablenessGlossaryViolationsRejected() {
         headline: "Integrisani HR pregled",
         profileOverview: `${forbiddenPhrase} se navodi kao glavni domen za timski rad.`,
         keyStrengths: ["Jasna tragljivost izvora."],
-        watchouts: ["Potrebna je provjera kroz primjere rada."],
+        watchouts: ["U intervjuu provjerite konkretne primjere rada."],
       },
     });
 
@@ -712,7 +712,7 @@ async function testForbiddenHiringTermsRejected() {
         headline: "Integrisani HR pregled",
         profileOverview: forbiddenText,
         keyStrengths: ["Jasna tragljivost izvora."],
-        watchouts: ["Potrebna je provjera kroz primjere rada."],
+        watchouts: ["U intervjuu provjerite konkretne primjere rada."],
       },
     });
 
@@ -905,9 +905,9 @@ async function testReviewerCanRejectUserFacingTechnicalLanguage() {
             summary: {
               headline: "Integrisani HR pregled",
               profileOverview:
-                "Profil ostaje citljiv, ali jedan dio teksta spominje linked attempts i source attempts.",
+                "Profil ostaje citljiv, ali jedan dio teksta spominje linked attempts i source attempts. U intervjuu provjerite konkretan primjer rada.",
               keyStrengths: ["Jasna tragljivost izvora."],
-              watchouts: ["Potrebna je provjera kroz primjere rada."],
+              watchouts: ["Tražite primjer rada pod promjenom prioriteta."],
             },
           }),
           buildReviewerResponseFixture({
@@ -1056,7 +1056,7 @@ async function testAsciiPerformancePressurePasses() {
           profileOverview:
             "Profil ostaje stabilan, ali vrijedi provjeriti kako osoba reaguje na pritisak ucinka u zahtjevnim sedmicama.",
           keyStrengths: ["Jasna tragljivost izvora."],
-          watchouts: ["Potrebna je provjera kroz primjere rada."],
+          watchouts: ["U intervjuu provjerite konkretne primjere rada."],
         },
       }),
       buildReviewerResponseFixture(),
@@ -1152,6 +1152,9 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
     true,
   );
   assert.equal(/Avoid overly long sentences|keep sentences readable/i.test(combinedPrompt), true);
+  assert.equal(/shorter, more scannable HR copy|scan-friendly rhythm/i.test(combinedPrompt), true);
+  assert.equal(/concrete HR action verbs|dogovorite, postavite, provjerite/i.test(combinedPrompt), true);
+  assert.equal(/kombinacija X, Y i Z/i.test(combinedPrompt), true);
   assert.equal(
     /BHS narrative sentences.*domain and motivation dimension names in lowercase.*mid-sentence/is.test(
       combinedPrompt,
@@ -1177,14 +1180,17 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
     ),
     true,
   );
+  assert.equal(/summary\.headline.*90 characters|90 znakova|90/i.test(combinedPrompt), true);
+  assert.equal(/summary\.profileOverview.*at most 3 clear sentences/i.test(combinedPrompt), true);
+  assert.equal(/Do not put more than two main ideas/i.test(combinedPrompt), true);
   assert.equal(
-    /U intervjuu direktno provjerite|Prvo razjasnite|Posebno provjerite kroz primjer/i.test(
+    /U intervjuu provjerite|Direktno razjasnite|Tražite primjer|Slušajte da li/i.test(
       combinedPrompt,
     ),
     true,
   );
   assert.equal(
-    /Područje za dodatnu provjeru je|Vrijedi provjeriti/i.test(combinedPrompt),
+    /Do not start summary\.watchouts.*Područje za dodatnu provjeru je.*Vrijedi provjeriti.*Može biti korisno razmotriti/is.test(combinedPrompt),
     true,
   );
   assert.equal(
@@ -1205,23 +1211,20 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
     true,
   );
   assert.equal(
-    /Each integratedSignals item should make the body useful for HR.*what the signal likely means in work.*what HR should verify next/is.test(
+    /Each integratedSignals item should make the body useful for HR.*what the signal means in work.*what HR should verify next/is.test(
       combinedPrompt,
     ),
     true,
   );
+  assert.equal(/Tražite konkretan primjer|Provjerite kako|Slušajte da li kandidat opisuje/i.test(combinedPrompt), true);
+  assert.equal(/Do not use one long integratedSignals\.body sentence/i.test(combinedPrompt), true);
   assert.equal(
     /interviewGuidance questions should be direct, ready to ask.*what HR should listen for/is.test(
       combinedPrompt,
     ),
     true,
   );
-  assert.equal(
-    /onboardingGuidance should give concrete manager actions.*agree priorities.*define quality criteria.*check progress weekly/is.test(
-      combinedPrompt,
-    ),
-    true,
-  );
+  assert.equal(/onboardingGuidance should be concise and operational.*dogovorite prioritete.*postavite ritam provjera.*definisite kriterije kvaliteta/is.test(combinedPrompt), true);
   assert.equal(/limitations.*explicit, calm and short/i.test(combinedPrompt), true);
   assert.equal(/Do not repeat the phrase korisno je provjeriti/i.test(combinedPrompt), true);
   assert.equal(
@@ -1254,7 +1257,7 @@ async function testFeminineMismatchIsRejected() {
       profileOverview:
         "Spreman na saradnju i vjerovatno konstruktivan u timskim odnosima. Ostatak nalaza ostaje isti.",
       keyStrengths: ["Jasna tragljivost izvora."],
-      watchouts: ["Potrebna je provjera kroz primjere rada."],
+      watchouts: ["U intervjuu provjerite konkretne primjere rada."],
     },
   });
 
@@ -1279,9 +1282,9 @@ async function testFeminineNarrativePassesAndNeutralEvidenceDoesNotTripGuardrail
     summary: {
       headline: "Integrisani HR pregled",
       profileOverview:
-        "Spremna na saradnju i vjerovatno konstruktivna u timskim odnosima. Ostatak nalaza ostaje oprezna hipoteza.",
+        "Spremna na saradnju i vjerovatno konstruktivna u timskim odnosima. U intervjuu provjerite kako uskladjuje ritam rada sa drugima.",
       keyStrengths: ["Jasna tragljivost izvora."],
-      watchouts: ["Potrebna je provjera kroz primjere rada."],
+      watchouts: ["Tražite primjer saradnje pod promjenom prioriteta."],
     },
     integratedSignals: [
       {

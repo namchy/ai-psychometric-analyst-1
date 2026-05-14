@@ -281,9 +281,10 @@ function testStructuredSnapshotPathAndAssertWrapper() {
   const snapshot = {
     summary: {
       headline: "HR pregled",
-      profileOverview: "Spremnost na saradnju ostaje stabilan signal.",
+      profileOverview:
+        "Spremnost na saradnju ostaje stabilan signal. U intervjuu provjerite konkretan primjer timskog dogovora.",
       keyStrengths: ["Jasna struktura rada."],
-      watchouts: ["Vrijedi dodatno provjeriti reakciju na pritisak rokova."],
+      watchouts: ["Tražite primjer reakcije na pritisak rokova."],
     },
   };
 
@@ -315,9 +316,10 @@ function testCompositeHrQaIgnoresInternalLegacySourceLabels() {
     snapshot: {
       summary: {
         headline: "HR pregled",
-        profileOverview: "Spremnost na saradnju ostaje stabilan signal.",
+        profileOverview:
+          "Spremnost na saradnju ostaje stabilan signal. U intervjuu provjerite konkretan primjer timskog dogovora.",
         keyStrengths: ["Jasna struktura rada."],
-        watchouts: ["Vrijedi dodatno provjeriti reakciju na pritisak rokova."],
+        watchouts: ["Tražite primjer reakcije na pritisak rokova."],
       },
       integratedSignals: [
         {
@@ -350,6 +352,86 @@ function testCompositeHrQaIgnoresInternalLegacySourceLabels() {
   assert.deepEqual(result, { ok: true, issues: [] });
 }
 
+function testCompositeHrSummaryWritingQualityGuardrails() {
+  const passiveResult = validateReportLanguageQuality({
+    snapshot: {
+      summary: {
+        headline: "Pouzdan radni profil",
+        profileOverview:
+          "Najvazniji radni signal je stabilan tempo rada. U intervjuu provjerite kako osoba postavlja prioritete.",
+        keyStrengths: ["Jasna struktura rada."],
+        watchouts: ["Područje za dodatnu provjeru je reakcija na promjene prioriteta."],
+      },
+    },
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.equal(passiveResult.ok, false);
+  assert.equal(
+    passiveResult.issues.some(
+      (issue) =>
+        issue.code === "FORBIDDEN_PHRASE" &&
+        issue.phrase === "Područje za dodatnu provjeru je",
+    ),
+    true,
+  );
+
+  const longHeadlineResult = validateReportLanguageQuality({
+    snapshot: {
+      summary: {
+        headline:
+          "Pouzdan radni profil sa slozenim motivacijskim, kognitivnim i interpersonalnim signalima za viseslojnu HR interpretaciju",
+        profileOverview:
+          "Najvazniji radni signal je stabilan tempo rada. U intervjuu provjerite kako osoba postavlja prioritete.",
+        keyStrengths: ["Jasna struktura rada."],
+        watchouts: ["Tražite primjer reakcije na promjene prioriteta."],
+      },
+    },
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.equal(longHeadlineResult.ok, false);
+  assert.equal(
+    longHeadlineResult.issues.some(
+      (issue) =>
+        issue.code === "SUMMARY_WRITING_QUALITY" &&
+        issue.phrase === "summary.headline too long",
+    ),
+    true,
+  );
+
+  const missingActionResult = validateReportLanguageQuality({
+    snapshot: {
+      summary: {
+        headline: "Pouzdan radni profil",
+        profileOverview: "Najvazniji radni signal je stabilan tempo rada.",
+        keyStrengths: ["Jasna struktura rada."],
+        watchouts: ["Nalaz treba povezati sa zahtjevima uloge."],
+      },
+    },
+    locale: "bs",
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  assert.equal(missingActionResult.ok, false);
+  assert.equal(
+    missingActionResult.issues.some(
+      (issue) =>
+        issue.code === "SUMMARY_WRITING_QUALITY" &&
+        issue.phrase === "summary missing HR action",
+    ),
+    true,
+  );
+}
+
 function main() {
   testValidTextPasses();
   testForbiddenCompositeHrPhrasesFail();
@@ -362,6 +444,7 @@ function main() {
   testForbiddenHiringTermsFail();
   testStructuredSnapshotPathAndAssertWrapper();
   testCompositeHrQaIgnoresInternalLegacySourceLabels();
+  testCompositeHrSummaryWritingQualityGuardrails();
 
   console.log("Report language quality tests passed.");
 }

@@ -10,7 +10,8 @@ export type ReportLanguageQualityIssueCode =
   | "GLOSSARY_VIOLATION"
   | "FORBIDDEN_HIRING_DECISION"
   | "FORBIDDEN_DEBUG_LANGUAGE"
-  | "NARRATIVE_CASING_VIOLATION";
+  | "NARRATIVE_CASING_VIOLATION"
+  | "SUMMARY_WRITING_QUALITY";
 
 export type ReportLanguageQualityIssue = {
   code: ReportLanguageQualityIssueCode;
@@ -56,6 +57,7 @@ export const COMPOSITE_HR_BHS_LANGUAGE_RULES = [
   "Ne mijenjaj score, band, source attempt IDs, generatedFor identitet niti bilo koju deterministicku input vrijednost.",
   "Report mora ostati HR-facing: selekcija, intervju, onboarding, menadzerska podrska i timski kontekst.",
   "Koristi oprezne hipoteze i signale za provjeru, ne presude.",
+  "Composite HR summary treba biti kratak, skenabilan i akcijski: headline priblizno do 90 znakova, profileOverview najvise 3 jasne recenice, a fokus za provjeru direktna HR akcija.",
   "Ne koristi krace sinonime za psihometrijske domene ako narusavaju terminolosku konzistentnost.",
 ] as const;
 
@@ -224,6 +226,12 @@ const COMPOSITE_HR_NARRATIVE_CASING_PATTERNS: PatternRule[] = [
     appliesToBhsOnly: true,
   },
 ];
+
+const COMPOSITE_HR_SUMMARY_ACTION_PATTERN =
+  /\b(?:U intervjuu\s+(?:direktno\s+)?provjerite|Direktno\s+provjerite|Prvo\s+razjasnite|Tražite\s+primjer|Trazite\s+primjer|Koristite\s+ovaj\s+nalaz)\b/u;
+
+const COMPOSITE_HR_PASSIVE_SUMMARY_FOCUS_PATTERN =
+  /Područje\s+za\s+dodatnu\s+provjeru\s+je|Podrucje\s+za\s+dodatnu\s+provjeru\s+je/iu;
 
 function collectStrings(value: unknown, output: string[] = []): string[] {
   if (typeof value === "string") {
@@ -473,6 +481,62 @@ function validateCompositeHrAgreeablenessLabelLikeValues(
   }
 }
 
+function validateCompositeHrSummaryWritingQuality(
+  snapshot: unknown,
+  locale: ReportLocale,
+  issues: ReportLanguageQualityIssue[],
+): void {
+  if (!isBhsLocale(locale) || !snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return;
+  }
+
+  const candidate = snapshot as {
+    summary?: {
+      headline?: unknown;
+      profileOverview?: unknown;
+      watchouts?: unknown;
+    };
+  };
+  const summary = candidate.summary;
+
+  if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
+    return;
+  }
+
+  if (typeof summary.headline === "string" && summary.headline.trim().length > 110) {
+    pushIssue(issues, {
+      code: "SUMMARY_WRITING_QUALITY",
+      phrase: "summary.headline too long",
+      suggestion: "Keep summary.headline short and close to 90 characters.",
+    });
+  }
+
+  const profileOverview = typeof summary.profileOverview === "string" ? summary.profileOverview : "";
+  const watchouts = Array.isArray(summary.watchouts)
+    ? summary.watchouts.filter((item): item is string => typeof item === "string")
+    : [];
+  const summaryFocusText = [profileOverview, ...watchouts].join("\n");
+
+  if (COMPOSITE_HR_PASSIVE_SUMMARY_FOCUS_PATTERN.test(summaryFocusText)) {
+    pushIssue(issues, {
+      code: "FORBIDDEN_PHRASE",
+      phrase: "Područje za dodatnu provjeru je",
+      suggestion: "Use a direct HR action such as 'U intervjuu provjerite...' or 'Tražite primjer...'.",
+    });
+  }
+
+  if (
+    summaryFocusText.trim().length > 0 &&
+    !COMPOSITE_HR_SUMMARY_ACTION_PATTERN.test(summaryFocusText)
+  ) {
+    pushIssue(issues, {
+      code: "SUMMARY_WRITING_QUALITY",
+      phrase: "summary missing HR action",
+      suggestion: "Include a direct action such as 'U intervjuu provjerite', 'Prvo razjasnite' or 'Tražite primjer'.",
+    });
+  }
+}
+
 export function formatReportLanguageQualityIssues(issues: ReportLanguageQualityIssue[]): string {
   return issues
     .map((issue) =>
@@ -506,6 +570,7 @@ export function validateReportLanguageQuality(
       issues,
     );
     validateCompositeHrAgreeablenessLabelLikeValues(params.snapshot, issues);
+    validateCompositeHrSummaryWritingQuality(params.snapshot, params.locale, issues);
   }
 
   return {
