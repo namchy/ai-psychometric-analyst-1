@@ -7,7 +7,10 @@ import {
   DashboardSectionHeader,
 } from "@/components/dashboard/primitives";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
+import {
+  getActiveOrganizationForUser,
+  getParticipantForOrganization,
+} from "@/lib/b2b/organizations";
 import { getReadyCompositeHrAssessmentReportForOrganization } from "@/lib/assessment/assessment-reports";
 
 type CompositeAssessmentReportPageProps = {
@@ -64,6 +67,11 @@ export default async function CompositeAssessmentReportPage({
     notFound();
   }
 
+  const participant =
+    result.status === "ready"
+      ? await getParticipantForOrganization(organization.id, result.report.participant_id)
+      : null;
+
   return (
     <AuthenticatedAppMainContent
       className="mx-auto max-w-[92rem] px-4 sm:px-6 lg:px-10"
@@ -71,7 +79,14 @@ export default async function CompositeAssessmentReportPage({
     >
       <div className="pb-12">
         {result.status === "ready" ? (
-          <CompositeHrReportView report={result.report} snapshot={result.snapshot} />
+          <CompositeHrReportView
+            report={result.report}
+            snapshot={result.snapshot}
+            participant={{
+              fullName: participant?.full_name ?? null,
+              email: participant?.email ?? null,
+            }}
+          />
         ) : result.status === "not_ready" ? (
           <CompositeReportStateCard
             title="Izvjestaj jos nije spreman za pregled"

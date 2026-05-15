@@ -241,9 +241,18 @@ function buildReadyReport(snapshot) {
   };
 }
 
+function buildParticipant(overrides = {}) {
+  return {
+    fullName: "Amra Afgan",
+    email: "amrafagan@nestox.com",
+    ...overrides,
+  };
+}
+
 function main() {
   const snapshot = generateMockCompositeHrReport(buildCompositeInputSnapshotFixture());
   const readyReport = buildReadyReport(snapshot);
+  const participant = buildParticipant();
   const resolved = resolveReadyCompositeHrAssessmentReport(readyReport);
 
   assert.equal(resolved.status, "ready");
@@ -251,10 +260,13 @@ function main() {
   const model = buildCompositeHrReportViewModel({
     report: readyReport,
     snapshot,
+    participant,
   });
 
   assert.equal(model.title, "Kompozitni HR izvještaj");
   assert.equal(model.statusLabel, "Spremno za pregled");
+  assert.equal(model.participantFullName, "Amra Afgan");
+  assert.equal(model.participantEmail, "amrafagan@nestox.com");
   assert.equal(
     model.description,
     "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
@@ -317,11 +329,14 @@ function main() {
     React.createElement(CompositeHrReportView, {
       report: readyReport,
       snapshot,
+      participant,
     }),
   );
 
   assert.equal(html.includes("Kratki pregled izvještaja"), true);
   assert.equal(html.includes("Nazad na pregled kandidata"), true);
+  assert.equal(html.includes("Amra Afgan"), true);
+  assert.equal(html.includes("amrafagan@nestox.com"), true);
   assert.equal(html.includes("Kompozitni HR izvještaj"), true);
   assert.equal(
     html.includes(
@@ -373,6 +388,7 @@ function main() {
     html.indexOf("Nazad na pregled kandidata") < html.indexOf("KOMPOZITNI HR IZVJEŠTAJ"),
     true,
   );
+  assert.equal(html.indexOf("Amra Afgan") > html.indexOf("KOMPOZITNI HR IZVJEŠTAJ"), true);
   const summarySectionStart = html.indexOf("Sažetak");
   const summarySectionEnd = html.indexOf("Integrisani signali", summarySectionStart);
   assert.equal(summarySectionStart >= 0, true);
@@ -466,6 +482,7 @@ function main() {
     React.createElement(CompositeHrReportView, {
       report: readyReport,
       snapshot: longOverviewSnapshot,
+      participant,
     }),
   );
 
@@ -496,6 +513,7 @@ function main() {
     React.createElement(CompositeHrReportView, {
       report: readyReport,
       snapshot: multiSentenceSignalSnapshot,
+      participant,
     }),
   );
 
@@ -537,6 +555,7 @@ function main() {
     React.createElement(CompositeHrReportView, {
       report: readyReport,
       snapshot: agreeablenessDisplaySnapshot,
+      participant,
     }),
   );
 
@@ -545,6 +564,20 @@ function main() {
   assert.equal(agreeablenessDisplayHtml.includes("Spremnost na saradnju"), true);
   assert.equal(agreeablenessDisplayHtml.includes("Saradljivost"), true);
   assert.equal(agreeablenessDisplayHtml.includes("integrated-signal-evidence-panel"), true);
+
+  const fallbackHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot,
+      participant: null,
+    }),
+  );
+
+  assert.equal(fallbackHtml.includes("Kompozitni HR izvještaj"), true);
+  assert.equal(fallbackHtml.includes("Amra Afgan"), false);
+  assert.equal(fallbackHtml.includes("amrafagan@nestox.com"), false);
+  assert.equal(fallbackHtml.includes("participantName"), false);
+  assert.equal(fallbackHtml.includes("participantEmail"), false);
 
   const invalid = resolveReadyCompositeHrAssessmentReport(
     buildReadyReport({

@@ -11,6 +11,12 @@ import {
 type CompositeHrReportViewProps = {
   report: AssessmentReportRecord;
   snapshot: CompositeHrReportSnapshot;
+  participant?: CompositeHrReportParticipantIdentity | null;
+};
+
+export type CompositeHrReportParticipantIdentity = {
+  fullName: string | null;
+  email: string | null;
 };
 
 export type CompositeHrReportViewModel = {
@@ -18,6 +24,8 @@ export type CompositeHrReportViewModel = {
   statusLabel: "Spremno za pregled";
   description: string;
   participantReportsHref: string;
+  participantFullName: string | null;
+  participantEmail: string | null;
   source: {
     assessmentAssignmentId: string;
     assessmentCycleLabel: string;
@@ -303,6 +311,7 @@ function getSummaryBlockStyle(label: "Glavni signal" | "Fokus za provjeru" | "Ka
 export function buildCompositeHrReportViewModel(input: {
   report: AssessmentReportRecord;
   snapshot: CompositeHrReportSnapshot;
+  participant?: CompositeHrReportParticipantIdentity | null;
 }): CompositeHrReportViewModel {
   return {
     title: "Kompozitni HR izvještaj",
@@ -310,6 +319,8 @@ export function buildCompositeHrReportViewModel(input: {
     description:
       "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
     participantReportsHref: `/dashboard/participants/${input.report.participant_id}/reports`,
+    participantFullName: input.participant?.fullName?.trim() || null,
+    participantEmail: input.participant?.email?.trim() || null,
     source: {
       assessmentAssignmentId: input.snapshot.generatedFor.assessmentAssignmentId,
       assessmentCycleLabel: "Standardna baterija procjena",
@@ -409,8 +420,15 @@ function splitEvidenceValue(value: string): { primary: string; detail: string | 
   };
 }
 
-export function CompositeHrReportView({ report, snapshot }: CompositeHrReportViewProps) {
-  const model = buildCompositeHrReportViewModel({ report, snapshot });
+export function CompositeHrReportView({
+  report,
+  snapshot,
+  participant = null,
+}: CompositeHrReportViewProps) {
+  const model = buildCompositeHrReportViewModel({ report, snapshot, participant });
+  const heroTitle = model.participantFullName ?? model.title;
+  const participantEmail =
+    model.participantFullName && model.participantEmail ? model.participantEmail : null;
 
   return (
     <div className="space-y-6 pb-12">
@@ -425,12 +443,15 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
             <DashboardSectionHeader
               eyebrow="KOMPOZITNI HR IZVJEŠTAJ"
               eyebrowClassName="text-[#073b4c]"
-              title={model.title}
+              title={heroTitle}
               description={model.description}
               className="gap-2"
               titleClassName="text-3xl font-extrabold tracking-[-0.05em] text-[#073b4c] sm:text-4xl"
               descriptionClassName="text-base text-slate-600"
             />
+            {participantEmail ? (
+              <p className="-mt-1 text-sm text-slate-600 sm:text-base">{participantEmail}</p>
+            ) : null}
             <div className="flex flex-wrap gap-2.5">
               <DashboardStatusBadge tone="success" emphasized>
                 {model.statusLabel}
