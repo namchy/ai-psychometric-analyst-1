@@ -9,6 +9,7 @@ import {
   DashboardSectionHeader,
   DashboardStatusBadge,
   DashboardSectionShell,
+  getDashboardCtaClassName,
 } from "@/components/dashboard/primitives";
 import { HrAssessmentsTable } from "@/components/dashboard/hr-assessments-table";
 import { SingleOpenPanelGroup } from "@/components/dashboard/single-open-panel-group";
@@ -470,7 +471,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       ) : null}
                       <DashboardActionRow className="flex items-center justify-end pt-1">
                         <button
-                          className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25"
+                          className={getDashboardCtaClassName({ variant: "primary" })}
                           type="submit"
                         >
                           Create participant

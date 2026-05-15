@@ -1,9 +1,9 @@
-import Link from "next/link";
 import type { AssessmentReportRecord } from "@/lib/assessment/assessment-reports";
 import type { CompositeHrReportSnapshot } from "@/lib/assessment/composite-hr-report-contract";
 import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import {
   DashboardInfoCardShell,
+  PageNavigation,
   DashboardSectionHeader,
   DashboardStatusBadge,
 } from "@/components/dashboard/primitives";
@@ -414,8 +414,13 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
 
   return (
     <div className="space-y-6 pb-12">
+      <PageNavigation
+        backHref={model.participantReportsHref}
+        backLabel="Nazad na pregled kandidata"
+        contextLabel="Kompozitni HR izvještaj"
+      />
       <DashboardInfoCardShell className="rounded-[1.6rem] border-slate-200/80 p-6 sm:p-7">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4">
           <div className="space-y-3">
             <DashboardSectionHeader
               eyebrow="KOMPOZITNI HR IZVJEŠTAJ"
@@ -435,13 +440,6 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               </DashboardStatusBadge>
             </div>
           </div>
-
-          <Link
-            className="inline-flex min-h-0 rounded-full border border-slate-200 bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
-            href={model.participantReportsHref}
-          >
-            Nazad na pregled kandidata
-          </Link>
         </div>
         <div className="metadata-strip-grid mt-6 border-t border-slate-200/80 pt-5">
           <div className="flex items-start gap-3">

@@ -321,6 +321,20 @@ function main() {
   );
 
   assert.equal(html.includes("Kratki pregled izvještaja"), true);
+  assert.equal(html.includes("Nazad na pregled kandidata"), true);
+  assert.equal(html.includes("Kompozitni HR izvještaj"), true);
+  assert.equal(
+    html.includes(
+      "text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400",
+    ),
+    true,
+  );
+  assert.equal(
+    html.includes(
+      "inline-flex min-h-0 items-center self-start rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] text-slate-600 transition",
+    ),
+    true,
+  );
   assert.equal(
     html.includes(
       "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
@@ -353,6 +367,10 @@ function main() {
   assert.equal(html.includes("summary-signal-block"), true);
   assert.equal(html.includes("summary-strengths-block"), true);
   assert.equal(html.includes("summary-watchout-block"), false);
+  assert.equal(
+    html.indexOf("Nazad na pregled kandidata") < html.indexOf("KOMPOZITNI HR IZVJEŠTAJ"),
+    true,
+  );
   const summarySectionStart = html.indexOf("Sažetak");
   const summarySectionEnd = html.indexOf("Integrisani signali", summarySectionStart);
   assert.equal(summarySectionStart >= 0, true);

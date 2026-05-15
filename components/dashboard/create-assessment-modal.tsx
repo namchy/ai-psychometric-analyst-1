@@ -7,6 +7,7 @@ import { useFormState } from "react-dom";
 import { createCandidateAssessment } from "@/app/actions/participants";
 import { CreateAssessmentForm } from "@/components/dashboard/create-assessment-form";
 import { INITIAL_CREATE_ASSESSMENT_MODAL_STATE } from "@/components/dashboard/create-assessment-modal-state";
+import { getDashboardCtaClassName } from "@/components/dashboard/primitives";
 
 type CreateAssessmentModalProps = {
   onClose: () => void;
@@ -167,7 +168,7 @@ export function CreateAssessmentModal({ onClose }: CreateAssessmentModalProps) {
                 Zatvori
               </button>
               <button
-                className="min-h-0 w-full rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] sm:w-auto"
+                className={`${getDashboardCtaClassName({ variant: "primary" })} w-full sm:w-auto`}
                 onClick={closeAndFocusTable}
                 type="button"
               >

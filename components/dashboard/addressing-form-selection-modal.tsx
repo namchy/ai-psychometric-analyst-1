@@ -4,6 +4,7 @@ import { useEffect, useId, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { saveParticipantAddressingForm } from "@/app/actions/participants";
+import { getDashboardCtaClassName } from "@/components/dashboard/primitives";
 import type { AddressingForm } from "@/lib/auth/addressing-form";
 
 const ADDRESSING_FORM_OPTIONS: Array<{
@@ -125,7 +126,9 @@ export function AddressingFormSelectionModal() {
 
           <div className="flex justify-end">
             <button
-              className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+              className={isPending
+                ? getDashboardCtaClassName({ variant: "disabled" })
+                : getDashboardCtaClassName({ variant: "primary" })}
               disabled={isPending}
               onClick={handleSave}
               type="button"

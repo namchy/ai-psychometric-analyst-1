@@ -10,6 +10,8 @@ import {
 } from "@/components/app/authenticated-app-chrome";
 import {
   DashboardInfoCardShell,
+  PageNavigation,
+  getDashboardCtaClassName,
   DashboardSectionHeader,
   DashboardSectionShell,
   DashboardStatusBadge,
@@ -43,14 +45,19 @@ type CandidateReportsPageProps = {
   };
 };
 
+const EMERALD_STATUS_BADGE_CLASS_NAME =
+  "border-[rgba(6,214,160,0.22)] bg-[rgba(6,214,160,0.14)] text-[#073b4c]";
+const ORGANIZATION_BADGE_CLASS_NAME =
+  "border-[rgba(7,59,76,0.08)] bg-[rgba(255,255,255,0.72)] text-[#073b4c]";
+
 function getCardStatusClassName(visualVariant: HrCandidateAssessmentCardVisualVariant): string {
   switch (visualVariant) {
     case "success":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return EMERALD_STATUS_BADGE_CLASS_NAME;
     case "progress":
-      return "border-sky-200 bg-sky-50 text-sky-700";
+      return "border-[rgba(255,209,102,0.32)] bg-[rgba(255,209,102,0.16)] text-[#073b4c]";
     case "error":
-      return "border-rose-200 bg-rose-50 text-rose-700";
+      return "border-[rgba(239,71,111,0.24)] bg-[rgba(239,71,111,0.14)] text-[#073b4c]";
     case "info":
     default:
       return "border-slate-200 bg-slate-50 text-slate-600";
@@ -216,9 +223,15 @@ export default async function CandidateReportsPage({
       topPaddingClassName="pt-0"
     >
       <div className="space-y-8 pb-12">
+        <PageNavigation
+          backHref="/dashboard"
+          backLabel="Nazad na dashboard"
+          contextLabel="HR procjena kandidata"
+        />
+
         <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
           <div className="relative space-y-6">
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex flex-col gap-5">
               <div className="space-y-4">
                 <DashboardSectionHeader
                   eyebrow="HR PROCJENA KANDIDATA"
@@ -230,67 +243,37 @@ export default async function CandidateReportsPage({
                 />
 
                 <div className="flex flex-wrap gap-2.5">
-                  <DashboardStatusBadge tone="success" emphasized>
+                  <DashboardStatusBadge className={EMERALD_STATUS_BADGE_CLASS_NAME} emphasized>
                     {model.completedLabel}
                   </DashboardStatusBadge>
-                  <DashboardStatusBadge tone={model.readyHrReports > 0 ? "success" : "neutral"}>
+                  <DashboardStatusBadge
+                    className={
+                      model.readyHrReports > 0
+                        ? EMERALD_STATUS_BADGE_CLASS_NAME
+                        : undefined
+                    }
+                    tone={model.readyHrReports > 0 ? "success" : "neutral"}
+                  >
                     {model.readyLabel}
                   </DashboardStatusBadge>
-                  <DashboardStatusBadge>{model.availabilityLabel}</DashboardStatusBadge>
+                  <DashboardStatusBadge className={EMERALD_STATUS_BADGE_CLASS_NAME}>
+                    {model.availabilityLabel}
+                  </DashboardStatusBadge>
+                  <DashboardStatusBadge className={ORGANIZATION_BADGE_CLASS_NAME}>
+                    {model.organizationName}
+                  </DashboardStatusBadge>
                 </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 xl:justify-end">
-                <span className="rounded-full border border-white/70 bg-white/70 px-4 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                  {model.organizationName}
-                </span>
-                <Link
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:border-teal-300 hover:text-teal-700"
-                  href="/dashboard"
-                >
-                  Nazad na dashboard
-                </Link>
               </div>
             </div>
           </div>
         </DashboardSectionShell>
 
-        <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
-          <DashboardSectionHeader
-            eyebrow="Kandidat"
-            eyebrowClassName="text-teal-800/80"
-            title="Sažetak procjene"
-            description="Pregled kandidata i trenutne dostupnosti HR izvještaja."
-            className="gap-2"
-            titleClassName="text-[1.35rem]"
-          />
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Ime</p>
-              <p className="mt-2 text-[15px] font-semibold text-slate-950">{model.participant.full_name}</p>
-            </div>
-            <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Email</p>
-              <p className="mt-2 break-all text-[15px] font-semibold text-slate-950">{model.participant.email}</p>
-            </div>
-            <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Završeni testovi</p>
-              <p className="mt-2 text-[15px] font-semibold text-slate-950">{model.completedLabel}</p>
-            </div>
-            <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">HR izvještaji</p>
-              <p className="mt-2 text-[15px] font-semibold text-slate-950">{model.readyLabel}</p>
-            </div>
-          </div>
-        </DashboardInfoCardShell>
-
-        <DashboardSectionShell className="lg:p-6">
+        <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
           <DashboardSectionHeader
             eyebrow="Pojedinačni HR izvještaji"
-            eyebrowClassName="text-teal-800/80"
-            title="Dostupni testovi i statusi"
-            description="Svaka kartica pokazuje stanje odabranog attempta za taj test i dostupnost HR izvještaja."
+            eyebrowClassName="text-[#118ab2]"
+            title="Pojedinačni HR izvještaji"
+            description="Pregled statusa i izvještaja za svaku završenu procjenu kandidata."
             className="gap-2"
             titleClassName="text-[1.35rem]"
           />
@@ -351,12 +334,12 @@ export default async function CandidateReportsPage({
                 <div className="mt-6">
                   <div className="flex flex-wrap gap-3">
                     {card.cta.disabled ? (
-                      <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                      <span className={getDashboardCtaClassName({ variant: "disabled" })}>
                         {card.cta.label}
                       </span>
                     ) : (
                       <Link
-                        className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition hover:-translate-y-0.5 hover:bg-teal-700"
+                        className={getDashboardCtaClassName({ variant: "primary" })}
                         href={card.cta.href}
                       >
                         {card.cta.label}
@@ -374,7 +357,7 @@ export default async function CandidateReportsPage({
                           value={`/dashboard/participants/${participant.id}/reports`}
                         />
                         <button
-                          className="inline-flex min-h-0 rounded-full border border-slate-300 bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
+                          className={getDashboardCtaClassName({ variant: "secondary" })}
                           type="submit"
                         >
                           {card.action.label}
@@ -388,20 +371,20 @@ export default async function CandidateReportsPage({
           </div>
         </DashboardSectionShell>
 
-        <DashboardSectionShell className="lg:p-6">
+        <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.24),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
           <DashboardSectionHeader
             eyebrow="Kompozitni HR izvještaj"
-            eyebrowClassName="text-teal-800/80"
+            eyebrowClassName="text-[#073b4c]"
             title={model.compositeCard.title}
             description={model.compositeCard.subtitle}
             className="gap-2"
             titleClassName="text-[1.35rem]"
           />
 
-          <DashboardInfoCardShell className="mt-6 rounded-[1.4rem] border-slate-200/80 p-5">
+          <DashboardInfoCardShell className="mt-6 max-w-[920px] rounded-[24px] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6">
             {compositeQueueMessage ? (
               <div
-                className={`mb-4 rounded-[1.2rem] border px-4 py-3 text-sm ${
+                className={`mb-4 rounded-[1.2rem] border px-4 py-3 text-sm min-[900px]:col-span-2 ${
                   compositeQueueMessage.tone === "success"
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                     : compositeQueueMessage.tone === "error"
@@ -413,7 +396,7 @@ export default async function CandidateReportsPage({
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex flex-col gap-[18px] min-[900px]:contents">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
@@ -425,13 +408,14 @@ export default async function CandidateReportsPage({
                     {model.compositeCard.statusLabel}
                   </span>
                 </div>
-                <p className="text-sm leading-6 text-slate-600">
+                <p className="mt-2 max-w-[520px] text-sm leading-6 text-slate-600">
                   {model.compositeCard.body}
                 </p>
               </div>
 
               {model.compositeCard.cta.action && !model.compositeCard.cta.disabled ? (
                 <form
+                  className="mt-[18px] w-full min-[900px]:mt-0 min-[900px]:w-auto"
                   action={
                     model.compositeCard.cta.action === "generate_composite"
                       ? generateCompositeHrReportAction
@@ -455,7 +439,7 @@ export default async function CandidateReportsPage({
                     value={`/dashboard/participants/${participant.id}/reports`}
                   />
                   <button
-                    className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition hover:-translate-y-0.5 hover:bg-teal-700"
+                    className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} justify-center min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
                     type="submit"
                   >
                     {model.compositeCard.cta.label}
@@ -463,13 +447,13 @@ export default async function CandidateReportsPage({
                 </form>
               ) : model.compositeCard.cta.href && !model.compositeCard.cta.disabled ? (
                 <Link
-                  className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition hover:-translate-y-0.5 hover:bg-teal-700"
+                  className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
                   href={model.compositeCard.cta.href}
                 >
                   {model.compositeCard.cta.label}
                 </Link>
               ) : (
-                <span className="inline-flex min-h-0 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                <span className={`${getDashboardCtaClassName({ variant: "disabled", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}>
                   {model.compositeCard.cta.label}
                 </span>
               )}

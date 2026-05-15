@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { AuthenticatedAppMainContent } from "@/components/app/authenticated-app-chrome";
 import { CompositeHrReportView } from "@/components/dashboard/composite-hr-report-view";
 import {
   DashboardInfoCardShell,
+  PageNavigation,
   DashboardSectionHeader,
 } from "@/components/dashboard/primitives";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
@@ -24,8 +24,13 @@ function CompositeReportStateCard(input: {
   participantId: string;
 }) {
   return (
-    <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-6 sm:p-7">
-      <div className="space-y-4">
+    <div className="space-y-6">
+      <PageNavigation
+        backHref={`/dashboard/participants/${input.participantId}/reports`}
+        backLabel="Nazad na pregled kandidata"
+        contextLabel="Kompozitni HR izvještaj"
+      />
+      <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-6 sm:p-7">
         <DashboardSectionHeader
           eyebrow="Kompozitni HR izvjestaj"
           eyebrowClassName="text-teal-800/90"
@@ -35,15 +40,8 @@ function CompositeReportStateCard(input: {
           titleClassName="text-2xl font-bold tracking-[-0.04em]"
           descriptionClassName="text-base text-slate-600"
         />
-
-        <Link
-          className="inline-flex min-h-0 rounded-full border border-slate-200 bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-700 transition hover:border-teal-300 hover:text-teal-700"
-          href={`/dashboard/participants/${input.participantId}/reports`}
-        >
-          Nazad na pregled kandidata
-        </Link>
-      </div>
-    </DashboardInfoCardShell>
+      </DashboardInfoCardShell>
+    </div>
   );
 }
 

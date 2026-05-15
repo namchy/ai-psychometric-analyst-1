@@ -4,7 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { createStandardAssessmentBattery } from "@/app/actions/participants";
 import { CreateAssessmentModal } from "@/components/dashboard/create-assessment-modal";
-import { DashboardActionRow, DashboardSectionShell } from "@/components/dashboard/primitives";
+import {
+  DashboardActionRow,
+  DashboardSectionShell,
+  getDashboardCtaClassName,
+} from "@/components/dashboard/primitives";
 import {
   DEFAULT_ASSESSMENT_LOCALE,
   SUPPORTED_ASSESSMENT_LOCALES,
@@ -189,7 +193,7 @@ export function HrAssessmentsTable({
               </div>
 
               <button
-                className="min-h-0 w-fit rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)]"
+                className={getDashboardCtaClassName({ variant: "primary" })}
                 onClick={() => setIsCreateAssessmentModalOpen(true)}
                 type="button"
               >
@@ -321,7 +325,7 @@ export function HrAssessmentsTable({
                       <td className="align-middle rounded-r-[1.1rem] border-y border-r border-slate-200/70 bg-[rgba(255,255,255,0.94)] px-5 py-5 transition-colors group-hover:bg-white">
                         {row.primaryAction.kind === "link" ? (
                           <Link
-                            className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700"
+                            className={getDashboardCtaClassName({ variant: "primary", size: "sm" })}
                             href={row.primaryAction.href}
                           >
                             {row.primaryAction.label}
@@ -340,7 +344,9 @@ export function HrAssessmentsTable({
                             open={openAttemptFor === row.participant.id}
                           >
                             <summary className="cursor-pointer list-none rounded-[1.2rem] px-4 py-3 [&::-webkit-details-marker]:hidden">
-                              <span className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] transition-all duration-200 group-open:bg-teal-700">
+                              <span
+                                className={`${getDashboardCtaClassName({ variant: "primary", size: "sm" })} group-open:bg-teal-800`}
+                              >
                                 {row.primaryAction.label}
                               </span>
                             </summary>
@@ -395,7 +401,7 @@ export function HrAssessmentsTable({
                               ) : null}
                               <DashboardActionRow>
                                 <button
-                                  className="w-full min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)]"
+                                  className={getDashboardCtaClassName({ variant: "primary", fullWidth: true })}
                                   type="submit"
                                 >
                                   Kreiraj procjenu
