@@ -815,25 +815,32 @@ export function CompositeHrReportView({
         </div>
       </DashboardInfoCardShell>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <DashboardInfoCardShell className="h-full rounded-[1.5rem] border border-[rgba(17,138,178,0.14)] border-t-4 border-t-[#118ab2] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(17,138,178,0.045))] p-5 shadow-[0_18px_42px_rgba(15,23,42,0.08)] sm:p-6">
           <DashboardSectionHeader
-            eyebrow="Intervju"
-            eyebrowClassName="text-teal-800/80"
+            eyebrow="INTERVJU"
+            eyebrowClassName="font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-[#118ab2]"
             title="Preporučene fokus teme"
             className="gap-2"
-            titleClassName="text-[1.35rem]"
+            titleClassName="mt-2 text-xl font-semibold tracking-[-0.035em] text-[#073b4c]"
           />
 
-          <div className="mt-5 space-y-4">
+          <p className="mt-4 rounded-[1rem] border border-[rgba(17,138,178,0.14)] bg-[rgba(17,138,178,0.06)] px-4 py-3 text-sm leading-6 text-slate-600">
+            Koristi ove teme za strukturiran razgovor i provjeru ključnih pretpostavki iz
+            izvještaja.
+          </p>
+
+          <div className="mt-4 space-y-4">
             {model.interviewGuidance.focusAreas.map((focusArea) => (
               <div
                 key={focusArea.title}
-                className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4"
+                className="rounded-[1.15rem] border border-[rgba(7,59,76,0.08)] bg-white/75 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.045)]"
               >
-                <h3 className="text-base font-semibold text-slate-950">{focusArea.title}</h3>
+                <h3 className="text-[0.95rem] font-semibold leading-5 text-[#073b4c]">
+                  {focusArea.title}
+                </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{focusArea.rationale}</p>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+                <ul className="mt-3 list-disc space-y-2.5 pl-5 marker:text-[#118ab2] text-sm leading-6 text-slate-700">
                   {focusArea.questions.map((question) => (
                     <li key={question}>{question}</li>
                   ))}
@@ -843,31 +850,36 @@ export function CompositeHrReportView({
           </div>
         </DashboardInfoCardShell>
 
-        <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
+        <DashboardInfoCardShell className="h-full rounded-[1.5rem] border border-[rgba(7,59,76,0.14)] border-t-4 border-t-[#073b4c] bg-[linear-gradient(135deg,rgba(255,255,255,0.97),rgba(7,59,76,0.035))] p-5 shadow-[0_18px_42px_rgba(15,23,42,0.08)] sm:p-6">
           <DashboardSectionHeader
-            eyebrow="Onboarding"
-            eyebrowClassName="text-teal-800/80"
+            eyebrow="ONBOARDING"
+            eyebrowClassName="font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-[#073b4c]"
             title="Podrška i menadžerske smjernice"
             className="gap-2"
-            titleClassName="text-[1.35rem]"
+            titleClassName="mt-2 text-xl font-semibold tracking-[-0.035em] text-[#073b4c]"
           />
 
-          <div className="mt-5 grid gap-4">
-            <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
-              <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">
+          <p className="mt-4 rounded-[1rem] border border-[rgba(7,59,76,0.12)] bg-[rgba(7,59,76,0.045)] px-4 py-3 text-sm leading-6 text-slate-600">
+            Koristi ove smjernice za prve razgovore, očekivanja i podršku menadžera nakon
+            procjene.
+          </p>
+
+          <div className="mt-4 space-y-4">
+            <div className="rounded-[1.15rem] border border-[rgba(7,59,76,0.08)] bg-white/75 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.045)]">
+              <h3 className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-[#073b4c]">
                 Smjernice za menadžera
               </h3>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+              <ul className="mt-3 list-disc space-y-2.5 pl-5 marker:text-[#073b4c] text-sm leading-6 text-slate-700">
                 {model.onboardingGuidance.managementTips.map((tip) => (
                   <li key={tip}>{tip}</li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
-              <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">
+            <div className="rounded-[1.15rem] border border-[rgba(7,59,76,0.08)] bg-white/75 px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.045)]">
+              <h3 className="font-label text-[11px] font-semibold uppercase tracking-[0.18em] text-[#073b4c]">
                 Potrebe za podrškom
               </h3>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+              <ul className="mt-3 list-disc space-y-2.5 pl-5 marker:text-[#073b4c] text-sm leading-6 text-slate-700">
                 {model.onboardingGuidance.supportNeeds.map((need) => (
                   <li key={need}>{need}</li>
                 ))}

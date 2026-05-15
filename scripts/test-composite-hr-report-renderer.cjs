@@ -377,6 +377,24 @@ function main() {
   );
   assert.equal(html.includes("Integrisana interpretacija"), false);
   assert.equal(html.includes("Signali su prikazani kao HR hipoteze"), false);
+  assert.equal(html.includes("INTERVJU"), true);
+  assert.equal(html.includes("ONBOARDING"), true);
+  assert.equal(
+    html.includes(
+      "Koristi ove teme za strukturiran razgovor i provjeru ključnih pretpostavki iz izvještaja.",
+    ),
+    true,
+  );
+  assert.equal(
+    html.includes(
+      "Koristi ove smjernice za prve razgovore, očekivanja i podršku menadžera nakon procjene.",
+    ),
+    true,
+  );
+  assert.equal(html.includes("border-t-[#118ab2]"), true);
+  assert.equal(html.includes("border-t-[#073b4c]"), true);
+  assert.equal(html.includes("marker:text-[#118ab2]"), true);
+  assert.equal(html.includes("marker:text-[#073b4c]"), true);
   assert.equal(html.includes("ŠTA ZNAČI U RADU"), true);
   assert.equal(html.includes("ŠTA HR TREBA PROVJERITI"), true);
   assert.equal(html.includes("DOKAZI IZ PROCJENA"), true);
@@ -429,7 +447,7 @@ function main() {
   assert.equal(html.includes("inset 3px 0 0"), false);
   assert.equal(html.includes("#ef476f"), false);
   const integratedSectionStart = html.indexOf("Integrisani signali");
-  const integratedSectionEnd = html.indexOf("Intervju", integratedSectionStart);
+  const integratedSectionEnd = html.indexOf("INTERVJU", integratedSectionStart);
   assert.equal(integratedSectionStart >= 0, true);
   assert.equal(integratedSectionEnd > integratedSectionStart, true);
   const integratedSignalsHtml = html.slice(integratedSectionStart, integratedSectionEnd);
