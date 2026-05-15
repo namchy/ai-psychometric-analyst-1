@@ -30,7 +30,7 @@ export type CompositeHrReportViewModel = {
   };
   summary: CompositeHrReportSnapshot["summary"];
   structuredSummaryBlocks: Array<{
-    label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz";
+    label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti izvještaj";
     body: string;
   }>;
   integratedSignals: Array<
@@ -239,7 +239,7 @@ function pickSummaryVerificationFocus(profileOverviewSentences: string[], watcho
 }
 
 function buildStructuredSummaryBlocks(profileOverview: string, watchouts: string[]): Array<{
-  label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz";
+  label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti izvještaj";
   body: string;
 }> {
   const sentences = splitIntoSummarySentences(profileOverview);
@@ -252,7 +252,7 @@ function buildStructuredSummaryBlocks(profileOverview: string, watchouts: string
   const usageGuidance =
     watchouts.length > 0 ? sentences.slice(1).join(" ") : sentences.slice(2).join(" ");
   const blocks: Array<{
-    label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz";
+    label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti izvještaj";
     body: string;
   }> = [{ label: "Glavni signal", body: sentences[0] }];
 
@@ -261,13 +261,13 @@ function buildStructuredSummaryBlocks(profileOverview: string, watchouts: string
   }
 
   if (usageGuidance) {
-    blocks.push({ label: "Kako koristiti nalaz", body: usageGuidance });
+    blocks.push({ label: "Kako koristiti izvještaj", body: usageGuidance });
   }
 
   return blocks;
 }
 
-function getSummaryBlockStyle(label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti nalaz") {
+function getSummaryBlockStyle(label: "Glavni signal" | "Fokus za provjeru" | "Kako koristiti izvještaj") {
   if (label === "Glavni signal") {
     return {
       accentColor: REPORT_COLORS.oceanBlue,
@@ -494,13 +494,25 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
           <DashboardSectionHeader
             eyebrow="Sažetak"
             eyebrowClassName="text-[#073b4c]"
-            title={model.summary.headline}
+            title="Sažetak"
             description={undefined}
             className="gap-2.5"
-            titleClassName="max-w-3xl text-[1.48rem] font-semibold leading-tight tracking-[-0.03em] text-[#073b4c]"
+            titleClassName="text-[1.55rem] font-semibold tracking-[-0.035em] text-[#073b4c]"
           />
 
-          <div className="mt-4 grid gap-3.5 lg:grid-cols-2">
+          <div className="mt-5 rounded-[1.5rem] border border-[rgba(7,59,76,0.12)] border-l-4 border-l-[#073b4c] bg-[linear-gradient(135deg,rgba(7,59,76,0.085),rgba(17,138,178,0.055))] px-5 py-5 shadow-[0_20px_46px_rgba(15,23,42,0.10)] sm:px-6 sm:py-6">
+            <p className="mb-2.5 font-label text-[11px] font-semibold uppercase tracking-[0.2em] text-[#118ab2]">
+              Glavni zaključak
+            </p>
+            <h3 className="max-w-[820px] text-[1.45rem] font-semibold leading-[1.18] tracking-[-0.045em] text-[#073b4c] sm:text-[1.7rem]">
+              {model.summary.headline}
+            </h3>
+            <p className="mt-3 max-w-[760px] text-sm leading-6 text-slate-600">
+              {model.summary.profileOverview}
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-3.5 lg:grid-cols-2">
             <div
               className="summary-strengths-block rounded-[1.1rem] border bg-white px-4 py-4 shadow-[0_12px_24px_rgba(15,23,42,0.045)] sm:px-5"
               style={{
@@ -536,7 +548,7 @@ export function CompositeHrReportView({ report, snapshot }: CompositeHrReportVie
               </ul>
             </div>
 
-            {["Fokus za provjeru", "Glavni signal", "Kako koristiti nalaz"].flatMap((orderedLabel) =>
+            {["Fokus za provjeru", "Glavni signal", "Kako koristiti izvještaj"].flatMap((orderedLabel) =>
               model.structuredSummaryBlocks
                 .filter((block) => block.label === orderedLabel)
                 .map((block, index) => {

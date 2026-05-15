@@ -281,7 +281,7 @@ function main() {
       body: "Najkorisnije je dodatno provjeriti konkretne primjere ponasanja i nacin rada pod pritiskom.",
     },
     {
-      label: "Kako koristiti nalaz",
+      label: "Kako koristiti izvještaj",
       body: "Signal treba koristiti kao hipotezu za provjeru kroz razgovor i radne primjere, a ne kao automatski zakljucak.",
     },
   ]);
@@ -348,10 +348,12 @@ function main() {
   assert.equal(html.includes("Kompozitni HR izvještaj"), true);
   assert.equal(html.includes("Spremno za pregled"), true);
   assert.equal(html.includes("Glavni signal"), true);
+  assert.equal(html.includes("Glavni zaključak"), true);
   assert.equal(html.includes("Fokus za provjeru"), true);
   assert.equal(html.includes("Tačka opreza"), false);
   assert.equal(html.includes("Tačke opreza"), false);
-  assert.equal(html.includes("Kako koristiti nalaz"), true);
+  assert.equal(html.includes("Kako koristiti izvještaj"), true);
+  assert.equal(html.includes("Kako koristiti nalaz"), false);
   assert.equal(html.includes("Ključne snage"), true);
   assert.equal(html.includes("Integrisani signali"), true);
   assert.equal(
@@ -376,8 +378,16 @@ function main() {
   assert.equal(summarySectionStart >= 0, true);
   assert.equal(summarySectionEnd > summarySectionStart, true);
   const summarySectionHtml = html.slice(summarySectionStart, summarySectionEnd);
+  assert.equal(summarySectionHtml.indexOf("Glavni zaključak") > summarySectionHtml.indexOf("Sažetak"), true);
+  assert.equal(summarySectionHtml.indexOf("Glavni zaključak") < summarySectionHtml.indexOf("Ključne snage"), true);
   assert.equal(summarySectionHtml.indexOf("Ključne snage") < summarySectionHtml.indexOf("Fokus za provjeru"), true);
-  assert.equal(summarySectionHtml.indexOf("Glavni signal") < summarySectionHtml.indexOf("Kako koristiti nalaz"), true);
+  assert.equal(summarySectionHtml.indexOf("Glavni signal") < summarySectionHtml.indexOf("Kako koristiti izvještaj"), true);
+  assert.equal(
+    html.includes("bg-[linear-gradient(135deg,rgba(7,59,76,0.085),rgba(17,138,178,0.055))]"),
+    true,
+  );
+  assert.equal(html.includes("border-l-4 border-l-[#073b4c]"), true);
+  assert.equal(html.includes("h-1 w-20 rounded-full bg-[#073b4c]"), false);
   assert.equal(html.includes("integrated-signal-module"), true);
   assert.equal(html.includes("integrated-signal-insight-grid"), true);
   assert.equal(html.includes("integrated-signal-meaning-panel"), true);
@@ -463,7 +473,7 @@ function main() {
   assert.equal(longOverviewHtml.includes("Fokus za provjeru"), true);
   assert.equal(longOverviewHtml.includes("Tačka opreza"), false);
   assert.equal(longOverviewHtml.includes("Tačke opreza"), false);
-  assert.equal(longOverviewHtml.includes("Kako koristiti nalaz"), true);
+  assert.equal(longOverviewHtml.includes("Kako koristiti izvještaj"), true);
   assert.equal(
     longOverviewHtml.includes(
       "Druga rečenica opisuje glavnu tačku opreza. Treća rečenica objašnjava kako HR treba koristiti nalaz. Četvrta rečenica dodaje dodatni kontekst za upotrebu u intervjuu.",
