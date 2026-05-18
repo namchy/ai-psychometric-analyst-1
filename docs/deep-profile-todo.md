@@ -47,6 +47,8 @@ Komande:
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
+| P1        | Team Fit & Dynamics Product Spec v0.1 | Planirano | Team module / Product architecture | Zaključati product scope, terminologiju, report tipove, DUTCH ulogu i MVP proces prije tehničke implementacije. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Planirano | Team module / Data model scaffold | Uvesti team-specific scaffold, placeholder package i minimalne schema/package testove bez licenciranih itema, renderera i relacijskog fit reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
 | P1        | Queued vs processing HR report status UX            | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon razdvajanja `queued = Čeka generisanje` i `processing = Generiše se` u status labeli, opisu i disabled CTA-u. |
@@ -589,6 +591,32 @@ Tokom ručnog testiranja kandidatkinja je završila SAFRAN i vidjela ispravan re
 
 **Completion note:**  
 Završeno kroz izmjene u lib/assessment/attempt-lifecycle.ts, lib/assessment/standard-battery.ts, app/(protected)/app/attempts/[attemptId]/report/page.tsx, scripts/test-attempt-lifecycle.cjs i scripts/test-standard-assessment-battery.cjs. Dodani su testovi za completed + newer empty in_progress scenario, empty-only scenario, SAFRAN scored_started_at resume scenario, response_count resume scenario i abandoned edge case. Standard battery planner sada ne kreira novi in_progress attempt za test koji već ima completed attempt. SAFRAN scoring, report generation, report worker, provider routing i validator nisu mijenjani.
+
+---
+
+### P1 — Team Fit & Dynamics Product Spec v0.1
+
+**Status:** Planirano  
+**Kategorija:** Team module / Product architecture
+
+**Sljedeći korak:**  
+Zaključati product scope, terminologiju, report tipove, DUTCH ulogu i MVP proces prije tehničke implementacije.
+
+---
+
+### P1 — Team Dynamics data model scaffold and placeholder package support
+
+**Status:** Planirano  
+**Kategorija:** Team module / Data model scaffold
+
+**Scope (nakon Product/Tech Spec v0.1 lock-a):**
+- data model scaffold za team-specific tabele
+- placeholder package support za Team Dynamics Battery v1 strong
+- minimalni schema/package testovi
+- bez stvarnih licenciranih itema
+- bez finalnog AI reporta
+- bez renderera
+- bez relacijskog candidate-team fit reporta
 
 ---
 
@@ -1993,6 +2021,87 @@ Razlog za sljedeći prioritet:
 * Riječ “nalaz” / “nalazi” ne koristiti u HR/psihometrijskom UI copyju; koristiti “izvještaj”, “rezultat”, “pregled”, “procjena” ili “interpretacija”, zavisno od konteksta.
 * Codex ne smije donositi dizajn odluku; UI prompt mora specificirati fajlove, copy, klase/tokene, zabrane, acceptance criteria i test komande.
 
+### 5.20 Team Fit & Dynamics terminologija i MVP smjer
+
+* Zaključana su tri report tipa i user-facing nazivi:
+  * Kompozitni report: `Kompozitni profil kandidata` (entitet: kandidat; pitanje: `Kakav je kandidat?`)
+  * Agregirani report: `Timska dinamika` (entitet: tim; pitanje: `Kakav nam je tim?`)
+  * Relacijski report: `Timski fit kandidata` (entitet: kandidat + konkretan tim; pitanje: `Kako će se kandidat uklopiti u tim?`)
+* Produktna odluka:
+  * team fit se ne tretira kao jedan izolovan test
+  * budući sistem mora podržati obradu cijelog tima i eventualnog kandidata
+  * kompozitni report opisuje kandidata kao pojedinca
+  * agregirani report opisuje tim kao sistem
+  * relacijski report poredi kandidata sa konkretnim timom
+* Team Dynamics Battery v1 strong / knowledge-team je ciljna baterija za timski modul i sastoji se od 4 skale:
+  * PCS / Perceived Cohesion Scale: 6 itema (kohezija, pripadnost, moral)
+  * Jehn ICS-8 / Intragroup Conflict Scale: 8 itema (task conflict, relationship conflict)
+  * TPS-7 / Team Psychological Safety: 7 itema (psihološka sigurnost)
+  * Lewis TMS / Transactive Memory System Scale: 15 itema (specijalizacija, kredibilitet, koordinacija znanja)
+  * ukupno: 36 itema
+* Ovo nije jedan novi proprietary test, nego baterija od četiri skale objedinjena u jedan Deep Profile proces i jedan agregirani report `Timska dinamika`.
+* Team input i report flow:
+  * članovi tima popunjavaju Team Dynamics Battery
+  * individualni rezultati članova tima se ne prikazuju
+  * sistem agregira rezultate na nivou tima i generiše `Timska dinamika` report
+  * isti agregirani report kasnije ulazi kao input u relacijski report `Timski fit kandidata`
+* Pragovi reporta:
+  * user-facing report je dostupan tek od 5 validnih odgovora
+  * `indicative` za 3-4 odgovora postoji samo kao interni state
+  * za 0-2 validna odgovora report ostaje blocked/nedostupan
+* Lider u v0.1:
+  * lider se tretira kao team member
+  * role se čuva u membershipu
+  * nema leader-vs-team delta reporta u v0.1
+* Scoring vs AI granica:
+  * scoring engine proizvodi `team_snapshot`, `response_coverage`, `scale_scores`, `subscale_scores`, `dispersion_metrics`, `deterministic_insights`
+  * AI provider proizvodi samo `ai_interpretation`
+  * AI ne računa skorove, ne izmišlja metrike i ne dobija individualne odgovore
+* Report ne koristi jedan overall team score; korisnički izlaz je `Team Dynamics Profile / Profil timske dinamike` sa odvojenim domenima:
+  * Kohezija i moral
+  * Konfliktni obrazac
+  * Psihološka sigurnost
+  * Koordinacija znanja
+  * Timski radni sistem
+  * Razvojni fokus
+* Guardrails:
+  * nema hire/no-hire
+  * nema fire/no-fire
+  * nema individualnog targetiranja članova
+  * nema prikaza individualnih odgovora
+  * nema kliničkog jezika
+  * nema etiketa tipa `loš tim`
+  * nema determinističkih tvrdnji
+  * nema tvrdnje da rezultat direktno predviđa performanse
+  * task conflict se ne tumači automatski kao negativan
+  * visoka kohezija se ne tumači automatski kao idealna
+* DUTCH odluka:
+  * DUTCH / Dutch Test for Conflict Handling je relevantan za conflict-style sloj
+  * DUTCH se ne tretira kao kompletan team-fit test
+  * DUTCH je kandidat za individualni conflict-style sloj kandidata, conflict-style sloj članova tima, input za relacijski friction model i interview/onboarding hipoteze
+  * prije direktne upotrebe DUTCH itema treba provjeriti licencu i prava
+* Placeholder/licenca pravilo:
+  * pravna pitanja/licence i finalni BHS prevod itema rješavaju se odvojeno od ovog development toka
+  * do razrješenja licence i prevoda ne unositi stvarne licencirane iteme u produkcijski repo
+  * tehnički scaffold smije koristiti placeholder iteme
+* Mock package v0.1 pravilo:
+  * koristiti unified 1-5 response skalu
+  * scoring engine ne hardkodira 1-5 kao jedinu mogućnost
+  * engine ostaje metadata-aware za per-item/per-scale skale
+* Data model/scaffold smjer:
+  * prvi scaffold uvodi team-specific tabele
+  * report lifecycle ostaje što bliži postojećem `assessment_reports` modelu
+  * koristiti postojeći attempt/execution model gdje god je moguće
+  * dodati team wrapper koji povezuje attempt sa `team_assessment_assignment`
+* Product/tech dokument:
+  * planirano je dodati i održavati `docs/team-dynamics-product-tech-spec.md` iz Google Doc specifikacije
+* Preporučeni MVP smjer (hibridni Deep Profile model):
+  1. kandidat radi postojeću Deep Profile bateriju
+  2. članovi tima rade kratki Team Dynamics Survey
+  3. sistem generiše agregirani report tima
+  4. sistem generiše relacijski report kandidat + tim kada postoje oba ulaza
+* Ne prelaziti na tehničku implementaciju prije `Team Fit & Dynamics Product Spec v0.1`.
+
 ### 5.8 IPIP Likert selected-state politika
 
 * IPIP zadržava auto-advance nakon klika na Likert odgovor.
@@ -2097,6 +2206,7 @@ Razlog za sljedeći prioritet:
 | P1        | Assessment assignment / assessment rounds | Trenutno se standardna procjena modelira kroz skup attemptova. To otežava razlikovanje legitimne nove runde procjene od praznog duplikat attempta. Dugoročno treba uvesti assessment_assignment / assessment_assignment_attempts ili ekvivalentan assessment-level model. | MVP guard sada sprečava da prazan attempt sakrije completed rezultat, ali pravi model rundi treba riješiti ownership, historiju i composite report storage. |
 | P1        | Assignment-aware dashboard model | Candidate i HR dashboard trenutno ostaju attempt-based. Zbog toga existing completed attempts i dalje blokiraju kreiranje novog praznog attempta za isti test u novom assignment slice-u. | Da bi novi assessment ciklus mogao uvijek kreirati svježe attempts za sve testove, dashboardi moraju postati assignment-aware i preferirati linked attempts iz active assignmenta. |
 | P2        | Attempt creation audit metadata | Novi attempti trenutno mogu imati metadata = {}, što otežava dijagnostiku izvora kreiranja attempta. | Dodati minimalni audit trag, npr. created_by_flow, source, created_by_user_id i reason, posebno za HR standard battery planner i candidate provisioning tokove. |
+| P1        | Team Dynamics response scale metadata-awareness + item activation lock | Team Dynamics scaffold koristi unified 1-5 mock skalu, ali scoring engine mora ostati metadata-aware za per-item/per-scale response skale; finalna aktivacija stvarnih itema čeka licencu i finalni BHS prevod. | Dok traje licencni/prevod lock, u repo ulaze samo placeholder itemi i scaffold logika bez stvarnih licenciranih itema. |
 | P2        | Composite smoke fixture / controlled backfill | Za prvi DB-backed smoke korišten je controlled backfill nad postojećim completed IPIP/SAFRAN/MWMS attemptima jer runtime DB nije imala active standard_battery assignment sa tri linked completed attempts. Ovaj renderer polish nije mijenjao smoke fixture; to ostaje P2 napomena. Kasnije treba testirati flow kroz prirodno kreiran standard battery assignment bez ručnog backfilla. | Smoke fixture služi QA potvrdi runtime toka; ne tretirati kao zamjenu za prirodni assignment lifecycle. |
 | P2        | Branch features                 | Trenutno se radi na branchu `features`; main ostaje stabilan.                                | Ne mergati dok report/copy/pitanja nisu dotjerani. |
 | P2        | MWMS licenca                    | MWMS tehnički radi, ali komercijalni rollout zavisi od licencnog/pravno-poslovnog odobrenja. | Nije dev blocker, jeste produkcijski blocker.      |
@@ -2166,6 +2276,51 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-18 — Team Dynamics Product/Tech Spec v0.1 i implementacijski lock
+
+Završeno:
+
+* Zaključana je terminologija za tri report tipa:
+  * `Kompozitni profil kandidata` (kandidat; `Kakav je kandidat?`)
+  * `Timska dinamika` (tim; `Kakav nam je tim?`)
+  * `Timski fit kandidata` (kandidat + konkretan tim; `Kako će se kandidat uklopiti u tim?`)
+* Zaključan je Team Dynamics Battery v1 strong / knowledge-team:
+  * PCS (6) + Jehn ICS-8 (8) + TPS-7 (7) + Lewis TMS (15) = 36 itema
+  * baterija od četiri skale objedinjena u jedan Deep Profile timski proces i agregirani report
+* Potvrđena je produktna granica:
+  * team fit nije jedan izolovan test, nego sistemska obrada tima i kandidata
+  * kompozitni report ostaje individualni opis kandidata
+  * agregirani report opisuje tim kao sistem
+  * relacijski report poredi kandidata sa konkretnim timom
+* Zaključani su team-report pragovi i granularnost:
+  * user-facing report tek od 5 validnih odgovora
+  * `indicative` (3-4) je interni state
+  * 0-2 odgovora = blocked/nedostupan report
+  * nema jednog overall team score-a; report ostaje profil po domenima
+* Lider v0.1:
+  * lider se tretira kao član tima
+  * role ostaje u membership sloju
+  * nema leader-vs-team delta reporta u v0.1
+* Zaključana scoring/AI granica:
+  * scoring daje strukturisane metrike i deterministic insights
+  * AI daje samo `ai_interpretation`
+  * AI ne dobija individualne odgovore i ne računa skorove
+* DUTCH je pozicioniran kao conflict-style sloj, ne kao kompletan team-fit test:
+  * može biti input za kandidata, tim i relacijski friction model
+  * može podržati interview/onboarding hipoteze
+  * licenca i prava moraju biti provjereni prije direktne upotrebe itema
+* Placeholder/licencni lock:
+  * dok se ne zatvore licenca i finalni BHS prevod, u repo ne ulaze stvarni licencirani itemi
+  * scaffold može koristiti placeholder iteme
+* Zaključan je preporučeni MVP smjer (hibridni model):
+  1. kandidat radi postojeću Deep Profile bateriju
+  2. članovi tima rade kratki Team Dynamics Survey
+  3. sistem generiše agregirani report tima
+  4. sistem generiše relacijski report kandidat + tim kada postoje oba ulaza
+* Implementacijski lock:
+  * ne otvarati tehničku implementaciju prije `Team Fit & Dynamics Product Spec v0.1`
+  * prvi preporučeni implementation task je `Team Dynamics data model scaffold and placeholder package support` (bez finalnog AI reporta, renderera i relacijskog candidate-team fit reporta).
 
 ### 2026-05-18 — HR report UI polish sync (`e851aad`)
 
