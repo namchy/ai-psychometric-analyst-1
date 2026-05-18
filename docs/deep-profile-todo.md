@@ -46,6 +46,7 @@ Komande:
 | P1        | Persisted report locale guardrails for future HR lanes | Završeno | i18n / Report pipeline | Zatvoreno nakon uvođenja centralnog `ReportLocale` / `resolveReportLocale(...)` guardraila i uklanjanja nepotrebnog `"bs"` hardcodinga iz poznatih report generation fallback path-eva. |
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
+| P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
 | P1        | Queued vs processing HR report status UX            | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon razdvajanja `queued = Čeka generisanje` i `processing = Generiše se` u status labeli, opisu i disabled CTA-u. |
@@ -541,6 +542,16 @@ HR dashboard je ranije imao CTA “Pogledaj procjenu” koji je vodio direktno n
 
 **Completion note:**  
 Završeno uvođenjem /dashboard/participants/[participantId]/reports detail stranice. Dashboard CTA sada vodi na participant-level pregled procjene, gdje HR vidi IPIP, SAFRAN i MWMS kartice, dostupnost HR reportova i composite placeholder. SAFRAN ready kartica vodi na postojeću /dashboard/attempts/[attemptId] rutu. Model/helper logika čita samo HR artefakte filtrirane po audience='hr', report_type='individual' i source_type='single_test', pa participant report ne može postati HR fallback. Browser smoke je potvrdio flow dashboard → candidate assessment detail page → SAFRAN ready card → SAFRAN HR report.
+
+---
+
+### P1 — HR participant reports UI polish (navigation + metadata)
+
+**Status:** Završeno  
+**Kategorija:** HR dashboard / Report UI polish
+
+**Completion note:**  
+Završeno kroz commit `e851aad` (`Polish HR report navigation and metadata display`). Composite HR report detail je dobio diskretni back link iznad hero sekcije, uz čišći hero fokus. Participant HR reports page je prešao sa višesegmentnog breadcrumb-a na simple ghost/text povratni link `Nazad na HR dashboard`, uklonjen je redundantni gornji meta label i zategnut spacing iznad hero sekcije. Uveden je HR-facing formatter `lib/dashboard/hr-ui-format.ts`; pojedinačne HR report kartice na participant reports page-u više ne prikazuju raw `Attempt`, raw status `completed` i ISO timestamp, nego `ID procjene`, `Status procjene`, `Završeno`, lokalizovane statuse i datum format `dd.MM.yyyy, HH:mm`. Helper je trenutno primijenjen samo na participant HR reports page; širenje na composite HR report view, HR dashboard copy i create assessment modal ostaje budući polish task.
 
 ---
 
@@ -2078,6 +2089,7 @@ Razlog za sljedeći prioritet:
 | P1        | Composite advisory prompt polish | Advisory prompt ciklus je završen: Composite HR OpenAI provider sada vodi prema savjetodavnijem HR radnom dokumentu sa čvršćim hipotezama, konkretnijim provjerama i operativnijim smjernicama. | Safety/source guardraili su zadržani: bez hire/no-hire, fit score-a, automatske preporuke zapošljavanja i bez promjene score/band/evidence source podataka. |
 | P1        | Composite BHS narrative casing guardrail | Narrative casing guardrail je završen: u narativu je obavezan prirodan BHS lower-case za domene/dimenzije usred rečenice, dok su display/evidence labeli izuzeti. | QA sada hvata neprirodnu kapitalizaciju u user-facing narativu bez lomljenja labela/čipova. |
 | P1        | Composite concise advisory writing polish | Task je završen: prompt i language QA su podešeni za kraći, skenabilniji i akcijski HR izlaz (kraći headline, jasniji profileOverview ritam, akcijski fokus za provjeru, konkretniji onboarding glagoli). | Bez promjene contract/scoring/orchestration/worker/DB; postojeći source/evidence/casing guardraili ostali aktivni i potvrđeni testovima. |
+| P2        | HR metadata formatter rollout scope | `lib/dashboard/hr-ui-format.ts` je uveden i trenutno je namjerno ograničen na participant HR reports page metadata blok. | Budući UI polish može proširiti isti helper na composite HR report view, HR dashboard copy i create assessment modal, ali to nije dio commita `e851aad`. |
 | P2        | Composite interview guidance V2 | Veći budući task: postojeći interview guidance proširiti sa jasnijim “šta slušati u odgovoru” slojem bez ad-hoc refactora. | Ne pokretati sada; nakon stabilizacije i odluke o narednom demo fokusu. |
 | P2        | Composite onboarding 30/60/90 format | Veći budući task: onboarding guidance strukturirati u 30/60/90 format kada bude otvoren širi product slice. | Ne pokretati sada; ostaje odvojen od trenutnog todo sync-a. |
 | P2        | Composite visual readability polish (sitniji tekst/evidence čipovi) | Sitniji UI readability polish za tekst i evidence čipove ostaje otvoren kao zaseban budući task. | Ne miješati sa provider/prompt/contract taskovima u kratkim sync ciklusima. |
@@ -2154,6 +2166,30 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-18 — HR report UI polish sync (`e851aad`)
+
+Završeno:
+
+* Evidentiran commit `e851aad` (`Polish HR report navigation and metadata display`).
+* Composite HR report navigation polish je zatvoren:
+  * back link je izvađen iz hero kartice
+  * prikazan je diskretno iznad hero sekcije
+  * hero je ostao čišći i fokusiraniji
+* Participant HR reports page navigation polish je zatvoren:
+  * uklonjen je višesegmentni breadcrumb
+  * uveden simple text/ghost back link `Nazad na HR dashboard`
+  * uklonjen je redundantni gornji meta label
+  * zategnut je spacing iznad hero sekcije
+* Participant HR reports metadata polish je zatvoren:
+  * uveden `lib/dashboard/hr-ui-format.ts`
+  * uklonjeni su raw `Attempt`, raw status `completed` i ISO timestamp iz pojedinačnih HR report kartica
+  * metadata prikaz je sada `ID procjene`, `Status procjene`, `Završeno`
+  * datum/vrijeme prikazuje se kao `dd.MM.yyyy, HH:mm`
+  * statusi su lokalizovani (npr. `completed` -> `završeno`)
+* Važna granica scope-a:
+  * helper je trenutno primijenjen samo na participant HR reports page
+  * širenje na composite HR report view, HR dashboard copy i create assessment modal ostaje mogući kasniji polish
 
 ### 2026-05-15 — Deep Profile UI system i Composite HR renderer polish
 
