@@ -19,19 +19,99 @@ assert.equal(
   "Expected HR participant detail page to use shared PageNavigation.",
 );
 assert.equal(
-  candidateReportsPageSource.includes('backLabel="Nazad na dashboard"'),
+  candidateReportsPageSource.includes('className="-mt-10 pb-12"'),
   true,
-  "Expected HR participant detail page to keep dashboard back label in PageNavigation.",
+  "Expected HR participant detail page to use the localized negative top margin that tightens header spacing.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('backLabel="Nazad na HR dashboard"'),
+  true,
+  "Expected HR participant detail page to use the simple HR dashboard back label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('backLinkVariant="subtle"'),
+  true,
+  "Expected HR participant detail page to use the subtle ghost/text back link variant.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('backLabel="Dashboard"'),
+  false,
+  "Expected HR participant detail page to remove the breadcrumb Dashboard label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('breadcrumbMiddleLabel={model.participant.full_name}'),
+  false,
+  "Expected HR participant detail page to remove the participant breadcrumb segment.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('breadcrumbCurrentLabel="HR procjena"'),
+  false,
+  "Expected HR participant detail page to remove the breadcrumb current segment.",
 );
 assert.equal(
   candidateReportsPageSource.includes('contextLabel="HR procjena kandidata"'),
-  true,
-  "Expected HR participant detail page to provide HR context label in PageNavigation.",
+  false,
+  "Expected HR participant detail page to remove the redundant right-hand context label.",
 );
 assert.equal(
   candidateReportsPageSource.includes("Sažetak procjene"),
   false,
   "Expected HR participant detail page to remove the redundant summary block below the hero.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('from "@/lib/dashboard/hr-ui-format"'),
+  true,
+  "Expected HR participant detail page to use the shared HR metadata formatting helper.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Attempt:"),
+  false,
+  "Expected HR participant detail page to remove the raw Attempt label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Status testa:"),
+  false,
+  "Expected HR participant detail page to remove the raw test status label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("ID procjene:"),
+  true,
+  "Expected HR participant detail page to label the shortened attempt id as assessment id.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Status procjene:"),
+  true,
+  "Expected HR participant detail page to label the lifecycle as assessment status.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Završeno:"),
+  true,
+  "Expected HR participant detail page to label completion metadata with the localized past-tense label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("formatHrShortId(card.attempt?.id)"),
+  true,
+  "Expected HR participant detail page to shorten the attempt id for HR-facing display.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("formatHrLifecycleStatus(card.attempt?.lifecycle)"),
+  true,
+  "Expected HR participant detail page to map raw lifecycle values to HR-facing labels.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("formatHrDateTime(card.attempt?.completed_at)"),
+  true,
+  "Expected HR participant detail page to map ISO completion timestamps to a human-readable format.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("completed_at ??"),
+  false,
+  "Expected HR participant detail page to stop rendering raw completion timestamps directly.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('?? "not_assigned"'),
+  false,
+  "Expected HR participant detail page to stop rendering raw fallback lifecycle codes.",
 );
 assert.equal(
   candidateReportsPageSource.includes('title="Pojedinačni HR izvještaji"'),

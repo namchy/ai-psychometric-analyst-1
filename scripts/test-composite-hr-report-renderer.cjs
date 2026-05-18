@@ -346,10 +346,11 @@ function main() {
   );
   assert.equal(
     html.includes(
-      "inline-flex min-h-0 items-center self-start rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] text-slate-600 transition",
+      "inline-flex min-h-0 items-center self-start text-[11px] font-medium tracking-[0.01em] text-slate-500 transition hover:text-[#073b4c] hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#118ab2]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
     ),
     true,
   );
+  assert.equal(html.includes("rounded-full border border-slate-200 bg-white/80 px-3 py-1.5"), false);
   assert.equal(
     html.includes(
       "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",

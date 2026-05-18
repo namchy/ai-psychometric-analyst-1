@@ -153,31 +153,74 @@ export function PageNavigation({
   backLabel,
   contextLabel,
   className,
+  backLinkVariant = "default",
+  breadcrumbMiddleLabel,
+  breadcrumbCurrentLabel,
 }: {
   backHref: string;
   backLabel: string;
   contextLabel?: string;
   className?: string;
+  backLinkVariant?: "default" | "subtle" | "breadcrumb-light";
+  breadcrumbMiddleLabel?: string;
+  breadcrumbCurrentLabel?: string;
 }) {
+  const backLinkClassName =
+    backLinkVariant === "subtle"
+      ? "inline-flex min-h-0 items-center self-start text-[11px] font-medium tracking-[0.01em] text-slate-500 transition hover:text-[#073b4c] hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#118ab2]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+      : backLinkVariant === "breadcrumb-light"
+        ? "inline-flex items-center gap-1 text-[12px] font-medium tracking-[-0.01em] text-slate-500 transition hover:text-[#073b4c] hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#118ab2]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:text-[13px]"
+        : "inline-flex min-h-0 items-center self-start rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] text-slate-600 transition hover:border-[#073b4c]/20 hover:bg-white hover:text-[#073b4c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#118ab2]/30 focus-visible:ring-offset-2";
+
   return (
     <div
       className={joinClassNames(
-        "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+        backLinkVariant === "breadcrumb-light"
+          ? "flex flex-wrap items-center gap-1.5"
+          : "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
-      <Link
-        className="inline-flex min-h-0 items-center self-start rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] text-slate-600 transition hover:border-[#073b4c]/20 hover:bg-white hover:text-[#073b4c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#118ab2]/30 focus-visible:ring-offset-2"
-        href={backHref}
-      >
-        {backLabel}
-      </Link>
+      {backLinkVariant === "breadcrumb-light" ? (
+        <>
+          <Link className={backLinkClassName} href={backHref}>
+            <span aria-hidden="true">←</span>
+            <span>{backLabel}</span>
+          </Link>
+          {breadcrumbMiddleLabel ? (
+            <>
+              <span aria-hidden="true" className="text-slate-300">
+                /
+              </span>
+              <span className="text-[12px] text-slate-500 sm:text-[13px]">
+                {breadcrumbMiddleLabel}
+              </span>
+            </>
+          ) : null}
+          {breadcrumbCurrentLabel ? (
+            <>
+              <span aria-hidden="true" className="text-slate-300">
+                /
+              </span>
+              <span className="text-[12px] text-slate-500 sm:text-[13px]">
+                {breadcrumbCurrentLabel}
+              </span>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <Link className={backLinkClassName} href={backHref}>
+            {backLabel}
+          </Link>
 
-      {contextLabel ? (
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 sm:text-right">
-          {contextLabel}
-        </span>
-      ) : null}
+          {contextLabel ? (
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 sm:text-right">
+              {contextLabel}
+            </span>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

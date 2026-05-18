@@ -436,6 +436,7 @@ export function CompositeHrReportView({
         backHref={model.participantReportsHref}
         backLabel="Nazad na pregled kandidata"
         contextLabel="Kompozitni HR izvještaj"
+        backLinkVariant="subtle"
       />
       <DashboardInfoCardShell className="rounded-[1.6rem] border-slate-200/80 p-6 sm:p-7">
         <div className="flex flex-col gap-4">

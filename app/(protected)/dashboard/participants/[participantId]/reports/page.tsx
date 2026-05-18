@@ -32,6 +32,11 @@ import {
   buildHrCandidateAssessmentDetailModel,
   type HrCandidateAssessmentCardVisualVariant,
 } from "@/lib/dashboard/hr-candidate-assessment";
+import {
+  formatHrDateTime,
+  formatHrLifecycleStatus,
+  formatHrShortId,
+} from "@/lib/dashboard/hr-ui-format";
 
 type CandidateReportsPageProps = {
   params: {
@@ -222,14 +227,15 @@ export default async function CandidateReportsPage({
       className="mx-auto max-w-[92rem] px-4 sm:px-6 lg:px-10"
       topPaddingClassName="pt-0"
     >
-      <div className="space-y-8 pb-12">
-        <PageNavigation
-          backHref="/dashboard"
-          backLabel="Nazad na dashboard"
-          contextLabel="HR procjena kandidata"
-        />
+      <div className="-mt-10 pb-12">
+        <div className="space-y-1.5">
+          <PageNavigation
+            backHref="/dashboard"
+            backLabel="Nazad na HR dashboard"
+            backLinkVariant="subtle"
+          />
 
-        <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
+          <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
           <div className="relative space-y-6">
             <div className="flex flex-col gap-5">
               <div className="space-y-4">
@@ -266,9 +272,11 @@ export default async function CandidateReportsPage({
               </div>
             </div>
           </div>
-        </DashboardSectionShell>
+          </DashboardSectionShell>
+        </div>
 
-        <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+        <div className="mt-8 space-y-8">
+          <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
           <DashboardSectionHeader
             eyebrow="Pojedinačni HR izvještaji"
             eyebrowClassName="text-[#118ab2]"
@@ -317,16 +325,16 @@ export default async function CandidateReportsPage({
 
                   <div className="space-y-1.5 text-xs leading-5 text-slate-500">
                     <p>
-                      <span className="font-semibold text-slate-700">Attempt:</span>{" "}
-                      {card.attempt?.id ?? "Nije kreiran"}
+                      <span className="font-semibold text-slate-700">ID procjene:</span>{" "}
+                      {formatHrShortId(card.attempt?.id)}
                     </p>
                     <p>
-                      <span className="font-semibold text-slate-700">Status testa:</span>{" "}
-                      {card.attempt?.lifecycle ?? "not_assigned"}
+                      <span className="font-semibold text-slate-700">Status procjene:</span>{" "}
+                      {formatHrLifecycleStatus(card.attempt?.lifecycle)}
                     </p>
                     <p>
-                      <span className="font-semibold text-slate-700">Završen:</span>{" "}
-                      {card.attempt?.completed_at ?? "Nije završeno"}
+                      <span className="font-semibold text-slate-700">Završeno:</span>{" "}
+                      {formatHrDateTime(card.attempt?.completed_at)}
                     </p>
                   </div>
                 </div>
@@ -460,6 +468,7 @@ export default async function CandidateReportsPage({
             </div>
           </DashboardInfoCardShell>
         </DashboardSectionShell>
+        </div>
       </div>
     </AuthenticatedAppMainContent>
   );
