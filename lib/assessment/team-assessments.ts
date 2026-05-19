@@ -6,6 +6,8 @@ import { TEAM_DYNAMICS_TEST_SLUG } from "@/lib/assessment/team-dynamics";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const TEAM_DYNAMICS_TEST_NOT_READY = "TEAM_DYNAMICS_TEST_NOT_READY" as const;
+export const TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER =
+  "TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER" as const;
 
 export const TEAM_ASSESSMENT_ASSIGNMENT_STATUSES = [
   "draft",
@@ -183,6 +185,21 @@ export class TeamDynamicsTestNotReadyError extends Error {
   constructor(message = "Team Dynamics test is not runtime-ready.") {
     super(message);
     this.name = "TeamDynamicsTestNotReadyError";
+  }
+}
+
+export class TeamDynamicsMemberMissingLinkedUserError extends Error {
+  readonly code = TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER;
+  readonly membershipId: string;
+  readonly participantId: string;
+
+  constructor(input: { membershipId: string; participantId: string }) {
+    super(
+      `Team membership ${input.membershipId} is missing a linked user for participant ${input.participantId}.`,
+    );
+    this.name = "TeamDynamicsMemberMissingLinkedUserError";
+    this.membershipId = input.membershipId;
+    this.participantId = input.participantId;
   }
 }
 
@@ -429,6 +446,27 @@ export function assertValidTeamDynamicsAssessmentCreateContext(input: {
   return validatedMemberships;
 }
 
+export function assertTeamDynamicsMembershipsHaveLinkedUsers(
+  memberships: TeamMembershipWithParticipantRecord[],
+): TeamMembershipWithParticipantRecord[] {
+  for (const membership of memberships) {
+    const participant = normalizeParticipantRelation(membership.participants);
+
+    if (!participant) {
+      continue;
+    }
+
+    if (!participant.user_id) {
+      throw new TeamDynamicsMemberMissingLinkedUserError({
+        membershipId: membership.id,
+        participantId: membership.participant_id,
+      });
+    }
+  }
+
+  return memberships;
+}
+
 export function buildTeamDynamicsCreatePlan(input: {
   organizationId: string;
   team: TeamAssessmentTeamRecord | null;
@@ -603,6 +641,7 @@ export async function createTeamDynamicsAssessmentForTeam(input: {
   teamId: string;
   createdByUserId: string | null;
   locale?: string | null;
+  requireLinkedUsers?: boolean;
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
 }): Promise<CreateTeamDynamicsAssessmentForTeamResult> {
   const supabase = input.supabase ?? createSupabaseAdminClient();
@@ -669,10 +708,20 @@ export async function createTeamDynamicsAssessmentForTeam(input: {
     existingParticipants = (existingParticipantData ?? []) as TeamAssessmentParticipantRecord[];
   }
 
+  const validatedMemberships = input.requireLinkedUsers
+    ? assertTeamDynamicsMembershipsHaveLinkedUsers(
+        assertValidTeamDynamicsAssessmentCreateContext({
+          organizationId: input.organizationId,
+          team: (teamData as TeamAssessmentTeamRecord | null) ?? null,
+          memberships: (membershipData ?? []) as TeamMembershipWithParticipantRecord[],
+        }),
+      )
+    : ((membershipData ?? []) as TeamMembershipWithParticipantRecord[]);
+
   const plan = buildTeamDynamicsCreatePlan({
     organizationId: input.organizationId,
     team: (teamData as TeamAssessmentTeamRecord | null) ?? null,
-    memberships: (membershipData ?? []) as TeamMembershipWithParticipantRecord[],
+    memberships: validatedMemberships,
     createdByUserId: input.createdByUserId,
     testId,
     locale: input.locale,
