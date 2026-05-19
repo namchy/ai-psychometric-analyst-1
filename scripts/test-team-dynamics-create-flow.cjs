@@ -59,6 +59,10 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   buildTeamDynamicsCreatePlan,
+  buildTeamDynamicsRunReadiness,
+  createTeamDynamicsAssessmentForTeam,
+  TEAM_DYNAMICS_TEST_NOT_READY,
+  TeamDynamicsTestNotReadyError,
 } = require("../lib/assessment/team-assessments.ts");
 const { TEAM_DYNAMICS_TEST_SLUG } = require("../lib/assessment/team-dynamics.ts");
 
@@ -190,13 +194,350 @@ assert.deepEqual(reusePlan.attemptInserts, [
   },
 ]);
 
-const source = fs.readFileSync(
-  path.join(projectRoot, "lib", "assessment", "team-assessments.ts"),
-  "utf8",
+assert.deepEqual(
+  buildTeamDynamicsRunReadiness({
+    test: null,
+    activeQuestionIds: [],
+  }),
+  {
+    isReady: false,
+    testId: null,
+    activeQuestionIds: [],
+    questionIdsWithOptions: [],
+    questionIdsMissingOptions: [],
+    failureCode: TEAM_DYNAMICS_TEST_NOT_READY,
+    reason: "test_missing",
+  },
 );
-assert.match(source, /if \(plan\.assignment\.mode === "create"\)/);
-assert.match(source, /if \(plan\.participantInserts\.length > 0\)/);
-assert.match(source, /if \(plan\.attemptInserts\.length > 0\)/);
-assert.match(source, /assignmentAction: createdAssignment \? "created" : "reused"/);
 
-console.log("Team Dynamics create flow helper tests passed.");
+assert.deepEqual(
+  buildTeamDynamicsRunReadiness({
+    test: {
+      id: "test-team-dynamics",
+      slug: TEAM_DYNAMICS_TEST_SLUG,
+      status: "active",
+      is_active: true,
+    },
+    activeQuestionIds: ["question-1"],
+    questionIdsWithOptions: [],
+  }),
+  {
+    isReady: false,
+    testId: "test-team-dynamics",
+    activeQuestionIds: ["question-1"],
+    questionIdsWithOptions: [],
+    questionIdsMissingOptions: ["question-1"],
+    failureCode: TEAM_DYNAMICS_TEST_NOT_READY,
+    reason: "missing_question_options",
+  },
+);
+
+assert.deepEqual(
+  buildTeamDynamicsRunReadiness({
+    test: {
+      id: "test-team-dynamics",
+      slug: TEAM_DYNAMICS_TEST_SLUG,
+      status: "active",
+      is_active: true,
+    },
+    activeQuestionIds: ["question-1"],
+    questionIdsWithOptions: ["question-1"],
+  }),
+  {
+    isReady: true,
+    testId: "test-team-dynamics",
+    activeQuestionIds: ["question-1"],
+    questionIdsWithOptions: ["question-1"],
+    questionIdsMissingOptions: [],
+    failureCode: null,
+    reason: null,
+  },
+);
+
+function createSupabaseStub(config) {
+  const operations = [];
+  const createdParticipants = [];
+  const createdAttempts = [];
+
+  function matchesFilters(row, filters) {
+    return filters.every((filter) => {
+      const value = row[filter.column];
+
+      if (filter.type === "eq") {
+        return value === filter.value;
+      }
+
+      if (filter.type === "is") {
+        return value === filter.value;
+      }
+
+      if (filter.type === "in") {
+        return filter.value.includes(value);
+      }
+
+      return true;
+    });
+  }
+
+  function resolveRead(table, filters) {
+    switch (table) {
+      case "tests": {
+        const test = config.test ?? null;
+        const rows = test ? [test] : [];
+        return rows.filter((row) => matchesFilters(row, filters));
+      }
+      case "questions": {
+        const rows = config.questions ?? [];
+        return rows.filter((row) => matchesFilters(row, filters));
+      }
+      case "answer_options": {
+        const rows = config.answerOptions ?? [];
+        return rows.filter((row) => matchesFilters(row, filters));
+      }
+      case "teams": {
+        const rows = config.team ? [config.team] : [];
+        return rows.filter((row) => matchesFilters(row, filters));
+      }
+      case "team_memberships": {
+        const rows = config.memberships ?? [];
+        return rows.filter((row) => matchesFilters(row, filters));
+      }
+      case "team_assessment_assignments": {
+        const rows = config.existingAssignments ?? [];
+        return rows.filter((row) => matchesFilters(row, filters));
+      }
+      case "team_assessment_participants": {
+        const rows = [...(config.existingParticipants ?? []), ...createdParticipants];
+        return rows.filter((row) => matchesFilters(row, filters));
+      }
+      default:
+        throw new Error(`Unhandled read table ${table}`);
+    }
+  }
+
+  function createQuery(table) {
+    const state = {
+      table,
+      filters: [],
+      mutation: null,
+      payload: null,
+    };
+
+    const query = {
+      select() {
+        return this;
+      },
+      eq(column, value) {
+        state.filters.push({ type: "eq", column, value });
+        return this;
+      },
+      is(column, value) {
+        state.filters.push({ type: "is", column, value });
+        return this;
+      },
+      in(column, value) {
+        state.filters.push({ type: "in", column, value });
+        return this;
+      },
+      order() {
+        return this;
+      },
+      limit() {
+        return this;
+      },
+      insert(payload) {
+        state.mutation = "insert";
+        state.payload = payload;
+        operations.push({ type: "insert", table, payload });
+        return this;
+      },
+      update(payload) {
+        state.mutation = "update";
+        state.payload = payload;
+        operations.push({ type: "update", table, payload });
+        return this;
+      },
+      delete() {
+        state.mutation = "delete";
+        operations.push({ type: "delete", table });
+        return this;
+      },
+      maybeSingle() {
+        const rows = resolveRead(table, state.filters);
+        return Promise.resolve({ data: rows[0] ?? null, error: null });
+      },
+      single() {
+        return this._execute().then((result) => ({
+          data: Array.isArray(result.data) ? (result.data[0] ?? null) : result.data,
+          error: result.error,
+        }));
+      },
+      _execute() {
+        if (state.mutation === "insert") {
+          if (table === "team_assessment_assignments") {
+            return Promise.resolve({ data: [{ id: "assignment-created-1" }], error: null });
+          }
+
+          if (table === "team_assessment_participants") {
+            const rows = state.payload.map((row, index) => ({
+              id: `team-participant-${index + 1}`,
+              attempt_id: null,
+              started_at: null,
+              completed_at: null,
+              ...row,
+            }));
+            createdParticipants.push(...rows);
+            return Promise.resolve({ data: rows, error: null });
+          }
+
+          if (table === "attempts") {
+            const rows = state.payload.map((row, index) => ({
+              id: `attempt-${index + 1}`,
+              participant_id: row.participant_id,
+            }));
+            createdAttempts.push(...rows);
+            return Promise.resolve({ data: rows, error: null });
+          }
+        }
+
+        if (state.mutation === "update") {
+          if (table === "team_assessment_participants") {
+            const target = createdParticipants.find((row) => matchesFilters(row, state.filters));
+
+            if (target) {
+              Object.assign(target, state.payload);
+            }
+          }
+
+          return Promise.resolve({ data: [], error: null });
+        }
+
+        if (state.mutation === "delete") {
+          return Promise.resolve({ data: [], error: null });
+        }
+
+        return Promise.resolve({ data: resolveRead(table, state.filters), error: null });
+      },
+      then(resolve, reject) {
+        return this._execute().then(resolve, reject);
+      },
+    };
+
+    return query;
+  }
+
+  return {
+    operations,
+    createdParticipants,
+    createdAttempts,
+    from(table) {
+      return createQuery(table);
+    },
+  };
+}
+
+async function expectNotReady(config, expectedReason) {
+  const supabase = createSupabaseStub(config);
+
+  await assert.rejects(
+    () =>
+      createTeamDynamicsAssessmentForTeam({
+        organizationId: "org-1",
+        teamId: "team-1",
+        createdByUserId: "hr-user-1",
+        locale: "bs",
+        supabase,
+      }),
+    (error) => {
+      assert.equal(error instanceof TeamDynamicsTestNotReadyError, true);
+      assert.equal(error.code, TEAM_DYNAMICS_TEST_NOT_READY);
+      assert.match(error.message, new RegExp(expectedReason));
+      return true;
+    },
+  );
+
+  assert.equal(
+    supabase.operations.some(
+      (operation) =>
+        operation.table === "team_assessment_assignments" ||
+        operation.table === "team_assessment_participants" ||
+        operation.table === "attempts",
+    ),
+    false,
+  );
+}
+
+async function main() {
+  await expectNotReady(
+    {
+      test: null,
+    },
+    "imported",
+  );
+
+  await expectNotReady(
+    {
+      test: {
+        id: "test-team-dynamics",
+        slug: TEAM_DYNAMICS_TEST_SLUG,
+        status: "active",
+        is_active: true,
+      },
+      questions: [],
+    },
+    "missing_active_questions",
+  );
+
+  const readySupabase = createSupabaseStub({
+    test: {
+      id: "test-team-dynamics",
+      slug: TEAM_DYNAMICS_TEST_SLUG,
+      status: "active",
+      is_active: true,
+    },
+    questions: [{ id: "question-1", test_id: "test-team-dynamics", is_active: true }],
+    answerOptions: [{ question_id: "question-1" }],
+    team: baseTeam,
+    memberships,
+    existingAssignments: [],
+    existingParticipants: [],
+  });
+
+  const createResult = await createTeamDynamicsAssessmentForTeam({
+    organizationId: "org-1",
+    teamId: "team-1",
+    createdByUserId: "hr-user-1",
+    locale: "bs",
+    supabase: readySupabase,
+  });
+
+  assert.deepEqual(createResult, {
+    assignmentId: "assignment-created-1",
+    assignmentAction: "created",
+    participantsCreated: 2,
+    attemptsCreated: 2,
+    attemptMappingsCreated: 2,
+  });
+  assert.equal(
+    readySupabase.operations.filter((operation) => operation.type === "insert").length >= 3,
+    true,
+  );
+
+  const source = fs.readFileSync(
+    path.join(projectRoot, "lib", "assessment", "team-assessments.ts"),
+    "utf8",
+  );
+  assert.match(source, /if \(plan\.assignment\.mode === "create"\)/);
+  assert.match(source, /if \(plan\.participantInserts\.length > 0\)/);
+  assert.match(source, /if \(plan\.attemptInserts\.length > 0\)/);
+  assert.match(source, /assignmentAction: createdAssignment \? "created" : "reused"/);
+  assert.match(source, /TEAM_DYNAMICS_TEST_NOT_READY/);
+  assert.match(source, /assertTeamDynamicsRunReadiness\(readiness\);[\s\S]+return readiness\.testId;/);
+
+  console.log("Team Dynamics create flow helper tests passed.");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

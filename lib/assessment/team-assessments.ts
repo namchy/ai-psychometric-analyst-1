@@ -5,6 +5,8 @@ import { normalizeAssessmentLocale, type AssessmentLocale } from "@/lib/assessme
 import { TEAM_DYNAMICS_TEST_SLUG } from "@/lib/assessment/team-dynamics";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+export const TEAM_DYNAMICS_TEST_NOT_READY = "TEAM_DYNAMICS_TEST_NOT_READY" as const;
+
 export const TEAM_ASSESSMENT_ASSIGNMENT_STATUSES = [
   "draft",
   "active",
@@ -129,6 +131,13 @@ export type TeamAssessmentParticipantRecord = {
   completed_at: string | null;
 };
 
+export type TeamDynamicsRunnableTestRecord = {
+  id: string;
+  slug: string;
+  status: string;
+  is_active: boolean;
+};
+
 export type TeamDynamicsCreatePlan = {
   assignment: {
     mode: "create" | "reuse";
@@ -151,6 +160,31 @@ export type CreateTeamDynamicsAssessmentForTeamResult = {
   attemptsCreated: number;
   attemptMappingsCreated: number;
 };
+
+export type TeamDynamicsRunReadinessReason =
+  | "test_missing"
+  | "test_inactive"
+  | "missing_active_questions"
+  | "missing_question_options";
+
+export type TeamDynamicsRunReadiness = {
+  isReady: boolean;
+  testId: string | null;
+  activeQuestionIds: string[];
+  questionIdsWithOptions: string[];
+  questionIdsMissingOptions: string[];
+  failureCode: typeof TEAM_DYNAMICS_TEST_NOT_READY | null;
+  reason: TeamDynamicsRunReadinessReason | null;
+};
+
+export class TeamDynamicsTestNotReadyError extends Error {
+  readonly code = TEAM_DYNAMICS_TEST_NOT_READY;
+
+  constructor(message = "Team Dynamics test is not runtime-ready.") {
+    super(message);
+    this.name = "TeamDynamicsTestNotReadyError";
+  }
+}
 
 function normalizeParticipantRelation<T>(value: T | T[] | null | undefined): T | null {
   if (!value) {
@@ -255,6 +289,93 @@ export function buildTeamAssessmentParticipantCompletionPatch(input: {
     started_at: input.startedAt ?? input.completedAt,
     completed_at: input.completedAt,
   };
+}
+
+export function buildTeamDynamicsRunReadiness(input: {
+  test: TeamDynamicsRunnableTestRecord | null;
+  activeQuestionIds: Iterable<string>;
+  questionIdsWithOptions?: Iterable<string>;
+}): TeamDynamicsRunReadiness {
+  const activeQuestionIds = [...input.activeQuestionIds];
+  const questionIdsWithOptions = [...(input.questionIdsWithOptions ?? [])];
+  const questionIdsWithOptionsSet = new Set(questionIdsWithOptions);
+  const questionIdsMissingOptions = activeQuestionIds.filter(
+    (questionId) => !questionIdsWithOptionsSet.has(questionId),
+  );
+
+  if (!input.test) {
+    return {
+      isReady: false,
+      testId: null,
+      activeQuestionIds,
+      questionIdsWithOptions,
+      questionIdsMissingOptions,
+      failureCode: TEAM_DYNAMICS_TEST_NOT_READY,
+      reason: "test_missing",
+    };
+  }
+
+  if (input.test.slug !== TEAM_DYNAMICS_TEST_SLUG) {
+    throw new Error(`Unexpected Team Dynamics test slug: ${input.test.slug}`);
+  }
+
+  if (input.test.status !== "active" || input.test.is_active !== true) {
+    return {
+      isReady: false,
+      testId: input.test.id,
+      activeQuestionIds,
+      questionIdsWithOptions,
+      questionIdsMissingOptions,
+      failureCode: TEAM_DYNAMICS_TEST_NOT_READY,
+      reason: "test_inactive",
+    };
+  }
+
+  if (activeQuestionIds.length === 0) {
+    return {
+      isReady: false,
+      testId: input.test.id,
+      activeQuestionIds,
+      questionIdsWithOptions,
+      questionIdsMissingOptions,
+      failureCode: TEAM_DYNAMICS_TEST_NOT_READY,
+      reason: "missing_active_questions",
+    };
+  }
+
+  if (questionIdsMissingOptions.length > 0) {
+    return {
+      isReady: false,
+      testId: input.test.id,
+      activeQuestionIds,
+      questionIdsWithOptions,
+      questionIdsMissingOptions,
+      failureCode: TEAM_DYNAMICS_TEST_NOT_READY,
+      reason: "missing_question_options",
+    };
+  }
+
+  return {
+    isReady: true,
+    testId: input.test.id,
+    activeQuestionIds,
+    questionIdsWithOptions,
+    questionIdsMissingOptions: [],
+    failureCode: null,
+    reason: null,
+  };
+}
+
+export function assertTeamDynamicsRunReadiness(
+  readiness: TeamDynamicsRunReadiness,
+): asserts readiness is TeamDynamicsRunReadiness & { isReady: true; testId: string } {
+  if (readiness.isReady) {
+    return;
+  }
+
+  throw new TeamDynamicsTestNotReadyError(
+    `Team Dynamics create flow requires an active imported test with active questions and answer options. Reason: ${readiness.reason ?? "unknown"}.`,
+  );
 }
 
 export function assertValidTeamDynamicsAssessmentCreateContext(input: {
@@ -421,7 +542,7 @@ async function getTeamDynamicsTestId(
 ): Promise<string> {
   const { data, error } = await supabase
     .from("tests")
-    .select("id")
+    .select("id, slug, status, is_active")
     .eq("slug", TEAM_DYNAMICS_TEST_SLUG)
     .maybeSingle();
 
@@ -429,11 +550,52 @@ async function getTeamDynamicsTestId(
     throw new Error(`Failed to resolve Team Dynamics test: ${error.message}`);
   }
 
-  if (!data?.id) {
-    throw new Error("Team Dynamics test is not imported.");
+  const test = (data as TeamDynamicsRunnableTestRecord | null) ?? null;
+
+  if (!test?.id) {
+    throw new TeamDynamicsTestNotReadyError("Team Dynamics test is not imported.");
   }
 
-  return data.id;
+  const { data: questionData, error: questionError } = await supabase
+    .from("questions")
+    .select("id")
+    .eq("test_id", test.id)
+    .eq("is_active", true)
+    .order("question_order", { ascending: true });
+
+  if (questionError) {
+    throw new Error(`Failed to resolve Team Dynamics active questions: ${questionError.message}`);
+  }
+
+  const activeQuestionIds = ((questionData ?? []) as Array<{ id: string }>).map((question) => question.id);
+  let questionIdsWithOptions: string[] = [];
+
+  if (activeQuestionIds.length > 0) {
+    const { data: optionData, error: optionError } = await supabase
+      .from("answer_options")
+      .select("question_id")
+      .in("question_id", activeQuestionIds);
+
+    if (optionError) {
+      throw new Error(`Failed to resolve Team Dynamics answer options: ${optionError.message}`);
+    }
+
+    questionIdsWithOptions = [
+      ...new Set(
+        ((optionData ?? []) as Array<{ question_id: string | null }>).flatMap((option) =>
+          option.question_id ? [option.question_id] : [],
+        ),
+      ),
+    ];
+  }
+
+  const readiness = buildTeamDynamicsRunReadiness({
+    test,
+    activeQuestionIds,
+    questionIdsWithOptions,
+  });
+  assertTeamDynamicsRunReadiness(readiness);
+  return readiness.testId;
 }
 
 export async function createTeamDynamicsAssessmentForTeam(input: {
