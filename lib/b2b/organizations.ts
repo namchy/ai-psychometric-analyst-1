@@ -3,6 +3,7 @@ import "server-only";
 import { getAssessmentAttemptLifecycle, type AssessmentAttemptLifecycle } from "@/lib/assessment/attempt-lifecycle";
 import type { AttemptReportStatus } from "@/lib/assessment/report-providers";
 import { STANDARD_ASSESSMENT_BATTERY_SLUGS } from "@/lib/assessment/standard-battery";
+import { shouldHideTeamDynamicsAttemptFromHrIndividualFlow } from "@/lib/assessment/team-dynamics";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { AddressingForm } from "@/lib/auth/addressing-form";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -461,6 +462,10 @@ export async function getAttemptForOrganization(
   const responseCounts = await getResponseCountsForAttemptIds([attemptRow.id]);
   const attempt = mapOrganizationAttemptSummary(attemptRow, responseCounts.get(attemptRow.id) ?? 0);
 
+  if (shouldHideTeamDynamicsAttemptFromHrIndividualFlow(attempt.tests?.slug)) {
+    return null;
+  }
+
   if (
     attempt.participants &&
     attempt.participants.organization_id !== organizationId
@@ -507,7 +512,12 @@ export async function getAttemptsForOrganization(
 
   const attemptRows = ((data ?? []) as AttemptRow[]).filter((attempt) => {
     const participant = normalizeAttemptRelation(attempt.participants);
-    return !participant || participant.organization_id === organizationId;
+    const tests = normalizeAttemptRelation(attempt.tests);
+
+    return (
+      (!participant || participant.organization_id === organizationId) &&
+      !shouldHideTeamDynamicsAttemptFromHrIndividualFlow(tests?.slug)
+    );
   });
   const responseCounts = await getResponseCountsForAttemptIds(attemptRows.map((attempt) => attempt.id));
 

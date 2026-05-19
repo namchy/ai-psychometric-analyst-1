@@ -4,6 +4,7 @@ import { getAppLocaleCookieValue } from "@/lib/auth/app-locale";
 import { resolveAddressingForm } from "@/lib/auth/addressing-form";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 import { getCandidateAssessmentAvailability } from "@/lib/assessment/availability";
+import { canUseGenericCandidateAttemptCreation } from "@/lib/assessment/team-dynamics";
 import { getTestRunReadiness } from "@/lib/assessment/tests";
 import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -82,6 +83,11 @@ export async function createAssessmentAttempt(
   }
 
   const test = testRow as AssessmentAccessTestRow;
+
+  if (!canUseGenericCandidateAttemptCreation(test.slug)) {
+    throw new Error("Team Dynamics assessments must be assigned through a team workflow.");
+  }
+
   const availability = getCandidateAssessmentAvailability({
     slug: test.slug,
     name: test.name,
