@@ -1,15 +1,13 @@
 "use client";
 
 import { useFormState } from "react-dom";
-import {
-  INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE,
-  createTeamDynamicsAssessmentAction,
-} from "@/app/actions/team-assessments";
+import { createTeamDynamicsAssessmentAction } from "@/app/actions/team-assessments";
 import {
   DashboardActionRow,
   DashboardSectionShell,
   getDashboardCtaClassName,
 } from "@/components/dashboard/primitives";
+import { INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE } from "@/lib/assessment/team-dynamics-action-contract";
 import type { TeamSummary } from "@/lib/b2b/teams";
 
 type HrTeamsTableProps = {

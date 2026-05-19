@@ -35,6 +35,7 @@ assert.doesNotMatch(pageSource, /assessment_reports/);
 
 assert.match(componentSource, /createTeamDynamicsAssessmentAction/);
 assert.match(componentSource, /useFormState/);
+assert.match(componentSource, /team-dynamics-action-contract/);
 assert.match(componentSource, /name="teamId"/);
 assert.match(componentSource, /Pokreni procjenu timske dinamike/);
 assert.match(componentSource, /Aktivna procjena/);

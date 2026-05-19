@@ -7,19 +7,34 @@ const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
 const actionPath = path.join(projectRoot, "app", "actions", "team-assessments.ts");
-const source = fs.readFileSync(actionPath, "utf8");
+const contractPath = path.join(
+  projectRoot,
+  "lib",
+  "assessment",
+  "team-dynamics-action-contract.ts",
+);
+const actionSource = fs.readFileSync(actionPath, "utf8");
+const contractSource = fs.readFileSync(contractPath, "utf8");
 
-assert.match(source, /requireAuthenticatedUserForAction/);
-assert.match(source, /getActiveOrganizationForUser\(user\.id\)/);
-assert.match(source, /getFormDataString\(formData, "teamId"\)/);
-assert.match(source, /createTeamDynamicsAssessmentForTeam\(/);
-assert.match(source, /organizationId: organization\.id/);
-assert.match(source, /requireLinkedUsers: true/);
-assert.doesNotMatch(source, /organizationId"\)/);
-assert.doesNotMatch(source, /assessment_reports/);
-assert.doesNotMatch(source, /attempt_reports/);
-assert.doesNotMatch(source, /redirect\(/);
-assert.doesNotMatch(source, /revalidatePath\(/);
+assert.match(actionSource, /^"use server";/);
+assert.match(actionSource, /requireAuthenticatedUserForAction/);
+assert.match(actionSource, /getActiveOrganizationForUser\(user\.id\)/);
+assert.match(actionSource, /getFormDataString\(formData, "teamId"\)/);
+assert.match(actionSource, /createTeamDynamicsAssessmentForTeam\(/);
+assert.match(actionSource, /organizationId: organization\.id/);
+assert.match(actionSource, /requireLinkedUsers: true/);
+assert.doesNotMatch(actionSource, /organizationId"\)/);
+assert.doesNotMatch(actionSource, /assessment_reports/);
+assert.doesNotMatch(actionSource, /attempt_reports/);
+assert.doesNotMatch(actionSource, /redirect\(/);
+assert.doesNotMatch(actionSource, /revalidatePath\(/);
+assert.doesNotMatch(actionSource, /export const /);
+assert.doesNotMatch(actionSource, /export function /);
+assert.match(actionSource, /export async function createTeamDynamicsAssessmentAction/);
+
+assert.match(contractSource, /TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED/);
+assert.match(contractSource, /INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE/);
+assert.match(contractSource, /mapCreateTeamDynamicsAssessmentActionError/);
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "team-dynamics-action-"));
 const stubAuthPath = path.join(tmpDir, "auth-session.cjs");
@@ -94,6 +109,10 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     return stubTeamAssessmentsPath;
   }
 
+  if (request === "@/lib/assessment/team-dynamics-action-contract") {
+    return resolveWithExtensions(path.join(projectRoot, "lib", "assessment", "team-dynamics-action-contract"));
+  }
+
   if (request.startsWith("@/")) {
     return originalResolveFilename.call(
       this,
@@ -143,6 +162,8 @@ global.__TEAM_DYNAMICS_ACTION_MOCKS__ = {
 
 const {
   createTeamDynamicsAssessmentAction,
+} = require(actionPath);
+const {
   INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE,
   mapCreateTeamDynamicsAssessmentActionError,
   TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED,
@@ -151,7 +172,7 @@ const {
   TEAM_DYNAMICS_ACTION_NO_ACTIVE_MEMBERS,
   TEAM_DYNAMICS_ACTION_TEAM_ACCESS_DENIED,
   TEAM_DYNAMICS_ACTION_CREATE_FAILED,
-} = require(actionPath);
+} = require(contractPath);
 const {
   TeamDynamicsTestNotReadyError,
   TeamDynamicsMemberMissingLinkedUserError,
