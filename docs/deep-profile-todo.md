@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Planirano / Sljedeći implementation task | Team module / Data model scaffold | Uski prvi implementation slice: team-specific scaffold + placeholder package + minimalni schema/package testovi; bez licenciranih itema, bez finalnog scoring/agregacije, bez AI providera, bez renderera, bez relacijskog kandidat-tim fit reporta i bez DUTCH implementacije. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Sljedeći implementation task | Team module / Data model scaffold | Remote DB scaffold migracija je primijenjena i verifikovana (tabele + triggeri + SELECT RLS policy-ji); sljedeći korak ostaje placeholder package support + scaffold integracija bez scoringa, Team Fit relacijskog reporta i AI reporta. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Planirano / Sljedeći implementation task  
+**Status:** Djelimično završeno / Sljedeći implementation task  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -625,6 +625,14 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 **Preporučeni redoslijed:**
 1. završiti dokumentacioni sync Team Dynamics speca
 2. otvoriti implementation task `Create Team Dynamics data model scaffold and placeholder package support`
+
+**Completion note (djelimično):**
+- Remote Supabase migracija `supabase/migrations/20260519120000_add_team_dynamics_scaffold.sql` je primijenjena kroz SQL Editor i verifikovana.
+- Potvrđene su Team Dynamics tabele: `teams`, `team_memberships`, `team_assessment_assignments`, `team_assessment_participants`.
+- Potvrđeni su triggeri: `set_teams_updated_at`, `set_team_memberships_updated_at`, `set_team_assessment_assignments_updated_at`, `set_team_assessment_participants_updated_at`.
+- Potvrđeni su SELECT RLS policy-ji: `teams_read_member`, `team_memberships_read_member`, `team_assessment_assignments_read_member`, `team_assessment_participants_read_member`.
+- Nakon migracije `npm run typecheck` i `npm run build` prolaze.
+- Sljedeći korak ostaje placeholder package support / scaffold integration bez scoringa, Team Fit relacijskog reporta i AI reporta.
 
 ---
 
@@ -2292,6 +2300,8 @@ Razlog za sljedeći prioritet:
 | Prioritet | Tema                            | Opis                                                                                         | Napomena                                           |
 | --------- | ------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | P1        | Composite HR renderer UI debt nakon lokalnog polish-a | Lokalni renderer polish je zatvorio nekoliko funkcionalnih i strukturnih UI problema, ali composite report i dalje nema potpuno zreo, jedinstven vizuelni sistem. Neki dijelovi još izgledaju kao ad-hoc površine i nested kartice. | Dalji rad na composite report UI-ju treba raditi kroz `docs/deep-profile-ui-system.md`, ne kroz izolovane promptove po jednoj sekciji. Sljedeći korak je planski refactor Composite HR report renderera prema UI system dokumentu. |
+| P1        | Build-time Google font fetch dependency | Build-time dependency na eksterni `next/font/google` fetch je zatvoren uklanjanjem Google font fetch-a i prelaskom na lokalni fallback font stack. | Build blocker je uklonjen, ali fallback stack treba ručno vizuelno provjeriti u aplikaciji; ovo više nije build blocker. |
+| P2        | `components/assessment/assessment-form.tsx` ESLint warnings | Nakon stabilizacije build/boundary i Team Dynamics remote scaffold migracije ostaju postojeći warnings: 2x `@next/next/no-img-element` i 2x `react-hooks/exhaustive-deps`. | Non-blocking tehnički dug; `npm run build` i `npm run typecheck` prolaze. |
 | P1        | Snapshot jezičkog oblika        | Oblik obraćanja treba snapshotovati na attempt/report nivou i koristiti u participant promptovima, umjesto ručnog rješavanja po testu. | Slično locale snapshotu.                           |
 | P1        | Composite runtime DB/migration verification | Composite schema/table visibility blocker je riješen, a DB-backed mock smoke sa stvarnim queued reportom je potvrđen. | Runtime Supabase vidi composite tabele; ne koristiti `supabase db push` naslijepo dok stare uncertain migracije imaju drift. |
 | P1        | Composite report generation pipeline | Composite HR report pipeline sada ima storage, readiness, queue akcije, input builder, worker, contract, mock provider, renderer i OpenAI provider. Mock-backed i OpenAI DB-backed smoke sada prolaze. | Preostali fokus je production worker/report orchestration i eventualno širenje shared language QA sloja na druge report lane-ove. |
@@ -2384,6 +2394,26 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-19 — Team Dynamics scaffold remote DB migration applied and verified
+
+Završeno:
+
+* Remote Supabase migracija `supabase/migrations/20260519120000_add_team_dynamics_scaffold.sql` je primijenjena i verifikovana.
+* Remote schema sada ima Team Dynamics tabele `teams`, `team_memberships`, `team_assessment_assignments` i `team_assessment_participants`.
+* Verifikovani su triggeri `set_teams_updated_at`, `set_team_memberships_updated_at`, `set_team_assessment_assignments_updated_at` i `set_team_assessment_participants_updated_at`.
+* Verifikovani su SELECT RLS policy-ji `teams_read_member`, `team_memberships_read_member`, `team_assessment_assignments_read_member` i `team_assessment_participants_read_member`.
+* Nakon migracije `npm run typecheck` i `npm run build` prolaze.
+* Sljedeći implementation korak ostaje placeholder package support / scaffold integration, bez širenja scope-a na scoring, Team Fit relacijski report ili AI report.
+
+### 2026-05-19 — Build stabilnost nad eksternim Google font fetch-om
+
+Završeno:
+
+* Odlučeno je da build stabilnost ima prioritet nad build-time Google font fetch dependency-jem.
+* Uklonjen je `next/font/google` build-time fetch i prebačeno je na lokalni fallback font stack kroz `lib/fonts.ts` i `app/globals.css`.
+* `npm run build` i `npm run typecheck` prolaze nakon izmjene.
+* Postojeći ESLint warnings u `components/assessment/assessment-form.tsx` ostaju tehnički dug i nisu build blocker.
 
 ### 2026-05-18 — Individualni razvojni profil kao poseban personalizovani output
 
