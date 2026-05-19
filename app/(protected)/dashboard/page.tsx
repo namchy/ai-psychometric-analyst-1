@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { createParticipant, createStandardAssessmentBattery } from "@/app/actions/participants";
 import {
@@ -485,6 +486,28 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   </div>
                 )}
               </SingleOpenPanelGroup>
+            </section>
+          </DashboardInfoCardShell>
+
+          <DashboardInfoCardShell className="rounded-[1.2rem] border-slate-200/60 bg-white/65 p-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:p-4">
+            <section aria-labelledby="teams-entry-heading" className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Team Dynamics"
+                eyebrowClassName="text-teal-800/80"
+                title={<span id="teams-entry-heading">Timovi</span>}
+                description="Pregled timova i procjena timske dinamike kroz agregirani timski uvid."
+                className="gap-2"
+                titleClassName="text-[1.15rem] text-slate-800"
+                descriptionClassName="mt-1 max-w-2xl text-[12px] leading-5 text-slate-500"
+              />
+              <DashboardActionRow className="pt-1">
+                <Link
+                  className={getDashboardCtaClassName({ variant: "secondary" })}
+                  href="/dashboard/teams"
+                >
+                  Otvori timove
+                </Link>
+              </DashboardActionRow>
             </section>
           </DashboardInfoCardShell>
 

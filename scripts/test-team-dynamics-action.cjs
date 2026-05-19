@@ -143,6 +143,7 @@ global.__TEAM_DYNAMICS_ACTION_MOCKS__ = {
 
 const {
   createTeamDynamicsAssessmentAction,
+  INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE,
   mapCreateTeamDynamicsAssessmentActionError,
   TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED,
   TEAM_DYNAMICS_ACTION_NO_ACTIVE_ORGANIZATION,
@@ -157,11 +158,19 @@ const {
 } = require(stubTeamAssessmentsPath);
 
 (async () => {
+  assert.deepEqual(INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE, {
+    ok: false,
+    code: null,
+    message: null,
+    teamId: null,
+  });
+
   const missingTeamIdResult = await createTeamDynamicsAssessmentAction(new FormData());
   assert.deepEqual(missingTeamIdResult, {
     ok: false,
     code: TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED,
     message: "Team id is required.",
+    teamId: null,
   });
 
   global.__TEAM_DYNAMICS_ACTION_MOCKS__.organizations.getActiveOrganizationForUser = async () => null;
@@ -170,6 +179,7 @@ const {
     ok: false,
     code: TEAM_DYNAMICS_ACTION_NO_ACTIVE_ORGANIZATION,
     message: "Active organization is not available for this user.",
+    teamId: null,
   });
 
   let capturedInput = null;
@@ -199,6 +209,7 @@ const {
   const successResult = await createTeamDynamicsAssessmentAction(successFormData);
   assert.deepEqual(successResult, {
     ok: true,
+    teamId: "team-1",
     assignmentId: "assignment-1",
     assignmentAction: "reused",
     participantsCreated: 0,
@@ -221,6 +232,7 @@ const {
       ok: false,
       code: "TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER",
       message: "Missing linked user",
+      teamId: null,
     },
   );
 
@@ -232,6 +244,7 @@ const {
       ok: false,
       code: "TEAM_DYNAMICS_TEST_NOT_READY",
       message: "Team Dynamics test is not runtime-ready.",
+      teamId: null,
     },
   );
 
@@ -241,6 +254,7 @@ const {
       ok: false,
       code: TEAM_DYNAMICS_ACTION_TEAM_ACCESS_DENIED,
       message: "Team was not found.",
+      teamId: null,
     },
   );
 
@@ -252,6 +266,7 @@ const {
       ok: false,
       code: TEAM_DYNAMICS_ACTION_NO_ACTIVE_MEMBERS,
       message: "At least one active team membership is required.",
+      teamId: null,
     },
   );
 
@@ -263,6 +278,7 @@ const {
       ok: false,
       code: TEAM_DYNAMICS_ACTION_MEMBER_MISSING_PARTICIPANT,
       message: "Membership membership-1 is missing a linked participant.",
+      teamId: null,
     },
   );
 
@@ -272,6 +288,7 @@ const {
       ok: false,
       code: TEAM_DYNAMICS_ACTION_CREATE_FAILED,
       message: "Unknown failure.",
+      teamId: null,
     },
   );
 
