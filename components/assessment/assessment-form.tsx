@@ -31,7 +31,7 @@ import type {
   AssessmentSelectionValue,
   AttemptStatus,
 } from "@/lib/assessment/types";
-import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
+import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/test-render-types";
 
 type AssessmentFormProps = {
   executionMode?: "public" | "protected";

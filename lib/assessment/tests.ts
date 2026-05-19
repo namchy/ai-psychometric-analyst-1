@@ -1,5 +1,4 @@
 import type {
-  AnswerOption,
   AssessmentSelectionsInput,
   AttemptStatus,
   Question,
@@ -25,32 +24,15 @@ import {
   normalizeAssessmentLocale,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
+import type {
+  AssessmentQuestionRendererType,
+  TestAnswerOption,
+  TestQuestion,
+} from "@/lib/assessment/test-render-types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ActiveTest = Pick<Test, "id" | "slug" | "name" | "description">;
-export type AssessmentQuestionRendererType =
-  | "text_choice"
-  | "image_choice"
-  | "numeric_input"
-  | "text_input";
-export type TestQuestion = Pick<
-  Question,
-  | "id"
-  | "code"
-  | "text"
-  | "question_order"
-  | "question_type"
-  | "is_required"
-  | "stimulus_image_path"
-  | "stimulus_secondary_image_path"
-> & {
-  renderer_type: AssessmentQuestionRendererType;
-};
-export type TestAnswerOption = Pick<
-  AnswerOption,
-  "id" | "question_id" | "label" | "value" | "option_order" | "image_path"
->;
 export const ASSESSMENT_ATTEMPT_COOKIE_NAME = "assessment_attempt_id";
 
 type ResumeResponseRecord = {

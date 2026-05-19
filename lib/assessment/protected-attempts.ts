@@ -5,7 +5,7 @@ import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type {
   CompletedAssessmentReportSnapshot,
   CompletedAssessmentReportState,
-} from "@/lib/assessment/reports";
+} from "@/lib/assessment/report-state-types";
 import {
   getAnswerOptionsForQuestions,
   getAssessmentResumeState,
