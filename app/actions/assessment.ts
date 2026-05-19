@@ -31,6 +31,12 @@ import {
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
 import {
+  shouldBypassIndividualPostCompletionArtifacts,
+} from "@/lib/assessment/team-dynamics";
+import {
+  syncTeamAssessmentParticipantCompletionByAttemptId,
+} from "@/lib/assessment/team-assessments";
+import {
   persistCompletedAssessmentResults,
   type CompletedAssessmentResults,
 } from "@/lib/assessment/scoring";
@@ -676,6 +682,21 @@ async function getTestIdBySlug(testSlug: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+async function getTestSlugById(testId: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("tests")
+    .select("slug")
+    .eq("id", testId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to resolve test slug: ${error.message}`);
+  }
+
+  return data?.slug ?? null;
+}
+
 export async function saveAssessmentProgress(
   input: SaveAssessmentSelectionsInput,
 ): Promise<SaveAssessmentSelectionsResult> {
@@ -1180,6 +1201,33 @@ export async function completeProtectedAssessmentAttempt(
       }
 
       completedAttempt = existingAttemptData as AttemptRecord;
+    }
+
+    const testSlug = await getTestSlugById(input.testId);
+    const shouldBypassPostCompletionArtifacts = shouldBypassIndividualPostCompletionArtifacts(
+      testSlug,
+    );
+
+    if (shouldBypassPostCompletionArtifacts) {
+      try {
+        await syncTeamAssessmentParticipantCompletionByAttemptId({
+          attemptId: persistResult.attemptId,
+          completedAt: completedAttempt.completed_at ?? completedAt,
+        });
+      } catch (syncError) {
+        console.error("Team Dynamics completion sync failed", syncError);
+      }
+
+      revalidateAttemptAllPaths(persistResult.attemptId);
+
+      return {
+        ok: true,
+        attemptId: persistResult.attemptId,
+        completedAt: completedAttempt.completed_at ?? completedAt,
+        message: "Procjena je završena. Vaši odgovori su zaključani.",
+        results: null,
+        report: null,
+      };
     }
 
     const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);

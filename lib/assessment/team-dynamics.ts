@@ -16,6 +16,18 @@ export function canUseGenericCandidateAttemptCreation(
   return !isTeamDynamicsTestSlug(testSlug);
 }
 
+export function shouldBypassIndividualPostCompletionArtifacts(
+  testSlug: string | null | undefined,
+): boolean {
+  return isTeamDynamicsTestSlug(testSlug);
+}
+
+export function shouldUseDefaultIndividualPostCompletionFlow(
+  testSlug: string | null | undefined,
+): boolean {
+  return !shouldBypassIndividualPostCompletionArtifacts(testSlug);
+}
+
 export function isTeamDynamicsAttemptRecord(input: {
   test_slug?: string | null;
   slug?: string | null;

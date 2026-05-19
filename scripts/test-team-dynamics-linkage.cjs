@@ -197,4 +197,10 @@ assert.deepEqual(
   },
 );
 
+const teamAssessmentsSource = fs.readFileSync(
+  path.join(projectRoot, "lib", "assessment", "team-assessments.ts"),
+  "utf8",
+);
+assert.match(teamAssessmentsSource, /if \(!existing\) \{\s+return null;\s+\}/);
+
 console.log("Team Dynamics linkage helper tests passed.");

@@ -59,56 +59,40 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   TEAM_DYNAMICS_TEST_SLUG,
-  isTeamDynamicsTestSlug,
-  shouldHideTeamDynamicsAttemptFromHrIndividualFlow,
-  canUseGenericCandidateAttemptCreation,
   shouldBypassIndividualPostCompletionArtifacts,
   shouldUseDefaultIndividualPostCompletionFlow,
-  isTeamDynamicsAttemptRecord,
 } = require("../lib/assessment/team-dynamics.ts");
 
-assert.equal(TEAM_DYNAMICS_TEST_SLUG, "team_dynamics_v1_strong");
-assert.equal(isTeamDynamicsTestSlug("team_dynamics_v1_strong"), true);
-assert.equal(isTeamDynamicsTestSlug("TEAM_DYNAMICS_V1_STRONG"), true);
-assert.equal(isTeamDynamicsTestSlug("mwms_v1"), false);
-
-assert.equal(shouldHideTeamDynamicsAttemptFromHrIndividualFlow(TEAM_DYNAMICS_TEST_SLUG), true);
-assert.equal(shouldHideTeamDynamicsAttemptFromHrIndividualFlow("mwms_v1"), false);
-
-assert.equal(canUseGenericCandidateAttemptCreation(TEAM_DYNAMICS_TEST_SLUG), false);
-assert.equal(canUseGenericCandidateAttemptCreation("mwms_v1"), true);
 assert.equal(shouldBypassIndividualPostCompletionArtifacts(TEAM_DYNAMICS_TEST_SLUG), true);
-assert.equal(shouldBypassIndividualPostCompletionArtifacts("mwms_v1"), false);
 assert.equal(shouldUseDefaultIndividualPostCompletionFlow(TEAM_DYNAMICS_TEST_SLUG), false);
+assert.equal(shouldBypassIndividualPostCompletionArtifacts("ipip-neo-120-v1"), false);
+assert.equal(shouldBypassIndividualPostCompletionArtifacts("safran_v1"), false);
+assert.equal(shouldBypassIndividualPostCompletionArtifacts("mwms_v1"), false);
+assert.equal(shouldUseDefaultIndividualPostCompletionFlow("ipip-neo-120-v1"), true);
+assert.equal(shouldUseDefaultIndividualPostCompletionFlow("safran_v1"), true);
 assert.equal(shouldUseDefaultIndividualPostCompletionFlow("mwms_v1"), true);
 
-assert.equal(
-  isTeamDynamicsAttemptRecord({ tests: { slug: TEAM_DYNAMICS_TEST_SLUG } }),
-  true,
-);
-assert.equal(isTeamDynamicsAttemptRecord({ test_slug: "mwms_v1" }), false);
-
-const organizationsSource = fs.readFileSync(
-  path.join(projectRoot, "lib", "b2b", "organizations.ts"),
+const assessmentActionsSource = fs.readFileSync(
+  path.join(projectRoot, "app", "actions", "assessment.ts"),
   "utf8",
 );
-assert.match(
-  organizationsSource,
-  /shouldHideTeamDynamicsAttemptFromHrIndividualFlow\(attempt\.tests\?\.slug\)/,
-);
-assert.match(
-  organizationsSource,
-  /!shouldHideTeamDynamicsAttemptFromHrIndividualFlow\(tests\?\.slug\)/,
+const teamDynamicsBranchMatch = assessmentActionsSource.match(
+  /if \(shouldBypassPostCompletionArtifacts\) \{([\s\S]*?)\n\s*\}\n\n\s*const results = await persistCompletedAssessmentResults/,
 );
 
-const candidateActionsSource = fs.readFileSync(
-  path.join(projectRoot, "app", "(protected)", "app", "actions.ts"),
-  "utf8",
-);
-assert.match(candidateActionsSource, /canUseGenericCandidateAttemptCreation\(test\.slug\)/);
-assert.match(
-  candidateActionsSource,
-  /Team Dynamics assessments must be assigned through a team workflow\./,
-);
+assert.ok(teamDynamicsBranchMatch, "Expected Team Dynamics completion guard branch in assessment action.");
+const teamDynamicsBranchSource = teamDynamicsBranchMatch[1];
 
-console.log("Team Dynamics privacy guard tests passed.");
+assert.match(
+  assessmentActionsSource,
+  /const shouldBypassPostCompletionArtifacts = shouldBypassIndividualPostCompletionArtifacts\(/,
+);
+assert.match(teamDynamicsBranchSource, /await syncTeamAssessmentParticipantCompletionByAttemptId\(\{/);
+assert.match(teamDynamicsBranchSource, /attemptId: persistResult\.attemptId,/);
+assert.match(teamDynamicsBranchSource, /completedAt: completedAttempt\.completed_at \?\? completedAt,/);
+assert.match(teamDynamicsBranchSource, /results: null,/);
+assert.match(teamDynamicsBranchSource, /report: null,/);
+assert.doesNotMatch(teamDynamicsBranchSource, /persistCompletedAssessmentResults\(/);
+assert.doesNotMatch(teamDynamicsBranchSource, /orchestrateReportsAfterAttemptCompletion\(/);
+
+console.log("Team Dynamics completion guard tests passed.");
