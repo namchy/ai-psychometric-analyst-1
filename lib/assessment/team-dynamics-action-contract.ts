@@ -1,9 +1,6 @@
-import {
-  TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER,
-  TEAM_DYNAMICS_TEST_NOT_READY,
-  TeamDynamicsMemberMissingLinkedUserError,
-  TeamDynamicsTestNotReadyError,
-} from "@/lib/assessment/team-assessments";
+export const TEAM_DYNAMICS_TEST_NOT_READY = "TEAM_DYNAMICS_TEST_NOT_READY" as const;
+export const TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER =
+  "TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER" as const;
 
 export const TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED =
   "TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED" as const;
@@ -63,7 +60,16 @@ export function mapCreateTeamDynamicsAssessmentActionError(
   error: unknown,
   teamId: string | null = null,
 ): Extract<CreateTeamDynamicsAssessmentActionResult, { ok: false }> {
-  if (error instanceof TeamDynamicsTestNotReadyError) {
+  const errorCode =
+    error && typeof error === "object" && "code" in error && typeof error.code === "string"
+      ? error.code
+      : null;
+
+  if (
+    error instanceof Error &&
+    (error.name === "TeamDynamicsTestNotReadyError" ||
+      errorCode === TEAM_DYNAMICS_TEST_NOT_READY)
+  ) {
     return {
       ok: false,
       code: TEAM_DYNAMICS_TEST_NOT_READY,
@@ -72,7 +78,11 @@ export function mapCreateTeamDynamicsAssessmentActionError(
     };
   }
 
-  if (error instanceof TeamDynamicsMemberMissingLinkedUserError) {
+  if (
+    error instanceof Error &&
+    (error.name === "TeamDynamicsMemberMissingLinkedUserError" ||
+      errorCode === TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER)
+  ) {
     return {
       ok: false,
       code: TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER,

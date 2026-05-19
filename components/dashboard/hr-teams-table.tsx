@@ -8,7 +8,7 @@ import {
   getDashboardCtaClassName,
 } from "@/components/dashboard/primitives";
 import { INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE } from "@/lib/assessment/team-dynamics-action-contract";
-import type { TeamSummary } from "@/lib/b2b/teams";
+import type { TeamSummary } from "@/lib/b2b/team-summary";
 
 type HrTeamsTableProps = {
   teams: TeamSummary[];

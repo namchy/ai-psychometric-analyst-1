@@ -1,26 +1,8 @@
 import "server-only";
 
 import { TEAM_DYNAMICS_TEST_SLUG } from "@/lib/assessment/team-dynamics";
+import type { TeamSummary } from "@/lib/b2b/team-summary";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-
-export type TeamSummaryActiveAssessment = {
-  assignmentId: string;
-  status: "active";
-  openedAt: string | null;
-  updatedAt: string;
-  invitedCount: number;
-  completedCount: number;
-};
-
-export type TeamSummary = {
-  teamId: string;
-  name: string;
-  description: string | null;
-  activeMemberCount: number;
-  createdAt: string;
-  updatedAt: string;
-  activeAssessment: TeamSummaryActiveAssessment | null;
-};
 
 type TeamRow = {
   id: string;
