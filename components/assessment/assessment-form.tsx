@@ -13,7 +13,7 @@ import { ReportGenerationLoadingScreen } from "@/components/assessment/report-ge
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState, isQuestionAnswered } from "@/lib/assessment/completion";
 import { IPIP_NEO_120_TEST_SLUG } from "@/lib/assessment/ipip-neo-120-labels";
-import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
+import type { CompletedAssessmentReportState } from "@/lib/assessment/report-state-types";
 import { MWMS_V1_TEST_SLUG } from "@/lib/assessment/mwms-scoring";
 import {
   clearPendingSelections,

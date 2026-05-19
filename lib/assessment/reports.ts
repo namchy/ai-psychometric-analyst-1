@@ -2,6 +2,9 @@ import "server-only";
 
 import { loadAssessmentCompletionState } from "@/lib/assessment/completion-server";
 import { resolveReportLocale, type AssessmentLocale } from "@/lib/assessment/locale";
+import type {
+  CompletedAssessmentReportState,
+} from "@/lib/assessment/report-state-types";
 import {
   getReportGenerationCapability,
   planPostCompletionReportJobs,
@@ -80,31 +83,6 @@ type LoadedReportContext = {
   test: TestRecord;
   results: CompletedAssessmentResults;
 };
-
-type AttemptReportLifecycleState = {
-  generatorType: ReportGeneratorType | null;
-  generatedAt: string;
-  completedAt: string | null;
-};
-
-export type CompletedAssessmentReportState =
-  | {
-      status: "queued" | "processing";
-    } & AttemptReportLifecycleState
-  | {
-      status: "ready";
-      reportFamily: ReportFamily;
-      reportAudience: ReportAudience;
-      reportVersion: ReportVersion;
-      reportRenderFormat: ReportRenderFormat | null;
-      report: RuntimeCompletedAssessmentReport;
-    }
-  | {
-      status: "failed" | "unavailable";
-    } & AttemptReportLifecycleState & {
-      failureCode: string | null;
-      failureReason: string | null;
-    };
 
 type ReportGenerationResult =
   | {
@@ -1108,6 +1086,7 @@ export async function persistCompletedAssessmentReport(
   };
 }
 
+export type { CompletedAssessmentReportState } from "@/lib/assessment/report-state-types";
 export type {
   RuntimeCompletedAssessmentReport as CompletedAssessmentReport,
   RuntimeCompletedAssessmentReport as CompletedAssessmentReportSnapshot,

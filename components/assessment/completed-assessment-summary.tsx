@@ -19,7 +19,7 @@ import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type { IpcHrReportV1, IpcParticipantReportV1 } from "@/lib/assessment/ipc-report-v1";
 import type { MwmsHrReportV1 } from "@/lib/assessment/mwms-hr-report-v1";
 import type { MwmsParticipantReportV1 } from "@/lib/assessment/mwms-participant-report-v1";
-import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
+import type { CompletedAssessmentReportState } from "@/lib/assessment/report-state-types";
 import type { SafranHrReportV1 } from "@/lib/assessment/safran-hr-report-v1";
 import {
   formatDimensionLabel,
