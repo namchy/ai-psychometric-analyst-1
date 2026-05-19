@@ -35,7 +35,14 @@ export type CreateTeamDynamicsAssessmentActionErrorCode =
 
 export type CreateTeamDynamicsAssessmentActionResult =
   | {
+      ok: false;
+      code: null;
+      message: null;
+      teamId: null;
+    }
+  | {
       ok: true;
+      teamId: string;
       assignmentId: string;
       assignmentAction: "created" | "reused";
       participantsCreated: number;
@@ -46,7 +53,16 @@ export type CreateTeamDynamicsAssessmentActionResult =
       ok: false;
       code: CreateTeamDynamicsAssessmentActionErrorCode;
       message: string;
+      teamId: string | null;
     };
+
+export const INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE: CreateTeamDynamicsAssessmentActionResult =
+  {
+    ok: false,
+    code: null,
+    message: null,
+    teamId: null,
+  };
 
 function getFormDataString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -55,12 +71,14 @@ function getFormDataString(formData: FormData, key: string): string {
 
 export function mapCreateTeamDynamicsAssessmentActionError(
   error: unknown,
+  teamId: string | null = null,
 ): Extract<CreateTeamDynamicsAssessmentActionResult, { ok: false }> {
   if (error instanceof TeamDynamicsTestNotReadyError) {
     return {
       ok: false,
       code: TEAM_DYNAMICS_TEST_NOT_READY,
       message: error.message,
+      teamId,
     };
   }
 
@@ -69,6 +87,7 @@ export function mapCreateTeamDynamicsAssessmentActionError(
       ok: false,
       code: TEAM_DYNAMICS_MEMBER_MISSING_LINKED_USER,
       message: error.message,
+      teamId,
     };
   }
 
@@ -83,6 +102,7 @@ export function mapCreateTeamDynamicsAssessmentActionError(
       ok: false,
       code: TEAM_DYNAMICS_ACTION_TEAM_ACCESS_DENIED,
       message,
+      teamId,
     };
   }
 
@@ -91,6 +111,7 @@ export function mapCreateTeamDynamicsAssessmentActionError(
       ok: false,
       code: TEAM_DYNAMICS_ACTION_NO_ACTIVE_MEMBERS,
       message,
+      teamId,
     };
   }
 
@@ -99,6 +120,7 @@ export function mapCreateTeamDynamicsAssessmentActionError(
       ok: false,
       code: TEAM_DYNAMICS_ACTION_MEMBER_MISSING_PARTICIPANT,
       message,
+      teamId,
     };
   }
 
@@ -106,12 +128,25 @@ export function mapCreateTeamDynamicsAssessmentActionError(
     ok: false,
     code: TEAM_DYNAMICS_ACTION_CREATE_FAILED,
     message,
+    teamId,
   };
 }
 
 export async function createTeamDynamicsAssessmentAction(
-  formData: FormData,
+  previousStateOrFormData:
+    | CreateTeamDynamicsAssessmentActionResult
+    | FormData,
+  maybeFormData?: FormData,
 ): Promise<CreateTeamDynamicsAssessmentActionResult> {
+  const formData =
+    previousStateOrFormData instanceof FormData
+      ? previousStateOrFormData
+      : maybeFormData;
+
+  if (!formData) {
+    return INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE;
+  }
+
   const user = await requireAuthenticatedUserForAction();
   const organization = await getActiveOrganizationForUser(user.id);
 
@@ -120,6 +155,7 @@ export async function createTeamDynamicsAssessmentAction(
       ok: false,
       code: TEAM_DYNAMICS_ACTION_NO_ACTIVE_ORGANIZATION,
       message: "Active organization is not available for this user.",
+      teamId: null,
     };
   }
 
@@ -131,6 +167,7 @@ export async function createTeamDynamicsAssessmentAction(
       ok: false,
       code: TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED,
       message: "Team id is required.",
+      teamId: null,
     };
   }
 
@@ -145,6 +182,7 @@ export async function createTeamDynamicsAssessmentAction(
 
     return {
       ok: true,
+      teamId,
       assignmentId: result.assignmentId,
       assignmentAction: result.assignmentAction,
       participantsCreated: result.participantsCreated,
@@ -152,6 +190,6 @@ export async function createTeamDynamicsAssessmentAction(
       attemptMappingsCreated: result.attemptMappingsCreated,
     };
   } catch (error) {
-    return mapCreateTeamDynamicsAssessmentActionError(error);
+    return mapCreateTeamDynamicsAssessmentActionError(error, teamId);
   }
 }
