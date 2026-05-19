@@ -1,0 +1,58 @@
+{
+  "slug": "team_dynamics_v1_strong",
+  "name": "Procjena timske dinamike",
+  "category": "team_dynamics",
+  "scoring_method": "likert_sum",
+  "version": "v0_1_scaffold",
+  "status": "draft",
+  "is_active": false,
+  "intended_use": "team_assessment",
+  "report_family": "team_dynamics",
+  "description": "Placeholder Team Dynamics scaffold package with licensed-item placeholders only.",
+  "default_locale": "bs",
+  "supported_locales": [
+    "bs"
+  ],
+  "metadata": {
+    "module_name": "Timovi",
+    "assessment_name": "Procjena timske dinamike",
+    "report_name": "Timska dinamika",
+    "legal_status": "licensed_content_not_in_repo",
+    "placeholder_content_only": true,
+    "item_count": 36,
+    "response_scale": {
+      "type": "likert",
+      "min": 1,
+      "max": 5,
+      "anchors": {
+        "1": "Uopste se ne slazem",
+        "2": "Uglavnom se ne slazem",
+        "3": "Niti se slazem niti se ne slazem",
+        "4": "Uglavnom se slazem",
+        "5": "U potpunosti se slazem"
+      }
+    },
+    "instruments": [
+      {
+        "code": "PCS",
+        "name": "Perceived Cohesion Scale",
+        "item_count": 6
+      },
+      {
+        "code": "JEHN_ICS_8",
+        "name": "Jehn ICS-8",
+        "item_count": 8
+      },
+      {
+        "code": "TPS_7",
+        "name": "TPS-7",
+        "item_count": 7
+      },
+      {
+        "code": "LEWIS_TMS",
+        "name": "Lewis TMS",
+        "item_count": 15
+      }
+    ]
+  }
+}

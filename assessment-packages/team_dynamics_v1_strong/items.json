@@ -1,0 +1,1010 @@
+[
+  {
+    "code": "PCS_01",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_PCS_01]",
+    "question_type": "single_choice",
+    "question_order": 1,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "PCS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "PCS",
+      "instrument_name": "Perceived Cohesion Scale",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "PCS_02",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_PCS_02]",
+    "question_type": "single_choice",
+    "question_order": 2,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "PCS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "PCS",
+      "instrument_name": "Perceived Cohesion Scale",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "PCS_03",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_PCS_03]",
+    "question_type": "single_choice",
+    "question_order": 3,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "PCS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "PCS",
+      "instrument_name": "Perceived Cohesion Scale",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "PCS_04",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_PCS_04]",
+    "question_type": "single_choice",
+    "question_order": 4,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "PCS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "PCS",
+      "instrument_name": "Perceived Cohesion Scale",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "PCS_05",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_PCS_05]",
+    "question_type": "single_choice",
+    "question_order": 5,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "PCS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "PCS",
+      "instrument_name": "Perceived Cohesion Scale",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "PCS_06",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_PCS_06]",
+    "question_type": "single_choice",
+    "question_order": 6,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "PCS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "PCS",
+      "instrument_name": "Perceived Cohesion Scale",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_01",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_01]",
+    "question_type": "single_choice",
+    "question_order": 7,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_02",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_02]",
+    "question_type": "single_choice",
+    "question_order": 8,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_03",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_03]",
+    "question_type": "single_choice",
+    "question_order": 9,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_04",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_04]",
+    "question_type": "single_choice",
+    "question_order": 10,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_05",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_05]",
+    "question_type": "single_choice",
+    "question_order": 11,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_06",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_06]",
+    "question_type": "single_choice",
+    "question_order": 12,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_07",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_07]",
+    "question_type": "single_choice",
+    "question_order": 13,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "JEHN_ICS_8_08",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_JEHN_ICS_8_08]",
+    "question_type": "single_choice",
+    "question_order": 14,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "JEHN_ICS_8",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "JEHN_ICS_8",
+      "instrument_name": "Jehn ICS-8",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "TPS_7_01",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_TPS_7_01]",
+    "question_type": "single_choice",
+    "question_order": 15,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TPS_7",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "TPS_7",
+      "instrument_name": "TPS-7",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "TPS_7_02",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_TPS_7_02]",
+    "question_type": "single_choice",
+    "question_order": 16,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TPS_7",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "TPS_7",
+      "instrument_name": "TPS-7",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "TPS_7_03",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_TPS_7_03]",
+    "question_type": "single_choice",
+    "question_order": 17,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TPS_7",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "TPS_7",
+      "instrument_name": "TPS-7",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "TPS_7_04",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_TPS_7_04]",
+    "question_type": "single_choice",
+    "question_order": 18,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TPS_7",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "TPS_7",
+      "instrument_name": "TPS-7",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "TPS_7_05",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_TPS_7_05]",
+    "question_type": "single_choice",
+    "question_order": 19,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TPS_7",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "TPS_7",
+      "instrument_name": "TPS-7",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "TPS_7_06",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_TPS_7_06]",
+    "question_type": "single_choice",
+    "question_order": 20,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TPS_7",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "TPS_7",
+      "instrument_name": "TPS-7",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "TPS_7_07",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_TPS_7_07]",
+    "question_type": "single_choice",
+    "question_order": 21,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "TPS_7",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "TPS_7",
+      "instrument_name": "TPS-7",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_01",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_01]",
+    "question_type": "single_choice",
+    "question_order": 22,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_02",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_02]",
+    "question_type": "single_choice",
+    "question_order": 23,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_03",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_03]",
+    "question_type": "single_choice",
+    "question_order": 24,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_04",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_04]",
+    "question_type": "single_choice",
+    "question_order": 25,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_05",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_05]",
+    "question_type": "single_choice",
+    "question_order": 26,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_06",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_06]",
+    "question_type": "single_choice",
+    "question_order": 27,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_07",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_07]",
+    "question_type": "single_choice",
+    "question_order": 28,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_08",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_08]",
+    "question_type": "single_choice",
+    "question_order": 29,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_09",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_09]",
+    "question_type": "single_choice",
+    "question_order": 30,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_10",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_10]",
+    "question_type": "single_choice",
+    "question_order": 31,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_11",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_11]",
+    "question_type": "single_choice",
+    "question_order": 32,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_12",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_12]",
+    "question_type": "single_choice",
+    "question_order": 33,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_13",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_13]",
+    "question_type": "single_choice",
+    "question_order": 34,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_14",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_14]",
+    "question_type": "single_choice",
+    "question_order": 35,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": true
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": true,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  },
+  {
+    "code": "LEWIS_TMS_15",
+    "text": "[LICENSED_ITEM_PLACEHOLDER_LEWIS_TMS_15]",
+    "question_type": "single_choice",
+    "question_order": 36,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      {
+        "dimension_code": "LEWIS_TMS",
+        "weight": 1,
+        "reverse_scored": false
+      }
+    ],
+    "metadata": {
+      "instrument_code": "LEWIS_TMS",
+      "instrument_name": "Lewis TMS",
+      "scale_min": 1,
+      "scale_max": 5,
+      "scale_anchors": {
+        "min_label": "Uopste se ne slazem",
+        "max_label": "U potpunosti se slazem"
+      },
+      "reverse_coded": false,
+      "placeholder_only": true,
+      "licensed_text_in_repo": false
+    }
+  }
+]
