@@ -50,6 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Planirano / Sljedeći implementation task | Team module / Data model scaffold | Uski prvi implementation slice: team-specific scaffold + placeholder package + minimalni schema/package testovi; bez licenciranih itema, bez finalnog scoring/agregacije, bez AI providera, bez renderera, bez relacijskog kandidat-tim fit reporta i bez DUTCH implementacije. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
+| P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
 | P1        | Queued vs processing HR report status UX            | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon razdvajanja `queued = Čeka generisanje` i `processing = Generiše se` u status labeli, opisu i disabled CTA-u. |
@@ -676,6 +677,49 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 - `Individualni razvojni profil product/report contract spec`
 - scope: definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails
 - granice: ne implementirati kod, ne mijenjati postojeći report pipeline, ne spajati sa Team Dynamics reportom
+
+---
+
+### P1 — Timski fit kandidata
+
+**Status:** Planirano / Epic zabilježen  
+**Kategorija:** Relacijski report / Candidate-team fit / Team module
+
+**Kratki opis:**  
+Timski fit kandidata je zaseban relacijski report koji kombinuje individualni profil kandidata/osobe i agregirani Team Dynamics profil konkretnog tima. Report odgovara na pitanje kako bi se kandidat mogao uklopiti u konkretan tim, gdje može pojačati tim, gdje mogu nastati frikcije i šta HR/lider treba provjeriti ili podržati tokom onboarding-a.
+
+**Product odluke (obavezni guardrails):**
+- Ovo nije zamjena za `Timska dinamika` report.
+- Ovo nije dio agregiranog Team Dynamics reporta.
+- Ovo nije individualni razvojni profil.
+- Ovo je relacijski / what-if report: kandidat + konkretan tim.
+- Individualne procjene kandidata mogu se reuse-ati kroz timove.
+- Team Dynamics odgovori članova tima ostaju vezani za konkretan timski assessment ciklus i ne prenose se automatski iz jednog tima u drugi.
+- Report koristi agregirani timski signal, ne individualne odgovore članova tima.
+- Ne prikazivati individualne skorove članova tima.
+- Nema hire/no-hire odluke.
+- Nema fit score-a.
+- Nema tvrdnje da report predviđa budući uspjeh.
+- Nema identifikovanja “problematičnog člana”.
+
+**Predloženi budući inputi:**
+- kandidatov individualni profil: IPIP, SAFRAN, MWMS, kompozitni profil kandidata
+- agregirani Team Dynamics report konkretnog tima
+- eventualno role/context signal u kasnijoj fazi
+
+**Predložene buduće sekcije:**
+1. Sažetak uklapanja
+2. Gdje kandidat može pojačati tim
+3. Moguće frikcije
+4. Šta provjeriti u razgovoru
+5. Onboarding preporuke
+6. Menadžerske smjernice
+7. Ograničenja interpretacije
+
+**Preporučeni redoslijed:**
+- Ne implementirati ovaj epic prije osnovnog Team Dynamics flow-a.
+- Prvo završiti Team Dynamics execution, scoring/agregaciju i `Timska dinamika` report.
+- Nakon toga otvoriti zaseban spec task za `Timski fit kandidata product/report contract spec`.
 
 ---
 
