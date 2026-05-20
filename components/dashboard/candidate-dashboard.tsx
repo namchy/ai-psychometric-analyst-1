@@ -9,6 +9,7 @@ import { AddressingFormSelectionModal } from "@/components/dashboard/addressing-
 import {
   getCandidateAssessmentAvailability,
   getCandidateAssessmentCatalogKey,
+  shouldHideAssessmentFromCandidateDashboard,
   type CandidateAssessmentCatalogKey,
 } from "@/lib/assessment/availability";
 import {
@@ -473,7 +474,11 @@ function buildAssessmentCardsFromTests(
   accessRows: DashboardOrganizationTestAccessRow[],
   questionCountsByTestId: Map<string, number>,
 ): CandidateAssessmentCard[] {
-  const visibleTests = tests.filter((test) => getCandidateAssessmentCatalogKey(test) !== "riasec");
+  const visibleTests = tests.filter(
+    (test) =>
+      getCandidateAssessmentCatalogKey(test) !== "riasec" &&
+      !shouldHideAssessmentFromCandidateDashboard({ slug: test.slug }),
+  );
   const accessibleTestIds = new Set(accessRows.map((row) => row.test_id));
   const databaseCards: CandidateAssessmentCard[] = visibleTests.map((test) => {
     const primaryAttempt = getPrimaryAttemptForTest(test.id, test.slug, attempts);

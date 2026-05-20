@@ -1,3 +1,5 @@
+import { isTeamDynamicsTestSlug } from "@/lib/assessment/team-dynamics";
+
 export type CandidateAssessmentCatalogKey = "ipip-neo-120" | "safran" | "mwms" | "riasec";
 
 export type CandidateAssessmentAvailabilityKind =
@@ -33,6 +35,12 @@ const CORE_BATTERY_KEYS = new Set<CandidateAssessmentCatalogKey>(["ipip-neo-120"
 
 function normalizeValue(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
+}
+
+export function shouldHideAssessmentFromCandidateDashboard(
+  input: Pick<CandidateAssessmentAvailabilityInput, "slug">,
+): boolean {
+  return isTeamDynamicsTestSlug(input.slug);
 }
 
 export function getCandidateAssessmentCatalogKey(
