@@ -72,6 +72,7 @@ assert.deepEqual(STANDARD_ASSESSMENT_BATTERY_SLUGS, [
   "safran_v1",
   "mwms_v1",
 ]);
+assert.equal(STANDARD_ASSESSMENT_BATTERY_SLUGS.includes("team_dynamics_v1_strong"), false);
 
 const availableTests = [
   {
@@ -95,11 +96,18 @@ const availableTests = [
     is_active: true,
     hasOrganizationAccess: false,
   },
+  {
+    id: "test-team-dynamics",
+    slug: "team_dynamics_v1_strong",
+    status: "active",
+    is_active: true,
+    hasOrganizationAccess: false,
+  },
 ];
 
 const initialPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [],
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
@@ -163,7 +171,7 @@ assert.deepEqual(
 
 const replacementRoundPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [
     { id: "attempt-ipip-1", test_id: "test-ipip", status: "in_progress" },
     { id: "attempt-safran-completed", test_id: "test-safran", status: "completed" },
@@ -186,7 +194,7 @@ assert.deepEqual(
 
 const multipleInProgressPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [
     { id: "attempt-ipip-1", test_id: "test-ipip", status: "in_progress" },
     { id: "attempt-ipip-2", test_id: "test-ipip", status: "in_progress" },
@@ -213,7 +221,7 @@ assert.deepEqual(
 
 const completedSafranIsNotReinsertedPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [
     { id: "attempt-safran-completed", test_id: "test-safran", status: "completed" },
   ],
@@ -250,7 +258,7 @@ assert.deepEqual(noRunnablePlan.attemptsToInsert, []);
 
 const fallbackAddressingFormPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [],
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,

@@ -136,6 +136,24 @@ function main() {
     }),
     { active: false, status: "inactive", reason: "unknown_test" },
   );
+  assert.deepEqual(
+    getReportGenerationCapability({
+      testSlug: "team_dynamics_v1_strong",
+      audience: "participant",
+      reportType: "individual",
+      sourceType: "single_test",
+    }),
+    { active: false, status: "inactive", reason: "unknown_test" },
+  );
+  assert.deepEqual(
+    getReportGenerationCapability({
+      testSlug: "team_dynamics_v1_strong",
+      audience: "hr",
+      reportType: "individual",
+      sourceType: "single_test",
+    }),
+    { active: false, status: "inactive", reason: "unknown_test" },
+  );
 
   const ipipPlan = planPostCompletionReportJobs({
     testSlug: "ipip-neo-120-v1",
@@ -211,6 +229,36 @@ function main() {
   assert.equal(
     unknownPlan.lanes.find((lane) => lane.audience === "hr")?.capability.active,
     false,
+  );
+  const teamDynamicsPlan = planPostCompletionReportJobs({
+    testSlug: "team_dynamics_v1_strong",
+    existingReports: [],
+  });
+  assert.deepEqual(teamDynamicsPlan.jobsToEnqueue, []);
+  assert.deepEqual(
+    teamDynamicsPlan.lanes.map((lane) => ({
+      audience: lane.audience,
+      active: lane.capability.active,
+      status: lane.capability.status,
+      reason: lane.capability.reason,
+      shouldEnqueue: lane.shouldEnqueue,
+    })),
+    [
+      {
+        audience: "participant",
+        active: false,
+        status: "inactive",
+        reason: "unknown_test",
+        shouldEnqueue: false,
+      },
+      {
+        audience: "hr",
+        active: false,
+        status: "inactive",
+        reason: "unknown_test",
+        shouldEnqueue: false,
+      },
+    ],
   );
 
   console.log("Report capability and post-completion planning tests passed.");
