@@ -13,7 +13,7 @@ type TeamRow = {
   archived_at: string | null;
 };
 
-type TeamMembershipParticipantRow = {
+type TeamMembershipRow = {
   id: string;
   team_id: string;
   participant_id: string;
@@ -21,22 +21,18 @@ type TeamMembershipParticipantRow = {
   is_active: boolean;
   joined_at: string;
   left_at: string | null;
-  participants:
-    | {
-        id: string;
-        organization_id: string;
-        full_name: string | null;
-        email: string | null;
-        status: string;
-      }
-    | Array<{
-        id: string;
-        organization_id: string;
-        full_name: string | null;
-        email: string | null;
-        status: string;
-      }>
-    | null;
+};
+
+type ParticipantRow = {
+  id: string;
+  organization_id: string;
+  full_name: string | null;
+  email: string | null;
+  status: string;
+};
+
+type ActiveMembershipDetailRow = TeamMembershipRow & {
+  participant: ParticipantRow;
 };
 
 type TeamAssessmentAssignmentRow = {
@@ -59,32 +55,11 @@ type TeamAssessmentParticipantRow = {
   invited_at: string;
   started_at: string | null;
   completed_at: string | null;
-  team_memberships:
-    | {
-        id: string;
-        role: "member" | "lead" | "observer";
-        joined_at: string;
-      }
-    | Array<{
-        id: string;
-        role: "member" | "lead" | "observer";
-        joined_at: string;
-      }>
-    | null;
-  participants:
-    | {
-        id: string;
-        organization_id: string;
-        full_name: string | null;
-        email: string | null;
-      }
-    | Array<{
-        id: string;
-        organization_id: string;
-        full_name: string | null;
-        email: string | null;
-      }>
-    | null;
+};
+
+type TeamAssessmentParticipantDetailRow = TeamAssessmentParticipantRow & {
+  participant: ParticipantRow;
+  membership: TeamMembershipRow;
 };
 
 export type TeamAssessmentDetailParticipant = {
@@ -123,20 +98,12 @@ export type TeamAssessmentDetail = {
   latestAssignment: TeamAssessmentDetailAssignment | null;
 };
 
-function normalizeSingleRelation<T>(value: T | T[] | null | undefined): T | null {
-  if (!value) {
-    return null;
-  }
-
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
-
 export function buildTeamAssessmentDetail(input: {
   organizationId: string;
   team: TeamRow;
-  activeMemberships: TeamMembershipParticipantRow[];
+  activeMemberships: ActiveMembershipDetailRow[];
   latestAssignment: TeamAssessmentAssignmentRow | null;
-  assignmentParticipants?: TeamAssessmentParticipantRow[];
+  assignmentParticipants?: TeamAssessmentParticipantDetailRow[];
 }): TeamAssessmentDetail {
   if (input.team.organization_id !== input.organizationId) {
     throw new Error("Team does not belong to the active organization.");
@@ -147,15 +114,11 @@ export function buildTeamAssessmentDetail(input: {
   }
 
   for (const membership of input.activeMemberships) {
-    const participant = normalizeSingleRelation(membership.participants);
-
     if (!membership.is_active || membership.left_at) {
       throw new Error(`Membership ${membership.id} is not active.`);
     }
 
-    if (!participant) {
-      throw new Error(`Membership ${membership.id} is missing a linked participant.`);
-    }
+    const participant = membership.participant;
 
     if (participant.organization_id !== input.organizationId) {
       throw new Error(
@@ -165,16 +128,8 @@ export function buildTeamAssessmentDetail(input: {
   }
 
   const assignmentParticipants = (input.assignmentParticipants ?? []).map((row) => {
-    const membership = normalizeSingleRelation(row.team_memberships);
-    const participant = normalizeSingleRelation(row.participants);
-
-    if (!membership) {
-      throw new Error(`Team assessment participant ${row.id} is missing a linked membership.`);
-    }
-
-    if (!participant) {
-      throw new Error(`Team assessment participant ${row.id} is missing a linked participant.`);
-    }
+    const membership = row.membership;
+    const participant = row.participant;
 
     if (participant.organization_id !== input.organizationId) {
       throw new Error(
@@ -257,9 +212,7 @@ export async function getTeamAssessmentDetailForOrganization(input: {
 
   const { data: membershipData, error: membershipError } = await supabase
     .from("team_memberships")
-    .select(
-      "id, team_id, participant_id, role, is_active, joined_at, left_at, participants(id, organization_id, full_name, email, status)",
-    )
+    .select("id, team_id, participant_id, role, is_active, joined_at, left_at")
     .eq("team_id", input.teamId)
     .eq("is_active", true)
     .is("left_at", null)
@@ -270,6 +223,40 @@ export async function getTeamAssessmentDetailForOrganization(input: {
     throw new Error(
       `Failed to load active team memberships for Team Dynamics admin detail: ${membershipError.message}`,
     );
+  }
+
+  const activeMemberships = (membershipData ?? []) as TeamMembershipRow[];
+  const membershipParticipantIds = [...new Set(activeMemberships.map((membership) => membership.participant_id))];
+  let activeMembershipDetails: ActiveMembershipDetailRow[] = [];
+
+  if (membershipParticipantIds.length > 0) {
+    const { data: participantData, error: participantError } = await supabase
+      .from("participants")
+      .select("id, organization_id, full_name, email, status")
+      .in("id", membershipParticipantIds);
+
+    if (participantError) {
+      throw new Error(
+        `Failed to load participants for Team Dynamics admin detail: ${participantError.message}`,
+      );
+    }
+
+    const participantById = new Map(
+      ((participantData ?? []) as ParticipantRow[]).map((participant) => [participant.id, participant]),
+    );
+
+    activeMembershipDetails = activeMemberships.map((membership) => {
+      const participant = participantById.get(membership.participant_id);
+
+      if (!participant) {
+        throw new Error(`Membership ${membership.id} is missing a linked participant.`);
+      }
+
+      return {
+        ...membership,
+        participant,
+      };
+    });
   }
 
   const { data: assignmentData, error: assignmentError } = await supabase
@@ -289,14 +276,12 @@ export async function getTeamAssessmentDetailForOrganization(input: {
   }
 
   const latestAssignment = (assignmentData as TeamAssessmentAssignmentRow | null) ?? null;
-  let assignmentParticipants: TeamAssessmentParticipantRow[] = [];
+  let assignmentParticipants: TeamAssessmentParticipantDetailRow[] = [];
 
   if (latestAssignment?.id) {
     const { data: participantData, error: participantError } = await supabase
       .from("team_assessment_participants")
-      .select(
-        "id, team_assessment_assignment_id, team_membership_id, participant_id, status, invited_at, started_at, completed_at, team_memberships(id, role, joined_at), participants(id, organization_id, full_name, email)",
-      )
+      .select("id, team_assessment_assignment_id, team_membership_id, participant_id, status, invited_at, started_at, completed_at")
       .eq("team_assessment_assignment_id", latestAssignment.id)
       .order("invited_at", { ascending: true })
       .order("id", { ascending: true });
@@ -307,13 +292,34 @@ export async function getTeamAssessmentDetailForOrganization(input: {
       );
     }
 
-    assignmentParticipants = (participantData ?? []) as TeamAssessmentParticipantRow[];
+    const assignmentParticipantRows = (participantData ?? []) as TeamAssessmentParticipantRow[];
+    const membershipById = new Map(activeMembershipDetails.map((membership) => [membership.id, membership]));
+
+    assignmentParticipants = assignmentParticipantRows.map((row) => {
+      const membership = membershipById.get(row.team_membership_id);
+
+      if (!membership) {
+        throw new Error(`Team assessment participant ${row.id} is missing a linked membership.`);
+      }
+
+      if (membership.participant.id !== row.participant_id) {
+        throw new Error(
+          `Team assessment participant ${row.id} is not linked to the expected participant.`,
+        );
+      }
+
+      return {
+        ...row,
+        membership,
+        participant: membership.participant,
+      };
+    });
   }
 
   return buildTeamAssessmentDetail({
     organizationId: input.organizationId,
     team,
-    activeMemberships: (membershipData ?? []) as TeamMembershipParticipantRow[],
+    activeMemberships: activeMembershipDetails,
     latestAssignment,
     assignmentParticipants,
   });

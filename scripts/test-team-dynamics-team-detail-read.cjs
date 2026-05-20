@@ -72,9 +72,11 @@ const source = fs.readFileSync(
 assert.match(source, /export async function getTeamAssessmentDetailForOrganization/);
 assert.match(source, /\.from\("teams"\)/);
 assert.match(source, /\.from\("team_memberships"\)/);
+assert.match(source, /\.from\("participants"\)/);
 assert.match(source, /\.from\("team_assessment_assignments"\)/);
 assert.match(source, /\.from\("team_assessment_participants"\)/);
 assert.match(source, /\.eq\("package_slug", TEAM_DYNAMICS_TEST_SLUG\)/);
+assert.doesNotMatch(source, /team_assessment_participants[\s\S]*participants\(/);
 assert.doesNotMatch(source, /\.from\("attempts"\)/);
 assert.doesNotMatch(source, /\.from\("responses"\)/);
 assert.doesNotMatch(source, /score/i);
@@ -101,7 +103,7 @@ const detail = buildTeamAssessmentDetail({
       is_active: true,
       joined_at: "2026-05-20T09:00:00.000Z",
       left_at: null,
-      participants: {
+      participant: {
         id: "participant-1",
         organization_id: "org-1",
         full_name: "Amina Lead",
@@ -117,7 +119,7 @@ const detail = buildTeamAssessmentDetail({
       is_active: true,
       joined_at: "2026-05-20T09:30:00.000Z",
       left_at: null,
-      participants: {
+      participant: {
         id: "participant-2",
         organization_id: "org-1",
         full_name: "Tarik Member",
@@ -146,16 +148,21 @@ const detail = buildTeamAssessmentDetail({
       invited_at: "2026-05-20T11:00:00.000Z",
       started_at: "2026-05-20T11:05:00.000Z",
       completed_at: "2026-05-20T11:20:00.000Z",
-      team_memberships: {
+      membership: {
         id: "membership-1",
+        team_id: "team-1",
+        participant_id: "participant-1",
         role: "lead",
+        is_active: true,
         joined_at: "2026-05-20T09:00:00.000Z",
+        left_at: null,
       },
-      participants: {
+      participant: {
         id: "participant-1",
         organization_id: "org-1",
         full_name: "Amina Lead",
         email: "amina@example.com",
+        status: "active",
       },
     },
     {
@@ -167,16 +174,21 @@ const detail = buildTeamAssessmentDetail({
       invited_at: "2026-05-20T11:00:00.000Z",
       started_at: null,
       completed_at: null,
-      team_memberships: {
+      membership: {
         id: "membership-2",
+        team_id: "team-1",
+        participant_id: "participant-2",
         role: "member",
+        is_active: true,
         joined_at: "2026-05-20T09:30:00.000Z",
+        left_at: null,
       },
-      participants: {
+      participant: {
         id: "participant-2",
         organization_id: "org-1",
         full_name: "Tarik Member",
         email: "tarik@example.com",
+        status: "active",
       },
     },
   ],
