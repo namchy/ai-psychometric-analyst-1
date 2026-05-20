@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Admin detail slice završen | Team module / Data model scaffold | DB scaffold, placeholder package, guardrails i team admin detail page su završeni. `/dashboard/teams/[teamId]` sada prikazuje org-scoped timski admin pregled sa assignment statusom i participant wrapper statusima, bez score/report/AI/individual result izlaganja. Sljedeći uski slice: runtime activation/readiness audit i kontrolisani plan aktivacije `team_dynamics_v1_strong` samo za team workflow. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Admin detail slice završen | Team module / Data model scaffold | DB scaffold, placeholder package, guardrails, admin detail page, candidate dashboard exclusion i DB category compatibility patch su završeni. Sljedeći uski slice: kontrolisani import/readiness plan za `team_dynamics_v1_strong`, bez aktivacije dok read-only SQL provjere i team-only guardraili ne budu potvrđeni. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -675,8 +675,23 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
   - `npm run typecheck`
 - Nisu dodani scoring, agregacija, report generation, AI provider, report renderer, Team Fit logika, DUTCH implementacija, licensed itemi, overall team score, individual member result exposure, standard battery inclusion, candidate dashboard inclusion, individual report capability activation, DB migracija, team CRUD, membership management, invite workflow ni team-member execution route.
 
+**Completion note (DB category compatibility):**
+- Category/import audit je potvrdio da postojeći `public.tests.category` constraint dozvoljava samo `personality`, `behavioral` i `cognitive`, pa bi package-level `category: "team_dynamics"` vjerovatno blokirao generic import.
+- MVP odluka: koristiti `category: "behavioral"` kao DB-compatible storage fallback za `team_dynamics_v1_strong`.
+- Canonical team-only semantika ostaje u `slug`, `intended_use: "team_assessment"`, `report_family: "team_dynamics"`, `metadata.placeholder_content_only`, Team Dynamics spec-u i slug-based runtime guardrailima.
+- U implementation patch-u su ažurirani `assessment-packages/team_dynamics_v1_strong/test.json` i `scripts/test-team-dynamics-package.cjs`.
+- Verifikovane komande:
+  - `node scripts/test-team-dynamics-package.cjs`
+  - `node scripts/validate-assessment-package.mjs assessment-packages/team_dynamics_v1_strong`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `npm run typecheck`
+- Nisu dodani DB import, DB activation, DB migracija, scoring, agregacija, report generation, AI provider, renderer, Team Fit, DUTCH, licensed itemi, overall team score, individual member result exposure, standard battery inclusion, candidate dashboard inclusion, individual report capability activation, team-member execution route, team CRUD, membership management ni invite workflow.
+
 **Sljedeći korak:**  
-Sljedeći Team Dynamics slice: runtime activation/readiness audit i kontrolisani plan aktivacije `team_dynamics_v1_strong` za team workflow, uz očuvanje postojećih guardraila koji ga drže van standard battery, candidate dashboarda, individual report capability-ja i individualnog HR/candidate flow-a.
+Sljedeći Team Dynamics slice: kontrolisani import/readiness plan za `team_dynamics_v1_strong` nakon DB-compatible category patcha, uz očuvanje svih guardraila koji ga drže van standard battery, candidate dashboarda, individual report capability-ja i individualnog HR/candidate flow-a.
 
 ---
 
@@ -2465,6 +2480,14 @@ Završeno:
 * Stranica prikazuje samo team, assignment i participant wrapper status podatke, bez izlaganja raw attempts, responses, scoreova, reporta, AI sadržaja ili individualnih rezultata članova.
 * Postojeći standard battery, candidate flow, report capability i post-completion guardrails ostaju nepromijenjeni.
 
+### 2026-05-20 — Team Dynamics DB-compatible category fallback selected
+
+Završeno:
+
+* Category/import audit je potvrdio da `public.tests.category` trenutno dozvoljava samo `personality`, `behavioral` i `cognitive`, dok je `team_dynamics_v1_strong` prethodno koristio package category `team_dynamics`.
+* Za MVP import kompatibilnost Team Dynamics sada koristi `category: "behavioral"` kao DB storage fallback, dok canonical team-only semantika ostaje u slug-u, `intended_use`, `report_family`, metadata sloju, Team Dynamics spec-u i slug-based runtime guardrailima.
+* Nisu dodani DB migracija, import, aktivacija, scoring, agregacija, report, AI, Team Fit ni team-member execution rad.
+
 ### 2026-05-19 — Build stabilnost nad eksternim Google font fetch-om
 
 Završeno:
@@ -2530,7 +2553,7 @@ Završeno:
   4. sistem generiše relacijski report kandidat + tim kada postoje oba ulaza
 * Implementacijski lock:
   * ne otvarati tehničku implementaciju prije `Team Fit & Dynamics Product Spec v0.1`
-  * `Team Dynamics data model scaffold and placeholder package support` je djelimično završen (DB scaffold + placeholder package + guardrails + admin detail slice); sljedeći preporučeni implementation task je runtime activation/readiness audit i kontrolisani plan aktivacije `team_dynamics_v1_strong` za team workflow, bez scoringa, bez report/AI logike, bez relacijskog candidate-team fit reporta i bez DUTCH implementacije.
+  * `Team Dynamics data model scaffold and placeholder package support` je djelimično završen (DB scaffold + placeholder package + guardrails + admin detail slice + candidate dashboard exclusion + DB category compatibility patch); sljedeći preporučeni implementation task je kontrolisani import/readiness plan za `team_dynamics_v1_strong` za team workflow, bez scoringa, bez report/AI logike, bez relacijskog candidate-team fit reporta i bez DUTCH implementacije.
 
 ### 2026-05-18 — HR report UI polish sync (`e851aad`)
 

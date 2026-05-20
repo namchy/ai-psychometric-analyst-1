@@ -53,6 +53,7 @@ Target item count: 36.
 
 - Prvi mock package koristi unified 1-5 response skalu.
 - Scoring engine mora ostati metadata-aware za per-item/per-scale skale.
+- DB category note (MVP): package category koristi `behavioral` kao DB-compatible storage fallback jer trenutni `public.tests.category` constraint podržava samo personality/behavioral/cognitive. Ovo ne mijenja canonical semantiku: Team Dynamics ostaje team assessment identifikovan slug-om `team_dynamics_v1_strong`, `intended_use: "team_assessment"` i `report_family: "team_dynamics"`.
 
 ## Licenca i sadržaj itema
 
