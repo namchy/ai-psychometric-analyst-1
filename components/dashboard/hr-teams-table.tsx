@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFormState } from "react-dom";
 import { createTeamDynamicsAssessmentAction } from "@/app/actions/team-assessments";
 import {
@@ -124,18 +125,26 @@ export function HrTeamsTable({ teams }: HrTeamsTableProps) {
                     </div>
                   </td>
                   <td className="align-middle rounded-r-[1.1rem] border-y border-r border-slate-200/70 bg-[rgba(255,255,255,0.94)] px-5 py-5 transition-colors group-hover:bg-white">
-                    <form action={formAction} className="space-y-3">
-                      <input name="teamId" type="hidden" value={team.teamId} />
-                      {feedbackClassName ? <p className={feedbackClassName}>{message}</p> : null}
-                      <DashboardActionRow>
-                        <button
-                          className={getDashboardCtaClassName({ variant: "primary", fullWidth: true })}
-                          type="submit"
-                        >
-                          Pokreni procjenu timske dinamike
-                        </button>
-                      </DashboardActionRow>
-                    </form>
+                    <div className="space-y-3">
+                      <form action={formAction} className="space-y-3">
+                        <input name="teamId" type="hidden" value={team.teamId} />
+                        {feedbackClassName ? <p className={feedbackClassName}>{message}</p> : null}
+                        <DashboardActionRow>
+                          <button
+                            className={getDashboardCtaClassName({ variant: "primary", fullWidth: true })}
+                            type="submit"
+                          >
+                            Pokreni procjenu timske dinamike
+                          </button>
+                        </DashboardActionRow>
+                      </form>
+                      <Link
+                        className={getDashboardCtaClassName({ variant: "secondary", fullWidth: true })}
+                        href={`/dashboard/teams/${team.teamId}`}
+                      >
+                        Otvori admin detalje
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
