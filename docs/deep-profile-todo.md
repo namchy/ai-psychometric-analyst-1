@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Sljedeći implementation task | Team module / Data model scaffold | Remote DB scaffold migracija je primijenjena i verifikovana (tabele + triggeri + SELECT RLS policy-ji); sljedeći korak ostaje placeholder package support + scaffold integracija bez scoringa, Team Fit relacijskog reporta i AI reporta. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Guardrails ojačani | Team module / Data model scaffold | DB scaffold je primijenjen i verifikovan; placeholder package već postoji i validira se; guardrail testovi sada zaključavaju da Team Dynamics ostaje van standard battery, individual report capability-ja i candidate individual flow-a. Sljedeći uski slice treba definisati odvojeno: team assignment/admin runtime integracija bez scoringa, reporta i AI-ja. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Sljedeći implementation task  
+**Status:** Djelimično završeno / Guardrails ojačani  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -624,7 +624,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 **Preporučeni redoslijed:**
 1. završiti dokumentacioni sync Team Dynamics speca
-2. otvoriti implementation task `Create Team Dynamics data model scaffold and placeholder package support`
+2. definisati sljedeći uski Team Dynamics runtime/admin implementation slice (team assignment/admin runtime integracija) bez scoringa, bez report generation-a i bez AI-ja
 
 **Completion note (djelimično):**
 - Remote Supabase migracija `supabase/migrations/20260519120000_add_team_dynamics_scaffold.sql` je primijenjena kroz SQL Editor i verifikovana.
@@ -632,7 +632,25 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 - Potvrđeni su triggeri: `set_teams_updated_at`, `set_team_memberships_updated_at`, `set_team_assessment_assignments_updated_at`, `set_team_assessment_participants_updated_at`.
 - Potvrđeni su SELECT RLS policy-ji: `teams_read_member`, `team_memberships_read_member`, `team_assessment_assignments_read_member`, `team_assessment_participants_read_member`.
 - Nakon migracije `npm run typecheck` i `npm run build` prolaze.
-- Sljedeći korak ostaje placeholder package support / scaffold integration bez scoringa, Team Fit relacijskog reporta i AI reporta.
+- Placeholder package support kao početni korak je zatvoren: `assessment-packages/team_dynamics_v1_strong` već postoji i validira se kroz generic package validator.
+
+**Completion note (guardrails):**
+- Read-only audit je potvrdio da `assessment-packages/team_dynamics_v1_strong` već postoji kao placeholder scaffold package i da prolazi validaciju.
+- Ojačan je `scripts/test-team-dynamics-package.cjs` da zaključava scaffold/placeholder metadata, package shape, prazne prompt kataloge, BS localization parity i placeholder-only wording.
+- Ojačan je `scripts/test-report-capabilities.cjs` da verifikuje da `team_dynamics_v1_strong` nema aktivan participant ni HR individual single-test report capability i da post-completion report orchestration ne enqueue-a Team Dynamics report jobove.
+- Ojačan je `scripts/test-standard-assessment-battery.cjs` da verifikuje da standard individual battery ostaje tačno IPIP/SAFRAN/MWMS i da ignoriše Team Dynamics čak i kada je prisutan među available testovima i active question ID-jevima.
+- Postojeći privacy guard test i dalje pokriva blokadu candidate individual attempt creation za Team Dynamics.
+- Verifikovane komande:
+  - `node scripts/validate-assessment-package.mjs assessment-packages/team_dynamics_v1_strong`
+  - `node scripts/test-team-dynamics-package.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `npm run typecheck`
+- Nisu dodani licensed itemi, scoring, agregacija, AI provider, renderer, report capability activation, standard battery inclusion, candidate dashboard inclusion, Team Fit logika, DUTCH implementacija ni DB migracija.
+
+**Sljedeći korak:**  
+Definisati zaseban uski Team Dynamics runtime/admin slice (team assignment/admin runtime integracija) bez scoringa, bez report generation-a i bez AI-ja.
 
 ---
 
@@ -2404,7 +2422,14 @@ Završeno:
 * Verifikovani su triggeri `set_teams_updated_at`, `set_team_memberships_updated_at`, `set_team_assessment_assignments_updated_at` i `set_team_assessment_participants_updated_at`.
 * Verifikovani su SELECT RLS policy-ji `teams_read_member`, `team_memberships_read_member`, `team_assessment_assignments_read_member` i `team_assessment_participants_read_member`.
 * Nakon migracije `npm run typecheck` i `npm run build` prolaze.
-* Sljedeći implementation korak ostaje placeholder package support / scaffold integration, bez širenja scope-a na scoring, Team Fit relacijski report ili AI report.
+* Placeholder package support je potvrđen i guardrails su ojačani; sljedeći implementation korak više nije kreiranje placeholder paketa nego zasebno definisan uski Team Dynamics runtime/admin slice, bez širenja scope-a na scoring, Team Fit relacijski report ili AI report.
+
+### 2026-05-20 — Team Dynamics placeholder package guardrails hardened
+
+Završeno:
+
+* Potvrđeno je da Team Dynamics placeholder package već postoji i validira se, zatim su ojačani guardrail testovi tako da `team_dynamics_v1_strong` ostaje team-only scaffold van standard individual battery-ja, individual report capability path-eva i candidate individual attempt/report flow-a.
+* Nisu dodani scoring, agregacija, AI provider, renderer, Team Fit logika, DUTCH implementacija, licensed itemi ni DB migracija.
 
 ### 2026-05-19 — Build stabilnost nad eksternim Google font fetch-om
 
@@ -2471,7 +2496,7 @@ Završeno:
   4. sistem generiše relacijski report kandidat + tim kada postoje oba ulaza
 * Implementacijski lock:
   * ne otvarati tehničku implementaciju prije `Team Fit & Dynamics Product Spec v0.1`
-  * prvi preporučeni implementation task je `Team Dynamics data model scaffold and placeholder package support` (team-specific data model scaffold + placeholder package support + minimalni schema/package testovi; bez licenciranih itema, bez finalnog scoring/agregacije, bez AI providera, bez renderera, bez relacijskog candidate-team fit reporta i bez DUTCH implementacije).
+  * `Team Dynamics data model scaffold and placeholder package support` je djelimično završen (DB scaffold + placeholder package + guardrails); sljedeći preporučeni implementation task treba definisati odvojeno kao uski Team Dynamics runtime/admin slice bez scoringa, bez report/AI logike, bez relacijskog candidate-team fit reporta i bez DUTCH implementacije.
 
 ### 2026-05-18 — HR report UI polish sync (`e851aad`)
 
