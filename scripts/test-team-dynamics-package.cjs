@@ -27,6 +27,9 @@ const localizedPrompts = JSON.parse(
 );
 
 assert.equal(test.slug, "team_dynamics_v1_strong");
+// DB compatibility fallback: the package stores Team Dynamics under an allowed
+// tests.category value while team-only semantics stay locked by slug and metadata.
+assert.equal(test.category, "behavioral");
 assert.equal(test.intended_use, "team_assessment");
 assert.equal(test.report_family, "team_dynamics");
 assert.equal(test.status, "draft");
