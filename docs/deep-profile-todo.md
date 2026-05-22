@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / DB import verifikovan | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Sljedeći uski slice: post-import active DB guardrail hardening i odluka o prvom team-only runtime execution slice-u. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Active DB guardrails pojačani | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening kroz pojačane testove bez runtime code promjena. Sljedeći uski slice: DB-backed team-only execution readiness test za wrapper flow. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / DB import verifikovan  
+**Status:** Djelimično završeno / Active DB guardrails pojačani  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -709,11 +709,35 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 - Prompt duplicate check vraća no rows.
 - Report footprint check:
   - `attempt_reports` za Team Dynamics: 0
-  - `assessment_reports` single_test footprint za Team Dynamics: 0
+- `assessment_reports` single_test footprint za Team Dynamics: 0
 - Code-level guardrail test paket prolazi prema zadnjem Codex audit izvještaju.
 
+**Completion note (post-import active DB guardrail hardening):**
+- Pojačani su guardrail testovi, bez runtime code promjena.
+- Promijenjeni su samo test fajlovi:
+  - `scripts/test-team-dynamics-privacy-guards.cjs`
+  - `scripts/test-standard-assessment-battery.cjs`
+  - `scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `scripts/test-report-capabilities.cjs`
+- Standard battery guardrail sada eksplicitno pokriva scenario gdje je `team_dynamics_v1_strong` `active/is_active=true` i jedini aktivni test sa pitanjima, ali rezultat ostaje `battery-no-runnable-tests`.
+- Candidate dashboard guardrail potvrđuje da active Team Dynamics test može imati candidate availability `add_on_available`, ali je i dalje skriven sa dashboarda i nema CTA obrasce `Započni procjenu`, `Nastavi procjenu`, `Pogledaj rezultate`.
+- Privacy guard potvrđuje da generic candidate attempt creation ostaje blokiran za Team Dynamics, čak i kada availability kaže da bi test mogao biti startable.
+- Privacy guard dodatno zaključava da se Team Dynamics guard izvršava prije candidate availability grane.
+- Report capability guardrail potvrđuje da Team Dynamics nema participant/HR individual single_test capability i da se ništa ne enqueue-a čak ni ako fixture sadrži postojeće queued/ready artefakte.
+- Completion/orchestration guardrail ostaje pokriven kroz postojeće testove i capability plan: Team Dynamics ne proizvodi individualne post-completion report jobove.
+- Relevantne verifikovane komande:
+  - `node scripts/validate-assessment-package.mjs assessment-packages/team_dynamics_v1_strong`
+  - `node scripts/test-team-dynamics-package.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
+
 **Sljedeći korak:**  
-Sljedeći Team Dynamics slice: post-import active DB guardrail hardening i odluka o prvom team-only runtime execution slice-u za `team_dynamics_v1_strong`, uz očuvanje svih guardraila koji ga drže van standard battery, candidate dashboarda, individual report capability-ja i individualnog HR/candidate flow-a.
+DB-backed team-only execution readiness test za wrapper flow: potvrditi da se active Team Dynamics test koristi samo kroz `team_assessment_assignments` / `team_assessment_participants` putanju, bez otvaranja individual candidate entry path-a.
 
 ---
 
@@ -2475,6 +2499,20 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Dynamics active DB guardrail hardening
+
+Završeno:
+
+* Nakon potvrde da je `team_dynamics_v1_strong` već importovan i aktivan u runtime DB-u, pojačani su postojeći guardrail testovi da eksplicitno tretiraju Team Dynamics kao active DB test i potvrde da ne ulazi u individualne tokove.
+* Pojačanja su urađena bez runtime code promjena.
+* Promijenjeni su samo test fajlovi: `scripts/test-team-dynamics-privacy-guards.cjs`, `scripts/test-standard-assessment-battery.cjs`, `scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`, `scripts/test-report-capabilities.cjs`.
+* Standard battery guardrail sada eksplicitno pokriva active/is_active Team Dynamics scenario i potvrđuje da standard individual battery ostaje IPIP/SAFRAN/MWMS.
+* Candidate dashboard guardrail potvrđuje da active Team Dynamics može imati `add_on_available`, ali ostaje skriven i bez CTA obrazaca `Započni procjenu`, `Nastavi procjenu`, `Pogledaj rezultate`.
+* Privacy guard potvrđuje da generic candidate attempt creation ostaje blokiran za Team Dynamics i da se taj guard izvršava prije candidate availability grane.
+* Report capability guardrail potvrđuje da Team Dynamics nema participant/HR individual single_test capability i da se ne enqueue-a ništa ni uz existing queued/ready artefakte u fixture-u.
+* Completion/orchestration guardrail ostaje pokriven kroz postojeće testove i capability plan: Team Dynamics ne proizvodi individualne post-completion report jobove.
+* Relevantni test paket prolazi, uključujući package validation, Team Dynamics guardrail testove, report orchestration test i `npm run typecheck`.
 
 ### 2026-05-22 — Team Dynamics active DB import verification
 
