@@ -94,6 +94,7 @@ const teamDynamicsAvailability = getCandidateAssessmentAvailability({
 
 assert.equal(teamDynamicsAvailability.canStart, true);
 assert.equal(teamDynamicsAvailability.kind, "add_on");
+assert.equal(teamDynamicsAvailability.reason, "add_on_available");
 
 const testsLoadedFromDb = [
   {
@@ -118,5 +119,14 @@ assert.deepEqual(
   testsLoadedFromDb.filter((test) => !test.hidden).map((test) => test.slug),
   ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
 );
+assert.equal(
+  testsLoadedFromDb.some(
+    (test) => test.slug === "team_dynamics_v1_strong" && test.hidden === false,
+  ),
+  false,
+);
+assert.doesNotMatch(dashboardSource, /team_dynamics_v1_strong[\s\S]*Započni procjenu/);
+assert.doesNotMatch(dashboardSource, /team_dynamics_v1_strong[\s\S]*Nastavi procjenu/);
+assert.doesNotMatch(dashboardSource, /team_dynamics_v1_strong[\s\S]*Pogledaj rezultate/);
 
 console.log("Candidate dashboard Team Dynamics exclusion tests passed.");

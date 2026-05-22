@@ -239,6 +239,31 @@ assert.deepEqual(
   ["test-ipip", "test-mwms"],
 );
 
+const teamDynamicsOnlyActivePlan = planStandardAssessmentBatteryCreation({
+  availableTests: [
+    {
+      id: "test-team-dynamics",
+      slug: "team_dynamics_v1_strong",
+      status: "active",
+      is_active: true,
+      hasOrganizationAccess: true,
+    },
+  ],
+  activeQuestionTestIds: ["test-team-dynamics"],
+  existingAttempts: [],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+assert.equal(teamDynamicsOnlyActivePlan.outcome, "battery-no-runnable-tests");
+assert.deepEqual(teamDynamicsOnlyActivePlan.runnableTests, []);
+assert.deepEqual(teamDynamicsOnlyActivePlan.attemptIdsToAbandon, []);
+assert.deepEqual(teamDynamicsOnlyActivePlan.attemptsToInsert, []);
+
 const noRunnablePlan = planStandardAssessmentBatteryCreation({
   availableTests,
   activeQuestionTestIds: [],

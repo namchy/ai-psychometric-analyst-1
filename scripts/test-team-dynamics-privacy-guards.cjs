@@ -66,6 +66,9 @@ const {
   shouldUseDefaultIndividualPostCompletionFlow,
   isTeamDynamicsAttemptRecord,
 } = require("../lib/assessment/team-dynamics.ts");
+const {
+  getCandidateAssessmentAvailability,
+} = require("../lib/assessment/availability.ts");
 
 assert.equal(TEAM_DYNAMICS_TEST_SLUG, "team_dynamics_v1_strong");
 assert.equal(isTeamDynamicsTestSlug("team_dynamics_v1_strong"), true);
@@ -81,6 +84,18 @@ assert.equal(shouldBypassIndividualPostCompletionArtifacts(TEAM_DYNAMICS_TEST_SL
 assert.equal(shouldBypassIndividualPostCompletionArtifacts("mwms_v1"), false);
 assert.equal(shouldUseDefaultIndividualPostCompletionFlow(TEAM_DYNAMICS_TEST_SLUG), false);
 assert.equal(shouldUseDefaultIndividualPostCompletionFlow("mwms_v1"), true);
+
+const activeTeamDynamicsAvailability = getCandidateAssessmentAvailability({
+  slug: TEAM_DYNAMICS_TEST_SLUG,
+  name: "Procjena timske dinamike",
+  status: "active",
+  isActive: true,
+  hasOrganizationAccess: true,
+  activeQuestionCount: 36,
+});
+assert.equal(activeTeamDynamicsAvailability.canStart, true);
+assert.equal(activeTeamDynamicsAvailability.kind, "add_on");
+assert.equal(canUseGenericCandidateAttemptCreation(TEAM_DYNAMICS_TEST_SLUG), false);
 
 assert.equal(
   isTeamDynamicsAttemptRecord({ tests: { slug: TEAM_DYNAMICS_TEST_SLUG } }),
@@ -109,6 +124,10 @@ assert.match(candidateActionsSource, /canUseGenericCandidateAttemptCreation\(tes
 assert.match(
   candidateActionsSource,
   /Team Dynamics assessments must be assigned through a team workflow\./,
+);
+assert.match(
+  candidateActionsSource,
+  /if \(!canUseGenericCandidateAttemptCreation\(test\.slug\)\) \{\s+throw new Error\("Team Dynamics assessments must be assigned through a team workflow\."\);\s+\}\s+\n\s+const availability = getCandidateAssessmentAvailability\(/,
 );
 
 console.log("Team Dynamics privacy guard tests passed.");

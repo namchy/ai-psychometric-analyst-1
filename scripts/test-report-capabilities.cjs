@@ -261,6 +261,43 @@ function main() {
     ],
   );
 
+  const teamDynamicsExistingArtifactsPlan = planPostCompletionReportJobs({
+    testSlug: "team_dynamics_v1_strong",
+    existingReports: [
+      buildExistingReport("participant", "queued", "team_dynamics_v1_strong"),
+      buildExistingReport("hr", "ready", "team_dynamics_v1_strong"),
+    ],
+  });
+  assert.deepEqual(teamDynamicsExistingArtifactsPlan.jobsToEnqueue, []);
+  assert.deepEqual(
+    teamDynamicsExistingArtifactsPlan.lanes.map((lane) => ({
+      audience: lane.audience,
+      active: lane.capability.active,
+      status: lane.capability.status,
+      reason: lane.capability.reason,
+      existingStatus: lane.existingStatus,
+      shouldEnqueue: lane.shouldEnqueue,
+    })),
+    [
+      {
+        audience: "participant",
+        active: false,
+        status: "inactive",
+        reason: "unknown_test",
+        existingStatus: "queued",
+        shouldEnqueue: false,
+      },
+      {
+        audience: "hr",
+        active: false,
+        status: "inactive",
+        reason: "unknown_test",
+        existingStatus: "ready",
+        shouldEnqueue: false,
+      },
+    ],
+  );
+
   console.log("Report capability and post-completion planning tests passed.");
 }
 
