@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Execution safe states zaključani | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, te centralni execution safe-state resolver sa matrix testom. Sljedeći uski slice: wrapper-based `/run` route handoff skeleton koji sigurno učitava Team Dynamics test metadata i question count, ali i dalje bez `AssessmentForm`-a, odgovora, autosave-a ili completion logike. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Run handoff skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver i wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a. Sljedeći uski slice: read-only Team Dynamics question loader za `/run` handoff koji sigurno priprema ordered question IDs i localized titles bez renderovanja pitanja, odgovora, answer options ili `AssessmentForm` executiona. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Execution safe states zaključani  
+**Status:** Djelimično završeno / Run handoff skeleton uveden  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -961,8 +961,64 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
   - `node scripts/test-report-orchestration.cjs`
   - `npm run typecheck`
 
+**Completion note (wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a):**
+- `/run` ruta sada, nakon validiranog wrapper contexta i eventualnog `invited -> started` transitiona, poziva `loadTeamAssessmentRunHandoff(...)`.
+- Handoff učitava/builda:
+  - `teamAssessmentParticipantId`
+  - `teamAssessmentAssignmentId`
+  - interni `attemptId`
+  - `packageSlug`
+  - `testSlug`
+  - `testName`
+  - `wrapperStatus`
+  - `attemptStatus`
+  - `activeQuestionCount`
+- `/run` UI prikazuje:
+  - naziv procjene
+  - package label
+  - wrapper status
+  - attempt status
+  - broj aktivnih pitanja
+  - poruku da su podaci za rješavanje pripremljeni, ali da rješavanje još nije omogućeno
+- Raw `attemptId` se ne prikazuje u UI.
+- Handoff ne prikazuje:
+  - pitanja
+  - answer options
+  - responses
+  - score fields
+  - report artefakte
+  - AI sadržaj
+  - Team Fit output
+  - podatke drugih članova tima
+- Handoff builder koristi postojeći safe-state resolver.
+- `completed`, `expired` i unknown status ne postaju runnable mode.
+- Neočekivan question count ulazi u warning handoff state, ne u hard crash.
+- Nije uveden pravi run ekran.
+- Nije korišten `AssessmentForm`.
+- Nema pitanja, answer options, autosave-a, completiona, scoringa, agregacije, AI providera, renderera, Team Fit-a ili individual report capability-ja.
+- Promijenjeni implementation fajlovi:
+  - `lib/assessment/team-assessment-execution.ts`
+  - `app/(protected)/app/team-assessments/[teamAssessmentParticipantId]/run/page.tsx`
+  - `scripts/test-team-dynamics-run-route-shell.cjs`
+  - `scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+- Prošle verifikacione komande:
+  - `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  - `node scripts/test-team-dynamics-intro-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-access.cjs`
+  - `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
+
 **Sljedeći korak:**  
-Wrapper-based `/run` route handoff skeleton koji sigurno učitava Team Dynamics test metadata i question count, ali i dalje bez `AssessmentForm`-a, odgovora, autosave-a ili completion logike.
+Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti ordered question IDs i localized titles bez renderovanja pitanja, odgovora, answer options ili `AssessmentForm` executiona.
 
 ---
 
@@ -2728,6 +2784,50 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Dynamics run handoff skeleton
+
+Završeno:
+
+* `/run` ruta sada, nakon validiranog wrapper contexta i eventualnog `invited -> started` transitiona, poziva `loadTeamAssessmentRunHandoff(...)`.
+* Handoff učitava/builda:
+  * `teamAssessmentParticipantId`
+  * `teamAssessmentAssignmentId`
+  * interni `attemptId`
+  * `packageSlug`
+  * `testSlug`
+  * `testName`
+  * `wrapperStatus`
+  * `attemptStatus`
+  * `activeQuestionCount`
+* `/run` UI prikazuje:
+  * naziv procjene
+  * package label
+  * wrapper status
+  * attempt status
+  * broj aktivnih pitanja
+  * poruku da su podaci za rješavanje pripremljeni, ali da rješavanje još nije omogućeno
+* Raw `attemptId` se ne prikazuje u UI.
+* Handoff ne prikazuje pitanja, answer options, responses, score fields, report artefakte, AI sadržaj, Team Fit output ni podatke drugih članova tima.
+* Handoff builder koristi postojeći safe-state resolver.
+* `completed`, `expired` i unknown status ne postaju runnable mode.
+* Neočekivan question count ulazi u warning handoff state, ne u hard crash.
+* Nije uveden pravi run ekran, nije korišten `AssessmentForm`, i nema pitanja, answer options, autosave-a, completiona, scoringa, agregacije, AI providera, renderera, Team Fit-a ni individual report capability-ja.
+* Prošle verifikacione komande:
+  * `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+  * `node scripts/test-team-dynamics-run-route-shell.cjs`
+  * `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  * `node scripts/test-team-dynamics-intro-route-shell.cjs`
+  * `node scripts/test-team-dynamics-execution-access.cjs`
+  * `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  * `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  * `node scripts/test-team-dynamics-privacy-guards.cjs`
+  * `node scripts/test-team-dynamics-completion-guard.cjs`
+  * `node scripts/test-standard-assessment-battery.cjs`
+  * `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  * `node scripts/test-report-capabilities.cjs`
+  * `node scripts/test-report-orchestration.cjs`
+  * `npm run typecheck`
 
 ### 2026-05-22 — Team Dynamics execution safe states
 
