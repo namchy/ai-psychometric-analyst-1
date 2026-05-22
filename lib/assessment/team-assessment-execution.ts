@@ -40,6 +40,7 @@ export type TeamAssessmentExecutionWrapperRecord = {
   participant_id: string;
   attempt_id: string | null;
   status: TeamAssessmentParticipantStatus;
+  started_at?: string | null;
 };
 
 export type TeamAssessmentExecutionTeamRecord = {
@@ -118,6 +119,12 @@ export type TeamAssessmentExecutionContextResult =
       message: string;
     };
 
+export type TeamAssessmentExecutionStartTransitionResult = {
+  status: TeamAssessmentParticipantStatus;
+  startedAt: string | null;
+  transitioned: boolean;
+};
+
 function normalizeRelation<T>(value: TeamAssessmentExecutionRelation<T>): T | null {
   if (!value) {
     return null;
@@ -134,6 +141,21 @@ function fail(
     ok: false,
     code,
     message,
+  };
+}
+
+export function buildTeamAssessmentExecutionStartedPatch(input: {
+  wrapperStatus: TeamAssessmentParticipantStatus;
+  startedAt: string | null | undefined;
+  transitionAt: string;
+}): Pick<TeamAssessmentExecutionWrapperRecord, "status" | "started_at"> | null {
+  if (input.wrapperStatus !== "invited") {
+    return null;
+  }
+
+  return {
+    status: "started",
+    started_at: input.startedAt ?? input.transitionAt,
   };
 }
 
@@ -266,7 +288,7 @@ export async function loadTeamAssessmentExecutionContext(input: {
   const supabase = createSupabaseAdminClient();
   const { data: wrapperData, error: wrapperError } = await supabase
     .from("team_assessment_participants")
-    .select("id, team_assessment_assignment_id, team_membership_id, participant_id, attempt_id, status")
+    .select("id, team_assessment_assignment_id, team_membership_id, participant_id, attempt_id, status, started_at")
     .eq("id", input.teamAssessmentParticipantId)
     .maybeSingle();
 
@@ -364,4 +386,88 @@ export async function loadTeamAssessmentExecutionContext(input: {
     team,
     attempt: (attemptData as TeamAssessmentExecutionAttemptRecord | null) ?? null,
   });
+}
+
+export async function markTeamAssessmentExecutionStartedIfInvited(input: {
+  teamAssessmentParticipantId: string;
+  transitionAt?: string;
+}): Promise<TeamAssessmentExecutionStartTransitionResult> {
+  const supabase = createSupabaseAdminClient();
+  const { data: existingData, error: existingError } = await supabase
+    .from("team_assessment_participants")
+    .select("id, status, started_at")
+    .eq("id", input.teamAssessmentParticipantId)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(
+      `Failed to load Team Dynamics execution transition wrapper ${input.teamAssessmentParticipantId}: ${existingError.message}`,
+    );
+  }
+
+  const existing = (existingData as {
+    id: string;
+    status: TeamAssessmentParticipantStatus;
+    started_at: string | null;
+  } | null) ?? null;
+
+  if (!existing) {
+    throw new Error(
+      `Team Dynamics execution transition wrapper ${input.teamAssessmentParticipantId} was not found.`,
+    );
+  }
+
+  const patch = buildTeamAssessmentExecutionStartedPatch({
+    wrapperStatus: existing.status,
+    startedAt: existing.started_at,
+    transitionAt: input.transitionAt ?? new Date().toISOString(),
+  });
+
+  if (!patch) {
+    return {
+      status: existing.status,
+      startedAt: existing.started_at,
+      transitioned: false,
+    };
+  }
+
+  const { data: updatedData, error: updateError } = await supabase
+    .from("team_assessment_participants")
+    .update(patch)
+    .eq("id", input.teamAssessmentParticipantId)
+    .eq("status", "invited")
+    .select("status, started_at")
+    .maybeSingle();
+
+  if (updateError) {
+    throw new Error(
+      `Failed to mark Team Dynamics execution wrapper ${input.teamAssessmentParticipantId} as started: ${updateError.message}`,
+    );
+  }
+
+  if (updatedData) {
+    return {
+      status: updatedData.status as TeamAssessmentParticipantStatus,
+      startedAt: updatedData.started_at ?? null,
+      transitioned: true,
+    };
+  }
+
+  const { data: currentData, error: currentError } = await supabase
+    .from("team_assessment_participants")
+    .select("status, started_at")
+    .eq("id", input.teamAssessmentParticipantId)
+    .maybeSingle();
+
+  if (currentError) {
+    throw new Error(
+      `Failed to reload Team Dynamics execution wrapper ${input.teamAssessmentParticipantId}: ${currentError.message}`,
+    );
+  }
+
+  return {
+    status: (currentData?.status as TeamAssessmentParticipantStatus | undefined) ?? "started",
+    startedAt: currentData?.started_at ?? patch.started_at ?? null,
+    transitioned: currentData?.status === "started",
+  };
 }
