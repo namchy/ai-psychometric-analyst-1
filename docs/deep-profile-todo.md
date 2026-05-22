@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Execution route spec spreman | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice i SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`). Team-member execution route readiness/spec je zaključen kao wrapper-based odluka. Sljedeći uski slice: wrapper access helper za Team Dynamics execution context (validated context iz `teamAssessmentParticipantId + userId` uz eksplicitne blokade pogrešnog ulaza). |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Intro route shell uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper i prvi wrapper-based intro route shell. Sljedeći uski slice: team-member run route shell bez `AssessmentForm`-a, sa kontrolisanim `invited -> started` status transitionom tek na `/run` ulazu. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Execution route spec spreman  
+**Status:** Djelimično završeno / Intro route shell uveden  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -836,8 +836,101 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 - Budući team aggregation/report lifecycle ostaje poseban kasniji slice.
 - Spec nije implementirao route, scoring, agregaciju, AI provider, renderer, Team Fit, DUTCH ni individual report capability.
 
+**Completion note (execution access helper implementation slice):**
+- Dodan je novi server-side helper `lib/assessment/team-assessment-execution.ts`.
+- Dodan je novi script-level test `scripts/test-team-dynamics-execution-access.cjs`.
+- Helper koristi `team_assessment_participants.id` kao access boundary i potvrđuje product/tech odluku da je `attempt_id` execution payload, ali nije access key.
+- Helper validira:
+  - wrapper postoji
+  - wrapper ima `attempt_id`
+  - wrapper participant je vezan za dati `userId`
+  - team membership je active (`is_active=true`, `left_at is null`)
+  - assignment je `active`
+  - assignment ima `package_slug='team_dynamics_v1_strong'`
+  - organization scope se izvodi preko `assignment.team_id -> teams.organization_id`
+  - linked attempt postoji
+  - linked attempt pripada istom participantu
+  - linked attempt pripada istoj organizaciji
+  - linked attempt pripada active/is_active `team_dynamics_v1_strong` testu
+- Helper odbija:
+  - nepostojeći wrapper
+  - tuđi wrapper
+  - wrapper bez attempta
+  - inactive membership
+  - non-active assignment
+  - wrong package slug
+  - attempt/test mismatch
+  - organization mismatch
+- Helper output je siguran i ne izlaže:
+  - responses
+  - score fields
+  - `attempt_reports`
+  - `assessment_reports`
+  - report snapshotove
+  - AI sadržaj
+  - Team Fit podatke
+  - podatke drugih članova tima
+- Test pokriva happy path i ključne rejection scenarije.
+- Nisu implementirani route, UI, run ekran, scoring, agregacija, AI provider, renderer, Team Fit, DUTCH ili individual report capability.
+- Prošle verifikacione komande:
+  - `node scripts/test-team-dynamics-execution-access.cjs`
+  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  - `node scripts/test-team-dynamics-action.cjs`
+  - `node scripts/test-team-dynamics-create-flow.cjs`
+  - `node scripts/test-team-dynamics-linkage.cjs`
+  - `node scripts/test-team-dynamics-team-access.cjs`
+  - `node scripts/test-team-dynamics-team-detail-read.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
+
+**Completion note (team-member intro route shell):**
+- Dodana je ruta `app/(protected)/app/team-assessments/[teamAssessmentParticipantId]/page.tsx`.
+- Dodan je statički test `scripts/test-team-dynamics-intro-route-shell.cjs`.
+- Ruta koristi `loadTeamAssessmentExecutionContext(...)`.
+- Validan wrapper access prikazuje intro/placeholder shell.
+- Nevalidan wrapper/access vraća `notFound()` server-side.
+- Ruta potvrđuje wrapper-based access model:
+  - `team_assessment_participants.id` je access key / security boundary
+  - `attempt_id` nije access key
+- Ekran prikazuje samo sigurne informacije:
+  - “Procjena timske dinamike”
+  - objašnjenje da je procjena dio timske procjene, ne individualni psihološki profil
+  - wrapper status
+  - package label
+  - link nazad na dashboard
+- Ekran namjerno ne prikazuje:
+  - raw attempt ID
+  - druge članove tima
+  - individualne odgovore
+  - score fields
+  - report CTA
+  - AI sadržaj
+  - Team Fit output
+- Ruta ne koristi `AssessmentForm`.
+- Ruta ne implementira `/run`.
+- Ruta ne mijenja wrapper status.
+- Nema `invited -> started` transitiona u ovom slice-u.
+- Nema autosave-a, completiona, scoringa, agregacije, AI providera, renderera, Team Fit-a ili individual report capability-ja.
+- Prošle verifikacione komande:
+  - `node scripts/test-team-dynamics-intro-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-access.cjs`
+  - `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
+
 **Sljedeći korak:**  
-Prvi implementation slice: wrapper access helper za Team Dynamics execution context. Helper treba iz `teamAssessmentParticipantId + userId` vratiti validated execution context i blokirati wrong participant, inactive membership, non-active assignment, missing attempt, non-Team-Dynamics attempt i direct generic candidate attempt entry.
+Team-member run route shell bez `AssessmentForm`-a, sa kontrolisanim `invited -> started` status transitionom tek na `/run` ulazu; bez pitanja, autosave-a, completiona, scoringa, agregacije ili reporta.
 
 ---
 
@@ -2603,6 +2696,98 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Dynamics intro route shell
+
+Završeno:
+
+* Dodana je ruta `app/(protected)/app/team-assessments/[teamAssessmentParticipantId]/page.tsx`.
+* Dodan je statički test `scripts/test-team-dynamics-intro-route-shell.cjs`.
+* Ruta koristi `loadTeamAssessmentExecutionContext(...)`.
+* Validan wrapper access prikazuje intro shell.
+* Nevalidan wrapper/access vraća `notFound()` server-side.
+* Ruta potvrđuje wrapper-based access model:
+  * `team_assessment_participants.id` je access key / security boundary
+  * `attempt_id` nije access key
+* Ekran prikazuje samo sigurne informacije:
+  * “Procjena timske dinamike”
+  * objašnjenje da je procjena dio timske procjene, ne individualni psihološki profil
+  * wrapper status
+  * package label
+  * link nazad na dashboard
+* Ekran namjerno ne prikazuje:
+  * raw attempt ID
+  * druge članove tima
+  * individualne odgovore
+  * score fields
+  * report CTA
+  * AI sadržaj
+  * Team Fit output
+* Ruta ne koristi `AssessmentForm`.
+* Ruta ne implementira `/run`.
+* Ruta ne mijenja wrapper status.
+* Nema `invited -> started` transitiona u ovom slice-u.
+* Nema autosave-a, completiona, scoringa, agregacije, AI providera, renderera, Team Fit-a ili individual report capability-ja.
+* Prošle verifikacione komande:
+  * `node scripts/test-team-dynamics-intro-route-shell.cjs`
+  * `node scripts/test-team-dynamics-execution-access.cjs`
+  * `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  * `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  * `node scripts/test-team-dynamics-privacy-guards.cjs`
+  * `node scripts/test-team-dynamics-completion-guard.cjs`
+  * `node scripts/test-standard-assessment-battery.cjs`
+  * `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  * `node scripts/test-report-capabilities.cjs`
+  * `node scripts/test-report-orchestration.cjs`
+  * `npm run typecheck`
+
+### 2026-05-22 — Team Dynamics wrapper access helper
+
+Završeno:
+
+* Dodan je `lib/assessment/team-assessment-execution.ts`.
+* Dodan je `scripts/test-team-dynamics-execution-access.cjs`.
+* Helper koristi `team_assessment_participants.id` kao access boundary i vraća samo siguran Team Dynamics execution context.
+* Potvrđeno je da je `attempt_id` execution payload, ali nije access key.
+* Helper validira:
+  * wrapper postoji
+  * wrapper ima `attempt_id`
+  * wrapper participant je vezan za dati `userId`
+  * team membership je active (`is_active=true`, `left_at is null`)
+  * assignment je `active`
+  * assignment ima `package_slug='team_dynamics_v1_strong'`
+  * organization scope se izvodi preko `assignment.team_id -> teams.organization_id`
+  * linked attempt postoji
+  * linked attempt pripada istom participantu
+  * linked attempt pripada istoj organizaciji
+  * linked attempt pripada active/is_active `team_dynamics_v1_strong` testu
+* Helper odbija:
+  * nepostojeći wrapper
+  * tuđi wrapper
+  * wrapper bez attempta
+  * inactive membership
+  * non-active assignment
+  * wrong package slug
+  * attempt/test mismatch
+  * organization mismatch
+* Helper output ne izlaže responses, score fields, `attempt_reports`, `assessment_reports`, report snapshotove, AI sadržaj, Team Fit podatke ni podatke drugih članova tima.
+* Test pokriva happy path i ključne rejection scenarije.
+* Nisu implementirani route, UI, run ekran, scoring, agregacija, AI provider, renderer, Team Fit, DUTCH ni individual report capability.
+* Prošle verifikacione komande:
+  * `node scripts/test-team-dynamics-execution-access.cjs`
+  * `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  * `node scripts/test-team-dynamics-action.cjs`
+  * `node scripts/test-team-dynamics-create-flow.cjs`
+  * `node scripts/test-team-dynamics-linkage.cjs`
+  * `node scripts/test-team-dynamics-team-access.cjs`
+  * `node scripts/test-team-dynamics-team-detail-read.cjs`
+  * `node scripts/test-team-dynamics-privacy-guards.cjs`
+  * `node scripts/test-team-dynamics-completion-guard.cjs`
+  * `node scripts/test-standard-assessment-battery.cjs`
+  * `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  * `node scripts/test-report-capabilities.cjs`
+  * `node scripts/test-report-orchestration.cjs`
+  * `npm run typecheck`
 
 ### 2026-05-22 — Team Dynamics team-member execution route readiness/spec
 
