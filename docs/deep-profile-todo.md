@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Active DB guardrails pojačani | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening kroz pojačane testove bez runtime code promjena. Sljedeći uski slice: DB-backed team-only execution readiness test za wrapper flow. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Wrapper readiness pokriven | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, a zatim i wrapper readiness test slice kroz `scripts/test-team-dynamics-wrapper-readiness.cjs` bez runtime feature promjena. Sljedeći uski slice: lokalni DB-backed smoke za `createTeamDynamicsAssessmentAction` sa stubiranim auth/org kontekstom i stvarnim local DB wrapper tabelama. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Active DB guardrails pojačani  
+**Status:** Djelimično završeno / Wrapper readiness pokriven  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -736,8 +736,51 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
   - `node scripts/test-report-orchestration.cjs`
   - `npm run typecheck`
 
+**Completion note (wrapper readiness test):**
+- Dodan je novi script-level test `scripts/test-team-dynamics-wrapper-readiness.cjs`.
+- Test eksplicitno tretira `team_dynamics_v1_strong` kao active DB test (`status='active'`, `is_active=true`).
+- Test potvrđuje da wrapper flow ide kroz:
+  - `team_assessment_assignments`
+  - `team_assessment_participants`
+- Test potvrđuje da participant wrapper statusi mogu postojati bez individualnog candidate dashboard entry path-a.
+- Test potvrđuje da admin/team detail read path prikazuje samo team assignment i wrapper participant statuse.
+- Test zaključava da admin/team detail read path ne prikazuje:
+  - raw individual attempt IDs
+  - individual responses
+  - individual score fields
+  - report CTA
+  - AI report content
+  - Team Fit output
+- Test dodatno zaključava da helper ne čita:
+  - `attempts`
+  - `responses`
+  - `attempt_reports`
+  - `assessment_reports`
+- Test potvrđuje da `canUseGenericCandidateAttemptCreation(...)` i dalje blokira individual candidate entry path za Team Dynamics, čak i kada active availability može biti `add_on_available`.
+- Test potvrđuje da `planPostCompletionReportJobs(...)` za Team Dynamics ne enqueue-a ništa, čak ni kada fixture sadrži existing individual queued/ready artefakte.
+- Nije bilo runtime feature promjena.
+- Nije bilo DB write-a.
+- Nisu mijenjane migracije.
+- Verifikovane komande:
+  - `node scripts/validate-assessment-package.mjs assessment-packages/team_dynamics_v1_strong`
+  - `node scripts/test-team-dynamics-package.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `node scripts/test-team-dynamics-team-detail-read.cjs`
+  - `node scripts/test-team-dynamics-teams-ui.cjs`
+  - `node scripts/test-team-dynamics-team-access.cjs`
+  - `node scripts/test-team-dynamics-create-flow.cjs`
+  - `node scripts/test-team-dynamics-linkage.cjs`
+  - `node scripts/test-team-dynamics-action.cjs`
+  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  - `npm run typecheck`
+
 **Sljedeći korak:**  
-DB-backed team-only execution readiness test za wrapper flow: potvrditi da se active Team Dynamics test koristi samo kroz `team_assessment_assignments` / `team_assessment_participants` putanju, bez otvaranja individual candidate entry path-a.
+Lokalni DB-backed smoke za `createTeamDynamicsAssessmentAction` sa stubiranim auth/org kontekstom i stvarnim local DB wrapper tabelama, da se potvrdi end-to-end create/link lifecycle bez otvaranja individual candidate entry path-a.
 
 ---
 
@@ -2499,6 +2542,20 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Dynamics wrapper readiness test
+
+Završeno:
+
+* Dodan je novi script-level test `scripts/test-team-dynamics-wrapper-readiness.cjs`.
+* Test eksplicitno tretira `team_dynamics_v1_strong` kao active DB test (`status='active'`, `is_active=true`) i spaja active fixture sa wrapper-only create/read path-om i postojećim individual guardrail pravilima.
+* Test potvrđuje wrapper flow kroz `team_assessment_assignments` i `team_assessment_participants`, te potvrđuje da participant wrapper statusi mogu postojati bez individualnog candidate dashboard entry path-a.
+* Test potvrđuje da admin/team detail read path prikazuje samo team assignment i wrapper participant statuse, bez raw attempt ID-jeva, individual responses/score polja, report CTA-a, AI report contenta ili Team Fit outputa.
+* Test dodatno zaključava da helper ne čita `attempts`, `responses`, `attempt_reports` ni `assessment_reports`.
+* Test potvrđuje da `canUseGenericCandidateAttemptCreation(...)` ostaje blokada za individual candidate entry path Team Dynamics-a i kada active availability može biti `add_on_available`.
+* Test potvrđuje da `planPostCompletionReportJobs(...)` za Team Dynamics ne enqueue-a ništa ni kada fixture sadrži existing individual queued/ready artefakte.
+* Nije bilo runtime feature promjena, DB write-a ni promjena migracija.
+* Prošao je relevantan test paket uključujući novi wrapper readiness test i `npm run typecheck`.
 
 ### 2026-05-22 — Team Dynamics active DB guardrail hardening
 
