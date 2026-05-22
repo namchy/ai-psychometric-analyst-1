@@ -59,6 +59,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   buildTeamAssessmentExecutionStartedPatch,
+  resolveTeamAssessmentExecutionShellState,
 } = require("../lib/assessment/team-assessment-execution.ts");
 
 const routePath = path.join(
@@ -82,13 +83,15 @@ const helperSource = fs.readFileSync(
 
 assert.match(routeSource, /loadTeamAssessmentExecutionContext/);
 assert.match(routeSource, /markTeamAssessmentExecutionStartedIfInvited/);
+assert.match(routeSource, /resolveTeamAssessmentExecutionShellState/);
 assert.match(routeSource, /requireAuthenticatedUser/);
 assert.match(routeSource, /teamAssessmentParticipantId: params\.teamAssessmentParticipantId/);
 assert.match(routeSource, /userId: user\.id/);
 assert.match(routeSource, /if \(!access\.ok\) \{\s+notFound\(\);\s+\}/);
-assert.match(routeSource, /if \(wrapperStatus === "invited"\)/);
+assert.match(routeSource, /route: "run"/);
+assert.match(routeSource, /if \(shellState\.shouldTransitionToStarted\)/);
 assert.match(routeSource, /wrapperStatus = transition\.status/);
-assert.match(routeSource, /const isCompleted = wrapperStatus === "completed"/);
+assert.match(routeSource, /shellState = resolveTeamAssessmentExecutionShellState/);
 
 assert.doesNotMatch(routeSource, /getCandidateAttemptForUser/);
 assert.doesNotMatch(routeSource, /getGenericCandidateAttemptForUser/);
@@ -106,12 +109,13 @@ assert.doesNotMatch(routeSource, /AI report/i);
 assert.doesNotMatch(routeSource, /Team Fit/);
 
 assert.match(routeSource, /Procjena timske dinamike/);
-assert.match(routeSource, /Rješavanje procjene još nije omogućeno u ovoj verziji\./);
-assert.match(routeSource, /Ova procjena je već završena\./);
+assert.match(routeSource, /shellState\.title/);
+assert.match(routeSource, /shellState\.message/);
 assert.match(routeSource, /context\.packageSlug/);
 
 assert.match(helperSource, /export function buildTeamAssessmentExecutionStartedPatch/);
 assert.match(helperSource, /export async function markTeamAssessmentExecutionStartedIfInvited/);
+assert.match(helperSource, /export function resolveTeamAssessmentExecutionShellState/);
 assert.match(helperSource, /\.from\("team_assessment_participants"\)/);
 
 assert.deepEqual(
@@ -154,6 +158,88 @@ assert.equal(
     transitionAt: "2026-05-22T13:00:00.000Z",
   }),
   null,
+);
+
+assert.deepEqual(
+  resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: "invited",
+  }),
+  {
+    kind: "run_invited",
+    route: "run",
+    wrapperStatus: "invited",
+    isRunnable: true,
+    shouldTransitionToStarted: true,
+    title: "Rješavanje procjene još nije omogućeno u ovoj verziji.",
+    message:
+      "Ulaz u ovaj prostor označava početak execution konteksta, ali pitanja i rješavanje još nisu omogućeni u ovoj verziji.",
+  },
+);
+
+assert.deepEqual(
+  resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: "started",
+  }),
+  {
+    kind: "run_started",
+    route: "run",
+    wrapperStatus: "started",
+    isRunnable: true,
+    shouldTransitionToStarted: false,
+    title: "Rješavanje procjene još nije omogućeno u ovoj verziji.",
+    message:
+      "Execution prostor je otvoren, ali pitanja i rješavanje još nisu omogućeni u ovoj verziji.",
+  },
+);
+
+assert.deepEqual(
+  resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: "completed",
+  }),
+  {
+    kind: "run_completed",
+    route: "run",
+    wrapperStatus: "completed",
+    isRunnable: false,
+    shouldTransitionToStarted: false,
+    title: "Ova procjena je već završena.",
+    message: "Ovdje će kasnije biti dostupan siguran pregled narednih koraka za timsku procjenu.",
+  },
+);
+
+assert.deepEqual(
+  resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: "expired",
+  }),
+  {
+    kind: "run_expired",
+    route: "run",
+    wrapperStatus: "expired",
+    isRunnable: false,
+    shouldTransitionToStarted: false,
+    title: "Ova procjena više nije dostupna.",
+    message: "Execution prostor za ovu timsku procjenu je istekao u ovoj verziji.",
+  },
+);
+
+assert.deepEqual(
+  resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: "unexpected_status",
+  }),
+  {
+    kind: "unavailable",
+    route: "run",
+    wrapperStatus: "unexpected_status",
+    isRunnable: false,
+    shouldTransitionToStarted: false,
+    title: "Ova procjena trenutno nije dostupna.",
+    message: "Status wrappera nije podržan za siguran pristup execution prostoru.",
+  },
 );
 
 console.log("Team Dynamics run route shell tests passed.");

@@ -1,26 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { loadTeamAssessmentExecutionContext } from "@/lib/assessment/team-assessment-execution";
+import {
+  getTeamAssessmentExecutionStatusLabel,
+  loadTeamAssessmentExecutionContext,
+  resolveTeamAssessmentExecutionShellState,
+} from "@/lib/assessment/team-assessment-execution";
 
 type TeamAssessmentIntroPageProps = {
   params: {
     teamAssessmentParticipantId: string;
   };
 };
-
-function getWrapperStatusLabel(status: "invited" | "started" | "completed" | "expired"): string {
-  switch (status) {
-    case "started":
-      return "Započeto";
-    case "completed":
-      return "Završeno";
-    case "expired":
-      return "Isteklo";
-    default:
-      return "Pozvano";
-  }
-}
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +29,10 @@ export default async function TeamAssessmentIntroPage({
   }
 
   const { context } = access;
+  const shellState = resolveTeamAssessmentExecutionShellState({
+    route: "intro",
+    wrapperStatus: context.wrapperStatus,
+  });
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-10 sm:px-6 lg:px-8">
@@ -70,7 +65,7 @@ export default async function TeamAssessmentIntroPage({
               Status wrappera
             </dt>
             <dd className="text-sm font-semibold text-slate-900">
-              {getWrapperStatusLabel(context.wrapperStatus)}
+              {getTeamAssessmentExecutionStatusLabel(shellState.wrapperStatus)}
             </dd>
           </div>
           <div className="space-y-1">
@@ -83,10 +78,10 @@ export default async function TeamAssessmentIntroPage({
 
         <section className="space-y-3 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/80 p-5">
           <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">
-            Rješavanje još nije omogućeno u ovoj verziji.
+            {shellState.title}
           </h2>
           <p className="text-sm leading-6 text-slate-700">
-            Uskoro ćeš ovdje moći započeti procjenu timske dinamike.
+            {shellState.message}
           </p>
         </section>
       </section>

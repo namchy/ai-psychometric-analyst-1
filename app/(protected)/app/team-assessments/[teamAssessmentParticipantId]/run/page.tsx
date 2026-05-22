@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import {
+  getTeamAssessmentExecutionStatusLabel,
   loadTeamAssessmentExecutionContext,
   markTeamAssessmentExecutionStartedIfInvited,
+  resolveTeamAssessmentExecutionShellState,
 } from "@/lib/assessment/team-assessment-execution";
 
 type TeamAssessmentRunPageProps = {
@@ -11,19 +13,6 @@ type TeamAssessmentRunPageProps = {
     teamAssessmentParticipantId: string;
   };
 };
-
-function getWrapperStatusLabel(status: "invited" | "started" | "completed" | "expired"): string {
-  switch (status) {
-    case "started":
-      return "Započeto";
-    case "completed":
-      return "Završeno";
-    case "expired":
-      return "Isteklo";
-    default:
-      return "Pozvano";
-  }
-}
 
 export const dynamic = "force-dynamic";
 
@@ -39,16 +28,22 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
   }
 
   let wrapperStatus = access.context.wrapperStatus;
+  let shellState = resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus,
+  });
 
-  if (wrapperStatus === "invited") {
+  if (shellState.shouldTransitionToStarted) {
     const transition = await markTeamAssessmentExecutionStartedIfInvited({
       teamAssessmentParticipantId: access.context.teamAssessmentParticipantId,
     });
 
     wrapperStatus = transition.status;
+    shellState = resolveTeamAssessmentExecutionShellState({
+      route: "run",
+      wrapperStatus,
+    });
   }
-
-  const isCompleted = wrapperStatus === "completed";
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-10 sm:px-6 lg:px-8">
@@ -90,7 +85,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
               Status wrappera
             </dt>
             <dd className="text-sm font-semibold text-slate-900">
-              {getWrapperStatusLabel(wrapperStatus)}
+              {getTeamAssessmentExecutionStatusLabel(shellState.wrapperStatus)}
             </dd>
           </div>
           <div className="space-y-1">
@@ -103,14 +98,10 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
 
         <section className="space-y-3 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/80 p-5">
           <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">
-            {isCompleted
-              ? "Ova procjena je već završena."
-              : "Rješavanje procjene još nije omogućeno u ovoj verziji."}
+            {shellState.title}
           </h2>
           <p className="text-sm leading-6 text-slate-700">
-            {isCompleted
-              ? "Ovdje će kasnije biti dostupan siguran pregled narednih koraka za timsku procjenu."
-              : "Ulaz u ovaj prostor označava početak execution konteksta, ali pitanja i rješavanje još nisu omogućeni u ovoj verziji."}
+            {shellState.message}
           </p>
         </section>
       </section>

@@ -125,6 +125,91 @@ export type TeamAssessmentExecutionStartTransitionResult = {
   transitioned: boolean;
 };
 
+export type TeamAssessmentExecutionShellRoute = "intro" | "run";
+
+export type TeamAssessmentExecutionShellState =
+  | {
+      kind: "intro_invited";
+      route: "intro";
+      wrapperStatus: "invited";
+      isRunnable: true;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "intro_started";
+      route: "intro";
+      wrapperStatus: "started";
+      isRunnable: true;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "intro_completed";
+      route: "intro";
+      wrapperStatus: "completed";
+      isRunnable: false;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "intro_expired";
+      route: "intro";
+      wrapperStatus: "expired";
+      isRunnable: false;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "run_invited";
+      route: "run";
+      wrapperStatus: "invited";
+      isRunnable: true;
+      shouldTransitionToStarted: true;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "run_started";
+      route: "run";
+      wrapperStatus: "started";
+      isRunnable: true;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "run_completed";
+      route: "run";
+      wrapperStatus: "completed";
+      isRunnable: false;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "run_expired";
+      route: "run";
+      wrapperStatus: "expired";
+      isRunnable: false;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    }
+  | {
+      kind: "unavailable";
+      route: TeamAssessmentExecutionShellRoute;
+      wrapperStatus: string;
+      isRunnable: false;
+      shouldTransitionToStarted: false;
+      title: string;
+      message: string;
+    };
+
 function normalizeRelation<T>(value: TeamAssessmentExecutionRelation<T>): T | null {
   if (!value) {
     return null;
@@ -157,6 +242,136 @@ export function buildTeamAssessmentExecutionStartedPatch(input: {
     status: "started",
     started_at: input.startedAt ?? input.transitionAt,
   };
+}
+
+export function getTeamAssessmentExecutionStatusLabel(status: string): string {
+  switch (status) {
+    case "started":
+      return "Započeto";
+    case "completed":
+      return "Završeno";
+    case "expired":
+      return "Isteklo";
+    case "invited":
+      return "Pozvano";
+    default:
+      return "Nedostupno";
+  }
+}
+
+export function resolveTeamAssessmentExecutionShellState(input: {
+  route: TeamAssessmentExecutionShellRoute;
+  wrapperStatus: string;
+}): TeamAssessmentExecutionShellState {
+  if (input.route === "intro") {
+    switch (input.wrapperStatus) {
+      case "invited":
+        return {
+          kind: "intro_invited",
+          route: "intro",
+          wrapperStatus: "invited",
+          isRunnable: true,
+          shouldTransitionToStarted: false,
+          title: "Rješavanje još nije omogućeno u ovoj verziji.",
+          message: "Uskoro ćeš ovdje moći započeti procjenu timske dinamike.",
+        };
+      case "started":
+        return {
+          kind: "intro_started",
+          route: "intro",
+          wrapperStatus: "started",
+          isRunnable: true,
+          shouldTransitionToStarted: false,
+          title: "Nastavak procjene još nije omogućen u ovoj verziji.",
+          message: "Ova procjena je već otvorena kroz execution prostor, ali pitanja još nisu omogućena.",
+        };
+      case "completed":
+        return {
+          kind: "intro_completed",
+          route: "intro",
+          wrapperStatus: "completed",
+          isRunnable: false,
+          shouldTransitionToStarted: false,
+          title: "Ova procjena je već završena.",
+          message: "Ovdje će kasnije biti dostupan siguran pregled narednih koraka za timsku procjenu.",
+        };
+      case "expired":
+        return {
+          kind: "intro_expired",
+          route: "intro",
+          wrapperStatus: "expired",
+          isRunnable: false,
+          shouldTransitionToStarted: false,
+          title: "Ova procjena više nije dostupna.",
+          message: "Vrijeme ili dostupnost za ovu timsku procjenu je istekla u ovoj verziji.",
+        };
+      default:
+        return {
+          kind: "unavailable",
+          route: "intro",
+          wrapperStatus: input.wrapperStatus,
+          isRunnable: false,
+          shouldTransitionToStarted: false,
+          title: "Ova procjena trenutno nije dostupna.",
+          message: "Status wrappera nije podržan za siguran pristup ovoj timskoj procjeni.",
+        };
+    }
+  }
+
+  switch (input.wrapperStatus) {
+    case "invited":
+      return {
+        kind: "run_invited",
+        route: "run",
+        wrapperStatus: "invited",
+        isRunnable: true,
+        shouldTransitionToStarted: true,
+        title: "Rješavanje procjene još nije omogućeno u ovoj verziji.",
+        message:
+          "Ulaz u ovaj prostor označava početak execution konteksta, ali pitanja i rješavanje još nisu omogućeni u ovoj verziji.",
+      };
+    case "started":
+      return {
+        kind: "run_started",
+        route: "run",
+        wrapperStatus: "started",
+        isRunnable: true,
+        shouldTransitionToStarted: false,
+        title: "Rješavanje procjene još nije omogućeno u ovoj verziji.",
+        message:
+          "Execution prostor je otvoren, ali pitanja i rješavanje još nisu omogućeni u ovoj verziji.",
+      };
+    case "completed":
+      return {
+        kind: "run_completed",
+        route: "run",
+        wrapperStatus: "completed",
+        isRunnable: false,
+        shouldTransitionToStarted: false,
+        title: "Ova procjena je već završena.",
+        message: "Ovdje će kasnije biti dostupan siguran pregled narednih koraka za timsku procjenu.",
+      };
+    case "expired":
+      return {
+        kind: "run_expired",
+        route: "run",
+        wrapperStatus: "expired",
+        isRunnable: false,
+        shouldTransitionToStarted: false,
+        title: "Ova procjena više nije dostupna.",
+        message: "Execution prostor za ovu timsku procjenu je istekao u ovoj verziji.",
+      };
+    default:
+      return {
+        kind: "unavailable",
+        route: "run",
+        wrapperStatus: input.wrapperStatus,
+        isRunnable: false,
+        shouldTransitionToStarted: false,
+        title: "Ova procjena trenutno nije dostupna.",
+        message: "Status wrappera nije podržan za siguran pristup execution prostoru.",
+      };
+  }
 }
 
 export function buildTeamAssessmentExecutionContext(input: {
