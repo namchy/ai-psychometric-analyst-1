@@ -4,7 +4,10 @@ import { AssessmentForm } from "@/components/assessment/assessment-form";
 import { getSafranScoredRunHref } from "@/lib/assessment/attempt-lifecycle";
 import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser, markAttemptScoredStarted } from "@/lib/candidate/attempts";
+import {
+  getGenericCandidateAttemptForUser,
+  markAttemptScoredStarted,
+} from "@/lib/candidate/attempts";
 
 type CandidateAttemptRunPageProps = {
   params: {
@@ -24,7 +27,7 @@ export default async function CandidateAttemptRunPage({
   searchParams,
 }: CandidateAttemptRunPageProps) {
   const user = await requireAuthenticatedUser();
-  let attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+  let attempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();
@@ -56,7 +59,7 @@ export default async function CandidateAttemptRunPage({
 
   if (isSafran && runMode === "scored" && !attempt.scored_started_at) {
     await markAttemptScoredStarted(attempt.id);
-    const refreshedAttempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+    const refreshedAttempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
     if (!refreshedAttempt) {
       notFound();

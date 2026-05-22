@@ -7,7 +7,7 @@ import {
 import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import {
-  getCandidateAttemptForUser,
+  getGenericCandidateAttemptForUser,
   getCandidateAttemptQuestionCount,
 } from "@/lib/candidate/attempts";
 
@@ -135,7 +135,7 @@ export default async function CandidateAttemptIntroPage({
   params,
 }: CandidateAttemptIntroPageProps) {
   const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+  const attempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();

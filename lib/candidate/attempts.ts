@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getAssessmentAttemptLifecycle, isSafranScoredStartedAttempt } from "@/lib/assessment/attempt-lifecycle";
+import { isTeamDynamicsTestSlug } from "@/lib/assessment/team-dynamics";
 import { getQuestionsForTest } from "@/lib/assessment/tests";
 import {
   getLinkedParticipantForUser,
@@ -81,6 +82,16 @@ export type CandidateAttemptLookup = {
   attempts: CandidateAttemptSummary[];
   primaryAttempt: CandidateAttemptSummary | null;
 };
+
+export type GenericCandidateAttemptAccessResult =
+  | {
+      ok: true;
+      attempt: CandidateAttemptSummary;
+    }
+  | {
+      ok: false;
+      reason: "not_found" | "team_dynamics_requires_wrapper";
+    };
 
 function isMissingScoredStartedAtColumnError(message: string | undefined): boolean {
   return typeof message === "string" && message.includes("scored_started_at");
@@ -256,6 +267,40 @@ export async function getCandidateAttemptForUser(
   }
 
   return lookup.attempts.find((attempt) => attempt.id === attemptId) ?? null;
+}
+
+export function buildGenericCandidateAttemptAccessResult(
+  attempt: CandidateAttemptSummary | null,
+): GenericCandidateAttemptAccessResult {
+  if (!attempt) {
+    return {
+      ok: false,
+      reason: "not_found",
+    };
+  }
+
+  if (isTeamDynamicsTestSlug(attempt.tests?.slug)) {
+    return {
+      ok: false,
+      reason: "team_dynamics_requires_wrapper",
+    };
+  }
+
+  return {
+    ok: true,
+    attempt,
+  };
+}
+
+export async function getGenericCandidateAttemptForUser(
+  userId: string,
+  attemptId: string,
+): Promise<CandidateAttemptSummary | null> {
+  const access = buildGenericCandidateAttemptAccessResult(
+    await getCandidateAttemptForUser(userId, attemptId),
+  );
+
+  return access.ok ? access.attempt : null;
 }
 
 export async function getCandidateAttemptQuestionCount(testId: string): Promise<number> {

@@ -5,7 +5,7 @@ import { ProtectedReportAutoRefresh } from "@/components/assessment/protected-re
 import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+import { getGenericCandidateAttemptForUser } from "@/lib/candidate/attempts";
 
 type CandidateAttemptReportPageProps = {
   params: {
@@ -19,7 +19,7 @@ export default async function CandidateAttemptReportPage({
   params,
 }: CandidateAttemptReportPageProps) {
   const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+  const attempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();
