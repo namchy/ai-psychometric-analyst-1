@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Intro route shell uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper i prvi wrapper-based intro route shell. Sljedeći uski slice: team-member run route shell bez `AssessmentForm`-a, sa kontrolisanim `invited -> started` status transitionom tek na `/run` ulazu. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Execution safe states zaključani | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, te centralni execution safe-state resolver sa matrix testom. Sljedeći uski slice: wrapper-based `/run` route handoff skeleton koji sigurno učitava Team Dynamics test metadata i question count, ali i dalje bez `AssessmentForm`-a, odgovora, autosave-a ili completion logike. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Intro route shell uveden  
+**Status:** Djelimično završeno / Execution safe states zaključani  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -929,8 +929,40 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
   - `node scripts/test-report-orchestration.cjs`
   - `npm run typecheck`
 
+**Completion note (execution safe-state guard za intro i `/run`):**
+- Uveden je centralni Team Dynamics safe-state helper/resolver u `lib/assessment/team-assessment-execution.ts`.
+- Intro ruta koristi `resolveTeamAssessmentExecutionShellState({ route: "intro", ... })`.
+- `/run` ruta koristi isti resolver i transition helper samo kada `shellState.shouldTransitionToStarted === true`.
+- Intro ruta nikada ne mijenja status.
+- `/run` ruta radi `invited -> started` samo za `invited`, dok `started` ne ponavlja transition.
+- `completed` i `expired` ne ulaze u aktivni run mode.
+- Unknown/nepodržan status se ne tretira kao runnable i vraća safe unavailable state.
+- Safe-state matrix pokriva: `invited`, `started`, `completed`, `expired` i unknown status.
+- Nisu uvedeni pravi run ekran, `AssessmentForm`, pitanja, autosave, completion, scoring, agregacija, AI provider, renderer, Team Fit ili individual report capability.
+- Promijenjeni implementation fajlovi:
+  - `lib/assessment/team-assessment-execution.ts`
+  - `app/(protected)/app/team-assessments/[teamAssessmentParticipantId]/page.tsx`
+  - `app/(protected)/app/team-assessments/[teamAssessmentParticipantId]/run/page.tsx`
+  - `scripts/test-team-dynamics-intro-route-shell.cjs`
+  - `scripts/test-team-dynamics-run-route-shell.cjs`
+  - `scripts/test-team-dynamics-execution-safe-states.cjs`
+- Prošle verifikacione komande:
+  - `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-intro-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-access.cjs`
+  - `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
+
 **Sljedeći korak:**  
-Team-member run route shell bez `AssessmentForm`-a, sa kontrolisanim `invited -> started` status transitionom tek na `/run` ulazu; bez pitanja, autosave-a, completiona, scoringa, agregacije ili reporta.
+Wrapper-based `/run` route handoff skeleton koji sigurno učitava Team Dynamics test metadata i question count, ali i dalje bez `AssessmentForm`-a, odgovora, autosave-a ili completion logike.
 
 ---
 
@@ -2696,6 +2728,36 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Dynamics execution safe states
+
+Završeno:
+
+* Uveden je centralni Team Dynamics safe-state resolver u `lib/assessment/team-assessment-execution.ts`.
+* Intro ruta koristi `resolveTeamAssessmentExecutionShellState({ route: "intro", ... })`.
+* `/run` ruta koristi isti resolver i transition helper samo kada `shellState.shouldTransitionToStarted === true`.
+* Intro ruta nikada ne mijenja status.
+* `/run` ruta radi `invited -> started` samo za `invited`.
+* `started` ne ponavlja transition.
+* `completed` ne ulazi u aktivni run mode.
+* `expired` ne ulazi u aktivni run mode.
+* Unknown/nepodržan status se ne tretira kao runnable i vraća safe unavailable state.
+* Safe-state matrix pokriva `invited`, `started`, `completed`, `expired` i unknown status.
+* Nisu uvedeni pravi run ekran, `AssessmentForm`, pitanja, autosave, completion, scoring, agregacija, AI provider, renderer, Team Fit ili individual report capability.
+* Prošle verifikacione komande:
+  * `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  * `node scripts/test-team-dynamics-run-route-shell.cjs`
+  * `node scripts/test-team-dynamics-intro-route-shell.cjs`
+  * `node scripts/test-team-dynamics-execution-access.cjs`
+  * `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  * `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  * `node scripts/test-team-dynamics-privacy-guards.cjs`
+  * `node scripts/test-team-dynamics-completion-guard.cjs`
+  * `node scripts/test-standard-assessment-battery.cjs`
+  * `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  * `node scripts/test-report-capabilities.cjs`
+  * `node scripts/test-report-orchestration.cjs`
+  * `npm run typecheck`
 
 ### 2026-05-22 — Team Dynamics intro route shell
 
