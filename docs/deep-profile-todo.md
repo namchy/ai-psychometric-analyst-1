@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Wrapper readiness pokriven | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, a zatim i wrapper readiness test slice kroz `scripts/test-team-dynamics-wrapper-readiness.cjs` bez runtime feature promjena. Sljedeći uski slice: lokalni DB-backed smoke za `createTeamDynamicsAssessmentAction` sa stubiranim auth/org kontekstom i stvarnim local DB wrapper tabelama. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / SQL wrapper lifecycle smoke potvrđen | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening i wrapper readiness test slice. SQL-backed wrapper lifecycle smoke je zatim potvrđen kroz Supabase SQL Editor (`BEGIN ... ROLLBACK`) bez trajnih upisa. Sljedeći uski slice: app action DB-backed smoke za `createTeamDynamicsAssessmentAction` ostaje otvoren i blokiran lokalnim Docker/Supabase stackom; prije toga osposobiti lokalni Supabase ili pripremiti siguran dedicated dev DB smoke env. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Wrapper readiness pokriven  
+**Status:** Djelimično završeno / SQL wrapper lifecycle smoke potvrđen  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -776,11 +776,41 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
   - `node scripts/test-team-dynamics-create-flow.cjs`
   - `node scripts/test-team-dynamics-linkage.cjs`
   - `node scripts/test-team-dynamics-action.cjs`
-  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
-  - `npm run typecheck`
+- `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+- `npm run typecheck`
+
+**Completion note (SQL-backed wrapper lifecycle smoke):**
+- SQL-backed wrapper lifecycle smoke je pokrenut kroz Supabase SQL Editor.
+- Smoke je koristio `BEGIN ... ROLLBACK`, tako da nije trajno upisao testne redove.
+- Finalni rezultat:
+  - `result = SQL_TD_WRAPPER_WITH_ATTEMPTS_SMOKE_OK_ROLLBACK_PENDING`
+  - `organization_id = 5d93f3a1-3765-4ec4-b668-c0d1228a8445`
+  - `team_id = f2268d59-39e0-42ec-984e-ace91bc00cb7`
+  - `assignment_id = 96b5cc0e-20ad-461d-bc19-8f2b783b4ecd`
+  - `smoke_attempt_count = 2`
+  - `wrapper_count = 2`
+  - `linked_attempt_count = 2`
+- Smoke je dokazao da DB wrapper lifecycle može kreirati:
+  - privremeni team
+  - team memberships
+  - `team_assessment_assignments`
+  - Team Dynamics `attempts`
+  - `team_assessment_participants` wrapper redove
+  - link wrappera prema attemptima
+- Smoke je potvrdio stvarnu šemu:
+  - `team_assessment_assignments` nema `organization_id`
+  - organization scope ide preko `team_id -> teams.organization_id`
+  - `team_assessment_participants.status` koristi `invited`
+  - wrapper redovi imaju popunjen `attempt_id`
+- Smoke nije pozvao `createTeamDynamicsAssessmentAction`.
+- Smoke nije zamjena za app action DB-backed smoke.
+- App action DB-backed smoke ostaje otvoren/blokiran dok lokalni Supabase/Docker stack ne bude dostupan.
+- Nije bilo runtime feature promjena.
+- Nije bilo DB write-a.
+- Nisu mijenjane migracije.
 
 **Sljedeći korak:**  
-Lokalni DB-backed smoke za `createTeamDynamicsAssessmentAction` sa stubiranim auth/org kontekstom i stvarnim local DB wrapper tabelama, da se potvrdi end-to-end create/link lifecycle bez otvaranja individual candidate entry path-a.
+App action DB-backed smoke za `createTeamDynamicsAssessmentAction` ostaje otvoren i blokiran lokalnim Docker/Supabase stackom; prije toga osposobiti lokalni Supabase ili pripremiti siguran dedicated dev DB smoke env.
 
 ---
 
@@ -2543,6 +2573,29 @@ Zaključak:
 
 ## 8. Dnevnik završenih odluka
 
+### 2026-05-22 — Team Dynamics SQL-backed wrapper lifecycle smoke
+
+Završeno:
+
+* SQL-backed wrapper lifecycle smoke je pokrenut kroz Supabase SQL Editor.
+* Smoke je izvršen sa `BEGIN ... ROLLBACK`, bez trajnih upisa testnih redova.
+* Finalni rezultat smoke-a:
+  * `result = SQL_TD_WRAPPER_WITH_ATTEMPTS_SMOKE_OK_ROLLBACK_PENDING`
+  * `organization_id = 5d93f3a1-3765-4ec4-b668-c0d1228a8445`
+  * `team_id = f2268d59-39e0-42ec-984e-ace91bc00cb7`
+  * `assignment_id = 96b5cc0e-20ad-461d-bc19-8f2b783b4ecd`
+  * `smoke_attempt_count = 2`
+  * `wrapper_count = 2`
+  * `linked_attempt_count = 2`
+* Smoke je dokazao da DB wrapper lifecycle može kreirati privremeni team, team memberships, `team_assessment_assignments`, Team Dynamics `attempts`, `team_assessment_participants` wrapper redove i link wrappera prema attemptima.
+* Potvrđena je stvarna šema:
+  * `team_assessment_assignments` nema `organization_id`
+  * organization scope ide preko `team_id -> teams.organization_id`
+  * `team_assessment_participants.status` koristi `invited`
+  * wrapper redovi imaju popunjen `attempt_id`
+* Smoke nije pozvao `createTeamDynamicsAssessmentAction` i nije zamjena za app action DB-backed smoke.
+* App action DB-backed smoke ostaje otvoren/blokiran dok lokalni Supabase/Docker stack ne bude dostupan.
+
 ### 2026-05-22 — Team Dynamics wrapper readiness test
 
 Završeno:
@@ -2683,7 +2736,7 @@ Završeno:
   4. sistem generiše relacijski report kandidat + tim kada postoje oba ulaza
 * Implementacijski lock:
   * ne otvarati tehničku implementaciju prije `Team Fit & Dynamics Product Spec v0.1`
-* `Team Dynamics data model scaffold and placeholder package support` je djelimično završen (DB scaffold + placeholder package + guardrails + admin detail slice + candidate dashboard exclusion + DB category compatibility patch), a runtime DB read-only verifikacija je kasnije potvrdila da je `team_dynamics_v1_strong` već importovan i aktivan u `public.tests`; sljedeći preporučeni implementation task je post-import active DB guardrail hardening i odluka o prvom team-only runtime execution slice-u, bez scoringa, bez report/AI logike, bez relacijskog candidate-team fit reporta i bez DUTCH implementacije.
+* `Team Dynamics data model scaffold and placeholder package support` je djelimično završen (DB scaffold + placeholder package + guardrails + admin detail slice + candidate dashboard exclusion + DB category compatibility patch), a runtime DB read-only verifikacija je kasnije potvrdila da je `team_dynamics_v1_strong` već importovan i aktivan u `public.tests`; nakon post-import active DB guardrail hardeninga i wrapper readiness testa, SQL-backed wrapper lifecycle smoke je dodatno potvrđen kroz Supabase SQL Editor uz `BEGIN ... ROLLBACK`, dok app action DB-backed smoke za `createTeamDynamicsAssessmentAction` ostaje otvoren/blokiran dok lokalni Docker/Supabase stack ne bude dostupan.
 
 ### 2026-05-18 — HR report UI polish sync (`e851aad`)
 
