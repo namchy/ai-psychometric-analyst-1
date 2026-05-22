@@ -49,6 +49,7 @@ Komande:
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
+| P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Run handoff skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver i wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a. Sljedeći uski slice: read-only Team Dynamics question loader za `/run` handoff koji sigurno priprema ordered question IDs i localized titles bez renderovanja pitanja, odgovora, answer options ili `AssessmentForm` executiona. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -634,6 +635,57 @@ Definisati `Timski stil saradnje` / `team_style_collaboration_v1` kao zaseban in
 
 **Napomena o sloju arhitekture:**  
 Ovaj task se odnosi na timski assessment sloj `Procjena timske dinamike` / `team_dynamics_assessment_v1` (postojeći `team_dynamics_v1_strong` scaffold). Ne odnosi se na kandidatov individualni modul `Timski stil saradnje`.
+
+**Napomena o instrument modelu:**  
+Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički scaffold i nije finalni instrument. Ciljani model za final-user prezentaciju je premium `team_dynamics_assessment_v1` sa 4 kratka bloka (oko 12–15 minuta): TDM-31 core + TPS7-based Deep Profile psihološka sigurnost + 6 originalnih Deep Profile SJT scenarija + 4 outcome pulse itema (ukupno 48 assessment jedinica).
+
+---
+
+### P1 — Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse
+
+**Status:** Planirano  
+**Kategorija:** Team module / Instrument model
+
+**Kratki opis:**  
+Zaključati premium/final-user model za `Procjenu timske dinamike` / `team_dynamics_assessment_v1` kao 4 kratka bloka (oko 12–15 minuta), ne kao kratki MVP:
+- TDM-31 core
+- TPS7-based Deep Profile psihološka sigurnost skala
+- Deep Profile originalni situational judgment mini-test sa 6 timskih scenarija
+- 4 outcome pulse itema
+
+Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
+
+**Model napomene:**
+- TDM-31 je core za razvojnu zrelost tima: kohezija, komunikacija, uloge/ciljevi i timska orijentacija.
+- TPS7-based skala je Deep Profile ekstenzija za psihološku sigurnost: otvorenost, greške, traženje pomoći, drugačije mišljenje i interpersonalni rizik.
+- SJT dio je originalni Deep Profile sadržaj (bez kopiranja postojećih/licenciranih SJT scenarija) i ostaje u validacijskoj fazi.
+- Outcome pulse je odvojen kriterijski signal: percipirana efektivnost, kvalitet, pouzdanost i održivost rada u timu.
+- Outcome pulse ne ulazi u isti dijagnostički indeks kao uzročne/dijagnostičke skale.
+
+**Scope (docs/spec):**
+- definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
+- definisati response format, scoring i aggregation logiku
+- definisati consensus/disagreement logiku, completion rate i report output
+- definisati validation/licensing notes i guardrails za komunikaciju prema korisniku
+- definisati dvije implementation grane:
+  - `licensed_mode`: originalni/odobreni TDM/TPS tekst i scoring kada pravni tim potvrdi dozvolu/licencu
+  - `adapted_mode`: Deep Profile adaptirani itemi i jednostavniji scoring ako licenca/scoring kasni ili je ograničen
+- SJT dio uvijek ostaje originalni Deep Profile modul
+
+**Terminološki lock (user-facing):**
+- User-facing naziv: `Procjena timske dinamike`
+- Interni naziv: `team_dynamics_assessment_v1`
+- Prezentacijski opis: assessment kombinuje razvojnu zrelost tima, psihološku sigurnost, situacijsko timsko prosuđivanje i percipiranu efektivnost
+- Ne prikazivati kao “48 pitanja”; prikazivati kao “4 kratka bloka, oko 12–15 minuta”
+
+**Validacijske/licencne napomene:**
+- Ne tvrditi da je Deep Profile assessment već validiran.
+- Koristiti formulacije `TDM-backed`, `TPS7-based` ili `TPS-inspired` dok pravni tim ne potvrdi dozvolu za originalne iteme.
+- Ne tvrditi da je licenca već riješena.
+- Report ne smije davati hire/no-hire, “loš tim”, “disfunkcionalan tim” ni lažno precizan zaključak.
+- Report treba prikazivati skale, bandove, consensus/disagreement, completion rate, razvojne rizike i preporuke za lidera.
+
+---
 
 **Scope (prvi implementation slice, uzak):**
 - data model scaffold za team-specific tabele
@@ -2558,6 +2610,7 @@ Razlog za sljedeći prioritet:
   * Team Dynamics nije jedini test koji daje cijelu sliku tima.
   * `Timski stil saradnje` je research-informed i u validacijskoj fazi; nije još implementiran u code-u.
   * postojeći `team_dynamics_v1_strong` scaffold ostaje validan kao timski assessment scaffold, ali je samo jedan krak šire Team Fit / Team Dynamics arhitekture.
+  * `Procjena timske dinamike` ide kao premium/final-user prezentacijski model (prioritet: zrelost, kredibilitet i premium osjećaj proizvoda, ne minimalna dužina).
 * Kandidat rješava:
   * IPIP
   * SAFRAN
@@ -2580,13 +2633,13 @@ Razlog za sljedeći prioritet:
   * agregirani profil postojećeg tima
   * Team Dynamics report / timske rizike
   * zahtjeve uloge
-* Team Dynamics Battery v1 strong / knowledge-team je ciljna baterija za timski modul i sastoji se od 4 skale:
-  * PCS / Perceived Cohesion Scale: 6 itema (kohezija, pripadnost, moral)
-  * Jehn ICS-8 / Intragroup Conflict Scale: 8 itema (task conflict, relationship conflict)
-  * TPS-7 / Team Psychological Safety: 7 itema (psihološka sigurnost)
-  * Lewis TMS / Transactive Memory System Scale: 15 itema (specijalizacija, kredibilitet, koordinacija znanja)
-  * ukupno: 36 itema
-* Ovo nije jedan novi proprietary test, nego baterija od četiri skale objedinjena u jedan Deep Profile proces i jedan agregirani report `Timska dinamika`.
+* Team Dynamics premium model (`team_dynamics_assessment_v1`) cilja 4 kratka bloka / oko 12–15 minuta:
+  * TDM-31 core
+  * TPS7-based Deep Profile psihološka sigurnost (7 itema)
+  * Deep Profile originalni SJT mini-test (6 scenarija)
+  * Outcome pulse (4 itema)
+  * ukupno: 48 assessment jedinica
+* `team_dynamics_v1_strong` (4 skale / 36 itema) ostaje tehnički scaffold i historijski implementacijski korak, ne finalni instrument model za prezentaciju.
 * Team input i report flow:
   * članovi tima popunjavaju Team Dynamics Battery
   * individualni rezultati članova tima se ne prikazuju
@@ -2624,6 +2677,7 @@ Razlog za sljedeći prioritet:
   * nema fire/no-fire
   * nema individualnog targetiranja članova
   * nema prikaza individualnih odgovora
+  * nema oznaka “loš tim” ili “disfunkcionalan tim”
   * nema kliničkog jezika
   * nema etiketa tipa `loš tim`
   * nema determinističkih tvrdnji
@@ -2834,6 +2888,21 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Dynamics premium assessment model
+
+Završeno:
+
+* `Procjena timske dinamike` v1 je zaključana kao premium, final-user prezentacijski model:
+  * TDM-31 core
+  * TPS7-based psihološka sigurnost
+  * 6 originalnih Deep Profile SJT scenarija
+  * 4 outcome pulse itema
+* Ukupna ciljna dužina je 48 assessment jedinica.
+* Postojeći 4-skale/36-item `team_dynamics_v1_strong` ostaje tehnički scaffold, ne finalni instrument.
+* User-facing komunikacija ostaje “4 kratka bloka, oko 12–15 minuta”, ne “48 pitanja”.
+* Outcome pulse ostaje odvojen kriterijski signal i ne ulazi u isti dijagnostički indeks sa uzročnim/dijagnostičkim skalama.
+* Terminološki/licencni lock ostaje: koristiti `TDM-backed`, `TPS7-based` ili `TPS-inspired` dok pravni tim ne potvrdi originalne iteme; SJT ostaje originalni Deep Profile modul u validacijskoj fazi.
 
 ### 2026-05-22 — Team Fit / Team Dynamics architecture split
 
