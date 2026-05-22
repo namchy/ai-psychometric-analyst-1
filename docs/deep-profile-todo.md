@@ -48,6 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
+| P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Run handoff skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver i wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a. Sljedeći uski slice: read-only Team Dynamics question loader za `/run` handoff koji sigurno priprema ordered question IDs i localized titles bez renderovanja pitanja, odgovora, answer options ili `AssessmentForm` executiona. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -606,10 +607,33 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ---
 
+### P1 — Team Style & Collaboration product/spec v0.1
+
+**Status:** Planirano  
+**Kategorija:** Team module / Product architecture
+
+**Kratki opis:**  
+Definisati `Timski stil saradnje` / `team_style_collaboration_v1` kao zaseban individualni kandidat/član-tima modul koji je research-informed i u validacijskoj fazi. Modul je planiran kao MVP hibrid (bez licenciranog gotovog testa), uz teorijski okvir inspirisan TCS/TREO/SJT literaturom bez kopiranja zaštićenih itema/scenarija.
+
+**Scope (docs/spec):**
+- definisati konstrukte i svrhu individualnog timskog potencijala i saradničkog prosuđivanja
+- definisati format i scoring okvir na nivou product/spec dokumenta
+- eksplicitno odvojiti od `Procjena timske dinamike` / `team_dynamics_assessment_v1`
+- definisati vezu sa `Timski fit kandidata` / `team_fit_report_v1` kao relacijskim reportom
+- ne uvoditi implementaciju u code-u u ovom tasku
+
+**Napomena o statusu:**  
+`Timski stil saradnje` je trenutno product/spec planiran i nije implementiran u code-u.
+
+---
+
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
 **Status:** Djelimično završeno / Run handoff skeleton uveden  
 **Kategorija:** Team module / Data model scaffold
+
+**Napomena o sloju arhitekture:**  
+Ovaj task se odnosi na timski assessment sloj `Procjena timske dinamike` / `team_dynamics_assessment_v1` (postojeći `team_dynamics_v1_strong` scaffold). Ne odnosi se na kandidatov individualni modul `Timski stil saradnje`.
 
 **Scope (prvi implementation slice, uzak):**
 - data model scaffold za team-specific tabele
@@ -1082,6 +1106,9 @@ Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti or
 **Kratki opis:**  
 Timski fit kandidata je zaseban relacijski report koji kombinuje individualni profil kandidata/osobe i agregirani Team Dynamics profil konkretnog tima. Report odgovara na pitanje kako bi se kandidat mogao uklopiti u konkretan tim, gdje može pojačati tim, gdje mogu nastati frikcije i šta HR/lider treba provjeriti ili podržati tokom onboarding-a.
 
+**Terminološka napomena:**  
+`Timski fit kandidata` nije test koji kandidat rješava, nego relacijski report koji koristi više ulaza.
+
 **Product odluke (obavezni guardrails):**
 - Ovo nije zamjena za `Timska dinamika` report.
 - Ovo nije dio agregiranog Team Dynamics reporta.
@@ -1098,8 +1125,10 @@ Timski fit kandidata je zaseban relacijski report koji kombinuje individualni pr
 
 **Predloženi budući inputi:**
 - kandidatov individualni profil: IPIP, SAFRAN, MWMS, kompozitni profil kandidata
+- kandidatov `Timski stil saradnje`
 - agregirani Team Dynamics report konkretnog tima
-- eventualno role/context signal u kasnijoj fazi
+- timski rizici iz Team Dynamics reporta
+- zahtjevi uloge / role-context signal
 
 **Predložene buduće sekcije:**
 1. Sažetak uklapanja
@@ -2520,16 +2549,37 @@ Razlog za sljedeći prioritet:
 
 ### 5.20 Team Fit & Dynamics terminologija i MVP smjer
 
-* Zaključana su tri report tipa i user-facing nazivi:
-  * Kompozitni report: `Kompozitni profil kandidata` (entitet: kandidat; pitanje: `Kakav je kandidat?`)
-  * Agregirani report: `Timska dinamika` (entitet: tim; pitanje: `Kakav nam je tim?`)
-  * Relacijski report: `Timski fit kandidata` (entitet: kandidat + konkretan tim; pitanje: `Kako će se kandidat uklopiti u tim?`)
+* Zaključana su tri odvojena, ali povezana sloja:
+  * Individualni modul: `Timski stil saradnje` / `team_style_collaboration_v1` (entitet: kandidat ili postojeći član tima; pitanje: `Kakav je individualni timski potencijal i saradničko prosuđivanje?`)
+  * Timski assessment: `Procjena timske dinamike` / `team_dynamics_assessment_v1` (entitet: konkretan tim; pitanje: `Kako tim funkcioniše kao sistem?`)
+  * Relacijski report: `Timski fit kandidata` / `team_fit_report_v1` (entitet: kandidat + konkretan tim; pitanje: `Kako će se kandidat uklopiti u tim?`)
 * Produktna odluka:
-  * team fit se ne tretira kao jedan izolovan test
-  * budući sistem mora podržati obradu cijelog tima i eventualnog kandidata
-  * kompozitni report opisuje kandidata kao pojedinca
-  * agregirani report opisuje tim kao sistem
-  * relacijski report poredi kandidata sa konkretnim timom
+  * Team Fit se ne tretira kao test.
+  * Team Dynamics nije jedini test koji daje cijelu sliku tima.
+  * `Timski stil saradnje` je research-informed i u validacijskoj fazi; nije još implementiran u code-u.
+  * postojeći `team_dynamics_v1_strong` scaffold ostaje validan kao timski assessment scaffold, ali je samo jedan krak šire Team Fit / Team Dynamics arhitekture.
+* Kandidat rješava:
+  * IPIP
+  * SAFRAN
+  * MWMS
+  * `Timski stil saradnje`
+* Postojeći član tima rješava:
+  * IPIP
+  * SAFRAN
+  * MWMS
+  * `Timski stil saradnje`
+  * `Procjenu timske dinamike`
+* Team Dynamics report koristi:
+  * agregirane individualne profile članova
+  * rezultate `Timskog stila saradnje` članova
+  * rezultate `Procjene timske dinamike`
+  * consensus/disagreement analizu
+* Team Fit report koristi:
+  * kandidatov individualni kompozitni profil
+  * kandidatov `Timski stil saradnje`
+  * agregirani profil postojećeg tima
+  * Team Dynamics report / timske rizike
+  * zahtjeve uloge
 * Team Dynamics Battery v1 strong / knowledge-team je ciljna baterija za timski modul i sastoji se od 4 skale:
   * PCS / Perceived Cohesion Scale: 6 itema (kohezija, pripadnost, moral)
   * Jehn ICS-8 / Intragroup Conflict Scale: 8 itema (task conflict, relationship conflict)
@@ -2784,6 +2834,18 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Fit / Team Dynamics architecture split
+
+Završeno:
+
+* Deep Profile sada razlikuje tri odvojena, ali povezana sloja:
+  * individualni modul `Timski stil saradnje`
+  * timski assessment `Procjena timske dinamike`
+  * relacijski izvještaj `Timski fit kandidata`
+* Potvrđeno je da postojeći `team_dynamics_v1_strong` scaffold ostaje timski assessment sloj.
+* Zaključano je da kandidat-facing `Timski stil saradnje` modul ide kroz zaseban product/spec task prije implementacije.
+* Zaključano je da Team Fit nije test, nego relacijski report koji koristi više ulaza.
 
 ### 2026-05-22 — Team Dynamics run handoff skeleton
 
