@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / SQL wrapper lifecycle smoke potvrđen | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening i wrapper readiness test slice. SQL-backed wrapper lifecycle smoke je zatim potvrđen kroz Supabase SQL Editor (`BEGIN ... ROLLBACK`) bez trajnih upisa. Sljedeći uski slice: app action DB-backed smoke za `createTeamDynamicsAssessmentAction` ostaje otvoren i blokiran lokalnim Docker/Supabase stackom; prije toga osposobiti lokalni Supabase ili pripremiti siguran dedicated dev DB smoke env. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Execution route spec spreman | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice i SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`). Team-member execution route readiness/spec je zaključen kao wrapper-based odluka. Sljedeći uski slice: wrapper access helper za Team Dynamics execution context (validated context iz `teamAssessmentParticipantId + userId` uz eksplicitne blokade pogrešnog ulaza). |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / SQL wrapper lifecycle smoke potvrđen  
+**Status:** Djelimično završeno / Execution route spec spreman  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -809,8 +809,35 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 - Nije bilo DB write-a.
 - Nisu mijenjane migracije.
 
+**Completion note (team-member execution route readiness/spec):**
+- Završen je read-only/spec task za budući Team Dynamics team-member execution route, bez runtime code izmjena.
+- Zaključano je da Team Dynamics team-member execution mora ići kroz wrapper route, ne kroz generic `/app/attempts/[attemptId]/run`.
+- Predložene rute:
+  - `/app/team-assessments/[teamAssessmentParticipantId]`
+  - `/app/team-assessments/[teamAssessmentParticipantId]/run`
+- `team_assessment_participants.id` je access key / security boundary.
+- `attempt_id` je execution payload, ali nije access key.
+- Wrapper mora validirati:
+  - postojanje `team_assessment_participants.id`
+  - da wrapper pripada trenutno prijavljenom korisniku preko linked `participant_id`
+  - da wrapper ima `attempt_id`
+  - active `team_membership` (`is_active=true`, `left_at is null`)
+  - active assignment
+  - `package_slug='team_dynamics_v1_strong'`
+  - organization scope preko `team_assessment_assignments.team_id -> teams.organization_id`
+  - linked attempt pripada istom participantu, organizaciji i Team Dynamics testu
+- Direct `/app/attempts/[attemptId]/run` ulaz za Team Dynamics mora biti eksplicitno blokiran ili zaštićen wrapper guard-om.
+- Status model koristi postojeću šemu:
+  - wrapper statusi: `invited`, `started`, `completed`, `expired`
+  - prvi ulaz: `invited -> started`
+  - completion: `started -> completed`
+  - ne koristiti `in_progress` kao wrapper status
+- Team Dynamics completion ne smije enqueue-ati participant individual report, HR individual single-test report, Composite HR report, `attempt_reports` ni `assessment_reports single_test`.
+- Budući team aggregation/report lifecycle ostaje poseban kasniji slice.
+- Spec nije implementirao route, scoring, agregaciju, AI provider, renderer, Team Fit, DUTCH ni individual report capability.
+
 **Sljedeći korak:**  
-App action DB-backed smoke za `createTeamDynamicsAssessmentAction` ostaje otvoren i blokiran lokalnim Docker/Supabase stackom; prije toga osposobiti lokalni Supabase ili pripremiti siguran dedicated dev DB smoke env.
+Prvi implementation slice: wrapper access helper za Team Dynamics execution context. Helper treba iz `teamAssessmentParticipantId + userId` vratiti validated execution context i blokirati wrong participant, inactive membership, non-active assignment, missing attempt, non-Team-Dynamics attempt i direct generic candidate attempt entry.
 
 ---
 
@@ -2334,6 +2361,10 @@ Razlog za sljedeći prioritet:
   * individualni rezultati članova tima se ne prikazuju
   * sistem agregira rezultate na nivou tima i generiše `Timska dinamika` report
   * isti agregirani report kasnije ulazi kao input u relacijski report `Timski fit kandidata`
+* Team-member execution route odluka:
+  * Team Dynamics execution mora biti wrapper-based preko `team_assessment_participants.id`
+  * `attempt_id` je execution payload, ali nije access key
+  * direct generic candidate ulaz `/app/attempts/[attemptId]/run` za Team Dynamics mora biti blokiran ili zaštićen wrapper guard-om
 * Granica agregiranog vs personalizovanog izlaza:
   * personalizovane smjernice za komunikaciju, motivaciju, feedback, onboarding i razvoj konkretne osobe ne ulaze u `Timska dinamika` report
   * takve smjernice idu u poseban output `Individualni razvojni profil`
@@ -2572,6 +2603,36 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — Team Dynamics team-member execution route readiness/spec
+
+Završeno:
+
+* Završen je read-only/spec task za budući Team Dynamics team-member execution route, bez runtime code promjena.
+* Team Dynamics team-member execution mora ići kroz wrapper route, ne kroz generic `/app/attempts/[attemptId]/run`.
+* Predložene rute:
+  * `/app/team-assessments/[teamAssessmentParticipantId]`
+  * `/app/team-assessments/[teamAssessmentParticipantId]/run`
+* `team_assessment_participants.id` je access key / security boundary.
+* `attempt_id` je execution payload, ali nije access key.
+* Wrapper validacija mora pokriti:
+  * postojanje wrapper reda
+  * ownership preko linked `participant_id` trenutnog usera
+  * prisutan `attempt_id`
+  * active membership (`is_active=true`, `left_at is null`)
+  * active assignment
+  * `package_slug='team_dynamics_v1_strong'`
+  * organization scope preko `team_assessment_assignments.team_id -> teams.organization_id`
+  * linked attempt pripada istom participantu, organizaciji i Team Dynamics testu
+* Direct `/app/attempts/[attemptId]/run` ulaz za Team Dynamics mora biti eksplicitno blokiran ili zaštićen wrapper guard-om.
+* Status model koristi postojeću šemu:
+  * wrapper statusi: `invited`, `started`, `completed`, `expired`
+  * prvi ulaz: `invited -> started`
+  * completion: `started -> completed`
+  * ne koristiti `in_progress` kao wrapper status
+* Team Dynamics completion ne smije enqueue-ati participant individual report, HR individual single-test report, Composite HR report, `attempt_reports` ni `assessment_reports single_test`.
+* Budući team aggregation/report lifecycle ostaje poseban kasniji slice.
+* Spec nije implementirao route, scoring, agregaciju, AI provider, renderer, Team Fit, DUTCH ni individual report capability.
 
 ### 2026-05-22 — Team Dynamics SQL-backed wrapper lifecycle smoke
 
