@@ -125,6 +125,33 @@ export type TeamAssessmentExecutionStartTransitionResult = {
   transitioned: boolean;
 };
 
+export type TeamAssessmentRunHandoffState =
+  | "ready_placeholder"
+  | "warning_placeholder"
+  | "safe_completed"
+  | "safe_expired"
+  | "safe_unavailable";
+
+export type TeamAssessmentRunHandoffWarningCode = "unexpected_question_count";
+
+export type TeamAssessmentRunHandoff = {
+  teamAssessmentParticipantId: string;
+  teamAssessmentAssignmentId: string;
+  attemptId: string;
+  packageSlug: string;
+  wrapperStatus: TeamAssessmentParticipantStatus;
+  attemptStatus: AttemptStatus;
+  testSlug: string;
+  testName: string;
+  activeQuestionCount: number;
+  isRunnableShellState: boolean;
+  handoffState: TeamAssessmentRunHandoffState;
+  warningCode: TeamAssessmentRunHandoffWarningCode | null;
+  statusLabel: string;
+  placeholderTitle: string;
+  placeholderMessage: string;
+};
+
 export type TeamAssessmentExecutionShellRoute = "intro" | "run";
 
 export type TeamAssessmentExecutionShellState =
@@ -372,6 +399,43 @@ export function resolveTeamAssessmentExecutionShellState(input: {
         message: "Status wrappera nije podržan za siguran pristup execution prostoru.",
       };
   }
+}
+
+export function buildTeamAssessmentRunHandoff(input: {
+  context: TeamAssessmentExecutionContext;
+  shellState: TeamAssessmentExecutionShellState;
+  activeQuestionCount: number;
+}): TeamAssessmentRunHandoff {
+  const isUnexpectedQuestionCount = input.activeQuestionCount !== 36;
+  let handoffState: TeamAssessmentRunHandoffState = "ready_placeholder";
+
+  if (input.shellState.wrapperStatus === "completed") {
+    handoffState = "safe_completed";
+  } else if (input.shellState.wrapperStatus === "expired") {
+    handoffState = "safe_expired";
+  } else if (!input.shellState.isRunnable) {
+    handoffState = "safe_unavailable";
+  } else if (isUnexpectedQuestionCount) {
+    handoffState = "warning_placeholder";
+  }
+
+  return {
+    teamAssessmentParticipantId: input.context.teamAssessmentParticipantId,
+    teamAssessmentAssignmentId: input.context.teamAssessmentAssignmentId,
+    attemptId: input.context.attemptId,
+    packageSlug: input.context.packageSlug,
+    wrapperStatus: input.context.wrapperStatus,
+    attemptStatus: input.context.attemptStatus,
+    testSlug: input.context.test.slug,
+    testName: input.context.test.name,
+    activeQuestionCount: input.activeQuestionCount,
+    isRunnableShellState: input.shellState.isRunnable,
+    handoffState,
+    warningCode: isUnexpectedQuestionCount ? "unexpected_question_count" : null,
+    statusLabel: getTeamAssessmentExecutionStatusLabel(input.context.wrapperStatus),
+    placeholderTitle: input.shellState.title,
+    placeholderMessage: input.shellState.message,
+  };
 }
 
 export function buildTeamAssessmentExecutionContext(input: {
@@ -685,4 +749,34 @@ export async function markTeamAssessmentExecutionStartedIfInvited(input: {
     startedAt: currentData?.started_at ?? patch.started_at ?? null,
     transitioned: currentData?.status === "started",
   };
+}
+
+export async function loadTeamAssessmentRunHandoff(input: {
+  context: TeamAssessmentExecutionContext;
+  shellState: TeamAssessmentExecutionShellState;
+}): Promise<TeamAssessmentRunHandoff> {
+  if (
+    input.context.test.slug !== TEAM_DYNAMICS_TEST_SLUG ||
+    input.context.test.status !== "active" ||
+    input.context.test.isActive !== true
+  ) {
+    throw new Error("Team Dynamics run handoff requires an active Team Dynamics test context.");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { count, error } = await supabase
+    .from("questions")
+    .select("id", { count: "exact", head: true })
+    .eq("test_id", input.context.test.id)
+    .eq("is_active", true);
+
+  if (error) {
+    throw new Error(`Failed to load Team Dynamics active question count: ${error.message}`);
+  }
+
+  return buildTeamAssessmentRunHandoff({
+    context: input.context,
+    shellState: input.shellState,
+    activeQuestionCount: count ?? 0,
+  });
 }

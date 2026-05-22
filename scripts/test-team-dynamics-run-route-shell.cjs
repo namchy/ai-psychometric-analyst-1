@@ -59,6 +59,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   buildTeamAssessmentExecutionStartedPatch,
+  buildTeamAssessmentRunHandoff,
   resolveTeamAssessmentExecutionShellState,
 } = require("../lib/assessment/team-assessment-execution.ts");
 
@@ -82,6 +83,7 @@ const helperSource = fs.readFileSync(
 );
 
 assert.match(routeSource, /loadTeamAssessmentExecutionContext/);
+assert.match(routeSource, /loadTeamAssessmentRunHandoff/);
 assert.match(routeSource, /markTeamAssessmentExecutionStartedIfInvited/);
 assert.match(routeSource, /resolveTeamAssessmentExecutionShellState/);
 assert.match(routeSource, /requireAuthenticatedUser/);
@@ -92,6 +94,7 @@ assert.match(routeSource, /route: "run"/);
 assert.match(routeSource, /if \(shellState\.shouldTransitionToStarted\)/);
 assert.match(routeSource, /wrapperStatus = transition\.status/);
 assert.match(routeSource, /shellState = resolveTeamAssessmentExecutionShellState/);
+assert.match(routeSource, /const handoff = await loadTeamAssessmentRunHandoff/);
 
 assert.doesNotMatch(routeSource, /getCandidateAttemptForUser/);
 assert.doesNotMatch(routeSource, /getGenericCandidateAttemptForUser/);
@@ -107,16 +110,25 @@ assert.doesNotMatch(routeSource, /assessment_reports/);
 assert.doesNotMatch(routeSource, /report CTA/i);
 assert.doesNotMatch(routeSource, /AI report/i);
 assert.doesNotMatch(routeSource, /Team Fit/);
+assert.doesNotMatch(routeSource, /questions=/);
+assert.doesNotMatch(routeSource, /answer options/i);
 
 assert.match(routeSource, /Procjena timske dinamike/);
-assert.match(routeSource, /shellState\.title/);
-assert.match(routeSource, /shellState\.message/);
-assert.match(routeSource, /context\.packageSlug/);
+assert.match(routeSource, /handoff\.placeholderTitle/);
+assert.match(routeSource, /handoff\.placeholderMessage/);
+assert.match(routeSource, /handoff\.packageSlug/);
+assert.match(routeSource, /handoff\.attemptStatus/);
+assert.match(routeSource, /handoff\.activeQuestionCount/);
+assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
+assert.match(routeSource, /Rjesavanje procjene jos nije omoguceno u ovoj verziji\./);
 
 assert.match(helperSource, /export function buildTeamAssessmentExecutionStartedPatch/);
+assert.match(helperSource, /export function buildTeamAssessmentRunHandoff/);
 assert.match(helperSource, /export async function markTeamAssessmentExecutionStartedIfInvited/);
+assert.match(helperSource, /export async function loadTeamAssessmentRunHandoff/);
 assert.match(helperSource, /export function resolveTeamAssessmentExecutionShellState/);
 assert.match(helperSource, /\.from\("team_assessment_participants"\)/);
+assert.match(helperSource, /\.from\("questions"\)/);
 
 assert.deepEqual(
   buildTeamAssessmentExecutionStartedPatch({
@@ -239,6 +251,54 @@ assert.deepEqual(
     shouldTransitionToStarted: false,
     title: "Ova procjena trenutno nije dostupna.",
     message: "Status wrappera nije podržan za siguran pristup execution prostoru.",
+  },
+);
+
+assert.deepEqual(
+  buildTeamAssessmentRunHandoff({
+    context: {
+      teamAssessmentParticipantId: "tap-1",
+      teamAssessmentAssignmentId: "assignment-1",
+      teamMembershipId: "membership-1",
+      participantId: "participant-1",
+      attemptId: "attempt-1",
+      teamId: "team-1",
+      organizationId: "org-1",
+      packageSlug: "team_dynamics_v1_strong",
+      wrapperStatus: "started",
+      attemptStatus: "in_progress",
+      locale: "bs",
+      test: {
+        id: "test-team-dynamics",
+        slug: "team_dynamics_v1_strong",
+        name: "Procjena timske dinamike",
+        status: "active",
+        isActive: true,
+      },
+    },
+    shellState: resolveTeamAssessmentExecutionShellState({
+      route: "run",
+      wrapperStatus: "started",
+    }),
+    activeQuestionCount: 36,
+  }),
+  {
+    teamAssessmentParticipantId: "tap-1",
+    teamAssessmentAssignmentId: "assignment-1",
+    attemptId: "attempt-1",
+    packageSlug: "team_dynamics_v1_strong",
+    wrapperStatus: "started",
+    attemptStatus: "in_progress",
+    testSlug: "team_dynamics_v1_strong",
+    testName: "Procjena timske dinamike",
+    activeQuestionCount: 36,
+    isRunnableShellState: true,
+    handoffState: "ready_placeholder",
+    warningCode: null,
+    statusLabel: "Započeto",
+    placeholderTitle: "Rješavanje procjene još nije omogućeno u ovoj verziji.",
+    placeholderMessage:
+      "Execution prostor je otvoren, ali pitanja i rješavanje još nisu omogućeni u ovoj verziji.",
   },
 );
 

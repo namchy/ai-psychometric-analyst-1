@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import {
-  getTeamAssessmentExecutionStatusLabel,
   loadTeamAssessmentExecutionContext,
+  loadTeamAssessmentRunHandoff,
   markTeamAssessmentExecutionStartedIfInvited,
   resolveTeamAssessmentExecutionShellState,
 } from "@/lib/assessment/team-assessment-execution";
@@ -45,6 +45,14 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
     });
   }
 
+  const handoff = await loadTeamAssessmentRunHandoff({
+    context: {
+      ...access.context,
+      wrapperStatus,
+    },
+    shellState,
+  });
+
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-10 sm:px-6 lg:px-8">
       <section className="space-y-6 rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,245,249,0.95))] p-6 shadow-[0_24px_54px_rgba(15,23,42,0.08)] sm:p-8">
@@ -84,25 +92,49 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
             <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
               Status wrappera
             </dt>
-            <dd className="text-sm font-semibold text-slate-900">
-              {getTeamAssessmentExecutionStatusLabel(shellState.wrapperStatus)}
-            </dd>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.statusLabel}</dd>
           </div>
           <div className="space-y-1">
             <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
               Paket procjene
             </dt>
-            <dd className="text-sm font-semibold text-slate-900">{access.context.packageSlug}</dd>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.packageSlug}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Status attempta
+            </dt>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.attemptStatus}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Broj pitanja
+            </dt>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.activeQuestionCount}</dd>
           </div>
         </dl>
 
         <section className="space-y-3 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/80 p-5">
           <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">
-            {shellState.title}
+            {handoff.placeholderTitle}
           </h2>
+          <p className="text-sm font-semibold text-slate-900">Podaci za rjesavanje su pripremljeni.</p>
           <p className="text-sm leading-6 text-slate-700">
-            {shellState.message}
+            {handoff.placeholderMessage}
           </p>
+          <p className="text-sm leading-6 text-slate-700">
+            Rjesavanje procjene jos nije omoguceno u ovoj verziji.
+          </p>
+          <p className="text-sm leading-6 text-slate-700">
+            Ucitani su osnovni execution podaci za {handoff.testName} i broj aktivnih pitanja:{" "}
+            {handoff.activeQuestionCount}.
+          </p>
+          {handoff.warningCode === "unexpected_question_count" ? (
+            <p className="text-sm leading-6 text-amber-800">
+              Handoff je ucitan, ali broj aktivnih pitanja odstupa od ocekivanog Team Dynamics
+              footprinta.
+            </p>
+          ) : null}
         </section>
       </section>
     </main>
