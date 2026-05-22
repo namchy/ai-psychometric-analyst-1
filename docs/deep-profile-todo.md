@@ -48,7 +48,7 @@ Komande:
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Admin detail slice završen | Team module / Data model scaffold | DB scaffold, placeholder package, guardrails, admin detail page, candidate dashboard exclusion i DB category compatibility patch su završeni. Sljedeći uski slice: kontrolisani import/readiness plan za `team_dynamics_v1_strong`, bez aktivacije dok read-only SQL provjere i team-only guardraili ne budu potvrđeni. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / DB import verifikovan | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Sljedeći uski slice: post-import active DB guardrail hardening i odluka o prvom team-only runtime execution slice-u. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -608,7 +608,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Admin detail slice završen  
+**Status:** Djelimično završeno / DB import verifikovan  
 **Kategorija:** Team module / Data model scaffold
 
 **Scope (prvi implementation slice, uzak):**
@@ -624,7 +624,7 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
 
 **Preporučeni redoslijed:**
 1. završiti dokumentacioni sync Team Dynamics speca
-2. definisati sljedeći Team Dynamics slice: runtime activation/readiness audit i kontrolisani plan aktivacije `team_dynamics_v1_strong` za team workflow, uz očuvanje postojećih guardraila koji ga drže van standard battery, candidate dashboarda, individual report capability-ja i individualnog HR/candidate flow-a
+2. definisati sljedeći Team Dynamics slice: post-import active DB guardrail hardening i odluku o prvom team-only runtime execution slice-u za `team_dynamics_v1_strong`, uz očuvanje postojećih guardraila koji ga drže van standard battery, candidate dashboarda, individual report capability-ja i individualnog HR/candidate flow-a
 
 **Completion note (djelimično):**
 - Remote Supabase migracija `supabase/migrations/20260519120000_add_team_dynamics_scaffold.sql` je primijenjena kroz SQL Editor i verifikovana.
@@ -690,8 +690,30 @@ Završiti dokumentacioni sync Team Dynamics speca kroz `docs/team-dynamics-produ
   - `npm run typecheck`
 - Nisu dodani DB import, DB activation, DB migracija, scoring, agregacija, report generation, AI provider, renderer, Team Fit, DUTCH, licensed itemi, overall team score, individual member result exposure, standard battery inclusion, candidate dashboard inclusion, individual report capability activation, team-member execution route, team CRUD, membership management ni invite workflow.
 
+**Completion note (active DB import verification):**
+- Runtime DB read-only provjera je potvrdila da `team_dynamics_v1_strong` već postoji u DB-u i da je aktivan na nivou `public.tests`.
+- Potvrđen `public.tests` row:
+  - `slug='team_dynamics_v1_strong'`
+  - `category='behavioral'`
+  - `status='active'`
+  - `is_active=true`
+  - `updated_at='2026-05-20 09:14:05.939+00'`
+- Potvrđen DB content footprint:
+  - 4 dimenzije
+  - 36 pitanja
+  - 180 answer options
+  - 0 promptova
+- Potvrđene BS lokalizacije:
+  - 36 question localizations
+  - 180 answer option localizations
+- Prompt duplicate check vraća no rows.
+- Report footprint check:
+  - `attempt_reports` za Team Dynamics: 0
+  - `assessment_reports` single_test footprint za Team Dynamics: 0
+- Code-level guardrail test paket prolazi prema zadnjem Codex audit izvještaju.
+
 **Sljedeći korak:**  
-Sljedeći Team Dynamics slice: kontrolisani import/readiness plan za `team_dynamics_v1_strong` nakon DB-compatible category patcha, uz očuvanje svih guardraila koji ga drže van standard battery, candidate dashboarda, individual report capability-ja i individualnog HR/candidate flow-a.
+Sljedeći Team Dynamics slice: post-import active DB guardrail hardening i odluka o prvom team-only runtime execution slice-u za `team_dynamics_v1_strong`, uz očuvanje svih guardraila koji ga drže van standard battery, candidate dashboarda, individual report capability-ja i individualnog HR/candidate flow-a.
 
 ---
 
@@ -2454,6 +2476,19 @@ Zaključak:
 
 ## 8. Dnevnik završenih odluka
 
+### 2026-05-22 — Team Dynamics active DB import verification
+
+Završeno:
+
+* Runtime DB read-only provjera je potvrdila da `team_dynamics_v1_strong` već postoji u runtime DB-u i da je aktivan na nivou `public.tests`.
+* Potvrđen `public.tests` row: `slug='team_dynamics_v1_strong'`, `category='behavioral'`, `status='active'`, `is_active=true`, `updated_at='2026-05-20 09:14:05.939+00'`.
+* Potvrđen DB content footprint: 4 dimenzije, 36 pitanja, 180 answer options, 0 promptova.
+* Potvrđene BS lokalizacije: 36 question localizations i 180 answer option localizations.
+* Prompt duplicate check vraća no rows.
+* Report footprint check potvrđuje `attempt_reports=0` i `assessment_reports` single_test footprint `=0` za Team Dynamics.
+* Code-level guardrail test paket prolazi prema zadnjem Codex audit izvještaju.
+* Zaključak: kontrolisani import/readiness plan više nije sljedeći Team Dynamics korak; sljedeći korak je post-import active DB guardrail hardening i odluka o prvom team-only runtime execution slice-u.
+
 ### 2026-05-19 — Team Dynamics scaffold remote DB migration applied and verified
 
 Završeno:
@@ -2553,7 +2588,7 @@ Završeno:
   4. sistem generiše relacijski report kandidat + tim kada postoje oba ulaza
 * Implementacijski lock:
   * ne otvarati tehničku implementaciju prije `Team Fit & Dynamics Product Spec v0.1`
-  * `Team Dynamics data model scaffold and placeholder package support` je djelimično završen (DB scaffold + placeholder package + guardrails + admin detail slice + candidate dashboard exclusion + DB category compatibility patch); sljedeći preporučeni implementation task je kontrolisani import/readiness plan za `team_dynamics_v1_strong` za team workflow, bez scoringa, bez report/AI logike, bez relacijskog candidate-team fit reporta i bez DUTCH implementacije.
+* `Team Dynamics data model scaffold and placeholder package support` je djelimično završen (DB scaffold + placeholder package + guardrails + admin detail slice + candidate dashboard exclusion + DB category compatibility patch), a runtime DB read-only verifikacija je kasnije potvrdila da je `team_dynamics_v1_strong` već importovan i aktivan u `public.tests`; sljedeći preporučeni implementation task je post-import active DB guardrail hardening i odluka o prvom team-only runtime execution slice-u, bez scoringa, bez report/AI logike, bez relacijskog candidate-team fit reporta i bez DUTCH implementacije.
 
 ### 2026-05-18 — HR report UI polish sync (`e851aad`)
 
