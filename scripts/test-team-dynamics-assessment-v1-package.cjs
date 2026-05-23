@@ -16,7 +16,17 @@ async function main() {
   );
 
   const packageData = await loadAssessmentPackage(packageDir);
-  const { test, dimensions, items, options, prompts, locales, contentSpec, mixedAssessmentSpec } =
+  const {
+    test,
+    dimensions,
+    items,
+    options,
+    prompts,
+    locales,
+    contentSpec,
+    mixedAssessmentSpec,
+    teamDynamicsExecutionSpec,
+  } =
     packageData;
 
   const localizedQuestions = JSON.parse(
@@ -171,6 +181,144 @@ async function main() {
     contentSpec.team_aggregation,
   );
   assert.equal(mixedAssessmentSpec.guardrails.length > 0, true);
+
+  assert.equal(teamDynamicsExecutionSpec.assessmentKey, "team_dynamics_assessment_v1");
+  assert.equal(teamDynamicsExecutionSpec.displayName, "Procjena timske dinamike");
+  assert.equal(teamDynamicsExecutionSpec.estimatedDuration, "12-15 minuta");
+  assert.deepEqual(teamDynamicsExecutionSpec.optionCatalogs, {
+    likert_1_4_agreement: [
+      { value: 1, label: "Uopce se ne slazem" },
+      { value: 2, label: "Uglavnom se ne slazem" },
+      { value: 3, label: "Uglavnom se slazem" },
+      { value: 4, label: "U potpunosti se slazem" },
+    ],
+  });
+  assert.deepEqual(teamDynamicsExecutionSpec.metadata, {
+    totalUnits: 48,
+    likertUnitCount: 42,
+    sjtScenarioCount: 6,
+    sjtOptionCount: 24,
+    blockKeys: [
+      "tdm-31-V1",
+      "psychological_safety",
+      "situational_judgment",
+      "outcome_pulse",
+    ],
+    validationStatus: "validation_pending",
+  });
+  assert.equal(teamDynamicsExecutionSpec.units.length, 48);
+  assert.deepEqual(
+    teamDynamicsExecutionSpec.units.map((unit) => unit.order),
+    Array.from({ length: 48 }, (_, index) => index + 1),
+  );
+
+  const firstLikertUnit = teamDynamicsExecutionSpec.units[0];
+  assert.deepEqual(firstLikertUnit, {
+    unitType: "likert_item",
+    itemId: "TDM31_01",
+    order: 1,
+    blockKey: "tdm-31-V1",
+    blockDisplayName: "Razvojna zrelost tima",
+    itemText: "Članovi tima govore ono što zaista misle reći.",
+    responseScaleKey: "likert_1_4_agreement",
+    options: teamDynamicsExecutionSpec.optionCatalogs.likert_1_4_agreement,
+    scoringMetadata: {
+      reverseScored: false,
+      domainGroup: "Communication",
+      domainScored: true,
+      construct: "TDM_COMMUNICATION",
+    },
+  });
+
+  const reversedLikertUnit = teamDynamicsExecutionSpec.units.find(
+    (unit) => unit.unitType === "likert_item" && unit.itemId === "TDM31_03",
+  );
+  assert.deepEqual(reversedLikertUnit.scoringMetadata, {
+    reverseScored: true,
+    domainGroup: "Communication",
+    domainScored: true,
+    construct: "TDM_COMMUNICATION",
+  });
+
+  const psychUnit = teamDynamicsExecutionSpec.units.find(
+    (unit) => unit.unitType === "likert_item" && unit.itemId === "TPSDP_1",
+  );
+  assert.deepEqual(psychUnit.scoringMetadata, {
+    reverseScored: false,
+    construct: "PSYCHOLOGICAL_SAFETY",
+  });
+
+  const outcomeUnit = teamDynamicsExecutionSpec.units.find(
+    (unit) => unit.unitType === "likert_item" && unit.itemId === "OUTCOME_1",
+  );
+  assert.deepEqual(outcomeUnit.scoringMetadata, {
+    reverseScored: false,
+    construct: "OUTCOME_PULSE",
+  });
+
+  const firstSjtUnit = teamDynamicsExecutionSpec.units.find(
+    (unit) => unit.unitType === "sjt_best_worst_scenario" && unit.scenarioId === "SJT_TD_01",
+  );
+  assert.deepEqual(firstSjtUnit, {
+    unitType: "sjt_best_worst_scenario",
+    scenarioId: "SJT_TD_01",
+    order: 39,
+    blockKey: "situational_judgment",
+    blockDisplayName: "Timsko prosudjivanje u situacijama",
+    scenarioTitle: "Konflikt koji prelazi u personalizaciju",
+    scenarioText:
+      "Na timskom sastanku razgovarate o kašnjenju važnog zadatka. Rasprava počinje kao razgovor o poslu, ali se brzo pretvara u lične komentare. Jedan član tima kaže drugom: “Ti uvijek zakomplikuješ stvari i nikad ne završiš ono što obećaš.” Druga osoba se brani povišenim tonom, a ostatak tima uglavnom šuti. Rok je blizu i jasno je da problem treba riješiti, ali atmosfera postaje sve napetija.",
+    instruction:
+      "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+    responseFormat: "best_worst",
+    options: [
+      {
+        optionId: "SJT_TD_01_A",
+        label: "A",
+        text: "Predlozim da se razgovor vrati na konkretan zadatak: sta tacno kasni, sta je blokada i koji je prvi sljedeci korak. Naglasim da licne ocjene ne pomazu rjesavanju problema.",
+        optionLevel: "Acceptable",
+      },
+      {
+        optionId: "SJT_TD_01_B",
+        label: "B",
+        text: "Sacekam da se rasprava sama smiri, jer bi moje ukljucivanje moglo dodatno pojacati tenziju. Nakon sastanka bih mozda pojedinacno pitao/la sta se desilo.",
+        optionLevel: "Weak",
+      },
+      {
+        optionId: "SJT_TD_01_C",
+        label: "C",
+        text: "Kazem da je ocigledno ko je odgovoran za kasnjenje i da tim vise ne moze stalno tolerisati isti obrazac ponasanja.",
+        optionLevel: "Harmful",
+      },
+      {
+        optionId: "SJT_TD_01_D",
+        label: "D",
+        text: "Predlozim kratku pauzu da se smiri ton, pa da razgovor vratimo na cinjenice: sta kasni, kakav je uticaj na rok i koji je sljedeci dogovor.",
+        optionLevel: "Best",
+      },
+    ],
+    scoringMetadata: {
+      scoringModel: "expert_key_partial_credit_v1",
+      primaryDimension: "constructive_conflict",
+      bestChoicePoints: {
+        SJT_TD_01_A: 1,
+        SJT_TD_01_B: 0,
+        SJT_TD_01_C: -1,
+        SJT_TD_01_D: 2,
+      },
+      worstChoicePoints: {
+        SJT_TD_01_A: 0,
+        SJT_TD_01_B: 1,
+        SJT_TD_01_C: 2,
+        SJT_TD_01_D: -1,
+      },
+    },
+  });
+
+  const secondaryDimensionSjtUnit = teamDynamicsExecutionSpec.units.find(
+    (unit) => unit.unitType === "sjt_best_worst_scenario" && unit.scenarioId === "SJT_TD_02",
+  );
+  assert.equal(secondaryDimensionSjtUnit.scoringMetadata.secondaryDimension, "coordination");
 
   console.log("Team Dynamics assessment v1 mixed-format package tests passed.");
 }

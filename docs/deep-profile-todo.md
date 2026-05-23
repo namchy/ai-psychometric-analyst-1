@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / In progress bloker nakon content-spec locka | Team module / Runtime + Import | Završeni prvi tehnički sloj: mixed-format package read model + validation support (`content-spec.json` load, mixed pravila, normalized `mixedAssessmentSpec`, backward compatibility). Sljedeći korak: `Mixed-format option catalog / execution-ready runtime shape` (per-block/per-question option catalogs, scenario-level SJT options i best/worst metadata), bez DB importa, bez scoring runtime-a i bez execution UI-a u tom tasku. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Execution-ready package shape završen | Team module / Runtime + Import | Završena su oba package-level tehnička sloja: mixed-format read/validation support i `Mixed-format option catalog / execution-ready runtime shape` (`teamDynamicsExecutionSpec`, Likert option catalog, scenario-level SJT options i best/worst metadata). Sljedeći korak je odvojeni runtime/import slice izvan ovog taska: DB import extension i/ili read-only execution wiring, bez preskakanja response/scoring/report guardraila. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Run handoff skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver i wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a. Sljedeći uski slice: read-only Team Dynamics question loader za `/run` handoff koji sigurno priprema ordered question IDs i localized titles bez renderovanja pitanja, odgovora, answer options ili `AssessmentForm` executiona. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -3101,6 +3101,15 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-23 — Mixed-format Team Dynamics execution-ready package shape
+
+Završeno:
+
+* Za `team_dynamics_assessment_v1` dodat je execution-ready package adapter koji iz canonical mixed-format read modela vraća normalized `teamDynamicsExecutionSpec`.
+* Likert blokovi sada iz content speca dobijaju package-level option catalog `likert_1_4_agreement` i execution units sa localized item textom, block metadata i scoring metadata signalima (`reverseScored`, `domainGroup`, `domainScored`, `construct`).
+* SJT blok sada dobija scenario-level execution units sa ordered `A/B/C/D` opcijama, `best_worst` response formatom i scoring metadata mapama (`bestChoicePoints`, `worstChoicePoints`) izvedenim iz option levela i canonical scoring modela.
+* Ovo je i dalje package/read sloj: nema DB importa, execution UI-ja, response persistence-a, scoring runtime-a ni report layera.
 
 ### 2026-05-23 — Mixed-format Team Dynamics read/validation support
 
