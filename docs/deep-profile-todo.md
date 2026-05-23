@@ -51,7 +51,7 @@ Komande:
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Read-only execution shell wiring završen | Team module / Runtime + Import | Završena su tri uska sloja: mixed-format read/validation support, execution-ready package shape (`teamDynamicsExecutionSpec`) i read-only execution shell wiring za budući runtime/UI sloj. Pending ostaju DB import support, execution UI, response persistence/capture, scoring runtime, team aggregation i report layer. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Runtime state machine spec zaključan | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff i docs/spec runtime state machine slice. Sljedeći uski korak: Minimalni Team Dynamics response capture skeleton: uvesti UI/runtime skeleton za izbor i privremeno držanje odgovora u kontrolisanom state-u bez DB persistence-a, autosave-a, completion-a, scoring-a, aggregation-a ili report generation-a. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / UI-only response skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice i minimalni UI-only response skeleton za prvi Likert-style item. Sljedeći uski korak: Team Dynamics local navigation skeleton: omogućiti kretanje kroz više pripremljenih Likert-style pitanja u lokalnom UI state-u, bez DB persistence-a, autosave-a, completion-a, scoring-a, aggregation-a ili report generation-a. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -734,6 +734,34 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
   - assessment_reports single_test
 - Budući team-level report layer ostaje zaseban task.
 - Ovo je bio docs/spec task, bez code promjena.
+
+**Completion note — Team Dynamics UI-only response skeleton (Likert scaffold):**
+- Završen je minimalni Team Dynamics UI-only response skeleton za Likert-style scaffold.
+- Implementiran je kroz wrapper `/run` rutu i novi client component `components/assessment/team-dynamics-run-ui-skeleton.tsx`.
+- Handoff sada može pripremiti `firstItem` payload sa localized stemom i localized option labelama iz DB-a.
+- UI prikazuje prvi item i option labele kao non-persistent selectable controls.
+- Lokalni izbor opcije živi samo u React `useState`.
+- Korisnik može izabrati jednu opciju i promijeniti izbor.
+- Refresh briše izbor jer nema persistence-a.
+- Unsupported/no-options slučajevi ostaju neutralni readiness state.
+- Slice je namjerno ograničen na Likert-style single-select scaffold.
+- SJT best/worst i full mixed-format runtime nisu implementirani.
+- Guardrail potvrda:
+  - Nema DB persistence-a.
+  - Nema autosave-a.
+  - Nema server action save poziva.
+  - Nema submit/completion action-a.
+  - Nema scoring-a.
+  - Nema team aggregation-a.
+  - Nema report generation-a.
+  - Nema AI sadržaja.
+  - Nema Team Fit outputa.
+  - Nema podataka drugih članova tima.
+  - `AssessmentForm` nije importovan niti korišten.
+  - Raw `attemptId` nije izložen u UI.
+  - `team_assessment_participants.id` ostaje public/wrapper access key.
+  - `attempt_id` ostaje interni execution payload.
+  - direct `/app/attempts/[attemptId]/run` guard ostaje netaknut.
 
 ---
 
@@ -3196,6 +3224,38 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-23 — Team Dynamics UI-only response skeleton
+
+Završeno:
+
+* Dodan je minimalni UI-only Team Dynamics response skeleton za wrapper `/run` rutu.
+* Handoff sada može pripremiti `firstItem` payload za prvi Likert-style item sa localized stemom i option labelama.
+* Dodan je client-side component `components/assessment/team-dynamics-run-ui-skeleton.tsx`.
+* UI prikazuje prvi item i lokalno selektabilne option kontrole.
+* Izbor opcije živi samo u React `useState` i nije persistentan.
+* Refresh briše izbor.
+* Unsupported/no-options slučajevi prikazuju neutralni readiness state.
+* Nije uveden DB persistence, autosave, server action save, submit/completion, scoring, aggregation, report generation, AI sadržaj ili Team Fit output.
+* AssessmentForm nije korišten.
+* Raw attemptId nije izložen u UI.
+* Direct generic attempt route guard ostaje netaknut.
+* Slice je ograničen na Likert-style single-select scaffold; SJT best/worst i full mixed-format runtime ostaju budući taskovi.
+* Commit: `6c6d833` Add Team Dynamics UI-only response skeleton.
+* Prošle verifikacione komande:
+  - `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  - `node scripts/test-team-dynamics-execution-access.cjs`
+  - `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
 
 ### 2026-05-23 — Team Dynamics runtime state machine / execution lifecycle
 
