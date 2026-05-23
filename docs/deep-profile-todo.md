@@ -51,7 +51,7 @@ Komande:
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Read-only execution shell wiring završen | Team module / Runtime + Import | Završena su tri uska sloja: mixed-format read/validation support, execution-ready package shape (`teamDynamicsExecutionSpec`) i read-only execution shell wiring za budući runtime/UI sloj. Pending ostaju DB import support, execution UI, response persistence/capture, scoring runtime, team aggregation i report layer. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / UI-only local navigation uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item i UI-only local navigation kroz više Likert-style pitanja. Sljedeći uski korak: Team Dynamics minimal answer payload contract za DB persistence skeleton: zaključati shape za single-select Likert odgovore, server-side validation granice i idempotency/overwrite pravila, bez autosave-a, completion-a, scoring-a, aggregation-a ili report generation-a. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Answer payload contract zaključan | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja i docs/spec answer payload contract slice. Sljedeći uski korak: Team Dynamics server-side answer payload validator/helper bez DB write-a: implementirati validaciju minimalnog single-select Likert payload-a, wrapper/attempt/question/option boundary provjere i overwrite/idempotency pripremu, bez persistence-a, autosave-a, completion-a, scoring-a, aggregation-a ili report generation-a. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -787,6 +787,26 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
   - `team_assessment_participants.id` ostaje public/wrapper access key.
   - `attempt_id` ostaje interni execution payload.
   - direct `/app/attempts/[attemptId]/run` guard ostaje netaknut.
+
+**Completion note — Team Dynamics minimal answer payload contract (docs/spec):**
+- Završen je docs/spec slice `Minimal answer payload contract / response persistence boundary`.
+- Spec je dodan u `docs/team-dynamics-product-tech-spec.md`.
+- Zaključan je minimalni single-select Likert payload:
+  - `teamAssessmentParticipantId`
+  - `attemptId`
+  - `questionId`
+  - `optionId`
+  - `responseFormat: "single_select_likert"`
+  - `locale`
+  - optional `clientTimestamp`
+- Zaključano je da `teamAssessmentParticipantId` ostaje public wrapper key, a `attemptId` interni execution payload.
+- Zaključano je da direct `/app/attempts/[attemptId]/run` nije persistence entry point za Team Dynamics.
+- Zaključano je da `questionId` mora pripadati aktivnom Team Dynamics handoffu i da `optionId` mora pripadati tom `questionId`.
+- Zaključano je da je V1 skeleton samo za supported Likert-style single-select iteme.
+- SJT, unsupported/no-options items i full mixed-format runtime ostaju van scope-a.
+- Zaključano je overwrite/idempotency pravilo: jedan odgovor po `teamAssessmentParticipantId + questionId`, zadnji validan izbor zamjenjuje prethodni prije completion-a, a ponovni isti payload mora biti idempotentno siguran.
+- Zaključano je da response write ne smije pokrenuti scoring, team aggregation, attempt_reports, assessment_reports, participant report, HR single-test report, composite HR report ili Team Fit output.
+- Ovo je bio docs/spec task, bez code promjena.
 
 ---
 
@@ -3249,6 +3269,20 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-23 — Team Dynamics minimal answer payload contract
+
+Završeno:
+
+* U `docs/team-dynamics-product-tech-spec.md` dodana je sekcija `Minimal answer payload contract / response persistence boundary`.
+* Zaključan je minimalni single-select Likert payload za budući DB persistence skeleton.
+* Zaključane su validation granice za wrapper, internal attempt, question, option, response format i lifecycle state.
+* Zaključano je da `teamAssessmentParticipantId` ostaje public wrapper key, a `attemptId` interni execution payload.
+* Direct `/app/attempts/[attemptId]/run` nije persistence entry point za Team Dynamics.
+* Zaključana su overwrite/idempotency pravila: jedan odgovor po `teamAssessmentParticipantId + questionId`, zadnji validan izbor zamjenjuje prethodni prije completion-a, a ponovni isti payload mora biti idempotentno siguran.
+* SJT best/worst, unsupported/no-options items i full mixed-format runtime ostaju van ovog V1 persistence skeletona.
+* Potvrđeno je da response write ne smije pokrenuti scoring, aggregation, report orchestration, attempt_reports, assessment_reports, participant report, HR single-test report, composite HR report ili Team Fit output.
+* Task je bio docs/spec-only i nije mijenjao code, migracije, package content ili testove.
 
 ### 2026-05-23 — Team Dynamics UI-only local navigation
 
