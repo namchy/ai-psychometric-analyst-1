@@ -1,0 +1,220 @@
+{
+  "assessment": {
+    "assessment_key": "team_dynamics_assessment_v1",
+    "display_name": "Procjena timske dinamike",
+    "description": "Procjena timske dinamike mjeri kako postojeci tim funkcionise kroz cetiri bloka: razvojnu zrelost tima, psiholosku sigurnost, timsko prosudjivanje u situacijama i kratki outcome pulse.",
+    "estimated_duration": "12-15 minuta",
+    "audience": "team_members",
+    "primary_report": "team_dynamics_report",
+    "aggregation": "team_level",
+    "validation_status": "validation_pending",
+    "scoring_mode": "mixed_v1",
+    "blocks": [
+      "tdm-31-V1",
+      "psychological_safety",
+      "situational_judgment",
+      "outcome_pulse"
+    ],
+    "unit_counts": {
+      "tdm_items": 31,
+      "psychological_safety_items": 7,
+      "sjt_scenarios": 6,
+      "outcome_pulse_items": 4,
+      "total_assessment_units": 48
+    }
+  },
+  "response_scales": {
+    "likert_1_4_agreement": {
+      "applies_to": [
+        "tdm-31-V1",
+        "psychological_safety",
+        "outcome_pulse"
+      ],
+      "labels": {
+        "1": "Uopce se ne slazem",
+        "2": "Uglavnom se ne slazem",
+        "3": "Uglavnom se slazem",
+        "4": "U potpunosti se slazem"
+      },
+      "neutral_option": false,
+      "score_transform": "score_0_100 = ((mean_1_4 - 1) / 3) * 100",
+      "reverse_formula": "reverse_score = 5 - raw_score"
+    },
+    "best_worst": {
+      "applies_to": [
+        "situational_judgment"
+      ],
+      "instruction_type": "knowledge_based_should_do",
+      "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+      "ui_rule": "Ista opcija ne smije biti oznacena i kao najefikasnija i kao najmanje efikasna."
+    }
+  },
+  "shared_scoring_bands": [
+    { "min": 0, "max": 39, "label": "Nizak signal / razvojni rizik" },
+    { "min": 40, "max": 59, "label": "Mjesovit ili nestabilan signal" },
+    { "min": 60, "max": 79, "label": "Funkcionalan signal" },
+    { "min": 80, "max": 100, "label": "Jak signal" }
+  ],
+  "team_aggregation": {
+    "team_score_0_100": "average(member_score_0_100)",
+    "team_sd": "standard_deviation(member_score_0_100)",
+    "team_range": "max(member_score_0_100) - min(member_score_0_100)",
+    "completion_rate": "valid_completed / assigned",
+    "report_note": "Average alone is not enough; preserve disagreement and dispersion signal and do not expose individual responses."
+  },
+  "blocks": {
+    "tdm-31-V1": {
+      "display_name": "Razvojna zrelost tima",
+      "item_count": 31,
+      "response_scale": "likert_1_4_agreement",
+      "reverse_scored_items": [
+        3,
+        15,
+        16,
+        27
+      ],
+      "scoring": {
+        "phase_1": {
+          "method": "simple_linear_v1",
+          "steps": [
+            "apply reverse scoring first",
+            "compute mean",
+            "score_0_100 = ((mean_1_4 - 1) / 3) * 100"
+          ]
+        },
+        "phase_2_note": "Full Rasch scoring ostaje za kasniju fazu kada bude dostupna Rasch conversion tabela ili interna kalibracija."
+      },
+      "domain_mapping": {
+        "Communication": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 28, 29, 30],
+        "Roles and Goals": [15, 16, 17, 19],
+        "Cohesion": [22, 23, 25, 26],
+        "Team Primacy": [18, 20],
+        "overall_rasch_only": [11, 12, 13, 21, 24, 27, 31]
+      },
+      "domain_scoring_rules": {
+        "all_31_enter_total": true,
+        "only_24_enter_domain_scores": true,
+        "overall_rasch_only_items_excluded_from_domain_scores": true
+      }
+    },
+    "psychological_safety": {
+      "display_name": "Psiholoska sigurnost u timu",
+      "model_basis": "TPS7-based / Deep Profile original adaptation",
+      "item_count": 7,
+      "response_scale": "likert_1_4_agreement",
+      "reverse_items": [],
+      "scoring_mode": "simple_linear_v1",
+      "score_formula": "score_0_100 = ((mean_1_4 - 1) / 3) * 100",
+      "consensus_metrics_v1": [
+        "SD",
+        "range",
+        "completion_rate"
+      ],
+      "phase_2_optional_metrics": [
+        "AD_M"
+      ],
+      "report_role": {
+        "separate_team_dynamics_layer": true,
+        "enters_tdm_core_score": false,
+        "use_case": "Shows safety for speaking up about mistakes, risks, help and different ideas."
+      }
+    },
+    "situational_judgment": {
+      "display_name": "Timsko prosudjivanje u situacijama",
+      "model_basis": "Deep Profile original SJT",
+      "scenario_count": 6,
+      "options_per_scenario": 4,
+      "response_format": "best_worst",
+      "instruction_type": "knowledge_based_should_do",
+      "option_levels": [
+        "Best",
+        "Acceptable",
+        "Weak",
+        "Harmful"
+      ],
+      "scoring_model": "expert_key_partial_credit_v1",
+      "best_choice_scoring": {
+        "Best": 2,
+        "Acceptable": 1,
+        "Weak": 0,
+        "Harmful": -1
+      },
+      "worst_choice_scoring": {
+        "Harmful": 2,
+        "Weak": 1,
+        "Acceptable": 0,
+        "Best": -1
+      },
+      "ranges": {
+        "per_scenario_range": "-2 to +4",
+        "total_raw_range": "-12 to +24"
+      },
+      "score_transform": "sjt_score_0_100 = ((raw_total + 12) / 36) * 100",
+      "missing_data": {
+        "ui_rule": "All 6 scenarios should be required.",
+        "fewer_than_4_of_6": "insufficient data / unavailable",
+        "four_or_five_of_6": "pro-rated score with note",
+        "six_of_6": "normal score"
+      },
+      "dimensions": [
+        { "dimension_key": "constructive_conflict", "user_facing_name": "Konstruktivno rjesavanje konflikta" },
+        { "dimension_key": "ownership", "user_facing_name": "Preuzimanje odgovornosti" },
+        { "dimension_key": "risk_transparency", "user_facing_name": "Pravovremeno otvaranje rizika" },
+        { "dimension_key": "coordination", "user_facing_name": "Koordinacija i razmjena informacija" },
+        { "dimension_key": "adaptability", "user_facing_name": "Prilagodba promjeni prioriteta" }
+      ],
+      "scenario_themes": [
+        "konflikt koji prelazi u personalizaciju",
+        "kasnjenje ili neizvrsenje dogovora",
+        "nejasno vlasnistvo nad zadatkom",
+        "presucivanje rizika ili problema",
+        "promjena prioriteta",
+        "losa razmjena informacija / koordinacijski propust"
+      ],
+      "report_role": {
+        "separate_team_dynamics_layer": true,
+        "enters_tdm_core_score": false,
+        "display_as_correct_incorrect": false,
+        "display_as_iq_for_teamwork": false,
+        "display_as": "structured situational judgment signal",
+        "dimension_scores_are_indicative": true
+      },
+      "future_note": "V1 uses expert-key. Hybrid expert + empirical re-weighting may be considered after pilot data."
+    },
+    "outcome_pulse": {
+      "display_name": "Ishod timskog rada",
+      "item_count": 4,
+      "response_scale": "likert_1_4_agreement",
+      "reverse_items": [],
+      "scoring_mode": "simple_linear_v1",
+      "score_formula": "outcome_score_0_100 = ((mean_1_4 - 1) / 3) * 100",
+      "report_role": "criterion_outcome_signal",
+      "diagnostic_index_role": "excluded_in_v1",
+      "interpretation": "Outcome pulse is a criterion signal, not a causal diagnostic scale. It shows how the team currently experiences effectiveness, quality, delivery reliability and sustainability."
+    }
+  },
+  "guardrails": [
+    "Do not create hire/no-hire conclusions.",
+    "Do not label a team as bad, toxic, disfunctional or psychologically unsafe.",
+    "Do not blame leaders or individual team members.",
+    "Do not expose individual answers in team-level report.",
+    "Do not use outcome pulse as causal explanation.",
+    "Do not present SJT as IQ for teamwork.",
+    "Do not present SJT as objective proof of actual behavior.",
+    "Do not present adapted scales as fully validated if validation status is pending.",
+    "Do not use a single score as the main truth.",
+    "Do not implement archetypes in V1.",
+    "Do not show scenario-level SJT scoring key to end users.",
+    "Use development signal, tema za provjeru, situacijsko prosudjivanje, prepoznavanje efikasnih reakcija.",
+    "Avoid tacno/netacno framing for SJT.",
+    "Avoid fit score style deterministic conclusions."
+  ],
+  "pending_work": [
+    "SME review",
+    "pilot validation",
+    "full Rasch scoring",
+    "AD_M Phase 2",
+    "SJT empirical calibration",
+    "AI report layer"
+  ]
+}

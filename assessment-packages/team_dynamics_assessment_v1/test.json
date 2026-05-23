@@ -1,0 +1,48 @@
+{
+  "slug": "team_dynamics_assessment_v1",
+  "name": "Procjena timske dinamike",
+  "category": "behavioral",
+  "scoring_method": "mixed_v1",
+  "version": "v1_content_spec",
+  "status": "draft",
+  "is_active": false,
+  "intended_use": "team_assessment",
+  "report_family": "team_dynamics",
+  "description": "Procjena timske dinamike mjeri kako postojeci tim funkcionise kroz cetiri bloka: razvojnu zrelost tima, psiholosku sigurnost, timsko prosudjivanje u situacijama i kratki outcome pulse.",
+  "default_locale": "bs",
+  "supported_locales": [
+    "bs"
+  ],
+  "metadata": {
+    "assessment_key": "team_dynamics_assessment_v1",
+    "display_name": "Procjena timske dinamike",
+    "estimated_duration": "12-15 minuta",
+    "audience": "team_members",
+    "primary_report": "team_dynamics_report",
+    "aggregation": "team_level",
+    "validation_status": "validation_pending",
+    "scoring_mode": "mixed_v1",
+    "module_name": "Timovi",
+    "assessment_name": "Procjena timske dinamike",
+    "report_name": "Timska dinamika",
+    "product_status": "content_spec_locked",
+    "content_spec_file": "content-spec.json",
+    "item_count": 48,
+    "blocks": [
+      "tdm-31-V1",
+      "psychological_safety",
+      "situational_judgment",
+      "outcome_pulse"
+    ],
+    "response_scales": [
+      "likert_1_4_agreement",
+      "best_worst"
+    ],
+    "db_category_note": "behavioral is a DB-compatible fallback; team-only semantics remain locked by slug, intended_use and report_family.",
+    "import_readiness": {
+      "status": "content_spec_ready_runtime_pending",
+      "blocked_by": "shared_options_catalog_constraint",
+      "note": "Current generic package import format assumes one shared options catalog per package and cannot faithfully seed mixed Likert + per-scenario SJT options without importer/runtime extension."
+    }
+  }
+}

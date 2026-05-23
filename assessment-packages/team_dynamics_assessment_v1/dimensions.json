@@ -1,0 +1,158 @@
+[
+  {
+    "code": "TDM_CORE_TOTAL",
+    "name": "TDM Core Total",
+    "description": "Ukupni TDM core score preko svih 31 itema.",
+    "display_order": 1,
+    "is_active": true,
+    "metadata": {
+      "block_key": "tdm-31-V1",
+      "score_role": "total",
+      "validation_status": "phase_1_linear_only"
+    }
+  },
+  {
+    "code": "TDM_COMMUNICATION",
+    "name": "Communication",
+    "description": "Komunikacija i otvorena razmjena informacija u timu.",
+    "display_order": 2,
+    "is_active": true,
+    "metadata": {
+      "block_key": "tdm-31-V1",
+      "score_role": "domain"
+    }
+  },
+  {
+    "code": "TDM_ROLES_AND_GOALS",
+    "name": "Roles and Goals",
+    "description": "Jasnoca uloga, zadataka i ciljeva tima.",
+    "display_order": 3,
+    "is_active": true,
+    "metadata": {
+      "block_key": "tdm-31-V1",
+      "score_role": "domain"
+    }
+  },
+  {
+    "code": "TDM_COHESION",
+    "name": "Cohesion",
+    "description": "Kohezija, smisao i dozivljaj saradnje u timu.",
+    "display_order": 4,
+    "is_active": true,
+    "metadata": {
+      "block_key": "tdm-31-V1",
+      "score_role": "domain"
+    }
+  },
+  {
+    "code": "TDM_TEAM_PRIMACY",
+    "name": "Team Primacy",
+    "description": "Stavljanje timskih ciljeva ispred individualnih interesa.",
+    "display_order": 5,
+    "is_active": true,
+    "metadata": {
+      "block_key": "tdm-31-V1",
+      "score_role": "domain"
+    }
+  },
+  {
+    "code": "TDM_OVERALL_RASCH_ONLY",
+    "name": "Overall Rasch-only",
+    "description": "Itemi koji ulaze u ukupni/core score, ali ne i u domenske scoreve.",
+    "display_order": 6,
+    "is_active": true,
+    "metadata": {
+      "block_key": "tdm-31-V1",
+      "score_role": "overall_rasch_only"
+    }
+  },
+  {
+    "code": "PSYCHOLOGICAL_SAFETY",
+    "name": "Psiholoska sigurnost u timu",
+    "description": "Sigurnost za otvaranje gresaka, rizika, trazenje pomoci i drugacije misljenje.",
+    "display_order": 7,
+    "is_active": true,
+    "metadata": {
+      "block_key": "psychological_safety",
+      "score_role": "layer"
+    }
+  },
+  {
+    "code": "SJT_TOTAL",
+    "name": "SJT Total",
+    "description": "Ukupni strukturisani scenarijski signal timskog prosudjivanja.",
+    "display_order": 8,
+    "is_active": true,
+    "metadata": {
+      "block_key": "situational_judgment",
+      "score_role": "total"
+    }
+  },
+  {
+    "code": "SJT_CONSTRUCTIVE_CONFLICT",
+    "name": "Konstruktivno rjesavanje konflikta",
+    "description": "Prepoznavanje efikasnih reakcija kada konflikt prelazi u personalizaciju.",
+    "display_order": 9,
+    "is_active": true,
+    "metadata": {
+      "block_key": "situational_judgment",
+      "score_role": "indicative_dimension"
+    }
+  },
+  {
+    "code": "SJT_OWNERSHIP",
+    "name": "Preuzimanje odgovornosti",
+    "description": "Prepoznavanje efikasnih reakcija kada vlasnistvo i odgovornost nisu dovoljno jasni.",
+    "display_order": 10,
+    "is_active": true,
+    "metadata": {
+      "block_key": "situational_judgment",
+      "score_role": "indicative_dimension"
+    }
+  },
+  {
+    "code": "SJT_RISK_TRANSPARENCY",
+    "name": "Pravovremeno otvaranje rizika",
+    "description": "Prepoznavanje efikasnih reakcija kod ranog otvaranja problema i rizika.",
+    "display_order": 11,
+    "is_active": true,
+    "metadata": {
+      "block_key": "situational_judgment",
+      "score_role": "indicative_dimension"
+    }
+  },
+  {
+    "code": "SJT_COORDINATION",
+    "name": "Koordinacija i razmjena informacija",
+    "description": "Prepoznavanje efikasnih reakcija za koordinaciju i dijeljenje informacija.",
+    "display_order": 12,
+    "is_active": true,
+    "metadata": {
+      "block_key": "situational_judgment",
+      "score_role": "indicative_dimension"
+    }
+  },
+  {
+    "code": "SJT_ADAPTABILITY",
+    "name": "Prilagodba promjeni prioriteta",
+    "description": "Prepoznavanje efikasnih reakcija kada tim mora mijenjati smjer i prioritete.",
+    "display_order": 13,
+    "is_active": true,
+    "metadata": {
+      "block_key": "situational_judgment",
+      "score_role": "indicative_dimension"
+    }
+  },
+  {
+    "code": "OUTCOME_PULSE",
+    "name": "Ishod timskog rada",
+    "description": "Kriterijski signal o efektivnosti, kvalitetu, pouzdanosti i odrzivosti timskog rada.",
+    "display_order": 14,
+    "is_active": true,
+    "metadata": {
+      "block_key": "outcome_pulse",
+      "score_role": "criterion_outcome_signal",
+      "excluded_from_main_diagnostic_index": true
+    }
+  }
+]
