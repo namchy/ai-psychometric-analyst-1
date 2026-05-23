@@ -141,6 +141,7 @@ assert.match(routeSource, /handoff\.uiOnlySkeletonMode/);
 assert.match(routeSource, /handoff\.savedSelectedOptionIdsByQuestionId/);
 assert.match(routeSource, /handoff\.savedAnswerQuestionIds/);
 assert.match(routeSource, /handoff\.savedAnswerCount/);
+assert.match(routeSource, /handoff\.completionReadiness/);
 assert.match(routeSource, /teamAssessmentParticipantId=\{handoff\.teamAssessmentParticipantId\}/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.match(routeSource, /Rjesavanje procjene jos nije omoguceno u ovoj verziji\./);
@@ -154,6 +155,9 @@ assert.match(componentSource, /saveTeamAssessmentAnswerAction/);
 assert.match(componentSource, /savedSelectedOptionIdsByQuestionId/);
 assert.match(componentSource, /savedAnswerQuestionIds/);
 assert.match(componentSource, /savedAnswerCount/);
+assert.match(componentSource, /completionReadiness/);
+assert.match(componentSource, /Sacuvani napredak:/);
+assert.match(componentSource, /Completion readiness jos nije postignut/);
 assert.match(componentSource, /Pitanje \{safeIndex \+ 1\} od \{props\.uiOnlyItemCount\}/);
 assert.match(componentSource, /Prethodno/);
 assert.match(componentSource, /Sljedece/);
@@ -644,6 +648,14 @@ assert.deepEqual(
     },
     savedAnswerQuestionIds: ["question-2"],
     savedAnswerCount: 1,
+    completionReadiness: {
+      supportedQuestionCount: 2,
+      savedValidAnswerCount: 1,
+      missingQuestionIds: ["question-1"],
+      invalidSavedAnswerCount: 0,
+      isReadyForCompletion: false,
+      readinessStatus: "not_ready",
+    },
   }),
   {
     teamAssessmentParticipantId: "tap-1",
@@ -734,6 +746,14 @@ assert.deepEqual(
     },
     savedAnswerQuestionIds: ["question-2"],
     savedAnswerCount: 1,
+    completionReadiness: {
+      supportedQuestionCount: 2,
+      savedValidAnswerCount: 1,
+      missingQuestionIds: ["question-1"],
+      invalidSavedAnswerCount: 0,
+      isReadyForCompletion: false,
+      readinessStatus: "not_ready",
+    },
     isRunnableShellState: true,
     handoffState: "ready_placeholder",
     warningCode: null,

@@ -115,6 +115,15 @@ export type TeamAssessmentSavedAnswerState = {
   loadedCount: number;
 };
 
+export type TeamAssessmentCompletionReadiness = {
+  supportedQuestionCount: number;
+  savedValidAnswerCount: number;
+  missingQuestionIds: string[];
+  invalidSavedAnswerCount: number;
+  isReadyForCompletion: boolean;
+  readinessStatus: "not_ready" | "ready" | "no_supported_items";
+};
+
 type TeamAssessmentAnswerQuestionRecord = {
   id: string;
   test_id: string;
@@ -134,6 +143,12 @@ type TeamAssessmentPersistedResponseRecord = {
 };
 
 type TeamAssessmentSavedResponseRecord = {
+  question_id: string;
+  answer_option_id: string | null;
+  response_kind: QuestionType | string;
+};
+
+type TeamAssessmentCompletionReadinessResponseRecord = {
   question_id: string;
   answer_option_id: string | null;
   response_kind: QuestionType | string;
@@ -175,6 +190,17 @@ function buildEmptySavedAnswerState(): TeamAssessmentSavedAnswerState {
     selectedOptionIdsByQuestionId: {},
     loadedQuestionIds: [],
     loadedCount: 0,
+  };
+}
+
+function buildEmptyCompletionReadiness(): TeamAssessmentCompletionReadiness {
+  return {
+    supportedQuestionCount: 0,
+    savedValidAnswerCount: 0,
+    missingQuestionIds: [],
+    invalidSavedAnswerCount: 0,
+    isReadyForCompletion: false,
+    readinessStatus: "no_supported_items",
   };
 }
 
@@ -562,6 +588,133 @@ export async function loadSavedTeamAssessmentAnswers(input: {
   });
 
   return loadTeamAssessmentSavedAnswerStateForContext(
+    {
+      context: contextResult.context,
+      shellState,
+      uiOnlyItems: input.uiOnlyItems,
+    },
+    {
+      supabase: deps.supabase,
+    },
+  );
+}
+
+export function buildTeamAssessmentCompletionReadiness(input: {
+  shellState: TeamAssessmentExecutionShellState;
+  context: TeamAssessmentExecutionContext;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+  savedResponses: TeamAssessmentCompletionReadinessResponseRecord[];
+}): TeamAssessmentCompletionReadiness {
+  if (!input.shellState.isRunnable || input.context.attemptStatus !== "in_progress") {
+    return buildEmptyCompletionReadiness();
+  }
+
+  if (input.uiOnlyItems.length === 0) {
+    return buildEmptyCompletionReadiness();
+  }
+
+  const validOptionIdsByQuestionId = new Map<string, Set<string>>();
+
+  for (const item of input.uiOnlyItems) {
+    validOptionIdsByQuestionId.set(item.questionId, new Set(item.optionIds));
+  }
+
+  const selectedOptionIdsByQuestionId = new Map<string, string>();
+  let invalidSavedAnswerCount = 0;
+
+  for (const savedResponse of input.savedResponses) {
+    const validOptionIds = validOptionIdsByQuestionId.get(savedResponse.question_id);
+
+    if (!validOptionIds) {
+      continue;
+    }
+
+    if (
+      savedResponse.response_kind !== "single_choice" ||
+      !savedResponse.answer_option_id ||
+      validOptionIds.has(savedResponse.answer_option_id) === false
+    ) {
+      invalidSavedAnswerCount += 1;
+      continue;
+    }
+
+    selectedOptionIdsByQuestionId.set(savedResponse.question_id, savedResponse.answer_option_id);
+  }
+
+  const missingQuestionIds = input.uiOnlyItems
+    .map((item) => item.questionId)
+    .filter((questionId) => !selectedOptionIdsByQuestionId.has(questionId));
+  const supportedQuestionCount = input.uiOnlyItems.length;
+  const savedValidAnswerCount = supportedQuestionCount - missingQuestionIds.length;
+  const isReadyForCompletion = supportedQuestionCount > 0 && missingQuestionIds.length === 0;
+
+  return {
+    supportedQuestionCount,
+    savedValidAnswerCount,
+    missingQuestionIds,
+    invalidSavedAnswerCount,
+    isReadyForCompletion,
+    readinessStatus: isReadyForCompletion ? "ready" : "not_ready",
+  };
+}
+
+export async function loadTeamAssessmentCompletionReadinessForContext(input: {
+  context: TeamAssessmentExecutionContext;
+  shellState: TeamAssessmentExecutionShellState;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+}, deps: {
+  supabase?: ReturnType<typeof createSupabaseAdminClient>;
+} = {}): Promise<TeamAssessmentCompletionReadiness> {
+  if (
+    input.shellState.isRunnable === false ||
+    input.context.attemptStatus !== "in_progress" ||
+    input.uiOnlyItems.length === 0
+  ) {
+    return buildEmptyCompletionReadiness();
+  }
+
+  const questionIds = input.uiOnlyItems.map((item) => item.questionId);
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("responses")
+    .select("question_id, answer_option_id, response_kind")
+    .eq("attempt_id", input.context.attemptId)
+    .in("question_id", questionIds)
+    .eq("response_kind", "single_choice");
+
+  if (error) {
+    throw new Error(`Failed to load Team Dynamics completion readiness: ${error.message}`);
+  }
+
+  return buildTeamAssessmentCompletionReadiness({
+    shellState: input.shellState,
+    context: input.context,
+    uiOnlyItems: input.uiOnlyItems,
+    savedResponses: (data ?? []) as TeamAssessmentCompletionReadinessResponseRecord[],
+  });
+}
+
+export async function loadTeamAssessmentCompletionReadiness(input: {
+  userId: string;
+  teamAssessmentParticipantId: string;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+}, deps: TeamAssessmentAnswerValidationDependencies = {}): Promise<TeamAssessmentCompletionReadiness> {
+  const loadExecutionContext = deps.loadExecutionContext ?? loadTeamAssessmentExecutionContext;
+  const contextResult = await loadExecutionContext({
+    teamAssessmentParticipantId: input.teamAssessmentParticipantId,
+    userId: input.userId,
+  });
+
+  if (!contextResult.ok) {
+    return buildEmptyCompletionReadiness();
+  }
+
+  const shellState = resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: contextResult.context.wrapperStatus,
+  });
+
+  return loadTeamAssessmentCompletionReadinessForContext(
     {
       context: contextResult.context,
       shellState,

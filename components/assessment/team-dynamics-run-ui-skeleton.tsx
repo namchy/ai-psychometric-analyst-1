@@ -30,6 +30,14 @@ export function TeamDynamicsRunUiSkeleton(props: {
   savedSelectedOptionIdsByQuestionId: Record<string, string>;
   savedAnswerQuestionIds: string[];
   savedAnswerCount: number;
+  completionReadiness: {
+    supportedQuestionCount: number;
+    savedValidAnswerCount: number;
+    missingQuestionIds: string[];
+    invalidSavedAnswerCount: number;
+    isReadyForCompletion: boolean;
+    readinessStatus: "not_ready" | "ready" | "no_supported_items";
+  };
   isRunnableShellState: boolean;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -188,6 +196,25 @@ export function TeamDynamicsRunUiSkeleton(props: {
             Ucitano je ranije spremljenih odgovora: {props.savedAnswerCount}.
           </p>
         ) : null}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-900">
+            Sacuvani napredak: {props.completionReadiness.savedValidAnswerCount}/
+            {props.completionReadiness.supportedQuestionCount}
+          </p>
+          <p className="text-sm leading-6 text-slate-600">
+            {props.completionReadiness.readinessStatus === "ready"
+              ? "Sva podrzana Likert pitanja trenutno imaju valjan spremljen odgovor."
+              : props.completionReadiness.readinessStatus === "no_supported_items"
+                ? "Jos nema podrzanih pitanja za completion readiness."
+                : "Completion readiness jos nije postignut za sva podrzana Likert pitanja."}
+          </p>
+          {props.completionReadiness.invalidSavedAnswerCount > 0 ? (
+            <p className="text-sm leading-6 text-slate-500">
+              Ignorisani su nevalidni ili zastarjeli spremljeni odgovori:{" "}
+              {props.completionReadiness.invalidSavedAnswerCount}.
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-2">

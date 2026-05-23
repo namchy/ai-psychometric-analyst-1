@@ -65,6 +65,7 @@ const {
   resolveTeamAssessmentExecutionShellState,
 } = require("../lib/assessment/team-assessment-execution.ts");
 const {
+  buildTeamAssessmentCompletionReadiness,
   buildTeamAssessmentSavedAnswerState,
 } = require("../lib/assessment/team-assessment-responses.ts");
 
@@ -100,6 +101,7 @@ assert.match(helperSource, /uiOnlySkeletonMode/);
 assert.match(helperSource, /savedSelectedOptionIdsByQuestionId/);
 assert.match(helperSource, /savedAnswerQuestionIds/);
 assert.match(helperSource, /savedAnswerCount/);
+assert.match(helperSource, /completionReadiness/);
 assert.match(helperSource, /optionIds/);
 assert.match(helperSource, /isUiOnlySkeleton/);
 assert.match(helperSource, /localizedTitle/);
@@ -334,6 +336,60 @@ assert.deepEqual(savedAnswerState, {
   loadedCount: 2,
 });
 
+const completionReadiness = buildTeamAssessmentCompletionReadiness({
+  shellState: resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: "started",
+  }),
+  context: {
+    teamAssessmentParticipantId: "tap-1",
+    teamAssessmentAssignmentId: "assignment-1",
+    teamMembershipId: "membership-1",
+    participantId: "participant-1",
+    attemptId: "attempt-1",
+    teamId: "team-1",
+    organizationId: "org-1",
+    packageSlug: "team_dynamics_v1_strong",
+    wrapperStatus: "started",
+    attemptStatus: "in_progress",
+    locale: "bs",
+    test: {
+      id: "test-team-dynamics",
+      slug: "team_dynamics_v1_strong",
+      name: "Procjena timske dinamike",
+      status: "active",
+      isActive: true,
+    },
+  },
+  uiOnlyItems: uiOnlyReady.items,
+  savedResponses: [
+    {
+      question_id: "question-1",
+      answer_option_id: "option-2",
+      response_kind: "single_choice",
+    },
+    {
+      question_id: "question-2",
+      answer_option_id: "option-99",
+      response_kind: "single_choice",
+    },
+    {
+      question_id: "question-9",
+      answer_option_id: "option-10",
+      response_kind: "single_choice",
+    },
+  ],
+});
+
+assert.deepEqual(completionReadiness, {
+  supportedQuestionCount: 2,
+  savedValidAnswerCount: 1,
+  missingQuestionIds: ["question-2"],
+  invalidSavedAnswerCount: 1,
+  isReadyForCompletion: false,
+  readinessStatus: "not_ready",
+});
+
 assert.deepEqual(
   buildTeamAssessmentUiOnlyItems({
     questionOutline: outline,
@@ -452,6 +508,14 @@ const completedHandoff = buildTeamAssessmentRunHandoff({
   savedSelectedOptionIdsByQuestionId: {},
   savedAnswerQuestionIds: [],
   savedAnswerCount: 0,
+  completionReadiness: {
+    supportedQuestionCount: 0,
+    savedValidAnswerCount: 0,
+    missingQuestionIds: [],
+    invalidSavedAnswerCount: 0,
+    isReadyForCompletion: false,
+    readinessStatus: "no_supported_items",
+  },
 });
 
 assert.equal(completedHandoff.handoffState, "safe_completed");
@@ -471,6 +535,14 @@ assert.equal(completedHandoff.uiOnlyUnsupportedCount, 0);
 assert.deepEqual(completedHandoff.savedSelectedOptionIdsByQuestionId, {});
 assert.deepEqual(completedHandoff.savedAnswerQuestionIds, []);
 assert.equal(completedHandoff.savedAnswerCount, 0);
+assert.deepEqual(completedHandoff.completionReadiness, {
+  supportedQuestionCount: 0,
+  savedValidAnswerCount: 0,
+  missingQuestionIds: [],
+  invalidSavedAnswerCount: 0,
+  isReadyForCompletion: false,
+  readinessStatus: "no_supported_items",
+});
 assert.deepEqual(
   completedHandoff.uiOnlyItems.map((item) => item.questionId),
   ["question-1", "question-2"],
@@ -523,6 +595,14 @@ const warningHandoff = buildTeamAssessmentRunHandoff({
   },
   savedAnswerQuestionIds: ["question-2"],
   savedAnswerCount: 1,
+  completionReadiness: {
+    supportedQuestionCount: 2,
+    savedValidAnswerCount: 1,
+    missingQuestionIds: ["question-1"],
+    invalidSavedAnswerCount: 0,
+    isReadyForCompletion: false,
+    readinessStatus: "not_ready",
+  },
 });
 
 assert.equal(warningHandoff.handoffState, "warning_placeholder");
@@ -542,6 +622,14 @@ assert.deepEqual(warningHandoff.savedSelectedOptionIdsByQuestionId, {
 });
 assert.deepEqual(warningHandoff.savedAnswerQuestionIds, ["question-2"]);
 assert.equal(warningHandoff.savedAnswerCount, 1);
+assert.deepEqual(warningHandoff.completionReadiness, {
+  supportedQuestionCount: 2,
+  savedValidAnswerCount: 1,
+  missingQuestionIds: ["question-1"],
+  invalidSavedAnswerCount: 0,
+  isReadyForCompletion: false,
+  readinessStatus: "not_ready",
+});
 assert.deepEqual(
   warningHandoff.uiOnlyItems.map((item) => item.questionId),
   ["question-1", "question-2"],
@@ -590,6 +678,14 @@ const mismatchedBlockHandoff = buildTeamAssessmentRunHandoff({
   savedSelectedOptionIdsByQuestionId: {},
   savedAnswerQuestionIds: [],
   savedAnswerCount: 0,
+  completionReadiness: {
+    supportedQuestionCount: 2,
+    savedValidAnswerCount: 2,
+    missingQuestionIds: [],
+    invalidSavedAnswerCount: 0,
+    isReadyForCompletion: true,
+    readinessStatus: "ready",
+  },
 });
 
 assert.equal(mismatchedBlockHandoff.questionCountMatchesBlockOutline, false);

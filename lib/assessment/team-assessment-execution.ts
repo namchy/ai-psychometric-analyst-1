@@ -6,6 +6,7 @@ import {
   normalizeAssessmentLocale,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
+import type { TeamAssessmentCompletionReadiness } from "@/lib/assessment/team-assessment-responses";
 import { TEAM_DYNAMICS_TEST_SLUG } from "@/lib/assessment/team-dynamics";
 import type {
   TeamAssessmentAssignmentStatus,
@@ -210,6 +211,7 @@ export type TeamAssessmentRunHandoff = {
   savedSelectedOptionIdsByQuestionId: Record<string, string>;
   savedAnswerQuestionIds: string[];
   savedAnswerCount: number;
+  completionReadiness: TeamAssessmentCompletionReadiness;
   isRunnableShellState: boolean;
   handoffState: TeamAssessmentRunHandoffState;
   warningCode: TeamAssessmentRunHandoffWarningCode | null;
@@ -680,6 +682,7 @@ export function buildTeamAssessmentRunHandoff(input: {
   savedSelectedOptionIdsByQuestionId: Record<string, string>;
   savedAnswerQuestionIds: string[];
   savedAnswerCount: number;
+  completionReadiness: TeamAssessmentCompletionReadiness;
 }): TeamAssessmentRunHandoff {
   const questionCountMatchesActive = input.activeQuestionCount === input.questionOutline.count;
   const orderedQuestionIdsFromBlocks = input.blockOutline.flatMap((block) => block.questionIds);
@@ -727,6 +730,7 @@ export function buildTeamAssessmentRunHandoff(input: {
     savedSelectedOptionIdsByQuestionId: input.savedSelectedOptionIdsByQuestionId,
     savedAnswerQuestionIds: input.savedAnswerQuestionIds,
     savedAnswerCount: input.savedAnswerCount,
+    completionReadiness: input.completionReadiness,
     isRunnableShellState: input.shellState.isRunnable,
     handoffState,
     warningCode: isUnexpectedQuestionCount ? "unexpected_question_count" : null,
@@ -1236,10 +1240,18 @@ export async function loadTeamAssessmentRunHandoff(input: {
     questionOutline,
     locale: input.context.locale,
   });
-  const { loadTeamAssessmentSavedAnswerStateForContext } = await import(
+  const {
+    loadTeamAssessmentCompletionReadinessForContext,
+    loadTeamAssessmentSavedAnswerStateForContext,
+  } = await import(
     "@/lib/assessment/team-assessment-responses"
   );
   const savedAnswerState = await loadTeamAssessmentSavedAnswerStateForContext({
+    context: input.context,
+    shellState: input.shellState,
+    uiOnlyItems: uiOnlySkeleton.items,
+  });
+  const completionReadiness = await loadTeamAssessmentCompletionReadinessForContext({
     context: input.context,
     shellState: input.shellState,
     uiOnlyItems: uiOnlySkeleton.items,
@@ -1258,5 +1270,6 @@ export async function loadTeamAssessmentRunHandoff(input: {
     savedSelectedOptionIdsByQuestionId: savedAnswerState.selectedOptionIdsByQuestionId,
     savedAnswerQuestionIds: savedAnswerState.loadedQuestionIds,
     savedAnswerCount: savedAnswerState.loadedCount,
+    completionReadiness,
   });
 }
