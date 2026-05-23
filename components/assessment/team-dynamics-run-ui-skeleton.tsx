@@ -2,41 +2,35 @@
 
 import { useState } from "react";
 
-type TeamDynamicsRunFirstItemOption = {
+type TeamDynamicsRunUiOnlyItemOption = {
   id: string;
   label: string;
   order: number;
 };
 
-type TeamDynamicsRunFirstItemSkeleton =
-  | {
-      mode: "ui_only_ready";
-      questionId: string;
-      order: number;
-      localizedTitle: string;
-      localizedStem: string;
-      optionIds: string[];
-      options: TeamDynamicsRunFirstItemOption[];
-      locale: string;
-      isUiOnlySkeleton: true;
-    }
-  | {
-      mode: "no_questions" | "no_options" | "unsupported_format";
-      locale: string;
-      isUiOnlySkeleton: true;
-      questionId?: string;
-      order?: number;
-      localizedTitle?: string;
-      localizedStem?: string;
-      unsupportedQuestionType?: string;
-    };
+type TeamDynamicsRunUiOnlyItem = {
+  mode: "ui_only_ready";
+  questionId: string;
+  order: number;
+  localizedTitle: string;
+  localizedStem: string;
+  optionIds: string[];
+  options: TeamDynamicsRunUiOnlyItemOption[];
+  locale: string;
+  isUiOnlySkeleton: true;
+};
 
 export function TeamDynamicsRunUiSkeleton(props: {
-  firstItem: TeamDynamicsRunFirstItemSkeleton;
+  uiOnlyItems: TeamDynamicsRunUiOnlyItem[];
+  uiOnlyItemCount: number;
+  uiOnlyUnsupportedCount: number;
+  uiOnlySkeletonMode: "ready" | "no_questions" | "no_options" | "unsupported_format";
   isRunnableShellState: boolean;
 }) {
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  const firstItem = props.firstItem;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedOptionIdsByQuestionId, setSelectedOptionIdsByQuestionId] = useState<
+    Record<string, string>
+  >({});
 
   if (!props.isRunnableShellState) {
     return (
@@ -49,7 +43,7 @@ export function TeamDynamicsRunUiSkeleton(props: {
     );
   }
 
-  if (firstItem.mode === "no_questions") {
+  if (props.uiOnlySkeletonMode === "no_questions") {
     return (
       <section className="space-y-3 rounded-[1.5rem] border border-slate-200/80 bg-white/80 p-5">
         <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">Runtime UI skeleton</h2>
@@ -60,12 +54,12 @@ export function TeamDynamicsRunUiSkeleton(props: {
     );
   }
 
-  if (firstItem.mode === "no_options") {
+  if (props.uiOnlySkeletonMode === "no_options") {
     return (
       <section className="space-y-3 rounded-[1.5rem] border border-slate-200/80 bg-white/80 p-5">
         <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">Runtime UI skeleton</h2>
         <p className="text-sm font-semibold text-slate-900">
-          Prvi pripremljeni item je ucitan, ali opcije jos nisu dostupne.
+          Pripremljena pitanja su ucitana, ali opcije jos nisu dostupne.
         </p>
         <p className="text-sm leading-6 text-slate-700">
           UI ostaje u readiness stanju dok runtime option payload ne bude dostupan.
@@ -74,12 +68,12 @@ export function TeamDynamicsRunUiSkeleton(props: {
     );
   }
 
-  if (firstItem.mode === "unsupported_format") {
+  if (props.uiOnlySkeletonMode === "unsupported_format") {
     return (
       <section className="space-y-3 rounded-[1.5rem] border border-slate-200/80 bg-white/80 p-5">
         <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">Runtime UI skeleton</h2>
         <p className="text-sm font-semibold text-slate-900">
-          Prvi pripremljeni item koristi format koji jos nije podrzan u ovom UI-only skeletonu.
+          Pripremljena pitanja koriste format koji jos nije podrzan u ovom UI-only skeletonu.
         </p>
         <p className="text-sm leading-6 text-slate-700">
           Podrzan je samo Likert-style single-select scaffold bez spremanja odgovora.
@@ -88,11 +82,15 @@ export function TeamDynamicsRunUiSkeleton(props: {
     );
   }
 
-  if (firstItem.mode !== "ui_only_ready") {
+  if (props.uiOnlyItems.length === 0) {
     return null;
   }
 
-  const readyItem = firstItem;
+  const safeIndex = Math.min(currentIndex, props.uiOnlyItems.length - 1);
+  const currentItem = props.uiOnlyItems[safeIndex];
+  const selectedOptionId = selectedOptionIdsByQuestionId[currentItem.questionId] ?? null;
+  const isFirstItem = safeIndex === 0;
+  const isLastItem = safeIndex === props.uiOnlyItems.length - 1;
 
   return (
     <section className="space-y-4 rounded-[1.5rem] border border-slate-200/80 bg-white/80 p-5">
@@ -101,20 +99,32 @@ export function TeamDynamicsRunUiSkeleton(props: {
           UI-only runtime skeleton
         </p>
         <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">
-          Prvi pripremljeni item
+          Pitanje {safeIndex + 1} od {props.uiOnlyItemCount}
         </h2>
-        <p className="text-sm leading-6 text-slate-700">{readyItem.localizedStem}</p>
+        <p className="text-sm font-semibold text-slate-900">{currentItem.localizedTitle}</p>
+        <p className="text-sm leading-6 text-slate-700">{currentItem.localizedStem}</p>
+        {props.uiOnlyUnsupportedCount > 0 ? (
+          <p className="text-sm leading-6 text-slate-500">
+            Dio pripremljenih pitanja ostaje u readiness stanju jer jos nemaju podrzan UI-only
+            format ili opcije.
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-2">
-        {readyItem.options.map((option: TeamDynamicsRunFirstItemOption) => {
+        {currentItem.options.map((option: TeamDynamicsRunUiOnlyItemOption) => {
           const isSelected = selectedOptionId === option.id;
 
           return (
             <button
               key={option.id}
               type="button"
-              onClick={() => setSelectedOptionId(option.id)}
+              onClick={() =>
+                setSelectedOptionIdsByQuestionId((currentSelections) => ({
+                  ...currentSelections,
+                  [currentItem.questionId]: option.id,
+                }))
+              }
               className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors duration-150 ${
                 isSelected
                   ? "border-slate-900 bg-slate-900 text-white"
@@ -128,8 +138,29 @@ export function TeamDynamicsRunUiSkeleton(props: {
         })}
       </div>
 
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+          disabled={isFirstItem}
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors duration-150 hover:border-slate-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+        >
+          Prethodno
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setCurrentIndex((index) => Math.min(props.uiOnlyItems.length - 1, index + 1))
+          }
+          disabled={isLastItem}
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors duration-150 hover:border-slate-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+        >
+          Sljedece
+        </button>
+      </div>
+
       <p className="text-sm leading-6 text-slate-700">
-        Odgovor se drzi samo u lokalnom UI state-u i jos nije spremljen.
+        Odgovori se drze samo u lokalnom UI state-u i jos nisu spremljeni.
       </p>
       <p className="text-sm leading-6 text-slate-500">
         Osvjezavanje stranice brise izbor. Nema DB persistence-a, autosave-a, submitovanja,

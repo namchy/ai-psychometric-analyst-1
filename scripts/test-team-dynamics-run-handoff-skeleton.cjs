@@ -59,9 +59,9 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   buildTeamAssessmentBlockOutline,
-  buildTeamAssessmentFirstItemSkeleton,
   buildTeamAssessmentQuestionOutline,
   buildTeamAssessmentRunHandoff,
+  buildTeamAssessmentUiOnlyItems,
   resolveTeamAssessmentExecutionShellState,
 } = require("../lib/assessment/team-assessment-execution.ts");
 
@@ -90,7 +90,10 @@ assert.match(helperSource, /orderedQuestionIds/);
 assert.match(helperSource, /blockOutline/);
 assert.match(helperSource, /blockOutlineCount/);
 assert.match(helperSource, /questionCountMatchesBlockOutline/);
-assert.match(helperSource, /firstItem/);
+assert.match(helperSource, /uiOnlyItems/);
+assert.match(helperSource, /uiOnlyItemCount/);
+assert.match(helperSource, /uiOnlyUnsupportedCount/);
+assert.match(helperSource, /uiOnlySkeletonMode/);
 assert.match(helperSource, /optionIds/);
 assert.match(helperSource, /isUiOnlySkeleton/);
 assert.match(helperSource, /localizedTitle/);
@@ -153,16 +156,36 @@ assert.deepEqual(outline.questions, [
   },
 ]);
 
-const firstItemReady = buildTeamAssessmentFirstItemSkeleton({
+const uiOnlyReady = buildTeamAssessmentUiOnlyItems({
   questionOutline: outline,
   locale: "bs",
-  question: {
-    id: "question-1",
-    text: "Fallback 1",
-    question_order: 1,
-    question_type: "single_choice",
-  },
+  questions: [
+    {
+      id: "question-1",
+      text: "Fallback 1",
+      question_order: 1,
+      question_type: "single_choice",
+    },
+    {
+      id: "question-2",
+      text: "Fallback 2",
+      question_order: 2,
+      question_type: "single_choice",
+    },
+  ],
   options: [
+    {
+      id: "option-4",
+      question_id: "question-2",
+      label: "Fallback option 4",
+      option_order: 2,
+    },
+    {
+      id: "option-3",
+      question_id: "question-2",
+      label: "Fallback option 3",
+      option_order: 1,
+    },
     {
       id: "option-2",
       question_id: "question-1",
@@ -187,75 +210,117 @@ const firstItemReady = buildTeamAssessmentFirstItemSkeleton({
       locale: "bs",
       label: "Lokalizovana opcija 2",
     },
+    {
+      answer_option_id: "option-3",
+      locale: "bs",
+      label: "Lokalizovana opcija 3",
+    },
+    {
+      answer_option_id: "option-4",
+      locale: "bs",
+      label: "Lokalizovana opcija 4",
+    },
   ],
 });
 
-assert.deepEqual(firstItemReady, {
-  mode: "ui_only_ready",
-  questionId: "question-1",
-  order: 1,
-  localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-  localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
-  optionIds: ["option-1", "option-2"],
-  options: [
+assert.deepEqual(uiOnlyReady, {
+  items: [
     {
-      id: "option-1",
-      label: "Lokalizovana opcija 1",
+      mode: "ui_only_ready",
+      questionId: "question-1",
       order: 1,
+      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      optionIds: ["option-1", "option-2"],
+      options: [
+        {
+          id: "option-1",
+          label: "Lokalizovana opcija 1",
+          order: 1,
+        },
+        {
+          id: "option-2",
+          label: "Lokalizovana opcija 2",
+          order: 2,
+        },
+      ],
+      locale: "bs",
+      isUiOnlySkeleton: true,
     },
     {
-      id: "option-2",
-      label: "Lokalizovana opcija 2",
+      mode: "ui_only_ready",
+      questionId: "question-2",
       order: 2,
+      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
+      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
+      optionIds: ["option-3", "option-4"],
+      options: [
+        {
+          id: "option-3",
+          label: "Lokalizovana opcija 3",
+          order: 1,
+        },
+        {
+          id: "option-4",
+          label: "Lokalizovana opcija 4",
+          order: 2,
+        },
+      ],
+      locale: "bs",
+      isUiOnlySkeleton: true,
     },
   ],
-  locale: "bs",
-  isUiOnlySkeleton: true,
+  itemCount: 2,
+  unsupportedCount: 0,
+  mode: "ready",
 });
 
 assert.deepEqual(
-  buildTeamAssessmentFirstItemSkeleton({
+  buildTeamAssessmentUiOnlyItems({
     questionOutline: outline,
     locale: "bs",
-    question: {
-      id: "question-1",
-      text: "Fallback 1",
-      question_order: 1,
-      question_type: "single_choice",
-    },
+    questions: [
+      {
+        id: "question-1",
+        text: "Fallback 1",
+        question_order: 1,
+        question_type: "single_choice",
+      },
+    ],
     options: [],
   }),
   {
+    items: [],
+    itemCount: 0,
+    unsupportedCount: 2,
     mode: "no_options",
-    locale: "bs",
-    isUiOnlySkeleton: true,
-    questionId: "question-1",
-    order: 1,
-    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
   },
 );
 
 assert.deepEqual(
-  buildTeamAssessmentFirstItemSkeleton({
+  buildTeamAssessmentUiOnlyItems({
     questionOutline: outline,
     locale: "bs",
-    question: {
-      id: "question-1",
-      text: "Fallback 1",
-      question_order: 1,
-      question_type: "multiple_choice",
-    },
+    questions: [
+      {
+        id: "question-1",
+        text: "Fallback 1",
+        question_order: 1,
+        question_type: "multiple_choice",
+      },
+      {
+        id: "question-2",
+        text: "Fallback 2",
+        question_order: 2,
+        question_type: "multiple_choice",
+      },
+    ],
   }),
   {
+    items: [],
+    itemCount: 0,
+    unsupportedCount: 2,
     mode: "unsupported_format",
-    locale: "bs",
-    isUiOnlySkeleton: true,
-    questionId: "question-1",
-    order: 1,
-    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
-    unsupportedQuestionType: "multiple_choice",
   },
 );
 
@@ -321,28 +386,10 @@ const completedHandoff = buildTeamAssessmentRunHandoff({
       questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
     },
   ],
-  firstItem: {
-    mode: "ui_only_ready",
-    questionId: "question-1",
-    order: 1,
-    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
-    optionIds: ["option-1", "option-2"],
-    options: [
-      {
-        id: "option-1",
-        label: "Opcija 1",
-        order: 1,
-      },
-      {
-        id: "option-2",
-        label: "Opcija 2",
-        order: 2,
-      },
-    ],
-    locale: "bs",
-    isUiOnlySkeleton: true,
-  },
+  uiOnlyItems: uiOnlyReady.items,
+  uiOnlyItemCount: uiOnlyReady.itemCount,
+  uiOnlyUnsupportedCount: uiOnlyReady.unsupportedCount,
+  uiOnlySkeletonMode: uiOnlyReady.mode,
 });
 
 assert.equal(completedHandoff.handoffState, "safe_completed");
@@ -356,8 +403,14 @@ assert.equal(completedHandoff.questionOutlineCount, 36);
 assert.equal(completedHandoff.questionCountMatchesActive, true);
 assert.equal(completedHandoff.blockOutlineCount, 1);
 assert.equal(completedHandoff.questionCountMatchesBlockOutline, true);
-assert.equal(completedHandoff.firstItem.mode, "ui_only_ready");
-assert.deepEqual(completedHandoff.firstItem.optionIds, ["option-1", "option-2"]);
+assert.equal(completedHandoff.uiOnlySkeletonMode, "ready");
+assert.equal(completedHandoff.uiOnlyItemCount, 2);
+assert.equal(completedHandoff.uiOnlyUnsupportedCount, 0);
+assert.deepEqual(
+  completedHandoff.uiOnlyItems.map((item) => item.questionId),
+  ["question-1", "question-2"],
+);
+assert.deepEqual(completedHandoff.uiOnlyItems[0].optionIds, ["option-1", "option-2"]);
 assert.deepEqual(completedHandoff.blockOutline, [
   {
     id: "default",
@@ -396,7 +449,10 @@ const warningHandoff = buildTeamAssessmentRunHandoff({
   activeQuestionCount: 34,
   questionOutline: outline,
   blockOutline: fallbackBlockOutline,
-  firstItem: firstItemReady,
+  uiOnlyItems: uiOnlyReady.items,
+  uiOnlyItemCount: uiOnlyReady.itemCount,
+  uiOnlyUnsupportedCount: uiOnlyReady.unsupportedCount,
+  uiOnlySkeletonMode: uiOnlyReady.mode,
 });
 
 assert.equal(warningHandoff.handoffState, "warning_placeholder");
@@ -410,8 +466,11 @@ assert.equal(warningHandoff.blockOutlineCount, 1);
 assert.equal(warningHandoff.questionCountMatchesBlockOutline, true);
 assert.deepEqual(warningHandoff.questionOutline.orderedQuestionIds, ["question-1", "question-2"]);
 assert.deepEqual(warningHandoff.blockOutline, fallbackBlockOutline);
-assert.equal(warningHandoff.firstItem.mode, "ui_only_ready");
-assert.deepEqual(warningHandoff.firstItem.optionIds, ["option-1", "option-2"]);
+assert.equal(warningHandoff.uiOnlySkeletonMode, "ready");
+assert.deepEqual(
+  warningHandoff.uiOnlyItems.map((item) => item.questionId),
+  ["question-1", "question-2"],
+);
 
 const mismatchedBlockHandoff = buildTeamAssessmentRunHandoff({
   context: {
@@ -449,7 +508,10 @@ const mismatchedBlockHandoff = buildTeamAssessmentRunHandoff({
       questionIds: ["question-2"],
     },
   ],
-  firstItem: firstItemReady,
+  uiOnlyItems: uiOnlyReady.items,
+  uiOnlyItemCount: uiOnlyReady.itemCount,
+  uiOnlyUnsupportedCount: uiOnlyReady.unsupportedCount,
+  uiOnlySkeletonMode: uiOnlyReady.mode,
 });
 
 assert.equal(mismatchedBlockHandoff.questionCountMatchesBlockOutline, false);
@@ -460,7 +522,7 @@ assert.match(routeSource, /handoff\.attemptStatus/);
 assert.match(routeSource, /handoff\.activeQuestionCount/);
 assert.match(routeSource, /handoff\.blockOutlineCount/);
 assert.match(routeSource, /handoff\.questionOutlineCount/);
-assert.match(routeSource, /handoff\.firstItem/);
+assert.match(routeSource, /handoff\.uiOnlyItems/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.doesNotMatch(routeSource, /AssessmentForm/);
 assert.doesNotMatch(routeSource, /question_order/);

@@ -145,7 +145,10 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
         </section>
 
         <TeamDynamicsRunUiSkeleton
-          firstItem={handoff.firstItem}
+          uiOnlyItems={handoff.uiOnlyItems}
+          uiOnlyItemCount={handoff.uiOnlyItemCount}
+          uiOnlyUnsupportedCount={handoff.uiOnlyUnsupportedCount}
+          uiOnlySkeletonMode={handoff.uiOnlySkeletonMode}
           isRunnableShellState={handoff.isRunnableShellState}
         />
       </section>

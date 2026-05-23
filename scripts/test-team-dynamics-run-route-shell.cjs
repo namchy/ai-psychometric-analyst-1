@@ -60,9 +60,9 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 const {
   buildTeamAssessmentExecutionStartedPatch,
   buildTeamAssessmentBlockOutline,
-  buildTeamAssessmentFirstItemSkeleton,
   buildTeamAssessmentQuestionOutline,
   buildTeamAssessmentRunHandoff,
+  buildTeamAssessmentUiOnlyItems,
   resolveTeamAssessmentExecutionShellState,
 } = require("../lib/assessment/team-assessment-execution.ts");
 
@@ -135,7 +135,9 @@ assert.match(routeSource, /handoff\.attemptStatus/);
 assert.match(routeSource, /handoff\.activeQuestionCount/);
 assert.match(routeSource, /handoff\.blockOutlineCount/);
 assert.match(routeSource, /handoff\.questionOutlineCount/);
-assert.match(routeSource, /handoff\.firstItem/);
+assert.match(routeSource, /handoff\.uiOnlyItems/);
+assert.match(routeSource, /handoff\.uiOnlyItemCount/);
+assert.match(routeSource, /handoff\.uiOnlySkeletonMode/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.match(routeSource, /Rjesavanje procjene jos nije omoguceno u ovoj verziji\./);
 assert.match(routeSource, /Sekcije su pripremljene za sljedeci korak:/);
@@ -143,8 +145,10 @@ assert.match(routeSource, /Pitanja su pripremljena za sljedeci korak:/);
 
 assert.match(componentSource, /"use client"/);
 assert.match(componentSource, /useState/);
-assert.match(componentSource, /Prvi pripremljeni item/);
-assert.match(componentSource, /Odgovor se drzi samo u lokalnom UI state-u i jos nije spremljen\./);
+assert.match(componentSource, /Pitanje \{safeIndex \+ 1\} od \{props\.uiOnlyItemCount\}/);
+assert.match(componentSource, /Prethodno/);
+assert.match(componentSource, /Sljedece/);
+assert.match(componentSource, /Odgovori se drze samo u lokalnom UI state-u i jos nisu spremljeni\./);
 assert.match(componentSource, /Osvjezavanje stranice brise izbor\./);
 assert.match(componentSource, /Nema DB persistence-a, autosave-a, submitovanja,?\s*completion-a ni scoring-a/);
 assert.doesNotMatch(componentSource, /AssessmentForm/);
@@ -156,13 +160,13 @@ assert.doesNotMatch(componentSource, /Team Fit/);
 
 assert.match(helperSource, /export function buildTeamAssessmentExecutionStartedPatch/);
 assert.match(helperSource, /export function buildTeamAssessmentBlockOutline/);
-assert.match(helperSource, /export function buildTeamAssessmentFirstItemSkeleton/);
 assert.match(helperSource, /export function buildTeamAssessmentQuestionOutline/);
 assert.match(helperSource, /export function buildTeamAssessmentRunHandoff/);
+assert.match(helperSource, /export function buildTeamAssessmentUiOnlyItems/);
 assert.match(helperSource, /export async function markTeamAssessmentExecutionStartedIfInvited/);
-assert.match(helperSource, /export async function loadTeamAssessmentFirstItemSkeleton/);
 assert.match(helperSource, /export async function loadTeamAssessmentQuestionOutline/);
 assert.match(helperSource, /export async function loadTeamAssessmentRunHandoff/);
+assert.match(helperSource, /export async function loadTeamAssessmentUiOnlyItems/);
 assert.match(helperSource, /export function resolveTeamAssessmentExecutionShellState/);
 assert.match(helperSource, /\.from\("team_assessment_participants"\)/);
 assert.match(helperSource, /\.from\("questions"\)/);
@@ -292,36 +296,46 @@ assert.deepEqual(
   },
 );
 
-assert.deepEqual(
-  buildTeamAssessmentFirstItemSkeleton({
-    questionOutline: {
-      orderedQuestionIds: ["question-1", "question-2"],
-      questions: [
-        {
-          id: "question-1",
-          order: 1,
-          localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-          localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
-          locale: "bs",
-        },
-        {
-          id: "question-2",
-          order: 2,
-          localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
-          localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
-          locale: "bs",
-        },
-      ],
-      locale: "bs",
-      count: 2,
-    },
-    locale: "bs",
-    question: {
+const helperOutline = {
+  orderedQuestionIds: ["question-1", "question-2"],
+  questions: [
+    {
       id: "question-1",
-      text: "Fallback 1",
-      question_order: 1,
-      question_type: "single_choice",
+      order: 1,
+      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      locale: "bs",
     },
+    {
+      id: "question-2",
+      order: 2,
+      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
+      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
+      locale: "bs",
+    },
+  ],
+  locale: "bs",
+  count: 2,
+};
+
+assert.deepEqual(
+  buildTeamAssessmentUiOnlyItems({
+    questionOutline: helperOutline,
+    locale: "bs",
+    questions: [
+      {
+        id: "question-1",
+        text: "Fallback 1",
+        question_order: 1,
+        question_type: "single_choice",
+      },
+      {
+        id: "question-2",
+        text: "Fallback 2",
+        question_order: 2,
+        question_type: "single_choice",
+      },
+    ],
     options: [
       {
         id: "option-2",
@@ -333,6 +347,18 @@ assert.deepEqual(
         id: "option-1",
         question_id: "question-1",
         label: "Fallback option 1",
+        option_order: 1,
+      },
+      {
+        id: "option-4",
+        question_id: "question-2",
+        label: "Fallback option 4",
+        option_order: 2,
+      },
+      {
+        id: "option-3",
+        question_id: "question-2",
+        label: "Fallback option 3",
         option_order: 1,
       },
     ],
@@ -347,29 +373,68 @@ assert.deepEqual(
         locale: "bs",
         label: "Lokalizovana opcija 2",
       },
+      {
+        answer_option_id: "option-3",
+        locale: "bs",
+        label: "Lokalizovana opcija 3",
+      },
+      {
+        answer_option_id: "option-4",
+        locale: "bs",
+        label: "Lokalizovana opcija 4",
+      },
     ],
   }),
   {
-    mode: "ui_only_ready",
-    questionId: "question-1",
-    order: 1,
-    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
-    optionIds: ["option-1", "option-2"],
-    options: [
+    items: [
       {
-        id: "option-1",
-        label: "Lokalizovana opcija 1",
+        mode: "ui_only_ready",
+        questionId: "question-1",
         order: 1,
+        localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+        localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+        optionIds: ["option-1", "option-2"],
+        options: [
+          {
+            id: "option-1",
+            label: "Lokalizovana opcija 1",
+            order: 1,
+          },
+          {
+            id: "option-2",
+            label: "Lokalizovana opcija 2",
+            order: 2,
+          },
+        ],
+        locale: "bs",
+        isUiOnlySkeleton: true,
       },
       {
-        id: "option-2",
-        label: "Lokalizovana opcija 2",
+        mode: "ui_only_ready",
+        questionId: "question-2",
         order: 2,
+        localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
+        localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
+        optionIds: ["option-3", "option-4"],
+        options: [
+          {
+            id: "option-3",
+            label: "Lokalizovana opcija 3",
+            order: 1,
+          },
+          {
+            id: "option-4",
+            label: "Lokalizovana opcija 4",
+            order: 2,
+          },
+        ],
+        locale: "bs",
+        isUiOnlySkeleton: true,
       },
     ],
-    locale: "bs",
-    isUiOnlySkeleton: true,
+    itemCount: 2,
+    unsupportedCount: 0,
+    mode: "ready",
   },
 );
 
@@ -508,28 +573,55 @@ assert.deepEqual(
         questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
       },
     ],
-    firstItem: {
-      mode: "ui_only_ready",
-      questionId: "question-1",
-      order: 1,
-      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
-      optionIds: ["option-1", "option-2"],
-      options: [
-        {
-          id: "option-1",
-          label: "Opcija 1",
-          order: 1,
-        },
-        {
-          id: "option-2",
-          label: "Opcija 2",
-          order: 2,
-        },
-      ],
-      locale: "bs",
-      isUiOnlySkeleton: true,
-    },
+    uiOnlyItems: [
+      {
+        mode: "ui_only_ready",
+        questionId: "question-1",
+        order: 1,
+        localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+        localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+        optionIds: ["option-1", "option-2"],
+        options: [
+          {
+            id: "option-1",
+            label: "Opcija 1",
+            order: 1,
+          },
+          {
+            id: "option-2",
+            label: "Opcija 2",
+            order: 2,
+          },
+        ],
+        locale: "bs",
+        isUiOnlySkeleton: true,
+      },
+      {
+        mode: "ui_only_ready",
+        questionId: "question-2",
+        order: 2,
+        localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
+        localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
+        optionIds: ["option-3", "option-4"],
+        options: [
+          {
+            id: "option-3",
+            label: "Opcija 3",
+            order: 1,
+          },
+          {
+            id: "option-4",
+            label: "Opcija 4",
+            order: 2,
+          },
+        ],
+        locale: "bs",
+        isUiOnlySkeleton: true,
+      },
+    ],
+    uiOnlyItemCount: 2,
+    uiOnlyUnsupportedCount: 0,
+    uiOnlySkeletonMode: "ready",
   }),
   {
     teamAssessmentParticipantId: "tap-1",
@@ -566,28 +658,55 @@ assert.deepEqual(
         questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
       },
     ],
-    firstItem: {
-      mode: "ui_only_ready",
-      questionId: "question-1",
-      order: 1,
-      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
-      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
-      optionIds: ["option-1", "option-2"],
-      options: [
-        {
-          id: "option-1",
-          label: "Opcija 1",
-          order: 1,
-        },
-        {
-          id: "option-2",
-          label: "Opcija 2",
-          order: 2,
-        },
-      ],
-      locale: "bs",
-      isUiOnlySkeleton: true,
-    },
+    uiOnlyItems: [
+      {
+        mode: "ui_only_ready",
+        questionId: "question-1",
+        order: 1,
+        localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+        localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+        optionIds: ["option-1", "option-2"],
+        options: [
+          {
+            id: "option-1",
+            label: "Opcija 1",
+            order: 1,
+          },
+          {
+            id: "option-2",
+            label: "Opcija 2",
+            order: 2,
+          },
+        ],
+        locale: "bs",
+        isUiOnlySkeleton: true,
+      },
+      {
+        mode: "ui_only_ready",
+        questionId: "question-2",
+        order: 2,
+        localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
+        localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
+        optionIds: ["option-3", "option-4"],
+        options: [
+          {
+            id: "option-3",
+            label: "Opcija 3",
+            order: 1,
+          },
+          {
+            id: "option-4",
+            label: "Opcija 4",
+            order: 2,
+          },
+        ],
+        locale: "bs",
+        isUiOnlySkeleton: true,
+      },
+    ],
+    uiOnlyItemCount: 2,
+    uiOnlyUnsupportedCount: 0,
+    uiOnlySkeletonMode: "ready",
     isRunnableShellState: true,
     handoffState: "ready_placeholder",
     warningCode: null,

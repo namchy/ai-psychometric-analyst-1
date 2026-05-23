@@ -163,34 +163,29 @@ export type TeamAssessmentBlockOutlineEntry = {
   questionIds: string[];
 };
 
-export type TeamAssessmentFirstItemOption = {
+export type TeamAssessmentUiOnlyItemOption = {
   id: string;
   label: string;
   order: number;
 };
 
-export type TeamAssessmentFirstItemSkeleton =
-  | {
-      mode: "ui_only_ready";
-      questionId: string;
-      order: number;
-      localizedTitle: string;
-      localizedStem: string;
-      optionIds: string[];
-      options: TeamAssessmentFirstItemOption[];
-      locale: AssessmentLocale;
-      isUiOnlySkeleton: true;
-    }
-  | {
-      mode: "no_questions" | "no_options" | "unsupported_format";
-      locale: AssessmentLocale;
-      isUiOnlySkeleton: true;
-      questionId?: string;
-      order?: number;
-      localizedTitle?: string;
-      localizedStem?: string;
-      unsupportedQuestionType?: QuestionType | string;
-    };
+export type TeamAssessmentUiOnlyItem = {
+  mode: "ui_only_ready";
+  questionId: string;
+  order: number;
+  localizedTitle: string;
+  localizedStem: string;
+  optionIds: string[];
+  options: TeamAssessmentUiOnlyItemOption[];
+  locale: AssessmentLocale;
+  isUiOnlySkeleton: true;
+};
+
+export type TeamAssessmentUiOnlySkeletonMode =
+  | "ready"
+  | "no_questions"
+  | "no_options"
+  | "unsupported_format";
 
 export type TeamAssessmentRunHandoff = {
   teamAssessmentParticipantId: string;
@@ -208,7 +203,10 @@ export type TeamAssessmentRunHandoff = {
   blockOutlineCount: number;
   questionCountMatchesBlockOutline: boolean;
   blockOutline: TeamAssessmentBlockOutlineEntry[];
-  firstItem: TeamAssessmentFirstItemSkeleton;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+  uiOnlyItemCount: number;
+  uiOnlyUnsupportedCount: number;
+  uiOnlySkeletonMode: TeamAssessmentUiOnlySkeletonMode;
   isRunnableShellState: boolean;
   handoffState: TeamAssessmentRunHandoffState;
   warningCode: TeamAssessmentRunHandoffWarningCode | null;
@@ -561,59 +559,39 @@ export function buildTeamAssessmentBlockOutline(input: {
   ];
 }
 
-export function buildTeamAssessmentFirstItemSkeleton(input: {
+export function buildTeamAssessmentUiOnlyItems(input: {
   questionOutline: TeamAssessmentQuestionOutline;
   locale?: AssessmentLocale | null;
-  question?: TeamAssessmentQuestionRow | null;
+  questions?: TeamAssessmentQuestionRow[];
   options?: TeamAssessmentAnswerOptionRow[];
   optionLocalizations?: TeamAssessmentAnswerOptionLocalizationRow[];
-}): TeamAssessmentFirstItemSkeleton {
+}): {
+  items: TeamAssessmentUiOnlyItem[];
+  itemCount: number;
+  unsupportedCount: number;
+  mode: TeamAssessmentUiOnlySkeletonMode;
+} {
   const locale = normalizeAssessmentLocale(input.locale ?? input.questionOutline.locale);
-  const firstQuestion = input.questionOutline.questions[0];
-
-  if (!firstQuestion) {
+  if (input.questionOutline.questions.length === 0) {
     return {
+      items: [],
+      itemCount: 0,
+      unsupportedCount: 0,
       mode: "no_questions",
-      locale,
-      isUiOnlySkeleton: true,
     };
   }
 
-  const questionType = input.question?.question_type ?? "single_choice";
-
-  if (questionType !== "single_choice") {
-    return {
-      mode: "unsupported_format",
-      locale,
-      isUiOnlySkeleton: true,
-      questionId: firstQuestion.id,
-      order: firstQuestion.order,
-      localizedTitle: firstQuestion.localizedTitle,
-      localizedStem: firstQuestion.localizedStem,
-      unsupportedQuestionType: questionType,
-    };
-  }
-
-  const options = [...(input.options ?? [])]
-    .sort((left, right) =>
-      left.option_order === right.option_order
-        ? left.id.localeCompare(right.id)
-        : left.option_order - right.option_order,
-    );
-
-  if (options.length === 0) {
-    return {
-      mode: "no_options",
-      locale,
-      isUiOnlySkeleton: true,
-      questionId: firstQuestion.id,
-      order: firstQuestion.order,
-      localizedTitle: firstQuestion.localizedTitle,
-      localizedStem: firstQuestion.localizedStem,
-    };
-  }
-
+  const questionsById = new Map((input.questions ?? []).map((question) => [question.id, question]));
+  const optionsByQuestionId = new Map<string, TeamAssessmentAnswerOptionRow[]>();
   const localizedRowsByOptionId = new Map<string, TeamAssessmentAnswerOptionLocalizationRow[]>();
+  let sawMissingOptions = false;
+  let sawUnsupportedFormat = false;
+
+  for (const option of input.options ?? []) {
+    const rows = optionsByQuestionId.get(option.question_id) ?? [];
+    rows.push(option);
+    optionsByQuestionId.set(option.question_id, rows);
+  }
 
   for (const entry of input.optionLocalizations ?? []) {
     const rows = localizedRowsByOptionId.get(entry.answer_option_id) ?? [];
@@ -621,26 +599,68 @@ export function buildTeamAssessmentFirstItemSkeleton(input: {
     localizedRowsByOptionId.set(entry.answer_option_id, rows);
   }
 
-  const localizedOptions = options.map((option) => ({
-    id: option.id,
-    label:
-      getPreferredAssessmentLocaleRecord(
-        localizedRowsByOptionId.get(option.id) ?? [],
-        locale,
-      )?.label ?? option.label,
-    order: option.option_order,
-  }));
+  const items: TeamAssessmentUiOnlyItem[] = [];
+
+  for (const outlinedQuestion of input.questionOutline.questions) {
+    const question = questionsById.get(outlinedQuestion.id) ?? null;
+    const questionType = question?.question_type ?? "single_choice";
+
+    if (questionType !== "single_choice") {
+      sawUnsupportedFormat = true;
+      continue;
+    }
+
+    const options = [...(optionsByQuestionId.get(outlinedQuestion.id) ?? [])].sort((left, right) =>
+      left.option_order === right.option_order
+        ? left.id.localeCompare(right.id)
+        : left.option_order - right.option_order,
+    );
+
+    if (options.length === 0) {
+      sawMissingOptions = true;
+      continue;
+    }
+
+    const localizedOptions = options.map((option) => ({
+      id: option.id,
+      label:
+        getPreferredAssessmentLocaleRecord(
+          localizedRowsByOptionId.get(option.id) ?? [],
+          locale,
+        )?.label ?? option.label,
+      order: option.option_order,
+    }));
+
+    items.push({
+      mode: "ui_only_ready",
+      questionId: outlinedQuestion.id,
+      order: outlinedQuestion.order,
+      localizedTitle: outlinedQuestion.localizedTitle,
+      localizedStem: outlinedQuestion.localizedStem,
+      optionIds: localizedOptions.map((option) => option.id),
+      options: localizedOptions,
+      locale,
+      isUiOnlySkeleton: true,
+    });
+  }
+
+  let mode: TeamAssessmentUiOnlySkeletonMode = "ready";
+
+  if (items.length === 0) {
+    if (sawMissingOptions) {
+      mode = "no_options";
+    } else if (sawUnsupportedFormat) {
+      mode = "unsupported_format";
+    } else {
+      mode = "no_questions";
+    }
+  }
 
   return {
-    mode: "ui_only_ready",
-    questionId: firstQuestion.id,
-    order: firstQuestion.order,
-    localizedTitle: firstQuestion.localizedTitle,
-    localizedStem: firstQuestion.localizedStem,
-    optionIds: localizedOptions.map((option) => option.id),
-    options: localizedOptions,
-    locale,
-    isUiOnlySkeleton: true,
+    items,
+    itemCount: items.length,
+    unsupportedCount: input.questionOutline.count - items.length,
+    mode,
   };
 }
 
@@ -650,7 +670,10 @@ export function buildTeamAssessmentRunHandoff(input: {
   activeQuestionCount: number;
   questionOutline: TeamAssessmentQuestionOutline;
   blockOutline: TeamAssessmentBlockOutlineEntry[];
-  firstItem: TeamAssessmentFirstItemSkeleton;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+  uiOnlyItemCount: number;
+  uiOnlyUnsupportedCount: number;
+  uiOnlySkeletonMode: TeamAssessmentUiOnlySkeletonMode;
 }): TeamAssessmentRunHandoff {
   const questionCountMatchesActive = input.activeQuestionCount === input.questionOutline.count;
   const orderedQuestionIdsFromBlocks = input.blockOutline.flatMap((block) => block.questionIds);
@@ -691,7 +714,10 @@ export function buildTeamAssessmentRunHandoff(input: {
     blockOutlineCount: input.blockOutline.length,
     questionCountMatchesBlockOutline,
     blockOutline: input.blockOutline,
-    firstItem: input.firstItem,
+    uiOnlyItems: input.uiOnlyItems,
+    uiOnlyItemCount: input.uiOnlyItemCount,
+    uiOnlyUnsupportedCount: input.uiOnlyUnsupportedCount,
+    uiOnlySkeletonMode: input.uiOnlySkeletonMode,
     isRunnableShellState: input.shellState.isRunnable,
     handoffState,
     warningCode: isUnexpectedQuestionCount ? "unexpected_question_count" : null,
@@ -1069,16 +1095,21 @@ export async function loadTeamAssessmentQuestionOutline(input: {
   });
 }
 
-export async function loadTeamAssessmentFirstItemSkeleton(input: {
+export async function loadTeamAssessmentUiOnlyItems(input: {
   testId: string;
   questionOutline: TeamAssessmentQuestionOutline;
   locale?: AssessmentLocale | null;
-}): Promise<TeamAssessmentFirstItemSkeleton> {
+}): Promise<{
+  items: TeamAssessmentUiOnlyItem[];
+  itemCount: number;
+  unsupportedCount: number;
+  mode: TeamAssessmentUiOnlySkeletonMode;
+}> {
   const locale = normalizeAssessmentLocale(input.locale ?? input.questionOutline.locale);
-  const firstQuestionId = input.questionOutline.orderedQuestionIds[0];
+  const orderedQuestionIds = input.questionOutline.orderedQuestionIds;
 
-  if (!firstQuestionId) {
-    return buildTeamAssessmentFirstItemSkeleton({
+  if (orderedQuestionIds.length === 0) {
+    return buildTeamAssessmentUiOnlyItems({
       questionOutline: input.questionOutline,
       locale,
     });
@@ -1088,51 +1119,44 @@ export async function loadTeamAssessmentFirstItemSkeleton(input: {
   const { data: questionData, error: questionError } = await supabase
     .from("questions")
     .select("id, text, question_order, question_type")
-    .eq("id", firstQuestionId)
+    .in("id", orderedQuestionIds)
     .eq("test_id", input.testId)
     .eq("is_active", true)
-    .maybeSingle();
+    .order("question_order", { ascending: true })
+    .order("id", { ascending: true });
 
   if (questionError) {
-    throw new Error(`Failed to load Team Dynamics first question: ${questionError.message}`);
+    throw new Error(`Failed to load Team Dynamics UI-only questions: ${questionError.message}`);
   }
 
-  const question = (questionData as TeamAssessmentQuestionRow | null) ?? null;
+  const questions = (questionData ?? []) as TeamAssessmentQuestionRow[];
 
-  if (!question) {
-    return buildTeamAssessmentFirstItemSkeleton({
+  if (questions.length === 0) {
+    return buildTeamAssessmentUiOnlyItems({
       questionOutline: input.questionOutline,
       locale,
-    });
-  }
-
-  if (question.question_type !== "single_choice") {
-    return buildTeamAssessmentFirstItemSkeleton({
-      questionOutline: input.questionOutline,
-      locale,
-      question,
     });
   }
 
   const { data: optionData, error: optionError } = await supabase
     .from("answer_options")
     .select("id, question_id, label, option_order")
-    .eq("question_id", firstQuestionId)
+    .in("question_id", orderedQuestionIds)
     .order("option_order", { ascending: true })
     .order("id", { ascending: true });
 
   if (optionError) {
-    throw new Error(`Failed to load Team Dynamics first question options: ${optionError.message}`);
+    throw new Error(`Failed to load Team Dynamics UI-only question options: ${optionError.message}`);
   }
 
   const options = (optionData ?? []) as TeamAssessmentAnswerOptionRow[];
 
   if (options.length === 0) {
-    return buildTeamAssessmentFirstItemSkeleton({
+    return buildTeamAssessmentUiOnlyItems({
       questionOutline: input.questionOutline,
       locale,
-      question,
       options: [],
+      questions,
     });
   }
 
@@ -1150,7 +1174,7 @@ export async function loadTeamAssessmentFirstItemSkeleton(input: {
 
       if (localizationError) {
         throw new Error(
-          `Failed to load Team Dynamics first question option localizations: ${localizationError.message}`,
+          `Failed to load Team Dynamics UI-only option localizations: ${localizationError.message}`,
         );
       }
 
@@ -1158,10 +1182,10 @@ export async function loadTeamAssessmentFirstItemSkeleton(input: {
     }),
   );
 
-  return buildTeamAssessmentFirstItemSkeleton({
+  return buildTeamAssessmentUiOnlyItems({
     questionOutline: input.questionOutline,
     locale,
-    question,
+    questions,
     options,
     optionLocalizations: localizationChunks.flat(),
   });
@@ -1198,7 +1222,7 @@ export async function loadTeamAssessmentRunHandoff(input: {
     testName: input.context.test.name,
     questionOutline,
   });
-  const firstItem = await loadTeamAssessmentFirstItemSkeleton({
+  const uiOnlySkeleton = await loadTeamAssessmentUiOnlyItems({
     testId: input.context.test.id,
     questionOutline,
     locale: input.context.locale,
@@ -1210,6 +1234,9 @@ export async function loadTeamAssessmentRunHandoff(input: {
     activeQuestionCount: count ?? 0,
     questionOutline,
     blockOutline,
-    firstItem,
+    uiOnlyItems: uiOnlySkeleton.items,
+    uiOnlyItemCount: uiOnlySkeleton.itemCount,
+    uiOnlyUnsupportedCount: uiOnlySkeleton.unsupportedCount,
+    uiOnlySkeletonMode: uiOnlySkeleton.mode,
   });
 }
