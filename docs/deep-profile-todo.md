@@ -50,6 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Planirano / Bloker nakon content-spec locka | Team module / Runtime + Import | Omogućiti mixed-format execution/import za `team_dynamics_assessment_v1`: per-block ili per-question option catalogs, SJT scenario-level options, best/worst capture, mixed execution UI i mixed scoring config (TDM linear + domain, psychological safety, SJT partial-credit, outcome pulse) uz team agregaciju (mean, SD, range, completion rate). |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Run handoff skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver i wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a. Sljedeći uski slice: read-only Team Dynamics question loader za `/run` handoff koji sigurno priprema ordered question IDs i localized titles bez renderovanja pitanja, odgovora, answer options ili `AssessmentForm` executiona. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -691,6 +692,142 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - 6 originalnih Deep Profile SJT scenarija
   - 4 outcome pulse itema
   - scoring, aggregation, consensus/disagreement i report interpretation
+
+**Completion/decision note — TPS7-based psychological safety block lock (`team_dynamics_assessment_v1`):**
+- User-facing naziv bloka: `Psihološka sigurnost u timu`.
+- Interni block key: `psychological_safety`.
+- Model basis: `TPS7-based / Deep Profile original adaptation`.
+- Broj itema: 7.
+- Response format je isti kao `tdm-31-V1`:
+  - 1 = Uopće se ne slažem
+  - 2 = Uglavnom se ne slažem
+  - 3 = Uglavnom se slažem
+  - 4 = U potpunosti se slažem
+- Reverse itemi u V1 se ne koriste; svih 7 itema su pozitivno formulisani (čitljivost u B/H/S, manji rizik dvostrukih negacija, manji digital UX error rate).
+- Scoring mode: `simple_linear_v1`.
+- Formula: `score_0_100 = ((mean_1_4 - 1) / 3) * 100`.
+- Team aggregation:
+  - `team_score_0_100 = average(member_score_0_100)`
+  - `team_sd = standard_deviation(member_score_0_100)`
+  - `team_range = max(member_score_0_100) - min(member_score_0_100)`
+  - `completion_rate = valid_completed / assigned`
+- Consensus/disagreement u V1: `SD`, `range`, `completion_rate`; `AD_M` (Burke-Finkelstein average deviation) ostaje optional Phase 2 advanced metric i nije V1 obaveza.
+- Interpretacijski bandovi:
+  - `0-39` = nizak signal / razvojni rizik
+  - `40-59` = mješovit ili nestabilan signal
+  - `60-79` = funkcionalan signal
+  - `80-100` = jak signal
+- Report role:
+  - zaseban sloj u Team Dynamics reportu
+  - ne ulazi u TDM core score
+  - koristi se za razlikovanje dobre komunikacije od stvarne sigurnosti da se otvore greške, problemi, rizici i drugačije mišljenje
+  - prikazivati kao poseban signal uz TDM-31 razvojnu zrelost
+- Validation status: `validation_pending`; ne tvrditi da je skala validirana kao originalni TPS7.
+- Dopuštene formulacije u zavisnosti od sekcije: `TPS7-based`, `TPS7-inspired`, `psychological safety construct-based`.
+- Zaključani radni itemi za sljedeći instrument/content spec:
+  - `TPSDP_1` | `Greške` | `Kada se u ovom timu napravi greška, češće razgovaramo o tome šta možemo naučiti nego o tome koga treba okriviti.`
+  - `TPSDP_2` | `Problemi i rizici` | `U ovom timu je uobičajeno otvoreno reći kada nešto ne funkcioniše, čak i ako je razgovor neugodan.`
+  - `TPSDP_3` | `Drugačije mišljenje` | `Ljudi u ovom timu ozbiljno razmatraju ideje koje se razlikuju od uobičajenog načina razmišljanja.`
+  - `TPSDP_4` | `Interpersonalni rizik` | `Mogu predložiti rješenje za koje nisam siguran/na da će uspjeti, bez straha da će to narušiti moj ugled u timu.`
+  - `TPSDP_5` | `Traženje pomoći` | `Prirodno mi je zatražiti pomoć od nekoga iz tima kada zapnem.`
+  - `TPSDP_6` | `Povjerenje u namjere` | `Imam povjerenje da članovi ovog tima neće namjerno otežati moj rad.`
+  - `TPSDP_7` | `Vrednovanje doprinosa` | `Imam osjećaj da ovaj tim prepoznaje i koristi moje najjače vještine.`
+- Guardrails:
+  - ne prikazivati korisniku `TPS7-based` kao glavni UI naslov; glavni user-facing naslov je `Psihološka sigurnost u timu`
+  - ne etiketirati tim kao psihološki nesiguran
+  - ne kriviti lidera ili članove
+  - ne koristiti rezultat za disciplinske odluke
+  - ne koristiti kao hire/no-hire signal
+  - ne miješati psihološku sigurnost sa zadovoljstvom poslom, ljubaznošću ili izbjegavanjem konflikta
+  - ne tvrditi kauzalnost iz jednog mjerenja
+  - nizak rezultat opisivati kao razvojni signal/rizik, ne kao presudu
+
+**Completion/decision note — SJT block decision (`team_dynamics_assessment_v1`):**
+- User-facing naziv bloka: `Timsko prosuđivanje u situacijama`.
+- Interni block key: `situational_judgment`.
+- Model basis: `Deep Profile original SJT`.
+- Broj scenarija: 6.
+- Broj opcija po scenariju: 4.
+- Response format: `best_worst`:
+  - korisnik bira jednu najefikasniju reakciju
+  - korisnik bira jednu najmanje efikasnu reakciju
+  - UI treba spriječiti da ista opcija bude označena i kao najefikasnija i kao najmanje efikasna
+- Instruction type: `knowledge_based_should_do`:
+  - `Koja reakcija je najefikasnija u ovoj situaciji?`
+  - `Koja reakcija je najmanje efikasna u ovoj situaciji?`
+  - ne koristiti `šta biste vi najvjerovatnije uradili?` kao V1 instrukciju
+- Scoring model: `expert_key_partial_credit_v1`; svaka opcija se interno klasifikuje kao `Best`, `Acceptable`, `Weak`, `Harmful`.
+- V1 scoring matrica:
+  - izbor najefikasnije reakcije: `Best = +2`, `Acceptable = +1`, `Weak = 0`, `Harmful = -1`
+  - izbor najmanje efikasne reakcije: `Harmful = +2`, `Weak = +1`, `Acceptable = 0`, `Best = -1`
+- Raspon bodovanja:
+  - `per_scenario_range = -2 to +4`
+  - `total_raw_range = -12 to +24`
+- Score transformacija:
+  - `sjt_score_0_100 = ((raw_total + 12) / 36) * 100`
+- Missing data:
+  - u UI-u scenariji trebaju biti obavezni
+  - `< 4/6` scenarija = insufficient data / unavailable
+  - `4/6` ili `5/6` = pro-rated score uz napomenu
+  - `6/6` = normalan score
+- SJT dimenzije:
+  - `constructive_conflict` = `Konstruktivno rješavanje konflikta`
+  - `ownership` = `Preuzimanje odgovornosti`
+  - `risk_transparency` = `Pravovremeno otvaranje rizika`
+  - `coordination` = `Koordinacija i razmjena informacija`
+  - `adaptability` = `Prilagodba promjeni prioriteta`
+- Šest scenarijskih tema:
+  - konflikt koji prelazi u personalizaciju
+  - kašnjenje ili neizvršenje dogovora
+  - nejasno vlasništvo nad zadatkom
+  - prešućivanje rizika ili problema
+  - promjena prioriteta
+  - loša razmjena informacija / koordinacijski propust
+- Report role:
+  - SJT je zaseban Team Dynamics report sloj
+  - ne ulazi u TDM core score
+  - ne prikazivati kao `tačno/netačno`
+  - ne prikazivati kao `IQ za timski rad`
+  - prikazivati kao situacijsko prosuđivanje / prepoznavanje efikasnih i neefikasnih timskih reakcija
+  - dimenzijski skorovi su indikativni jer blok ima samo 6 scenarija
+- Guardrails:
+  - ne koristiti SJT kao hire/no-hire filter
+  - ne pisati da osoba `ne zna sarađivati`
+  - ne etiketirati članove tima
+  - ne otkrivati individualne odgovore u timskom reportu
+  - ne donositi zaključak iz jednog scenarija
+  - ne prikazivati scenario-level scoring key korisnicima
+  - ne tumačiti SJT bez TDM-31 i `psychological_safety` konteksta
+  - ne koristiti formulacije `objektivna mjera`, `predviđa timsku efikasnost` ili `stvarno ponašanje` dok nema validacije
+  - koristiti formulacije `strukturisani scenarijski signal`, `situacijsko prosuđivanje`, `prepoznavanje efikasnih i neefikasnih timskih reakcija`
+- Validation status: `validation_pending`; V1 koristi expert-key, a kasnije je moguć hybrid expert + empirical re-weighting nakon pilot podataka.
+- Napomena o sadržaju:
+  - SJT content još nije napisan
+  - sljedeći task je napisati prvi konkretan SJT scenario radi validacije stila, pa tek nakon toga svih 6 scenarija
+  - još nisu finalizovani: 6 scenarija, 24 opcije, scoring key po opciji, B/H/S final wording i SME review
+
+**Completion note — canonical content/spec package (`team_dynamics_assessment_v1`):**
+- Kreiran je canonical content/spec paket: `assessment-packages/team_dynamics_assessment_v1/`.
+- Paket je repo-level source of truth za sadržaj i scoring konfiguraciju za `team_dynamics_assessment_v1`.
+- Zaključano je 48 assessment jedinica:
+  - `tdm-31-V1`: 31 item
+  - `psychological_safety`: 7 itema
+  - `situational_judgment`: 6 SJT scenarija
+  - `outcome_pulse`: 4 itema
+- Zaključani su blokovi, dimenzije, item/scenario content, response formati, scoring metadata, SJT `expert_key_partial_credit_v1`, outcome pulse `criterion_outcome_signal` i guardrails metadata.
+- Važna tehnička napomena: paket je eksplicitno content/spec layer i trenutno nije generic DB import/runtime ready.
+  - razlog: postojeći generic importer pretpostavlja jedan shared `options.json`
+  - novi Team Dynamics je mixed-format instrument (Likert 1-4 + SJT best/worst sa scenario-level opcijama)
+  - root `options.json` katalozi su ostavljeni prazni da se izbjegne lažna kompatibilnost
+- Postojeći `team_dynamics_v1_strong` ostaje tehnički scaffold/placeholder i nije finalni instrument.
+- Sljedeći P1 bloker: `Mixed-format Team Dynamics runtime/import support`.
+- Ostaje pending:
+  - SME review
+  - pilot validation
+  - full Rasch scoring
+  - AD_M Phase 2
+  - SJT empirical calibration
+  - AI report layer
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
@@ -2676,6 +2813,27 @@ Razlog za sljedeći prioritet:
   * `overall / Rasch-only` (7 itema: 11, 12, 13, 21, 24, 27, 31) ulazi samo u ukupni/core score, ne u domenske scoreve
   * reverse itemi: 3, 15, 16, 27
   * Phase 1: linearni 0-100 score nakon reverse scoringa; full Rasch ostaje Phase 2
+* TPS7-based psychological safety block decision:
+  * user-facing naziv bloka: `Psihološka sigurnost u timu`
+  * interni key: `psychological_safety`, model basis: `TPS7-based / Deep Profile original adaptation`
+  * 7 pozitivno formulisanih B/H/S itema, bez reverse itema u V1
+  * isti 1-4 agreement format kao `tdm-31-V1`; `simple_linear_v1` scoring (`score_0_100 = ((mean_1_4 - 1) / 3) * 100`)
+  * team agregacija u V1: mean, `SD`, `range`, `completion_rate`; `AD_M` ostaje optional Phase 2
+  * zaseban report sloj; ne ulazi u TDM core score
+  * validation status: `validation_pending`; ne tvrditi validaciju kao originalni TPS7
+* SJT block decision:
+  * user-facing naziv: `Timsko prosuđivanje u situacijama`
+  * interni key: `situational_judgment`; model basis: `Deep Profile original SJT`
+  * 6 scenarija, 4 opcije po scenariju; `best_worst` format sa izborom najefikasnije i najmanje efikasne reakcije
+  * V1 instrukcija je `knowledge_based_should_do` (ne koristiti `šta biste vi najvjerovatnije uradili?`)
+  * scoring model: `expert_key_partial_credit_v1`; `Best/Acceptable/Weak/Harmful`, per-scenario `-2 do +4`, total raw `-12 do +24`, `sjt_score_0_100 = ((raw_total + 12) / 36) * 100`
+  * missing data: `<4/6` unavailable, `4/6` ili `5/6` pro-rated, `6/6` normalan score
+  * zaseban report sloj; ne ulazi u TDM core score; validation status: `validation_pending`
+* Canonical content/spec package status:
+  * `assessment-packages/team_dynamics_assessment_v1/` je kreiran kao repo-level source of truth za `team_dynamics_assessment_v1`
+  * paket zaključava content/scoring metadata i guardrails za 48 jedinica kroz `tdm-31-V1`, `psychological_safety`, `situational_judgment`, `outcome_pulse`
+  * paket je trenutno content/spec layer i nije generic DB import/runtime ready dok importer ne podrži mixed-format option catalogs i SJT best/worst runtime
+  * sljedeći P1 bloker je `Mixed-format Team Dynamics runtime/import support`
 * `team_dynamics_v1_strong` (4 skale / 36 itema) ostaje tehnički scaffold i historijski implementacijski korak, ne finalni instrument model za prezentaciju.
 * Team input i report flow:
   * članovi tima popunjavaju Team Dynamics Battery
@@ -2926,6 +3084,25 @@ Zaključak:
 
 ## 8. Dnevnik završenih odluka
 
+### 2026-05-23 — Team Dynamics assessment v1 canonical content/spec package
+
+Završeno:
+
+* Kreiran je canonical content/spec package za `team_dynamics_assessment_v1` sa 48 jedinica kroz blokove `tdm-31-V1`, `psychological_safety`, `situational_judgment` i `outcome_pulse`.
+* Paket zaključava content, scoring metadata, response formate i guardrails.
+* Paket je eksplicitno označen kao content/spec layer, ne kao generic DB import-ready paket, jer postojeći importer još ne podržava mixed-format option catalogs i SJT best/worst runtime.
+* Sljedeći P1 bloker je `Mixed-format Team Dynamics runtime/import support`.
+
+### 2026-05-23 — SJT block decision for Team Dynamics
+
+Završeno:
+
+* Za `team_dynamics_assessment_v1` zaključan je Deep Profile originalni SJT blok pod user-facing nazivom `Timsko prosuđivanje u situacijama` i internim key-em `situational_judgment`.
+* Blok koristi 6 scenarija, 4 opcije po scenariju i `best_worst` response format.
+* V1 instrukcija je `knowledge_based_should_do`: korisnik bira najefikasniju i najmanje efikasnu reakciju.
+* Scoring koristi `expert_key_partial_credit_v1` sa opcijama `Best/Acceptable/Weak/Harmful`, per-scenario rasponom `-2 do +4`, total raw rasponom `-12 do +24` i transformacijom `sjt_score_0_100 = ((raw_total + 12) / 36) * 100`.
+* SJT je zaseban Team Dynamics report layer, ne ulazi u TDM core score, i ima `validation_pending` status.
+
 ### 2026-05-22 — TDM-31 core mapping decision
 
 Završeno:
@@ -2940,6 +3117,18 @@ Završeno:
 * Preostalih 7 itema ulazi samo u overall/Rasch-only scoring.
 * Reverse itemi su 3, 15, 16 i 27.
 * Phase 1 scoring koristi linearni 0-100 score nakon reverse scoringa; full Rasch scoring ostaje Phase 2.
+
+### 2026-05-22 — TPS7-based psychological safety block decision
+
+Završeno:
+
+* Za `team_dynamics_assessment_v1` zaključan je blok `Psihološka sigurnost u timu` kao Deep Profile originalna TPS7-based skala od 7 pozitivno formulisanih B/H/S itema.
+* Blok koristi isti 1-4 agreement response format kao `tdm-31-V1`.
+* U V1 nema reverse itema.
+* V1 koristi `simple_linear_v1` scoring formulu: `score_0_100 = ((mean_1_4 - 1) / 3) * 100`.
+* Na nivou tima agregacija ide kroz team mean, `SD`, `range` i `completion_rate`.
+* `AD_M` ostaje optional Phase 2 consensus metric.
+* Blok je zaseban report sloj i ne ulazi u TDM core score.
 
 ### 2026-05-22 — Team Dynamics premium assessment model
 
