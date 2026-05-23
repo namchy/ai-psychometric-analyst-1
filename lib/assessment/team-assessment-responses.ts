@@ -1,0 +1,304 @@
+import "server-only";
+
+import {
+  normalizeAssessmentLocale,
+  type AssessmentLocale,
+} from "@/lib/assessment/locale";
+import {
+  loadTeamAssessmentExecutionContext,
+  resolveTeamAssessmentExecutionShellState,
+  type TeamAssessmentExecutionContextResult,
+  type TeamAssessmentExecutionContextFailureCode,
+} from "@/lib/assessment/team-assessment-execution";
+import type { QuestionType } from "@/lib/assessment/types";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export type TeamAssessmentAnswerPayload = {
+  teamAssessmentParticipantId: string;
+  attemptId: string;
+  questionId: string;
+  optionId: string;
+  responseFormat: "single_select_likert";
+  locale: AssessmentLocale;
+  clientTimestamp?: string;
+};
+
+export type ValidatedTeamAssessmentAnswerPayload = {
+  teamAssessmentParticipantId: string;
+  attemptId: string;
+  questionId: string;
+  optionId: string;
+  responseFormat: "single_select_likert";
+  locale: AssessmentLocale;
+  clientTimestamp?: string;
+  uniquenessKey: {
+    teamAssessmentParticipantId: string;
+    questionId: string;
+  };
+};
+
+export const TEAM_ASSESSMENT_ANSWER_VALIDATION_FAILURE_CODES = [
+  "invalid_payload",
+  "invalid_response_format",
+  "attempt_mismatch",
+  "attempt_not_writable",
+  "wrapper_not_writable",
+  "question_not_in_handoff",
+  "unsupported_question_format",
+  "question_missing_options",
+  "option_not_found",
+  "option_question_mismatch",
+  ...[
+    "wrapper_not_found",
+    "wrapper_missing_attempt",
+    "wrapper_access_denied",
+    "membership_inactive",
+    "assignment_not_found",
+    "assignment_inactive",
+    "assignment_wrong_package",
+    "team_not_found",
+    "organization_unresolved",
+    "attempt_not_found",
+    "attempt_participant_mismatch",
+    "attempt_organization_mismatch",
+    "attempt_wrong_test",
+    "test_inactive",
+  ],
+] as const;
+
+export type TeamAssessmentAnswerValidationFailureCode =
+  | (typeof TEAM_ASSESSMENT_ANSWER_VALIDATION_FAILURE_CODES)[number]
+  | TeamAssessmentExecutionContextFailureCode;
+
+export type TeamAssessmentAnswerValidationResult =
+  | {
+      ok: true;
+      value: ValidatedTeamAssessmentAnswerPayload;
+      mode: "validated_only";
+    }
+  | {
+      ok: false;
+      code: TeamAssessmentAnswerValidationFailureCode;
+      reason: string;
+    };
+
+type TeamAssessmentAnswerQuestionRecord = {
+  id: string;
+  test_id: string;
+  question_type: QuestionType | string;
+};
+
+type TeamAssessmentAnswerOptionRecord = {
+  id: string;
+  question_id: string;
+};
+
+type TeamAssessmentAnswerValidationDependencies = {
+  loadExecutionContext?: typeof loadTeamAssessmentExecutionContext;
+  supabase?: ReturnType<typeof createSupabaseAdminClient>;
+};
+
+function fail(
+  code: TeamAssessmentAnswerValidationFailureCode,
+  reason: string,
+): TeamAssessmentAnswerValidationResult {
+  return {
+    ok: false,
+    code,
+    reason,
+  };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function buildTeamAssessmentAnswerValidationResult(input: {
+  payload: TeamAssessmentAnswerPayload;
+  contextResult: TeamAssessmentExecutionContextResult;
+  question: TeamAssessmentAnswerQuestionRecord | null;
+  option: TeamAssessmentAnswerOptionRecord | null;
+  questionHasOptions: boolean;
+}): TeamAssessmentAnswerValidationResult {
+  if (!isNonEmptyString(input.payload.teamAssessmentParticipantId)) {
+    return fail("invalid_payload", "teamAssessmentParticipantId is required.");
+  }
+
+  if (!isNonEmptyString(input.payload.attemptId)) {
+    return fail("invalid_payload", "attemptId is required.");
+  }
+
+  if (!isNonEmptyString(input.payload.questionId)) {
+    return fail("invalid_payload", "questionId is required.");
+  }
+
+  if (!isNonEmptyString(input.payload.optionId)) {
+    return fail("invalid_payload", "optionId is required.");
+  }
+
+  if (input.payload.responseFormat !== "single_select_likert") {
+    return fail(
+      "invalid_response_format",
+      'Only responseFormat "single_select_likert" is supported in this validator.',
+    );
+  }
+
+  if (!input.contextResult.ok) {
+    return fail(input.contextResult.code, input.contextResult.message);
+  }
+
+  const shellState = resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: input.contextResult.context.wrapperStatus,
+  });
+
+  if (!shellState.isRunnable) {
+    return fail(
+      "wrapper_not_writable",
+      "Team Dynamics wrapper is not in a writable validation state.",
+    );
+  }
+
+  if (input.contextResult.context.attemptStatus !== "in_progress") {
+    return fail(
+      "attempt_not_writable",
+      "Team Dynamics linked attempt is not in an in_progress state.",
+    );
+  }
+
+  if (input.payload.attemptId !== input.contextResult.context.attemptId) {
+    return fail(
+      "attempt_mismatch",
+      "Provided attemptId does not match the wrapper-linked Team Dynamics attempt.",
+    );
+  }
+
+  if (
+    !input.question ||
+    input.question.id !== input.payload.questionId ||
+    input.question.test_id !== input.contextResult.context.test.id
+  ) {
+    return fail(
+      "question_not_in_handoff",
+      "Provided questionId does not belong to the active Team Dynamics handoff.",
+    );
+  }
+
+  if (input.question.question_type !== "single_choice") {
+    return fail(
+      "unsupported_question_format",
+      "Only Likert-style single-select Team Dynamics items are supported.",
+    );
+  }
+
+  if (!input.questionHasOptions) {
+    return fail(
+      "question_missing_options",
+      "Team Dynamics question does not have selectable options for this validator.",
+    );
+  }
+
+  if (!input.option || input.option.id !== input.payload.optionId) {
+    return fail("option_not_found", "Provided optionId was not found.");
+  }
+
+  if (input.option.question_id !== input.payload.questionId) {
+    return fail(
+      "option_question_mismatch",
+      "Provided optionId does not belong to the provided questionId.",
+    );
+  }
+
+  return {
+    ok: true,
+    mode: "validated_only",
+    value: {
+      teamAssessmentParticipantId: input.payload.teamAssessmentParticipantId,
+      attemptId: input.payload.attemptId,
+      questionId: input.payload.questionId,
+      optionId: input.payload.optionId,
+      responseFormat: "single_select_likert",
+      locale: normalizeAssessmentLocale(input.payload.locale),
+      ...(input.payload.clientTimestamp
+        ? {
+            clientTimestamp: input.payload.clientTimestamp,
+          }
+        : {}),
+      uniquenessKey: {
+        teamAssessmentParticipantId: input.payload.teamAssessmentParticipantId,
+        questionId: input.payload.questionId,
+      },
+    },
+  };
+}
+
+export async function validateTeamAssessmentAnswerPayload(
+  input: {
+    userId: string;
+    payload: TeamAssessmentAnswerPayload;
+  },
+  deps: TeamAssessmentAnswerValidationDependencies = {},
+): Promise<TeamAssessmentAnswerValidationResult> {
+  const loadExecutionContext =
+    deps.loadExecutionContext ?? loadTeamAssessmentExecutionContext;
+  const contextResult = await loadExecutionContext({
+    teamAssessmentParticipantId: input.payload.teamAssessmentParticipantId,
+    userId: input.userId,
+  });
+
+  if (!contextResult.ok) {
+    return buildTeamAssessmentAnswerValidationResult({
+      payload: input.payload,
+      contextResult,
+      question: null,
+      option: null,
+      questionHasOptions: false,
+    });
+  }
+
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const [questionResult, optionResult, optionCountResult] = await Promise.all([
+    supabase
+      .from("questions")
+      .select("id, test_id, question_type")
+      .eq("id", input.payload.questionId)
+      .eq("test_id", contextResult.context.test.id)
+      .eq("is_active", true)
+      .maybeSingle(),
+    supabase
+      .from("answer_options")
+      .select("id, question_id")
+      .eq("id", input.payload.optionId)
+      .maybeSingle(),
+    supabase
+      .from("answer_options")
+      .select("id", { count: "exact", head: true })
+      .eq("question_id", input.payload.questionId),
+  ]);
+
+  if (questionResult.error) {
+    throw new Error(
+      `Failed to validate Team Dynamics question payload boundary: ${questionResult.error.message}`,
+    );
+  }
+
+  if (optionResult.error) {
+    throw new Error(
+      `Failed to validate Team Dynamics option payload boundary: ${optionResult.error.message}`,
+    );
+  }
+
+  if (optionCountResult.error) {
+    throw new Error(
+      `Failed to validate Team Dynamics option availability: ${optionCountResult.error.message}`,
+    );
+  }
+
+  return buildTeamAssessmentAnswerValidationResult({
+    payload: input.payload,
+    contextResult,
+    question: (questionResult.data as TeamAssessmentAnswerQuestionRecord | null) ?? null,
+    option: (optionResult.data as TeamAssessmentAnswerOptionRecord | null) ?? null,
+    questionHasOptions: (optionCountResult.count ?? 0) > 0,
+  });
+}
