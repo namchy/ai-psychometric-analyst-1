@@ -662,6 +662,36 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Outcome pulse je odvojen kriterijski signal: percipirana efektivnost, kvalitet, pouzdanost i održivost rada u timu.
 - Outcome pulse ne ulazi u isti dijagnostički indeks kao uzročne/dijagnostičke skale.
 
+**Completion/decision note — TDM-31 core mapping lock (`team_dynamics_assessment_v1`):**
+- Kanonska oznaka za TDM core je `tdm-31-V1`.
+- U nazivu se ne koriste dodaci tipa `working_adaptation`, `pending_verification`, `strong`, `backed`, `inspired` i slično; status/metapodaci mogu postojati u specu, ali ne u nazivu.
+- `tdm-31-V1` koristi 31 item i svih 31 ulaze u ukupni TDM core score.
+- Domain scoring koristi 24 itema iz originalne TDM faktorske strukture:
+  - Communication: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 28, 29, 30 (14)
+  - Roles and Goals: 15, 16, 17, 19 (4)
+  - Cohesion: 22, 23, 25, 26 (4)
+  - Team Primacy: 18, 20 (2)
+- Preostalih 7 itema (11, 12, 13, 21, 24, 27, 31) ulaze samo u `overall / Rasch-only` za ukupni/core score i ne ulaze u domenske scoreve.
+- Reverse-scored itemi su: 3, 15, 16 i 27.
+- Response format za TDM core je 4-stepeni agreement:
+  - 1 = Uopće se ne slažem
+  - 2 = Uglavnom se ne slažem
+  - 3 = Uglavnom se slažem
+  - 4 = U potpunosti se slažem
+- Phase 1 scoring je simple linear scoring, nakon reverse scoringa:
+  - `reverse_score = 5 - raw_score`
+  - `score_0_100 = ((mean_1_4 - 1) / 3) * 100`
+- Full Rasch scoring ostaje Phase 2 kada bude dostupna Rasch conversion tabela/manual.
+- Ova odluka zamjenjuje raniji intuitivni radni mapping koji je sve iteme nasilno rasporedio u domene.
+- Budući Team Dynamics instrument/content spec mora koristiti `original_factor_mapping` pristup.
+- Postojeći `team_dynamics_v1_strong` ostaje tehnički scaffold i nije finalni instrument.
+- Sljedeći instrument/content spec treba dodati:
+  - B/H/S item wording za `tdm-31-V1`
+  - TPS7-based psihološka sigurnost
+  - 6 originalnih Deep Profile SJT scenarija
+  - 4 outcome pulse itema
+  - scoring, aggregation, consensus/disagreement i report interpretation
+
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
 - definisati response format, scoring i aggregation logiku
@@ -2639,6 +2669,13 @@ Razlog za sljedeći prioritet:
   * Deep Profile originalni SJT mini-test (6 scenarija)
   * Outcome pulse (4 itema)
   * ukupno: 48 assessment jedinica
+* TDM-31 core mapping lock (`tdm-31-V1`):
+  * canonical naming: `tdm-31-V1` (bez dodataka u nazivu)
+  * svih 31 item ulazi u ukupni/core score
+  * domenski scorevi koriste samo original-factor 24 itema (Communication 14, Roles and Goals 4, Cohesion 4, Team Primacy 2)
+  * `overall / Rasch-only` (7 itema: 11, 12, 13, 21, 24, 27, 31) ulazi samo u ukupni/core score, ne u domenske scoreve
+  * reverse itemi: 3, 15, 16, 27
+  * Phase 1: linearni 0-100 score nakon reverse scoringa; full Rasch ostaje Phase 2
 * `team_dynamics_v1_strong` (4 skale / 36 itema) ostaje tehnički scaffold i historijski implementacijski korak, ne finalni instrument model za prezentaciju.
 * Team input i report flow:
   * članovi tima popunjavaju Team Dynamics Battery
@@ -2888,6 +2925,21 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-22 — TDM-31 core mapping decision
+
+Završeno:
+
+* Za `team_dynamics_assessment_v1` zaključana je oznaka `tdm-31-V1` i canonical original-factor-mapping pristup.
+* Svih 31 itema ulazi u ukupni TDM core score.
+* Domenski scorevi koriste 24 itema:
+  * Communication 14
+  * Roles and Goals 4
+  * Cohesion 4
+  * Team Primacy 2
+* Preostalih 7 itema ulazi samo u overall/Rasch-only scoring.
+* Reverse itemi su 3, 15, 16 i 27.
+* Phase 1 scoring koristi linearni 0-100 score nakon reverse scoringa; full Rasch scoring ostaje Phase 2.
 
 ### 2026-05-22 — Team Dynamics premium assessment model
 
