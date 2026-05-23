@@ -388,6 +388,153 @@ Zakljucane semantike polja:
 - Stvarni licencirani itemi ne ulaze u produkcijski repo dok pravni i jezički tok nisu zaključani.
 - U scaffold/mock fazi dozvoljeni su samo placeholder itemi.
 
+## Minimal scoring storage decision / member score persistence boundary
+
+Ova sekcija zakljucava docs/spec odluku za buduce cuvanje member-level Team Dynamics minimal score snapshot-a. Ovo nije implementation task i ne uvodi DB schema, migraciju, runtime write path, team aggregation, report orchestration ni AI/report generation.
+
+### Zakljucana storage odluka
+
+- Buduci member-level Team Dynamics minimal score ne ide u `attempt_reports`.
+- Buduci member-level Team Dynamics minimal score ne ide u `assessment_reports`.
+- Buduci member-level Team Dynamics minimal score ne ide kao direktna mutacija `responses`.
+- Preferirani storage model je zaseban ownership sloj, npr. `team_assessment_participant_scores`.
+- Svrha tog sloja je da cuva completed member-level scoring snapshot za jedan `team_assessment_participant`.
+- Taj sloj nije report artefakt.
+- Taj sloj nije AI artefakt.
+- Taj sloj nije team aggregate.
+
+### Zasto dedicated ownership sloj
+
+- `team_assessment_participants` je vec canonical wrapper boundary za Team Dynamics member flow.
+- Member-level score snapshot mora ostati vezan za taj wrapper, a ne za generic report lane.
+- Buduci aggregation layer treba da cita stabilne completed member snapshotove, a ne da ponovo otvara raw response editing tok.
+- Dedicated ownership sloj jasnije odvaja:
+  - raw answer evidence
+  - derived member scoring snapshot
+  - buduci team aggregate
+  - buduci report artefakt
+
+### Preporuceni buduci model
+
+Preporuceni buduci table/model shape, bez implementacije u ovom slice-u:
+
+```ts
+team_assessment_participant_scores
+```
+
+Namjena:
+
+- jedan score snapshot pripada jednom `team_assessment_participant`
+- linked je na interni `attempt_id` radi traceability
+- pripada istom Team Dynamics assignment/wrapper kontekstu kao i saved responses
+- cuva derived member-level scoring output nakon validnog completion-a
+
+### Preporucena ownership i polja
+
+Preporucena polja koja dokument zakljucava, ali ne implementira:
+
+- `id`
+- `team_assessment_participant_id`
+- `attempt_id`
+- `test_slug` ili `package_slug`
+- `scoring_version`
+- `scoring_status: scored | not_scored | failed | stale`
+- `raw_total`
+- `mean_raw`
+- `score_0_100`
+- `supported_question_count`
+- `scored_question_count`
+- `ignored_invalid_answer_count`
+- `scale_min`
+- `scale_max`
+- `score_value_source`
+- `missing_question_ids`
+- `score_snapshot jsonb`
+- `source_response_count`
+- `source_completed_at`
+- `calculated_at`
+- `created_at`
+- `updated_at`
+
+### Semantika i lifecycle granice
+
+- `team_assessment_participant_id`
+  - canonical ownership key za member-level Team Dynamics score snapshot
+  - score snapshot ne smije postojati bez validnog Team Dynamics wrapper konteksta
+- `attempt_id`
+  - interni traceability key
+  - nije public access key
+  - koristi se za dokazivanje izvora score snapshot-a
+- `scoring_version`
+  - zakljucava scoring contract koji je proizveo snapshot
+  - potreban za buduce recalculation i migration-safe interpretacije
+- `scoring_status`
+  - `scored`: snapshot je uspjesno izracunat iz validnog completed inputa
+  - `not_scored`: scoring semantics nisu dostupne ili numeric source nije validan
+  - `failed`: scoring run je pokusao, ali nije proizveo validan snapshot
+  - `stale`: saved score snapshot vise nije trusted/current za aktivni scoring contract
+- `score_snapshot`
+  - cuva strukturisani scoring output za audit/debug/buduci aggregation input
+  - ne znaci da score treba prikazati participantu ili adminu u ovoj fazi
+- `source_response_count` i `source_completed_at`
+  - cuvaju minimalni audit trag o response coverage i completion trenutku iz kojeg je score izveden
+
+### Preporucena uniqueness odluka
+
+- Buduci model treba da cuva jedan current score po `team_assessment_participant_id + scoring_version`.
+- Historija recalculation-a ostaje otvorena arhitektonska odluka:
+  - ili versioned rows u istoj tabeli
+  - ili poseban snapshot history model
+- Ovaj docs/spec slice ne zakljucava history mehanizam, ali zakljucava da current ownership mora biti jasan na nivou wrappera i scoring versiona.
+
+### Sta ne koristiti i zasto
+
+#### 1. Computed-only scoring helper
+
+- Dobar je za testove, early validation i uski runtime proof.
+- Los je za auditability, repeatable aggregation input i performance buduceg team-level citanja.
+
+#### 2. Store on `attempts`
+
+- Djeluje primamljivo zato sto attempt vec postoji.
+- Odbacuje se kao primarni smjer jer je previse generic i mjesa standard individual attempt scoring sa team-member scoring ownership modelom.
+
+#### 3. Store in `attempt_reports`
+
+- Odbacuje se jer je to report artefact storage, ne member-level scoring storage.
+- Team Dynamics minimal score nije narativni/report output.
+
+#### 4. Store in `assessment_reports`
+
+- Odbacuje se jer je to assessment-level aggregate/report storage, ne member-level derived scoring ownership.
+- Team Dynamics member score nije assessment-level artefakt.
+
+#### 5. Dedicated `team_assessment_participant_scores`
+
+- Ovo je preferirani smjer.
+- Ownership, privacy granica, scoring versioning i buduca aggregation consumption granica su najcistiji u ovom modelu.
+
+### Guardrails
+
+- Team Dynamics member-level score ne smije ici u `attempt_reports`.
+- Team Dynamics member-level score ne smije ici u `assessment_reports`.
+- Team Dynamics member-level score ne smije ici kao direktna mutacija `responses`.
+- Member-level score se ne prikazuje participantu u trenutnoj fazi.
+- Member-level score se ne prikazuje adminu dok aggregation/privacy politika ne bude zakljucana.
+- Member-level score se ne smije koristiti kao hire/no-hire ili individual evaluation output.
+- Ovaj slice ne smije generisati AI sadrzaj iz score snapshot-a.
+- Buduci aggregation layer treba da cita stored member score snapshotove, ne da ponovo otvara aktivni response editing tok.
+- Buduca aggregation logika mora respektovati completion coverage, missing/not_scored statuse i privacy boundary prema drugim clanovima tima.
+- Ovaj docs/spec slice ne uvodi:
+  - DB migraciju
+  - runtime persistence
+  - team aggregation
+  - report orchestration
+  - `attempt_reports`
+  - `assessment_reports`
+  - AI/report generation
+  - Team Fit output
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
