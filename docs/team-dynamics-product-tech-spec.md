@@ -269,6 +269,120 @@ Guardrail notes:
 | Future executable | `ready_for_response_capture`, `in_progress`, `paused/resumable` | Buduci execution UI, van scope-a ovog dokument synca | Buduci response handling flow | Bypass persistence guardova, prerani scoring | Response persistence/capture slice |
 | Terminal | `submitted/completed`, `expired after start`, `cancelled/invalidated` | Safe terminal shell | Buduca completion/scoring finalizacija | Re-open bez eksplicitnih pravila, individual report enqueue | Completion slice, zatim scoring slice |
 
+## Minimal answer payload contract / response persistence boundary
+
+Ova sekcija zakljucava minimalni contract za buduci Team Dynamics single-select Likert response write skeleton. Ovo nije implementation task i ne uvodi DB schema, server action, autosave, completion, scoring, aggregation ni report generation.
+
+### Minimalni payload
+
+Buduci V1 persistence skeleton treba polaziti od sljedeceg payload shape-a:
+
+```ts
+{
+  teamAssessmentParticipantId: string
+  attemptId: string
+  questionId: string
+  optionId: string
+  responseFormat: "single_select_likert"
+  locale: AssessmentLocale
+  clientTimestamp?: string
+}
+```
+
+Zakljucane semantike polja:
+
+- `teamAssessmentParticipantId`
+  - public wrapper access key
+  - jedini public execution/persistence boundary za team member response flow
+- `attemptId`
+  - interni execution payload
+  - nije public access key
+  - ne smije biti direktni route/write entry point
+- `questionId`
+  - mora pripadati aktivnom Team Dynamics handoffu za dati wrapper
+- `optionId`
+  - mora pripadati bas tom `questionId`
+- `responseFormat`
+  - u ovom V1 contractu mora biti tacno `single_select_likert`
+- `locale`
+  - metadata za localization/debug/audit kontekst
+  - nije dozvola za bypass validation pravila
+- `clientTimestamp`
+  - optional metadata only
+  - nije source of truth za ordering, completion ili overwrite odluke
+
+### Validation boundary
+
+- `teamAssessmentParticipantId` mora postojati i pripadati trenutnom authenticated participant/user contextu.
+- `attemptId` mora biti interni attempt povezan sa tim `team_assessment_participants` rowom.
+- `questionId` mora pripadati aktivnom Team Dynamics test/package handoffu.
+- `optionId` mora pripadati tom `questionId`.
+- Pitanje mora biti supported Likert-style single-select item.
+- Unsupported/no-options/SJT items nisu validni za ovaj V1 persistence skeleton.
+- `completed`, `expired`, `cancelled` i `invalidated` wrapper state ne smiju primati response write.
+- Direct `/app/attempts/[attemptId]/run` flow ne smije biti persistence entry point za Team Dynamics.
+- Raw `attemptId` se ne smije koristiti kao public access key.
+
+### Overwrite i idempotency rules
+
+- Prije completion-a dozvoljen je overwrite odgovora za isti `teamAssessmentParticipantId + questionId`.
+- Zadnji validan izbor zamjenjuje prethodni izbor za isto pitanje.
+- Ponovni isti payload treba biti idempotentno siguran.
+- Nema append-only multiple responses za isti `questionId` u ovom V1 skeletonu.
+- Completion jos nije implementiran, ali contract zakljucava da nakon completion-a response write mora biti blokiran.
+
+### Persistence boundary
+
+- Ovaj contract ne uvodi DB schema.
+- Ovaj contract ne uvodi server action.
+- Ovaj contract ne uvodi autosave.
+- Ovaj contract ne uvodi completion.
+- Ovaj contract ne uvodi scoring.
+- Ovaj contract ne uvodi aggregation.
+- Ovaj contract ne uvodi report generation.
+- Buduci DB persistence slice moze koristiti ovaj contract za server-side validation/helper.
+
+### Privacy / team boundary
+
+- Clan tima moze pisati samo svoje odgovore kroz svoj `teamAssessmentParticipantId` wrapper.
+- Clan tima ne smije citati ili pisati odgovore drugih clanova tima.
+- HR/admin ne koristi ovaj participant response write endpoint.
+- Team-level report layer ostaje poseban task.
+
+### Report/scoring guardrails
+
+- Response write ne smije pokrenuti scoring.
+- Response write ne smije pokrenuti team aggregation.
+- Response write ne smije enqueue-ati `attempt_reports`.
+- Response write ne smije enqueue-ati `assessment_reports`.
+- Response write ne smije generisati participant report, HR single-test report, composite HR report ili Team Fit output.
+
+### Payload field summary
+
+| Field | Source | Validation | Persistence note |
+| --- | --- | --- | --- |
+| `teamAssessmentParticipantId` | Wrapper route param / authenticated execution context | Mora postojati, pripadati useru i ostati wrapper access boundary | Public key za wrapper flow, ali ne siri pristup van vlastitog wrappera |
+| `attemptId` | Interni handoff payload | Mora biti linked attempt za dati wrapper i isti Team Dynamics context | Interni payload only; nije public access key ni route key |
+| `questionId` | Read-only handoff (`questionOutline` / buduci runtime payload) | Mora pripadati aktivnom Team Dynamics handoffu | Kandidat za overwrite key zajedno sa wrapper contextom |
+| `optionId` | Read-only option payload za dati item | Mora pripadati bas tom `questionId` | Predstavlja zadnji validni izbor za pitanje |
+| `responseFormat` | Runtime payload contract | Mora biti `single_select_likert` | Zakljucava da V1 write skeleton ne prima SJT/mixed-format odgovore |
+| `locale` | Attempt/handoff localization context | Normalized `AssessmentLocale`; nije auth signal | Metadata only za localization/debug kontekst |
+| `clientTimestamp` | Client metadata | Opcionalno; ne smije nadjacati server truth | Advisory metadata only, ne kontrolise overwrite/completion |
+
+### Scenario summary
+
+| Scenario | Expected behavior | Why |
+| --- | --- | --- |
+| valid single-select Likert answer | Dozvoljen za buduci write skeleton, uz server-side validation wrappera, attempta, pitanja i opcije | Ovo je jedini podrzani V1 response format |
+| same question overwrite before completion | Dozvoljen; zadnji validan izbor zamjenjuje prethodni | V1 skeleton je single-current-answer model, ne append-only history |
+| same payload repeated | Idempotentno sigurno; ne smije stvarati duplikate ni nove response row-intent side-effectove | Retry-safe behavior je potreban prije autosave/resume sloja |
+| `optionId` does not belong to `questionId` | Odbiti write | Cuva integritet response/question veze |
+| unsupported SJT/best-worst item | Odbiti write | Ovaj contract je ogranicen na `single_select_likert` |
+| expired wrapper | Odbiti write | Expired state nije runnable niti writable |
+| completed wrapper | Odbiti write | Nakon completion-a write mora biti blokiran |
+| direct attempt route write attempt | Odbiti write | Team Dynamics ne smije koristiti generic attempt route kao public persistence entry |
+| another member's wrapper | Odbiti write | Team boundary i privacy model dozvoljava samo vlastiti wrapper context |
+
 ## Licenca i sadržaj itema
 
 - Stvarni licencirani itemi ne ulaze u produkcijski repo dok pravni i jezički tok nisu zaključani.
