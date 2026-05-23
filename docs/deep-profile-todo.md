@@ -51,7 +51,7 @@ Komande:
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Read-only execution shell wiring završen | Team module / Runtime + Import | Završena su tri uska sloja: mixed-format read/validation support, execution-ready package shape (`teamDynamicsExecutionSpec`) i read-only execution shell wiring za budući runtime/UI sloj. Pending ostaju DB import support, execution UI, response persistence/capture, scoring runtime, team aggregation i report layer. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Completed-state UI guards uvedeni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton i Team Dynamics post-completion safe UI / admin progress confirmation. Sljedeći uski korak: Team Dynamics minimal scoring slice: izračunati deterministic score samo za trenutno podržane single-select Likert odgovore, nakon completed wrapper/attempt stanja, bez team aggregation-a, report orchestration-a, attempt_reports, assessment_reports, AI/report generation-a ili Team Fit outputa. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Minimal scoring helper uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation i Team Dynamics minimal scoring helper. Sljedeći uski korak: Team Dynamics scoring storage decision: odlučiti gdje i kako se čuva member-level minimal score prije bilo kakve team aggregation implementacije, bez DB schema promjene u ovom docs/spec slice-u i bez report orchestration-a, attempt_reports, assessment_reports, AI/report generation-a ili Team Fit outputa. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -631,7 +631,7 @@ Definisati `Timski stil saradnje` / `team_style_collaboration_v1` kao zaseban in
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Completed-state UI guards uvedeni  
+**Status:** Djelimično završeno / Minimal scoring helper uveden  
 **Kategorija:** Team module / Data model scaffold
 
 **Napomena o sloju arhitekture:**  
@@ -1035,8 +1035,86 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
   - `node scripts/test-report-orchestration.cjs`
   - `npm run typecheck`
 
+**Completion note — Team Dynamics minimal scoring helper:**
+- Završen je server-only Team Dynamics minimal scoring helper za trenutno podržane single-select Likert odgovore.
+- Dodan je `lib/assessment/team-assessment-scoring.ts`.
+- Dodan je test `scripts/test-team-dynamics-minimal-scoring.cjs`.
+- Glavni helperi su:
+  - `buildTeamAssessmentMinimalScore({ context, uiOnlyItems, savedResponses, answerOptions })`
+  - `loadTeamAssessmentMinimalScoreForContext({ context, uiOnlyItems }, deps?)`
+  - `loadTeamAssessmentMinimalScore({ userId, teamAssessmentParticipantId, uiOnlyItems }, deps?)`
+- Scoring radi samo kada su:
+  - `team_assessment_participants.status === "completed"`
+  - linked `attempts.status === "completed"`
+  - completion readiness i dalje zadovoljen prema DB truth-u
+- Scoring koristi samo DB truth:
+  - `responses`
+  - `answer_options.value`
+- Scoring ne koristi React/client state.
+- Scoring ne inferira vrijednosti iz lokalizovanih labela.
+- Numeric option values su potvrđene kao pouzdane u trenutnom scaffoldu.
+- Scoring scope je samo trenutni `uiOnlyItems` set.
+- Važe samo validni `responses.response_kind === "single_choice"` odgovori.
+- `answer_option_id` mora pripadati trenutnom pitanju u `uiOnlyItems.optionIds`.
+- Stale pitanja se ignorišu.
+- Pogrešne opcije se broje kroz `ignoredInvalidAnswerCount`.
+- Ako nedostaje validan odgovor za bilo koje podržano pitanje, rezultat je `not_ready`.
+- Ako numeric option vrijednosti nedostaju ili nisu konzistentne, rezultat je `not_scored`, bez izmišljanja scoring semantike.
+- Returned payload uključuje:
+  - `status: "scored" | "not_ready" | "not_completed" | "no_supported_items" | "not_scored"`
+  - `supportedQuestionCount`
+  - `scoredQuestionCount`
+  - `rawTotal`
+  - `meanRaw`
+  - `score0To100`
+  - `missingQuestionIds`
+  - `ignoredInvalidAnswerCount`
+  - `scaleMin`
+  - `scaleMax`
+  - `scoreValueSource`
+  - `reason`
+- Kada je score dostupan:
+  - `rawTotal = sum(answer_options.value)`
+  - `meanRaw = rawTotal / supportedQuestionCount`
+  - `score0To100 = ((meanRaw - scaleMin) / (scaleMax - scaleMin)) * 100`
+  - vrijednosti se zaokružuju na 2 decimale
+- Score se ne prikazuje u participant UI-u.
+- Score se ne prikazuje u admin UI-u.
+- Score se ne persista u ovom slice-u.
+- Guardrail potvrda:
+  - Nema team aggregation-a.
+  - Nema team averages.
+  - Nema consensus/disagreement metrika.
+  - Nema report orchestration-a.
+  - Nema attempt_reports.
+  - Nema assessment_reports.
+  - Nema AI/report generation-a.
+  - Nema Team Fit outputa.
+  - Nema SJT best/worst scoring-a.
+  - Nema full mixed-format runtime scoring-a.
+  - Nema promjene response persistence logike.
+  - Nema autosave-a.
+  - Nema save-on-selecta.
+  - Nema UI score prikaza.
+  - Nema DB schema promjene.
+- Verifikovane komande:
+  - `node scripts/test-team-dynamics-minimal-scoring.cjs`
+  - `node scripts/test-team-dynamics-completion-action.cjs`
+  - `node scripts/test-team-dynamics-completion-readiness.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-intro-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  - `node scripts/test-team-dynamics-team-detail-read.cjs`
+  - `node scripts/test-team-dynamics-teams-ui.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
+
 **Sljedeći korak:**  
-Team Dynamics minimal scoring slice: izračunati deterministic score samo za trenutno podržane single-select Likert odgovore nakon completed wrapper/attempt stanja. Ne uvoditi team aggregation, report orchestration, attempt_reports, assessment_reports, AI/report generation, Team Fit output, autosave, save-on-select, SJT best/worst scoring ili full mixed-format runtime u ovom slice-u.
+Team Dynamics scoring storage decision: odlučiti gdje i kako se čuva member-level minimal score prije bilo kakve team aggregation implementacije. Ovaj sljedeći slice treba biti docs/spec odluka bez DB schema promjene i bez implementacije team aggregation-a, report orchestration-a, attempt_reports, assessment_reports, AI/report generation-a ili Team Fit outputa.
 
 ---
 
