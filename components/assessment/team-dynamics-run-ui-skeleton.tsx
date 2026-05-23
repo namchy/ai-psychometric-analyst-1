@@ -1,7 +1,11 @@
 "use client";
 
 import { startTransition, useState } from "react";
-import { saveTeamAssessmentAnswerAction } from "@/app/actions/team-assessments";
+import { useRouter } from "next/navigation";
+import {
+  completeTeamAssessmentAction,
+  saveTeamAssessmentAnswerAction,
+} from "@/app/actions/team-assessments";
 
 type TeamDynamicsRunUiOnlyItemOption = {
   id: string;
@@ -40,6 +44,7 @@ export function TeamDynamicsRunUiSkeleton(props: {
   };
   isRunnableShellState: boolean;
 }) {
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionIdsByQuestionId, setSelectedOptionIdsByQuestionId] = useState<
     Record<string, string>
@@ -55,6 +60,11 @@ export function TeamDynamicsRunUiSkeleton(props: {
     () =>
       Object.fromEntries(props.savedAnswerQuestionIds.map((questionId) => [questionId, "Ucitano."])),
   );
+  const [completionReadiness, setCompletionReadiness] = useState(() => props.completionReadiness);
+  const [completionState, setCompletionState] = useState<
+    "idle" | "submitting" | "completed" | "already_completed" | "error"
+  >("idle");
+  const [completionMessage, setCompletionMessage] = useState("");
 
   if (!props.isRunnableShellState) {
     return (
@@ -171,6 +181,75 @@ export function TeamDynamicsRunUiSkeleton(props: {
         ...currentMessages,
         [questionId]: nextMessage,
       }));
+
+      setCompletionReadiness((currentReadiness) => {
+        if (
+          currentReadiness.readinessStatus === "ready" ||
+          currentReadiness.missingQuestionIds.includes(questionId) === false
+        ) {
+          return currentReadiness;
+        }
+
+        const nextMissingQuestionIds = currentReadiness.missingQuestionIds.filter(
+          (missingQuestionId) => missingQuestionId !== questionId,
+        );
+        const nextSavedValidAnswerCount = Math.min(
+          currentReadiness.supportedQuestionCount,
+          currentReadiness.savedValidAnswerCount + 1,
+        );
+
+        return {
+          ...currentReadiness,
+          savedValidAnswerCount: nextSavedValidAnswerCount,
+          missingQuestionIds: nextMissingQuestionIds,
+          isReadyForCompletion:
+            currentReadiness.supportedQuestionCount > 0 && nextMissingQuestionIds.length === 0,
+          readinessStatus:
+            currentReadiness.supportedQuestionCount === 0
+              ? "no_supported_items"
+              : nextMissingQuestionIds.length === 0
+                ? "ready"
+                : "not_ready",
+        };
+      });
+    });
+  }
+
+  function handleCompleteAssessment() {
+    if (completionReadiness.readinessStatus !== "ready") {
+      return;
+    }
+
+    setCompletionState("submitting");
+    setCompletionMessage("Zavrsavanje procjene je u toku.");
+
+    startTransition(async () => {
+      const result = await completeTeamAssessmentAction({
+        teamAssessmentParticipantId: props.teamAssessmentParticipantId,
+      });
+
+      if (!result.ok) {
+        if (result.completionReadiness) {
+          setCompletionReadiness(result.completionReadiness);
+        }
+
+        setCompletionState("error");
+        setCompletionMessage(
+          result.code === "not_ready"
+            ? "Procjena jos nije spremna za zavrsavanje."
+            : "Procjena nije zavrsena. Pokusaj ponovo.",
+        );
+        return;
+      }
+
+      setCompletionState(result.mode);
+      setCompletionMessage(
+        result.mode === "completed"
+          ? "Procjena je uspjesno zavrsena."
+          : "Procjena je vec ranije zavrsena.",
+      );
+      router.push(`/app/team-assessments/${props.teamAssessmentParticipantId}`);
+      router.refresh();
     });
   }
 
@@ -198,20 +277,20 @@ export function TeamDynamicsRunUiSkeleton(props: {
         ) : null}
         <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
           <p className="text-sm font-semibold text-slate-900">
-            Sacuvani napredak: {props.completionReadiness.savedValidAnswerCount}/
-            {props.completionReadiness.supportedQuestionCount}
+            Sacuvani napredak: {completionReadiness.savedValidAnswerCount}/
+            {completionReadiness.supportedQuestionCount}
           </p>
           <p className="text-sm leading-6 text-slate-600">
-            {props.completionReadiness.readinessStatus === "ready"
+            {completionReadiness.readinessStatus === "ready"
               ? "Sva podrzana Likert pitanja trenutno imaju valjan spremljen odgovor."
-              : props.completionReadiness.readinessStatus === "no_supported_items"
+              : completionReadiness.readinessStatus === "no_supported_items"
                 ? "Jos nema podrzanih pitanja za completion readiness."
                 : "Completion readiness jos nije postignut za sva podrzana Likert pitanja."}
           </p>
-          {props.completionReadiness.invalidSavedAnswerCount > 0 ? (
+          {completionReadiness.invalidSavedAnswerCount > 0 ? (
             <p className="text-sm leading-6 text-slate-500">
               Ignorisani su nevalidni ili zastarjeli spremljeni odgovori:{" "}
-              {props.completionReadiness.invalidSavedAnswerCount}.
+              {completionReadiness.invalidSavedAnswerCount}.
             </p>
           ) : null}
         </div>
@@ -282,6 +361,16 @@ export function TeamDynamicsRunUiSkeleton(props: {
         >
           Spremi odgovor
         </button>
+        {completionReadiness.readinessStatus === "ready" ? (
+          <button
+            type="button"
+            onClick={handleCompleteAssessment}
+            disabled={completionState === "submitting"}
+            className="rounded-full border border-emerald-700 bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-emerald-800 disabled:cursor-not-allowed disabled:border-emerald-200 disabled:bg-emerald-200 disabled:text-emerald-700"
+          >
+            Završi procjenu
+          </button>
+        ) : null}
       </div>
 
       {currentSaveMessage ? (
@@ -298,13 +387,23 @@ export function TeamDynamicsRunUiSkeleton(props: {
         </p>
       ) : null}
 
+      {completionMessage ? (
+        <p
+          className={`text-sm leading-6 ${
+            completionState === "error" ? "text-rose-700" : "text-emerald-700"
+          }`}
+        >
+          {completionMessage}
+        </p>
+      ) : null}
+
       <p className="text-sm leading-6 text-slate-700">
         Navigacija ostaje lokalna, a odgovor za trenutno pitanje se sprema samo kada kliknes
         "Spremi odgovor".
       </p>
       <p className="text-sm leading-6 text-slate-500">
         Osvjezavanje stranice moze obrisati lokalni UI state. Nema autosave-a, save-on-selecta,
-        submitovanja, completion-a ni scoring-a u ovom slice-u.
+        submitovanja ni scoring-a u ovom slice-u.
       </p>
     </section>
   );

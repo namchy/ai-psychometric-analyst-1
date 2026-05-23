@@ -75,6 +75,7 @@ const componentSource = fs.readFileSync(
 );
 
 assert.match(source, /export async function saveTeamAssessmentAnswerAction/);
+assert.match(source, /export async function completeTeamAssessmentAction/);
 assert.match(source, /persistValidatedTeamAssessmentAnswer/);
 assert.match(source, /loadTeamAssessmentExecutionContext/);
 assert.match(source, /responseFormat: "single_select_likert"/);
@@ -88,7 +89,9 @@ assert.doesNotMatch(source, /score/i);
 assert.doesNotMatch(source, /completeAssessmentAttempt/);
 
 assert.match(componentSource, /saveTeamAssessmentAnswerAction/);
+assert.match(componentSource, /completeTeamAssessmentAction/);
 assert.match(componentSource, /Spremi odgovor/);
+assert.match(componentSource, /Završi procjenu/);
 assert.match(componentSource, /disabled=\{isSaveDisabled\}/);
 assert.match(componentSource, /Nema autosave-a, save-on-selecta,/);
 assert.doesNotMatch(componentSource, /AssessmentForm/);

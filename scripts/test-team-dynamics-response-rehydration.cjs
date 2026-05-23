@@ -91,8 +91,10 @@ assert.doesNotMatch(source, /save-on-select/i);
 assert.match(componentSource, /savedSelectedOptionIdsByQuestionId/);
 assert.match(componentSource, /savedAnswerQuestionIds/);
 assert.match(componentSource, /savedAnswerCount/);
+assert.match(componentSource, /completionReadiness/);
 assert.match(componentSource, /"idle" \| "loaded" \| "saving" \| "saved" \| "overwritten" \| "unchanged" \| "error"/);
 assert.match(componentSource, /Ucitano\./);
+assert.match(componentSource, /Sacuvani napredak:/);
 assert.doesNotMatch(componentSource, /attemptId/);
 assert.doesNotMatch(componentSource, /AssessmentForm/);
 

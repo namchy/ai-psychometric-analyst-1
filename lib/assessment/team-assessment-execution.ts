@@ -48,6 +48,7 @@ export type TeamAssessmentExecutionWrapperRecord = {
   attempt_id: string | null;
   status: TeamAssessmentParticipantStatus;
   started_at?: string | null;
+  completed_at?: string | null;
 };
 
 export type TeamAssessmentExecutionTeamRecord = {
@@ -71,6 +72,8 @@ export type TeamAssessmentExecutionAttemptRecord = {
   participant_id: string | null;
   locale: AssessmentLocale;
   status: AttemptStatus;
+  started_at?: string | null;
+  completed_at?: string | null;
   tests: TeamAssessmentExecutionRelation<TeamAssessmentExecutionTestRecord>;
 };
 
@@ -131,6 +134,24 @@ export type TeamAssessmentExecutionStartTransitionResult = {
   startedAt: string | null;
   transitioned: boolean;
 };
+
+export type TeamAssessmentExecutionCompletionTransitionResult =
+  | {
+      ok: true;
+      mode: "completed" | "already_completed";
+      wrapperStatus: TeamAssessmentParticipantStatus;
+      attemptStatus: AttemptStatus;
+      completedAt: string | null;
+    }
+  | {
+      ok: false;
+      code:
+        | "wrapper_not_completable"
+        | "attempt_not_completable"
+        | "attempt_transition_failed"
+        | "wrapper_transition_failed";
+      reason: string;
+    };
 
 export type TeamAssessmentRunHandoffState =
   | "ready_placeholder"
@@ -1050,6 +1071,144 @@ export async function markTeamAssessmentExecutionStartedIfInvited(input: {
     status: (currentData?.status as TeamAssessmentParticipantStatus | undefined) ?? "started",
     startedAt: currentData?.started_at ?? patch.started_at ?? null,
     transitioned: currentData?.status === "started",
+  };
+}
+
+export async function transitionTeamAssessmentExecutionToCompleted(input: {
+  context: TeamAssessmentExecutionContext;
+  completedAt?: string;
+}): Promise<TeamAssessmentExecutionCompletionTransitionResult> {
+  const supabase = createSupabaseAdminClient();
+  const completedAt = input.completedAt ?? new Date().toISOString();
+  const [{ data: wrapperData, error: wrapperLoadError }, { data: attemptData, error: attemptLoadError }] =
+    await Promise.all([
+      supabase
+        .from("team_assessment_participants")
+        .select("id, status, started_at, completed_at")
+        .eq("id", input.context.teamAssessmentParticipantId)
+        .maybeSingle(),
+      supabase
+        .from("attempts")
+        .select("id, status, started_at, completed_at")
+        .eq("id", input.context.attemptId)
+        .maybeSingle(),
+    ]);
+
+  if (wrapperLoadError) {
+    throw new Error(
+      `Failed to load Team Dynamics completion wrapper ${input.context.teamAssessmentParticipantId}: ${wrapperLoadError.message}`,
+    );
+  }
+
+  if (attemptLoadError) {
+    throw new Error(
+      `Failed to load Team Dynamics completion attempt ${input.context.attemptId}: ${attemptLoadError.message}`,
+    );
+  }
+
+  const wrapper = (wrapperData as TeamAssessmentExecutionWrapperRecord | null) ?? null;
+  const attempt = (attemptData as TeamAssessmentExecutionAttemptRecord | null) ?? null;
+
+  if (wrapper?.status === "completed" && attempt?.status === "completed") {
+    return {
+      ok: true,
+      mode: "already_completed",
+      wrapperStatus: "completed",
+      attemptStatus: "completed",
+      completedAt: wrapper.completed_at ?? attempt.completed_at ?? completedAt,
+    };
+  }
+
+  if (!wrapper || wrapper.status !== "started") {
+    return {
+      ok: false,
+      code: "wrapper_not_completable",
+      reason: "Team Dynamics wrapper must be started before completion is allowed.",
+    };
+  }
+
+  if (!attempt || attempt.status !== "in_progress") {
+    return {
+      ok: false,
+      code: "attempt_not_completable",
+      reason: "Linked Team Dynamics attempt must be in_progress before completion is allowed.",
+    };
+  }
+
+  const { data: completedAttemptData, error: completeAttemptError } = await supabase
+    .from("attempts")
+    .update({
+      status: "completed",
+      completed_at: completedAt,
+    })
+    .eq("id", input.context.attemptId)
+    .eq("status", "in_progress")
+    .select("id, status, completed_at")
+    .maybeSingle();
+
+  if (completeAttemptError) {
+    return {
+      ok: false,
+      code: "attempt_transition_failed",
+      reason: `Unable to complete linked Team Dynamics attempt: ${completeAttemptError.message}`,
+    };
+  }
+
+  const completedAttempt =
+    (completedAttemptData as {
+      id: string;
+      status: AttemptStatus;
+      completed_at: string | null;
+    } | null) ?? null;
+
+  if (!completedAttempt || completedAttempt.status !== "completed") {
+    return {
+      ok: false,
+      code: "attempt_transition_failed",
+      reason: "Linked Team Dynamics attempt did not transition to completed.",
+    };
+  }
+
+  const { data: completedWrapperData, error: completeWrapperError } = await supabase
+    .from("team_assessment_participants")
+    .update({
+      status: "completed",
+      started_at: wrapper.started_at ?? completedAt,
+      completed_at: completedAttempt.completed_at ?? completedAt,
+    })
+    .eq("id", input.context.teamAssessmentParticipantId)
+    .eq("status", "started")
+    .select("status, completed_at")
+    .maybeSingle();
+
+  if (completeWrapperError) {
+    return {
+      ok: false,
+      code: "wrapper_transition_failed",
+      reason: `Unable to complete Team Dynamics wrapper: ${completeWrapperError.message}`,
+    };
+  }
+
+  const completedWrapper =
+    (completedWrapperData as {
+      status: TeamAssessmentParticipantStatus;
+      completed_at: string | null;
+    } | null) ?? null;
+
+  if (!completedWrapper || completedWrapper.status !== "completed") {
+    return {
+      ok: false,
+      code: "wrapper_transition_failed",
+      reason: "Team Dynamics wrapper did not transition to completed.",
+    };
+  }
+
+  return {
+    ok: true,
+    mode: "completed",
+    wrapperStatus: "completed",
+    attemptStatus: "completed",
+    completedAt: completedWrapper.completed_at ?? completedAttempt.completed_at ?? completedAt,
   };
 }
 
