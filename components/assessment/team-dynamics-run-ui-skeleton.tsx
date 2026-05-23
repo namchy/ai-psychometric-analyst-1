@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
+import { saveTeamAssessmentAnswerAction } from "@/app/actions/team-assessments";
 
 type TeamDynamicsRunUiOnlyItemOption = {
   id: string;
@@ -21,6 +22,7 @@ type TeamDynamicsRunUiOnlyItem = {
 };
 
 export function TeamDynamicsRunUiSkeleton(props: {
+  teamAssessmentParticipantId: string;
   uiOnlyItems: TeamDynamicsRunUiOnlyItem[];
   uiOnlyItemCount: number;
   uiOnlyUnsupportedCount: number;
@@ -31,6 +33,10 @@ export function TeamDynamicsRunUiSkeleton(props: {
   const [selectedOptionIdsByQuestionId, setSelectedOptionIdsByQuestionId] = useState<
     Record<string, string>
   >({});
+  const [saveStateByQuestionId, setSaveStateByQuestionId] = useState<
+    Record<string, "idle" | "saving" | "saved" | "overwritten" | "unchanged" | "error">
+  >({});
+  const [saveMessageByQuestionId, setSaveMessageByQuestionId] = useState<Record<string, string>>({});
 
   if (!props.isRunnableShellState) {
     return (
@@ -91,6 +97,64 @@ export function TeamDynamicsRunUiSkeleton(props: {
   const selectedOptionId = selectedOptionIdsByQuestionId[currentItem.questionId] ?? null;
   const isFirstItem = safeIndex === 0;
   const isLastItem = safeIndex === props.uiOnlyItems.length - 1;
+  const currentSaveState = saveStateByQuestionId[currentItem.questionId] ?? "idle";
+  const currentSaveMessage = saveMessageByQuestionId[currentItem.questionId] ?? "";
+  const isSaveDisabled = !selectedOptionId || currentSaveState === "saving";
+
+  async function handleSaveCurrentAnswer() {
+    if (!selectedOptionId) {
+      return;
+    }
+
+    const questionId = currentItem.questionId;
+
+    setSaveStateByQuestionId((currentStatuses) => ({
+      ...currentStatuses,
+      [questionId]: "saving",
+    }));
+    setSaveMessageByQuestionId((currentMessages) => ({
+      ...currentMessages,
+      [questionId]: "Spremanje odgovora je u toku.",
+    }));
+
+    startTransition(async () => {
+      const result = await saveTeamAssessmentAnswerAction({
+        teamAssessmentParticipantId: props.teamAssessmentParticipantId,
+        questionId,
+        optionId: selectedOptionId,
+        locale: currentItem.locale === "en" ? "en" : currentItem.locale === "hr" ? "hr" : "bs",
+        clientTimestamp: new Date().toISOString(),
+      });
+
+      if (!result.ok) {
+        setSaveStateByQuestionId((currentStatuses) => ({
+          ...currentStatuses,
+          [questionId]: "error",
+        }));
+        setSaveMessageByQuestionId((currentMessages) => ({
+          ...currentMessages,
+          [questionId]: "Odgovor nije spremljen. Pokusaj ponovo.",
+        }));
+        return;
+      }
+
+      const nextMessage =
+        result.mode === "saved"
+          ? "Odgovor je spremljen."
+          : result.mode === "overwritten"
+            ? "Odgovor je azuriran."
+            : "Odgovor je vec spremljen.";
+
+      setSaveStateByQuestionId((currentStatuses) => ({
+        ...currentStatuses,
+        [questionId]: result.mode,
+      }));
+      setSaveMessageByQuestionId((currentMessages) => ({
+        ...currentMessages,
+        [questionId]: nextMessage,
+      }));
+    });
+  }
 
   return (
     <section className="space-y-4 rounded-[1.5rem] border border-slate-200/80 bg-white/80 p-5">
@@ -119,12 +183,23 @@ export function TeamDynamicsRunUiSkeleton(props: {
             <button
               key={option.id}
               type="button"
-              onClick={() =>
+              onClick={() => {
                 setSelectedOptionIdsByQuestionId((currentSelections) => ({
                   ...currentSelections,
                   [currentItem.questionId]: option.id,
-                }))
-              }
+                }));
+
+                if (selectedOptionId !== option.id) {
+                  setSaveStateByQuestionId((currentStatuses) => ({
+                    ...currentStatuses,
+                    [currentItem.questionId]: "idle",
+                  }));
+                  setSaveMessageByQuestionId((currentMessages) => ({
+                    ...currentMessages,
+                    [currentItem.questionId]: "",
+                  }));
+                }
+              }}
               className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors duration-150 ${
                 isSelected
                   ? "border-slate-900 bg-slate-900 text-white"
@@ -157,14 +232,33 @@ export function TeamDynamicsRunUiSkeleton(props: {
         >
           Sljedece
         </button>
+        <button
+          type="button"
+          onClick={handleSaveCurrentAnswer}
+          disabled={isSaveDisabled}
+          className="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
+        >
+          Spremi odgovor
+        </button>
       </div>
 
+      {currentSaveMessage ? (
+        <p
+          className={`text-sm leading-6 ${
+            currentSaveState === "error" ? "text-rose-700" : "text-emerald-700"
+          }`}
+        >
+          {currentSaveMessage}
+        </p>
+      ) : null}
+
       <p className="text-sm leading-6 text-slate-700">
-        Odgovori se drze samo u lokalnom UI state-u i jos nisu spremljeni.
+        Navigacija ostaje lokalna, a odgovor za trenutno pitanje se sprema samo kada kliknes
+        "Spremi odgovor".
       </p>
       <p className="text-sm leading-6 text-slate-500">
-        Osvjezavanje stranice brise izbor. Nema DB persistence-a, autosave-a, submitovanja,
-        completion-a ni scoring-a u ovom slice-u.
+        Osvjezavanje stranice moze obrisati lokalni UI state. Nema autosave-a, save-on-selecta,
+        submitovanja, completion-a ni scoring-a u ovom slice-u.
       </p>
     </section>
   );

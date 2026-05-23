@@ -2,6 +2,16 @@
 
 import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
 import { createTeamDynamicsAssessmentForTeam } from "@/lib/assessment/team-assessments";
+import { loadTeamAssessmentExecutionContext } from "@/lib/assessment/team-assessment-execution";
+import {
+  persistValidatedTeamAssessmentAnswer,
+  type TeamAssessmentAnswerPayload,
+  type TeamAssessmentAnswerPersistenceResult,
+} from "@/lib/assessment/team-assessment-responses";
+import {
+  normalizeAssessmentLocale,
+  type AssessmentLocale,
+} from "@/lib/assessment/locale";
 import {
   INITIAL_CREATE_TEAM_DYNAMICS_ASSESSMENT_ACTION_STATE,
   type CreateTeamDynamicsAssessmentActionResult,
@@ -14,6 +24,40 @@ import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 function getFormDataString(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+export type SaveTeamAssessmentAnswerActionInput = {
+  teamAssessmentParticipantId: string;
+  questionId: string;
+  optionId: string;
+  locale: AssessmentLocale;
+  clientTimestamp?: string;
+};
+
+export type SaveTeamAssessmentAnswerActionResult =
+  | {
+      ok: true;
+      mode: "saved" | "overwritten" | "unchanged";
+    }
+  | {
+      ok: false;
+      code: string;
+      reason: string;
+    };
+
+type SaveTeamAssessmentAnswerActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  loadExecutionContext?: typeof loadTeamAssessmentExecutionContext;
+  persistAnswer?: (
+    input: {
+      userId: string;
+      payload: TeamAssessmentAnswerPayload;
+    },
+  ) => Promise<TeamAssessmentAnswerPersistenceResult>;
+};
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 export async function createTeamDynamicsAssessmentAction(
@@ -76,4 +120,69 @@ export async function createTeamDynamicsAssessmentAction(
   } catch (error) {
     return mapCreateTeamDynamicsAssessmentActionError(error, teamId);
   }
+}
+
+export async function saveTeamAssessmentAnswerAction(
+  input: SaveTeamAssessmentAnswerActionInput,
+  deps: SaveTeamAssessmentAnswerActionDependencies = {},
+): Promise<SaveTeamAssessmentAnswerActionResult> {
+  if (
+    !isNonEmptyString(input.teamAssessmentParticipantId) ||
+    !isNonEmptyString(input.questionId) ||
+    !isNonEmptyString(input.optionId)
+  ) {
+    return {
+      ok: false,
+      code: "invalid_payload",
+      reason: "teamAssessmentParticipantId, questionId and optionId are required.",
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const loadExecutionContext =
+    deps.loadExecutionContext ?? loadTeamAssessmentExecutionContext;
+  const persistAnswer = deps.persistAnswer ?? persistValidatedTeamAssessmentAnswer;
+  const user = await requireUser();
+  const contextResult = await loadExecutionContext({
+    teamAssessmentParticipantId: input.teamAssessmentParticipantId,
+    userId: user.id,
+  });
+
+  if (!contextResult.ok) {
+    return {
+      ok: false,
+      code: contextResult.code,
+      reason: contextResult.message,
+    };
+  }
+
+  const result = await persistAnswer({
+    userId: user.id,
+    payload: {
+      teamAssessmentParticipantId: input.teamAssessmentParticipantId,
+      attemptId: contextResult.context.attemptId,
+      questionId: input.questionId,
+      optionId: input.optionId,
+      responseFormat: "single_select_likert",
+      locale: normalizeAssessmentLocale(input.locale),
+      ...(input.clientTimestamp
+        ? {
+            clientTimestamp: input.clientTimestamp,
+          }
+        : {}),
+    },
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      code: result.code,
+      reason: result.reason,
+    };
+  }
+
+  return {
+    ok: true,
+    mode: result.mode,
+  };
 }

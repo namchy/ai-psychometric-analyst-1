@@ -145,6 +145,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
         </section>
 
         <TeamDynamicsRunUiSkeleton
+          teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
           uiOnlyItems={handoff.uiOnlyItems}
           uiOnlyItemCount={handoff.uiOnlyItemCount}
           uiOnlyUnsupportedCount={handoff.uiOnlyUnsupportedCount}
