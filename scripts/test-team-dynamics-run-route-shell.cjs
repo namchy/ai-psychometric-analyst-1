@@ -60,6 +60,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 const {
   buildTeamAssessmentExecutionStartedPatch,
   buildTeamAssessmentBlockOutline,
+  buildTeamAssessmentFirstItemSkeleton,
   buildTeamAssessmentQuestionOutline,
   buildTeamAssessmentRunHandoff,
   resolveTeamAssessmentExecutionShellState,
@@ -75,10 +76,18 @@ const routePath = path.join(
   "run",
   "page.tsx",
 );
+const componentPath = path.join(
+  projectRoot,
+  "components",
+  "assessment",
+  "team-dynamics-run-ui-skeleton.tsx",
+);
 
 assert.equal(fs.existsSync(routePath), true, "Expected Team Dynamics run route file to exist.");
+assert.equal(fs.existsSync(componentPath), true, "Expected Team Dynamics run UI skeleton file to exist.");
 
 const routeSource = fs.readFileSync(routePath, "utf8");
+const componentSource = fs.readFileSync(componentPath, "utf8");
 const helperSource = fs.readFileSync(
   path.join(projectRoot, "lib", "assessment", "team-assessment-execution.ts"),
   "utf8",
@@ -97,6 +106,7 @@ assert.match(routeSource, /if \(shellState\.shouldTransitionToStarted\)/);
 assert.match(routeSource, /wrapperStatus = transition\.status/);
 assert.match(routeSource, /shellState = resolveTeamAssessmentExecutionShellState/);
 assert.match(routeSource, /const handoff = await loadTeamAssessmentRunHandoff/);
+assert.match(routeSource, /TeamDynamicsRunUiSkeleton/);
 
 assert.doesNotMatch(routeSource, /getCandidateAttemptForUser/);
 assert.doesNotMatch(routeSource, /getGenericCandidateAttemptForUser/);
@@ -113,11 +123,8 @@ assert.doesNotMatch(routeSource, /report CTA/i);
 assert.doesNotMatch(routeSource, /AI report/i);
 assert.doesNotMatch(routeSource, /Team Fit/);
 assert.doesNotMatch(routeSource, /questions=/);
-assert.doesNotMatch(routeSource, /questionOutline\.questions/);
-assert.doesNotMatch(routeSource, /blockOutline\.map/);
-assert.doesNotMatch(routeSource, /handoff\.blockOutline\[/);
-assert.doesNotMatch(routeSource, /localizedTitle/);
-assert.doesNotMatch(routeSource, /localizedStem/);
+assert.doesNotMatch(routeSource, /saveAssessmentProgress/);
+assert.doesNotMatch(routeSource, /fetch\(/);
 assert.doesNotMatch(routeSource, /answer options/i);
 
 assert.match(routeSource, /Procjena timske dinamike/);
@@ -128,16 +135,32 @@ assert.match(routeSource, /handoff\.attemptStatus/);
 assert.match(routeSource, /handoff\.activeQuestionCount/);
 assert.match(routeSource, /handoff\.blockOutlineCount/);
 assert.match(routeSource, /handoff\.questionOutlineCount/);
+assert.match(routeSource, /handoff\.firstItem/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.match(routeSource, /Rjesavanje procjene jos nije omoguceno u ovoj verziji\./);
 assert.match(routeSource, /Sekcije su pripremljene za sljedeci korak:/);
 assert.match(routeSource, /Pitanja su pripremljena za sljedeci korak:/);
 
+assert.match(componentSource, /"use client"/);
+assert.match(componentSource, /useState/);
+assert.match(componentSource, /Prvi pripremljeni item/);
+assert.match(componentSource, /Odgovor se drzi samo u lokalnom UI state-u i jos nije spremljen\./);
+assert.match(componentSource, /Osvjezavanje stranice brise izbor\./);
+assert.match(componentSource, /Nema DB persistence-a, autosave-a, submitovanja,?\s*completion-a ni scoring-a/);
+assert.doesNotMatch(componentSource, /AssessmentForm/);
+assert.doesNotMatch(componentSource, /saveAssessmentProgress/);
+assert.doesNotMatch(componentSource, /completeAssessmentAttempt/);
+assert.doesNotMatch(componentSource, /fetch\(/);
+assert.doesNotMatch(componentSource, /attemptId/);
+assert.doesNotMatch(componentSource, /Team Fit/);
+
 assert.match(helperSource, /export function buildTeamAssessmentExecutionStartedPatch/);
 assert.match(helperSource, /export function buildTeamAssessmentBlockOutline/);
+assert.match(helperSource, /export function buildTeamAssessmentFirstItemSkeleton/);
 assert.match(helperSource, /export function buildTeamAssessmentQuestionOutline/);
 assert.match(helperSource, /export function buildTeamAssessmentRunHandoff/);
 assert.match(helperSource, /export async function markTeamAssessmentExecutionStartedIfInvited/);
+assert.match(helperSource, /export async function loadTeamAssessmentFirstItemSkeleton/);
 assert.match(helperSource, /export async function loadTeamAssessmentQuestionOutline/);
 assert.match(helperSource, /export async function loadTeamAssessmentRunHandoff/);
 assert.match(helperSource, /export function resolveTeamAssessmentExecutionShellState/);
@@ -266,6 +289,87 @@ assert.deepEqual(
     shouldTransitionToStarted: false,
     title: "Ova procjena trenutno nije dostupna.",
     message: "Status wrappera nije podržan za siguran pristup execution prostoru.",
+  },
+);
+
+assert.deepEqual(
+  buildTeamAssessmentFirstItemSkeleton({
+    questionOutline: {
+      orderedQuestionIds: ["question-1", "question-2"],
+      questions: [
+        {
+          id: "question-1",
+          order: 1,
+          localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+          localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+          locale: "bs",
+        },
+        {
+          id: "question-2",
+          order: 2,
+          localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
+          localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
+          locale: "bs",
+        },
+      ],
+      locale: "bs",
+      count: 2,
+    },
+    locale: "bs",
+    question: {
+      id: "question-1",
+      text: "Fallback 1",
+      question_order: 1,
+      question_type: "single_choice",
+    },
+    options: [
+      {
+        id: "option-2",
+        question_id: "question-1",
+        label: "Fallback option 2",
+        option_order: 2,
+      },
+      {
+        id: "option-1",
+        question_id: "question-1",
+        label: "Fallback option 1",
+        option_order: 1,
+      },
+    ],
+    optionLocalizations: [
+      {
+        answer_option_id: "option-1",
+        locale: "bs",
+        label: "Lokalizovana opcija 1",
+      },
+      {
+        answer_option_id: "option-2",
+        locale: "bs",
+        label: "Lokalizovana opcija 2",
+      },
+    ],
+  }),
+  {
+    mode: "ui_only_ready",
+    questionId: "question-1",
+    order: 1,
+    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+    optionIds: ["option-1", "option-2"],
+    options: [
+      {
+        id: "option-1",
+        label: "Lokalizovana opcija 1",
+        order: 1,
+      },
+      {
+        id: "option-2",
+        label: "Lokalizovana opcija 2",
+        order: 2,
+      },
+    ],
+    locale: "bs",
+    isUiOnlySkeleton: true,
   },
 );
 
@@ -404,6 +508,28 @@ assert.deepEqual(
         questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
       },
     ],
+    firstItem: {
+      mode: "ui_only_ready",
+      questionId: "question-1",
+      order: 1,
+      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      optionIds: ["option-1", "option-2"],
+      options: [
+        {
+          id: "option-1",
+          label: "Opcija 1",
+          order: 1,
+        },
+        {
+          id: "option-2",
+          label: "Opcija 2",
+          order: 2,
+        },
+      ],
+      locale: "bs",
+      isUiOnlySkeleton: true,
+    },
   }),
   {
     teamAssessmentParticipantId: "tap-1",
@@ -440,6 +566,28 @@ assert.deepEqual(
         questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
       },
     ],
+    firstItem: {
+      mode: "ui_only_ready",
+      questionId: "question-1",
+      order: 1,
+      localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+      optionIds: ["option-1", "option-2"],
+      options: [
+        {
+          id: "option-1",
+          label: "Opcija 1",
+          order: 1,
+        },
+        {
+          id: "option-2",
+          label: "Opcija 2",
+          order: 2,
+        },
+      ],
+      locale: "bs",
+      isUiOnlySkeleton: true,
+    },
     isRunnableShellState: true,
     handoffState: "ready_placeholder",
     warningCode: null,

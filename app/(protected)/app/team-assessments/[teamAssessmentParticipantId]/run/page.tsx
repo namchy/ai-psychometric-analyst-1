@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TeamDynamicsRunUiSkeleton } from "@/components/assessment/team-dynamics-run-ui-skeleton";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import {
   loadTeamAssessmentExecutionContext,
@@ -142,6 +143,11 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
             </p>
           ) : null}
         </section>
+
+        <TeamDynamicsRunUiSkeleton
+          firstItem={handoff.firstItem}
+          isRunnableShellState={handoff.isRunnableShellState}
+        />
       </section>
     </main>
   );

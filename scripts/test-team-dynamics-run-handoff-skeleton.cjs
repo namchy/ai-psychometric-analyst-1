@@ -59,6 +59,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   buildTeamAssessmentBlockOutline,
+  buildTeamAssessmentFirstItemSkeleton,
   buildTeamAssessmentQuestionOutline,
   buildTeamAssessmentRunHandoff,
   resolveTeamAssessmentExecutionShellState,
@@ -89,6 +90,9 @@ assert.match(helperSource, /orderedQuestionIds/);
 assert.match(helperSource, /blockOutline/);
 assert.match(helperSource, /blockOutlineCount/);
 assert.match(helperSource, /questionCountMatchesBlockOutline/);
+assert.match(helperSource, /firstItem/);
+assert.match(helperSource, /optionIds/);
+assert.match(helperSource, /isUiOnlySkeleton/);
 assert.match(helperSource, /localizedTitle/);
 assert.match(helperSource, /localizedStem/);
 assert.match(helperSource, /warningCode/);
@@ -148,6 +152,112 @@ assert.deepEqual(outline.questions, [
     locale: "bs",
   },
 ]);
+
+const firstItemReady = buildTeamAssessmentFirstItemSkeleton({
+  questionOutline: outline,
+  locale: "bs",
+  question: {
+    id: "question-1",
+    text: "Fallback 1",
+    question_order: 1,
+    question_type: "single_choice",
+  },
+  options: [
+    {
+      id: "option-2",
+      question_id: "question-1",
+      label: "Fallback option 2",
+      option_order: 2,
+    },
+    {
+      id: "option-1",
+      question_id: "question-1",
+      label: "Fallback option 1",
+      option_order: 1,
+    },
+  ],
+  optionLocalizations: [
+    {
+      answer_option_id: "option-1",
+      locale: "bs",
+      label: "Lokalizovana opcija 1",
+    },
+    {
+      answer_option_id: "option-2",
+      locale: "bs",
+      label: "Lokalizovana opcija 2",
+    },
+  ],
+});
+
+assert.deepEqual(firstItemReady, {
+  mode: "ui_only_ready",
+  questionId: "question-1",
+  order: 1,
+  localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+  localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+  optionIds: ["option-1", "option-2"],
+  options: [
+    {
+      id: "option-1",
+      label: "Lokalizovana opcija 1",
+      order: 1,
+    },
+    {
+      id: "option-2",
+      label: "Lokalizovana opcija 2",
+      order: 2,
+    },
+  ],
+  locale: "bs",
+  isUiOnlySkeleton: true,
+});
+
+assert.deepEqual(
+  buildTeamAssessmentFirstItemSkeleton({
+    questionOutline: outline,
+    locale: "bs",
+    question: {
+      id: "question-1",
+      text: "Fallback 1",
+      question_order: 1,
+      question_type: "single_choice",
+    },
+    options: [],
+  }),
+  {
+    mode: "no_options",
+    locale: "bs",
+    isUiOnlySkeleton: true,
+    questionId: "question-1",
+    order: 1,
+    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+  },
+);
+
+assert.deepEqual(
+  buildTeamAssessmentFirstItemSkeleton({
+    questionOutline: outline,
+    locale: "bs",
+    question: {
+      id: "question-1",
+      text: "Fallback 1",
+      question_order: 1,
+      question_type: "multiple_choice",
+    },
+  }),
+  {
+    mode: "unsupported_format",
+    locale: "bs",
+    isUiOnlySkeleton: true,
+    questionId: "question-1",
+    order: 1,
+    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+    unsupportedQuestionType: "multiple_choice",
+  },
+);
 
 const fallbackBlockOutline = buildTeamAssessmentBlockOutline({
   testName: "Procjena timske dinamike",
@@ -211,6 +321,28 @@ const completedHandoff = buildTeamAssessmentRunHandoff({
       questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
     },
   ],
+  firstItem: {
+    mode: "ui_only_ready",
+    questionId: "question-1",
+    order: 1,
+    localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+    localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+    optionIds: ["option-1", "option-2"],
+    options: [
+      {
+        id: "option-1",
+        label: "Opcija 1",
+        order: 1,
+      },
+      {
+        id: "option-2",
+        label: "Opcija 2",
+        order: 2,
+      },
+    ],
+    locale: "bs",
+    isUiOnlySkeleton: true,
+  },
 });
 
 assert.equal(completedHandoff.handoffState, "safe_completed");
@@ -224,6 +356,8 @@ assert.equal(completedHandoff.questionOutlineCount, 36);
 assert.equal(completedHandoff.questionCountMatchesActive, true);
 assert.equal(completedHandoff.blockOutlineCount, 1);
 assert.equal(completedHandoff.questionCountMatchesBlockOutline, true);
+assert.equal(completedHandoff.firstItem.mode, "ui_only_ready");
+assert.deepEqual(completedHandoff.firstItem.optionIds, ["option-1", "option-2"]);
 assert.deepEqual(completedHandoff.blockOutline, [
   {
     id: "default",
@@ -262,6 +396,7 @@ const warningHandoff = buildTeamAssessmentRunHandoff({
   activeQuestionCount: 34,
   questionOutline: outline,
   blockOutline: fallbackBlockOutline,
+  firstItem: firstItemReady,
 });
 
 assert.equal(warningHandoff.handoffState, "warning_placeholder");
@@ -275,6 +410,8 @@ assert.equal(warningHandoff.blockOutlineCount, 1);
 assert.equal(warningHandoff.questionCountMatchesBlockOutline, true);
 assert.deepEqual(warningHandoff.questionOutline.orderedQuestionIds, ["question-1", "question-2"]);
 assert.deepEqual(warningHandoff.blockOutline, fallbackBlockOutline);
+assert.equal(warningHandoff.firstItem.mode, "ui_only_ready");
+assert.deepEqual(warningHandoff.firstItem.optionIds, ["option-1", "option-2"]);
 
 const mismatchedBlockHandoff = buildTeamAssessmentRunHandoff({
   context: {
@@ -312,6 +449,7 @@ const mismatchedBlockHandoff = buildTeamAssessmentRunHandoff({
       questionIds: ["question-2"],
     },
   ],
+  firstItem: firstItemReady,
 });
 
 assert.equal(mismatchedBlockHandoff.questionCountMatchesBlockOutline, false);
@@ -322,6 +460,7 @@ assert.match(routeSource, /handoff\.attemptStatus/);
 assert.match(routeSource, /handoff\.activeQuestionCount/);
 assert.match(routeSource, /handoff\.blockOutlineCount/);
 assert.match(routeSource, /handoff\.questionOutlineCount/);
+assert.match(routeSource, /handoff\.firstItem/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.doesNotMatch(routeSource, /AssessmentForm/);
 assert.doesNotMatch(routeSource, /question_order/);
