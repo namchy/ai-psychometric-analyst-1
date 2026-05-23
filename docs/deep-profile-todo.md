@@ -51,7 +51,7 @@ Komande:
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Read-only execution shell wiring završen | Team module / Runtime + Import | Završena su tri uska sloja: mixed-format read/validation support, execution-ready package shape (`teamDynamicsExecutionSpec`) i read-only execution shell wiring za budući runtime/UI sloj. Pending ostaju DB import support, execution UI, response persistence/capture, scoring runtime, team aggregation i report layer. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Completion readiness helper uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path i Team Dynamics completion readiness helper. Sljedeći uski korak: Team Dynamics completion action skeleton: dozvoliti završavanje samo kada completion readiness kaže da su sva podržana Likert-style pitanja validno spremljena, uz status transition wrapper/attempt-a, ali bez scoring-a, team aggregation-a, report orchestration-a, attempt_reports, assessment_reports, AI/report generation-a ili Team Fit outputa. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Completion action skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper i Team Dynamics completion action skeleton. Sljedeći uski korak: Team Dynamics post-completion safe UI / admin progress confirmation: potvrditi da completed wrapper korektno izgleda u participant intro/run flow-u i admin team detail progressu, da completed status ne dozvoljava aktivni run re-entry, i da nema scoring-a, team aggregation-a, report orchestration-a, attempt_reports, assessment_reports, AI/report generation-a ili Team Fit outputa. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -631,7 +631,7 @@ Definisati `Timski stil saradnje` / `team_style_collaboration_v1` kao zaseban in
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Completion readiness helper uveden  
+**Status:** Djelimično završeno / Completion action skeleton uveden  
 **Kategorija:** Team module / Data model scaffold
 
 **Napomena o sloju arhitekture:**  
@@ -954,8 +954,50 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
   - `node scripts/test-report-orchestration.cjs`
   - `npm run typecheck`
 
+**Completion note — Team Dynamics completion action skeleton:**
+- Završen je wrapper-specific Team Dynamics completion action skeleton.
+- Dodan je `completeTeamAssessmentAction({ teamAssessmentParticipantId })` u `app/actions/team-assessments.ts`.
+- Action prima samo `teamAssessmentParticipantId` kao public wrapper boundary.
+- Action ne prima raw `attemptId` iz clienta.
+- Server-side ponovo učitava execution context preko postojećeg wrapper access helpera.
+- Server-side ponovo gradi outline / `uiOnlyItems`.
+- Server-side recomputa completion readiness iz DB truth-a, ne iz client ili React state-a.
+- Completion je dozvoljen samo kada je `completionReadiness.readinessStatus === "ready"` i `completionReadiness.isReadyForCompletion === true`.
+- Ako readiness nije spreman, action vraća kontrolisani `not_ready` rezultat sa progress/readiness podacima i ne mijenja statuse.
+- Ako je readiness spreman, action radi samo minimalni status transition:
+  - `team_assessment_participants.status: started -> completed`
+  - `attempts.status: in_progress -> completed`
+- Completion action je idempotentna: već completed wrapper/attempt vraća safe `already_completed` rezultat.
+- UI skeleton prikazuje `Završi procjenu` samo kada je readiness ready.
+- Nakon uspješnog completion-a UI prikazuje neutralnu success poruku i vraća korisnika na Team Dynamics wrapper intro path.
+- Raw `attemptId` nije izložen u UI-u.
+- Guardrail potvrda:
+  - Nema scoring-a.
+  - Nema team aggregation-a.
+  - Nema report orchestration-a.
+  - Nema attempt_reports.
+  - Nema assessment_reports.
+  - Nema AI/report generation-a.
+  - Nema Team Fit outputa.
+  - Nema autosave-a.
+  - Nema save-on-selecta.
+  - `AssessmentForm` nije korišten.
+  - Generic `/app/attempts/[attemptId]/run` nije postao completion loophole.
+- Verifikovane komande:
+  - `node scripts/test-team-dynamics-completion-readiness.cjs`
+  - `node scripts/test-team-dynamics-completion-action.cjs`
+  - `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `node scripts/test-team-dynamics-manual-save-action.cjs`
+  - `npm run typecheck`
+
 **Sljedeći korak:**  
-Team Dynamics completion action skeleton: dodati uski completion flow koji koristi postojeći completion readiness helper kao server-side gate, dozvoljava completion samo kada su sva podržana Likert-style pitanja validno spremljena, i radi samo potrebni wrapper/attempt status transition. Ne dodavati scoring, team aggregation, report orchestration, attempt_reports, assessment_reports, AI/report generation, Team Fit output, autosave ili save-on-select.
+Team Dynamics post-completion safe UI / admin progress confirmation: potvrditi da completed wrapper korektno izgleda u participant intro/run flow-u i admin team detail progressu, da completed status ne dozvoljava aktivni run re-entry, i da completion ne pokreće scoring, team aggregation, report orchestration, attempt_reports, assessment_reports, AI/report generation ili Team Fit output. Ne uvoditi scoring/agregaciju u ovom slice-u.
 
 ---
 
