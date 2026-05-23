@@ -82,6 +82,30 @@ export type TeamAssessmentAnswerValidationResult =
       reason: string;
     };
 
+export const TEAM_ASSESSMENT_ANSWER_PERSISTENCE_FAILURE_CODES = [
+  ...TEAM_ASSESSMENT_ANSWER_VALIDATION_FAILURE_CODES,
+  "load_existing_failed",
+  "replace_existing_failed",
+  "insert_failed",
+] as const;
+
+export type TeamAssessmentAnswerPersistenceFailureCode =
+  (typeof TEAM_ASSESSMENT_ANSWER_PERSISTENCE_FAILURE_CODES)[number];
+
+export type TeamAssessmentAnswerPersistenceResult =
+  | {
+      ok: true;
+      mode: "saved" | "overwritten" | "unchanged";
+      value: ValidatedTeamAssessmentAnswerPayload & {
+        responseId: string | null;
+      };
+    }
+  | {
+      ok: false;
+      code: TeamAssessmentAnswerPersistenceFailureCode;
+      reason: string;
+    };
+
 type TeamAssessmentAnswerQuestionRecord = {
   id: string;
   test_id: string;
@@ -93,6 +117,13 @@ type TeamAssessmentAnswerOptionRecord = {
   question_id: string;
 };
 
+type TeamAssessmentPersistedResponseRecord = {
+  id: string;
+  question_id: string;
+  response_kind: QuestionType | string;
+  answer_option_id: string | null;
+};
+
 type TeamAssessmentAnswerValidationDependencies = {
   loadExecutionContext?: typeof loadTeamAssessmentExecutionContext;
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
@@ -102,6 +133,17 @@ function fail(
   code: TeamAssessmentAnswerValidationFailureCode,
   reason: string,
 ): TeamAssessmentAnswerValidationResult {
+  return {
+    ok: false,
+    code,
+    reason,
+  };
+}
+
+function persistFail(
+  code: TeamAssessmentAnswerPersistenceFailureCode,
+  reason: string,
+): TeamAssessmentAnswerPersistenceResult {
   return {
     ok: false,
     code,
@@ -301,4 +343,96 @@ export async function validateTeamAssessmentAnswerPayload(
     option: (optionResult.data as TeamAssessmentAnswerOptionRecord | null) ?? null,
     questionHasOptions: (optionCountResult.count ?? 0) > 0,
   });
+}
+
+export async function persistValidatedTeamAssessmentAnswer(
+  input: {
+    userId: string;
+    payload: TeamAssessmentAnswerPayload;
+  },
+  deps: TeamAssessmentAnswerValidationDependencies = {},
+): Promise<TeamAssessmentAnswerPersistenceResult> {
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const validated = await validateTeamAssessmentAnswerPayload(input, {
+    ...deps,
+    supabase,
+  });
+
+  if (!validated.ok) {
+    return persistFail(validated.code, validated.reason);
+  }
+
+  const { data: existingResponsesData, error: existingResponsesError } = await supabase
+    .from("responses")
+    .select("id, question_id, response_kind, answer_option_id")
+    .eq("attempt_id", validated.value.attemptId)
+    .eq("question_id", validated.value.questionId);
+
+  if (existingResponsesError) {
+    return persistFail(
+      "load_existing_failed",
+      `Unable to inspect existing Team Dynamics responses: ${existingResponsesError.message}`,
+    );
+  }
+
+  const existingResponses = (existingResponsesData ?? []) as TeamAssessmentPersistedResponseRecord[];
+  const existingSingleChoiceResponse =
+    existingResponses.length === 1 &&
+    existingResponses[0]?.response_kind === "single_choice" &&
+    existingResponses[0]?.answer_option_id === validated.value.optionId
+      ? existingResponses[0]
+      : null;
+
+  if (existingSingleChoiceResponse) {
+    return {
+      ok: true,
+      mode: "unchanged",
+      value: {
+        ...validated.value,
+        responseId: existingSingleChoiceResponse.id,
+      },
+    };
+  }
+
+  if (existingResponses.length > 0) {
+    const { error: deleteExistingError } = await supabase
+      .from("responses")
+      .delete()
+      .eq("attempt_id", validated.value.attemptId)
+      .eq("question_id", validated.value.questionId);
+
+    if (deleteExistingError) {
+      return persistFail(
+        "replace_existing_failed",
+        `Unable to replace existing Team Dynamics response: ${deleteExistingError.message}`,
+      );
+    }
+  }
+
+  const { data: insertedResponseData, error: insertedResponseError } = await supabase
+    .from("responses")
+    .insert({
+      attempt_id: validated.value.attemptId,
+      question_id: validated.value.questionId,
+      response_kind: "single_choice",
+      answer_option_id: validated.value.optionId,
+    })
+    .select("id")
+    .single();
+
+  if (insertedResponseError || !insertedResponseData) {
+    return persistFail(
+      "insert_failed",
+      `Unable to persist Team Dynamics response skeleton: ${insertedResponseError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  return {
+    ok: true,
+    mode: existingResponses.length > 0 ? "overwritten" : "saved",
+    value: {
+      ...validated.value,
+      responseId: (insertedResponseData as { id: string }).id,
+    },
+  };
 }
