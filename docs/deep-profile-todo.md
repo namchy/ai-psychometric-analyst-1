@@ -51,7 +51,7 @@ Komande:
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Read-only execution shell wiring završen | Team module / Runtime + Import | Završena su tri uska sloja: mixed-format read/validation support, execution-ready package shape (`teamDynamicsExecutionSpec`) i read-only execution shell wiring za budući runtime/UI sloj. Pending ostaju DB import support, execution UI, response persistence/capture, scoring runtime, team aggregation i report layer. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Manual answer save uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore i Team Dynamics manual save action/UI integration. Sljedeći uski korak: Team Dynamics DB rehydration/resume read path: učitati ručno spremljene single-select Likert odgovore iz responses tabele i prepopuniti UI local state po questionId, bez autosave-a, completion-a, scoring-a, aggregation-a ili report generation-a. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Saved answer rehydration uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration i Team Dynamics DB rehydration/resume read path. Sljedeći uski korak: Team Dynamics completion readiness helper: izračunati da li sva podržana Likert-style pitanja imaju spremljen odgovor u responses tabeli i vratiti read-only readiness status za UI, bez completion action-a, scoring-a, aggregation-a ili report generation-a. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -631,7 +631,7 @@ Definisati `Timski stil saradnje` / `team_style_collaboration_v1` kao zaseban in
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Manual answer save uveden  
+**Status:** Djelimično završeno / Saved answer rehydration uveden  
 **Kategorija:** Team module / Data model scaffold
 
 **Napomena o sloju arhitekture:**  
@@ -881,6 +881,33 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
   - Nema generic `/app/attempts/[attemptId]/run` loophole-a.
   - `AssessmentForm` nije korišten.
   - Raw `attemptId` nije izložen u UI-u.
+  - SJT best/worst i full mixed-format runtime nisu implementirani.
+
+**Completion note — Team Dynamics DB rehydration/resume read path:**
+- Završen je Team Dynamics DB rehydration/resume read path za ručno spremljene single-select Likert odgovore.
+- Implementiran je read-only rehydration sloj u `lib/assessment/team-assessment-responses.ts`.
+- Handoff je proširen u `lib/assessment/team-assessment-execution.ts`.
+- `/run` route prosljeđuje saved answer state u client skeleton.
+- UI skeleton inicijalizira local selected state iz DB-a.
+- Rehydrated pitanja se prikazuju neutralno kao `Učitano`.
+- Helper čita responses gdje je `response_kind = "single_choice"`.
+- Helper filtrira saved responses samo na trenutni `uiOnlyItems` skup.
+- Stale pitanja, pogrešne opcije i nepodržani itemi se ignorišu.
+- Raw `attemptId` nije izložen u UI.
+- Manual `Spremi odgovor` ostaje isti.
+- Promjena ranije učitanog izbora resetuje status pitanja na `idle`.
+- Guardrail potvrda:
+  - Nema autosave-a.
+  - Nema save-on-selecta.
+  - Nema completion-a.
+  - Nema scoring-a.
+  - Nema team aggregation-a.
+  - Nema report orchestration-a.
+  - Nema attempt_reports.
+  - Nema assessment_reports.
+  - Nema status transition-a za wrapper ili attempt.
+  - Nema generic `/app/attempts/[attemptId]/run` loophole-a.
+  - `AssessmentForm` nije korišten.
   - SJT best/worst i full mixed-format runtime nisu implementirani.
 
 ---
@@ -3344,6 +3371,43 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-23 — Team Dynamics saved answer rehydration
+
+Završeno:
+
+* Dodan je read-only Team Dynamics rehydration sloj za wrapper `/run` flow.
+* Spremljeni single-select Likert odgovori se učitavaju iz `responses` tabele.
+* Rehydration koristi wrapper boundary i linked internal `attemptId`.
+* Učitavaju se samo responses sa `response_kind = "single_choice"`.
+* Saved responses se filtriraju samo na validna pitanja/opcije iz trenutnog `uiOnlyItems` skupa.
+* `loadTeamAssessmentRunHandoff(...)` sada nosi `savedSelectedOptionIdsByQuestionId`, `savedAnswerQuestionIds` i `savedAnswerCount`.
+* Client skeleton inicijalizira local selected state iz DB-a.
+* Rehydrated pitanja dobijaju neutralan status `Učitano`.
+* Promjena ranije učitanog izbora vraća status pitanja na `idle`.
+* Manual `Spremi odgovor` ostaje isti i vraća `saved`, `overwritten` ili `unchanged`.
+* Nije uveden autosave, save-on-select, completion, scoring, aggregation, report orchestration, attempt_reports, assessment_reports, AI/report ili Team Fit side-effect.
+* Nisu mijenjani statusi wrappera ili attempta.
+* AssessmentForm nije korišten.
+* Raw `attemptId` nije izložen u UI.
+* Prošle verifikacione komande:
+  - `node scripts/test-team-dynamics-answer-payload-validator.cjs`
+  - `node scripts/test-team-dynamics-response-persistence-skeleton.cjs`
+  - `node scripts/test-team-dynamics-manual-save-action.cjs`
+  - `node scripts/test-team-dynamics-response-rehydration.cjs`
+  - `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-execution-safe-states.cjs`
+  - `node scripts/test-team-dynamics-execution-access.cjs`
+  - `node scripts/test-team-dynamics-direct-attempt-route-block.cjs`
+  - `node scripts/test-team-dynamics-wrapper-readiness.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-team-dynamics-completion-guard.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `node scripts/test-report-orchestration.cjs`
+  - `npm run typecheck`
 
 ### 2026-05-23 — Team Dynamics manual answer save
 
