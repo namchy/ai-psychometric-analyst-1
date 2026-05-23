@@ -129,10 +129,13 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
             Ucitani su osnovni execution podaci za {handoff.testName} i broj aktivnih pitanja:{" "}
             {handoff.activeQuestionCount}.
           </p>
+          <p className="text-sm leading-6 text-slate-700">
+            Pitanja su pripremljena za sljedeci korak: {handoff.questionOutlineCount}.
+          </p>
           {handoff.warningCode === "unexpected_question_count" ? (
             <p className="text-sm leading-6 text-amber-800">
               Handoff je ucitan, ali broj aktivnih pitanja odstupa od ocekivanog Team Dynamics
-              footprinta.
+              footprinta ili outline nije uskladjen sa aktivnim pitanjima.
             </p>
           ) : null}
         </section>

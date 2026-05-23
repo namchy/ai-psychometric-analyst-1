@@ -1,6 +1,11 @@
 import "server-only";
 
-import type { AssessmentLocale } from "@/lib/assessment/locale";
+import {
+  getAssessmentLocaleFallbacks,
+  getPreferredAssessmentLocaleRecord,
+  normalizeAssessmentLocale,
+  type AssessmentLocale,
+} from "@/lib/assessment/locale";
 import { TEAM_DYNAMICS_TEST_SLUG } from "@/lib/assessment/team-dynamics";
 import type {
   TeamAssessmentAssignmentStatus,
@@ -10,6 +15,7 @@ import type { AttemptStatus, TestStatus } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type TeamAssessmentExecutionRelation<T> = T | T[] | null;
+const LOCALIZATION_QUERY_CHUNK_SIZE = 50;
 
 export type TeamAssessmentExecutionParticipantRecord = {
   id: string;
@@ -134,6 +140,21 @@ export type TeamAssessmentRunHandoffState =
 
 export type TeamAssessmentRunHandoffWarningCode = "unexpected_question_count";
 
+export type TeamAssessmentQuestionOutlineEntry = {
+  id: string;
+  order: number;
+  localizedTitle: string;
+  localizedStem: string;
+  locale: AssessmentLocale;
+};
+
+export type TeamAssessmentQuestionOutline = {
+  orderedQuestionIds: string[];
+  questions: TeamAssessmentQuestionOutlineEntry[];
+  locale: AssessmentLocale;
+  count: number;
+};
+
 export type TeamAssessmentRunHandoff = {
   teamAssessmentParticipantId: string;
   teamAssessmentAssignmentId: string;
@@ -144,6 +165,9 @@ export type TeamAssessmentRunHandoff = {
   testSlug: string;
   testName: string;
   activeQuestionCount: number;
+  questionOutlineCount: number;
+  questionCountMatchesActive: boolean;
+  questionOutline: TeamAssessmentQuestionOutline;
   isRunnableShellState: boolean;
   handoffState: TeamAssessmentRunHandoffState;
   warningCode: TeamAssessmentRunHandoffWarningCode | null;
@@ -254,6 +278,28 @@ function fail(
     code,
     message,
   };
+}
+
+type TeamAssessmentQuestionRow = {
+  id: string;
+  text: string;
+  question_order: number;
+};
+
+type TeamAssessmentQuestionLocalizationRow = {
+  question_id: string;
+  locale: string;
+  text: string;
+};
+
+function chunkValues<T>(values: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < values.length; index += chunkSize) {
+    chunks.push(values.slice(index, index + chunkSize));
+  }
+
+  return chunks;
 }
 
 export function buildTeamAssessmentExecutionStartedPatch(input: {
@@ -401,12 +447,59 @@ export function resolveTeamAssessmentExecutionShellState(input: {
   }
 }
 
+export function buildTeamAssessmentQuestionOutline(input: {
+  questions: TeamAssessmentQuestionRow[];
+  localizations?: TeamAssessmentQuestionLocalizationRow[];
+  locale?: AssessmentLocale | null;
+}): TeamAssessmentQuestionOutline {
+  const locale = normalizeAssessmentLocale(input.locale);
+  const localizedRowsByQuestionId = new Map<string, TeamAssessmentQuestionLocalizationRow[]>();
+
+  for (const entry of input.localizations ?? []) {
+    const rows = localizedRowsByQuestionId.get(entry.question_id) ?? [];
+    rows.push(entry);
+    localizedRowsByQuestionId.set(entry.question_id, rows);
+  }
+
+  const questions = [...input.questions]
+    .sort((left, right) =>
+      left.question_order === right.question_order
+        ? left.id.localeCompare(right.id)
+        : left.question_order - right.question_order,
+    )
+    .map((question) => {
+      const localizedStem =
+        getPreferredAssessmentLocaleRecord(
+          localizedRowsByQuestionId.get(question.id) ?? [],
+          locale,
+        )?.text ?? question.text;
+
+      return {
+        id: question.id,
+        order: question.question_order,
+        localizedTitle: localizedStem,
+        localizedStem,
+        locale,
+      };
+    });
+
+  return {
+    orderedQuestionIds: questions.map((question) => question.id),
+    questions,
+    locale,
+    count: questions.length,
+  };
+}
+
 export function buildTeamAssessmentRunHandoff(input: {
   context: TeamAssessmentExecutionContext;
   shellState: TeamAssessmentExecutionShellState;
   activeQuestionCount: number;
+  questionOutline: TeamAssessmentQuestionOutline;
 }): TeamAssessmentRunHandoff {
-  const isUnexpectedQuestionCount = input.activeQuestionCount !== 36;
+  const questionCountMatchesActive = input.activeQuestionCount === input.questionOutline.count;
+  const isUnexpectedQuestionCount =
+    input.activeQuestionCount !== 36 || questionCountMatchesActive === false;
   let handoffState: TeamAssessmentRunHandoffState = "ready_placeholder";
 
   if (input.shellState.wrapperStatus === "completed") {
@@ -429,6 +522,9 @@ export function buildTeamAssessmentRunHandoff(input: {
     testSlug: input.context.test.slug,
     testName: input.context.test.name,
     activeQuestionCount: input.activeQuestionCount,
+    questionOutlineCount: input.questionOutline.count,
+    questionCountMatchesActive,
+    questionOutline: input.questionOutline,
     isRunnableShellState: input.shellState.isRunnable,
     handoffState,
     warningCode: isUnexpectedQuestionCount ? "unexpected_question_count" : null,
@@ -751,6 +847,61 @@ export async function markTeamAssessmentExecutionStartedIfInvited(input: {
   };
 }
 
+export async function loadTeamAssessmentQuestionOutline(input: {
+  testId: string;
+  locale?: AssessmentLocale | null;
+}): Promise<TeamAssessmentQuestionOutline> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("questions")
+    .select("id, text, question_order")
+    .eq("test_id", input.testId)
+    .eq("is_active", true)
+    .order("question_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load Team Dynamics questions: ${error.message}`);
+  }
+
+  const questions = (data ?? []) as TeamAssessmentQuestionRow[];
+
+  if (questions.length === 0) {
+    return buildTeamAssessmentQuestionOutline({
+      questions,
+      locale: input.locale,
+    });
+  }
+
+  const localeFallbacks = getAssessmentLocaleFallbacks(input.locale);
+  const localizationChunks = await Promise.all(
+    chunkValues(
+      questions.map((question) => question.id),
+      LOCALIZATION_QUERY_CHUNK_SIZE,
+    ).map(async (questionIdsChunk) => {
+      const { data: localizationData, error: localizationError } = await supabase
+        .from("question_localizations")
+        .select("question_id, locale, text")
+        .in("locale", localeFallbacks)
+        .in("question_id", questionIdsChunk);
+
+      if (localizationError) {
+        throw new Error(
+          `Failed to load Team Dynamics question localizations: ${localizationError.message}`,
+        );
+      }
+
+      return (localizationData ?? []) as TeamAssessmentQuestionLocalizationRow[];
+    }),
+  );
+
+  return buildTeamAssessmentQuestionOutline({
+    questions,
+    localizations: localizationChunks.flat(),
+    locale: input.locale,
+  });
+}
+
 export async function loadTeamAssessmentRunHandoff(input: {
   context: TeamAssessmentExecutionContext;
   shellState: TeamAssessmentExecutionShellState;
@@ -774,9 +925,15 @@ export async function loadTeamAssessmentRunHandoff(input: {
     throw new Error(`Failed to load Team Dynamics active question count: ${error.message}`);
   }
 
+  const questionOutline = await loadTeamAssessmentQuestionOutline({
+    testId: input.context.test.id,
+    locale: input.context.locale,
+  });
+
   return buildTeamAssessmentRunHandoff({
     context: input.context,
     shellState: input.shellState,
     activeQuestionCount: count ?? 0,
+    questionOutline,
   });
 }
