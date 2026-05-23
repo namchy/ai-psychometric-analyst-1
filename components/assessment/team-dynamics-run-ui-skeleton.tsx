@@ -27,16 +27,26 @@ export function TeamDynamicsRunUiSkeleton(props: {
   uiOnlyItemCount: number;
   uiOnlyUnsupportedCount: number;
   uiOnlySkeletonMode: "ready" | "no_questions" | "no_options" | "unsupported_format";
+  savedSelectedOptionIdsByQuestionId: Record<string, string>;
+  savedAnswerQuestionIds: string[];
+  savedAnswerCount: number;
   isRunnableShellState: boolean;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionIdsByQuestionId, setSelectedOptionIdsByQuestionId] = useState<
     Record<string, string>
-  >({});
+  >(() => props.savedSelectedOptionIdsByQuestionId);
   const [saveStateByQuestionId, setSaveStateByQuestionId] = useState<
-    Record<string, "idle" | "saving" | "saved" | "overwritten" | "unchanged" | "error">
-  >({});
-  const [saveMessageByQuestionId, setSaveMessageByQuestionId] = useState<Record<string, string>>({});
+    Record<string, "idle" | "loaded" | "saving" | "saved" | "overwritten" | "unchanged" | "error">
+  >(() =>
+    Object.fromEntries(
+      props.savedAnswerQuestionIds.map((questionId) => [questionId, "loaded" as const]),
+    )
+  );
+  const [saveMessageByQuestionId, setSaveMessageByQuestionId] = useState<Record<string, string>>(
+    () =>
+      Object.fromEntries(props.savedAnswerQuestionIds.map((questionId) => [questionId, "Ucitano."])),
+  );
 
   if (!props.isRunnableShellState) {
     return (
@@ -173,6 +183,11 @@ export function TeamDynamicsRunUiSkeleton(props: {
             format ili opcije.
           </p>
         ) : null}
+        {props.savedAnswerCount > 0 ? (
+          <p className="text-sm leading-6 text-slate-500">
+            Ucitano je ranije spremljenih odgovora: {props.savedAnswerCount}.
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-2">
@@ -245,7 +260,11 @@ export function TeamDynamicsRunUiSkeleton(props: {
       {currentSaveMessage ? (
         <p
           className={`text-sm leading-6 ${
-            currentSaveState === "error" ? "text-rose-700" : "text-emerald-700"
+            currentSaveState === "error"
+              ? "text-rose-700"
+              : currentSaveState === "loaded"
+                ? "text-slate-600"
+                : "text-emerald-700"
           }`}
         >
           {currentSaveMessage}

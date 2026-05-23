@@ -138,6 +138,9 @@ assert.match(routeSource, /handoff\.questionOutlineCount/);
 assert.match(routeSource, /handoff\.uiOnlyItems/);
 assert.match(routeSource, /handoff\.uiOnlyItemCount/);
 assert.match(routeSource, /handoff\.uiOnlySkeletonMode/);
+assert.match(routeSource, /handoff\.savedSelectedOptionIdsByQuestionId/);
+assert.match(routeSource, /handoff\.savedAnswerQuestionIds/);
+assert.match(routeSource, /handoff\.savedAnswerCount/);
 assert.match(routeSource, /teamAssessmentParticipantId=\{handoff\.teamAssessmentParticipantId\}/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.match(routeSource, /Rjesavanje procjene jos nije omoguceno u ovoj verziji\./);
@@ -148,6 +151,9 @@ assert.match(componentSource, /"use client"/);
 assert.match(componentSource, /useState/);
 assert.match(componentSource, /startTransition/);
 assert.match(componentSource, /saveTeamAssessmentAnswerAction/);
+assert.match(componentSource, /savedSelectedOptionIdsByQuestionId/);
+assert.match(componentSource, /savedAnswerQuestionIds/);
+assert.match(componentSource, /savedAnswerCount/);
 assert.match(componentSource, /Pitanje \{safeIndex \+ 1\} od \{props\.uiOnlyItemCount\}/);
 assert.match(componentSource, /Prethodno/);
 assert.match(componentSource, /Sljedece/);
@@ -155,6 +161,8 @@ assert.match(componentSource, /Spremi odgovor/);
 assert.match(componentSource, /disabled=\{isSaveDisabled\}/);
 assert.match(componentSource, /currentSaveState/);
 assert.match(componentSource, /saveStateByQuestionId/);
+assert.match(componentSource, /"idle" \| "loaded" \| "saving" \| "saved" \| "overwritten" \| "unchanged" \| "error"/);
+assert.match(componentSource, /Ucitano\./);
 assert.match(componentSource, /Navigacija ostaje lokalna, a odgovor za trenutno pitanje se sprema samo kada kliknes/);
 assert.match(componentSource, /Nema autosave-a, save-on-selecta,\s*submitovanja, completion-a ni scoring-a/);
 assert.doesNotMatch(componentSource, /AssessmentForm/);
@@ -631,6 +639,11 @@ assert.deepEqual(
     uiOnlyItemCount: 2,
     uiOnlyUnsupportedCount: 0,
     uiOnlySkeletonMode: "ready",
+    savedSelectedOptionIdsByQuestionId: {
+      "question-2": "option-4",
+    },
+    savedAnswerQuestionIds: ["question-2"],
+    savedAnswerCount: 1,
   }),
   {
     teamAssessmentParticipantId: "tap-1",
@@ -716,6 +729,11 @@ assert.deepEqual(
     uiOnlyItemCount: 2,
     uiOnlyUnsupportedCount: 0,
     uiOnlySkeletonMode: "ready",
+    savedSelectedOptionIdsByQuestionId: {
+      "question-2": "option-4",
+    },
+    savedAnswerQuestionIds: ["question-2"],
+    savedAnswerCount: 1,
     isRunnableShellState: true,
     handoffState: "ready_placeholder",
     warningCode: null,

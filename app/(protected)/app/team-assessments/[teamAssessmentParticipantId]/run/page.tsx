@@ -150,6 +150,9 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
           uiOnlyItemCount={handoff.uiOnlyItemCount}
           uiOnlyUnsupportedCount={handoff.uiOnlyUnsupportedCount}
           uiOnlySkeletonMode={handoff.uiOnlySkeletonMode}
+          savedSelectedOptionIdsByQuestionId={handoff.savedSelectedOptionIdsByQuestionId}
+          savedAnswerQuestionIds={handoff.savedAnswerQuestionIds}
+          savedAnswerCount={handoff.savedAnswerCount}
           isRunnableShellState={handoff.isRunnableShellState}
         />
       </section>

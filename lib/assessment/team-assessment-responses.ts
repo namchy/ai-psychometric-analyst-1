@@ -7,8 +7,11 @@ import {
 import {
   loadTeamAssessmentExecutionContext,
   resolveTeamAssessmentExecutionShellState,
+  type TeamAssessmentExecutionContext,
   type TeamAssessmentExecutionContextResult,
   type TeamAssessmentExecutionContextFailureCode,
+  type TeamAssessmentExecutionShellState,
+  type TeamAssessmentUiOnlyItem,
 } from "@/lib/assessment/team-assessment-execution";
 import type { QuestionType } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -106,6 +109,12 @@ export type TeamAssessmentAnswerPersistenceResult =
       reason: string;
     };
 
+export type TeamAssessmentSavedAnswerState = {
+  selectedOptionIdsByQuestionId: Record<string, string>;
+  loadedQuestionIds: string[];
+  loadedCount: number;
+};
+
 type TeamAssessmentAnswerQuestionRecord = {
   id: string;
   test_id: string;
@@ -122,6 +131,12 @@ type TeamAssessmentPersistedResponseRecord = {
   question_id: string;
   response_kind: QuestionType | string;
   answer_option_id: string | null;
+};
+
+type TeamAssessmentSavedResponseRecord = {
+  question_id: string;
+  answer_option_id: string | null;
+  response_kind: QuestionType | string;
 };
 
 type TeamAssessmentAnswerValidationDependencies = {
@@ -153,6 +168,14 @@ function persistFail(
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function buildEmptySavedAnswerState(): TeamAssessmentSavedAnswerState {
+  return {
+    selectedOptionIdsByQuestionId: {},
+    loadedQuestionIds: [],
+    loadedCount: 0,
+  };
 }
 
 export function buildTeamAssessmentAnswerValidationResult(input: {
@@ -435,4 +458,117 @@ export async function persistValidatedTeamAssessmentAnswer(
       responseId: (insertedResponseData as { id: string }).id,
     },
   };
+}
+
+export function buildTeamAssessmentSavedAnswerState(input: {
+  shellState: TeamAssessmentExecutionShellState;
+  context: TeamAssessmentExecutionContext;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+  savedResponses: TeamAssessmentSavedResponseRecord[];
+}): TeamAssessmentSavedAnswerState {
+  if (!input.shellState.isRunnable || input.context.attemptStatus !== "in_progress") {
+    return buildEmptySavedAnswerState();
+  }
+
+  const validOptionIdsByQuestionId = new Map<string, Set<string>>();
+
+  for (const item of input.uiOnlyItems) {
+    validOptionIdsByQuestionId.set(item.questionId, new Set(item.optionIds));
+  }
+
+  const selectedOptionIdsByQuestionId: Record<string, string> = {};
+
+  for (const savedResponse of input.savedResponses) {
+    const validOptionIds = validOptionIdsByQuestionId.get(savedResponse.question_id);
+
+    if (!validOptionIds || savedResponse.response_kind !== "single_choice") {
+      continue;
+    }
+
+    if (
+      !savedResponse.answer_option_id ||
+      validOptionIds.has(savedResponse.answer_option_id) === false
+    ) {
+      continue;
+    }
+
+    selectedOptionIdsByQuestionId[savedResponse.question_id] = savedResponse.answer_option_id;
+  }
+
+  const loadedQuestionIds = Object.keys(selectedOptionIdsByQuestionId);
+
+  return {
+    selectedOptionIdsByQuestionId,
+    loadedQuestionIds,
+    loadedCount: loadedQuestionIds.length,
+  };
+}
+
+export async function loadTeamAssessmentSavedAnswerStateForContext(input: {
+  context: TeamAssessmentExecutionContext;
+  shellState: TeamAssessmentExecutionShellState;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+}, deps: {
+  supabase?: ReturnType<typeof createSupabaseAdminClient>;
+} = {}): Promise<TeamAssessmentSavedAnswerState> {
+  if (
+    input.shellState.isRunnable === false ||
+    input.context.attemptStatus !== "in_progress" ||
+    input.uiOnlyItems.length === 0
+  ) {
+    return buildEmptySavedAnswerState();
+  }
+
+  const questionIds = input.uiOnlyItems.map((item) => item.questionId);
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("responses")
+    .select("question_id, answer_option_id, response_kind")
+    .eq("attempt_id", input.context.attemptId)
+    .in("question_id", questionIds)
+    .eq("response_kind", "single_choice");
+
+  if (error) {
+    throw new Error(`Failed to load Team Dynamics saved answer state: ${error.message}`);
+  }
+
+  return buildTeamAssessmentSavedAnswerState({
+    shellState: input.shellState,
+    context: input.context,
+    uiOnlyItems: input.uiOnlyItems,
+    savedResponses: (data ?? []) as TeamAssessmentSavedResponseRecord[],
+  });
+}
+
+export async function loadSavedTeamAssessmentAnswers(input: {
+  userId: string;
+  teamAssessmentParticipantId: string;
+  uiOnlyItems: TeamAssessmentUiOnlyItem[];
+}, deps: TeamAssessmentAnswerValidationDependencies = {}): Promise<TeamAssessmentSavedAnswerState> {
+  const loadExecutionContext =
+    deps.loadExecutionContext ?? loadTeamAssessmentExecutionContext;
+  const contextResult = await loadExecutionContext({
+    teamAssessmentParticipantId: input.teamAssessmentParticipantId,
+    userId: input.userId,
+  });
+
+  if (!contextResult.ok) {
+    return buildEmptySavedAnswerState();
+  }
+
+  const shellState = resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: contextResult.context.wrapperStatus,
+  });
+
+  return loadTeamAssessmentSavedAnswerStateForContext(
+    {
+      context: contextResult.context,
+      shellState,
+      uiOnlyItems: input.uiOnlyItems,
+    },
+    {
+      supabase: deps.supabase,
+    },
+  );
 }

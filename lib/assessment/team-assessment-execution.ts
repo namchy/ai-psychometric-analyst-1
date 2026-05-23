@@ -207,6 +207,9 @@ export type TeamAssessmentRunHandoff = {
   uiOnlyItemCount: number;
   uiOnlyUnsupportedCount: number;
   uiOnlySkeletonMode: TeamAssessmentUiOnlySkeletonMode;
+  savedSelectedOptionIdsByQuestionId: Record<string, string>;
+  savedAnswerQuestionIds: string[];
+  savedAnswerCount: number;
   isRunnableShellState: boolean;
   handoffState: TeamAssessmentRunHandoffState;
   warningCode: TeamAssessmentRunHandoffWarningCode | null;
@@ -674,6 +677,9 @@ export function buildTeamAssessmentRunHandoff(input: {
   uiOnlyItemCount: number;
   uiOnlyUnsupportedCount: number;
   uiOnlySkeletonMode: TeamAssessmentUiOnlySkeletonMode;
+  savedSelectedOptionIdsByQuestionId: Record<string, string>;
+  savedAnswerQuestionIds: string[];
+  savedAnswerCount: number;
 }): TeamAssessmentRunHandoff {
   const questionCountMatchesActive = input.activeQuestionCount === input.questionOutline.count;
   const orderedQuestionIdsFromBlocks = input.blockOutline.flatMap((block) => block.questionIds);
@@ -718,6 +724,9 @@ export function buildTeamAssessmentRunHandoff(input: {
     uiOnlyItemCount: input.uiOnlyItemCount,
     uiOnlyUnsupportedCount: input.uiOnlyUnsupportedCount,
     uiOnlySkeletonMode: input.uiOnlySkeletonMode,
+    savedSelectedOptionIdsByQuestionId: input.savedSelectedOptionIdsByQuestionId,
+    savedAnswerQuestionIds: input.savedAnswerQuestionIds,
+    savedAnswerCount: input.savedAnswerCount,
     isRunnableShellState: input.shellState.isRunnable,
     handoffState,
     warningCode: isUnexpectedQuestionCount ? "unexpected_question_count" : null,
@@ -1227,6 +1236,14 @@ export async function loadTeamAssessmentRunHandoff(input: {
     questionOutline,
     locale: input.context.locale,
   });
+  const { loadTeamAssessmentSavedAnswerStateForContext } = await import(
+    "@/lib/assessment/team-assessment-responses"
+  );
+  const savedAnswerState = await loadTeamAssessmentSavedAnswerStateForContext({
+    context: input.context,
+    shellState: input.shellState,
+    uiOnlyItems: uiOnlySkeleton.items,
+  });
 
   return buildTeamAssessmentRunHandoff({
     context: input.context,
@@ -1238,5 +1255,8 @@ export async function loadTeamAssessmentRunHandoff(input: {
     uiOnlyItemCount: uiOnlySkeleton.itemCount,
     uiOnlyUnsupportedCount: uiOnlySkeleton.unsupportedCount,
     uiOnlySkeletonMode: uiOnlySkeleton.mode,
+    savedSelectedOptionIdsByQuestionId: savedAnswerState.selectedOptionIdsByQuestionId,
+    savedAnswerQuestionIds: savedAnswerState.loadedQuestionIds,
+    savedAnswerCount: savedAnswerState.loadedCount,
   });
 }
