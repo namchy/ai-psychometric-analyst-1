@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Planirano / Bloker nakon content-spec locka | Team module / Runtime + Import | Omogućiti mixed-format execution/import za `team_dynamics_assessment_v1`: per-block ili per-question option catalogs, SJT scenario-level options, best/worst capture, mixed execution UI i mixed scoring config (TDM linear + domain, psychological safety, SJT partial-credit, outcome pulse) uz team agregaciju (mean, SD, range, completion rate). |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / In progress bloker nakon content-spec locka | Team module / Runtime + Import | Završeni prvi tehnički sloj: mixed-format package read model + validation support (`content-spec.json` load, mixed pravila, normalized `mixedAssessmentSpec`, backward compatibility). Sljedeći korak: `Mixed-format option catalog / execution-ready runtime shape` (per-block/per-question option catalogs, scenario-level SJT options i best/worst metadata), bez DB importa, bez scoring runtime-a i bez execution UI-a u tom tasku. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Run handoff skeleton uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver i wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a. Sljedeći uski slice: read-only Team Dynamics question loader za `/run` handoff koji sigurno priprema ordered question IDs i localized titles bez renderovanja pitanja, odgovora, answer options ili `AssessmentForm` executiona. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -828,6 +828,23 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - AD_M Phase 2
   - SJT empirical calibration
   - AI report layer
+
+**Completion note — Mixed-format Team Dynamics runtime/import support (prvi tehnički sloj):**
+- Status je djelimično završen / in progress.
+- Završeno:
+  - mixed-format package read model
+  - mixed-format validation support
+  - normalized `mixedAssessmentSpec`
+  - backward compatibility sa legacy/shared-options package formatom
+- Još nije završeno:
+  - real DB import support
+  - execution UI
+  - per-block/per-question option catalog runtime shape
+  - SJT best/worst response capture
+  - scoring runtime
+  - team aggregation
+  - report layer
+- Sljedeći preporučeni task: `Mixed-format option catalog / execution-ready runtime shape` (bez DB pisanja, bez scoring runtime-a i bez UI execution-a u tom tasku).
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
@@ -2833,6 +2850,7 @@ Razlog za sljedeći prioritet:
   * `assessment-packages/team_dynamics_assessment_v1/` je kreiran kao repo-level source of truth za `team_dynamics_assessment_v1`
   * paket zaključava content/scoring metadata i guardrails za 48 jedinica kroz `tdm-31-V1`, `psychological_safety`, `situational_judgment`, `outcome_pulse`
   * paket je trenutno content/spec layer i nije generic DB import/runtime ready dok importer ne podrži mixed-format option catalogs i SJT best/worst runtime
+  * read/validation support sada postoji (`content-spec.json` load + mixed pravila + normalized `mixedAssessmentSpec`), ali runtime/import execution podrška i dalje ostaje otvorena
   * sljedeći P1 bloker je `Mixed-format Team Dynamics runtime/import support`
 * `team_dynamics_v1_strong` (4 skale / 36 itema) ostaje tehnički scaffold i historijski implementacijski korak, ne finalni instrument model za prezentaciju.
 * Team input i report flow:
@@ -3083,6 +3101,15 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-23 — Mixed-format Team Dynamics read/validation support
+
+Završeno:
+
+* Za `team_dynamics_assessment_v1` završen je prvi tehnički mixed-format sloj: package read model i validation support.
+* `loadAssessmentPackage(...)` sada može učitati optional `content-spec.json`, validirati mixed-format pravila i vratiti normalized `mixedAssessmentSpec` koji razlikuje Likert blokove i SJT best/worst blok.
+* Očuvana je kompatibilnost sa legacy/shared-options paketima.
+* Runtime/import execution, per-block/per-question option catalogs, SJT response capture, scoring runtime, team aggregation i report layer ostaju pending.
 
 ### 2026-05-23 — Team Dynamics assessment v1 canonical content/spec package
 
