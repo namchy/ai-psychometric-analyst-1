@@ -119,23 +119,39 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
           <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">
             {handoff.placeholderTitle}
           </h2>
-          <p className="text-sm font-semibold text-slate-900">Podaci za rjesavanje su pripremljeni.</p>
-          <p className="text-sm leading-6 text-slate-700">
-            {handoff.placeholderMessage}
-          </p>
-          <p className="text-sm leading-6 text-slate-700">
-            Rjesavanje procjene jos nije omoguceno u ovoj verziji.
-          </p>
-          <p className="text-sm leading-6 text-slate-700">
-            Ucitani su osnovni execution podaci za {handoff.testName} i broj aktivnih pitanja:{" "}
-            {handoff.activeQuestionCount}.
-          </p>
-          <p className="text-sm leading-6 text-slate-700">
-            Sekcije su pripremljene za sljedeci korak: {handoff.blockOutlineCount}.
-          </p>
-          <p className="text-sm leading-6 text-slate-700">
-            Pitanja su pripremljena za sljedeci korak: {handoff.questionOutlineCount}.
-          </p>
+          {handoff.isRunnableShellState ? (
+            <>
+              <p className="text-sm font-semibold text-slate-900">Podaci za rjesavanje su pripremljeni.</p>
+              <p className="text-sm leading-6 text-slate-700">
+                {handoff.placeholderMessage}
+              </p>
+              <p className="text-sm leading-6 text-slate-700">
+                Rjesavanje procjene jos nije omoguceno u ovoj verziji.
+              </p>
+              <p className="text-sm leading-6 text-slate-700">
+                Ucitani su osnovni execution podaci za {handoff.testName} i broj aktivnih pitanja:{" "}
+                {handoff.activeQuestionCount}.
+              </p>
+              <p className="text-sm leading-6 text-slate-700">
+                Sekcije su pripremljene za sljedeci korak: {handoff.blockOutlineCount}.
+              </p>
+              <p className="text-sm leading-6 text-slate-700">
+                Pitanja su pripremljena za sljedeci korak: {handoff.questionOutlineCount}.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-slate-900">
+                Ovaj wrapper je u sigurnom post-completion ili unavailable stanju.
+              </p>
+              <p className="text-sm leading-6 text-slate-700">
+                {handoff.placeholderMessage}
+              </p>
+              <p className="text-sm leading-6 text-slate-700">
+                Aktivni run više nije dostupan za ovaj wrapper i pitanja se više ne prikazuju.
+              </p>
+            </>
+          )}
           {handoff.warningCode === "unexpected_question_count" ? (
             <p className="text-sm leading-6 text-amber-800">
               Handoff je ucitan, ali broj aktivnih pitanja odstupa od ocekivanog Team Dynamics
@@ -146,6 +162,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
 
         <TeamDynamicsRunUiSkeleton
           teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
+          wrapperStatus={handoff.wrapperStatus}
           uiOnlyItems={handoff.uiOnlyItems}
           uiOnlyItemCount={handoff.uiOnlyItemCount}
           uiOnlyUnsupportedCount={handoff.uiOnlyUnsupportedCount}

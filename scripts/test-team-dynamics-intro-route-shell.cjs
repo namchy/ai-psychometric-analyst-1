@@ -102,6 +102,9 @@ assert.match(source, /Ova procjena je dio timske procjene, ne individualni psiho
 assert.match(source, /shellState\.title/);
 assert.match(source, /shellState\.message/);
 assert.match(source, /context\.packageSlug/);
+assert.match(source, /Procjena je već završena i nije potrebno ponovo otvarati aktivni run za ovaj wrapper\./);
+assert.doesNotMatch(source, /Započni procjenu/);
+assert.doesNotMatch(source, /Nastavi procjenu/);
 
 assert.deepEqual(
   resolveTeamAssessmentExecutionShellState({

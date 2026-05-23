@@ -17,8 +17,8 @@ const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
 
 const PARTICIPANT_STATUS_LABELS: Record<string, string> = {
   invited: "Pozvan",
-  started: "Započeo",
-  completed: "Završio",
+  started: "Započeto",
+  completed: "Završen",
   expired: "Isteklo",
 };
 
@@ -42,6 +42,20 @@ function getParticipantStatusLabel(status: string | null | undefined): string {
   }
 
   return PARTICIPANT_STATUS_LABELS[status] ?? "Nepoznato";
+}
+
+function getParticipantStatusToneClassName(status: string | null | undefined): string {
+  switch (status) {
+    case "completed":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "started":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "expired":
+      return "border-slate-200 bg-slate-100 text-slate-600";
+    case "invited":
+    default:
+      return "border-sky-200 bg-sky-50 text-sky-700";
+  }
 }
 
 function getRoleLabel(role: string | null | undefined): string {
@@ -195,7 +209,11 @@ export function HrTeamAssessmentDetail({
                       {getRoleLabel(participant.role)}
                     </td>
                     <td className="align-middle border-y border-slate-200/70 bg-[rgba(255,255,255,0.94)] px-5 py-5 transition-colors group-hover:bg-white">
-                      <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getParticipantStatusToneClassName(
+                          participant.status,
+                        )}`}
+                      >
                         {getParticipantStatusLabel(participant.status)}
                       </span>
                     </td>

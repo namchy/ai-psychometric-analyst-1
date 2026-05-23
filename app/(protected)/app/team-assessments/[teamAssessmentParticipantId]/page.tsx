@@ -83,6 +83,11 @@ export default async function TeamAssessmentIntroPage({
           <p className="text-sm leading-6 text-slate-700">
             {shellState.message}
           </p>
+          {shellState.kind === "intro_completed" ? (
+            <p className="text-sm leading-6 text-slate-700">
+              Procjena je već završena i nije potrebno ponovo otvarati aktivni run za ovaj wrapper.
+            </p>
+          ) : null}
         </section>
       </section>
     </main>

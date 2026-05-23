@@ -27,6 +27,7 @@ type TeamDynamicsRunUiOnlyItem = {
 
 export function TeamDynamicsRunUiSkeleton(props: {
   teamAssessmentParticipantId: string;
+  wrapperStatus: "invited" | "started" | "completed" | "expired";
   uiOnlyItems: TeamDynamicsRunUiOnlyItem[];
   uiOnlyItemCount: number;
   uiOnlyUnsupportedCount: number;
@@ -69,9 +70,19 @@ export function TeamDynamicsRunUiSkeleton(props: {
   if (!props.isRunnableShellState) {
     return (
       <section className="space-y-3 rounded-[1.5rem] border border-slate-200/80 bg-white/80 p-5">
-        <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">Runtime UI skeleton</h2>
+        <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">
+          {props.wrapperStatus === "completed"
+            ? "Procjena je završena"
+            : props.wrapperStatus === "expired"
+              ? "Procjena više nije dostupna"
+              : "Runtime UI skeleton"}
+        </h2>
         <p className="text-sm leading-6 text-slate-700">
-          Ovaj wrapper trenutno nije u stanju za lokalni UI-only response skeleton.
+          {props.wrapperStatus === "completed"
+            ? "Aktivni run je zatvoren. Pitanja, spremanje odgovora i completion CTA više nisu dostupni za ovaj wrapper."
+            : props.wrapperStatus === "expired"
+              ? "Ovaj wrapper više nije u stanju za aktivni Team Dynamics run."
+              : "Ovaj wrapper trenutno nije u stanju za lokalni UI-only response skeleton."}
         </p>
       </section>
     );
