@@ -51,7 +51,7 @@ Komande:
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Read-only execution shell wiring završen | Team module / Runtime + Import | Završena su tri uska sloja: mixed-format read/validation support, execution-ready package shape (`teamDynamicsExecutionSpec`) i read-only execution shell wiring za budući runtime/UI sloj. Pending ostaju DB import support, execution UI, response persistence/capture, scoring runtime, team aggregation i report layer. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Read-only block outline uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader i read-only block/section outline za `/run` handoff. Sljedeći uski korak: Minimalni Team Dynamics runtime state machine spec za budući execution UI: zaključati dozvoljene runtime statuse, transition guardove i granicu između read-only handoffa, response capture-a, completion-a i scoring-a, bez implementacije persistence-a ili renderovanja pitanja. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Runtime state machine spec zaključan | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff i docs/spec runtime state machine slice. Sljedeći uski korak: Minimalni Team Dynamics response capture skeleton: uvesti UI/runtime skeleton za izbor i privremeno držanje odgovora u kontrolisanom state-u bez DB persistence-a, autosave-a, completion-a, scoring-a, aggregation-a ili report generation-a. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -631,7 +631,7 @@ Definisati `Timski stil saradnje` / `team_style_collaboration_v1` kao zaseban in
 
 ### P1 — Team Dynamics data model scaffold and placeholder package support
 
-**Status:** Djelimično završeno / Run handoff skeleton uveden  
+**Status:** Djelimično završeno / Runtime state machine spec zaključan  
 **Kategorija:** Team module / Data model scaffold
 
 **Napomena o sloju arhitekture:**  
@@ -705,6 +705,35 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
   - Nema podataka drugih članova tima.
   - Raw `attemptId` nije izložen u UI.
   - Direct `/app/attempts/[attemptId]/run` Team Dynamics guard ostaje netaknut.
+
+**Completion note — Team Dynamics runtime state machine / execution lifecycle (docs/spec):**
+- Završen je docs/spec slice `Runtime state machine / execution lifecycle`.
+- Spec je dodan u `docs/team-dynamics-product-tech-spec.md`.
+- Zaključan je wrapper access boundary:
+  - `team_assessment_participants.id` je public/wrapper access key
+  - `attempt_id` je interni execution payload
+  - direct `/app/attempts/[attemptId]/run` ulaz za Team Dynamics mora ostati blokiran
+  - `/app/team-assessments/[teamAssessmentParticipantId]/run` ostaje planirani execution wrapper path
+- Zaključane su state grupe:
+  - Not runnable / blocked
+  - Readiness / prepared
+  - Future executable
+  - Terminal
+- Zaključani su transition guardovi i UI ponašanje po stanju.
+- Zaključani su guardraili prije:
+  - response capture-a
+  - completion-a
+  - scoring-a
+  - team aggregation-a
+  - report orchestration-a
+- Report orchestration guardrail potvrđuje da Team Dynamics completion ne smije automatski enqueue-ati:
+  - individual participant report
+  - HR single-test report
+  - composite HR report
+  - attempt_reports
+  - assessment_reports single_test
+- Budući team-level report layer ostaje zaseban task.
+- Ovo je bio docs/spec task, bez code promjena.
 
 ---
 
@@ -3167,6 +3196,21 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-23 — Team Dynamics runtime state machine / execution lifecycle
+
+Završeno:
+
+* U `docs/team-dynamics-product-tech-spec.md` dodana je sekcija `Runtime state machine / execution lifecycle`.
+* Zaključan je minimalni Team Dynamics execution lifecycle za budući UI.
+* Definisan je wrapper access boundary: `team_assessment_participants.id` je public wrapper key, `attempt_id` ostaje interni execution payload.
+* Direct `/app/attempts/[attemptId]/run` ulaz za Team Dynamics ostaje blokiran.
+* `/app/team-assessments/[teamAssessmentParticipantId]/run` ostaje planirani execution wrapper path.
+* Definisane su allowed i blocked state grupe, transition guardovi i UI ponašanje po stanju.
+* Zaključani su guardraili prije response capture-a, completion-a, scoring-a, team aggregation-a i report orchestration-a.
+* Potvrđeno je da Team Dynamics completion ne smije automatski kreirati ili enqueue-ati individual participant report, HR single-test report, composite HR report, attempt_reports ili assessment_reports single_test.
+* Budući team-level report layer ostaje poseban task.
+* Task je bio docs/spec-only i nije mijenjao code, migracije, package content ili testove.
 
 ### 2026-05-23 — Team Dynamics read-only block/section outline
 
