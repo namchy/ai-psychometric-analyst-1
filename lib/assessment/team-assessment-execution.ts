@@ -155,6 +155,14 @@ export type TeamAssessmentQuestionOutline = {
   count: number;
 };
 
+export type TeamAssessmentBlockOutlineEntry = {
+  id: string;
+  order: number;
+  title: string;
+  questionCount: number;
+  questionIds: string[];
+};
+
 export type TeamAssessmentRunHandoff = {
   teamAssessmentParticipantId: string;
   teamAssessmentAssignmentId: string;
@@ -168,6 +176,9 @@ export type TeamAssessmentRunHandoff = {
   questionOutlineCount: number;
   questionCountMatchesActive: boolean;
   questionOutline: TeamAssessmentQuestionOutline;
+  blockOutlineCount: number;
+  questionCountMatchesBlockOutline: boolean;
+  blockOutline: TeamAssessmentBlockOutlineEntry[];
   isRunnableShellState: boolean;
   handoffState: TeamAssessmentRunHandoffState;
   warningCode: TeamAssessmentRunHandoffWarningCode | null;
@@ -491,15 +502,39 @@ export function buildTeamAssessmentQuestionOutline(input: {
   };
 }
 
+export function buildTeamAssessmentBlockOutline(input: {
+  testName: string;
+  questionOutline: TeamAssessmentQuestionOutline;
+}): TeamAssessmentBlockOutlineEntry[] {
+  return [
+    {
+      id: "default",
+      order: 1,
+      title: input.testName,
+      questionCount: input.questionOutline.count,
+      questionIds: [...input.questionOutline.orderedQuestionIds],
+    },
+  ];
+}
+
 export function buildTeamAssessmentRunHandoff(input: {
   context: TeamAssessmentExecutionContext;
   shellState: TeamAssessmentExecutionShellState;
   activeQuestionCount: number;
   questionOutline: TeamAssessmentQuestionOutline;
+  blockOutline: TeamAssessmentBlockOutlineEntry[];
 }): TeamAssessmentRunHandoff {
   const questionCountMatchesActive = input.activeQuestionCount === input.questionOutline.count;
+  const orderedQuestionIdsFromBlocks = input.blockOutline.flatMap((block) => block.questionIds);
+  const questionCountMatchesBlockOutline =
+    orderedQuestionIdsFromBlocks.length === input.questionOutline.count &&
+    orderedQuestionIdsFromBlocks.every(
+      (questionId, index) => questionId === input.questionOutline.orderedQuestionIds[index],
+    );
   const isUnexpectedQuestionCount =
-    input.activeQuestionCount !== 36 || questionCountMatchesActive === false;
+    input.activeQuestionCount !== 36 ||
+    questionCountMatchesActive === false ||
+    questionCountMatchesBlockOutline === false;
   let handoffState: TeamAssessmentRunHandoffState = "ready_placeholder";
 
   if (input.shellState.wrapperStatus === "completed") {
@@ -525,6 +560,9 @@ export function buildTeamAssessmentRunHandoff(input: {
     questionOutlineCount: input.questionOutline.count,
     questionCountMatchesActive,
     questionOutline: input.questionOutline,
+    blockOutlineCount: input.blockOutline.length,
+    questionCountMatchesBlockOutline,
+    blockOutline: input.blockOutline,
     isRunnableShellState: input.shellState.isRunnable,
     handoffState,
     warningCode: isUnexpectedQuestionCount ? "unexpected_question_count" : null,
@@ -929,11 +967,16 @@ export async function loadTeamAssessmentRunHandoff(input: {
     testId: input.context.test.id,
     locale: input.context.locale,
   });
+  const blockOutline = buildTeamAssessmentBlockOutline({
+    testName: input.context.test.name,
+    questionOutline,
+  });
 
   return buildTeamAssessmentRunHandoff({
     context: input.context,
     shellState: input.shellState,
     activeQuestionCount: count ?? 0,
     questionOutline,
+    blockOutline,
   });
 }

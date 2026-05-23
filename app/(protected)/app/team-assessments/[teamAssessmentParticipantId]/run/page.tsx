@@ -130,6 +130,9 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
             {handoff.activeQuestionCount}.
           </p>
           <p className="text-sm leading-6 text-slate-700">
+            Sekcije su pripremljene za sljedeci korak: {handoff.blockOutlineCount}.
+          </p>
+          <p className="text-sm leading-6 text-slate-700">
             Pitanja su pripremljena za sljedeci korak: {handoff.questionOutlineCount}.
           </p>
           {handoff.warningCode === "unexpected_question_count" ? (

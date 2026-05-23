@@ -58,6 +58,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 };
 
 const {
+  buildTeamAssessmentBlockOutline,
   buildTeamAssessmentQuestionOutline,
   buildTeamAssessmentRunHandoff,
   resolveTeamAssessmentExecutionShellState,
@@ -85,6 +86,9 @@ assert.match(helperSource, /export function buildTeamAssessmentRunHandoff/);
 assert.match(helperSource, /export async function loadTeamAssessmentRunHandoff/);
 assert.match(helperSource, /activeQuestionCount/);
 assert.match(helperSource, /orderedQuestionIds/);
+assert.match(helperSource, /blockOutline/);
+assert.match(helperSource, /blockOutlineCount/);
+assert.match(helperSource, /questionCountMatchesBlockOutline/);
 assert.match(helperSource, /localizedTitle/);
 assert.match(helperSource, /localizedStem/);
 assert.match(helperSource, /warningCode/);
@@ -145,6 +149,21 @@ assert.deepEqual(outline.questions, [
   },
 ]);
 
+const fallbackBlockOutline = buildTeamAssessmentBlockOutline({
+  testName: "Procjena timske dinamike",
+  questionOutline: outline,
+});
+
+assert.deepEqual(fallbackBlockOutline, [
+  {
+    id: "default",
+    order: 1,
+    title: "Procjena timske dinamike",
+    questionCount: 2,
+    questionIds: ["question-1", "question-2"],
+  },
+]);
+
 const completedHandoff = buildTeamAssessmentRunHandoff({
   context: {
     teamAssessmentParticipantId: "tap-completed",
@@ -183,6 +202,15 @@ const completedHandoff = buildTeamAssessmentRunHandoff({
     locale: "bs",
     count: 36,
   },
+  blockOutline: [
+    {
+      id: "default",
+      order: 1,
+      title: "Procjena timske dinamike",
+      questionCount: 36,
+      questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
+    },
+  ],
 });
 
 assert.equal(completedHandoff.handoffState, "safe_completed");
@@ -194,6 +222,17 @@ assert.equal("assessment_reports" in completedHandoff, false);
 assert.equal("teamFit" in completedHandoff, false);
 assert.equal(completedHandoff.questionOutlineCount, 36);
 assert.equal(completedHandoff.questionCountMatchesActive, true);
+assert.equal(completedHandoff.blockOutlineCount, 1);
+assert.equal(completedHandoff.questionCountMatchesBlockOutline, true);
+assert.deepEqual(completedHandoff.blockOutline, [
+  {
+    id: "default",
+    order: 1,
+    title: "Procjena timske dinamike",
+    questionCount: 36,
+    questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
+  },
+]);
 
 const warningHandoff = buildTeamAssessmentRunHandoff({
   context: {
@@ -222,6 +261,7 @@ const warningHandoff = buildTeamAssessmentRunHandoff({
   }),
   activeQuestionCount: 34,
   questionOutline: outline,
+  blockOutline: fallbackBlockOutline,
 });
 
 assert.equal(warningHandoff.handoffState, "warning_placeholder");
@@ -231,15 +271,61 @@ assert.equal(warningHandoff.testName, "Procjena timske dinamike");
 assert.equal(warningHandoff.activeQuestionCount, 34);
 assert.equal(warningHandoff.questionOutlineCount, 2);
 assert.equal(warningHandoff.questionCountMatchesActive, false);
+assert.equal(warningHandoff.blockOutlineCount, 1);
+assert.equal(warningHandoff.questionCountMatchesBlockOutline, true);
 assert.deepEqual(warningHandoff.questionOutline.orderedQuestionIds, ["question-1", "question-2"]);
+assert.deepEqual(warningHandoff.blockOutline, fallbackBlockOutline);
+
+const mismatchedBlockHandoff = buildTeamAssessmentRunHandoff({
+  context: {
+    teamAssessmentParticipantId: "tap-mismatch",
+    teamAssessmentAssignmentId: "assignment-3",
+    teamMembershipId: "membership-3",
+    participantId: "participant-3",
+    attemptId: "attempt-3",
+    teamId: "team-3",
+    organizationId: "org-3",
+    packageSlug: "team_dynamics_v1_strong",
+    wrapperStatus: "started",
+    attemptStatus: "in_progress",
+    locale: "bs",
+    test: {
+      id: "test-team-dynamics",
+      slug: "team_dynamics_v1_strong",
+      name: "Procjena timske dinamike",
+      status: "active",
+      isActive: true,
+    },
+  },
+  shellState: resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus: "started",
+  }),
+  activeQuestionCount: 2,
+  questionOutline: outline,
+  blockOutline: [
+    {
+      id: "default",
+      order: 1,
+      title: "Procjena timske dinamike",
+      questionCount: 1,
+      questionIds: ["question-2"],
+    },
+  ],
+});
+
+assert.equal(mismatchedBlockHandoff.questionCountMatchesBlockOutline, false);
+assert.equal(mismatchedBlockHandoff.warningCode, "unexpected_question_count");
 
 assert.match(routeSource, /loadTeamAssessmentRunHandoff/);
 assert.match(routeSource, /handoff\.attemptStatus/);
 assert.match(routeSource, /handoff\.activeQuestionCount/);
+assert.match(routeSource, /handoff\.blockOutlineCount/);
 assert.match(routeSource, /handoff\.questionOutlineCount/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.doesNotMatch(routeSource, /AssessmentForm/);
 assert.doesNotMatch(routeSource, /question_order/);
+assert.doesNotMatch(routeSource, /blockOutline\.map/);
 assert.doesNotMatch(routeSource, /questionOutline\.questions/);
 assert.doesNotMatch(routeSource, /localizedTitle/);
 assert.doesNotMatch(routeSource, /localizedStem/);

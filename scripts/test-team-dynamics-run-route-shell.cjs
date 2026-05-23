@@ -59,6 +59,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   buildTeamAssessmentExecutionStartedPatch,
+  buildTeamAssessmentBlockOutline,
   buildTeamAssessmentQuestionOutline,
   buildTeamAssessmentRunHandoff,
   resolveTeamAssessmentExecutionShellState,
@@ -113,6 +114,8 @@ assert.doesNotMatch(routeSource, /AI report/i);
 assert.doesNotMatch(routeSource, /Team Fit/);
 assert.doesNotMatch(routeSource, /questions=/);
 assert.doesNotMatch(routeSource, /questionOutline\.questions/);
+assert.doesNotMatch(routeSource, /blockOutline\.map/);
+assert.doesNotMatch(routeSource, /handoff\.blockOutline\[/);
 assert.doesNotMatch(routeSource, /localizedTitle/);
 assert.doesNotMatch(routeSource, /localizedStem/);
 assert.doesNotMatch(routeSource, /answer options/i);
@@ -123,12 +126,15 @@ assert.match(routeSource, /handoff\.placeholderMessage/);
 assert.match(routeSource, /handoff\.packageSlug/);
 assert.match(routeSource, /handoff\.attemptStatus/);
 assert.match(routeSource, /handoff\.activeQuestionCount/);
+assert.match(routeSource, /handoff\.blockOutlineCount/);
 assert.match(routeSource, /handoff\.questionOutlineCount/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.match(routeSource, /Rjesavanje procjene jos nije omoguceno u ovoj verziji\./);
+assert.match(routeSource, /Sekcije su pripremljene za sljedeci korak:/);
 assert.match(routeSource, /Pitanja su pripremljena za sljedeci korak:/);
 
 assert.match(helperSource, /export function buildTeamAssessmentExecutionStartedPatch/);
+assert.match(helperSource, /export function buildTeamAssessmentBlockOutline/);
 assert.match(helperSource, /export function buildTeamAssessmentQuestionOutline/);
 assert.match(helperSource, /export function buildTeamAssessmentRunHandoff/);
 assert.match(helperSource, /export async function markTeamAssessmentExecutionStartedIfInvited/);
@@ -264,6 +270,42 @@ assert.deepEqual(
 );
 
 assert.deepEqual(
+  buildTeamAssessmentBlockOutline({
+    testName: "Procjena timske dinamike",
+    questionOutline: {
+      orderedQuestionIds: ["question-1", "question-2"],
+      questions: [
+        {
+          id: "question-1",
+          order: 1,
+          localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_1]",
+          localizedStem: "[LICENSED_ITEM_PLACEHOLDER_1]",
+          locale: "bs",
+        },
+        {
+          id: "question-2",
+          order: 2,
+          localizedTitle: "[LICENSED_ITEM_PLACEHOLDER_2]",
+          localizedStem: "[LICENSED_ITEM_PLACEHOLDER_2]",
+          locale: "bs",
+        },
+      ],
+      locale: "bs",
+      count: 2,
+    },
+  }),
+  [
+    {
+      id: "default",
+      order: 1,
+      title: "Procjena timske dinamike",
+      questionCount: 2,
+      questionIds: ["question-1", "question-2"],
+    },
+  ],
+);
+
+assert.deepEqual(
   buildTeamAssessmentQuestionOutline({
     questions: [
       {
@@ -353,6 +395,15 @@ assert.deepEqual(
       locale: "bs",
       count: 36,
     },
+    blockOutline: [
+      {
+        id: "default",
+        order: 1,
+        title: "Procjena timske dinamike",
+        questionCount: 36,
+        questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
+      },
+    ],
   }),
   {
     teamAssessmentParticipantId: "tap-1",
@@ -378,6 +429,17 @@ assert.deepEqual(
       locale: "bs",
       count: 36,
     },
+    blockOutlineCount: 1,
+    questionCountMatchesBlockOutline: true,
+    blockOutline: [
+      {
+        id: "default",
+        order: 1,
+        title: "Procjena timske dinamike",
+        questionCount: 36,
+        questionIds: Array.from({ length: 36 }, (_, index) => `question-${index + 1}`),
+      },
+    ],
     isRunnableShellState: true,
     handoffState: "ready_placeholder",
     warningCode: null,
