@@ -14,6 +14,13 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const TEAM_ASSESSMENT_AGGREGATION_VERSION =
   "team_dynamics_minimal_aggregation_v1";
 
+export const TEAM_ASSESSMENT_AGGREGATION_ALLOWED_STATUSES = [
+  "ready",
+  "not_ready",
+  "stale",
+  "failed",
+] as const;
+
 export const TEAM_ASSESSMENT_AGGREGATION_PERSISTENCE_FAILURE_CODES = [
   "invalid_payload",
   "load_assignment_failed",
@@ -27,10 +34,7 @@ export type TeamAssessmentAggregationPersistenceFailureCode =
   (typeof TEAM_ASSESSMENT_AGGREGATION_PERSISTENCE_FAILURE_CODES)[number];
 
 export type TeamAssessmentAggregationPersistenceStatus =
-  | "ready"
-  | "not_ready"
-  | "stale"
-  | "failed";
+  (typeof TEAM_ASSESSMENT_AGGREGATION_ALLOWED_STATUSES)[number];
 
 type TeamAssessmentAssignmentRow = {
   id: string;
