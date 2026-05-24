@@ -13,6 +13,12 @@ import {
   type TeamAssessmentQuestionOutline,
 } from "@/lib/assessment/team-assessment-execution";
 import {
+  persistTeamAssessmentMinimalScoreForContext,
+  TEAM_ASSESSMENT_MINIMAL_SCORE_SCORING_VERSION,
+  type TeamAssessmentMinimalScorePersistenceFailureCode,
+  type TeamAssessmentMinimalScorePersistenceResult,
+} from "@/lib/assessment/team-assessment-score-persistence";
+import {
   loadTeamAssessmentCompletionReadinessForContext,
   persistValidatedTeamAssessmentAnswer,
   type TeamAssessmentAnswerPayload,
@@ -71,11 +77,25 @@ export type CompleteTeamAssessmentActionInput = {
   teamAssessmentParticipantId: string;
 };
 
+type CompleteTeamAssessmentPostCompletionScoringStatus =
+  | {
+      ok: true;
+      mode: "inserted" | "updated";
+      scoringVersion: string;
+    }
+  | {
+      ok: false;
+      code: TeamAssessmentMinimalScorePersistenceFailureCode;
+      reason: string;
+      scoringVersion: string;
+    };
+
 export type CompleteTeamAssessmentActionResult =
   | {
       ok: true;
       mode: "completed" | "already_completed";
       completionReadiness: TeamAssessmentCompletionReadiness;
+      postCompletionScoring?: CompleteTeamAssessmentPostCompletionScoringStatus;
     }
   | {
       ok: false;
@@ -100,6 +120,13 @@ type CompleteTeamAssessmentActionDependencies = {
       completedAt?: string;
     },
   ) => Promise<TeamAssessmentExecutionCompletionTransitionResult>;
+  persistMinimalScore?: (
+    input: {
+      context: Extract<TeamAssessmentExecutionContextResult, { ok: true }>["context"];
+      scoringVersion?: string;
+      uiOnlyItems?: Awaited<ReturnType<typeof loadTeamAssessmentUiOnlyItems>>["items"];
+    },
+  ) => Promise<TeamAssessmentMinimalScorePersistenceResult>;
 };
 
 function isNonEmptyString(value: unknown): value is string {
@@ -254,6 +281,8 @@ export async function completeTeamAssessmentAction(
     deps.loadCompletionReadiness ?? loadTeamAssessmentCompletionReadinessForContext;
   const transitionCompletion =
     deps.transitionCompletion ?? transitionTeamAssessmentExecutionToCompleted;
+  const persistMinimalScore =
+    deps.persistMinimalScore ?? persistTeamAssessmentMinimalScoreForContext;
   const user = await requireUser();
   const contextResult = await loadExecutionContext({
     teamAssessmentParticipantId: input.teamAssessmentParticipantId,
@@ -345,9 +374,35 @@ export async function completeTeamAssessmentAction(
     };
   }
 
+  let postCompletionScoring: CompleteTeamAssessmentPostCompletionScoringStatus | undefined;
+
+  if (completionResult.mode === "completed") {
+    const scorePersistenceResult = await persistMinimalScore({
+      context: contextResult.context,
+      scoringVersion: TEAM_ASSESSMENT_MINIMAL_SCORE_SCORING_VERSION,
+      uiOnlyItems: uiOnlyItems.items,
+    });
+
+    if (scorePersistenceResult.ok) {
+      postCompletionScoring = {
+        ok: true,
+        mode: scorePersistenceResult.mode,
+        scoringVersion: scorePersistenceResult.value.scoringVersion,
+      };
+    } else {
+      postCompletionScoring = {
+        ok: false,
+        code: scorePersistenceResult.code,
+        reason: scorePersistenceResult.reason,
+        scoringVersion: TEAM_ASSESSMENT_MINIMAL_SCORE_SCORING_VERSION,
+      };
+    }
+  }
+
   return {
     ok: true,
     mode: completionResult.mode,
     completionReadiness,
+    ...(postCompletionScoring ? { postCompletionScoring } : {}),
   };
 }

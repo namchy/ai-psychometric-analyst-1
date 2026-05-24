@@ -84,12 +84,14 @@ assert.match(actionSource, /loadTeamAssessmentQuestionOutline/);
 assert.match(actionSource, /loadTeamAssessmentUiOnlyItems/);
 assert.match(actionSource, /loadTeamAssessmentCompletionReadinessForContext/);
 assert.match(actionSource, /transitionTeamAssessmentExecutionToCompleted/);
+assert.match(actionSource, /persistTeamAssessmentMinimalScoreForContext/);
+assert.match(actionSource, /TEAM_ASSESSMENT_MINIMAL_SCORE_SCORING_VERSION/);
 assert.doesNotMatch(actionSource, /input\.attemptId/);
 assert.doesNotMatch(actionSource, /attempt_reports/);
 assert.doesNotMatch(actionSource, /assessment_reports/);
 assert.doesNotMatch(actionSource, /orchestrateReportsAfterAttemptCompletion/);
 assert.doesNotMatch(actionSource, /persistCompletedAssessmentResults/);
-assert.doesNotMatch(actionSource, /score/i);
+assert.doesNotMatch(actionSource, /AssessmentForm/);
 
 assert.match(componentSource, /completeTeamAssessmentAction/);
 assert.match(componentSource, /Završi procjenu/);
@@ -149,6 +151,7 @@ async function runHappyPath() {
     uiOnlyItems: 0,
     readiness: 0,
     transition: 0,
+    persistMinimalScore: 0,
   };
 
   const result = await completeTeamAssessmentAction(
@@ -228,6 +231,41 @@ async function runHappyPath() {
           completedAt: "2026-05-23T10:00:00.000Z",
         };
       },
+      persistMinimalScore: async ({ context, scoringVersion, uiOnlyItems }) => {
+        calls.persistMinimalScore += 1;
+        assert.equal(context.teamAssessmentParticipantId, "tap-1");
+        assert.equal(context.attemptId, "attempt-1");
+        assert.equal(scoringVersion, "team_dynamics_minimal_likert_v1");
+        assert.equal(Array.isArray(uiOnlyItems), true);
+        assert.equal(uiOnlyItems.length, 2);
+
+        return {
+          ok: true,
+          mode: "inserted",
+          value: {
+            id: "score-1",
+            teamAssessmentParticipantId: "tap-1",
+            attemptId: "attempt-1",
+            scoringVersion: "team_dynamics_minimal_likert_v1",
+            scoringStatus: "scored",
+            calculatedAt: "2026-05-23T10:00:05.000Z",
+            sourceCompletedAt: "2026-05-23T10:00:00.000Z",
+            score: {
+              status: "scored",
+              rawTotal: 6,
+              meanRaw: 3,
+              score0To100: 66.6666666667,
+              supportedQuestionCount: 2,
+              scoredQuestionCount: 2,
+              ignoredInvalidAnswerCount: 0,
+              scaleMin: 1,
+              scaleMax: 4,
+              scoreValueSource: "single_select_likert",
+              missingQuestionIds: [],
+            },
+          },
+        };
+      },
     },
   );
 
@@ -235,12 +273,18 @@ async function runHappyPath() {
     ok: true,
     mode: "completed",
     completionReadiness: readinessReady,
+    postCompletionScoring: {
+      ok: true,
+      mode: "inserted",
+      scoringVersion: "team_dynamics_minimal_likert_v1",
+    },
   });
   assert.deepEqual(calls, {
     questionOutline: 1,
     uiOnlyItems: 1,
     readiness: 1,
     transition: 1,
+    persistMinimalScore: 1,
   });
 }
 
@@ -305,6 +349,9 @@ Promise.resolve()
         loadCompletionReadiness: async () => readinessNotReady,
         transitionCompletion: async () => {
           throw new Error("transitionCompletion should not run when readiness is false.");
+        },
+        persistMinimalScore: async () => {
+          throw new Error("persistMinimalScore should not run when readiness is false.");
         },
       },
     );
@@ -377,6 +424,9 @@ Promise.resolve()
         transitionCompletion: async () => {
           throw new Error("transitionCompletion should not run when invalid saved answers block readiness.");
         },
+        persistMinimalScore: async () => {
+          throw new Error("persistMinimalScore should not run when invalid saved answers block readiness.");
+        },
       },
     );
 
@@ -429,6 +479,9 @@ Promise.resolve()
         },
         transitionCompletion: async () => {
           throw new Error("transitionCompletion should not run for already completed state.");
+        },
+        persistMinimalScore: async () => {
+          throw new Error("persistMinimalScore should not run for already completed state.");
         },
       },
     );
@@ -490,6 +543,96 @@ Promise.resolve()
       code: "wrapper_not_completable",
       reason: "Team Dynamics wrapper must be started before completion is allowed.",
     });
+
+    let scorePersistenceCalledInFailureScenario = 0;
+
+    const scorePersistenceFailureResult = await completeTeamAssessmentAction(
+      {
+        teamAssessmentParticipantId: "tap-1",
+      },
+      {
+        requireUser: async () => ({ id: "user-1" }),
+        loadExecutionContext: async () => ({
+          ok: true,
+          context: startedContext,
+        }),
+        loadQuestionOutline: async () => ({
+          orderedQuestionIds: ["question-1", "question-2"],
+          questions: [],
+          locale: "bs",
+          count: 2,
+        }),
+        loadUiOnlyItems: async () => ({
+          items: [
+            {
+              mode: "ui_only_ready",
+              questionId: "question-1",
+              order: 1,
+              localizedTitle: "Q1",
+              localizedStem: "Q1",
+              optionIds: ["option-1", "option-2"],
+              options: [],
+              locale: "bs",
+              isUiOnlySkeleton: true,
+            },
+            {
+              mode: "ui_only_ready",
+              questionId: "question-2",
+              order: 2,
+              localizedTitle: "Q2",
+              localizedStem: "Q2",
+              optionIds: ["option-3", "option-4"],
+              options: [],
+              locale: "bs",
+              isUiOnlySkeleton: true,
+            },
+          ],
+          itemCount: 2,
+          unsupportedCount: 0,
+          mode: "ready",
+        }),
+        resolveShellState: ({ route, wrapperStatus }) => ({
+          kind: "run_started",
+          route,
+          wrapperStatus,
+          isRunnable: true,
+          shouldTransitionToStarted: false,
+          title: "",
+          message: "",
+        }),
+        loadCompletionReadiness: async () => readinessReady,
+        transitionCompletion: async () => ({
+          ok: true,
+          mode: "completed",
+          wrapperStatus: "completed",
+          attemptStatus: "completed",
+          completedAt: "2026-05-23T10:00:00.000Z",
+        }),
+        persistMinimalScore: async ({ context, scoringVersion }) => {
+          scorePersistenceCalledInFailureScenario += 1;
+          assert.equal(context.teamAssessmentParticipantId, "tap-1");
+          assert.equal(scoringVersion, "team_dynamics_minimal_likert_v1");
+          return {
+            ok: false,
+            code: "load_existing_failed",
+            reason: "Unable to inspect existing Team Dynamics member score snapshot.",
+          };
+        },
+      },
+    );
+
+    assert.deepEqual(scorePersistenceFailureResult, {
+      ok: true,
+      mode: "completed",
+      completionReadiness: readinessReady,
+      postCompletionScoring: {
+        ok: false,
+        code: "load_existing_failed",
+        reason: "Unable to inspect existing Team Dynamics member score snapshot.",
+        scoringVersion: "team_dynamics_minimal_likert_v1",
+      },
+    });
+    assert.equal(scorePersistenceCalledInFailureScenario, 1);
 
     console.log("test-team-dynamics-completion-action: ok");
   })
