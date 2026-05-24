@@ -98,6 +98,9 @@ assert.match(routeSource, /loadTeamAssessmentRunHandoff/);
 assert.match(routeSource, /markTeamAssessmentExecutionStartedIfInvited/);
 assert.match(routeSource, /resolveTeamAssessmentExecutionShellState/);
 assert.match(routeSource, /requireAuthenticatedUser/);
+assert.match(routeSource, /TeamDynamicsMixedRunPreview/);
+assert.match(routeSource, /handoff\.runShellVariant === "mixed_runtime_preview"/);
+assert.match(routeSource, /handoff\.mixedRuntimeHandoff/);
 assert.match(routeSource, /teamAssessmentParticipantId: params\.teamAssessmentParticipantId/);
 assert.match(routeSource, /userId: user\.id/);
 assert.match(routeSource, /if \(!access\.ok\) \{\s+notFound\(\);\s+\}/);
@@ -142,6 +145,8 @@ assert.match(routeSource, /handoff\.savedSelectedOptionIdsByQuestionId/);
 assert.match(routeSource, /handoff\.savedAnswerQuestionIds/);
 assert.match(routeSource, /handoff\.savedAnswerCount/);
 assert.match(routeSource, /handoff\.completionReadiness/);
+assert.match(routeSource, /4 kratka bloka, oko 12[-–]15 minuta/);
+assert.match(routeSource, /bez spremanja odgovora/);
 assert.match(routeSource, /Ovaj wrapper je u sigurnom post-completion ili unavailable stanju\./);
 assert.match(routeSource, /Aktivni run više nije dostupan za ovaj wrapper i pitanja se više ne prikazuju\./);
 assert.match(routeSource, /teamAssessmentParticipantId=\{handoff\.teamAssessmentParticipantId\}/);
@@ -760,6 +765,8 @@ assert.deepEqual(
       isReadyForCompletion: false,
       readinessStatus: "not_ready",
     },
+    runShellVariant: "legacy_scaffold",
+    mixedRuntimeHandoff: null,
     isRunnableShellState: true,
     handoffState: "ready_placeholder",
     warningCode: null,

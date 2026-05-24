@@ -6,8 +6,15 @@ import {
   normalizeAssessmentLocale,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
+import type {
+  TeamDynamicsMixedRuntimeHandoff,
+  TeamDynamicsMixedRuntimeHandoffBlock,
+} from "@/lib/assessment/team-dynamics-mixed-runtime";
 import type { TeamAssessmentCompletionReadiness } from "@/lib/assessment/team-assessment-responses";
-import { TEAM_DYNAMICS_TEST_SLUG } from "@/lib/assessment/team-dynamics";
+import {
+  isTeamDynamicsTestSlug,
+  TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG,
+} from "@/lib/assessment/team-dynamics";
 import type {
   TeamAssessmentAssignmentStatus,
   TeamAssessmentParticipantStatus,
@@ -209,6 +216,10 @@ export type TeamAssessmentUiOnlySkeletonMode =
   | "no_options"
   | "unsupported_format";
 
+export type TeamAssessmentRunShellVariant =
+  | "legacy_scaffold"
+  | "mixed_runtime_preview";
+
 export type TeamAssessmentRunHandoff = {
   teamAssessmentParticipantId: string;
   teamAssessmentAssignmentId: string;
@@ -233,6 +244,8 @@ export type TeamAssessmentRunHandoff = {
   savedAnswerQuestionIds: string[];
   savedAnswerCount: number;
   completionReadiness: TeamAssessmentCompletionReadiness;
+  runShellVariant: TeamAssessmentRunShellVariant;
+  mixedRuntimeHandoff: TeamDynamicsMixedRuntimeHandoff | null;
   isRunnableShellState: boolean;
   handoffState: TeamAssessmentRunHandoffState;
   warningCode: TeamAssessmentRunHandoffWarningCode | null;
@@ -585,6 +598,25 @@ export function buildTeamAssessmentBlockOutline(input: {
   ];
 }
 
+export function buildTeamAssessmentMixedRuntimeBlockOutline(input: {
+  blocks: TeamDynamicsMixedRuntimeHandoffBlock[];
+  items: TeamDynamicsMixedRuntimeHandoff["items"];
+}): TeamAssessmentBlockOutlineEntry[] {
+  const questionIdByCode = new Map(
+    input.items.map((item) => [item.code, item.questionId] as const),
+  );
+
+  return input.blocks.map((block) => ({
+    id: block.blockKey,
+    order: block.displayOrder,
+    title: block.title,
+    questionCount: block.itemCount,
+    questionIds: block.itemCodes
+      .map((itemCode) => questionIdByCode.get(itemCode) ?? null)
+      .filter((questionId): questionId is string => typeof questionId === "string"),
+  }));
+}
+
 export function buildTeamAssessmentUiOnlyItems(input: {
   questionOutline: TeamAssessmentQuestionOutline;
   locale?: AssessmentLocale | null;
@@ -704,7 +736,11 @@ export function buildTeamAssessmentRunHandoff(input: {
   savedAnswerQuestionIds: string[];
   savedAnswerCount: number;
   completionReadiness: TeamAssessmentCompletionReadiness;
+  runShellVariant?: TeamAssessmentRunShellVariant;
+  mixedRuntimeHandoff?: TeamDynamicsMixedRuntimeHandoff | null;
 }): TeamAssessmentRunHandoff {
+  const expectedQuestionCount =
+    input.runShellVariant === "mixed_runtime_preview" ? 48 : 36;
   const questionCountMatchesActive = input.activeQuestionCount === input.questionOutline.count;
   const orderedQuestionIdsFromBlocks = input.blockOutline.flatMap((block) => block.questionIds);
   const questionCountMatchesBlockOutline =
@@ -713,7 +749,7 @@ export function buildTeamAssessmentRunHandoff(input: {
       (questionId, index) => questionId === input.questionOutline.orderedQuestionIds[index],
     );
   const isUnexpectedQuestionCount =
-    input.activeQuestionCount !== 36 ||
+    input.activeQuestionCount !== expectedQuestionCount ||
     questionCountMatchesActive === false ||
     questionCountMatchesBlockOutline === false;
   let handoffState: TeamAssessmentRunHandoffState = "ready_placeholder";
@@ -752,6 +788,8 @@ export function buildTeamAssessmentRunHandoff(input: {
     savedAnswerQuestionIds: input.savedAnswerQuestionIds,
     savedAnswerCount: input.savedAnswerCount,
     completionReadiness: input.completionReadiness,
+    runShellVariant: input.runShellVariant ?? "legacy_scaffold",
+    mixedRuntimeHandoff: input.mixedRuntimeHandoff ?? null,
     isRunnableShellState: input.shellState.isRunnable,
     handoffState,
     warningCode: isUnexpectedQuestionCount ? "unexpected_question_count" : null,
@@ -817,7 +855,7 @@ export function buildTeamAssessmentExecutionContext(input: {
     return fail("assignment_inactive", "Team assessment assignment is not active.");
   }
 
-  if (assignment.package_slug !== TEAM_DYNAMICS_TEST_SLUG) {
+  if (!isTeamDynamicsTestSlug(assignment.package_slug)) {
     return fail("assignment_wrong_package", "Team assessment assignment is not a Team Dynamics package.");
   }
 
@@ -850,7 +888,7 @@ export function buildTeamAssessmentExecutionContext(input: {
 
   const test = normalizeRelation(attempt.tests);
 
-  if (!test || test.id !== attempt.test_id || test.slug !== TEAM_DYNAMICS_TEST_SLUG) {
+  if (!test || test.id !== attempt.test_id || !isTeamDynamicsTestSlug(test.slug)) {
     return fail("attempt_wrong_test", "Linked attempt is not a Team Dynamics attempt.");
   }
 
@@ -1368,7 +1406,7 @@ export async function loadTeamAssessmentRunHandoff(input: {
   shellState: TeamAssessmentExecutionShellState;
 }): Promise<TeamAssessmentRunHandoff> {
   if (
-    input.context.test.slug !== TEAM_DYNAMICS_TEST_SLUG ||
+    !isTeamDynamicsTestSlug(input.context.test.slug) ||
     input.context.test.status !== "active" ||
     input.context.test.isActive !== true
   ) {
@@ -1390,6 +1428,45 @@ export async function loadTeamAssessmentRunHandoff(input: {
     testId: input.context.test.id,
     locale: input.context.locale,
   });
+  const isFinalMixedRuntimeSlug = input.context.test.slug === TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG;
+
+  if (isFinalMixedRuntimeSlug) {
+    const { loadTeamDynamicsMixedRuntimeHandoff } = await import(
+      "@/lib/assessment/team-dynamics-mixed-runtime"
+    );
+    const mixedRuntimeHandoff = await loadTeamDynamicsMixedRuntimeHandoff({
+      locale: input.context.locale,
+    });
+
+    return buildTeamAssessmentRunHandoff({
+      context: input.context,
+      shellState: input.shellState,
+      activeQuestionCount: count ?? 0,
+      questionOutline,
+      blockOutline: buildTeamAssessmentMixedRuntimeBlockOutline({
+        blocks: mixedRuntimeHandoff.blocks,
+        items: mixedRuntimeHandoff.items,
+      }),
+      uiOnlyItems: [],
+      uiOnlyItemCount: 0,
+      uiOnlyUnsupportedCount: 0,
+      uiOnlySkeletonMode: "unsupported_format",
+      savedSelectedOptionIdsByQuestionId: {},
+      savedAnswerQuestionIds: [],
+      savedAnswerCount: 0,
+      completionReadiness: {
+        supportedQuestionCount: 0,
+        savedValidAnswerCount: 0,
+        missingQuestionIds: [],
+        invalidSavedAnswerCount: 0,
+        isReadyForCompletion: false,
+        readinessStatus: "no_supported_items",
+      },
+      runShellVariant: "mixed_runtime_preview",
+      mixedRuntimeHandoff,
+    });
+  }
+
   const blockOutline = buildTeamAssessmentBlockOutline({
     testName: input.context.test.name,
     questionOutline,
@@ -1430,5 +1507,7 @@ export async function loadTeamAssessmentRunHandoff(input: {
     savedAnswerQuestionIds: savedAnswerState.loadedQuestionIds,
     savedAnswerCount: savedAnswerState.loadedCount,
     completionReadiness,
+    runShellVariant: "legacy_scaffold",
+    mixedRuntimeHandoff: null,
   });
 }

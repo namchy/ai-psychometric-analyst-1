@@ -88,6 +88,7 @@ const routeSource = fs.readFileSync(
 );
 
 assert.match(helperSource, /export function buildTeamAssessmentRunHandoff/);
+assert.match(helperSource, /export function buildTeamAssessmentMixedRuntimeBlockOutline/);
 assert.match(helperSource, /export async function loadTeamAssessmentRunHandoff/);
 assert.match(helperSource, /activeQuestionCount/);
 assert.match(helperSource, /orderedQuestionIds/);
@@ -102,6 +103,8 @@ assert.match(helperSource, /savedSelectedOptionIdsByQuestionId/);
 assert.match(helperSource, /savedAnswerQuestionIds/);
 assert.match(helperSource, /savedAnswerCount/);
 assert.match(helperSource, /completionReadiness/);
+assert.match(helperSource, /runShellVariant/);
+assert.match(helperSource, /mixedRuntimeHandoff/);
 assert.match(helperSource, /optionIds/);
 assert.match(helperSource, /isUiOnlySkeleton/);
 assert.match(helperSource, /localizedTitle/);
@@ -543,6 +546,8 @@ assert.deepEqual(completedHandoff.completionReadiness, {
   isReadyForCompletion: false,
   readinessStatus: "no_supported_items",
 });
+assert.equal(completedHandoff.runShellVariant, "legacy_scaffold");
+assert.equal(completedHandoff.mixedRuntimeHandoff, null);
 assert.deepEqual(
   completedHandoff.uiOnlyItems.map((item) => item.questionId),
   ["question-1", "question-2"],
@@ -630,6 +635,8 @@ assert.deepEqual(warningHandoff.completionReadiness, {
   isReadyForCompletion: false,
   readinessStatus: "not_ready",
 });
+assert.equal(warningHandoff.runShellVariant, "legacy_scaffold");
+assert.equal(warningHandoff.mixedRuntimeHandoff, null);
 assert.deepEqual(
   warningHandoff.uiOnlyItems.map((item) => item.questionId),
   ["question-1", "question-2"],
@@ -690,8 +697,13 @@ const mismatchedBlockHandoff = buildTeamAssessmentRunHandoff({
 
 assert.equal(mismatchedBlockHandoff.questionCountMatchesBlockOutline, false);
 assert.equal(mismatchedBlockHandoff.warningCode, "unexpected_question_count");
+assert.equal(mismatchedBlockHandoff.runShellVariant, "legacy_scaffold");
+assert.equal(mismatchedBlockHandoff.mixedRuntimeHandoff, null);
 
 assert.match(routeSource, /loadTeamAssessmentRunHandoff/);
+assert.match(routeSource, /TeamDynamicsMixedRunPreview/);
+assert.match(routeSource, /handoff\.runShellVariant === "mixed_runtime_preview"/);
+assert.match(routeSource, /handoff\.mixedRuntimeHandoff/);
 assert.match(routeSource, /handoff\.attemptStatus/);
 assert.match(routeSource, /handoff\.activeQuestionCount/);
 assert.match(routeSource, /handoff\.blockOutlineCount/);

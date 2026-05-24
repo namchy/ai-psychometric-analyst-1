@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TeamDynamicsMixedRunPreview } from "@/components/assessment/team-dynamics-mixed-run-preview";
 import { TeamDynamicsRunUiSkeleton } from "@/components/assessment/team-dynamics-run-ui-skeleton";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import {
@@ -54,6 +55,9 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
     shellState,
   });
 
+  const isMixedRuntimePreview =
+    handoff.runShellVariant === "mixed_runtime_preview" && handoff.mixedRuntimeHandoff !== null;
+
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-10 sm:px-6 lg:px-8">
       <section className="space-y-6 rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,245,249,0.95))] p-6 shadow-[0_24px_54px_rgba(15,23,42,0.08)] sm:p-8">
@@ -83,7 +87,9 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
               Procjena timske dinamike
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-700 sm:text-[15px]">
-              Ova procjena je dio timske procjene, ne individualni psihološki profil.
+              {isMixedRuntimePreview
+                ? "4 kratka bloka, oko 12–15 minuta. Ovaj prikaz je kontrolisani UI-only preview finalnog mixed-format runtime handoffa."
+                : "Ova procjena je dio timske procjene, ne individualni psihološki profil."}
             </p>
           </div>
         </div>
@@ -125,19 +131,34 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
               <p className="text-sm leading-6 text-slate-700">
                 {handoff.placeholderMessage}
               </p>
-              <p className="text-sm leading-6 text-slate-700">
-                Rjesavanje procjene jos nije omoguceno u ovoj verziji.
-              </p>
-              <p className="text-sm leading-6 text-slate-700">
-                Ucitani su osnovni execution podaci za {handoff.testName} i broj aktivnih pitanja:{" "}
-                {handoff.activeQuestionCount}.
-              </p>
-              <p className="text-sm leading-6 text-slate-700">
-                Sekcije su pripremljene za sljedeci korak: {handoff.blockOutlineCount}.
-              </p>
-              <p className="text-sm leading-6 text-slate-700">
-                Pitanja su pripremljena za sljedeci korak: {handoff.questionOutlineCount}.
-              </p>
+              {isMixedRuntimePreview ? (
+                <>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Finalni mixed-format runtime handoff je ucitan iz imported DB shape-a i prikazuje
+                    se kroz lokalni preview bez spremanja odgovora.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Ucitana su 4 bloka i {handoff.activeQuestionCount} assessment jedinica za{" "}
+                    {handoff.testName}.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Rjesavanje procjene jos nije omoguceno u ovoj verziji.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Ucitani su osnovni execution podaci za {handoff.testName} i broj aktivnih pitanja:{" "}
+                    {handoff.activeQuestionCount}.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Sekcije su pripremljene za sljedeci korak: {handoff.blockOutlineCount}.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Pitanja su pripremljena za sljedeci korak: {handoff.questionOutlineCount}.
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -160,19 +181,27 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
           ) : null}
         </section>
 
-        <TeamDynamicsRunUiSkeleton
-          teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
-          wrapperStatus={handoff.wrapperStatus}
-          uiOnlyItems={handoff.uiOnlyItems}
-          uiOnlyItemCount={handoff.uiOnlyItemCount}
-          uiOnlyUnsupportedCount={handoff.uiOnlyUnsupportedCount}
-          uiOnlySkeletonMode={handoff.uiOnlySkeletonMode}
-          savedSelectedOptionIdsByQuestionId={handoff.savedSelectedOptionIdsByQuestionId}
-          savedAnswerQuestionIds={handoff.savedAnswerQuestionIds}
-          savedAnswerCount={handoff.savedAnswerCount}
-          completionReadiness={handoff.completionReadiness}
-          isRunnableShellState={handoff.isRunnableShellState}
-        />
+        {isMixedRuntimePreview ? (
+          <TeamDynamicsMixedRunPreview
+            runtimeHandoff={handoff.mixedRuntimeHandoff!}
+            wrapperStatus={handoff.wrapperStatus}
+            isRunnableShellState={handoff.isRunnableShellState}
+          />
+        ) : (
+          <TeamDynamicsRunUiSkeleton
+            teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
+            wrapperStatus={handoff.wrapperStatus}
+            uiOnlyItems={handoff.uiOnlyItems}
+            uiOnlyItemCount={handoff.uiOnlyItemCount}
+            uiOnlyUnsupportedCount={handoff.uiOnlyUnsupportedCount}
+            uiOnlySkeletonMode={handoff.uiOnlySkeletonMode}
+            savedSelectedOptionIdsByQuestionId={handoff.savedSelectedOptionIdsByQuestionId}
+            savedAnswerQuestionIds={handoff.savedAnswerQuestionIds}
+            savedAnswerCount={handoff.savedAnswerCount}
+            completionReadiness={handoff.completionReadiness}
+            isRunnableShellState={handoff.isRunnableShellState}
+          />
+        )}
       </section>
     </main>
   );
