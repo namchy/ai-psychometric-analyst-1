@@ -51,7 +51,7 @@ Komande:
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Djelimično završeno / Read-only execution shell wiring završen | Team module / Runtime + Import | Završena su tri uska sloja: mixed-format read/validation support, execution-ready package shape (`teamDynamicsExecutionSpec`) i read-only execution shell wiring za budući runtime/UI sloj. Pending ostaju DB import support, execution UI, response persistence/capture, scoring runtime, team aggregation i report layer. |
-| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Aggregation storage decision zaključana | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper i Team Dynamics aggregation storage decision / persistence boundary. Sljedeći uski korak: Team Dynamics aggregation snapshot persistence slice: dodati dedicated persistence model za team-level aggregation snapshot prema zapisanoj storage odluci, bez UI prikaza, bez report orchestration-a, bez attempt_reports, bez assessment_reports, bez AI/report generation-a i bez Team Fit outputa. |
+| P1        | Team Dynamics data model scaffold and placeholder package support | Djelimično završeno / Aggregation snapshot persistence uveden | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary i Team Dynamics aggregation snapshot persistence slice. Sljedeći uski korak: Team Dynamics aggregation persistence read/verification layer: dodati server-only read/helper ili testni verification sloj koji može sigurno pročitati persisted team-level aggregation snapshot po team assessment assignmentu i aggregation versionu, bez UI prikaza, bez report orchestration-a, bez attempt_reports, bez assessment_reports, bez AI/report generation-a i bez Team Fit outputa. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -1385,6 +1385,52 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
   - nema Team Fit outputa
   - nema promjene scoring/helper code-a
 
+**Completion note — Team Dynamics aggregation snapshot persistence slice:**
+- Završen je prvi dedicated Team Dynamics team-level aggregation persistence slice.
+- Dodana je migracija `supabase/migrations/20260524110000_add_team_assessment_aggregation_snapshots.sql`.
+- Dodana je tabela `public.team_assessment_aggregation_snapshots`.
+- Tabela čuva deterministic team-level aggregation snapshot po `team_assessment_assignment_id`.
+- Tabela koristi `aggregation_version` za verzionisanje.
+- Tabela ima denormalized `team_id`.
+- Tabela čuva `aggregation_status`, `source_scoring_version`, `source_score_snapshot_ids`, count polja, `missing_completed_score_participant_ids`, score summary polja i `aggregation_snapshot`.
+- Dodani su constrainti za verzije, status, non-negative count polja i score range 0..100.
+- Dodan je unique indeks za jedan logical current row po `team_assessment_assignment_id + aggregation_version`.
+- Dodani su supporting indeksi za assignment, team, status i calculated timestamp.
+- Uključen je RLS.
+- Read policy prati organization membership boundary preko assignment -> team -> organization.
+- Dodan je server-only helper `persistTeamAssessmentAggregationSnapshot(...)`.
+- Helper je implementiran u `lib/assessment/team-assessment-aggregation-persistence.ts`.
+- Helper koristi postojeći `loadTeamAssessmentAggregationDraft(...)` kao source.
+- Helper koristi postojeći `TEAM_ASSESSMENT_MINIMAL_SCORE_SCORING_VERSION`.
+- Helper mapira draft `ready` u persisted `ready`.
+- Helper mapira draft `not_ready` u persisted `not_ready`.
+- `stale` i `failed` su dozvoljeni storage statusi za buduće slice-e, ali se ne koriste runtime u ovom slice-u.
+- Persistence je idempotentna:
+  - prvi upis vraća `inserted`
+  - ponovni upis za isti assignment + aggregationVersion vraća `updated`
+  - isti row se reuse-a bez duplikata
+- Helper ne piše u `attempt_reports`.
+- Helper ne piše u `assessment_reports`.
+- Helper ne mutira `team_assessment_participant_scores`.
+- Helper ne mutira `responses`.
+- Dodan je test `scripts/test-team-dynamics-aggregation-persistence.cjs`.
+- Guardrail potvrda:
+  - Nema UI score prikaza.
+  - Nema admin score prikaza.
+  - Nema Team Dynamics reporta.
+  - Nema report orchestration-a.
+  - Nema `attempt_reports`.
+  - Nema `assessment_reports`.
+  - Nema AI/report generation-a.
+  - Nema Team Fit outputa.
+  - Nema consensus/disagreement metrika.
+  - Nema autosave-a.
+  - Nema save-on-selecta.
+  - Nema `AssessmentForm`.
+  - Nema promjene completion actiona.
+  - Nema promjene member score persistence logike.
+  - Nema promjene response persistence logike.
+
 **Decision note — Team Dynamics scoring storage decision (docs/spec):**
 - Zaključano je da budući Team Dynamics member-level minimal score ne ide u `attempt_reports`, ne ide u `assessment_reports` i ne ide kao direktna mutacija `responses`.
 - Preferirani budući ownership sloj je dedicated model, npr. `team_assessment_participant_scores`, vezan za `team_assessment_participant_id` i interni `attempt_id`.
@@ -1392,7 +1438,7 @@ Postojeći `team_dynamics_v1_strong` (4 skale / 36 pitanja) ostaje tehnički sca
 - Ovaj slice je docs/spec-only: nema code promjena, nema DB migracije, nema runtime persistence-a, nema aggregation-a i nema report orchestration-a.
 
 **Sljedeći korak:**  
-Team Dynamics aggregation snapshot persistence slice: dodati dedicated persistence model za team-level aggregation snapshot prema zapisanoj storage odluci, bez UI prikaza, bez report orchestration-a, bez attempt_reports, bez assessment_reports, bez AI/report generation-a i bez Team Fit outputa.
+Team Dynamics aggregation persistence read/verification layer: dodati server-only read/helper ili testni verification sloj koji može sigurno pročitati persisted team-level aggregation snapshot po team assessment assignmentu i aggregation versionu, bez UI prikaza, bez report orchestration-a, bez attempt_reports, bez assessment_reports, bez AI/report generation-a i bez Team Fit outputa.
 
 ---
 
@@ -3855,6 +3901,13 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-24 — Team Dynamics aggregation snapshot persistence slice
+
+Završeno:
+
+* Team Dynamics sada ima dedicated persistence sloj za deterministic team-level aggregation snapshot kroz tabelu `team_assessment_aggregation_snapshots` i server-only helper koji insertuje ili update-uje snapshot po team assessment assignmentu i aggregation versionu.
+* Sloj ostaje bez UI-a, report orchestration-a, `attempt_reports`, `assessment_reports`, AI-ja, Team Fit outputa i consensus/disagreement metrika.
 
 ### 2026-05-24 — Team Dynamics aggregation storage decision / persistence boundary
 

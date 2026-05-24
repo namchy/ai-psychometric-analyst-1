@@ -610,6 +610,17 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - Team Fit output
 - promjenu scoring helper code-a
 
+### Implementation note (2026-05-24)
+
+- Prvi Team Dynamics aggregation snapshot persistence slice je sada implementiran.
+- Uvedena je dedicated tabela `team_assessment_aggregation_snapshots`.
+- Uveden je server-only helper `persistTeamAssessmentAggregationSnapshot(...)`.
+- Idempotency je vezan za `team_assessment_assignment_id + aggregation_version`:
+  - prvi persist insertuje row
+  - ponovni persist update-uje isti logical row
+- Storage statusi ostaju `ready`, `not_ready`, `stale`, `failed`, dok runtime u ovom uskom slice-u mapira draft na `ready` ili `not_ready`.
+- Slice ostaje bez UI prikaza, bez report orchestration-a, bez `attempt_reports`, bez `assessment_reports`, bez AI/report generation-a i bez Team Fit outputa.
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
