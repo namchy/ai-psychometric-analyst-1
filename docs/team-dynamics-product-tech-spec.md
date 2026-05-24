@@ -535,6 +535,81 @@ Preporucena polja koja dokument zakljucava, ali ne implementira:
   - AI/report generation
   - Team Fit output
 
+## Team-level aggregation storage decision / persistence boundary
+
+Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynamics aggregation snapshot-a. Ovo nije implementation task i ne uvodi DB schema, migraciju, runtime write path, report orchestration, AI/report generation ni Team Fit output.
+
+### Zakljucana storage odluka
+
+- Buduci Team Dynamics team-level aggregation snapshot ne ide u `attempt_reports`.
+- Buduci Team Dynamics team-level aggregation snapshot ne ide u `assessment_reports`.
+- Buduci Team Dynamics team-level aggregation snapshot ne ide kao direktna mutacija `team_assessment_participant_scores`.
+- Buduci Team Dynamics team-level aggregation snapshot ne ide kao direktna mutacija `responses`.
+- Preferirani storage model je zaseban ownership sloj, npr. `team_assessment_aggregation_snapshots`.
+- Canonical ownership key treba biti `team_assessment_assignment_id`.
+- `team_id` moze biti prisutan kao denormalized traceability field.
+- Buduci model treba biti vezan za `aggregation_version`.
+- Taj sloj cuva deterministic aggregation snapshot izveden iz completed member-level score snapshotova.
+- Taj sloj nije report artefakt.
+- Taj sloj nije AI artefakt.
+- Taj sloj nije Team Fit output.
+
+### Preporucena V1 polja
+
+- `team_assessment_assignment_id`
+- `team_id`
+- `aggregation_version`
+- `aggregation_status`
+- `source_scoring_version`
+- `source_score_snapshot_ids`
+- `participant_count`
+- `completed_participant_count`
+- `included_score_count`
+- `missing_completed_score_participant_ids`
+- `mean_score_0_100`
+- `min_score_0_100`
+- `max_score_0_100`
+- `range_score_0_100`
+- `aggregation_snapshot`
+- `calculated_at`
+- `created_at`
+- `updated_at`
+
+### Preporuceni V1 statusi
+
+- `ready`
+- `not_ready`
+- `stale`
+- `failed`
+
+### Uniqueness i stale politika
+
+- Buduci model treba da cuva jedan current row po `team_assessment_assignment_id + aggregation_version`.
+- Recalculation za isti `aggregation_version` treba da update-uje isti logical row.
+- Buduce verzije smiju koegzistirati kroz novi `aggregation_version`.
+- Ako se member score snapshot promijeni nakon team aggregation snapshot-a, aggregation moze postati `stale` ili biti recalculated u buducem persistence slice-u.
+- Ovaj docs/spec slice ne implementira stale mark ni recalculation runtime.
+
+### Privacy guardrails
+
+- Individualni member scorevi se ne prikazuju u admin UI-u.
+- Individualni odgovori se ne prikazuju kroz aggregation sloj.
+- Buduci team-level report smije koristiti samo agregirane vrijednosti i disagreement/coverage signale, ne raw individual answers.
+
+### Ovaj slice ne uvodi
+
+- DB migraciju
+- novu tabelu sada
+- persistence helper
+- runtime write
+- UI prikaz
+- report orchestration
+- `attempt_reports`
+- `assessment_reports`
+- AI/report generation
+- Team Fit output
+- promjenu scoring helper code-a
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
