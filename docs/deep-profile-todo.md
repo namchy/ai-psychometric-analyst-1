@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Planirano | Team module / Instrument model | Definisati finalne skale, item mapping, response format, scoring/agregaciju, consensus/disagreement logiku, report output i validation/licensing notes za `team_dynamics_assessment_v1`, uz `licensed_mode` i `adapted_mode`; SJT ostaje originalni Deep Profile modul u validacijskoj fazi. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / DB import support završen | Team module / Runtime + Import | DB import support za `team_dynamics_assessment_v1` je završen i DB-backed smoke potvrđen. Preostali dijelovi ostaju zasebni budući slice-evi: execution UI/runtime support, response capture za mixed format/SJT best-worst, scoring runtime, Team Dynamics report layer, AI/report generation i Team Fit. Sljedeći slice se treba odlučiti u chatu. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / DB import + runtime handoff read support završen | Team module / Runtime + Import | DB import support za `team_dynamics_assessment_v1` je završen i DB-backed smoke potvrđen. Mixed-format runtime handoff/read model je završen i DB-backed runtime handoff smoke potvrđen. Preostali dijelovi ostaju zasebni budući slice-evi: execution UI/runtime support, response capture za mixed format/SJT best-worst, completion readiness za mixed format, scoring runtime, Team Dynamics report layer, AI/report generation i Team Fit. Sljedeći slice se treba odlučiti u chatu. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -1834,11 +1834,49 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Dodan je read/helper za rekonstrukciju imported mixed-format runtime shape-a iz DB redova.
 - Guardrail testovi su prošireni da pokriju finalni slug `team_dynamics_assessment_v1`.
 
+**Completion note — Mixed-format Team Dynamics runtime handoff read model:**
+- Završen je server-only runtime handoff/read slice za finalni mixed-format instrument `team_dynamics_assessment_v1`.
+- Dodan je helper `lib/assessment/team-dynamics-mixed-runtime.ts`.
+- Helper čita imported DB shape iz:
+  - `public.tests`
+  - `public.test_dimensions`
+  - `public.questions`
+  - `public.answer_options`
+  - `question_localizations`
+  - `answer_option_localizations`
+- Helper targetira finalni slug `team_dynamics_assessment_v1`.
+- Glavni API uključuje:
+  - `loadTeamDynamicsMixedRuntimeDbSnapshot({ locale })`
+  - `loadTeamDynamicsMixedRuntimeHandoff({ locale })`
+  - `buildTeamDynamicsMixedRuntimeHandoff(snapshot)`
+- Runtime handoff shape sadrži:
+  - `testSlug`
+  - `assessmentKey`
+  - `importMode`
+  - `locale`
+  - `scoringMethod`
+  - `blockCount`
+  - `itemCount`
+  - `likertItemCount`
+  - `sjtScenarioCount`
+  - `outcomePulseItemCount`
+  - `blocks`
+  - `items`
+  - `unsupportedItems`
+  - `warnings`
+- Helper razlikuje Likert i SJT iteme preko imported metadata:
+  - Likert itemi očekuju `response_format = single_select_likert`
+  - SJT scenario itemi očekuju `response_format = best_worst`
+- Scenario-owned SJT option metadata ostaje očuvan kroz `items[].options[].metadata`, uključujući scenario ownership i imported scenario/scoring metadata.
+- Helper je read-only i server-only.
+- Helper ne prikazuje UI i ne uvodi response capture, scoring, report, AI ili Team Fit side-effect.
+
 **Verifikovano:**
 - Ručno primijenjena migracija kroz Supabase SQL Editor.
 - SQL provjera je potvrdila `metadata` kolone na `tests`, `test_dimensions`, `questions`, `answer_options`.
 - SQL provjera je potvrdila da `tests_scoring_method_check` dozvoljava `mixed_v1`.
 - SQL provjera je potvrdila da postoji `public.import_assessment_package(p_package jsonb)` i vraća `jsonb`.
+- `node --env-file=.env.local scripts/test-team-dynamics-assessment-v1-runtime-handoff.cjs` prolazi.
 - `node --env-file=.env.local scripts/test-team-dynamics-assessment-v1-db-import.cjs` prolazi.
 - `node scripts/validate-assessment-package.mjs assessment-packages/team_dynamics_assessment_v1` prolazi.
 - `node scripts/test-team-dynamics-assessment-v1-package.cjs` prolazi.
@@ -1848,14 +1886,40 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - `node scripts/test-report-capabilities.cjs` prolazi.
 - `npm run typecheck` prolazi.
 
+**Test coverage note:**
+Novi test:
+- `scripts/test-team-dynamics-assessment-v1-runtime-handoff.cjs`
+
+Test potvrđuje:
+- DB-backed read radi za `team_dynamics_assessment_v1`.
+- `tests.scoring_method = mixed_v1`.
+- `tests.metadata.import_mode = mixed_format_content_spec_v1`.
+- Rekonstruišu se 4 bloka u redoslijedu:
+  - `tdm-31-V1`
+  - `psychological_safety`
+  - `situational_judgment`
+  - `outcome_pulse`
+- Ukupno se čita 48 itema.
+- Čita se 31 TDM item.
+- Čita se 7 psychological safety itema.
+- Čita se 6 SJT scenarija.
+- Čitaju se 4 outcome pulse itema.
+- Likert itemi imaju per-item 4-opcijski katalog sa vrijednostima 1–4.
+- SJT itemi imaju per-item scenario-owned katalog sa 4 opcije i `best_worst` response formatom.
+- Helper ne zavisi od root/shared `options.json`.
+- Finalni slug ostaje van candidate dashboarda, standard battery i participant/HR single-test report capability flow-a.
+
 **Guardrail note:**
 Ovaj slice nije dodao:
 - UI prikaz
 - execution UI
 - response capture
-- autosave
+- save/autosave
+- completion promjene
+- completion readiness za mixed format
 - SJT best/worst persistence runtime
 - scoring runtime
+- member score persistence promjene
 - team aggregation promjene
 - Team Dynamics report
 - report orchestration
@@ -4125,6 +4189,14 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-24 — Mixed-format Team Dynamics runtime handoff read model završen
+
+Sažetak:
+
+* `team_dynamics_assessment_v1` sada ima server-only runtime read/handoff helper koji iz imported DB shape-a rekonstruiše finalni mixed-format model: 4 bloka, 48 itema, Likert per-item option kataloge i SJT scenario-owned best/worst opcije.
+* DB-backed runtime handoff smoke i guardrail testovi prolaze.
+* Execution UI, response capture, mixed-format completion readiness, scoring runtime, Team Dynamics report, AI/report generation i Team Fit ostaju odvojeni budući slice-evi.
 
 ### 2026-05-24 — Mixed-format Team Dynamics DB import support završen
 
