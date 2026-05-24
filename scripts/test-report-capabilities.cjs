@@ -154,6 +154,24 @@ function main() {
     }),
     { active: false, status: "inactive", reason: "unknown_test" },
   );
+  assert.deepEqual(
+    getReportGenerationCapability({
+      testSlug: "team_dynamics_assessment_v1",
+      audience: "participant",
+      reportType: "individual",
+      sourceType: "single_test",
+    }),
+    { active: false, status: "inactive", reason: "unknown_test" },
+  );
+  assert.deepEqual(
+    getReportGenerationCapability({
+      testSlug: "team_dynamics_assessment_v1",
+      audience: "hr",
+      reportType: "individual",
+      sourceType: "single_test",
+    }),
+    { active: false, status: "inactive", reason: "unknown_test" },
+  );
 
   const ipipPlan = planPostCompletionReportJobs({
     testSlug: "ipip-neo-120-v1",
@@ -237,6 +255,36 @@ function main() {
   assert.deepEqual(teamDynamicsPlan.jobsToEnqueue, []);
   assert.deepEqual(
     teamDynamicsPlan.lanes.map((lane) => ({
+      audience: lane.audience,
+      active: lane.capability.active,
+      status: lane.capability.status,
+      reason: lane.capability.reason,
+      shouldEnqueue: lane.shouldEnqueue,
+    })),
+    [
+      {
+        audience: "participant",
+        active: false,
+        status: "inactive",
+        reason: "unknown_test",
+        shouldEnqueue: false,
+      },
+      {
+        audience: "hr",
+        active: false,
+        status: "inactive",
+        reason: "unknown_test",
+        shouldEnqueue: false,
+      },
+    ],
+  );
+  const finalTeamDynamicsPlan = planPostCompletionReportJobs({
+    testSlug: "team_dynamics_assessment_v1",
+    existingReports: [],
+  });
+  assert.deepEqual(finalTeamDynamicsPlan.jobsToEnqueue, []);
+  assert.deepEqual(
+    finalTeamDynamicsPlan.lanes.map((lane) => ({
       audience: lane.audience,
       active: lane.capability.active,
       status: lane.capability.status,

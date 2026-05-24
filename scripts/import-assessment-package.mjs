@@ -60,13 +60,145 @@ export function createAdminSupabaseClient() {
 }
 
 export function buildImportPayload(packageData) {
-  return {
+  const payload = {
     test: packageData.test,
     dimensions: packageData.dimensions,
     items: packageData.items,
     options: packageData.options,
     prompts: packageData.prompts,
     locales: packageData.locales,
+  };
+
+  if (packageData.contentSpec) {
+    payload.content_spec = packageData.contentSpec;
+  }
+
+  if (packageData.mixedFormatImportPlan) {
+    payload.import_strategy = packageData.mixedFormatImportPlan;
+  }
+
+  return payload;
+}
+
+function coerceRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function compareByOrder(left, right) {
+  return (left.question_order ?? left.option_order ?? 0) - (right.question_order ?? right.option_order ?? 0);
+}
+
+export function buildImportedMixedFormatRuntimeShape(input) {
+  const testMetadata = coerceRecord(input.testRow?.metadata);
+  const contentSpec = coerceRecord(testMetadata.content_spec);
+  const questionRows = [...(input.questionRows ?? [])].sort(compareByOrder);
+  const optionRows = [...(input.optionRows ?? [])].sort(compareByOrder);
+  const optionsByQuestionId = new Map();
+
+  for (const option of optionRows) {
+    const rows = optionsByQuestionId.get(option.question_id) ?? [];
+    rows.push(option);
+    optionsByQuestionId.set(option.question_id, rows);
+  }
+
+  const blockOrder = Array.isArray(testMetadata.blocks)
+    ? testMetadata.blocks
+    : Array.isArray(contentSpec.assessment?.blocks)
+      ? contentSpec.assessment.blocks
+      : [];
+  const groupedQuestions = new Map();
+
+  for (const question of questionRows) {
+    const metadata = coerceRecord(question.metadata);
+    const blockKey = typeof metadata.block_key === "string" ? metadata.block_key : "unassigned";
+    const rows = groupedQuestions.get(blockKey) ?? [];
+    rows.push(question);
+    groupedQuestions.set(blockKey, rows);
+  }
+
+  const orderedBlockKeys = [
+    ...blockOrder,
+    ...[...groupedQuestions.keys()].filter((blockKey) => !blockOrder.includes(blockKey)),
+  ];
+  const units = [];
+  const optionCatalogs = {};
+
+  for (const blockKey of orderedBlockKeys) {
+    const blockSpec = coerceRecord(contentSpec.blocks?.[blockKey]);
+    const questions = [...(groupedQuestions.get(blockKey) ?? [])].sort(compareByOrder);
+
+    for (const question of questions) {
+      const metadata = coerceRecord(question.metadata);
+      const options = [...(optionsByQuestionId.get(question.id) ?? [])].sort(compareByOrder);
+
+      if (metadata.response_format === "best_worst") {
+        units.push({
+          unitType: "sjt_best_worst_scenario",
+          questionCode: question.code,
+          order: question.question_order,
+          blockKey,
+          blockDisplayName: blockSpec.display_name ?? null,
+          responseFormat: "best_worst",
+          scenarioTitle: metadata.scenario_title ?? null,
+          scenarioMetadata: metadata,
+          options: options.map((option) => ({
+            code: option.code,
+            label: option.label,
+            optionOrder: option.option_order,
+            metadata: coerceRecord(option.metadata),
+          })),
+        });
+        continue;
+      }
+
+      const responseScaleKey =
+        typeof metadata.response_scale === "string" ? metadata.response_scale : null;
+
+      if (responseScaleKey && !optionCatalogs[responseScaleKey]) {
+        optionCatalogs[responseScaleKey] = options.map((option) => ({
+          code: option.code,
+          label: option.label,
+          value: option.value,
+          optionOrder: option.option_order,
+          metadata: coerceRecord(option.metadata),
+        }));
+      }
+
+      units.push({
+        unitType: "likert_item",
+        questionCode: question.code,
+        order: question.question_order,
+        blockKey,
+        blockDisplayName: blockSpec.display_name ?? null,
+        responseScaleKey,
+        itemMetadata: metadata,
+        options: options.map((option) => ({
+          code: option.code,
+          label: option.label,
+          value: option.value,
+          optionOrder: option.option_order,
+          metadata: coerceRecord(option.metadata),
+        })),
+      });
+    }
+  }
+
+  return {
+    testSlug: input.testRow?.slug ?? null,
+    importMode: testMetadata.import_mode ?? null,
+    blockOrder: orderedBlockKeys,
+    units,
+    optionCatalogs,
+    metadata: {
+      contentSpecAssessmentKey:
+        typeof contentSpec.assessment?.assessment_key === "string"
+          ? contentSpec.assessment.assessment_key
+          : null,
+      contentSpecValidationStatus:
+        typeof contentSpec.assessment?.validation_status === "string"
+          ? contentSpec.assessment.validation_status
+          : null,
+    },
   };
 }
 

@@ -3,7 +3,11 @@ import type { AddressingForm } from "@/lib/auth/addressing-form";
 
 export type TestCategory = "personality" | "behavioral" | "cognitive";
 export type TestStatus = "draft" | "active" | "archived";
-export type ScoringMethod = "likert_sum" | "correct_answers" | "weighted_correct";
+export type ScoringMethod =
+  | "likert_sum"
+  | "correct_answers"
+  | "weighted_correct"
+  | "mixed_v1";
 
 export type QuestionType = "single_choice" | "multiple_choice" | "text";
 export type Difficulty = "easy" | "medium" | "hard";

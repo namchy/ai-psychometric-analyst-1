@@ -14,6 +14,9 @@ async function main() {
   const { loadAssessmentPackage } = await import(
     pathToFileURL(path.join(__dirname, "validate-assessment-package.mjs")).href
   );
+  const { buildImportPayload, buildImportedMixedFormatRuntimeShape } = await import(
+    pathToFileURL(path.join(__dirname, "import-assessment-package.mjs")).href
+  );
 
   const packageData = await loadAssessmentPackage(packageDir);
   const {
@@ -25,6 +28,7 @@ async function main() {
     locales,
     contentSpec,
     mixedAssessmentSpec,
+    mixedFormatImportPlan,
     teamDynamicsExecutionSpec,
   } =
     packageData;
@@ -181,6 +185,91 @@ async function main() {
     contentSpec.team_aggregation,
   );
   assert.equal(mixedAssessmentSpec.guardrails.length > 0, true);
+
+  assert.equal(mixedFormatImportPlan.mode, "mixed_format_content_spec_v1");
+  assert.deepEqual(mixedFormatImportPlan.block_order, [
+    "tdm-31-V1",
+    "psychological_safety",
+    "situational_judgment",
+    "outcome_pulse",
+  ]);
+  assert.equal(mixedFormatImportPlan.item_option_catalogs.TDM31_01.length, 4);
+  assert.deepEqual(
+    mixedFormatImportPlan.item_option_catalogs.TDM31_01.map((option) => option.value),
+    [1, 2, 3, 4],
+  );
+  assert.equal(mixedFormatImportPlan.item_option_catalogs.SJT_TD_01.length, 4);
+  assert.equal(
+    mixedFormatImportPlan.item_option_catalogs.SJT_TD_01[0].metadata.option_catalog_source,
+    "scenario_level_sjt_options",
+  );
+  assert.equal(
+    mixedFormatImportPlan.item_option_catalogs.SJT_TD_01[0].metadata.scenario_id,
+    "SJT_TD_01",
+  );
+  assert.equal(
+    mixedFormatImportPlan.item_metadata_by_code.TDM31_01.block_key,
+    "tdm-31-V1",
+  );
+  assert.equal(
+    mixedFormatImportPlan.dimension_metadata_by_code.SJT_TOTAL.block_key,
+    "situational_judgment",
+  );
+
+  const importPayload = buildImportPayload(packageData);
+  const mockQuestionRows = items.map((item) => ({
+    id: `question-${item.code}`,
+    code: item.code,
+    question_order: item.question_order,
+    question_type: item.question_type,
+    metadata: {
+      ...(item.metadata ?? {}),
+      response_format:
+        item.metadata?.response_format ??
+        (item.question_type === "single_choice" ? "single_select_likert" : undefined),
+    },
+  }));
+  const mockOptionRows = items.flatMap((item) =>
+    (mixedFormatImportPlan.item_option_catalogs[item.code] ?? []).map((option) => ({
+      question_id: `question-${item.code}`,
+      code: option.code,
+      label: option.label,
+      value: option.value ?? null,
+      option_order: option.option_order,
+      metadata: option.metadata ?? {},
+    })),
+  );
+  const importedRuntimeShape = buildImportedMixedFormatRuntimeShape({
+    testRow: {
+      slug: test.slug,
+      metadata: importPayload.import_strategy.test_metadata,
+    },
+    questionRows: mockQuestionRows,
+    optionRows: mockOptionRows,
+  });
+
+  assert.deepEqual(importedRuntimeShape.blockOrder, [
+    "tdm-31-V1",
+    "psychological_safety",
+    "situational_judgment",
+    "outcome_pulse",
+  ]);
+  assert.equal(importedRuntimeShape.units.length, 48);
+  assert.equal(importedRuntimeShape.optionCatalogs.likert_1_4_agreement.length, 4);
+  assert.equal(
+    importedRuntimeShape.units.find((unit) => unit.questionCode === "TDM31_01").itemMetadata
+      .response_format,
+    "single_select_likert",
+  );
+  assert.equal(
+    importedRuntimeShape.units.find((unit) => unit.questionCode === "SJT_TD_01").responseFormat,
+    "best_worst",
+  );
+  assert.equal(
+    importedRuntimeShape.units.find((unit) => unit.questionCode === "SJT_TD_01").options[0]
+      .metadata.scenario_id,
+    "SJT_TD_01",
+  );
 
   assert.equal(teamDynamicsExecutionSpec.assessmentKey, "team_dynamics_assessment_v1");
   assert.equal(teamDynamicsExecutionSpec.displayName, "Procjena timske dinamike");

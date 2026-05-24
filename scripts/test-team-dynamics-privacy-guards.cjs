@@ -59,6 +59,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const {
   TEAM_DYNAMICS_TEST_SLUG,
+  TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG,
   isTeamDynamicsTestSlug,
   shouldHideTeamDynamicsAttemptFromHrIndividualFlow,
   canUseGenericCandidateAttemptCreation,
@@ -71,18 +72,33 @@ const {
 } = require("../lib/assessment/availability.ts");
 
 assert.equal(TEAM_DYNAMICS_TEST_SLUG, "team_dynamics_v1_strong");
+assert.equal(TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG, "team_dynamics_assessment_v1");
 assert.equal(isTeamDynamicsTestSlug("team_dynamics_v1_strong"), true);
+assert.equal(isTeamDynamicsTestSlug("team_dynamics_assessment_v1"), true);
 assert.equal(isTeamDynamicsTestSlug("TEAM_DYNAMICS_V1_STRONG"), true);
 assert.equal(isTeamDynamicsTestSlug("mwms_v1"), false);
 
 assert.equal(shouldHideTeamDynamicsAttemptFromHrIndividualFlow(TEAM_DYNAMICS_TEST_SLUG), true);
+assert.equal(
+  shouldHideTeamDynamicsAttemptFromHrIndividualFlow(TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG),
+  true,
+);
 assert.equal(shouldHideTeamDynamicsAttemptFromHrIndividualFlow("mwms_v1"), false);
 
 assert.equal(canUseGenericCandidateAttemptCreation(TEAM_DYNAMICS_TEST_SLUG), false);
+assert.equal(canUseGenericCandidateAttemptCreation(TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG), false);
 assert.equal(canUseGenericCandidateAttemptCreation("mwms_v1"), true);
 assert.equal(shouldBypassIndividualPostCompletionArtifacts(TEAM_DYNAMICS_TEST_SLUG), true);
+assert.equal(
+  shouldBypassIndividualPostCompletionArtifacts(TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG),
+  true,
+);
 assert.equal(shouldBypassIndividualPostCompletionArtifacts("mwms_v1"), false);
 assert.equal(shouldUseDefaultIndividualPostCompletionFlow(TEAM_DYNAMICS_TEST_SLUG), false);
+assert.equal(
+  shouldUseDefaultIndividualPostCompletionFlow(TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG),
+  false,
+);
 assert.equal(shouldUseDefaultIndividualPostCompletionFlow("mwms_v1"), true);
 
 const activeTeamDynamicsAvailability = getCandidateAssessmentAvailability({

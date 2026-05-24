@@ -158,6 +158,99 @@ function getLikertConstruct(item) {
   );
 }
 
+function buildLikertItemOptionCatalog({ item, contentSpec }) {
+  const responseScaleKey = item.metadata?.response_scale;
+
+  if (responseScaleKey !== "likert_1_4_agreement") {
+    return [];
+  }
+
+  return getLikertOptionCatalog(contentSpec).map((option) => ({
+    code: `${item.code}_OPTION_${option.value}`,
+    label: option.label,
+    value: option.value,
+    option_order: option.value,
+    metadata: {
+      option_catalog_source: "content_spec_response_scale",
+      response_scale: responseScaleKey,
+      response_format: "single_select_likert",
+      block_key: item.metadata?.block_key ?? null,
+    },
+  }));
+}
+
+function buildSjtItemOptionCatalog({ item, contentSpec }) {
+  const sjtScoringSpec = contentSpec?.blocks?.situational_judgment;
+
+  if (item.metadata?.response_format !== "best_worst") {
+    return [];
+  }
+
+  return [...(item.metadata?.options ?? [])]
+    .sort((left, right) => left.option_order - right.option_order)
+    .map((option) => ({
+      code: option.option_id,
+      label: option.option_text,
+      value: option.option_order,
+      option_order: option.option_order,
+      metadata: {
+        option_catalog_source: "scenario_level_sjt_options",
+        response_format: "best_worst",
+        block_key: item.metadata?.block_key ?? null,
+        scenario_id: item.code,
+        scenario_title: item.metadata?.scenario_title ?? null,
+        instruction_type: item.metadata?.instruction_type ?? null,
+        option_id: option.option_id,
+        option_level: option.option_level,
+        option_role: "scenario_action",
+        best_choice_points: sjtScoringSpec?.best_choice_scoring?.[option.option_level] ?? null,
+        worst_choice_points: sjtScoringSpec?.worst_choice_scoring?.[option.option_level] ?? null,
+        primary_dimension: item.metadata?.primary_dimension ?? null,
+        secondary_dimension: item.metadata?.secondary_dimension ?? null,
+      },
+    }));
+}
+
+export function buildMixedFormatImportPlan({ test, dimensions, items, contentSpec }) {
+  if (!contentSpec) {
+    return null;
+  }
+
+  const itemOptionCatalogs = Object.fromEntries(
+    items.map((item) => [
+      item.code,
+      item.metadata?.response_format === "best_worst"
+        ? buildSjtItemOptionCatalog({ item, contentSpec })
+        : buildLikertItemOptionCatalog({ item, contentSpec }),
+    ]),
+  );
+
+  return {
+    mode: "mixed_format_content_spec_v1",
+    assessment_key: contentSpec.assessment.assessment_key,
+    block_order: contentSpec.assessment.blocks,
+    response_scales: contentSpec.response_scales ?? {},
+    item_option_catalogs: itemOptionCatalogs,
+    dimension_metadata_by_code: Object.fromEntries(
+      dimensions.map((dimension) => [dimension.code, dimension.metadata ?? {}]),
+    ),
+    item_metadata_by_code: Object.fromEntries(
+      items.map((item) => [item.code, item.metadata ?? {}]),
+    ),
+    test_metadata: {
+      ...((test.metadata && typeof test.metadata === "object" && !Array.isArray(test.metadata))
+        ? test.metadata
+        : {}),
+      version: test.version,
+      intended_use: test.intended_use,
+      report_family: test.report_family,
+      default_locale: test.default_locale ?? null,
+      supported_locales: test.supported_locales ?? [],
+      content_spec: contentSpec,
+    },
+  };
+}
+
 function validateMixedFormatContentSpec({ test, items, options, locales, contentSpec }) {
   assertObject(contentSpec, "content-spec.json");
   assertObject(contentSpec.assessment, "content-spec.json.assessment");
@@ -671,6 +764,12 @@ export async function loadAssessmentPackage(packageDirArg) {
     contentSpec,
     mixedAssessmentSpec,
   });
+  const mixedFormatImportPlan = buildMixedFormatImportPlan({
+    test,
+    dimensions,
+    items,
+    contentSpec,
+  });
 
   return {
     packageDir,
@@ -682,6 +781,7 @@ export async function loadAssessmentPackage(packageDirArg) {
     locales,
     contentSpec,
     mixedAssessmentSpec,
+    mixedFormatImportPlan,
     teamDynamicsExecutionSpec,
     packageMode: detectPackageMode({
       dimensions,
@@ -710,6 +810,7 @@ async function main() {
     locales,
     contentSpec,
     mixedAssessmentSpec,
+    mixedFormatImportPlan,
     packageMode,
   } =
     await loadAssessmentPackage(packageDirArg);
@@ -734,6 +835,13 @@ async function main() {
                   blockKey: block.blockKey,
                   blockType: block.blockType,
                 })),
+              },
+        mixedFormatImportPlan:
+          mixedFormatImportPlan === null
+            ? null
+            : {
+                mode: mixedFormatImportPlan.mode,
+                blockOrder: mixedFormatImportPlan.block_order,
               },
         locales: Object.fromEntries(
           Object.entries(locales).map(([locale, localeCatalog]) => [

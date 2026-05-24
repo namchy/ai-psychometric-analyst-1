@@ -73,6 +73,7 @@ assert.deepEqual(STANDARD_ASSESSMENT_BATTERY_SLUGS, [
   "mwms_v1",
 ]);
 assert.equal(STANDARD_ASSESSMENT_BATTERY_SLUGS.includes("team_dynamics_v1_strong"), false);
+assert.equal(STANDARD_ASSESSMENT_BATTERY_SLUGS.includes("team_dynamics_assessment_v1"), false);
 
 const availableTests = [
   {
@@ -99,6 +100,13 @@ const availableTests = [
   {
     id: "test-team-dynamics",
     slug: "team_dynamics_v1_strong",
+    status: "active",
+    is_active: true,
+    hasOrganizationAccess: false,
+  },
+  {
+    id: "test-team-dynamics-final",
+    slug: "team_dynamics_assessment_v1",
     status: "active",
     is_active: true,
     hasOrganizationAccess: false,
@@ -258,6 +266,29 @@ const teamDynamicsOnlyActivePlan = planStandardAssessmentBatteryCreation({
   locale: "bs",
   startedAt: STARTED_AT,
 });
+
+const finalTeamDynamicsOnlyActivePlan = planStandardAssessmentBatteryCreation({
+  availableTests: [
+    {
+      id: "test-team-dynamics-final",
+      slug: "team_dynamics_assessment_v1",
+      status: "active",
+      is_active: true,
+      hasOrganizationAccess: true,
+    },
+  ],
+  activeQuestionTestIds: ["test-team-dynamics-final"],
+  existingAttempts: [],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+assert.equal(finalTeamDynamicsOnlyActivePlan.outcome, "battery-no-runnable-tests");
+assert.deepEqual(finalTeamDynamicsOnlyActivePlan.runnableTests, []);
 
 assert.equal(teamDynamicsOnlyActivePlan.outcome, "battery-no-runnable-tests");
 assert.deepEqual(teamDynamicsOnlyActivePlan.runnableTests, []);

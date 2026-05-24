@@ -79,6 +79,10 @@ assert.equal(
   true,
 );
 assert.equal(
+  shouldHideAssessmentFromCandidateDashboard({ slug: "team_dynamics_assessment_v1" }),
+  true,
+);
+assert.equal(
   shouldHideAssessmentFromCandidateDashboard({ slug: "ipip-neo-120-v1" }),
   false,
 );
@@ -113,6 +117,10 @@ const testsLoadedFromDb = [
     slug: "team_dynamics_v1_strong",
     hidden: shouldHideAssessmentFromCandidateDashboard({ slug: "team_dynamics_v1_strong" }),
   },
+  {
+    slug: "team_dynamics_assessment_v1",
+    hidden: shouldHideAssessmentFromCandidateDashboard({ slug: "team_dynamics_assessment_v1" }),
+  },
 ];
 
 assert.deepEqual(
@@ -125,8 +133,17 @@ assert.equal(
   ),
   false,
 );
+assert.equal(
+  testsLoadedFromDb.some(
+    (test) => test.slug === "team_dynamics_assessment_v1" && test.hidden === false,
+  ),
+  false,
+);
 assert.doesNotMatch(dashboardSource, /team_dynamics_v1_strong[\s\S]*Započni procjenu/);
 assert.doesNotMatch(dashboardSource, /team_dynamics_v1_strong[\s\S]*Nastavi procjenu/);
 assert.doesNotMatch(dashboardSource, /team_dynamics_v1_strong[\s\S]*Pogledaj rezultate/);
+assert.doesNotMatch(dashboardSource, /team_dynamics_assessment_v1[\s\S]*Započni procjenu/);
+assert.doesNotMatch(dashboardSource, /team_dynamics_assessment_v1[\s\S]*Nastavi procjenu/);
+assert.doesNotMatch(dashboardSource, /team_dynamics_assessment_v1[\s\S]*Pogledaj rezultate/);
 
 console.log("Candidate dashboard Team Dynamics exclusion tests passed.");
