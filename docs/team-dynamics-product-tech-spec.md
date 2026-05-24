@@ -643,6 +643,13 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - `stale` je definisan kao potencijalno zastario deterministic snapshot u odnosu na novije source member score snapshotove, ali V1 ne zahtijeva automatski stale write na svaku promjenu.
 - Budući recalculation treba ići kroz jedan server-only lifecycle helper koji reuse-a aggregation draft i aggregation persistence helper, bez UI/report/AI/Team Fit slojeva.
 
+### Implementation note (2026-05-24, aggregation lifecycle helper skeleton)
+
+- Dodan je server-only lifecycle helper `refreshTeamAssessmentAggregationSnapshot(...)` u `lib/assessment/team-assessment-aggregation-lifecycle.ts`.
+- Helper je vlasnički refresh/recalculation entry point za lanac: aggregation draft -> aggregation persistence -> aggregation read verification.
+- Helper vraća kontrolisane lifecycle statuse: `refreshed`, `not_ready`, `verification_failed`, `failed`.
+- Completion action, report orchestration i UI slojevi ne pokreću ovaj helper.
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
