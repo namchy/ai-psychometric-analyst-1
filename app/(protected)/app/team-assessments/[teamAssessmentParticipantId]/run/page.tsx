@@ -183,6 +183,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
 
         {isMixedRuntimePreview ? (
           <TeamDynamicsMixedRunPreview
+            teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
             runtimeHandoff={handoff.mixedRuntimeHandoff!}
             wrapperStatus={handoff.wrapperStatus}
             isRunnableShellState={handoff.isRunnableShellState}
