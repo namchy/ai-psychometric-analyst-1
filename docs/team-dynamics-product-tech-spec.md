@@ -621,6 +621,14 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - Storage statusi ostaju `ready`, `not_ready`, `stale`, `failed`, dok runtime u ovom uskom slice-u mapira draft na `ready` ili `not_ready`.
 - Slice ostaje bez UI prikaza, bez report orchestration-a, bez `attempt_reports`, bez `assessment_reports`, bez AI/report generation-a i bez Team Fit outputa.
 
+### Implementation note (2026-05-24, aggregation read/verification)
+
+- Dodan je server-only read/verification helper `loadTeamAssessmentAggregationVerification(...)`.
+- Helper radi persisted snapshot lookup po `teamAssessmentAssignmentId + aggregationVersion`.
+- Ako snapshot ne postoji, helper vraća kontrolisan `missing` rezultat (`aggregation_snapshot_not_found`), bez nekontrolisanog errora.
+- Kada snapshot postoji, helper radi osnovnu shape/consistency verifikaciju i vraća `verified` ili `invalid` sa `reasons`.
+- Slice ostaje bez write-a, bez recalculation-a, bez UI prikaza, bez report orchestration-a, bez AI/report generation-a i bez Team Fit outputa.
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
