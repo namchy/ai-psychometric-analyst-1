@@ -662,6 +662,14 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - Member score chain i aggregation lifecycle chain su zaključani kao server-only ownership slojevi.
 - UI score prikaz, Team Dynamics report sloj, AI/report generation i Team Fit ostaju zasebni budući slojevi.
 
+### Audit note (2026-05-24, mixed-format runtime/import readiness)
+
+- `team_dynamics_assessment_v1` je content/spec-ready canonical package.
+- DB-backed import/runtime sloj još nije spreman.
+- Trenutni importer je shared-options/scaffold-centric.
+- Sljedeći uski slice je DB import support za mixed-format package.
+- UI, response capture, scoring runtime, report, AI i Team Fit ostaju van tog slice-a.
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
