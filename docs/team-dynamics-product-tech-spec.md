@@ -636,6 +636,13 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - Zatvoren je completion context refresh bug: nakon completion transitiona score persistence koristi completed context.
 - Slice ostaje bez UI prikaza, bez report orchestration-a, bez AI/report generation-a i bez Team Fit outputa.
 
+### Implementation note (2026-05-24, aggregation lifecycle hardening)
+
+- Lifecycle ownership je zaključan: persisted Team Dynamics aggregation snapshot smije nastati ili se osvježiti samo kroz server-only helper path.
+- Source za snapshot ostaje aggregation draft helper nad persisted member score snapshotovima; ne koriste se UI state, report view ili AI/report orchestration path-evi.
+- `stale` je definisan kao potencijalno zastario deterministic snapshot u odnosu na novije source member score snapshotove, ali V1 ne zahtijeva automatski stale write na svaku promjenu.
+- Budući recalculation treba ići kroz jedan server-only lifecycle helper koji reuse-a aggregation draft i aggregation persistence helper, bez UI/report/AI/Team Fit slojeva.
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
