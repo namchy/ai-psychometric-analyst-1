@@ -656,6 +656,12 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - Smoke potvrđuje da `refreshTeamAssessmentAggregationSnapshot(...)` radi kao jedini refresh entry point za draft -> persistence -> read verification lanac.
 - Potvrđeni su `missing` pre-state, `refreshed` happy path i idempotentni `updated` drugi refresh, bez UI/report/AI/Team Fit slojeva.
 
+### Implementation note (2026-05-24, data model scaffold closeout)
+
+- Team Dynamics data model scaffold closeout je potvrđen nakon usklađenog code/test/docs audita.
+- Member score chain i aggregation lifecycle chain su zaključani kao server-only ownership slojevi.
+- UI score prikaz, Team Dynamics report sloj, AI/report generation i Team Fit ostaju zasebni budući slojevi.
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
