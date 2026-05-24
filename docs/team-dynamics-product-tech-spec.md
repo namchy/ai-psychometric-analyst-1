@@ -650,6 +650,12 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - Helper vraća kontrolisane lifecycle statuse: `refreshed`, `not_ready`, `verification_failed`, `failed`.
 - Completion action, report orchestration i UI slojevi ne pokreću ovaj helper.
 
+### Implementation note (2026-05-24, aggregation lifecycle runtime smoke)
+
+- Dodan je server-only smoke test `scripts/test-team-dynamics-aggregation-lifecycle-runtime-smoke.cjs`.
+- Smoke potvrđuje da `refreshTeamAssessmentAggregationSnapshot(...)` radi kao jedini refresh entry point za draft -> persistence -> read verification lanac.
+- Potvrđeni su `missing` pre-state, `refreshed` happy path i idempotentni `updated` drugi refresh, bez UI/report/AI/Team Fit slojeva.
+
 ## Prvi implementation task (nakon ovog spec sync-a)
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
