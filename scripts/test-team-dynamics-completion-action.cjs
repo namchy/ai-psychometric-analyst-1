@@ -235,6 +235,8 @@ async function runHappyPath() {
         calls.persistMinimalScore += 1;
         assert.equal(context.teamAssessmentParticipantId, "tap-1");
         assert.equal(context.attemptId, "attempt-1");
+        assert.equal(context.wrapperStatus, "completed");
+        assert.equal(context.attemptStatus, "completed");
         assert.equal(scoringVersion, "team_dynamics_minimal_likert_v1");
         assert.equal(Array.isArray(uiOnlyItems), true);
         assert.equal(uiOnlyItems.length, 2);

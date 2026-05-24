@@ -377,8 +377,13 @@ export async function completeTeamAssessmentAction(
   let postCompletionScoring: CompleteTeamAssessmentPostCompletionScoringStatus | undefined;
 
   if (completionResult.mode === "completed") {
+    const completedScoringContext = {
+      ...contextResult.context,
+      wrapperStatus: completionResult.wrapperStatus,
+      attemptStatus: completionResult.attemptStatus,
+    };
     const scorePersistenceResult = await persistMinimalScore({
-      context: contextResult.context,
+      context: completedScoringContext,
       scoringVersion: TEAM_ASSESSMENT_MINIMAL_SCORE_SCORING_VERSION,
       uiOnlyItems: uiOnlyItems.items,
     });
