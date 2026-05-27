@@ -2,11 +2,12 @@ import type {
   AssessmentSelectionsInput,
   AssessmentSelectionValue,
   QuestionType,
+  ResponseKind,
 } from "@/lib/assessment/types";
 
 type CompletionResponseRecord = {
   question_id: string;
-  response_kind: QuestionType;
+  response_kind: ResponseKind;
   answer_option_id: string | null;
   text_value: string | null;
   response_selections: Array<{

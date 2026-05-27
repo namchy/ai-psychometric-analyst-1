@@ -36,7 +36,15 @@ import {
   TEAM_DYNAMICS_ACTION_NO_ACTIVE_ORGANIZATION,
   TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED,
 } from "@/lib/assessment/team-dynamics-action-contract";
-import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
+import {
+  persistValidatedTeamDynamicsMixedAnswer,
+  type TeamDynamicsMixedAnswerPersistenceResult,
+} from "@/lib/assessment/team-dynamics-mixed-answer-persistence";
+import type { TeamDynamicsMixedAnswerPayload } from "@/lib/assessment/team-dynamics-mixed-answer-payload-validator";
+import {
+  AuthenticationRequiredError,
+  requireAuthenticatedUserForAction,
+} from "@/lib/auth/session";
 
 function getFormDataString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -71,6 +79,57 @@ type SaveTeamAssessmentAnswerActionDependencies = {
       payload: TeamAssessmentAnswerPayload;
     },
   ) => Promise<TeamAssessmentAnswerPersistenceResult>;
+};
+
+export type SaveTeamDynamicsMixedAnswerActionInput =
+  | {
+      teamAssessmentParticipantId: string;
+      questionId: string;
+      responseFormat: "single_select_likert";
+      optionId: string;
+      locale?: string;
+      clientTimestamp?: string;
+    }
+  | {
+      teamAssessmentParticipantId: string;
+      questionId: string;
+      responseFormat: "best_worst";
+      bestOptionId: string;
+      worstOptionId: string;
+      locale?: string;
+      clientTimestamp?: string;
+    };
+
+export type SaveTeamDynamicsMixedAnswerActionResult =
+  | {
+      ok: true;
+      status: "saved" | "overwritten" | "unchanged";
+      teamAssessmentParticipantId: string;
+      questionId: string;
+      responseFormat: "single_select_likert" | "best_worst";
+    }
+  | {
+      ok: false;
+      status:
+        | "invalid"
+        | "not_runnable"
+        | "unsupported"
+        | "unsupported_storage_shape"
+        | "error";
+      reason: string;
+      teamAssessmentParticipantId: string | null;
+      questionId: string | null;
+      responseFormat: string | null;
+    };
+
+type SaveTeamDynamicsMixedAnswerActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  persistMixedAnswer?: (
+    input: {
+      userId: string;
+      payload: TeamDynamicsMixedAnswerPayload;
+    },
+  ) => Promise<TeamDynamicsMixedAnswerPersistenceResult>;
 };
 
 export type CompleteTeamAssessmentActionInput = {
@@ -131,6 +190,29 @@ type CompleteTeamAssessmentActionDependencies = {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function buildMixedAnswerActionFailure(
+  input: Partial<SaveTeamDynamicsMixedAnswerActionInput>,
+  status:
+    | "invalid"
+    | "not_runnable"
+    | "unsupported"
+    | "unsupported_storage_shape"
+    | "error",
+  reason: string,
+): SaveTeamDynamicsMixedAnswerActionResult {
+  return {
+    ok: false,
+    status,
+    reason,
+    teamAssessmentParticipantId: isNonEmptyString(input.teamAssessmentParticipantId)
+      ? input.teamAssessmentParticipantId
+      : null,
+    questionId: isNonEmptyString(input.questionId) ? input.questionId : null,
+    responseFormat:
+      typeof input.responseFormat === "string" ? input.responseFormat : null,
+  };
 }
 
 export async function createTeamDynamicsAssessmentAction(
@@ -258,6 +340,90 @@ export async function saveTeamAssessmentAnswerAction(
     ok: true,
     mode: result.mode,
   };
+}
+
+export async function saveTeamDynamicsMixedAnswerAction(
+  input: SaveTeamDynamicsMixedAnswerActionInput,
+  deps: SaveTeamDynamicsMixedAnswerActionDependencies = {},
+): Promise<SaveTeamDynamicsMixedAnswerActionResult> {
+  if (
+    !isNonEmptyString(input.teamAssessmentParticipantId) ||
+    !isNonEmptyString(input.questionId)
+  ) {
+    return buildMixedAnswerActionFailure(
+      input,
+      "invalid",
+      "teamAssessmentParticipantId and questionId are required.",
+    );
+  }
+
+  if (input.responseFormat === "single_select_likert") {
+    if (!isNonEmptyString(input.optionId)) {
+      return buildMixedAnswerActionFailure(
+        input,
+        "invalid",
+        "optionId is required for single_select_likert answers.",
+      );
+    }
+  }
+
+  if (input.responseFormat === "best_worst") {
+    if (
+      !isNonEmptyString(input.bestOptionId) ||
+      !isNonEmptyString(input.worstOptionId)
+    ) {
+      return buildMixedAnswerActionFailure(
+        input,
+        "invalid",
+        "bestOptionId and worstOptionId are required for best_worst answers.",
+      );
+    }
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const persistMixedAnswer =
+    deps.persistMixedAnswer ?? persistValidatedTeamDynamicsMixedAnswer;
+
+  try {
+    const user = await requireUser();
+    const result = await persistMixedAnswer({
+      userId: user.id,
+      payload: input,
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        status: result.status,
+        reason: result.reason,
+        teamAssessmentParticipantId: result.teamAssessmentParticipantId,
+        questionId: result.questionId,
+        responseFormat: result.responseFormat,
+      };
+    }
+
+    return {
+      ok: true,
+      status: result.status,
+      teamAssessmentParticipantId: result.value.teamAssessmentParticipantId,
+      questionId: result.value.questionId,
+      responseFormat: result.value.responseFormat,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return buildMixedAnswerActionFailure(
+        input,
+        "error",
+        "Authentication required.",
+      );
+    }
+
+    return buildMixedAnswerActionFailure(
+      input,
+      "error",
+      "Unable to save the Team Dynamics answer right now.",
+    );
+  }
 }
 
 export async function completeTeamAssessmentAction(

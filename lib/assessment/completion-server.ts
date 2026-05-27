@@ -4,11 +4,12 @@ import {
   type AssessmentCompletionState,
   type CompletionQuestion,
 } from "@/lib/assessment/completion";
+import type { ResponseKind } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type CompletionResponseRecord = {
   question_id: string;
-  response_kind: CompletionQuestion["question_type"];
+  response_kind: ResponseKind;
   answer_option_id: string | null;
   text_value: string | null;
   response_selections: Array<{

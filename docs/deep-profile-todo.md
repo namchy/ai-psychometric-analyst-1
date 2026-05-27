@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / DB import + runtime handoff read + UI-only preview support stabilizovan | Team module / Runtime + Import | DB import support za `team_dynamics_assessment_v1` je završen i DB-backed smoke potvrđen. Mixed-format runtime handoff/read model je završen i DB-backed runtime handoff smoke potvrđen. UI-only mixed-format execution preview shell je završen i testovima potvrđen. Dodan je finalni smoke/dev fixture za kontrolisan browser smoke finalnog wrapper `/run` preview-ja. UI-only preview sada poštuje osnovni assessment UX contract: ne može se ići dalje bez lokalno validnog odgovora, selected state ostaje vidljiv pri lokalnoj navigaciji, progress prati stvarni current item i refresh vraća preview state iz browser session state-a bez hydration mismatcha. Preostali dijelovi ostaju zasebni budući slice-evi: answer payload validator za mixed format/SJT best-worst, response capture, save/persistence, completion readiness za mixed format, scoring runtime, Team Dynamics report layer, AI/report generation i Team Fit. Sljedeći slice se treba odlučiti u chatu. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / DB import + runtime handoff + UI-only preview + backend answer persistence/action chain stabilizovani | Team module / Runtime + Import | DB import support za `team_dynamics_assessment_v1` je završen i DB-backed smoke potvrđen. Mixed-format runtime handoff/read model je završen i DB-backed runtime handoff smoke potvrđen. UI-only mixed-format execution preview shell je završen i testovima potvrđen. Dodan je finalni smoke/dev fixture za kontrolisan browser smoke finalnog wrapper `/run` preview-ja. UI-only preview poštuje osnovni assessment UX contract i sessionStorage preview resume. Završen je server-side mixed-format answer backend chain: no-write payload validator, persistence helper, SJT `best_worst` storage migracija, DB-backed persistence smoke i wrapper-specific manual save server action. Finalni mixed-format UI još nije povezan na manual save action; nema autosave-a, completion readiness-a, completion action integracije, scoring runtime-a, Team Dynamics report layera, AI/report generation-a ni Team Fit outputa. Sljedeći uski slice: UI manual save wiring za finalni mixed-format preview, bez autosave-a, completion-a, scoring-a, reporta ili Team Fit outputa. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -2015,88 +2015,153 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - `node scripts/test-report-capabilities.cjs` prolazi.
 - `npm run typecheck` prolazi.
 
+### 2026-05-27 — Team Dynamics mixed-format answer payload validator
+
+**Completion note — Team Dynamics mixed-format answer payload validator / response capture boundary:**
+- Dodan je server-side/no-write validator za finalni mixed-format slug `team_dynamics_assessment_v1`.
+- Validator podržava:
+  - `single_select_likert`
+  - `best_worst`
+- Public access boundary ostaje `teamAssessmentParticipantId`, a wrapper ownership i runnable state se provjeravaju kroz postojeći Team Dynamics execution boundary.
+- Raw `attemptId` nije client authority; helper ne koristi client-sent `attemptId`, nego interni `attemptId` samo iz wrapper-linked execution contexta.
+- Validator potvrđuje membership finalnog mixed runtime handoffa:
+  - `questionId` mora postojati u finalnom handoffu
+  - item `responseFormat` mora odgovarati imported metadata formatu
+  - Likert prihvata tačno jedan `optionId`
+  - SJT prihvata tačno `bestOptionId` i `worstOptionId`
+  - obje SJT opcije moraju pripadati pitanju i ne smiju biti iste
+- Completed, expired i drugi non-runnable wrapper/attempt state-ovi ne prolaze validaciju.
+- Finalni validator radi samo za `team_dynamics_assessment_v1`; legacy scaffold `team_dynamics_v1_strong` ostaje van ovog contracta.
+- Locale je optional, ali kada je prisutan mora proći postojeća `AssessmentLocale` pravila.
+- Helper ne radi DB write, ne poziva save/autosave, ne mijenja wrapper ili attempt status, ne pokreće completion, scoring, aggregation, report orchestration, `attempt_reports`, `assessment_reports`, AI/report generation ni Team Fit output.
+- Novi test:
+  - `scripts/test-team-dynamics-assessment-v1-answer-payload-validator.cjs`
+- Verifikovano:
+  - `node scripts/test-team-dynamics-assessment-v1-answer-payload-validator.cjs`
+  - `node --env-file=.env.local scripts/test-team-dynamics-assessment-v1-runtime-handoff.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-ui-preview-shell.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `npm run typecheck`
+- Sljedeći mogući slice nakon ovoga je DB persistence skeleton za finalne mixed-format odgovore, ali nije implementiran u ovom tasku.
+
+**Completion note — Team Dynamics mixed-format answer persistence skeleton:**
+- Dodat je server-only persistence helper:
+  - `lib/assessment/team-dynamics-mixed-answer-persistence.ts`
+- Helper koristi validator kao pre-write boundary i radi samo za finalni `team_dynamics_assessment_v1`.
+- Likert `single_select_likert` se sprema u postojeću `responses` tabelu:
+  - `response_kind = "single_choice"`
+  - `answer_option_id = optionId`
+  - logical uniqueness preko `teamAssessmentParticipantId + questionId`
+  - fizički write boundary preko validatorom potvrđenog internal `attemptId + questionId`
+- Likert behavior:
+  - prvi validan odgovor: `saved`
+  - isti payload: `unchanged`
+  - drugi option: `overwritten`
+- Početno je SJT `best_worst` vraćao controlled `unsupported_storage_shape` jer postojeća schema nije čuvala `best`/`worst` semantiku bez dodatne role kolone.
+- Novi test:
+  - `scripts/test-team-dynamics-assessment-v1-answer-persistence.cjs`
+
+**Completion note — Team Dynamics SJT best_worst storage schema and persistence:**
+- Dodana je migracija:
+  - `supabase/migrations/20260527094919_add_best_worst_response_storage.sql`
+- Migracija proširuje `responses.response_kind` da dozvoli `best_worst`.
+- Migracija proširuje `responses_value_shape_check` tako da `best_worst` koristi:
+  - `answer_option_id is null`
+  - `text_value is null`
+- Dodana je kolona `response_selections.selection_role`.
+- Dodan je check za `selection_role`: `best`, `worst`, `null`.
+- Dodan je partial unique index:
+  - `idx_response_selections_response_id_selection_role_unique`
+  - `where selection_role is not null`
+- SJT `best_worst` se sada sprema kao:
+  - jedan `responses` row po `attemptId + questionId`
+  - `response_kind = "best_worst"`
+  - dvije `response_selections` rows:
+    - `selection_role = "best"` + `answer_option_id = bestOptionId`
+    - `selection_role = "worst"` + `answer_option_id = worstOptionId`
+- SJT behavior:
+  - prvi validan par: `saved`
+  - isti par: `unchanged`
+  - promjena best ili worst: `overwritten`
+  - conflict sa postojećim drugim `response_kind` vraća kontrolisani invalid
+  - stale/non-canonical selections se čiste samo za konkretni response u overwrite path-u
+- Nije uvedena nova tabela.
+- Nisu uvedeni UI, autosave, completion, scoring, report ili Team Fit.
+
+**Completion note — Team Dynamics mixed-format persistence DB-backed smoke:**
+- Dodat je DB-backed smoke script:
+  - `scripts/test-team-dynamics-assessment-v1-answer-persistence-db-smoke.cjs`
+- Smoke prvo provjerava runtime schema precondition za `best_worst` storage.
+- Nakon ručne primjene migracije u runtime Supabase DB, smoke je prošao.
+- Smoke potvrđuje za Likert:
+  - validan `single_select_likert` payload se sprema u `responses`
+  - `saved`, `unchanged`, `overwritten` rade
+  - nema duplikata response row-a
+- Smoke potvrđuje za SJT:
+  - validan `best_worst` payload se sprema kao jedan `responses` row + dvije role-based `response_selections` rows
+  - `selection_role = "best"` i `selection_role = "worst"` su runtime potvrđeni
+  - `saved`, `unchanged`, `overwritten` rade
+  - nema duplikata response row-a ni duplicate role rows
+- Smoke potvrđuje da nema completion/scoring/aggregation/report/AI/Team Fit side-effecta.
+- Dodat je mali test assertion fix u istom smoke scriptu: poređenje snapshotova sada koristi isti top-level shape.
+
+**Completion note — Team Dynamics final mixed-format manual save server action:**
+- Dodana je wrapper-specific server action u:
+  - `app/actions/team-assessments.ts`
+- Naziv actiona:
+  - `saveTeamDynamicsMixedAnswerAction(...)`
+- Action prima `teamAssessmentParticipantId` i finalni mixed-format answer payload.
+- Podržava:
+  - `single_select_likert`
+  - `best_worst`
+- Action koristi trenutno prijavljenog korisnika iz postojeće auth infrastrukture.
+- Action poziva `persistValidatedTeamDynamicsMixedAnswer(...)`.
+- Action vraća UI-safe rezultat:
+  - `saved`
+  - `unchanged`
+  - `overwritten`
+  - `invalid`
+  - `not_runnable`
+  - `unsupported`
+  - `unsupported_storage_shape`
+  - `error`
+- Action ne prima raw `attemptId`.
+- Action ne vraća raw `attemptId` u UI-facing resultu.
+- Action ne koristi generic attempt save path.
+- Novi test:
+  - `scripts/test-team-dynamics-assessment-v1-manual-save-action.cjs`
+- Nema UI dugmeta, autosave-a, save-on-selecta, completion readiness-a, completion action promjena, scoring-a, aggregation-a, report orchestration-a, `attempt_reports`, `assessment_reports`, AI/report generation-a, Team Fit outputa, standard battery inclusion promjena ili candidate dashboard inclusion promjena.
+
 **Test coverage note:**
-Novi test:
-- `scripts/test-team-dynamics-assessment-v1-runtime-handoff.cjs`
-
-Test potvrđuje:
-- DB-backed read radi za `team_dynamics_assessment_v1`.
-- `tests.scoring_method = mixed_v1`.
-- `tests.metadata.import_mode = mixed_format_content_spec_v1`.
-- Rekonstruišu se 4 bloka u redoslijedu:
-  - `tdm-31-V1`
-  - `psychological_safety`
-  - `situational_judgment`
-  - `outcome_pulse`
-- Ukupno se čita 48 itema.
-- Čita se 31 TDM item.
-- Čita se 7 psychological safety itema.
-- Čita se 6 SJT scenarija.
-- Čitaju se 4 outcome pulse itema.
-- Likert itemi imaju per-item 4-opcijski katalog sa vrijednostima 1–4.
-- SJT itemi imaju per-item scenario-owned katalog sa 4 opcije i `best_worst` response formatom.
-- Helper ne zavisi od root/shared `options.json`.
-- Finalni slug ostaje van candidate dashboarda, standard battery i participant/HR single-test report capability flow-a.
-
-Novi test:
-- `scripts/test-team-dynamics-assessment-v1-ui-preview-shell.cjs`
-
-Novi test:
-- `scripts/test-team-dynamics-assessment-v1-smoke-fixture.cjs`
-
-Test potvrđuje:
-- smoke fixture koristi `team_assessment_assignments.package_slug = team_dynamics_assessment_v1`
-- linked wrapper attempts vode na `tests.slug = team_dynamics_assessment_v1`
-- finalni test ima `scoring_method = mixed_v1`
-- finalni test je aktivan za wrapper-owned smoke path
-- wrapper `/run` koristi mixed-format preview handoff path
-- finalni handoff ima 48 itema i `mixed_v1`
-- finalni slug ostaje van candidate dashboarda
-- finalni slug ostaje van standard battery
-- finalni slug nema participant/HR single-test report capability
-
-Promijenjeni testovi:
-- `scripts/test-team-dynamics-run-route-shell.cjs`
-- `scripts/test-team-dynamics-run-handoff-skeleton.cjs`
-
-Testovi potvrđuju:
-- finalni wrapper `/run` koristi mixed runtime handoff path.
-- route ne koristi `AssessmentForm`.
-- raw `attemptId` se ne prikazuje u UI source-u.
-- finalni preview razlikuje Likert i SJT iteme.
-- Likert očekuje single local selection.
-- SJT očekuje best/worst local selection.
-- ista SJT opcija ne može ostati i best i worst.
-- `Sljedeće` gating za Likert.
-- `Sljedeće` gating za SJT best/worst.
-- SJT best/worst conflict handling.
-- selected state ostaje lokalno vidljiv.
-- `sessionStorage` key je scoped po `teamAssessmentParticipantId`.
-- current item index se čuva i restore-a.
-- stale storage state se sanitizira.
-- postoji SSR-safe restore lifecycle.
-- write effect ne pregazi stored state prije read-a.
-- ne postoji hydration mismatch obrazac gdje client prvi render zavisi od browser-only storage-a.
-- copy više ne tvrdi da rješavanje nije omogućeno dok je preview klikabilan.
-- nema save action poziva u finalnom preview komponentu.
-- nema autosave logike.
-- nema `AssessmentForm`, save/autosave/fetch/completion/scoring/report/AI/Team Fit path-a.
-- legacy scaffold handoff i route shell testovi i dalje prolaze.
-- finalni slug ostaje van candidate dashboarda, standard battery i participant/HR single-test report capability flow-a.
+- Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-assessment-v1-answer-payload-validator.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-answer-persistence.cjs`
+  - `node --env-file=.env.local scripts/test-team-dynamics-assessment-v1-answer-persistence-db-smoke.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-manual-save-action.cjs`
+  - `node --env-file=.env.local scripts/test-team-dynamics-assessment-v1-runtime-handoff.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-ui-preview-shell.cjs`
+  - `node scripts/test-team-dynamics-run-route-shell.cjs`
+  - `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
+  - `node scripts/test-team-dynamics-privacy-guards.cjs`
+  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
+  - `node scripts/test-standard-assessment-battery.cjs`
+  - `node scripts/test-report-capabilities.cjs`
+  - `npm run typecheck`
 
 **Guardrail note:**
 Ovaj slice nije dodao:
-- DB response persistence
-- response capture
-- save action
-- save/autosave
-- answer payload validator
+- UI save wiring
+- autosave
 - completion readiness
-- completion action promjene
-- scoring runtime
-- member score persistence promjene
-- team aggregation promjene
-- member score persistence promjene
+- completion action integracije za finalni mixed format
+- scoring runtime za finalni mixed format
+- member score persistence promjene za finalni mixed format
+- team aggregation promjene za finalni mixed format
 - Team Dynamics report
 - report orchestration
 - attempt_reports
@@ -2109,7 +2174,7 @@ Ovaj slice nije dodao:
 - GitHub Issues/Projects sync
 
 **Sljedeći korak:**
-Sljedeći slice za ovaj epic treba odlučiti u chatu.
+Sljedeći uski slice: UI manual save wiring za finalni mixed-format preview, bez autosave-a, completion-a, scoring-a, reporta ili Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
@@ -4366,6 +4431,17 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-27 — Team Dynamics final mixed-format answer persistence/action backend
+
+Sažetak:
+
+* Finalni `team_dynamics_assessment_v1` dobio je backend answer validation/persistence/action chain za mixed-format odgovore.
+* Likert odgovori se spremaju kroz postojeći `responses` single-choice model.
+* SJT `best_worst` odgovori se spremaju kao jedan `responses` row + dvije `response_selections` rows sa `selection_role = best/worst`.
+* DB-backed smoke je potvrdio runtime save/read/overwrite za Likert i SJT.
+* Wrapper boundary ostaje `teamAssessmentParticipantId`; raw `attemptId` nije client authority.
+* UI manual save wiring, autosave, completion, scoring, aggregation, report, AI generation i Team Fit ostaju budući slice-evi.
 
 ### 2026-05-24 — Team Dynamics final preview smoke fixture i UX parity bugfix
 

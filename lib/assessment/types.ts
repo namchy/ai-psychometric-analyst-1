@@ -10,6 +10,12 @@ export type ScoringMethod =
   | "mixed_v1";
 
 export type QuestionType = "single_choice" | "multiple_choice" | "text";
+export type ResponseKind =
+  | "single_choice"
+  | "multiple_choice"
+  | "text"
+  | "best_worst";
+export type ResponseSelectionRole = "best" | "worst";
 export type Difficulty = "easy" | "medium" | "hard";
 export type AttemptStatus = "in_progress" | "completed" | "abandoned";
 
@@ -81,7 +87,7 @@ export type Response = {
   id: string;
   attempt_id: string;
   question_id: string;
-  response_kind: QuestionType;
+  response_kind: ResponseKind;
   answer_option_id: string | null;
   raw_value: number | null;
   scored_value: number | null;
@@ -93,6 +99,7 @@ export type ResponseSelection = {
   response_id: string;
   question_id: string;
   answer_option_id: string;
+  selection_role: ResponseSelectionRole | null;
   created_at: string;
 };
 
