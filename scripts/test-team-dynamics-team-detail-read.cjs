@@ -75,7 +75,9 @@ assert.match(source, /\.from\("team_memberships"\)/);
 assert.match(source, /\.from\("participants"\)/);
 assert.match(source, /\.from\("team_assessment_assignments"\)/);
 assert.match(source, /\.from\("team_assessment_participants"\)/);
-assert.match(source, /\.eq\("package_slug", TEAM_DYNAMICS_TEST_SLUG\)/);
+assert.match(source, /\.in\("package_slug", \[/);
+assert.match(source, /TEAM_DYNAMICS_TEST_SLUG/);
+assert.match(source, /TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG/);
 assert.doesNotMatch(source, /team_assessment_participants[\s\S]*participants\(/);
 assert.doesNotMatch(source, /\.from\("attempts"\)/);
 assert.doesNotMatch(source, /\.from\("responses"\)/);
@@ -131,7 +133,7 @@ const detail = buildTeamAssessmentDetail({
   latestAssignment: {
     id: "assignment-1",
     team_id: "team-1",
-    package_slug: "team_dynamics_v1_strong",
+    package_slug: "team_dynamics_assessment_v1",
     status: "active",
     opened_at: "2026-05-20T11:00:00.000Z",
     closed_at: null,

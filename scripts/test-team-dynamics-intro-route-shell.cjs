@@ -103,8 +103,11 @@ assert.match(source, /shellState\.title/);
 assert.match(source, /shellState\.message/);
 assert.match(source, /context\.packageSlug/);
 assert.match(source, /Procjena je već završena i nije potrebno ponovo otvarati aktivni run za ovaj wrapper\./);
+assert.match(source, /Odgovori su spremljeni i procjena je oznacena kao zavrsena\./);
+assert.match(source, /Izvjestaji i[\s\S]*dalja obrada bice omoguceni kroz zaseban korak\./);
 assert.doesNotMatch(source, /Započni procjenu/);
 assert.doesNotMatch(source, /Nastavi procjenu/);
+assert.doesNotMatch(source, /Pogledaj izvjestaj/);
 
 assert.deepEqual(
   resolveTeamAssessmentExecutionShellState({

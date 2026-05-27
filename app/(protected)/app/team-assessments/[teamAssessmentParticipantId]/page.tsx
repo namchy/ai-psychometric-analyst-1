@@ -6,6 +6,7 @@ import {
   loadTeamAssessmentExecutionContext,
   resolveTeamAssessmentExecutionShellState,
 } from "@/lib/assessment/team-assessment-execution";
+import { TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG } from "@/lib/assessment/team-dynamics";
 
 type TeamAssessmentIntroPageProps = {
   params: {
@@ -84,9 +85,16 @@ export default async function TeamAssessmentIntroPage({
             {shellState.message}
           </p>
           {shellState.kind === "intro_completed" ? (
-            <p className="text-sm leading-6 text-slate-700">
-              Procjena je već završena i nije potrebno ponovo otvarati aktivni run za ovaj wrapper.
-            </p>
+            context.packageSlug === TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG ? (
+              <p className="text-sm leading-6 text-slate-700">
+                Odgovori su spremljeni i procjena je oznacena kao zavrsena. Izvjestaji i
+                dalja obrada bice omoguceni kroz zaseban korak.
+              </p>
+            ) : (
+              <p className="text-sm leading-6 text-slate-700">
+                Procjena je već završena i nije potrebno ponovo otvarati aktivni run za ovaj wrapper.
+              </p>
+            )
           ) : null}
         </section>
       </section>

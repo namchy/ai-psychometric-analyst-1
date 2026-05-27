@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { TeamDynamicsMixedRunPreview } from "@/components/assessment/team-dynamics-mixed-run-preview";
 import { TeamDynamicsRunUiSkeleton } from "@/components/assessment/team-dynamics-run-ui-skeleton";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG } from "@/lib/assessment/team-dynamics";
 import {
   loadTeamAssessmentExecutionContext,
   loadTeamAssessmentRunHandoff,
@@ -57,6 +58,8 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
 
   const isMixedRuntimePreview =
     handoff.runShellVariant === "mixed_runtime_preview" && handoff.mixedRuntimeHandoff !== null;
+  const shouldRenderActiveMixedRuntimePreview =
+    isMixedRuntimePreview && handoff.isRunnableShellState;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-10 sm:px-6 lg:px-8">
@@ -87,7 +90,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
               Procjena timske dinamike
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-700 sm:text-[15px]">
-              {isMixedRuntimePreview
+              {shouldRenderActiveMixedRuntimePreview
                 ? "4 kratka bloka, oko 12–15 minuta. Ovaj prikaz je kontrolisani UI-only preview finalnog mixed-format runtime handoffa."
                 : "Ova procjena je dio timske procjene, ne individualni psihološki profil."}
             </p>
@@ -131,7 +134,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
               <p className="text-sm leading-6 text-slate-700">
                 {handoff.placeholderMessage}
               </p>
-              {isMixedRuntimePreview ? (
+              {shouldRenderActiveMixedRuntimePreview ? (
                 <>
                   <p className="text-sm leading-6 text-slate-700">
                     Finalni mixed-format runtime handoff je ucitan iz imported DB shape-a i
@@ -169,6 +172,13 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
               <p className="text-sm leading-6 text-slate-700">
                 {handoff.placeholderMessage}
               </p>
+              {handoff.wrapperStatus === "completed" &&
+              handoff.packageSlug === TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG ? (
+                <p className="text-sm leading-6 text-slate-700">
+                  Odgovori su spremljeni i procjena je oznacena kao zavrsena. Izvjestaji i
+                  dalja obrada bice omoguceni kroz zaseban korak.
+                </p>
+              ) : null}
               <p className="text-sm leading-6 text-slate-700">
                 Aktivni run više nije dostupan za ovaj wrapper i pitanja se više ne prikazuju.
               </p>
@@ -182,7 +192,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
           ) : null}
         </section>
 
-        {isMixedRuntimePreview ? (
+        {shouldRenderActiveMixedRuntimePreview ? (
           <TeamDynamicsMixedRunPreview
             teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
             runtimeHandoff={handoff.mixedRuntimeHandoff!}

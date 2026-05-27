@@ -1,6 +1,9 @@
 import "server-only";
 
-import { TEAM_DYNAMICS_TEST_SLUG } from "@/lib/assessment/team-dynamics";
+import {
+  TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG,
+  TEAM_DYNAMICS_TEST_SLUG,
+} from "@/lib/assessment/team-dynamics";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type TeamRow = {
@@ -263,7 +266,10 @@ export async function getTeamAssessmentDetailForOrganization(input: {
     .from("team_assessment_assignments")
     .select("id, team_id, package_slug, status, opened_at, closed_at, created_at, updated_at")
     .eq("team_id", input.teamId)
-    .eq("package_slug", TEAM_DYNAMICS_TEST_SLUG)
+    .in("package_slug", [
+      TEAM_DYNAMICS_TEST_SLUG,
+      TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG,
+    ])
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(1)
