@@ -141,9 +141,12 @@ assert.match(componentSource, /createSelectionStateFromSavedAnswerState/);
 assert.match(componentSource, /sanitizeMixedPreviewSavedAnswerState/);
 assert.match(componentSource, /mergeMixedPreviewStoredStateWithSavedAnswers/);
 assert.match(componentSource, /props\.completionReadiness/);
-assert.match(componentSource, /Spremljeno: \$\{props\.completionReadiness\.savedValidAnswerCount\}\/\$\{props\.completionReadiness\.supportedItemCount\} odgovora\./);
+assert.match(componentSource, /Spremljeno: \$\{effectiveCompletionReadiness\.savedValidAnswerCount\}\/\$\{effectiveCompletionReadiness\.supportedItemCount\} odgovora\./);
 assert.match(componentSource, /Svi odgovori su spremljeni\./);
 assert.match(componentSource, /Nema podrzanih pitanja za zavrsetak\./);
+assert.match(componentSource, /Odgovori su spremljeni/);
+assert.match(componentSource, /Svi podrzani odgovori u ovoj procjeni su spremljeni\.[\s\S]*Zavrsavanje procjene\s+bice omoguceno u sljedecem koraku\./);
+assert.match(componentSource, /Ovaj preview ne pokrece completion action, status transition, scoring ni izvjestaj\./);
 assert.match(componentSource, /responseFormat: "single_select_likert"/);
 assert.match(componentSource, /responseFormat: "best_worst"/);
 assert.match(componentSource, /status: "saving"/);
@@ -162,8 +165,11 @@ assert.match(componentSource, /if \(currentSavePayload === null \|\| currentSave
 assert.match(componentSource, /result\.status === "saved"/);
 assert.match(componentSource, /result\.status === "unchanged"/);
 assert.match(componentSource, /result\.status === "overwritten"/);
+assert.match(componentSource, /shouldOpenFinalPreviewState/);
+assert.match(componentSource, /isFinalPreviewVisible/);
 assert.match(componentSource, /selectionState: createSelectionStateFromSavedAnswerState\(nextSavedAnswerState\)/);
 assert.match(componentSource, /selectionState: createSelectionStateFromSavedAnswerState\(current\.savedAnswerState\)/);
+assert.match(componentSource, /isLastItem &&\s+shouldOpenFinalPreviewState/);
 assert.match(componentSource, /writeMixedPreviewStoredState\(\{\s*teamAssessmentParticipantId: props\.teamAssessmentParticipantId,\s*state: \{\s*currentIndex: safeIndex,\s*\},/);
 assert.doesNotMatch(componentSource, /Spremi odgovor/);
 assert.doesNotMatch(componentSource, /attemptId:/);
@@ -181,12 +187,14 @@ const {
   buildMixedPreviewSessionStorageKey,
   createSelectionStateFromSavedAnswerState,
   createInitialMixedPreviewClientState,
+  buildMixedPreviewCompletionReadiness,
   getMixedPreviewItemKind,
   isCurrentItemAnswerComplete,
   mergeMixedPreviewStoredStateWithSavedAnswers,
   readMixedPreviewStoredState,
   sanitizeMixedPreviewSavedAnswerState,
   sanitizeMixedPreviewStoredState,
+  shouldOpenFinalPreviewState,
   updateSjtPreviewSelection,
 } = require("../components/assessment/team-dynamics-mixed-run-preview.tsx");
 const {
@@ -668,7 +676,148 @@ assert.deepEqual(
         },
       },
     },
+    isFinalPreviewVisible: false,
   },
+);
+
+assert.deepEqual(
+  buildMixedPreviewCompletionReadiness({
+    runtimeHandoff: {
+      ...runtimeHandoff,
+      scoringMethod: "mixed_v1",
+    },
+    savedAnswerState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-3",
+        },
+      },
+    },
+    fallbackReadiness: {
+      readinessStatus: "not_ready",
+      isReadyForCompletion: false,
+      supportedItemCount: 2,
+      savedValidAnswerCount: 1,
+      missingQuestionIds: ["question-2"],
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 0,
+      likertItemCount: 1,
+      sjtItemCount: 1,
+      savedLikertAnswerCount: 1,
+      savedSjtAnswerCount: 0,
+      warnings: [],
+    },
+  }),
+  {
+    readinessStatus: "ready",
+    isReadyForCompletion: true,
+    supportedItemCount: 2,
+    savedValidAnswerCount: 2,
+    missingQuestionIds: [],
+    invalidSavedAnswerCount: 0,
+    ignoredStaleAnswerCount: 0,
+    likertItemCount: 1,
+    sjtItemCount: 1,
+    savedLikertAnswerCount: 1,
+    savedSjtAnswerCount: 1,
+    warnings: [],
+  },
+);
+
+assert.deepEqual(
+  buildMixedPreviewCompletionReadiness({
+    runtimeHandoff: {
+      ...runtimeHandoff,
+      scoringMethod: "mixed_v1",
+    },
+    savedAnswerState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-1",
+        },
+      },
+    },
+    fallbackReadiness: {
+      readinessStatus: "not_ready",
+      isReadyForCompletion: false,
+      supportedItemCount: 2,
+      savedValidAnswerCount: 1,
+      missingQuestionIds: ["question-2"],
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 0,
+      likertItemCount: 1,
+      sjtItemCount: 1,
+      savedLikertAnswerCount: 1,
+      savedSjtAnswerCount: 0,
+      warnings: [],
+    },
+  }),
+  {
+    readinessStatus: "not_ready",
+    isReadyForCompletion: false,
+    supportedItemCount: 2,
+    savedValidAnswerCount: 1,
+    missingQuestionIds: ["question-2"],
+    invalidSavedAnswerCount: 0,
+    ignoredStaleAnswerCount: 0,
+    likertItemCount: 1,
+    sjtItemCount: 1,
+    savedLikertAnswerCount: 1,
+    savedSjtAnswerCount: 0,
+    warnings: [],
+  },
+);
+
+assert.equal(
+  shouldOpenFinalPreviewState({
+    currentIndex: 1,
+    itemCount: 2,
+    readiness: {
+      readinessStatus: "ready",
+      isReadyForCompletion: true,
+      supportedItemCount: 2,
+      savedValidAnswerCount: 2,
+      missingQuestionIds: [],
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 0,
+      likertItemCount: 1,
+      sjtItemCount: 1,
+      savedLikertAnswerCount: 1,
+      savedSjtAnswerCount: 1,
+      warnings: [],
+    },
+  }),
+  true,
+);
+
+assert.equal(
+  shouldOpenFinalPreviewState({
+    currentIndex: 1,
+    itemCount: 2,
+    readiness: {
+      readinessStatus: "not_ready",
+      isReadyForCompletion: false,
+      supportedItemCount: 2,
+      savedValidAnswerCount: 1,
+      missingQuestionIds: ["question-2"],
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 0,
+      likertItemCount: 1,
+      sjtItemCount: 1,
+      savedLikertAnswerCount: 1,
+      savedSjtAnswerCount: 0,
+      warnings: [],
+    },
+  }),
+  false,
 );
 
 assert.deepEqual(

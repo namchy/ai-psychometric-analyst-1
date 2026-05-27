@@ -100,7 +100,7 @@ assert.match(executionSource, /mixedCompletionReadiness/);
 assert.match(routeSource, /completionReadiness=\{handoff\.mixedCompletionReadiness\}/);
 assert.doesNotMatch(routeSource, /attemptId/);
 
-assert.match(previewSource, /Spremljeno: \$\{props\.completionReadiness\.savedValidAnswerCount\}\/\$\{props\.completionReadiness\.supportedItemCount\} odgovora\./);
+assert.match(previewSource, /Spremljeno: \$\{effectiveCompletionReadiness\.savedValidAnswerCount\}\/\$\{effectiveCompletionReadiness\.supportedItemCount\} odgovora\./);
 assert.match(previewSource, /Svi odgovori su spremljeni\./);
 assert.match(previewSource, /Nema podrzanih pitanja za zavrsetak\./);
 assert.doesNotMatch(previewSource, /Zavrsi procjenu/);

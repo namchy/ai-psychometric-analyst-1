@@ -40,6 +40,7 @@ type MixedPreviewClientState = {
   currentIndex: number;
   selectionState: MixedPreviewSelectionState;
   savedAnswerState: MixedPreviewSavedAnswerState;
+  isFinalPreviewVisible: boolean;
 };
 
 type MixedPreviewSaveStatus =
@@ -329,7 +330,94 @@ export function createInitialMixedPreviewClientState(input: {
     currentIndex: 0,
     selectionState: createSelectionStateFromSavedAnswerState(savedAnswerState),
     savedAnswerState,
+    isFinalPreviewVisible: false,
   };
+}
+
+export function buildMixedPreviewCompletionReadiness(input: {
+  runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
+  savedAnswerState: MixedPreviewSavedAnswerState;
+  fallbackReadiness: TeamDynamicsMixedCompletionReadiness;
+}): TeamDynamicsMixedCompletionReadiness {
+  const supportedItems = input.runtimeHandoff.items.filter((item) => {
+    const itemKind = getMixedPreviewItemKind(item);
+    return itemKind === "likert" || itemKind === "sjt_best_worst";
+  });
+
+  if (supportedItems.length === 0) {
+    return {
+      ...input.fallbackReadiness,
+      readinessStatus: "no_supported_items",
+      isReadyForCompletion: false,
+      supportedItemCount: 0,
+      savedValidAnswerCount: 0,
+      missingQuestionIds: [],
+      savedLikertAnswerCount: 0,
+      savedSjtAnswerCount: 0,
+    };
+  }
+
+  const validLikertQuestionIds = supportedItems
+    .filter((item) => getMixedPreviewItemKind(item) === "likert")
+    .filter((item) => {
+      const optionId =
+        input.savedAnswerState.likertSelectionsByQuestionId[item.questionId] ?? null;
+
+      return item.options.some((option) => option.optionId === optionId);
+    })
+    .map((item) => item.questionId);
+  const validSjtQuestionIds = supportedItems
+    .filter((item) => getMixedPreviewItemKind(item) === "sjt_best_worst")
+    .filter((item) => {
+      const selection =
+        input.savedAnswerState.sjtSelectionsByQuestionId[item.questionId] ?? null;
+
+      if (!selection) {
+        return false;
+      }
+
+      const optionIds = new Set(item.options.map((option) => option.optionId));
+
+      return (
+        optionIds.has(selection.bestOptionId) &&
+        optionIds.has(selection.worstOptionId) &&
+        selection.bestOptionId !== selection.worstOptionId
+      );
+    })
+    .map((item) => item.questionId);
+  const validAnsweredQuestionIds = new Set([
+    ...validLikertQuestionIds,
+    ...validSjtQuestionIds,
+  ]);
+  const missingQuestionIds = supportedItems
+    .map((item) => item.questionId)
+    .filter((questionId) => !validAnsweredQuestionIds.has(questionId));
+  const savedValidAnswerCount = validLikertQuestionIds.length + validSjtQuestionIds.length;
+  const isReadyForCompletion =
+    supportedItems.length > 0 && missingQuestionIds.length === 0;
+
+  return {
+    ...input.fallbackReadiness,
+    readinessStatus: isReadyForCompletion ? "ready" : "not_ready",
+    isReadyForCompletion,
+    supportedItemCount: supportedItems.length,
+    savedValidAnswerCount,
+    missingQuestionIds,
+    savedLikertAnswerCount: validLikertQuestionIds.length,
+    savedSjtAnswerCount: validSjtQuestionIds.length,
+  };
+}
+
+export function shouldOpenFinalPreviewState(input: {
+  currentIndex: number;
+  itemCount: number;
+  readiness: TeamDynamicsMixedCompletionReadiness;
+}): boolean {
+  return (
+    input.itemCount > 0 &&
+    input.currentIndex === input.itemCount - 1 &&
+    input.readiness.readinessStatus === "ready"
+  );
 }
 
 function writeMixedPreviewStoredState(input: {
@@ -531,6 +619,7 @@ export function TeamDynamicsMixedRunPreview(props: {
   const currentIndex = previewState.currentIndex;
   const selectionState = previewState.selectionState;
   const savedAnswerStateFromSession = previewState.savedAnswerState;
+  const isFinalPreviewVisible = previewState.isFinalPreviewVisible;
 
   function markQuestionAsLocallyChanged(questionId: string) {
     setSaveStatesByQuestionId((current) => resetQuestionSaveState(current, questionId));
@@ -560,6 +649,7 @@ export function TeamDynamicsMixedRunPreview(props: {
       currentIndex: mergedStoredState.currentIndex,
       selectionState: createSelectionStateFromSavedAnswerState(savedAnswerState),
       savedAnswerState,
+      isFinalPreviewVisible: false,
     });
     setHasHydratedPreviewState(true);
   }, [props.runtimeHandoff, props.teamAssessmentParticipantId, savedAnswerState]);
@@ -708,12 +798,77 @@ export function TeamDynamicsMixedRunPreview(props: {
     itemKind === "unsupported" ||
     currentSavePayload === null ||
     currentSaveState.status === "saving";
+  const effectiveCompletionReadiness = buildMixedPreviewCompletionReadiness({
+    runtimeHandoff: props.runtimeHandoff,
+    savedAnswerState: savedAnswerStateFromSession,
+    fallbackReadiness: props.completionReadiness,
+  });
   const readinessSummaryLabel =
-    props.completionReadiness.readinessStatus === "ready"
+    effectiveCompletionReadiness.readinessStatus === "ready"
       ? "Svi odgovori su spremljeni."
-      : props.completionReadiness.readinessStatus === "no_supported_items"
+      : effectiveCompletionReadiness.readinessStatus === "no_supported_items"
         ? "Nema podrzanih pitanja za zavrsetak."
-        : `Spremljeno: ${props.completionReadiness.savedValidAnswerCount}/${props.completionReadiness.supportedItemCount} odgovora.`;
+        : `Spremljeno: ${effectiveCompletionReadiness.savedValidAnswerCount}/${effectiveCompletionReadiness.supportedItemCount} odgovora.`;
+
+  if (isFinalPreviewVisible) {
+    return (
+      <section className="space-y-5 rounded-[1.5rem] border border-slate-200/80 bg-white/85 p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]">
+        <div className="space-y-3">
+          <div className="grid gap-3 rounded-[1.2rem] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(7,59,76,0.05),rgba(17,138,178,0.04))] p-4 sm:grid-cols-[1.3fr_0.7fr]">
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Procjena timske dinamike
+              </p>
+              <h2 className="text-2xl font-extrabold tracking-[-0.04em] text-[#073b4c]">
+                Odgovori su spremljeni
+              </h2>
+              <p className="text-sm leading-6 text-slate-700">
+                Svi podrzani odgovori u ovoj procjeni su spremljeni. Zavrsavanje procjene
+                bice omoguceno u sljedecem koraku.
+              </p>
+            </div>
+
+            <div className="rounded-[1rem] border border-white/70 bg-white/85 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Lokalni progress
+              </p>
+              <p className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-slate-950">
+                {effectiveCompletionReadiness.savedValidAnswerCount} /{" "}
+                {effectiveCompletionReadiness.supportedItemCount}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{readinessSummaryLabel}</p>
+            </div>
+          </div>
+        </div>
+
+        <article className="space-y-4 rounded-[1.25rem] border border-emerald-200/80 bg-emerald-50/70 p-5">
+          <p className="text-sm font-semibold text-slate-900">Odgovori u ovom toku su spremljeni.</p>
+          <p className="text-sm leading-6 text-slate-700">
+            Ovaj preview ne pokrece completion action, status transition, scoring ni izvjestaj.
+          </p>
+        </article>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() =>
+              setPreviewState((current) => ({
+                ...current,
+                currentIndex: Math.max(props.runtimeHandoff.items.length - 1, 0),
+                selectionState: createSelectionStateFromSavedAnswerState(
+                  current.savedAnswerState,
+                ),
+                isFinalPreviewVisible: false,
+              }))
+            }
+            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors duration-150 hover:border-slate-500"
+          >
+            Prethodno
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-5 rounded-[1.5rem] border border-slate-200/80 bg-white/85 p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]">
@@ -765,7 +920,7 @@ export function TeamDynamicsMixedRunPreview(props: {
             <p className="mt-2 text-sm leading-6 text-slate-700">
               {readinessSummaryLabel}
             </p>
-            {props.completionReadiness.invalidSavedAnswerCount > 0 ? (
+            {effectiveCompletionReadiness.invalidSavedAnswerCount > 0 ? (
               <p className="mt-1 text-sm leading-6 text-amber-800">
                 Neki spremljeni odgovori nisu uracunati u trenutni progress prikaz.
               </p>
@@ -938,6 +1093,7 @@ export function TeamDynamicsMixedRunPreview(props: {
               ...current,
               currentIndex: Math.max(0, current.currentIndex - 1),
               selectionState: createSelectionStateFromSavedAnswerState(current.savedAnswerState),
+              isFinalPreviewVisible: false,
             }))
           }
           disabled={isFirstItem}
@@ -976,6 +1132,11 @@ export function TeamDynamicsMixedRunPreview(props: {
                   savedAnswerState: savedAnswerStateFromSession,
                   payload: currentSavePayload,
                 });
+                const nextCompletionReadiness = buildMixedPreviewCompletionReadiness({
+                  runtimeHandoff: props.runtimeHandoff,
+                  savedAnswerState: nextSavedAnswerState,
+                  fallbackReadiness: effectiveCompletionReadiness,
+                });
 
                 setSaveStatesByQuestionId((current) => ({
                   ...current,
@@ -986,11 +1147,29 @@ export function TeamDynamicsMixedRunPreview(props: {
                 }));
                 setPreviewState((current) => ({
                   ...current,
-                  currentIndex: isLastItem
-                    ? current.currentIndex
-                    : Math.min(props.runtimeHandoff.items.length - 1, current.currentIndex + 1),
+                  currentIndex:
+                    isLastItem &&
+                    shouldOpenFinalPreviewState({
+                      currentIndex: current.currentIndex,
+                      itemCount: props.runtimeHandoff.items.length,
+                      readiness: nextCompletionReadiness,
+                    })
+                      ? current.currentIndex
+                      : isLastItem
+                        ? current.currentIndex
+                        : Math.min(
+                            props.runtimeHandoff.items.length - 1,
+                            current.currentIndex + 1,
+                          ),
                   savedAnswerState: nextSavedAnswerState,
                   selectionState: createSelectionStateFromSavedAnswerState(nextSavedAnswerState),
+                  isFinalPreviewVisible:
+                    isLastItem &&
+                    shouldOpenFinalPreviewState({
+                      currentIndex: current.currentIndex,
+                      itemCount: props.runtimeHandoff.items.length,
+                      readiness: nextCompletionReadiness,
+                    }),
                 }));
                 return;
               }

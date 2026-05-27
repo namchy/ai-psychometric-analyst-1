@@ -334,6 +334,7 @@ assert.deepEqual(
         },
       },
     },
+    isFinalPreviewVisible: false,
   },
 );
 
