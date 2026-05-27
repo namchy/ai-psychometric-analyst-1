@@ -46,6 +46,42 @@ function buildEmptyMixedCompletionReadiness(
   };
 }
 
+function isSavedLikertSelectionValid(input: {
+  item: TeamDynamicsMixedRuntimeHandoff["items"][number];
+  savedAnswerState: TeamDynamicsMixedSavedAnswerState;
+}): boolean {
+  const optionId =
+    input.savedAnswerState.savedLikertSelectionsByQuestionId[input.item.questionId] ?? null;
+
+  return (
+    input.item.responseFormat === "single_select_likert" &&
+    typeof optionId === "string" &&
+    input.item.options.some((option) => option.optionId === optionId)
+  );
+}
+
+function isSavedSjtSelectionValid(input: {
+  item: TeamDynamicsMixedRuntimeHandoff["items"][number];
+  savedAnswerState: TeamDynamicsMixedSavedAnswerState;
+}): boolean {
+  const savedSelection =
+    input.savedAnswerState.savedSjtSelectionsByQuestionId[input.item.questionId] ?? null;
+
+  if (!savedSelection || input.item.responseFormat !== "best_worst") {
+    return false;
+  }
+
+  const optionIds = new Set(input.item.options.map((option) => option.optionId));
+
+  return (
+    typeof savedSelection.bestOptionId === "string" &&
+    typeof savedSelection.worstOptionId === "string" &&
+    savedSelection.bestOptionId !== savedSelection.worstOptionId &&
+    optionIds.has(savedSelection.bestOptionId) &&
+    optionIds.has(savedSelection.worstOptionId)
+  );
+}
+
 export function buildTeamDynamicsMixedCompletionReadiness(input: {
   context: Pick<TeamAssessmentExecutionContext, "packageSlug" | "test">;
   runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
@@ -76,20 +112,31 @@ export function buildTeamDynamicsMixedCompletionReadiness(input: {
     return buildEmptyMixedCompletionReadiness(input.savedAnswerState.warnings);
   }
 
+  const validLikertQuestionIds = likertItems
+    .filter((item) =>
+      isSavedLikertSelectionValid({
+        item,
+        savedAnswerState: input.savedAnswerState,
+      }),
+    )
+    .map((item) => item.questionId);
+  const validSjtQuestionIds = sjtItems
+    .filter((item) =>
+      isSavedSjtSelectionValid({
+        item,
+        savedAnswerState: input.savedAnswerState,
+      }),
+    )
+    .map((item) => item.questionId);
+  const validAnsweredQuestionIds = new Set([
+    ...validLikertQuestionIds,
+    ...validSjtQuestionIds,
+  ]);
   const missingQuestionIds = supportedItems
     .map((item) => item.questionId)
-    .filter((questionId) => {
-      return (
-        !(questionId in input.savedAnswerState.savedLikertSelectionsByQuestionId) &&
-        !(questionId in input.savedAnswerState.savedSjtSelectionsByQuestionId)
-      );
-    });
-  const savedLikertAnswerCount = Object.keys(
-    input.savedAnswerState.savedLikertSelectionsByQuestionId,
-  ).length;
-  const savedSjtAnswerCount = Object.keys(
-    input.savedAnswerState.savedSjtSelectionsByQuestionId,
-  ).length;
+    .filter((questionId) => !validAnsweredQuestionIds.has(questionId));
+  const savedLikertAnswerCount = validLikertQuestionIds.length;
+  const savedSjtAnswerCount = validSjtQuestionIds.length;
   const savedValidAnswerCount = savedLikertAnswerCount + savedSjtAnswerCount;
   const isReadyForCompletion =
     supportedItems.length > 0 && missingQuestionIds.length === 0;

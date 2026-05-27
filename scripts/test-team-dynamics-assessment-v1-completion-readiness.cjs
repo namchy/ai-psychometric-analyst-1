@@ -208,6 +208,113 @@ assert.deepEqual(
       savedLikertSelectionsByQuestionId: {
         "question-1": "option-2",
       },
+      savedSjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+        },
+      },
+      savedAnswerCount: 2,
+      invalidSavedAnswerCount: 1,
+      ignoredStaleAnswerCount: 0,
+      warnings: [],
+    },
+  }),
+  {
+    readinessStatus: "not_ready",
+    isReadyForCompletion: false,
+    supportedItemCount: 2,
+    savedValidAnswerCount: 1,
+    missingQuestionIds: ["question-2"],
+    invalidSavedAnswerCount: 1,
+    ignoredStaleAnswerCount: 0,
+    likertItemCount: 1,
+    sjtItemCount: 1,
+    savedLikertAnswerCount: 1,
+    savedSjtAnswerCount: 0,
+    warnings: [],
+  },
+);
+
+assert.deepEqual(
+  buildTeamDynamicsMixedCompletionReadiness({
+    context: finalContext,
+    runtimeHandoff,
+    savedAnswerState: {
+      savedLikertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
+      savedSjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-1",
+        },
+      },
+      savedAnswerCount: 2,
+      invalidSavedAnswerCount: 1,
+      ignoredStaleAnswerCount: 0,
+      warnings: [],
+    },
+  }),
+  {
+    readinessStatus: "not_ready",
+    isReadyForCompletion: false,
+    supportedItemCount: 2,
+    savedValidAnswerCount: 1,
+    missingQuestionIds: ["question-2"],
+    invalidSavedAnswerCount: 1,
+    ignoredStaleAnswerCount: 0,
+    likertItemCount: 1,
+    sjtItemCount: 1,
+    savedLikertAnswerCount: 1,
+    savedSjtAnswerCount: 0,
+    warnings: [],
+  },
+);
+
+assert.deepEqual(
+  buildTeamDynamicsMixedCompletionReadiness({
+    context: finalContext,
+    runtimeHandoff,
+    savedAnswerState: {
+      savedLikertSelectionsByQuestionId: {
+        "question-1": "ghost-option",
+      },
+      savedSjtSelectionsByQuestionId: {
+        "stale-question": {
+          bestOptionId: "ghost-best",
+          worstOptionId: "ghost-worst",
+        },
+      },
+      savedAnswerCount: 2,
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 2,
+      warnings: [],
+    },
+  }),
+  {
+    readinessStatus: "not_ready",
+    isReadyForCompletion: false,
+    supportedItemCount: 2,
+    savedValidAnswerCount: 0,
+    missingQuestionIds: ["question-1", "question-2"],
+    invalidSavedAnswerCount: 0,
+    ignoredStaleAnswerCount: 2,
+    likertItemCount: 1,
+    sjtItemCount: 1,
+    savedLikertAnswerCount: 0,
+    savedSjtAnswerCount: 0,
+    warnings: [],
+  },
+);
+
+assert.deepEqual(
+  buildTeamDynamicsMixedCompletionReadiness({
+    context: finalContext,
+    runtimeHandoff,
+    savedAnswerState: {
+      savedLikertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
       savedSjtSelectionsByQuestionId: {},
       savedAnswerCount: 1,
       invalidSavedAnswerCount: 0,
@@ -341,6 +448,7 @@ assert.deepEqual(
 
 Promise.resolve()
   .then(async () => {
+    let loadSavedAnswersCallCount = 0;
     const readiness = await loadTeamDynamicsMixedCompletionReadinessForContext(
       {
         context: {
@@ -353,19 +461,24 @@ Promise.resolve()
         runtimeHandoff,
       },
       {
-        loadSavedAnswers: async () => ({
-          savedLikertSelectionsByQuestionId: {
-            "question-1": "option-1",
-          },
-          savedSjtSelectionsByQuestionId: {},
-          savedAnswerCount: 1,
-          invalidSavedAnswerCount: 0,
-          ignoredStaleAnswerCount: 0,
-          warnings: [],
-        }),
+        loadSavedAnswers: async () => {
+          loadSavedAnswersCallCount += 1;
+
+          return {
+            savedLikertSelectionsByQuestionId: {
+              "question-1": "option-1",
+            },
+            savedSjtSelectionsByQuestionId: {},
+            savedAnswerCount: 1,
+            invalidSavedAnswerCount: 0,
+            ignoredStaleAnswerCount: 0,
+            warnings: [],
+          };
+        },
       },
     );
 
+    assert.equal(loadSavedAnswersCallCount, 1);
     assert.deepEqual(readiness, {
       readinessStatus: "not_ready",
       isReadyForCompletion: false,
@@ -380,6 +493,7 @@ Promise.resolve()
       savedSjtAnswerCount: 0,
       warnings: [],
     });
+    assert.equal("attemptId" in readiness, false);
 
     const unsupportedReadiness = await loadTeamDynamicsMixedCompletionReadinessForContext(
       {
@@ -413,6 +527,7 @@ Promise.resolve()
       savedSjtAnswerCount: 0,
       warnings: ["unsupported:team_dynamics_assessment_v1"],
     });
+    assert.equal("attemptId" in unsupportedReadiness, false);
 
     console.log("test-team-dynamics-assessment-v1-completion-readiness: ok");
   })
