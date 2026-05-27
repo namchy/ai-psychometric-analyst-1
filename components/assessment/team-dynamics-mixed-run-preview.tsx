@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { saveTeamDynamicsMixedAnswerAction } from "@/app/actions/team-assessments";
 import type {
   TeamDynamicsMixedRuntimeHandoff,
   TeamDynamicsMixedRuntimeHandoffItem,
@@ -35,6 +36,38 @@ type MixedPreviewClientState = {
   currentIndex: number;
   selectionState: MixedPreviewSelectionState;
 };
+
+type MixedPreviewSaveStatus =
+  | "idle"
+  | "saving"
+  | "saved"
+  | "overwritten"
+  | "unchanged"
+  | "error";
+
+type MixedPreviewSaveState = {
+  status: MixedPreviewSaveStatus;
+  message: string | null;
+};
+
+type MixedPreviewSavePayload =
+  | {
+      teamAssessmentParticipantId: string;
+      questionId: string;
+      responseFormat: "single_select_likert";
+      optionId: string;
+      locale?: string;
+      clientTimestamp?: string;
+    }
+  | {
+      teamAssessmentParticipantId: string;
+      questionId: string;
+      responseFormat: "best_worst";
+      bestOptionId: string;
+      worstOptionId: string;
+      locale?: string;
+      clientTimestamp?: string;
+    };
 
 const EMPTY_SELECTION_STATE: MixedPreviewSelectionState = {
   likertSelectionsByQuestionId: {},
@@ -309,6 +342,93 @@ function getSjtMarkerClassName(isSelected: boolean, selectionKind: "best" | "wor
     : "border-[#ef476f] bg-[#ef476f] text-white";
 }
 
+function resetQuestionSaveState(
+  saveStatesByQuestionId: Record<string, MixedPreviewSaveState>,
+  questionId: string,
+): Record<string, MixedPreviewSaveState> {
+  if (!(questionId in saveStatesByQuestionId)) {
+    return saveStatesByQuestionId;
+  }
+
+  const nextState = { ...saveStatesByQuestionId };
+  delete nextState[questionId];
+  return nextState;
+}
+
+export function buildMixedPreviewSavePayload(input: {
+  teamAssessmentParticipantId: string;
+  locale?: string;
+  item: TeamDynamicsMixedRuntimeHandoffItem;
+  selectionState: MixedPreviewSelectionState;
+  clientTimestamp?: string;
+}): MixedPreviewSavePayload | null {
+  const itemKind = getMixedPreviewItemKind(input.item);
+
+  if (itemKind === "likert") {
+    const optionId = input.selectionState.likertSelectionsByQuestionId[input.item.questionId];
+
+    if (!input.item.options.some((option) => option.optionId === optionId)) {
+      return null;
+    }
+
+    return {
+      teamAssessmentParticipantId: input.teamAssessmentParticipantId,
+      questionId: input.item.questionId,
+      responseFormat: "single_select_likert",
+      optionId,
+      locale: input.locale,
+      clientTimestamp: input.clientTimestamp,
+    };
+  }
+
+  if (itemKind === "sjt_best_worst") {
+    const currentSelection = input.selectionState.sjtSelectionsByQuestionId[input.item.questionId];
+    const optionIds = new Set(input.item.options.map((option) => option.optionId));
+    const bestOptionId = currentSelection?.bestOptionId ?? null;
+    const worstOptionId = currentSelection?.worstOptionId ?? null;
+
+    if (
+      !isValidOptionId(optionIds, bestOptionId) ||
+      !isValidOptionId(optionIds, worstOptionId) ||
+      bestOptionId === worstOptionId
+    ) {
+      return null;
+    }
+
+    return {
+      teamAssessmentParticipantId: input.teamAssessmentParticipantId,
+      questionId: input.item.questionId,
+      responseFormat: "best_worst",
+      bestOptionId,
+      worstOptionId,
+      locale: input.locale,
+      clientTimestamp: input.clientTimestamp,
+    };
+  }
+
+  return null;
+}
+
+function getSaveFeedbackCopy(status: Exclude<MixedPreviewSaveStatus, "idle">): string {
+  if (status === "saved") {
+    return "Odgovor je spremljen.";
+  }
+
+  if (status === "overwritten") {
+    return "Odgovor je azuriran.";
+  }
+
+  if (status === "unchanged") {
+    return "Odgovor je vec spremljen.";
+  }
+
+  if (status === "saving") {
+    return "Spremam odgovor...";
+  }
+
+  return "Odgovor nije spremljen. Pokusaj ponovo.";
+}
+
 export function TeamDynamicsMixedRunPreview(props: {
   teamAssessmentParticipantId: string;
   runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
@@ -322,8 +442,15 @@ export function TeamDynamicsMixedRunPreview(props: {
     }),
   );
   const [hasHydratedPreviewState, setHasHydratedPreviewState] = useState(false);
+  const [saveStatesByQuestionId, setSaveStatesByQuestionId] = useState<
+    Record<string, MixedPreviewSaveState>
+  >({});
   const currentIndex = previewState.currentIndex;
   const selectionState = previewState.selectionState;
+
+  function markQuestionAsLocallyChanged(questionId: string) {
+    setSaveStatesByQuestionId((current) => resetQuestionSaveState(current, questionId));
+  }
 
   const safeIndex = Math.min(currentIndex, Math.max(props.runtimeHandoff.items.length - 1, 0));
   const currentItem = props.runtimeHandoff.items[safeIndex] ?? null;
@@ -470,6 +597,20 @@ export function TeamDynamicsMixedRunPreview(props: {
     bestOptionId: null,
     worstOptionId: null,
   };
+  const currentSaveState = saveStatesByQuestionId[currentItem.questionId] ?? {
+    status: "idle" as const,
+    message: null,
+  };
+  const currentSavePayload = buildMixedPreviewSavePayload({
+    teamAssessmentParticipantId: props.teamAssessmentParticipantId,
+    locale: props.runtimeHandoff.locale,
+    item: currentItem,
+    selectionState,
+  });
+  const isSaveDisabled =
+    itemKind === "unsupported" ||
+    currentSavePayload === null ||
+    currentSaveState.status === "saving";
 
   return (
     <section className="space-y-5 rounded-[1.5rem] border border-slate-200/80 bg-white/85 p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]">
@@ -516,7 +657,7 @@ export function TeamDynamicsMixedRunPreview(props: {
               Trenutni blok: {currentBlock?.title ?? currentItem.blockKey}
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Izbori se cuvaju samo u ovoj browser sesiji i ne ulaze u rezultat.
+              Izbori se cuvaju u ovoj browser sesiji, a trenutno pitanje se moze rucno spremiti.
             </p>
           </div>
         </div>
@@ -549,16 +690,19 @@ export function TeamDynamicsMixedRunPreview(props: {
                   key={option.optionId}
                   type="button"
                   onClick={() =>
-                    setPreviewState((current) => ({
-                      ...current,
-                      selectionState: {
-                        ...current.selectionState,
-                        likertSelectionsByQuestionId: {
-                          ...current.selectionState.likertSelectionsByQuestionId,
-                          [currentItem.questionId]: option.optionId,
+                    {
+                      setPreviewState((current) => ({
+                        ...current,
+                        selectionState: {
+                          ...current.selectionState,
+                          likertSelectionsByQuestionId: {
+                            ...current.selectionState.likertSelectionsByQuestionId,
+                            [currentItem.questionId]: option.optionId,
+                          },
                         },
-                      },
-                    }))
+                      }));
+                      markQuestionAsLocallyChanged(currentItem.questionId);
+                    }
                   }
                   className={`rounded-[1rem] border px-4 py-3 text-left text-sm font-semibold transition-colors duration-150 ${getOptionButtonClassName(
                     isSelected,
@@ -588,23 +732,26 @@ export function TeamDynamicsMixedRunPreview(props: {
                     <button
                       type="button"
                       onClick={() =>
-                        setPreviewState((current) => ({
-                          ...current,
-                          selectionState: {
-                            ...current.selectionState,
-                            sjtSelectionsByQuestionId: {
-                              ...current.selectionState.sjtSelectionsByQuestionId,
-                              [currentItem.questionId]: updateSjtPreviewSelection({
-                                current:
-                                  current.selectionState.sjtSelectionsByQuestionId[
-                                    currentItem.questionId
-                                  ],
-                                selectionKind: "best",
-                                optionId: option.optionId,
-                              }),
+                        {
+                          setPreviewState((current) => ({
+                            ...current,
+                            selectionState: {
+                              ...current.selectionState,
+                              sjtSelectionsByQuestionId: {
+                                ...current.selectionState.sjtSelectionsByQuestionId,
+                                [currentItem.questionId]: updateSjtPreviewSelection({
+                                  current:
+                                    current.selectionState.sjtSelectionsByQuestionId[
+                                      currentItem.questionId
+                                    ],
+                                  selectionKind: "best",
+                                  optionId: option.optionId,
+                                }),
+                              },
                             },
-                          },
-                        }))
+                          }));
+                          markQuestionAsLocallyChanged(currentItem.questionId);
+                        }
                       }
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors duration-150 ${getSjtMarkerClassName(
                         isBestSelected,
@@ -617,23 +764,26 @@ export function TeamDynamicsMixedRunPreview(props: {
                     <button
                       type="button"
                       onClick={() =>
-                        setPreviewState((current) => ({
-                          ...current,
-                          selectionState: {
-                            ...current.selectionState,
-                            sjtSelectionsByQuestionId: {
-                              ...current.selectionState.sjtSelectionsByQuestionId,
-                              [currentItem.questionId]: updateSjtPreviewSelection({
-                                current:
-                                  current.selectionState.sjtSelectionsByQuestionId[
-                                    currentItem.questionId
-                                  ],
-                                selectionKind: "worst",
-                                optionId: option.optionId,
-                              }),
+                        {
+                          setPreviewState((current) => ({
+                            ...current,
+                            selectionState: {
+                              ...current.selectionState,
+                              sjtSelectionsByQuestionId: {
+                                ...current.selectionState.sjtSelectionsByQuestionId,
+                                [currentItem.questionId]: updateSjtPreviewSelection({
+                                  current:
+                                    current.selectionState.sjtSelectionsByQuestionId[
+                                      currentItem.questionId
+                                    ],
+                                  selectionKind: "worst",
+                                  optionId: option.optionId,
+                                }),
+                              },
                             },
-                          },
-                        }))
+                          }));
+                          markQuestionAsLocallyChanged(currentItem.questionId);
+                        }
                       }
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors duration-150 ${getSjtMarkerClassName(
                         isWorstSelected,
@@ -659,6 +809,70 @@ export function TeamDynamicsMixedRunPreview(props: {
               Item ostaje vidljiv kao kontrolisani fallback, bez prikaza scoring kljuceva ili write
               akcija.
             </p>
+          </div>
+        ) : null}
+
+        {itemKind !== "unsupported" ? (
+          <div className="rounded-[1rem] border border-slate-200 bg-white/80 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (currentSavePayload === null) {
+                    return;
+                  }
+
+                  setSaveStatesByQuestionId((current) => ({
+                    ...current,
+                    [currentItem.questionId]: {
+                      status: "saving",
+                      message: getSaveFeedbackCopy("saving"),
+                    },
+                  }));
+
+                  try {
+                    const result = await saveTeamDynamicsMixedAnswerAction({
+                      ...currentSavePayload,
+                      clientTimestamp: new Date().toISOString(),
+                    });
+
+                    if (result.ok) {
+                      setSaveStatesByQuestionId((current) => ({
+                        ...current,
+                        [currentItem.questionId]: {
+                          status: result.status,
+                          message: getSaveFeedbackCopy(result.status),
+                        },
+                      }));
+                      return;
+                    }
+
+                    setSaveStatesByQuestionId((current) => ({
+                      ...current,
+                      [currentItem.questionId]: {
+                        status: "error",
+                        message: getSaveFeedbackCopy("error"),
+                      },
+                    }));
+                  } catch {
+                    setSaveStatesByQuestionId((current) => ({
+                      ...current,
+                      [currentItem.questionId]: {
+                        status: "error",
+                        message: getSaveFeedbackCopy("error"),
+                      },
+                    }));
+                  }
+                }}
+                disabled={isSaveDisabled}
+                className="rounded-full border border-[#073b4c] bg-[#073b4c] px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#0b4d62] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
+              >
+                {currentSaveState.status === "saving" ? "Spremam..." : "Spremi odgovor"}
+              </button>
+              <p className="text-sm leading-6 text-slate-600">
+                {currentSaveState.message ?? "Rucno spremanje je opcionalno i ne blokira lokalnu navigaciju."}
+              </p>
+            </div>
           </div>
         ) : null}
       </article>
@@ -694,11 +908,11 @@ export function TeamDynamicsMixedRunPreview(props: {
 
       <div className="rounded-[1rem] border border-slate-200 bg-white/75 p-4">
         <p className="text-sm font-semibold text-slate-900">
-          Preview bez spremanja odgovora
+          Preview sa rucnim spremanjem trenutnog odgovora
         </p>
         <p className="mt-1 text-sm leading-6 text-slate-600">
-          Nema save action poziva, autosave logike, completion tranzicije, scoring-a ni report
-          side-effecta u ovom slice-u.
+          Postoji eksplicitno dugme za spremanje trenutnog odgovora. Nema autosave logike,
+          completion tranzicije, scoring-a ni report side-effecta u ovom slice-u.
         </p>
       </div>
     </section>
