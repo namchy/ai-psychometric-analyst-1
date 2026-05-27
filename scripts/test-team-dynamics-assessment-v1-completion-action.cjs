@@ -346,7 +346,7 @@ async function runWrongSlugTest() {
 
   assert.deepEqual(result, {
     ok: false,
-    status: "invalid",
+    status: "unsupported",
     reason: "This completion action only supports team_dynamics_assessment_v1.",
     teamAssessmentParticipantId: "tap-final-1",
   });

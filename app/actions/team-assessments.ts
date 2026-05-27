@@ -154,7 +154,12 @@ export type CompleteTeamDynamicsMixedAssessmentActionResult =
     }
   | {
       ok: false;
-      status: "not_ready" | "not_runnable" | "invalid" | "error";
+      status:
+        | "not_ready"
+        | "not_runnable"
+        | "unsupported"
+        | "invalid"
+        | "error";
       reason: string;
       teamAssessmentParticipantId: string | null;
       readinessStatus?: TeamDynamicsMixedCompletionReadiness["readinessStatus"];
@@ -261,7 +266,12 @@ function buildMixedAnswerActionFailure(
 
 function buildMixedCompletionActionFailure(
   input: Partial<CompleteTeamDynamicsMixedAssessmentActionInput>,
-  status: "not_ready" | "not_runnable" | "invalid" | "error",
+  status:
+    | "not_ready"
+    | "not_runnable"
+    | "unsupported"
+    | "invalid"
+    | "error",
   reason: string,
   readiness?: TeamDynamicsMixedCompletionReadiness,
 ): CompleteTeamDynamicsMixedAssessmentActionResult {
@@ -692,7 +702,7 @@ export async function completeTeamDynamicsMixedAssessmentAction(
     ) {
       return buildMixedCompletionActionFailure(
         input,
-        "invalid",
+        "unsupported",
         `This completion action only supports ${TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG}.`,
       );
     }

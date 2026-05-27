@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { saveTeamDynamicsMixedAnswerAction } from "@/app/actions/team-assessments";
+import {
+  completeTeamDynamicsMixedAssessmentAction,
+  saveTeamDynamicsMixedAnswerAction,
+} from "@/app/actions/team-assessments";
 import type { TeamDynamicsMixedCompletionReadiness } from "@/lib/assessment/team-dynamics-mixed-completion-readiness";
 import type {
   TeamDynamicsMixedRuntimeHandoff,
@@ -41,6 +44,7 @@ type MixedPreviewClientState = {
   selectionState: MixedPreviewSelectionState;
   savedAnswerState: MixedPreviewSavedAnswerState;
   isFinalPreviewVisible: boolean;
+  isCompletionSuccessVisible: boolean;
 };
 
 type MixedPreviewSaveStatus =
@@ -53,6 +57,22 @@ type MixedPreviewSaveStatus =
 
 type MixedPreviewSaveState = {
   status: MixedPreviewSaveStatus;
+  message: string | null;
+};
+
+type MixedPreviewCompletionStatus =
+  | "idle"
+  | "completing"
+  | "completed"
+  | "already_completed"
+  | "not_ready"
+  | "not_runnable"
+  | "unsupported"
+  | "invalid"
+  | "error";
+
+type MixedPreviewCompletionState = {
+  status: MixedPreviewCompletionStatus;
   message: string | null;
 };
 
@@ -331,6 +351,7 @@ export function createInitialMixedPreviewClientState(input: {
     selectionState: createSelectionStateFromSavedAnswerState(savedAnswerState),
     savedAnswerState,
     isFinalPreviewVisible: false,
+    isCompletionSuccessVisible: false,
   };
 }
 
@@ -418,6 +439,12 @@ export function shouldOpenFinalPreviewState(input: {
     input.currentIndex === input.itemCount - 1 &&
     input.readiness.readinessStatus === "ready"
   );
+}
+
+export function shouldShowFinalPreviewCompletionCta(
+  readiness: TeamDynamicsMixedCompletionReadiness,
+): boolean {
+  return readiness.readinessStatus === "ready" && readiness.isReadyForCompletion === true;
 }
 
 function writeMixedPreviewStoredState(input: {
@@ -575,6 +602,28 @@ function getSaveFeedbackCopy(status: Exclude<MixedPreviewSaveStatus, "idle">): s
   return "Odgovor nije spremljen. Pokusaj ponovo.";
 }
 
+function getCompletionFeedbackCopy(
+  status: Exclude<MixedPreviewCompletionStatus, "idle" | "completed" | "already_completed">,
+): string {
+  if (status === "completing") {
+    return "Zavrsavam procjenu...";
+  }
+
+  if (status === "not_ready") {
+    return "Procjena jos nije spremna za zavrsavanje.";
+  }
+
+  if (status === "not_runnable") {
+    return "Procjena trenutno nije u stanju za zavrsavanje.";
+  }
+
+  if (status === "unsupported") {
+    return "Ovaj tok ne podrzava zavrsavanje procjene.";
+  }
+
+  return "Procjenu trenutno nije moguce zavrsiti. Pokusaj ponovo.";
+}
+
 export function TeamDynamicsMixedRunPreview(props: {
   teamAssessmentParticipantId: string;
   runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
@@ -616,6 +665,10 @@ export function TeamDynamicsMixedRunPreview(props: {
   const [saveStatesByQuestionId, setSaveStatesByQuestionId] = useState<
     Record<string, MixedPreviewSaveState>
   >({});
+  const [completionState, setCompletionState] = useState<MixedPreviewCompletionState>({
+    status: "idle",
+    message: null,
+  });
   const currentIndex = previewState.currentIndex;
   const selectionState = previewState.selectionState;
   const savedAnswerStateFromSession = previewState.savedAnswerState;
@@ -650,6 +703,7 @@ export function TeamDynamicsMixedRunPreview(props: {
       selectionState: createSelectionStateFromSavedAnswerState(savedAnswerState),
       savedAnswerState,
       isFinalPreviewVisible: false,
+      isCompletionSuccessVisible: false,
     });
     setHasHydratedPreviewState(true);
   }, [props.runtimeHandoff, props.teamAssessmentParticipantId, savedAnswerState]);
@@ -809,6 +863,54 @@ export function TeamDynamicsMixedRunPreview(props: {
       : effectiveCompletionReadiness.readinessStatus === "no_supported_items"
         ? "Nema podrzanih pitanja za zavrsetak."
         : `Spremljeno: ${effectiveCompletionReadiness.savedValidAnswerCount}/${effectiveCompletionReadiness.supportedItemCount} odgovora.`;
+  const shouldShowCompletionCta = shouldShowFinalPreviewCompletionCta(
+    effectiveCompletionReadiness,
+  );
+
+  if (previewState.isCompletionSuccessVisible) {
+    return (
+      <section className="space-y-5 rounded-[1.5rem] border border-slate-200/80 bg-white/85 p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]">
+        <div className="space-y-3">
+          <div className="grid gap-3 rounded-[1.2rem] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(7,59,76,0.05),rgba(17,138,178,0.04))] p-4 sm:grid-cols-[1.3fr_0.7fr]">
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Procjena timske dinamike
+              </p>
+              <h2 className="text-2xl font-extrabold tracking-[-0.04em] text-[#073b4c]">
+                Procjena je zavrsena
+              </h2>
+              <p className="text-sm leading-6 text-slate-700">
+                Odgovori su spremljeni i procjena je oznacena kao zavrsena. Izvjestaj za
+                timsku dinamiku bice omogucen u zasebnom koraku.
+              </p>
+            </div>
+
+            <div className="rounded-[1rem] border border-white/70 bg-white/85 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Lokalni progress
+              </p>
+              <p className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-slate-950">
+                {effectiveCompletionReadiness.savedValidAnswerCount} /{" "}
+                {effectiveCompletionReadiness.supportedItemCount}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">
+                Svi podrzani odgovori su spremljeni.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <article className="space-y-4 rounded-[1.25rem] border border-emerald-200/80 bg-emerald-50/70 p-5">
+          <p className="text-sm font-semibold text-slate-900">
+            Lifecycle status je bezbjedno zavrsen.
+          </p>
+          <p className="text-sm leading-6 text-slate-700">
+            Ovaj korak ne prikazuje scoring, izvjestaj, AI sadrzaj ni Team Fit output.
+          </p>
+        </article>
+      </section>
+    );
+  }
 
   if (isFinalPreviewVisible) {
     return (
@@ -844,7 +946,7 @@ export function TeamDynamicsMixedRunPreview(props: {
         <article className="space-y-4 rounded-[1.25rem] border border-emerald-200/80 bg-emerald-50/70 p-5">
           <p className="text-sm font-semibold text-slate-900">Odgovori u ovom toku su spremljeni.</p>
           <p className="text-sm leading-6 text-slate-700">
-            Ovaj preview ne pokrece completion action, status transition, scoring ni izvjestaj.
+            Ovaj preview jos ne prikazuje scoring, izvjestaj, AI sadrzaj ni Team Fit output.
           </p>
         </article>
 
@@ -865,7 +967,78 @@ export function TeamDynamicsMixedRunPreview(props: {
           >
             Prethodno
           </button>
+          {shouldShowCompletionCta ? (
+            <button
+              type="button"
+              onClick={async () => {
+                if (completionState.status === "completing") {
+                  return;
+                }
+
+                setCompletionState({
+                  status: "completing",
+                  message: getCompletionFeedbackCopy("completing"),
+                });
+
+                try {
+                  const result = await completeTeamDynamicsMixedAssessmentAction({
+                    teamAssessmentParticipantId: props.teamAssessmentParticipantId,
+                  });
+
+                  if (
+                    result.ok &&
+                    (result.status === "completed" ||
+                      result.status === "already_completed")
+                  ) {
+                    setCompletionState({
+                      status: result.status,
+                      message: null,
+                    });
+                    setPreviewState((current) => ({
+                      ...current,
+                      isCompletionSuccessVisible: true,
+                    }));
+                    return;
+                  }
+
+                  if (!result.ok) {
+                    setCompletionState({
+                      status: result.status,
+                      message: getCompletionFeedbackCopy(result.status),
+                    });
+                    return;
+                  }
+                } catch {
+                  setCompletionState({
+                    status: "error",
+                    message: getCompletionFeedbackCopy("error"),
+                  });
+                }
+              }}
+              disabled={completionState.status === "completing"}
+              className="rounded-full border border-[#073b4c] bg-[#073b4c] px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#0b5269] disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-300"
+            >
+              {completionState.status === "completing"
+                ? "Zavrsavam..."
+                : "Zavrsi procjenu"}
+            </button>
+          ) : null}
         </div>
+
+        {!shouldShowCompletionCta && effectiveCompletionReadiness.readinessStatus !== "ready" ? (
+          <p className="text-sm leading-6 text-slate-600">
+            Neki odgovori jos nisu spremljeni, pa zavrsavanje jos nije dostupno.
+          </p>
+        ) : null}
+        {completionState.status === "not_ready" ||
+        completionState.status === "not_runnable" ||
+        completionState.status === "unsupported" ||
+        completionState.status === "invalid" ||
+        completionState.status === "error" ? (
+          <p className="text-sm leading-6 text-slate-700">
+            {completionState.message}
+          </p>
+        ) : null}
       </section>
     );
   }

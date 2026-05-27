@@ -103,7 +103,7 @@ assert.doesNotMatch(routeSource, /attemptId/);
 assert.match(previewSource, /Spremljeno: \$\{effectiveCompletionReadiness\.savedValidAnswerCount\}\/\$\{effectiveCompletionReadiness\.supportedItemCount\} odgovora\./);
 assert.match(previewSource, /Svi odgovori su spremljeni\./);
 assert.match(previewSource, /Nema podrzanih pitanja za zavrsetak\./);
-assert.doesNotMatch(previewSource, /Zavrsi procjenu/);
+assert.match(previewSource, /shouldShowFinalPreviewCompletionCta/);
 
 const {
   buildTeamDynamicsMixedCompletionReadiness,

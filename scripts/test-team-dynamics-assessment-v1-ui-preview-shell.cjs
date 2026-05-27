@@ -146,7 +146,20 @@ assert.match(componentSource, /Svi odgovori su spremljeni\./);
 assert.match(componentSource, /Nema podrzanih pitanja za zavrsetak\./);
 assert.match(componentSource, /Odgovori su spremljeni/);
 assert.match(componentSource, /Svi podrzani odgovori u ovoj procjeni su spremljeni\.[\s\S]*Zavrsavanje procjene\s+bice omoguceno u sljedecem koraku\./);
-assert.match(componentSource, /Ovaj preview ne pokrece completion action, status transition, scoring ni izvjestaj\./);
+assert.match(componentSource, /completeTeamDynamicsMixedAssessmentAction/);
+assert.match(componentSource, /shouldShowFinalPreviewCompletionCta/);
+assert.match(componentSource, /isCompletionSuccessVisible/);
+assert.match(componentSource, /Zavrsi procjenu/);
+assert.match(componentSource, /Zavrsavam\.\.\./);
+assert.match(componentSource, /Procjena je zavrsena/);
+assert.match(componentSource, /Odgovori su spremljeni i procjena je oznacena kao zavrsena\./);
+assert.match(componentSource, /Izvjestaj za[\s\S]*timsku dinamiku bice omogucen u zasebnom koraku\./);
+assert.match(componentSource, /Procjena jos nije spremna za zavrsavanje\./);
+assert.match(componentSource, /Procjena trenutno nije u stanju za zavrsavanje\./);
+assert.match(componentSource, /Ovaj tok ne podrzava zavrsavanje procjene\./);
+assert.match(componentSource, /Procjenu trenutno nije moguce zavrsiti\. Pokusaj ponovo\./);
+assert.match(componentSource, /Ovaj preview jos ne prikazuje scoring, izvjestaj, AI sadrzaj ni Team Fit output\./);
+assert.match(componentSource, /Ovaj korak ne prikazuje scoring, izvjestaj, AI sadrzaj ni Team Fit output\./);
 assert.match(componentSource, /responseFormat: "single_select_likert"/);
 assert.match(componentSource, /responseFormat: "best_worst"/);
 assert.match(componentSource, /status: "saving"/);
@@ -165,6 +178,9 @@ assert.match(componentSource, /if \(currentSavePayload === null \|\| currentSave
 assert.match(componentSource, /result\.status === "saved"/);
 assert.match(componentSource, /result\.status === "unchanged"/);
 assert.match(componentSource, /result\.status === "overwritten"/);
+assert.match(componentSource, /result\.status === "completed"/);
+assert.match(componentSource, /result\.status === "already_completed"/);
+assert.match(componentSource, /completionState\.status === "completing"/);
 assert.match(componentSource, /shouldOpenFinalPreviewState/);
 assert.match(componentSource, /isFinalPreviewVisible/);
 assert.match(componentSource, /selectionState: createSelectionStateFromSavedAnswerState\(nextSavedAnswerState\)/);
@@ -175,7 +191,6 @@ assert.doesNotMatch(componentSource, /Spremi odgovor/);
 assert.doesNotMatch(componentSource, /attemptId:/);
 assert.doesNotMatch(componentSource, /saveTeamAssessmentAnswerAction/);
 assert.doesNotMatch(componentSource, /completeTeamAssessmentAction/);
-assert.doesNotMatch(componentSource, /Zavrsi procjenu/);
 assert.doesNotMatch(componentSource, /AssessmentForm/);
 assert.doesNotMatch(componentSource, /attemptId/);
 assert.doesNotMatch(componentSource, /fetch\(/);
@@ -194,6 +209,7 @@ const {
   readMixedPreviewStoredState,
   sanitizeMixedPreviewSavedAnswerState,
   sanitizeMixedPreviewStoredState,
+  shouldShowFinalPreviewCompletionCta,
   shouldOpenFinalPreviewState,
   updateSjtPreviewSelection,
 } = require("../components/assessment/team-dynamics-mixed-run-preview.tsx");
@@ -677,6 +693,7 @@ assert.deepEqual(
       },
     },
     isFinalPreviewVisible: false,
+    isCompletionSuccessVisible: false,
   },
 );
 
@@ -816,6 +833,42 @@ assert.equal(
       savedSjtAnswerCount: 0,
       warnings: [],
     },
+  }),
+  false,
+);
+
+assert.equal(
+  shouldShowFinalPreviewCompletionCta({
+    readinessStatus: "ready",
+    isReadyForCompletion: true,
+    supportedItemCount: 2,
+    savedValidAnswerCount: 2,
+    missingQuestionIds: [],
+    invalidSavedAnswerCount: 0,
+    ignoredStaleAnswerCount: 0,
+    likertItemCount: 1,
+    sjtItemCount: 1,
+    savedLikertAnswerCount: 1,
+    savedSjtAnswerCount: 1,
+    warnings: [],
+  }),
+  true,
+);
+
+assert.equal(
+  shouldShowFinalPreviewCompletionCta({
+    readinessStatus: "not_ready",
+    isReadyForCompletion: false,
+    supportedItemCount: 2,
+    savedValidAnswerCount: 1,
+    missingQuestionIds: ["question-2"],
+    invalidSavedAnswerCount: 0,
+    ignoredStaleAnswerCount: 0,
+    likertItemCount: 1,
+    sjtItemCount: 1,
+    savedLikertAnswerCount: 1,
+    savedSjtAnswerCount: 0,
+    warnings: [],
   }),
   false,
 );
