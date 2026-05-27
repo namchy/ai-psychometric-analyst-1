@@ -5,7 +5,7 @@ import type { TeamDynamicsMixedRuntimeHandoff } from "@/lib/assessment/team-dyna
 import {
   loadTeamDynamicsMixedSavedAnswersForContext,
   type TeamDynamicsMixedSavedAnswerState,
-} from "@/lib/assessment/team-dynamics-mixed-answer-read";
+} from "@/lib/assessment/team-dynamics-mixed-answer-rehydration";
 import { TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG } from "@/lib/assessment/team-dynamics";
 
 export type TeamDynamicsMixedCompletionReadiness = {

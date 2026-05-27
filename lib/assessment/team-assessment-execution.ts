@@ -1479,7 +1479,7 @@ export async function loadTeamAssessmentRunHandoff(input: {
       "@/lib/assessment/team-dynamics-mixed-runtime"
     );
     const { loadTeamDynamicsMixedSavedAnswersForContext } = await import(
-      "@/lib/assessment/team-dynamics-mixed-answer-read"
+      "@/lib/assessment/team-dynamics-mixed-answer-rehydration"
     );
     const { loadTeamDynamicsMixedCompletionReadinessForContext } = await import(
       "@/lib/assessment/team-dynamics-mixed-completion-readiness"

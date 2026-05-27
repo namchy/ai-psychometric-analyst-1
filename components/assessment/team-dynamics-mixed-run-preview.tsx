@@ -23,14 +23,6 @@ type MixedPreviewItemKind = "likert" | "sjt_best_worst" | "unsupported";
 
 type MixedPreviewStoredState = {
   currentIndex: number;
-  likertSelectionsByQuestionId: Record<string, string>;
-  sjtSelectionsByQuestionId: Record<
-    string,
-    {
-      bestOptionId: string | null;
-      worstOptionId: string | null;
-    }
-  >;
 };
 
 type MixedPreviewSavedAnswerState = {
@@ -47,6 +39,7 @@ type MixedPreviewSavedAnswerState = {
 type MixedPreviewClientState = {
   currentIndex: number;
   selectionState: MixedPreviewSelectionState;
+  savedAnswerState: MixedPreviewSavedAnswerState;
 };
 
 type MixedPreviewSaveStatus =
@@ -80,11 +73,6 @@ type MixedPreviewSavePayload =
       locale?: string;
       clientTimestamp?: string;
     };
-
-const EMPTY_SELECTION_STATE: MixedPreviewSelectionState = {
-  likertSelectionsByQuestionId: {},
-  sjtSelectionsByQuestionId: {},
-};
 
 const EMPTY_SAVED_ANSWER_STATE: MixedPreviewSavedAnswerState = {
   likertSelectionsByQuestionId: {},
@@ -184,30 +172,42 @@ export function sanitizeMixedPreviewStoredState(input: {
   rawState: unknown;
 }): MixedPreviewStoredState {
   const items = input.runtimeHandoff.items;
-  const itemByQuestionId = new Map(items.map((item) => [item.questionId, item]));
   const rawState =
     input.rawState && typeof input.rawState === "object" && !Array.isArray(input.rawState)
       ? (input.rawState as Record<string, unknown>)
       : null;
-  const rawLikertSelections =
-    rawState?.likertSelectionsByQuestionId &&
-    typeof rawState.likertSelectionsByQuestionId === "object" &&
-    !Array.isArray(rawState.likertSelectionsByQuestionId)
-      ? (rawState.likertSelectionsByQuestionId as Record<string, unknown>)
-      : {};
-  const rawSjtSelections =
-    rawState?.sjtSelectionsByQuestionId &&
-    typeof rawState.sjtSelectionsByQuestionId === "object" &&
-    !Array.isArray(rawState.sjtSelectionsByQuestionId)
-      ? (rawState.sjtSelectionsByQuestionId as Record<string, unknown>)
-      : {};
   const nextState: MixedPreviewStoredState = {
     currentIndex: 0,
+  };
+
+  if (items.length > 0) {
+    const rawCurrentIndex = rawState?.currentIndex;
+    const boundedIndex =
+      typeof rawCurrentIndex === "number" && Number.isInteger(rawCurrentIndex)
+        ? Math.min(Math.max(rawCurrentIndex, 0), items.length - 1)
+        : 0;
+
+    nextState.currentIndex = boundedIndex;
+  }
+
+  return nextState;
+}
+
+export function sanitizeMixedPreviewSavedAnswerState(input: {
+  runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
+  rawState: MixedPreviewSavedAnswerState;
+}): MixedPreviewSavedAnswerState {
+  const itemByQuestionId = new Map(
+    input.runtimeHandoff.items.map((item) => [item.questionId, item] as const),
+  );
+  const nextState: MixedPreviewSavedAnswerState = {
     likertSelectionsByQuestionId: {},
     sjtSelectionsByQuestionId: {},
   };
 
-  for (const [questionId, rawOptionId] of Object.entries(rawLikertSelections)) {
+  for (const [questionId, rawOptionId] of Object.entries(
+    input.rawState.likertSelectionsByQuestionId,
+  )) {
     const item = itemByQuestionId.get(questionId);
 
     if (!item || getMixedPreviewItemKind(item) !== "likert" || typeof rawOptionId !== "string") {
@@ -223,7 +223,9 @@ export function sanitizeMixedPreviewStoredState(input: {
     nextState.likertSelectionsByQuestionId[questionId] = rawOptionId;
   }
 
-  for (const [questionId, rawSelection] of Object.entries(rawSjtSelections)) {
+  for (const [questionId, rawSelection] of Object.entries(
+    input.rawState.sjtSelectionsByQuestionId,
+  )) {
     const item = itemByQuestionId.get(questionId);
 
     if (
@@ -250,72 +252,34 @@ export function sanitizeMixedPreviewStoredState(input: {
       ? ((rawSelection as { worstOptionId?: string }).worstOptionId ?? null)
       : null;
 
+    if (!bestOptionId || !worstOptionId || bestOptionId === worstOptionId) {
+      continue;
+    }
+
     nextState.sjtSelectionsByQuestionId[questionId] = {
       bestOptionId,
-      worstOptionId: bestOptionId !== null && bestOptionId === worstOptionId ? null : worstOptionId,
+      worstOptionId,
     };
   }
 
-  if (items.length > 0) {
-    const rawCurrentIndex = rawState?.currentIndex;
-    const boundedIndex =
-      typeof rawCurrentIndex === "number" && Number.isInteger(rawCurrentIndex)
-        ? Math.min(Math.max(rawCurrentIndex, 0), items.length - 1)
-        : 0;
-
-    nextState.currentIndex = boundedIndex;
-  }
-
   return nextState;
-}
-
-export function sanitizeMixedPreviewSavedAnswerState(input: {
-  runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
-  rawState: MixedPreviewSavedAnswerState;
-}): MixedPreviewSavedAnswerState {
-  return {
-    likertSelectionsByQuestionId: sanitizeMixedPreviewStoredState({
-      runtimeHandoff: input.runtimeHandoff,
-      rawState: {
-        currentIndex: 0,
-        likertSelectionsByQuestionId: input.rawState.likertSelectionsByQuestionId,
-        sjtSelectionsByQuestionId: {},
-      },
-    }).likertSelectionsByQuestionId,
-    sjtSelectionsByQuestionId: sanitizeMixedPreviewStoredState({
-      runtimeHandoff: input.runtimeHandoff,
-      rawState: {
-        currentIndex: 0,
-        likertSelectionsByQuestionId: {},
-        sjtSelectionsByQuestionId: input.rawState.sjtSelectionsByQuestionId,
-      },
-    }).sjtSelectionsByQuestionId as Record<
-      string,
-      {
-        bestOptionId: string;
-        worstOptionId: string;
-      }
-    >,
-  };
 }
 
 export function mergeMixedPreviewStoredStateWithSavedAnswers(input: {
   savedAnswerState: MixedPreviewSavedAnswerState;
   storedState: MixedPreviewStoredState;
 }): MixedPreviewStoredState {
-  const mergedLikertSelectionsByQuestionId = {
-    ...input.storedState.likertSelectionsByQuestionId,
-    ...input.savedAnswerState.likertSelectionsByQuestionId,
-  };
-  const mergedSjtSelectionsByQuestionId = {
-    ...input.storedState.sjtSelectionsByQuestionId,
-    ...input.savedAnswerState.sjtSelectionsByQuestionId,
-  };
-
   return {
     currentIndex: input.storedState.currentIndex,
-    likertSelectionsByQuestionId: mergedLikertSelectionsByQuestionId,
-    sjtSelectionsByQuestionId: mergedSjtSelectionsByQuestionId,
+  };
+}
+
+export function createSelectionStateFromSavedAnswerState(
+  savedAnswerState: MixedPreviewSavedAnswerState,
+): MixedPreviewSelectionState {
+  return {
+    likertSelectionsByQuestionId: { ...savedAnswerState.likertSelectionsByQuestionId },
+    sjtSelectionsByQuestionId: { ...savedAnswerState.sjtSelectionsByQuestionId },
   };
 }
 
@@ -326,7 +290,6 @@ export function readMixedPreviewStoredState(input: {
   if (!hasSessionStorage()) {
     return {
       currentIndex: 0,
-      ...EMPTY_SELECTION_STATE,
     };
   }
 
@@ -338,7 +301,6 @@ export function readMixedPreviewStoredState(input: {
     if (!storedValue) {
       return {
         currentIndex: 0,
-        ...EMPTY_SELECTION_STATE,
       };
     }
 
@@ -349,7 +311,6 @@ export function readMixedPreviewStoredState(input: {
   } catch {
     return {
       currentIndex: 0,
-      ...EMPTY_SELECTION_STATE,
     };
   }
 }
@@ -366,10 +327,8 @@ export function createInitialMixedPreviewClientState(input: {
 
   return {
     currentIndex: 0,
-    selectionState: {
-      likertSelectionsByQuestionId: savedAnswerState.likertSelectionsByQuestionId,
-      sjtSelectionsByQuestionId: savedAnswerState.sjtSelectionsByQuestionId,
-    },
+    selectionState: createSelectionStateFromSavedAnswerState(savedAnswerState),
+    savedAnswerState,
   };
 }
 
@@ -387,6 +346,32 @@ function writeMixedPreviewStoredState(input: {
       JSON.stringify(input.state),
     );
   } catch {}
+}
+
+export function buildSavedAnswerStateAfterSave(input: {
+  savedAnswerState: MixedPreviewSavedAnswerState;
+  payload: MixedPreviewSavePayload;
+}): MixedPreviewSavedAnswerState {
+  if (input.payload.responseFormat === "single_select_likert") {
+    return {
+      likertSelectionsByQuestionId: {
+        ...input.savedAnswerState.likertSelectionsByQuestionId,
+        [input.payload.questionId]: input.payload.optionId,
+      },
+      sjtSelectionsByQuestionId: input.savedAnswerState.sjtSelectionsByQuestionId,
+    };
+  }
+
+  return {
+    likertSelectionsByQuestionId: input.savedAnswerState.likertSelectionsByQuestionId,
+    sjtSelectionsByQuestionId: {
+      ...input.savedAnswerState.sjtSelectionsByQuestionId,
+      [input.payload.questionId]: {
+        bestOptionId: input.payload.bestOptionId,
+        worstOptionId: input.payload.worstOptionId,
+      },
+    },
+  };
 }
 
 function getBlockBadgeClassName(isActive: boolean): string {
@@ -545,6 +530,7 @@ export function TeamDynamicsMixedRunPreview(props: {
   >({});
   const currentIndex = previewState.currentIndex;
   const selectionState = previewState.selectionState;
+  const savedAnswerStateFromSession = previewState.savedAnswerState;
 
   function markQuestionAsLocallyChanged(questionId: string) {
     setSaveStatesByQuestionId((current) => resetQuestionSaveState(current, questionId));
@@ -572,10 +558,8 @@ export function TeamDynamicsMixedRunPreview(props: {
 
     setPreviewState({
       currentIndex: mergedStoredState.currentIndex,
-      selectionState: {
-        likertSelectionsByQuestionId: mergedStoredState.likertSelectionsByQuestionId,
-        sjtSelectionsByQuestionId: mergedStoredState.sjtSelectionsByQuestionId,
-      },
+      selectionState: createSelectionStateFromSavedAnswerState(savedAnswerState),
+      savedAnswerState,
     });
     setHasHydratedPreviewState(true);
   }, [props.runtimeHandoff, props.teamAssessmentParticipantId, savedAnswerState]);
@@ -589,14 +573,12 @@ export function TeamDynamicsMixedRunPreview(props: {
       teamAssessmentParticipantId: props.teamAssessmentParticipantId,
       state: {
         currentIndex: safeIndex,
-        likertSelectionsByQuestionId: previewState.selectionState.likertSelectionsByQuestionId,
-        sjtSelectionsByQuestionId: previewState.selectionState.sjtSelectionsByQuestionId,
       },
     });
   }, [
     hasHydratedPreviewState,
     previewState.currentIndex,
-    previewState.selectionState,
+    previewState.savedAnswerState,
     props.teamAssessmentParticipantId,
     safeIndex,
   ]);
@@ -669,7 +651,7 @@ export function TeamDynamicsMixedRunPreview(props: {
                 Pripremam posljednje otvoreni item i lokalne odabire.
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Izbori se cuvaju samo u ovoj browser sesiji i ne ulaze u rezultat.
+                Vracam zadnje spremljene odgovore iz baze i poziciju iz ove browser sesije.
               </p>
             </div>
           </div>
@@ -678,8 +660,8 @@ export function TeamDynamicsMixedRunPreview(props: {
         <article className="space-y-4 rounded-[1.25rem] border border-slate-200/80 bg-slate-50/70 p-5">
           <p className="text-sm font-semibold text-slate-900">Vracam preview stanje...</p>
           <p className="text-sm leading-6 text-slate-600">
-            Ovaj ekran trenutno služi za provjeru prikaza pitanja i scenarija. Mozes klikati
-            opcije i kretati se kroz procjenu, ali odgovori se jos ne spremaju.
+            Ovaj ekran trenutno sluzi za preview mixed-format flow-a sa spremanjem na
+            `Sljedece`. Nema autosave-a, completion-a, scoring-a ni izvjestaja u ovom slice-u.
           </p>
         </article>
       </section>
@@ -710,9 +692,9 @@ export function TeamDynamicsMixedRunPreview(props: {
     selectionState,
   });
   const savedLikertSelectionForCurrentQuestion =
-    savedAnswerState.likertSelectionsByQuestionId[currentItem.questionId] ?? null;
+    savedAnswerStateFromSession.likertSelectionsByQuestionId[currentItem.questionId] ?? null;
   const savedSjtSelectionForCurrentQuestion =
-    savedAnswerState.sjtSelectionsByQuestionId[currentItem.questionId] ?? null;
+    savedAnswerStateFromSession.sjtSelectionsByQuestionId[currentItem.questionId] ?? null;
   const isCurrentSelectionAlignedWithSavedAnswer =
     itemKind === "likert"
       ? savedLikertSelectionForCurrentQuestion !== null &&
@@ -726,11 +708,6 @@ export function TeamDynamicsMixedRunPreview(props: {
     itemKind === "unsupported" ||
     currentSavePayload === null ||
     currentSaveState.status === "saving";
-  const currentSaveFeedbackMessage =
-    currentSaveState.message ??
-    (isCurrentSelectionAlignedWithSavedAnswer
-      ? "Ucitano."
-      : "Rucno spremanje je opcionalno i ne blokira lokalnu navigaciju.");
   const readinessSummaryLabel =
     props.completionReadiness.readinessStatus === "ready"
       ? "Svi odgovori su spremljeni."
@@ -767,8 +744,8 @@ export function TeamDynamicsMixedRunPreview(props: {
               4 kratka bloka, oko 12-15 minuta
             </h2>
             <p className="text-sm leading-6 text-slate-700">
-              Ovaj ekran trenutno sluzi za provjeru prikaza pitanja i scenarija. Mozes klikati
-              opcije i kretati se kroz procjenu, ali odgovori se jos ne spremaju.
+              Ovaj preview sprema odgovor tek na Sljedece. Nema autosave-a, completion-a,
+              scoring-a ni izvjestaja u ovom slice-u.
             </p>
           </div>
 
@@ -783,7 +760,7 @@ export function TeamDynamicsMixedRunPreview(props: {
               Trenutni blok: {currentBlock?.title ?? currentItem.blockKey}
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Izbori se cuvaju u ovoj browser sesiji, a trenutno pitanje se moze rucno spremiti.
+              Spremljeni odgovori se ucitavaju iz baze, a ova browser sesija pamti gdje si stao.
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-700">
               {readinessSummaryLabel}
@@ -807,7 +784,7 @@ export function TeamDynamicsMixedRunPreview(props: {
           </h3>
           <p className="text-sm leading-6 text-slate-600">
             {itemKind === "likert"
-              ? "Odaberi jednu opciju prije nastavka. Izbor ostaje samo u ovoj browser sesiji."
+              ? "Odaberi jednu opciju prije nastavka. Sljedece sprema odgovor i tek onda prelazi dalje."
               : itemKind === "sjt_best_worst"
                 ? "Odaberi jednu najefikasniju i jednu najmanje efikasnu reakciju. Ista opcija ne moze biti oba izbora."
                 : "Ova assessment jedinica trenutno nema podrzan preview format. Navigacija ostaje stabilna i omogucen je kontrolisani skip."}
@@ -946,67 +923,9 @@ export function TeamDynamicsMixedRunPreview(props: {
           </div>
         ) : null}
 
-        {itemKind !== "unsupported" ? (
+        {isCurrentSelectionAlignedWithSavedAnswer && itemKind !== "unsupported" ? (
           <div className="rounded-[1rem] border border-slate-200 bg-white/80 p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (currentSavePayload === null) {
-                    return;
-                  }
-
-                  setSaveStatesByQuestionId((current) => ({
-                    ...current,
-                    [currentItem.questionId]: {
-                      status: "saving",
-                      message: getSaveFeedbackCopy("saving"),
-                    },
-                  }));
-
-                  try {
-                    const result = await saveTeamDynamicsMixedAnswerAction({
-                      ...currentSavePayload,
-                      clientTimestamp: new Date().toISOString(),
-                    });
-
-                    if (result.ok) {
-                      setSaveStatesByQuestionId((current) => ({
-                        ...current,
-                        [currentItem.questionId]: {
-                          status: result.status,
-                          message: getSaveFeedbackCopy(result.status),
-                        },
-                      }));
-                      return;
-                    }
-
-                    setSaveStatesByQuestionId((current) => ({
-                      ...current,
-                      [currentItem.questionId]: {
-                        status: "error",
-                        message: getSaveFeedbackCopy("error"),
-                      },
-                    }));
-                  } catch {
-                    setSaveStatesByQuestionId((current) => ({
-                      ...current,
-                      [currentItem.questionId]: {
-                        status: "error",
-                        message: getSaveFeedbackCopy("error"),
-                      },
-                    }));
-                  }
-                }}
-                disabled={isSaveDisabled}
-                className="rounded-full border border-[#073b4c] bg-[#073b4c] px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#0b4d62] disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
-              >
-                {currentSaveState.status === "saving" ? "Spremam..." : "Spremi odgovor"}
-              </button>
-              <p className="text-sm leading-6 text-slate-600">
-                {currentSaveFeedbackMessage}
-              </p>
-            </div>
+            <p className="text-sm leading-6 text-slate-600">Ucitano zadnje spremljeno stanje.</p>
           </div>
         ) : null}
       </article>
@@ -1018,6 +937,7 @@ export function TeamDynamicsMixedRunPreview(props: {
             setPreviewState((current) => ({
               ...current,
               currentIndex: Math.max(0, current.currentIndex - 1),
+              selectionState: createSelectionStateFromSavedAnswerState(current.savedAnswerState),
             }))
           }
           disabled={isFirstItem}
@@ -1027,26 +947,89 @@ export function TeamDynamicsMixedRunPreview(props: {
         </button>
         <button
           type="button"
-          onClick={() =>
-            setPreviewState((current) => ({
+          onClick={async () => {
+            if (currentSavePayload === null || currentSaveState.status === "saving") {
+              return;
+            }
+
+            setSaveStatesByQuestionId((current) => ({
               ...current,
-              currentIndex: Math.min(props.runtimeHandoff.items.length - 1, current.currentIndex + 1),
-            }))
-          }
-          disabled={isLastItem || (itemKind !== "unsupported" && !isCurrentAnswerComplete)}
+              [currentItem.questionId]: {
+                status: "saving",
+                message: getSaveFeedbackCopy("saving"),
+              },
+            }));
+
+            try {
+              const result = await saveTeamDynamicsMixedAnswerAction({
+                ...currentSavePayload,
+                clientTimestamp: new Date().toISOString(),
+              });
+
+              if (
+                result.ok &&
+                (result.status === "saved" ||
+                  result.status === "unchanged" ||
+                  result.status === "overwritten")
+              ) {
+                const nextSavedAnswerState = buildSavedAnswerStateAfterSave({
+                  savedAnswerState: savedAnswerStateFromSession,
+                  payload: currentSavePayload,
+                });
+
+                setSaveStatesByQuestionId((current) => ({
+                  ...current,
+                  [currentItem.questionId]: {
+                    status: result.status,
+                    message: getSaveFeedbackCopy(result.status),
+                  },
+                }));
+                setPreviewState((current) => ({
+                  ...current,
+                  currentIndex: isLastItem
+                    ? current.currentIndex
+                    : Math.min(props.runtimeHandoff.items.length - 1, current.currentIndex + 1),
+                  savedAnswerState: nextSavedAnswerState,
+                  selectionState: createSelectionStateFromSavedAnswerState(nextSavedAnswerState),
+                }));
+                return;
+              }
+
+              setSaveStatesByQuestionId((current) => ({
+                ...current,
+                [currentItem.questionId]: {
+                  status: "error",
+                  message: getSaveFeedbackCopy("error"),
+                },
+              }));
+            } catch {
+              setSaveStatesByQuestionId((current) => ({
+                ...current,
+                [currentItem.questionId]: {
+                  status: "error",
+                  message: getSaveFeedbackCopy("error"),
+                },
+              }));
+            }
+          }}
+          disabled={isSaveDisabled}
           className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors duration-150 hover:border-slate-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
         >
-          Sljedece
+          {currentSaveState.status === "saving" ? "Spremam..." : "Sljedece"}
         </button>
       </div>
 
+      {currentSaveState.status === "error" ? (
+        <p className="text-sm leading-6 text-[#b42318]">{getSaveFeedbackCopy("error")}</p>
+      ) : null}
+
       <div className="rounded-[1rem] border border-slate-200 bg-white/75 p-4">
         <p className="text-sm font-semibold text-slate-900">
-          Preview sa rucnim spremanjem trenutnog odgovora
+          Preview sa spremanjem na Sljedece
         </p>
         <p className="mt-1 text-sm leading-6 text-slate-600">
-          Postoji eksplicitno dugme za spremanje trenutnog odgovora. Nema autosave logike,
-          completion tranzicije, scoring-a ni report side-effecta u ovom slice-u.
+          Nema autosave logike, completion tranzicije, scoring-a ni report side-effecta u ovom
+          slice-u.
         </p>
       </div>
     </section>

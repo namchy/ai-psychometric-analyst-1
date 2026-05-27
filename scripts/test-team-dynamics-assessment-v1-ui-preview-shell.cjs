@@ -130,11 +130,14 @@ assert.match(componentSource, /setHasHydratedPreviewState\(true\)/);
 assert.doesNotMatch(componentSource, /useState<MixedPreviewClientState>\(\(\) =>\s*createInitialMixedPreviewClientState/);
 assert.match(componentSource, /Najefikasnija reakcija/);
 assert.match(componentSource, /Najmanje efikasna reakcija/);
-assert.match(componentSource, /Spremi odgovor/);
-assert.match(componentSource, /Preview sa rucnim spremanjem trenutnog odgovora/);
-assert.match(componentSource, /Izbori se cuvaju u ovoj browser sesiji, a trenutno pitanje se moze rucno spremiti/);
-assert.match(componentSource, /Rucno spremanje je opcionalno i ne blokira lokalnu navigaciju/);
+assert.match(componentSource, /Preview sa spremanjem na Sljedece/);
+assert.match(componentSource, /Spremljeni odgovori se ucitavaju iz baze, a ova browser sesija pamti gdje si stao/);
+assert.match(componentSource, /Vracam zadnje spremljene odgovore iz baze i poziciju iz ove browser sesije/);
+assert.match(componentSource, /Sljedece sprema odgovor i tek onda prelazi dalje/);
+assert.match(componentSource, /Ucitano zadnje spremljeno stanje\./);
 assert.match(componentSource, /buildMixedPreviewSavePayload/);
+assert.match(componentSource, /buildSavedAnswerStateAfterSave/);
+assert.match(componentSource, /createSelectionStateFromSavedAnswerState/);
 assert.match(componentSource, /sanitizeMixedPreviewSavedAnswerState/);
 assert.match(componentSource, /mergeMixedPreviewStoredStateWithSavedAnswers/);
 assert.match(componentSource, /props\.completionReadiness/);
@@ -144,7 +147,6 @@ assert.match(componentSource, /Nema podrzanih pitanja za zavrsetak\./);
 assert.match(componentSource, /responseFormat: "single_select_likert"/);
 assert.match(componentSource, /responseFormat: "best_worst"/);
 assert.match(componentSource, /status: "saving"/);
-assert.match(componentSource, /Ucitano\./);
 assert.match(componentSource, /Odgovor je spremljen\./);
 assert.match(componentSource, /Odgovor je azuriran\./);
 assert.match(componentSource, /Odgovor je vec spremljen\./);
@@ -152,11 +154,18 @@ assert.match(componentSource, /Odgovor nije spremljen\. Pokusaj ponovo\./);
 assert.match(componentSource, /Neki spremljeni odgovori nisu uracunati u trenutni progress prikaz\./);
 assert.match(
   componentSource,
-  /Nema autosave logike,\s+completion tranzicije, scoring-a ni report side-effecta u ovom slice-u\./,
+  /Nema autosave(?:-a| logike)?[, -]+(?:completion-a|completion tranzicije), scoring-a ni (?:izvjestaja|report side-effecta) u ovom slice-u\./,
 );
 assert.match(componentSource, /Ista opcija ne moze biti oba izbora/);
-assert.match(componentSource, /disabled=\{isLastItem \|\| \(itemKind !== "unsupported" && !isCurrentAnswerComplete\)\}/);
 assert.match(componentSource, /disabled=\{isSaveDisabled\}/);
+assert.match(componentSource, /if \(currentSavePayload === null \|\| currentSaveState\.status === "saving"\)/);
+assert.match(componentSource, /result\.status === "saved"/);
+assert.match(componentSource, /result\.status === "unchanged"/);
+assert.match(componentSource, /result\.status === "overwritten"/);
+assert.match(componentSource, /selectionState: createSelectionStateFromSavedAnswerState\(nextSavedAnswerState\)/);
+assert.match(componentSource, /selectionState: createSelectionStateFromSavedAnswerState\(current\.savedAnswerState\)/);
+assert.match(componentSource, /writeMixedPreviewStoredState\(\{\s*teamAssessmentParticipantId: props\.teamAssessmentParticipantId,\s*state: \{\s*currentIndex: safeIndex,\s*\},/);
+assert.doesNotMatch(componentSource, /Spremi odgovor/);
 assert.doesNotMatch(componentSource, /attemptId:/);
 assert.doesNotMatch(componentSource, /saveTeamAssessmentAnswerAction/);
 assert.doesNotMatch(componentSource, /completeTeamAssessmentAction/);
@@ -168,7 +177,9 @@ assert.doesNotMatch(componentSource, /setInterval/);
 
 const {
   buildMixedPreviewSavePayload,
+  buildSavedAnswerStateAfterSave,
   buildMixedPreviewSessionStorageKey,
+  createSelectionStateFromSavedAnswerState,
   createInitialMixedPreviewClientState,
   getMixedPreviewItemKind,
   isCurrentItemAnswerComplete,
@@ -501,28 +512,10 @@ assert.deepEqual(
     },
     storedState: {
       currentIndex: 1,
-      likertSelectionsByQuestionId: {
-        "question-1": "option-2",
-      },
-      sjtSelectionsByQuestionId: {
-        "question-2": {
-          bestOptionId: "sjt-option-2",
-          worstOptionId: "sjt-option-4",
-        },
-      },
     },
   }),
   {
     currentIndex: 1,
-    likertSelectionsByQuestionId: {
-      "question-1": "option-4",
-    },
-    sjtSelectionsByQuestionId: {
-      "question-2": {
-        bestOptionId: "sjt-option-1",
-        worstOptionId: "sjt-option-3",
-      },
-    },
   },
 );
 
@@ -576,11 +569,11 @@ assert.deepEqual(
     runtimeHandoff,
     rawState: {
       currentIndex: 99,
-      likertSelectionsByQuestionId: {
+      savedLikertSelectionsByQuestionId: {
         "question-1": "option-4",
         stale: "option-1",
       },
-      sjtSelectionsByQuestionId: {
+      savedSjtSelectionsByQuestionId: {
         "question-2": {
           bestOptionId: "sjt-option-2",
           worstOptionId: "missing-option",
@@ -594,15 +587,6 @@ assert.deepEqual(
   }),
   {
     currentIndex: 1,
-    likertSelectionsByQuestionId: {
-      "question-1": "option-4",
-    },
-    sjtSelectionsByQuestionId: {
-      "question-2": {
-        bestOptionId: "sjt-option-2",
-        worstOptionId: null,
-      },
-    },
   },
 );
 
@@ -615,8 +599,6 @@ assert.deepEqual(
   }),
   {
     currentIndex: 1,
-    likertSelectionsByQuestionId: {},
-    sjtSelectionsByQuestionId: {},
   },
 );
 
@@ -628,15 +610,6 @@ global.window = {
       assert.equal(key, "team-dynamics-mixed-preview:participant-123");
       return JSON.stringify({
         currentIndex: 1,
-        likertSelectionsByQuestionId: {
-          "question-1": "option-2",
-        },
-        sjtSelectionsByQuestionId: {
-          "question-2": {
-            bestOptionId: "sjt-option-1",
-            worstOptionId: "sjt-option-3",
-          },
-        },
       });
     },
     setItem() {
@@ -652,15 +625,6 @@ assert.deepEqual(
   }),
   {
     currentIndex: 1,
-    likertSelectionsByQuestionId: {
-      "question-1": "option-2",
-    },
-    sjtSelectionsByQuestionId: {
-      "question-2": {
-        bestOptionId: "sjt-option-1",
-        worstOptionId: "sjt-option-3",
-      },
-    },
   },
 );
 
@@ -668,12 +632,116 @@ assert.deepEqual(
   createInitialMixedPreviewClientState({
     runtimeHandoff,
     teamAssessmentParticipantId: "participant-123",
+    savedAnswerState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-3",
+        },
+      },
+    },
   }),
   {
     currentIndex: 0,
     selectionState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-3",
+        },
+      },
+    },
+    savedAnswerState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-3",
+        },
+      },
+    },
+  },
+);
+
+assert.deepEqual(
+  createSelectionStateFromSavedAnswerState({
+    likertSelectionsByQuestionId: {
+      "question-1": "option-4",
+    },
+    sjtSelectionsByQuestionId: {
+      "question-2": {
+        bestOptionId: "sjt-option-2",
+        worstOptionId: "sjt-option-4",
+      },
+    },
+  }),
+  {
+    likertSelectionsByQuestionId: {
+      "question-1": "option-4",
+    },
+    sjtSelectionsByQuestionId: {
+      "question-2": {
+        bestOptionId: "sjt-option-2",
+        worstOptionId: "sjt-option-4",
+      },
+    },
+  },
+);
+
+assert.deepEqual(
+  buildSavedAnswerStateAfterSave({
+    savedAnswerState: {
       likertSelectionsByQuestionId: {},
       sjtSelectionsByQuestionId: {},
+    },
+    payload: {
+      teamAssessmentParticipantId: "participant-123",
+      questionId: "question-1",
+      responseFormat: "single_select_likert",
+      optionId: "option-3",
+    },
+  }),
+  {
+    likertSelectionsByQuestionId: {
+      "question-1": "option-3",
+    },
+    sjtSelectionsByQuestionId: {},
+  },
+);
+
+assert.deepEqual(
+  buildSavedAnswerStateAfterSave({
+    savedAnswerState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-3",
+      },
+      sjtSelectionsByQuestionId: {},
+    },
+    payload: {
+      teamAssessmentParticipantId: "participant-123",
+      questionId: "question-2",
+      responseFormat: "best_worst",
+      bestOptionId: "sjt-option-1",
+      worstOptionId: "sjt-option-4",
+    },
+  }),
+  {
+    likertSelectionsByQuestionId: {
+      "question-1": "option-3",
+    },
+    sjtSelectionsByQuestionId: {
+      "question-2": {
+        bestOptionId: "sjt-option-1",
+        worstOptionId: "sjt-option-4",
+      },
     },
   },
 );

@@ -60,9 +60,38 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 require.extensions[".tsx"] = require.extensions[".ts"];
 
+const helperPath = path.join(
+  projectRoot,
+  "lib",
+  "assessment",
+  "team-dynamics-mixed-answer-rehydration.ts",
+);
+const compatibilityPath = path.join(
+  projectRoot,
+  "lib",
+  "assessment",
+  "team-dynamics-mixed-answer-read.ts",
+);
+const helperSource = fs.readFileSync(helperPath, "utf8");
+const compatibilitySource = fs.readFileSync(compatibilityPath, "utf8");
+
+assert.match(helperSource, /export function buildTeamDynamicsMixedSavedAnswerState/);
+assert.match(helperSource, /export async function loadTeamDynamicsMixedSavedAnswersForContext/);
+assert.match(helperSource, /\.from\("responses"\)/);
+assert.match(helperSource, /response_selections/);
+assert.doesNotMatch(helperSource, /persistValidatedTeamDynamicsMixedAnswer/);
+assert.doesNotMatch(helperSource, /saveTeamDynamicsMixedAnswerAction/);
+assert.doesNotMatch(helperSource, /transitionTeamAssessmentExecutionToCompleted/);
+assert.doesNotMatch(helperSource, /persistTeamAssessmentMinimalScoreForContext/);
+assert.doesNotMatch(helperSource, /attempt_reports/);
+assert.doesNotMatch(helperSource, /assessment_reports/);
+assert.doesNotMatch(helperSource, /Team Fit/);
+assert.match(compatibilitySource, /team-dynamics-mixed-answer-rehydration/);
+
 const {
   buildTeamDynamicsMixedSavedAnswerState,
-} = require("../lib/assessment/team-dynamics-mixed-answer-read.ts");
+  loadTeamDynamicsMixedSavedAnswersForContext,
+} = require("../lib/assessment/team-dynamics-mixed-answer-rehydration.ts");
 const {
   createInitialMixedPreviewClientState,
   mergeMixedPreviewStoredStateWithSavedAnswers,
@@ -197,6 +226,24 @@ assert.deepEqual(
           },
         ],
       },
+      {
+        id: "response-same-best-worst",
+        question_id: "question-2",
+        response_kind: "best_worst",
+        answer_option_id: null,
+        response_selections: [
+          {
+            question_id: "question-2",
+            answer_option_id: "sjt-option-4",
+            selection_role: "best",
+          },
+          {
+            question_id: "question-2",
+            answer_option_id: "sjt-option-4",
+            selection_role: "worst",
+          },
+        ],
+      },
     ],
   }),
   {
@@ -210,7 +257,7 @@ assert.deepEqual(
       },
     },
     savedAnswerCount: 2,
-    invalidSavedAnswerCount: 2,
+    invalidSavedAnswerCount: 3,
     ignoredStaleAnswerCount: 2,
     warnings: [],
   },
@@ -276,6 +323,17 @@ assert.deepEqual(
         },
       },
     },
+    savedAnswerState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-4",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-2",
+        },
+      },
+    },
   },
 );
 
@@ -284,29 +342,79 @@ assert.deepEqual(
     savedAnswerState,
     storedState: {
       currentIndex: 1,
-      likertSelectionsByQuestionId: {
-        "question-1": "option-2",
-      },
-      sjtSelectionsByQuestionId: {
-        "question-2": {
-          bestOptionId: "sjt-option-3",
-          worstOptionId: "sjt-option-4",
-        },
-      },
     },
   }),
   {
     currentIndex: 1,
-    likertSelectionsByQuestionId: {
-      "question-1": "option-4",
-    },
-    sjtSelectionsByQuestionId: {
-      "question-2": {
-        bestOptionId: "sjt-option-1",
-        worstOptionId: "sjt-option-2",
-      },
-    },
   },
 );
 
-console.log("test-team-dynamics-assessment-v1-answer-rehydration: ok");
+let queriedAttemptId = null;
+
+Promise.resolve()
+  .then(() =>
+    loadTeamDynamicsMixedSavedAnswersForContext(
+      {
+        context: {
+          teamAssessmentParticipantId: "wrapper-1",
+          teamAssessmentAssignmentId: "assignment-1",
+          teamMembershipId: "membership-1",
+          participantId: "participant-1",
+          attemptId: "attempt-1",
+          teamId: "team-1",
+          organizationId: "org-1",
+          packageSlug: "team_dynamics_assessment_v1",
+          wrapperStatus: "started",
+          attemptStatus: "in_progress",
+          locale: "bs",
+          test: {
+            id: "test-1",
+            slug: "team_dynamics_assessment_v1",
+            name: "Procjena timske dinamike",
+            status: "active",
+            isActive: true,
+          },
+        },
+        runtimeHandoff,
+      },
+      {
+        supabase: {
+          from(table) {
+            assert.equal(table, "responses");
+            return {
+              select(query) {
+                assert.match(query, /response_selections/);
+                return {
+                  eq(column, value) {
+                    if (column === "attempt_id") {
+                      queriedAttemptId = value;
+                    }
+                    return Promise.resolve({
+                      data: [],
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
+          },
+        },
+      },
+    ),
+  )
+  .then((savedState) => {
+    assert.equal(queriedAttemptId, "attempt-1");
+    assert.deepEqual(savedState, {
+      savedLikertSelectionsByQuestionId: {},
+      savedSjtSelectionsByQuestionId: {},
+      savedAnswerCount: 0,
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 0,
+      warnings: [],
+    });
+    console.log("test-team-dynamics-assessment-v1-answer-rehydration: ok");
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
