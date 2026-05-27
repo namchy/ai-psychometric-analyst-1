@@ -93,15 +93,19 @@ const componentSource = fs.readFileSync(componentPath, "utf8");
 const executionHelperSource = fs.readFileSync(executionHelperPath, "utf8");
 
 assert.match(executionHelperSource, /loadTeamDynamicsMixedRuntimeHandoff/);
+assert.match(executionHelperSource, /loadTeamDynamicsMixedSavedAnswersForContext/);
 assert.match(executionHelperSource, /TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG/);
 assert.match(executionHelperSource, /runShellVariant: "mixed_runtime_preview"/);
 assert.match(executionHelperSource, /mixedRuntimeHandoff/);
-assert.doesNotMatch(executionHelperSource, /loadTeamAssessmentSavedAnswerStateForContext[\s\S]+mixed_runtime_preview/);
+assert.match(executionHelperSource, /mixedSavedLikertSelectionsByQuestionId/);
+assert.match(executionHelperSource, /mixedSavedSjtSelectionsByQuestionId/);
 
 assert.match(routeSource, /TeamDynamicsMixedRunPreview/);
 assert.match(routeSource, /handoff\.runShellVariant === "mixed_runtime_preview"/);
 assert.match(routeSource, /handoff\.mixedRuntimeHandoff !== null/);
 assert.match(routeSource, /teamAssessmentParticipantId=\{handoff\.teamAssessmentParticipantId\}/);
+assert.match(routeSource, /savedLikertSelectionsByQuestionId=\{handoff\.mixedSavedLikertSelectionsByQuestionId\}/);
+assert.match(routeSource, /savedSjtSelectionsByQuestionId=\{handoff\.mixedSavedSjtSelectionsByQuestionId\}/);
 assert.match(routeSource, /4 kratka bloka, oko 12[-–]15 minuta/);
 assert.doesNotMatch(routeSource, /AssessmentForm/);
 assert.doesNotMatch(routeSource, /attemptId/);
@@ -128,9 +132,12 @@ assert.match(componentSource, /Preview sa rucnim spremanjem trenutnog odgovora/)
 assert.match(componentSource, /Izbori se cuvaju u ovoj browser sesiji, a trenutno pitanje se moze rucno spremiti/);
 assert.match(componentSource, /Rucno spremanje je opcionalno i ne blokira lokalnu navigaciju/);
 assert.match(componentSource, /buildMixedPreviewSavePayload/);
+assert.match(componentSource, /sanitizeMixedPreviewSavedAnswerState/);
+assert.match(componentSource, /mergeMixedPreviewStoredStateWithSavedAnswers/);
 assert.match(componentSource, /responseFormat: "single_select_likert"/);
 assert.match(componentSource, /responseFormat: "best_worst"/);
 assert.match(componentSource, /status: "saving"/);
+assert.match(componentSource, /Ucitano\./);
 assert.match(componentSource, /Odgovor je spremljen\./);
 assert.match(componentSource, /Odgovor je azuriran\./);
 assert.match(componentSource, /Odgovor je vec spremljen\./);
@@ -156,7 +163,9 @@ const {
   createInitialMixedPreviewClientState,
   getMixedPreviewItemKind,
   isCurrentItemAnswerComplete,
+  mergeMixedPreviewStoredStateWithSavedAnswers,
   readMixedPreviewStoredState,
+  sanitizeMixedPreviewSavedAnswerState,
   sanitizeMixedPreviewStoredState,
   updateSjtPreviewSelection,
 } = require("../components/assessment/team-dynamics-mixed-run-preview.tsx");
@@ -433,6 +442,79 @@ assert.equal(
     },
   }),
   null,
+);
+
+assert.deepEqual(
+  sanitizeMixedPreviewSavedAnswerState({
+    runtimeHandoff,
+    rawState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-2",
+        stale: "option-1",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-3",
+        },
+        stale: {
+          bestOptionId: "ghost",
+          worstOptionId: "ghost-2",
+        },
+      },
+    },
+  }),
+  {
+    likertSelectionsByQuestionId: {
+      "question-1": "option-2",
+    },
+    sjtSelectionsByQuestionId: {
+      "question-2": {
+        bestOptionId: "sjt-option-1",
+        worstOptionId: "sjt-option-3",
+      },
+    },
+  },
+);
+
+assert.deepEqual(
+  mergeMixedPreviewStoredStateWithSavedAnswers({
+    savedAnswerState: {
+      likertSelectionsByQuestionId: {
+        "question-1": "option-4",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-1",
+          worstOptionId: "sjt-option-3",
+        },
+      },
+    },
+    storedState: {
+      currentIndex: 1,
+      likertSelectionsByQuestionId: {
+        "question-1": "option-2",
+      },
+      sjtSelectionsByQuestionId: {
+        "question-2": {
+          bestOptionId: "sjt-option-2",
+          worstOptionId: "sjt-option-4",
+        },
+      },
+    },
+  }),
+  {
+    currentIndex: 1,
+    likertSelectionsByQuestionId: {
+      "question-1": "option-4",
+    },
+    sjtSelectionsByQuestionId: {
+      "question-2": {
+        bestOptionId: "sjt-option-1",
+        worstOptionId: "sjt-option-3",
+      },
+    },
+  },
 );
 
 assert.deepEqual(

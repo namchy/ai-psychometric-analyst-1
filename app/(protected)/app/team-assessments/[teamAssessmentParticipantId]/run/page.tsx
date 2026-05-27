@@ -134,8 +134,9 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
               {isMixedRuntimePreview ? (
                 <>
                   <p className="text-sm leading-6 text-slate-700">
-                    Finalni mixed-format runtime handoff je ucitan iz imported DB shape-a i prikazuje
-                    se kroz lokalni preview bez spremanja odgovora.
+                    Finalni mixed-format runtime handoff je ucitan iz imported DB shape-a i
+                    prikazuje se kroz lokalni preview sa rucnim spremanjem odgovora i DB
+                    rehydration read path-om.
                   </p>
                   <p className="text-sm leading-6 text-slate-700">
                     Ucitana su 4 bloka i {handoff.activeQuestionCount} assessment jedinica za{" "}
@@ -185,6 +186,8 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
           <TeamDynamicsMixedRunPreview
             teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
             runtimeHandoff={handoff.mixedRuntimeHandoff!}
+            savedLikertSelectionsByQuestionId={handoff.mixedSavedLikertSelectionsByQuestionId}
+            savedSjtSelectionsByQuestionId={handoff.mixedSavedSjtSelectionsByQuestionId}
             wrapperStatus={handoff.wrapperStatus}
             isRunnableShellState={handoff.isRunnableShellState}
           />

@@ -32,6 +32,17 @@ type MixedPreviewStoredState = {
   >;
 };
 
+type MixedPreviewSavedAnswerState = {
+  likertSelectionsByQuestionId: Record<string, string>;
+  sjtSelectionsByQuestionId: Record<
+    string,
+    {
+      bestOptionId: string;
+      worstOptionId: string;
+    }
+  >;
+};
+
 type MixedPreviewClientState = {
   currentIndex: number;
   selectionState: MixedPreviewSelectionState;
@@ -70,6 +81,11 @@ type MixedPreviewSavePayload =
     };
 
 const EMPTY_SELECTION_STATE: MixedPreviewSelectionState = {
+  likertSelectionsByQuestionId: {},
+  sjtSelectionsByQuestionId: {},
+};
+
+const EMPTY_SAVED_ANSWER_STATE: MixedPreviewSavedAnswerState = {
   likertSelectionsByQuestionId: {},
   sjtSelectionsByQuestionId: {},
 };
@@ -252,6 +268,56 @@ export function sanitizeMixedPreviewStoredState(input: {
   return nextState;
 }
 
+export function sanitizeMixedPreviewSavedAnswerState(input: {
+  runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
+  rawState: MixedPreviewSavedAnswerState;
+}): MixedPreviewSavedAnswerState {
+  return {
+    likertSelectionsByQuestionId: sanitizeMixedPreviewStoredState({
+      runtimeHandoff: input.runtimeHandoff,
+      rawState: {
+        currentIndex: 0,
+        likertSelectionsByQuestionId: input.rawState.likertSelectionsByQuestionId,
+        sjtSelectionsByQuestionId: {},
+      },
+    }).likertSelectionsByQuestionId,
+    sjtSelectionsByQuestionId: sanitizeMixedPreviewStoredState({
+      runtimeHandoff: input.runtimeHandoff,
+      rawState: {
+        currentIndex: 0,
+        likertSelectionsByQuestionId: {},
+        sjtSelectionsByQuestionId: input.rawState.sjtSelectionsByQuestionId,
+      },
+    }).sjtSelectionsByQuestionId as Record<
+      string,
+      {
+        bestOptionId: string;
+        worstOptionId: string;
+      }
+    >,
+  };
+}
+
+export function mergeMixedPreviewStoredStateWithSavedAnswers(input: {
+  savedAnswerState: MixedPreviewSavedAnswerState;
+  storedState: MixedPreviewStoredState;
+}): MixedPreviewStoredState {
+  const mergedLikertSelectionsByQuestionId = {
+    ...input.storedState.likertSelectionsByQuestionId,
+    ...input.savedAnswerState.likertSelectionsByQuestionId,
+  };
+  const mergedSjtSelectionsByQuestionId = {
+    ...input.storedState.sjtSelectionsByQuestionId,
+    ...input.savedAnswerState.sjtSelectionsByQuestionId,
+  };
+
+  return {
+    currentIndex: input.storedState.currentIndex,
+    likertSelectionsByQuestionId: mergedLikertSelectionsByQuestionId,
+    sjtSelectionsByQuestionId: mergedSjtSelectionsByQuestionId,
+  };
+}
+
 export function readMixedPreviewStoredState(input: {
   runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
   teamAssessmentParticipantId: string;
@@ -290,12 +356,18 @@ export function readMixedPreviewStoredState(input: {
 export function createInitialMixedPreviewClientState(input: {
   runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
   teamAssessmentParticipantId: string;
+  savedAnswerState?: MixedPreviewSavedAnswerState;
 }): MixedPreviewClientState {
+  const savedAnswerState = sanitizeMixedPreviewSavedAnswerState({
+    runtimeHandoff: input.runtimeHandoff,
+    rawState: input.savedAnswerState ?? EMPTY_SAVED_ANSWER_STATE,
+  });
+
   return {
     currentIndex: 0,
     selectionState: {
-      likertSelectionsByQuestionId: {},
-      sjtSelectionsByQuestionId: {},
+      likertSelectionsByQuestionId: savedAnswerState.likertSelectionsByQuestionId,
+      sjtSelectionsByQuestionId: savedAnswerState.sjtSelectionsByQuestionId,
     },
   };
 }
@@ -432,13 +504,37 @@ function getSaveFeedbackCopy(status: Exclude<MixedPreviewSaveStatus, "idle">): s
 export function TeamDynamicsMixedRunPreview(props: {
   teamAssessmentParticipantId: string;
   runtimeHandoff: TeamDynamicsMixedRuntimeHandoff;
+  savedLikertSelectionsByQuestionId: Record<string, string>;
+  savedSjtSelectionsByQuestionId: Record<
+    string,
+    {
+      bestOptionId: string;
+      worstOptionId: string;
+    }
+  >;
   wrapperStatus: "invited" | "started" | "completed" | "expired";
   isRunnableShellState: boolean;
 }) {
+  const savedAnswerState = useMemo(
+    () =>
+      sanitizeMixedPreviewSavedAnswerState({
+        runtimeHandoff: props.runtimeHandoff,
+        rawState: {
+          likertSelectionsByQuestionId: props.savedLikertSelectionsByQuestionId,
+          sjtSelectionsByQuestionId: props.savedSjtSelectionsByQuestionId,
+        },
+      }),
+    [
+      props.runtimeHandoff,
+      props.savedLikertSelectionsByQuestionId,
+      props.savedSjtSelectionsByQuestionId,
+    ],
+  );
   const [previewState, setPreviewState] = useState<MixedPreviewClientState>(
     createInitialMixedPreviewClientState({
       runtimeHandoff: props.runtimeHandoff,
       teamAssessmentParticipantId: props.teamAssessmentParticipantId,
+      savedAnswerState,
     }),
   );
   const [hasHydratedPreviewState, setHasHydratedPreviewState] = useState(false);
@@ -467,16 +563,20 @@ export function TeamDynamicsMixedRunPreview(props: {
       runtimeHandoff: props.runtimeHandoff,
       teamAssessmentParticipantId: props.teamAssessmentParticipantId,
     });
+    const mergedStoredState = mergeMixedPreviewStoredStateWithSavedAnswers({
+      savedAnswerState,
+      storedState,
+    });
 
     setPreviewState({
-      currentIndex: storedState.currentIndex,
+      currentIndex: mergedStoredState.currentIndex,
       selectionState: {
-        likertSelectionsByQuestionId: storedState.likertSelectionsByQuestionId,
-        sjtSelectionsByQuestionId: storedState.sjtSelectionsByQuestionId,
+        likertSelectionsByQuestionId: mergedStoredState.likertSelectionsByQuestionId,
+        sjtSelectionsByQuestionId: mergedStoredState.sjtSelectionsByQuestionId,
       },
     });
     setHasHydratedPreviewState(true);
-  }, [props.runtimeHandoff, props.teamAssessmentParticipantId]);
+  }, [props.runtimeHandoff, props.teamAssessmentParticipantId, savedAnswerState]);
 
   useEffect(() => {
     if (!hasHydratedPreviewState) {
@@ -607,10 +707,28 @@ export function TeamDynamicsMixedRunPreview(props: {
     item: currentItem,
     selectionState,
   });
+  const savedLikertSelectionForCurrentQuestion =
+    savedAnswerState.likertSelectionsByQuestionId[currentItem.questionId] ?? null;
+  const savedSjtSelectionForCurrentQuestion =
+    savedAnswerState.sjtSelectionsByQuestionId[currentItem.questionId] ?? null;
+  const isCurrentSelectionAlignedWithSavedAnswer =
+    itemKind === "likert"
+      ? savedLikertSelectionForCurrentQuestion !== null &&
+        likertSelection === savedLikertSelectionForCurrentQuestion
+      : itemKind === "sjt_best_worst"
+        ? savedSjtSelectionForCurrentQuestion !== null &&
+          sjtSelection.bestOptionId === savedSjtSelectionForCurrentQuestion.bestOptionId &&
+          sjtSelection.worstOptionId === savedSjtSelectionForCurrentQuestion.worstOptionId
+        : false;
   const isSaveDisabled =
     itemKind === "unsupported" ||
     currentSavePayload === null ||
     currentSaveState.status === "saving";
+  const currentSaveFeedbackMessage =
+    currentSaveState.message ??
+    (isCurrentSelectionAlignedWithSavedAnswer
+      ? "Ucitano."
+      : "Rucno spremanje je opcionalno i ne blokira lokalnu navigaciju.");
 
   return (
     <section className="space-y-5 rounded-[1.5rem] border border-slate-200/80 bg-white/85 p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]">
@@ -870,7 +988,7 @@ export function TeamDynamicsMixedRunPreview(props: {
                 {currentSaveState.status === "saving" ? "Spremam..." : "Spremi odgovor"}
               </button>
               <p className="text-sm leading-6 text-slate-600">
-                {currentSaveState.message ?? "Rucno spremanje je opcionalno i ne blokira lokalnu navigaciju."}
+                {currentSaveFeedbackMessage}
               </p>
             </div>
           </div>

@@ -146,7 +146,8 @@ assert.match(routeSource, /handoff\.savedAnswerQuestionIds/);
 assert.match(routeSource, /handoff\.savedAnswerCount/);
 assert.match(routeSource, /handoff\.completionReadiness/);
 assert.match(routeSource, /4 kratka bloka, oko 12[-–]15 minuta/);
-assert.match(routeSource, /bez spremanja odgovora/);
+assert.match(routeSource, /rucnim spremanjem odgovora i DB/);
+assert.match(routeSource, /rehydration read path-om/);
 assert.match(routeSource, /Ovaj wrapper je u sigurnom post-completion ili unavailable stanju\./);
 assert.match(routeSource, /Aktivni run više nije dostupan za ovaj wrapper i pitanja se više ne prikazuju\./);
 assert.match(routeSource, /teamAssessmentParticipantId=\{handoff\.teamAssessmentParticipantId\}/);
@@ -659,6 +660,10 @@ assert.deepEqual(
     },
     savedAnswerQuestionIds: ["question-2"],
     savedAnswerCount: 1,
+    mixedSavedLikertSelectionsByQuestionId: {},
+    mixedSavedSjtSelectionsByQuestionId: {},
+    mixedInvalidSavedAnswerCount: 0,
+    mixedIgnoredStaleAnswerCount: 0,
     completionReadiness: {
       supportedQuestionCount: 2,
       savedValidAnswerCount: 1,
@@ -757,6 +762,10 @@ assert.deepEqual(
     },
     savedAnswerQuestionIds: ["question-2"],
     savedAnswerCount: 1,
+    mixedSavedLikertSelectionsByQuestionId: {},
+    mixedSavedSjtSelectionsByQuestionId: {},
+    mixedInvalidSavedAnswerCount: 0,
+    mixedIgnoredStaleAnswerCount: 0,
     completionReadiness: {
       supportedQuestionCount: 2,
       savedValidAnswerCount: 1,

@@ -243,6 +243,16 @@ export type TeamAssessmentRunHandoff = {
   savedSelectedOptionIdsByQuestionId: Record<string, string>;
   savedAnswerQuestionIds: string[];
   savedAnswerCount: number;
+  mixedSavedLikertSelectionsByQuestionId: Record<string, string>;
+  mixedSavedSjtSelectionsByQuestionId: Record<
+    string,
+    {
+      bestOptionId: string;
+      worstOptionId: string;
+    }
+  >;
+  mixedInvalidSavedAnswerCount: number;
+  mixedIgnoredStaleAnswerCount: number;
   completionReadiness: TeamAssessmentCompletionReadiness;
   runShellVariant: TeamAssessmentRunShellVariant;
   mixedRuntimeHandoff: TeamDynamicsMixedRuntimeHandoff | null;
@@ -735,6 +745,16 @@ export function buildTeamAssessmentRunHandoff(input: {
   savedSelectedOptionIdsByQuestionId: Record<string, string>;
   savedAnswerQuestionIds: string[];
   savedAnswerCount: number;
+  mixedSavedLikertSelectionsByQuestionId?: Record<string, string>;
+  mixedSavedSjtSelectionsByQuestionId?: Record<
+    string,
+    {
+      bestOptionId: string;
+      worstOptionId: string;
+    }
+  >;
+  mixedInvalidSavedAnswerCount?: number;
+  mixedIgnoredStaleAnswerCount?: number;
   completionReadiness: TeamAssessmentCompletionReadiness;
   runShellVariant?: TeamAssessmentRunShellVariant;
   mixedRuntimeHandoff?: TeamDynamicsMixedRuntimeHandoff | null;
@@ -787,6 +807,12 @@ export function buildTeamAssessmentRunHandoff(input: {
     savedSelectedOptionIdsByQuestionId: input.savedSelectedOptionIdsByQuestionId,
     savedAnswerQuestionIds: input.savedAnswerQuestionIds,
     savedAnswerCount: input.savedAnswerCount,
+    mixedSavedLikertSelectionsByQuestionId:
+      input.mixedSavedLikertSelectionsByQuestionId ?? {},
+    mixedSavedSjtSelectionsByQuestionId:
+      input.mixedSavedSjtSelectionsByQuestionId ?? {},
+    mixedInvalidSavedAnswerCount: input.mixedInvalidSavedAnswerCount ?? 0,
+    mixedIgnoredStaleAnswerCount: input.mixedIgnoredStaleAnswerCount ?? 0,
     completionReadiness: input.completionReadiness,
     runShellVariant: input.runShellVariant ?? "legacy_scaffold",
     mixedRuntimeHandoff: input.mixedRuntimeHandoff ?? null,
@@ -1434,8 +1460,15 @@ export async function loadTeamAssessmentRunHandoff(input: {
     const { loadTeamDynamicsMixedRuntimeHandoff } = await import(
       "@/lib/assessment/team-dynamics-mixed-runtime"
     );
+    const { loadTeamDynamicsMixedSavedAnswersForContext } = await import(
+      "@/lib/assessment/team-dynamics-mixed-answer-read"
+    );
     const mixedRuntimeHandoff = await loadTeamDynamicsMixedRuntimeHandoff({
       locale: input.context.locale,
+    });
+    const mixedSavedAnswers = await loadTeamDynamicsMixedSavedAnswersForContext({
+      context: input.context,
+      runtimeHandoff: mixedRuntimeHandoff,
     });
 
     return buildTeamAssessmentRunHandoff({
@@ -1452,8 +1485,17 @@ export async function loadTeamAssessmentRunHandoff(input: {
       uiOnlyUnsupportedCount: 0,
       uiOnlySkeletonMode: "unsupported_format",
       savedSelectedOptionIdsByQuestionId: {},
-      savedAnswerQuestionIds: [],
-      savedAnswerCount: 0,
+      savedAnswerQuestionIds: [
+        ...Object.keys(mixedSavedAnswers.savedLikertSelectionsByQuestionId),
+        ...Object.keys(mixedSavedAnswers.savedSjtSelectionsByQuestionId),
+      ],
+      savedAnswerCount: mixedSavedAnswers.savedAnswerCount,
+      mixedSavedLikertSelectionsByQuestionId:
+        mixedSavedAnswers.savedLikertSelectionsByQuestionId,
+      mixedSavedSjtSelectionsByQuestionId:
+        mixedSavedAnswers.savedSjtSelectionsByQuestionId,
+      mixedInvalidSavedAnswerCount: mixedSavedAnswers.invalidSavedAnswerCount,
+      mixedIgnoredStaleAnswerCount: mixedSavedAnswers.ignoredStaleAnswerCount,
       completionReadiness: {
         supportedQuestionCount: 0,
         savedValidAnswerCount: 0,
