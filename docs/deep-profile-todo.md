@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / DB import + runtime handoff + save-on-next UI + DB rehydration stabilizovani | Team module / Runtime + Import | DB import support za `team_dynamics_assessment_v1` je završen i DB-backed smoke potvrđen. Mixed-format runtime handoff/read model je završen i DB-backed runtime handoff smoke potvrđen. Završeni su save-on-next UI wiring i finalni mixed-format DB rehydration/resume read path za wrapper `/run` preview. Sljedeći uski slice: final mixed-format completion readiness helper, read-only, iz DB truth-a, bez completion action integracije, status transitiona, scoringa, reporta, AI generation-a ili Team Fit outputa. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / DB import + runtime handoff + save-on-next UI + DB rehydration + readiness + completion lifecycle stabilizovani | Team module / Runtime + Import | Sljedeći uski slice: final mixed-format scoring runtime, server-only, iz DB truth-a, bez reporta, AI generation-a, Team Fit outputa ili standard battery/candidate dashboard uključivanja. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -1926,9 +1926,110 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - `Prethodno` koristi DB-rehydrated / in-session saved state, a ne nespremljeni lokalni draft.
 - Legacy scaffold `team_dynamics_v1_strong` behavior nije proširen ovim final mixed-format slice-om.
 
+**Completion note — Team Dynamics final mixed-format completion readiness helper:**
+- Završen je read-only completion readiness helper za finalni `team_dynamics_assessment_v1`.
+- Readiness se računa iz DB-truth saved answer state-a dobijenog kroz canonical mixed-answer rehydration helper.
+- Helper koristi current final mixed runtime handoff kao source supported/required itema.
+- Podržani response formati su:
+  - `single_select_likert`
+  - `best_worst`
+- Likert item se računa kao complete samo ako postoji DB-saved `optionId` koji stvarno pripada tom current runtime itemu.
+- SJT item se računa kao complete samo ako postoji DB-saved `{ bestOptionId, worstOptionId }`, oba optiona pripadaju tom current runtime itemu i `bestOptionId !== worstOptionId`.
+- Readiness ne koristi React/client state.
+- Readiness ne koristi `sessionStorage`.
+- Stale ili malformed saved vrijednosti ne računaju se kao complete.
+- Output uključuje:
+  - `supportedItemCount`
+  - `savedValidAnswerCount`
+  - `missingQuestionIds`
+  - `invalidSavedAnswerCount`
+  - `ignoredStaleAnswerCount`
+  - `isReadyForCompletion`
+  - `readinessStatus`
+  - `warnings`
+- Statusi su:
+  - `not_ready`
+  - `ready`
+  - `no_supported_items`
+- UI/handoff prikazuje samo neutralni read-only progress signal, npr. `Spremljeno X/Y`.
+- Ovaj slice nije dodao completion action integraciju, status transition, scoring, report, AI generation ili Team Fit output.
+
+**Completion note — Team Dynamics final mixed-format final-item finish UX:**
+- Završen je neutralni final-item finish UX za finalni mixed-format `/run` flow.
+- `Sljedeće` ostaje save boundary.
+- Na svim non-final itemima postojeći behavior ostaje:
+  - lokalno validiraj trenutni odgovor
+  - save preko wrapper-specific actiona
+  - idi na sljedeći item samo nakon `saved`, `unchanged` ili `overwritten`
+  - kod greške ostani na istom itemu i prikaži kratku poruku
+- Na finalnom itemu `Sljedeće` prvo sprema trenutni odgovor.
+- Nakon uspješnog save-a finalnog itema UI ne pokušava navigirati iza zadnjeg itema.
+- Nakon uspješnog save-a finalnog itema UI lokalno preračunava readiness iz saved state-a.
+- Neutralni final preview state prikazuje se samo kada readiness za current saved state postane `ready`.
+- Final preview state prikazuje:
+  - `Odgovori su spremljeni`
+  - poruku da su svi podržani odgovori spremljeni
+  - poruku da završavanje procjene još nije omogućeno u tom koraku
+- Final preview state ne tvrdi da je assessment completed.
+- Final preview state ne poziva completion action.
+- Final preview state ne pokreće scoring, report, AI generation ili Team Fit output.
+- `Prethodno` iz final preview state-a vraća korisnika nazad na saved state, ne na nespremljeni draft.
+
+**Completion note — Team Dynamics final mixed-format completion action integration:**
+- Završen je wrapper-specific completion action za finalni `team_dynamics_assessment_v1`.
+- Dodan je `completeTeamDynamicsMixedAssessmentAction(...)`.
+- Action prima samo `teamAssessmentParticipantId`.
+- Action ne prima raw `attemptId` iz clienta.
+- Server-side ponovo učitava:
+  - authenticated user context
+  - Team Assessment execution context
+  - final mixed runtime handoff
+  - DB-truth completion readiness
+- Completion je dozvoljen samo kada:
+  - slug je finalni `team_dynamics_assessment_v1`
+  - wrapper je `started`
+  - linked attempt je `in_progress`
+  - readiness status je `ready`
+- Ako readiness nije zadovoljen, action vraća kontrolisani `not_ready` rezultat i ne mijenja statuse.
+- Ako je unsupported/wrong slug, action vraća kontrolisani `unsupported` rezultat.
+- Ako wrapper/attempt nisu u completable lifecycle stanju, action vraća kontrolisani `not_runnable` rezultat.
+- Ako je wrapper/attempt već completed, action vraća idempotentni `already_completed` rezultat.
+- Kada je completion dozvoljen, action radi samo minimalni status transition:
+  - `team_assessment_participants.status -> completed`
+  - linked `attempts.status -> completed`
+- UI final preview state prikazuje `Završi procjenu` samo kada effective readiness kaže `ready`.
+- Klik na `Završi procjenu` poziva isključivo wrapper-specific final mixed completion action.
+- Tokom pending completion stanja UI blokira dupli submit.
+- Nakon `completed` ili `already_completed`, UI prikazuje neutralni success state:
+  - procjena je označena kao završena
+  - izvještaj dolazi kroz zaseban budući korak
+- Ovaj slice nije pokrenuo scoring, member score persistence, aggregation, report orchestration, `attempt_reports`, `assessment_reports`, AI/report generation ili Team Fit output.
+
+**Completion note — Team Dynamics final mixed-format post-completion safe UI / admin progress confirmation:**
+- Završen je post-completion safe UI i admin progress confirmation za finalni `team_dynamics_assessment_v1`.
+- Completed final mixed-format wrapper više se ne tretira kao runnable.
+- Intro route za completed wrapper prikazuje completed/safe-state poruku.
+- Intro route više ne nudi active start/run CTA za completed wrapper.
+- `/run` route za completed wrapper ne renderuje active mixed preview.
+- `/run` route za completed wrapper ne prikazuje:
+  - current item
+  - answer options
+  - `Sljedeće`
+  - `Završi procjenu`
+  - pending/error execution state za aktivni run
+- `/run` route prikazuje non-runnable completed safe state sa statičnom porukom i sigurnom navigacijom nazad.
+- Admin team detail read path sada uključuje i finalni slug `team_dynamics_assessment_v1` kada traži latest Team Dynamics assignment za tim.
+- Completed final mixed-format participant wrapper ulazi u existing completed/progress count.
+- Completed status label ostaje jasan, npr. `Završen`.
+- Admin/team detail nije dobio nove report CTA-ove.
+- Admin/team detail ne prikazuje individualne odgovore, scoreve, report artefakte, AI sadržaj ili Team Fit output.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
   - `node scripts/test-team-dynamics-assessment-v1-answer-rehydration.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-completion-readiness.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-post-completion-safe-ui.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-completion-action.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-ui-preview-shell.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-manual-save-action.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-answer-payload-validator.cjs`
@@ -1943,29 +2044,29 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
-- autosave
-- save-on-select
-- completion readiness za finalni mixed format
-- completion action integraciju
-- status transition prema completed
-- scoring runtime za finalni mixed format
-- member score persistence promjene
-- team aggregation promjene
-- Team Dynamics report
-- report orchestration
-- `attempt_reports`
-- `assessment_reports`
-- AI/report generation
-- Team Fit output
-- standard battery inclusion
-- candidate dashboard inclusion
-- participant/HR single-test report capability
-- generic `/app/attempts/[attemptId]/run` save/read path
-- `AssessmentForm`
-- raw `attemptId` u UI-u
+- Ovi slice-evi nisu uveli scoring runtime za finalni mixed format.
+- Ovi slice-evi nisu pokrenuli post-completion scoring hook za finalni mixed format.
+- Ovi slice-evi nisu mijenjali member score persistence.
+- Ovi slice-evi nisu mijenjali team aggregation.
+- Ovi slice-evi nisu pisali u `team_assessment_aggregation_snapshots`.
+- Ovi slice-evi nisu uveli Team Dynamics report.
+- Ovi slice-evi nisu pokrenuli report orchestration.
+- Ovi slice-evi nisu pisali u `attempt_reports`.
+- Ovi slice-evi nisu pisali u `assessment_reports`.
+- Ovi slice-evi nisu uveli AI/report generation.
+- Ovi slice-evi nisu uveli Team Fit output.
+- Ovi slice-evi nisu uveli autosave.
+- Ovi slice-evi nisu uveli save-on-select.
+- Ovi slice-evi nisu uključili `team_dynamics_assessment_v1` u standard battery.
+- Ovi slice-evi nisu uključili `team_dynamics_assessment_v1` u candidate dashboard.
+- Ovi slice-evi nisu aktivirali participant/HR single-test report capability.
+- Ovi slice-evi nisu koristili generic `/app/attempts/[attemptId]/run` path.
+- Ovi slice-evi nisu importovali niti koristili `AssessmentForm`.
+- Ovi slice-evi nisu izložili raw `attemptId` u UI-u.
+- Ovi slice-evi nisu mijenjali DB schema niti dodavali Supabase migracije.
 
 **Sljedeći korak:**
-Sljedeći uski slice: final mixed-format completion readiness helper, read-only, iz DB truth-a, bez completion action integracije, status transitiona, scoringa, reporta, AI generation-a ili Team Fit outputa.
+Final mixed-format scoring runtime, server-only, iz DB-truth odgovora i current runtime handoffa. Scope mora ostati bez Team Dynamics reporta, report orchestration-a, `attempt_reports`, `assessment_reports`, AI/report generation-a, Team Fit outputa, standard battery inclusion-a i candidate dashboard inclusion-a.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
@@ -4250,6 +4351,15 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-27 — Team Dynamics final mixed-format readiness, completion lifecycle i post-completion safe UI
+
+- Finalni `team_dynamics_assessment_v1` wrapper `/run` flow sada ima DB-truth completion readiness za `single_select_likert` i `best_worst` odgovore.
+- Dodan je neutralni final-item finish UX koji korisniku javlja da su odgovori spremljeni, bez tvrdnje da je assessment completed.
+- Dodan je wrapper-specific final mixed completion action koji prima samo `teamAssessmentParticipantId`, ponovo računa readiness na serveru i radi samo minimalni status transition wrappera i linked attempta.
+- Nakon completion-a intro i `/run` route prikazuju completed safe state i više ne nude aktivni run UI.
+- Admin team detail sada korektno računa completed final mixed-format assignment u progress/status prikazu.
+- Scoring, report, report orchestration, AI generation, Team Fit output i standard battery/candidate dashboard inclusion ostaju zasebni budući slice-evi.
 
 ### 2026-05-27 — Supabase explicit grants guardrail
 
