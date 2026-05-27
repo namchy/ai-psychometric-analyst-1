@@ -42,6 +42,12 @@ import {
 } from "@/lib/assessment/team-dynamics-mixed-answer-persistence";
 import type { TeamDynamicsMixedAnswerPayload } from "@/lib/assessment/team-dynamics-mixed-answer-payload-validator";
 import {
+  loadTeamDynamicsMixedCompletionReadinessForContext,
+  type TeamDynamicsMixedCompletionReadiness,
+} from "@/lib/assessment/team-dynamics-mixed-completion-readiness";
+import { loadTeamDynamicsMixedRuntimeHandoff } from "@/lib/assessment/team-dynamics-mixed-runtime";
+import { TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG } from "@/lib/assessment/team-dynamics";
+import {
   AuthenticationRequiredError,
   requireAuthenticatedUserForAction,
 } from "@/lib/auth/session";
@@ -132,6 +138,44 @@ type SaveTeamDynamicsMixedAnswerActionDependencies = {
   ) => Promise<TeamDynamicsMixedAnswerPersistenceResult>;
 };
 
+export type CompleteTeamDynamicsMixedAssessmentActionInput = {
+  teamAssessmentParticipantId: string;
+};
+
+export type CompleteTeamDynamicsMixedAssessmentActionResult =
+  | {
+      ok: true;
+      status: "completed" | "already_completed";
+      teamAssessmentParticipantId: string;
+      readinessStatus: TeamDynamicsMixedCompletionReadiness["readinessStatus"];
+      supportedItemCount: number;
+      savedValidAnswerCount: number;
+      missingQuestionIds: string[];
+    }
+  | {
+      ok: false;
+      status: "not_ready" | "not_runnable" | "invalid" | "error";
+      reason: string;
+      teamAssessmentParticipantId: string | null;
+      readinessStatus?: TeamDynamicsMixedCompletionReadiness["readinessStatus"];
+      supportedItemCount?: number;
+      savedValidAnswerCount?: number;
+      missingQuestionIds?: string[];
+    };
+
+type CompleteTeamDynamicsMixedAssessmentActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  loadExecutionContext?: typeof loadTeamAssessmentExecutionContext;
+  loadMixedRuntimeHandoff?: typeof loadTeamDynamicsMixedRuntimeHandoff;
+  loadMixedCompletionReadiness?: typeof loadTeamDynamicsMixedCompletionReadinessForContext;
+  transitionCompletion?: (
+    input: {
+      context: Extract<TeamAssessmentExecutionContextResult, { ok: true }>["context"];
+      completedAt?: string;
+    },
+  ) => Promise<TeamAssessmentExecutionCompletionTransitionResult>;
+};
+
 export type CompleteTeamAssessmentActionInput = {
   teamAssessmentParticipantId: string;
 };
@@ -212,6 +256,30 @@ function buildMixedAnswerActionFailure(
     questionId: isNonEmptyString(input.questionId) ? input.questionId : null,
     responseFormat:
       typeof input.responseFormat === "string" ? input.responseFormat : null,
+  };
+}
+
+function buildMixedCompletionActionFailure(
+  input: Partial<CompleteTeamDynamicsMixedAssessmentActionInput>,
+  status: "not_ready" | "not_runnable" | "invalid" | "error",
+  reason: string,
+  readiness?: TeamDynamicsMixedCompletionReadiness,
+): CompleteTeamDynamicsMixedAssessmentActionResult {
+  return {
+    ok: false,
+    status,
+    reason,
+    teamAssessmentParticipantId: isNonEmptyString(input.teamAssessmentParticipantId)
+      ? input.teamAssessmentParticipantId
+      : null,
+    ...(readiness
+      ? {
+          readinessStatus: readiness.readinessStatus,
+          supportedItemCount: readiness.supportedItemCount,
+          savedValidAnswerCount: readiness.savedValidAnswerCount,
+          missingQuestionIds: readiness.missingQuestionIds,
+        }
+      : {}),
   };
 }
 
@@ -576,4 +644,139 @@ export async function completeTeamAssessmentAction(
     completionReadiness,
     ...(postCompletionScoring ? { postCompletionScoring } : {}),
   };
+}
+
+export async function completeTeamDynamicsMixedAssessmentAction(
+  input: CompleteTeamDynamicsMixedAssessmentActionInput,
+  deps: CompleteTeamDynamicsMixedAssessmentActionDependencies = {},
+): Promise<CompleteTeamDynamicsMixedAssessmentActionResult> {
+  if (!isNonEmptyString(input.teamAssessmentParticipantId)) {
+    return buildMixedCompletionActionFailure(
+      input,
+      "invalid",
+      "teamAssessmentParticipantId is required.",
+    );
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const loadExecutionContext =
+    deps.loadExecutionContext ?? loadTeamAssessmentExecutionContext;
+  const loadMixedRuntimeHandoff =
+    deps.loadMixedRuntimeHandoff ?? loadTeamDynamicsMixedRuntimeHandoff;
+  const loadMixedCompletionReadiness =
+    deps.loadMixedCompletionReadiness ??
+    loadTeamDynamicsMixedCompletionReadinessForContext;
+  const transitionCompletion =
+    deps.transitionCompletion ?? transitionTeamAssessmentExecutionToCompleted;
+
+  try {
+    const user = await requireUser();
+    const contextResult = await loadExecutionContext({
+      teamAssessmentParticipantId: input.teamAssessmentParticipantId,
+      userId: user.id,
+    });
+
+    if (!contextResult.ok) {
+      return buildMixedCompletionActionFailure(
+        input,
+        "invalid",
+        contextResult.message,
+      );
+    }
+
+    const context = contextResult.context;
+
+    if (
+      context.packageSlug !== TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG ||
+      context.test.slug !== TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG
+    ) {
+      return buildMixedCompletionActionFailure(
+        input,
+        "invalid",
+        `This completion action only supports ${TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG}.`,
+      );
+    }
+
+    const runtimeHandoff = await loadMixedRuntimeHandoff({
+      locale: context.locale,
+    });
+    const completionReadiness = await loadMixedCompletionReadiness({
+      context,
+      runtimeHandoff,
+    });
+
+    if (
+      context.wrapperStatus === "completed" &&
+      context.attemptStatus === "completed"
+    ) {
+      return {
+        ok: true,
+        status: "already_completed",
+        teamAssessmentParticipantId: context.teamAssessmentParticipantId,
+        readinessStatus: completionReadiness.readinessStatus,
+        supportedItemCount: completionReadiness.supportedItemCount,
+        savedValidAnswerCount: completionReadiness.savedValidAnswerCount,
+        missingQuestionIds: completionReadiness.missingQuestionIds,
+      };
+    }
+
+    if (
+      context.wrapperStatus !== "started" ||
+      context.attemptStatus !== "in_progress"
+    ) {
+      return buildMixedCompletionActionFailure(
+        input,
+        "not_runnable",
+        "Team Dynamics mixed-format assessment is not in a completable state.",
+        completionReadiness,
+      );
+    }
+
+    if (
+      completionReadiness.readinessStatus !== "ready" ||
+      completionReadiness.isReadyForCompletion === false
+    ) {
+      return buildMixedCompletionActionFailure(
+        input,
+        "not_ready",
+        "Team Dynamics mixed-format completion readiness is not satisfied.",
+        completionReadiness,
+      );
+    }
+
+    const completionResult = await transitionCompletion({ context });
+
+    if (!completionResult.ok) {
+      return buildMixedCompletionActionFailure(
+        input,
+        "not_runnable",
+        completionResult.reason,
+        completionReadiness,
+      );
+    }
+
+    return {
+      ok: true,
+      status: completionResult.mode,
+      teamAssessmentParticipantId: context.teamAssessmentParticipantId,
+      readinessStatus: completionReadiness.readinessStatus,
+      supportedItemCount: completionReadiness.supportedItemCount,
+      savedValidAnswerCount: completionReadiness.savedValidAnswerCount,
+      missingQuestionIds: completionReadiness.missingQuestionIds,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return buildMixedCompletionActionFailure(
+        input,
+        "error",
+        "Authentication required.",
+      );
+    }
+
+    return buildMixedCompletionActionFailure(
+      input,
+      "error",
+      "Unable to complete the Team Dynamics assessment right now.",
+    );
+  }
 }
