@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { saveTeamDynamicsMixedAnswerAction } from "@/app/actions/team-assessments";
+import type { TeamDynamicsMixedCompletionReadiness } from "@/lib/assessment/team-dynamics-mixed-completion-readiness";
 import type {
   TeamDynamicsMixedRuntimeHandoff,
   TeamDynamicsMixedRuntimeHandoffItem,
@@ -512,6 +513,7 @@ export function TeamDynamicsMixedRunPreview(props: {
       worstOptionId: string;
     }
   >;
+  completionReadiness: TeamDynamicsMixedCompletionReadiness;
   wrapperStatus: "invited" | "started" | "completed" | "expired";
   isRunnableShellState: boolean;
 }) {
@@ -729,6 +731,12 @@ export function TeamDynamicsMixedRunPreview(props: {
     (isCurrentSelectionAlignedWithSavedAnswer
       ? "Ucitano."
       : "Rucno spremanje je opcionalno i ne blokira lokalnu navigaciju.");
+  const readinessSummaryLabel =
+    props.completionReadiness.readinessStatus === "ready"
+      ? "Svi odgovori su spremljeni."
+      : props.completionReadiness.readinessStatus === "no_supported_items"
+        ? "Nema podrzanih pitanja za zavrsetak."
+        : `Spremljeno: ${props.completionReadiness.savedValidAnswerCount}/${props.completionReadiness.supportedItemCount} odgovora.`;
 
   return (
     <section className="space-y-5 rounded-[1.5rem] border border-slate-200/80 bg-white/85 p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]">
@@ -777,6 +785,14 @@ export function TeamDynamicsMixedRunPreview(props: {
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Izbori se cuvaju u ovoj browser sesiji, a trenutno pitanje se moze rucno spremiti.
             </p>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              {readinessSummaryLabel}
+            </p>
+            {props.completionReadiness.invalidSavedAnswerCount > 0 ? (
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Neki spremljeni odgovori nisu uracunati u trenutni progress prikaz.
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

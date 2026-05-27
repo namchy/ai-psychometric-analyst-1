@@ -10,6 +10,7 @@ import type {
   TeamDynamicsMixedRuntimeHandoff,
   TeamDynamicsMixedRuntimeHandoffBlock,
 } from "@/lib/assessment/team-dynamics-mixed-runtime";
+import type { TeamDynamicsMixedCompletionReadiness } from "@/lib/assessment/team-dynamics-mixed-completion-readiness";
 import type { TeamAssessmentCompletionReadiness } from "@/lib/assessment/team-assessment-responses";
 import {
   isTeamDynamicsTestSlug,
@@ -253,6 +254,7 @@ export type TeamAssessmentRunHandoff = {
   >;
   mixedInvalidSavedAnswerCount: number;
   mixedIgnoredStaleAnswerCount: number;
+  mixedCompletionReadiness: TeamDynamicsMixedCompletionReadiness;
   completionReadiness: TeamAssessmentCompletionReadiness;
   runShellVariant: TeamAssessmentRunShellVariant;
   mixedRuntimeHandoff: TeamDynamicsMixedRuntimeHandoff | null;
@@ -755,6 +757,7 @@ export function buildTeamAssessmentRunHandoff(input: {
   >;
   mixedInvalidSavedAnswerCount?: number;
   mixedIgnoredStaleAnswerCount?: number;
+  mixedCompletionReadiness?: TeamDynamicsMixedCompletionReadiness;
   completionReadiness: TeamAssessmentCompletionReadiness;
   runShellVariant?: TeamAssessmentRunShellVariant;
   mixedRuntimeHandoff?: TeamDynamicsMixedRuntimeHandoff | null;
@@ -813,6 +816,21 @@ export function buildTeamAssessmentRunHandoff(input: {
       input.mixedSavedSjtSelectionsByQuestionId ?? {},
     mixedInvalidSavedAnswerCount: input.mixedInvalidSavedAnswerCount ?? 0,
     mixedIgnoredStaleAnswerCount: input.mixedIgnoredStaleAnswerCount ?? 0,
+    mixedCompletionReadiness:
+      input.mixedCompletionReadiness ?? {
+        readinessStatus: "no_supported_items",
+        isReadyForCompletion: false,
+        supportedItemCount: 0,
+        savedValidAnswerCount: 0,
+        missingQuestionIds: [],
+        invalidSavedAnswerCount: 0,
+        ignoredStaleAnswerCount: 0,
+        likertItemCount: 0,
+        sjtItemCount: 0,
+        savedLikertAnswerCount: 0,
+        savedSjtAnswerCount: 0,
+        warnings: [],
+      },
     completionReadiness: input.completionReadiness,
     runShellVariant: input.runShellVariant ?? "legacy_scaffold",
     mixedRuntimeHandoff: input.mixedRuntimeHandoff ?? null,
@@ -1463,6 +1481,9 @@ export async function loadTeamAssessmentRunHandoff(input: {
     const { loadTeamDynamicsMixedSavedAnswersForContext } = await import(
       "@/lib/assessment/team-dynamics-mixed-answer-read"
     );
+    const { loadTeamDynamicsMixedCompletionReadinessForContext } = await import(
+      "@/lib/assessment/team-dynamics-mixed-completion-readiness"
+    );
     const mixedRuntimeHandoff = await loadTeamDynamicsMixedRuntimeHandoff({
       locale: input.context.locale,
     });
@@ -1470,6 +1491,11 @@ export async function loadTeamAssessmentRunHandoff(input: {
       context: input.context,
       runtimeHandoff: mixedRuntimeHandoff,
     });
+    const mixedCompletionReadiness =
+      await loadTeamDynamicsMixedCompletionReadinessForContext({
+        context: input.context,
+        runtimeHandoff: mixedRuntimeHandoff,
+      });
 
     return buildTeamAssessmentRunHandoff({
       context: input.context,
@@ -1496,6 +1522,7 @@ export async function loadTeamAssessmentRunHandoff(input: {
         mixedSavedAnswers.savedSjtSelectionsByQuestionId,
       mixedInvalidSavedAnswerCount: mixedSavedAnswers.invalidSavedAnswerCount,
       mixedIgnoredStaleAnswerCount: mixedSavedAnswers.ignoredStaleAnswerCount,
+      mixedCompletionReadiness,
       completionReadiness: {
         supportedQuestionCount: 0,
         savedValidAnswerCount: 0,

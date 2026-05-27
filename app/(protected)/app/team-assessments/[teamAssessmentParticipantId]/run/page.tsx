@@ -188,6 +188,7 @@ export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRu
             runtimeHandoff={handoff.mixedRuntimeHandoff!}
             savedLikertSelectionsByQuestionId={handoff.mixedSavedLikertSelectionsByQuestionId}
             savedSjtSelectionsByQuestionId={handoff.mixedSavedSjtSelectionsByQuestionId}
+            completionReadiness={handoff.mixedCompletionReadiness}
             wrapperStatus={handoff.wrapperStatus}
             isRunnableShellState={handoff.isRunnableShellState}
           />

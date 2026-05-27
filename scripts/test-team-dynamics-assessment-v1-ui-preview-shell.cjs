@@ -94,11 +94,13 @@ const executionHelperSource = fs.readFileSync(executionHelperPath, "utf8");
 
 assert.match(executionHelperSource, /loadTeamDynamicsMixedRuntimeHandoff/);
 assert.match(executionHelperSource, /loadTeamDynamicsMixedSavedAnswersForContext/);
+assert.match(executionHelperSource, /loadTeamDynamicsMixedCompletionReadinessForContext/);
 assert.match(executionHelperSource, /TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG/);
 assert.match(executionHelperSource, /runShellVariant: "mixed_runtime_preview"/);
 assert.match(executionHelperSource, /mixedRuntimeHandoff/);
 assert.match(executionHelperSource, /mixedSavedLikertSelectionsByQuestionId/);
 assert.match(executionHelperSource, /mixedSavedSjtSelectionsByQuestionId/);
+assert.match(executionHelperSource, /mixedCompletionReadiness/);
 
 assert.match(routeSource, /TeamDynamicsMixedRunPreview/);
 assert.match(routeSource, /handoff\.runShellVariant === "mixed_runtime_preview"/);
@@ -106,6 +108,7 @@ assert.match(routeSource, /handoff\.mixedRuntimeHandoff !== null/);
 assert.match(routeSource, /teamAssessmentParticipantId=\{handoff\.teamAssessmentParticipantId\}/);
 assert.match(routeSource, /savedLikertSelectionsByQuestionId=\{handoff\.mixedSavedLikertSelectionsByQuestionId\}/);
 assert.match(routeSource, /savedSjtSelectionsByQuestionId=\{handoff\.mixedSavedSjtSelectionsByQuestionId\}/);
+assert.match(routeSource, /completionReadiness=\{handoff\.mixedCompletionReadiness\}/);
 assert.match(routeSource, /4 kratka bloka, oko 12[-–]15 minuta/);
 assert.doesNotMatch(routeSource, /AssessmentForm/);
 assert.doesNotMatch(routeSource, /attemptId/);
@@ -134,6 +137,10 @@ assert.match(componentSource, /Rucno spremanje je opcionalno i ne blokira lokaln
 assert.match(componentSource, /buildMixedPreviewSavePayload/);
 assert.match(componentSource, /sanitizeMixedPreviewSavedAnswerState/);
 assert.match(componentSource, /mergeMixedPreviewStoredStateWithSavedAnswers/);
+assert.match(componentSource, /props\.completionReadiness/);
+assert.match(componentSource, /Spremljeno: \$\{props\.completionReadiness\.savedValidAnswerCount\}\/\$\{props\.completionReadiness\.supportedItemCount\} odgovora\./);
+assert.match(componentSource, /Svi odgovori su spremljeni\./);
+assert.match(componentSource, /Nema podrzanih pitanja za zavrsetak\./);
 assert.match(componentSource, /responseFormat: "single_select_likert"/);
 assert.match(componentSource, /responseFormat: "best_worst"/);
 assert.match(componentSource, /status: "saving"/);
@@ -142,6 +149,7 @@ assert.match(componentSource, /Odgovor je spremljen\./);
 assert.match(componentSource, /Odgovor je azuriran\./);
 assert.match(componentSource, /Odgovor je vec spremljen\./);
 assert.match(componentSource, /Odgovor nije spremljen\. Pokusaj ponovo\./);
+assert.match(componentSource, /Neki spremljeni odgovori nisu uracunati u trenutni progress prikaz\./);
 assert.match(
   componentSource,
   /Nema autosave logike,\s+completion tranzicije, scoring-a ni report side-effecta u ovom slice-u\./,
@@ -152,6 +160,7 @@ assert.match(componentSource, /disabled=\{isSaveDisabled\}/);
 assert.doesNotMatch(componentSource, /attemptId:/);
 assert.doesNotMatch(componentSource, /saveTeamAssessmentAnswerAction/);
 assert.doesNotMatch(componentSource, /completeTeamAssessmentAction/);
+assert.doesNotMatch(componentSource, /Zavrsi procjenu/);
 assert.doesNotMatch(componentSource, /AssessmentForm/);
 assert.doesNotMatch(componentSource, /attemptId/);
 assert.doesNotMatch(componentSource, /fetch\(/);

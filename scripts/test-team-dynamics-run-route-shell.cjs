@@ -145,12 +145,14 @@ assert.match(routeSource, /handoff\.savedSelectedOptionIdsByQuestionId/);
 assert.match(routeSource, /handoff\.savedAnswerQuestionIds/);
 assert.match(routeSource, /handoff\.savedAnswerCount/);
 assert.match(routeSource, /handoff\.completionReadiness/);
+assert.match(routeSource, /handoff\.mixedCompletionReadiness/);
 assert.match(routeSource, /4 kratka bloka, oko 12[-–]15 minuta/);
 assert.match(routeSource, /rucnim spremanjem odgovora i DB/);
 assert.match(routeSource, /rehydration read path-om/);
 assert.match(routeSource, /Ovaj wrapper je u sigurnom post-completion ili unavailable stanju\./);
 assert.match(routeSource, /Aktivni run više nije dostupan za ovaj wrapper i pitanja se više ne prikazuju\./);
 assert.match(routeSource, /teamAssessmentParticipantId=\{handoff\.teamAssessmentParticipantId\}/);
+assert.match(routeSource, /completionReadiness=\{handoff\.mixedCompletionReadiness\}/);
 assert.match(routeSource, /Podaci za rjesavanje su pripremljeni\./);
 assert.match(routeSource, /Rjesavanje procjene jos nije omoguceno u ovoj verziji\./);
 assert.match(routeSource, /Sekcije su pripremljene za sljedeci korak:/);
@@ -664,6 +666,20 @@ assert.deepEqual(
     mixedSavedSjtSelectionsByQuestionId: {},
     mixedInvalidSavedAnswerCount: 0,
     mixedIgnoredStaleAnswerCount: 0,
+    mixedCompletionReadiness: {
+      readinessStatus: "no_supported_items",
+      isReadyForCompletion: false,
+      supportedItemCount: 0,
+      savedValidAnswerCount: 0,
+      missingQuestionIds: [],
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 0,
+      likertItemCount: 0,
+      sjtItemCount: 0,
+      savedLikertAnswerCount: 0,
+      savedSjtAnswerCount: 0,
+      warnings: [],
+    },
     completionReadiness: {
       supportedQuestionCount: 2,
       savedValidAnswerCount: 1,
@@ -766,6 +782,20 @@ assert.deepEqual(
     mixedSavedSjtSelectionsByQuestionId: {},
     mixedInvalidSavedAnswerCount: 0,
     mixedIgnoredStaleAnswerCount: 0,
+    mixedCompletionReadiness: {
+      readinessStatus: "no_supported_items",
+      isReadyForCompletion: false,
+      supportedItemCount: 0,
+      savedValidAnswerCount: 0,
+      missingQuestionIds: [],
+      invalidSavedAnswerCount: 0,
+      ignoredStaleAnswerCount: 0,
+      likertItemCount: 0,
+      sjtItemCount: 0,
+      savedLikertAnswerCount: 0,
+      savedSjtAnswerCount: 0,
+      warnings: [],
+    },
     completionReadiness: {
       supportedQuestionCount: 2,
       savedValidAnswerCount: 1,
