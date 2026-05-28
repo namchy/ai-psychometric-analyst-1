@@ -160,7 +160,9 @@ assert.doesNotMatch(helperSource, /refreshTeamAssessmentAggregationSnapshot/);
 assert.doesNotMatch(helperSource, /persistTeamAssessmentAggregationSnapshot/);
 assert.doesNotMatch(helperSource, /OpenAI|AI provider|Team Fit|renderer/i);
 
-assert.doesNotMatch(routeSource, /team-dynamics-report-lifecycle/);
+assert.match(routeSource, /listTeamDynamicsReportRowsForAssignment/);
+assert.doesNotMatch(routeSource, /input_snapshot/);
+assert.doesNotMatch(routeSource, /report_snapshot/);
 assert.doesNotMatch(componentSource, /team-dynamics-report-lifecycle/);
 assert.match(componentSource, /queueTeamDynamicsReportAction/);
 assert.match(componentSource, /Kreiraj timski izvještaj/);

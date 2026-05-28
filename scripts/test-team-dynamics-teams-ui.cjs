@@ -43,6 +43,12 @@ const reportSelectionComponentPath = path.join(
   "dashboard",
   "team-dynamics-report-member-selection.tsx",
 );
+const reportQueueListComponentPath = path.join(
+  projectRoot,
+  "components",
+  "dashboard",
+  "team-dynamics-report-queue-list.tsx",
+);
 const detailComponentPath = path.join(
   projectRoot,
   "components",
@@ -71,6 +77,11 @@ assert.equal(
   "Expected Team Dynamics report member selection component to exist.",
 );
 assert.equal(
+  fs.existsSync(reportQueueListComponentPath),
+  true,
+  "Expected Team Dynamics report queue list component to exist.",
+);
+assert.equal(
   fs.existsSync(detailComponentPath),
   true,
   "Expected HR team assessment detail component to exist.",
@@ -82,6 +93,7 @@ const detailPageSource = fs.readFileSync(detailPagePath, "utf8");
 const reportPreparationPageSource = fs.readFileSync(reportPreparationPagePath, "utf8");
 const componentSource = fs.readFileSync(componentPath, "utf8");
 const reportSelectionComponentSource = fs.readFileSync(reportSelectionComponentPath, "utf8");
+const reportQueueListComponentSource = fs.readFileSync(reportQueueListComponentPath, "utf8");
 const detailComponentSource = fs.readFileSync(detailComponentPath, "utf8");
 const dashboardPageSource = fs.readFileSync(dashboardPagePath, "utf8");
 
@@ -136,9 +148,12 @@ assert.match(detailPageSource, /HrTeamAssessmentDetail/);
 
 assert.match(reportPreparationPageSource, /getTeamAssessmentDetailForOrganization/);
 assert.match(reportPreparationPageSource, /getTeamDynamicsReportSelectionReadModelForOrganization/);
+assert.match(reportPreparationPageSource, /listTeamDynamicsReportRowsForAssignment/);
 assert.match(reportPreparationPageSource, /TeamDynamicsReportMemberSelection/);
+assert.match(reportPreparationPageSource, /TeamDynamicsReportQueueList/);
 assert.match(reportPreparationPageSource, /initialSelection=\{selection\}/);
 assert.match(reportPreparationPageSource, /teamId=\{detail\.teamId\}/);
+assert.match(reportPreparationPageSource, /reportRows=\{reportRows\}/);
 assert.match(
   reportPreparationPageSource,
   /teamAssessmentAssignmentId=\{finalAssignment\?\.assignmentId \?\? null\}/,
@@ -155,6 +170,8 @@ assert.doesNotMatch(reportPreparationPageSource, /Sačuvaj izbor/);
 assert.doesNotMatch(reportPreparationPageSource, /Kreiraj timski izvještaj/);
 assert.doesNotMatch(reportPreparationPageSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
 assert.doesNotMatch(reportPreparationPageSource, reportSelectionImportPattern);
+assert.doesNotMatch(reportPreparationPageSource, /input_snapshot/);
+assert.doesNotMatch(reportPreparationPageSource, /report_snapshot/);
 
 assert.match(reportSelectionComponentSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
 assert.match(reportSelectionComponentSource, /queueTeamDynamicsReportAction/);
@@ -216,6 +233,27 @@ assert.doesNotMatch(reportSelectionComponentSource, /persistTeamDynamicsFinalAgg
 assert.doesNotMatch(reportSelectionComponentSource, /persistTeamDynamicsMixedScoreForContext/);
 assert.doesNotMatch(reportSelectionComponentSource, /queueTeamDynamicsReportShell/);
 assert.doesNotMatch(reportSelectionComponentSource, /OpenAI|AI provider|Team Fit/);
+
+assert.match(reportQueueListComponentSource, /Pripremljeni timski izvještaji/);
+assert.match(
+  reportQueueListComponentSource,
+  /Ovdje se prikazuju timski izvještaji koji su stavljeni u red ili su kasnije obrađeni\./,
+);
+assert.match(reportQueueListComponentSource, /U redu za pripremu/);
+assert.match(reportQueueListComponentSource, /U obradi/);
+assert.match(reportQueueListComponentSource, /Spreman/);
+assert.match(reportQueueListComponentSource, /Greška/);
+assert.match(reportQueueListComponentSource, /Nepoznat status/);
+assert.match(reportQueueListComponentSource, /Uključeno članova:/);
+assert.match(reportQueueListComponentSource, /includedMemberIdsSnapshot\.length/);
+assert.match(reportQueueListComponentSource, /Još nema pripremljenih timskih izvještaja\./);
+assert.doesNotMatch(reportQueueListComponentSource, /inputSnapshot/);
+assert.doesNotMatch(reportQueueListComponentSource, /reportSnapshot/);
+assert.doesNotMatch(reportQueueListComponentSource, /attempt_reports/);
+assert.doesNotMatch(reportQueueListComponentSource, /assessment_reports/);
+assert.doesNotMatch(reportQueueListComponentSource, /OpenAI|AI provider|Team Fit|renderer|worker/i);
+assert.doesNotMatch(reportQueueListComponentSource, /refreshTeamAssessmentAggregationSnapshot/);
+assert.doesNotMatch(reportQueueListComponentSource, /persistTeamDynamicsMixedScoreForContext/);
 
 assert.match(detailComponentSource, /Nazad na timove/);
 assert.match(detailComponentSource, /Ovaj admin pregled prikazuje samo status procjene na nivou tima/);

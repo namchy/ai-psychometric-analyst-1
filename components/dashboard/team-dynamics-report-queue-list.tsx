@@ -1,0 +1,99 @@
+import {
+  DashboardInfoCardShell,
+  DashboardSectionHeader,
+  DashboardStatusBadge,
+} from "@/components/dashboard/primitives";
+import type {
+  TeamDynamicsReportRowSummary,
+  TeamDynamicsReportStatus,
+} from "@/lib/b2b/team-dynamics-report-lifecycle";
+
+type TeamDynamicsReportQueueListProps = {
+  reportRows: TeamDynamicsReportRowSummary[];
+};
+
+function getReportStatusLabel(status: TeamDynamicsReportStatus): string {
+  switch (status) {
+    case "queued":
+      return "U redu za pripremu";
+    case "processing":
+      return "U obradi";
+    case "ready":
+      return "Spreman";
+    case "failed":
+      return "Greška";
+    default:
+      return "Nepoznat status";
+  }
+}
+
+function getReportStatusToneClassName(status: TeamDynamicsReportStatus): string {
+  switch (status) {
+    case "queued":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    case "processing":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "ready":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "failed":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    default:
+      return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+}
+
+function getReportTimestampLabel(reportRow: TeamDynamicsReportRowSummary): string {
+  return reportRow.queuedAt ?? reportRow.createdAt;
+}
+
+export function TeamDynamicsReportQueueList({
+  reportRows,
+}: TeamDynamicsReportQueueListProps) {
+  return (
+    <DashboardInfoCardShell className="rounded-[1.25rem] border-slate-200 bg-white/85 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+      <div className="space-y-4">
+        <DashboardSectionHeader
+          eyebrow="Queue"
+          eyebrowClassName="text-teal-800/90"
+          title="Pripremljeni timski izvještaji"
+          titleClassName="text-[1.2rem]"
+          description="Ovdje se prikazuju timski izvještaji koji su stavljeni u red ili su kasnije obrađeni."
+          descriptionClassName="max-w-3xl text-sm text-slate-600"
+        />
+
+        {reportRows.length > 0 ? (
+          <div className="space-y-3">
+            {reportRows.map((reportRow) => (
+              <div
+                key={reportRow.id}
+                className="rounded-[1.1rem] border border-slate-200 bg-white/80 px-4 py-4 shadow-[0_8px_18px_rgba(15,23,42,0.035)]"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-2">
+                    <DashboardStatusBadge
+                      className={`w-fit ${getReportStatusToneClassName(reportRow.reportStatus)}`}
+                    >
+                      {getReportStatusLabel(reportRow.reportStatus)}
+                    </DashboardStatusBadge>
+                    <p className="text-sm leading-6 text-slate-600">
+                      Vrijeme zapisa: {getReportTimestampLabel(reportRow)}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 text-sm leading-6 text-slate-600 sm:text-right">
+                    <p>Uključeno članova: {reportRow.includedMemberIdsSnapshot.length}</p>
+                    <p>Verzija izvještaja: {reportRow.reportVersion}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[1.1rem] border border-dashed border-slate-300 bg-slate-50/80 px-4 py-5 text-sm leading-6 text-slate-600">
+            Još nema pripremljenih timskih izvještaja.
+          </div>
+        )}
+      </div>
+    </DashboardInfoCardShell>
+  );
+}
