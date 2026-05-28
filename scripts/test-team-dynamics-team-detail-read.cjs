@@ -205,6 +205,7 @@ assert.deepEqual(detail, {
   updatedAt: "2026-05-20T10:00:00.000Z",
   latestAssignment: {
     assignmentId: "assignment-1",
+    packageSlug: "team_dynamics_assessment_v1",
     status: "active",
     openedAt: "2026-05-20T11:00:00.000Z",
     closedAt: null,
@@ -241,6 +242,7 @@ assert.deepEqual(detail, {
       },
     ],
   },
+  latestFinalAssignment: null,
 });
 
 assert.equal("responses" in detail.latestAssignment.participants[0], false);

@@ -1,7 +1,10 @@
+import Link from "next/link";
 import {
+  DashboardActionRow,
   DashboardSectionHeader,
   DashboardSectionShell,
   PageNavigation,
+  getDashboardCtaClassName,
 } from "@/components/dashboard/primitives";
 import type { TeamAssessmentDetail } from "@/lib/b2b/team-assessment-detail";
 import { formatHrDateTime } from "@/lib/dashboard/hr-ui-format";
@@ -92,6 +95,7 @@ export function HrTeamAssessmentDetail({
   detail: TeamAssessmentDetail;
 }) {
   const assignment = detail.latestAssignment;
+  const finalAssignment = detail.latestFinalAssignment;
   const completionValue = assignment
     ? `${assignment.completedCount}/${assignment.invitedCount}`
     : "Nije pokrenuto";
@@ -137,6 +141,34 @@ export function HrTeamAssessmentDetail({
 
         <div className="mt-5 rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4 text-sm leading-6 text-slate-600">
           Ovaj admin pregled prikazuje samo status procjene na nivou tima i wrapper statuse članova. Pojedinačni ishodi, odgovori, bodovanja i izvještaji nisu dostupni u ovom view-u.
+        </div>
+
+        <div className="mt-5 rounded-[1.2rem] border border-slate-200 bg-white/80 px-4 py-4">
+          <div className="space-y-3">
+            <DashboardSectionHeader
+              eyebrow="Timski izvještaj"
+              eyebrowClassName="text-teal-800/90"
+              title="Priprema izvještaja"
+              description="Priprema timskog izvještaja otvara zasebnu rutu za budući izbor članova bez širenja Team detail ekrana u selection workspace."
+              className="gap-2"
+              titleClassName="text-[1.2rem]"
+              descriptionClassName="max-w-3xl text-sm text-slate-600"
+            />
+            {finalAssignment ? (
+              <DashboardActionRow>
+                <Link
+                  className={getDashboardCtaClassName({ variant: "secondary" })}
+                  href={`/dashboard/teams/${detail.teamId}/reports/new`}
+                >
+                  Pripremi timski izvještaj
+                </Link>
+              </DashboardActionRow>
+            ) : (
+              <p className="text-sm leading-6 text-slate-600">
+                Finalna Team Dynamics procjena još nije dostupna, pa priprema timskog izvještaja još nije otvorena za ovaj tim.
+              </p>
+            )}
+          </div>
         </div>
       </DashboardSectionShell>
 

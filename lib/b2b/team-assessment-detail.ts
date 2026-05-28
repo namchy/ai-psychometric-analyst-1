@@ -81,6 +81,7 @@ export type TeamAssessmentDetailParticipant = {
 
 export type TeamAssessmentDetailAssignment = {
   assignmentId: string;
+  packageSlug: string;
   status: "draft" | "active" | "closed" | "ready_for_report" | "reported" | "cancelled";
   openedAt: string | null;
   closedAt: string | null;
@@ -99,6 +100,7 @@ export type TeamAssessmentDetail = {
   createdAt: string;
   updatedAt: string;
   latestAssignment: TeamAssessmentDetailAssignment | null;
+  latestFinalAssignment: TeamAssessmentDetailAssignment | null;
 };
 
 export function buildTeamAssessmentDetail(input: {
@@ -106,6 +108,7 @@ export function buildTeamAssessmentDetail(input: {
   team: TeamRow;
   activeMemberships: ActiveMembershipDetailRow[];
   latestAssignment: TeamAssessmentAssignmentRow | null;
+  latestFinalAssignment?: TeamAssessmentAssignmentRow | null;
   assignmentParticipants?: TeamAssessmentParticipantDetailRow[];
 }): TeamAssessmentDetail {
   if (input.team.organization_id !== input.organizationId) {
@@ -176,6 +179,7 @@ export function buildTeamAssessmentDetail(input: {
     latestAssignment: input.latestAssignment
       ? {
           assignmentId: input.latestAssignment.id,
+          packageSlug: input.latestAssignment.package_slug,
           status: input.latestAssignment.status,
           openedAt: input.latestAssignment.opened_at,
           closedAt: input.latestAssignment.closed_at,
@@ -186,6 +190,31 @@ export function buildTeamAssessmentDetail(input: {
             (participant) => participant.status === "completed",
           ).length,
           participants: assignmentParticipants,
+        }
+      : null,
+    latestFinalAssignment: input.latestFinalAssignment
+      ? {
+          assignmentId: input.latestFinalAssignment.id,
+          packageSlug: input.latestFinalAssignment.package_slug,
+          status: input.latestFinalAssignment.status,
+          openedAt: input.latestFinalAssignment.opened_at,
+          closedAt: input.latestFinalAssignment.closed_at,
+          createdAt: input.latestFinalAssignment.created_at,
+          updatedAt: input.latestFinalAssignment.updated_at,
+          invitedCount:
+            input.latestAssignment?.id === input.latestFinalAssignment.id
+              ? assignmentParticipants.length
+              : 0,
+          completedCount:
+            input.latestAssignment?.id === input.latestFinalAssignment.id
+              ? assignmentParticipants.filter(
+                  (participant) => participant.status === "completed",
+                ).length
+              : 0,
+          participants:
+            input.latestAssignment?.id === input.latestFinalAssignment.id
+              ? assignmentParticipants
+              : [],
         }
       : null,
   };
@@ -271,9 +300,7 @@ export async function getTeamAssessmentDetailForOrganization(input: {
       TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG,
     ])
     .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("id", { ascending: false });
 
   if (assignmentError) {
     throw new Error(
@@ -281,7 +308,12 @@ export async function getTeamAssessmentDetailForOrganization(input: {
     );
   }
 
-  const latestAssignment = (assignmentData as TeamAssessmentAssignmentRow | null) ?? null;
+  const assignments = (assignmentData ?? []) as TeamAssessmentAssignmentRow[];
+  const latestAssignment = assignments[0] ?? null;
+  const latestFinalAssignment =
+    assignments.find(
+      (assignment) => assignment.package_slug === TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG,
+    ) ?? null;
   let assignmentParticipants: TeamAssessmentParticipantDetailRow[] = [];
 
   if (latestAssignment?.id) {
@@ -327,6 +359,7 @@ export async function getTeamAssessmentDetailForOrganization(input: {
     team,
     activeMemberships: activeMembershipDetails,
     latestAssignment,
+    latestFinalAssignment,
     assignmentParticipants,
   });
 }

@@ -20,6 +20,17 @@ const detailPagePath = path.join(
   "[teamId]",
   "page.tsx",
 );
+const reportPreparationPagePath = path.join(
+  projectRoot,
+  "app",
+  "(protected)",
+  "dashboard",
+  "teams",
+  "[teamId]",
+  "reports",
+  "new",
+  "page.tsx",
+);
 const componentPath = path.join(
   projectRoot,
   "components",
@@ -42,6 +53,11 @@ const dashboardPagePath = path.join(
 
 assert.equal(fs.existsSync(pagePath), true, "Expected /dashboard/teams page to exist.");
 assert.equal(fs.existsSync(detailPagePath), true, "Expected /dashboard/teams/[teamId] page to exist.");
+assert.equal(
+  fs.existsSync(reportPreparationPagePath),
+  true,
+  "Expected /dashboard/teams/[teamId]/reports/new page to exist.",
+);
 assert.equal(fs.existsSync(componentPath), true, "Expected HR teams table component to exist.");
 assert.equal(
   fs.existsSync(detailComponentPath),
@@ -52,12 +68,13 @@ assert.equal(fs.existsSync(dashboardPagePath), true, "Expected /dashboard page t
 
 const pageSource = fs.readFileSync(pagePath, "utf8");
 const detailPageSource = fs.readFileSync(detailPagePath, "utf8");
+const reportPreparationPageSource = fs.readFileSync(reportPreparationPagePath, "utf8");
 const componentSource = fs.readFileSync(componentPath, "utf8");
 const detailComponentSource = fs.readFileSync(detailComponentPath, "utf8");
 const dashboardPageSource = fs.readFileSync(dashboardPagePath, "utf8");
 
 const reportSelectionImportPattern =
-  /replaceTeamDynamicsReportSelectionInclusionAction|replaceTeamDynamicsReportSelection|aggregation refresh|getTeamDynamics.*Report|createAssessmentReport|createAttemptReport|assessment_reports|attempt_reports/;
+  /replaceTeamDynamicsReportSelectionInclusionAction|replaceTeamDynamicsReportSelection(?!ReadModel)|aggregation refresh|createAssessmentReport|createAttemptReport|assessment_reports|attempt_reports|loadTeamDynamicsFinalAggregation|persistTeamDynamicsFinalAggregationSnapshot|persistTeamDynamicsMixedScoreForContext|OpenAI|AI provider|Team Fit/;
 
 assert.match(pageSource, /requireAuthenticatedUser\(\)/);
 assert.match(pageSource, /getActiveOrganizationForUser\(user\.id\)/);
@@ -105,8 +122,26 @@ assert.match(detailPageSource, /getTeamAssessmentDetailForOrganization/);
 assert.match(detailPageSource, /notFound\(\)/);
 assert.match(detailPageSource, /HrTeamAssessmentDetail/);
 
+assert.match(reportPreparationPageSource, /getTeamAssessmentDetailForOrganization/);
+assert.match(reportPreparationPageSource, /getTeamDynamicsReportSelectionReadModelForOrganization/);
+assert.match(reportPreparationPageSource, /title="Priprema timskog izvještaja"/);
+assert.match(
+  reportPreparationPageSource,
+  /Odaberi članove koji će biti uključeni u konkretni timski izvještaj\./,
+);
+assert.match(reportPreparationPageSource, /selectedCount/);
+assert.match(reportPreparationPageSource, /teamSizeStatus/);
+assert.match(reportPreparationPageSource, /disabledReasons/);
+assert.match(reportPreparationPageSource, /Placeholder za budući left\/right selection UI/);
+assert.doesNotMatch(reportPreparationPageSource, /Sačuvaj izbor/);
+assert.doesNotMatch(reportPreparationPageSource, /Kreiraj timski izvještaj/);
+assert.doesNotMatch(reportPreparationPageSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
+assert.doesNotMatch(reportPreparationPageSource, reportSelectionImportPattern);
+
 assert.match(detailComponentSource, /Nazad na timove/);
 assert.match(detailComponentSource, /Ovaj admin pregled prikazuje samo status procjene na nivou tima/);
+assert.match(detailComponentSource, /Pripremi timski izvještaj/);
+assert.match(detailComponentSource, /\/dashboard\/teams\/\$\{detail\.teamId\}\/reports\/new/);
 assert.match(detailComponentSource, /Članovi u procjeni/);
 assert.match(detailComponentSource, /Završen/);
 assert.match(detailComponentSource, /border-emerald-200 bg-emerald-50 text-emerald-700/);
@@ -117,8 +152,9 @@ assert.doesNotMatch(detailComponentSource, /attemptId/);
 assert.doesNotMatch(detailComponentSource, /raw response/i);
 assert.doesNotMatch(detailComponentSource, /score/i);
 assert.doesNotMatch(detailComponentSource, /OpenAI|AI provider|generator_type|report_snapshot/);
-assert.doesNotMatch(detailComponentSource, /report selection/i);
 assert.doesNotMatch(detailComponentSource, /left\s*\/\s*right/i);
-assert.doesNotMatch(detailComponentSource, /Kreiraj timski izvještaj/);
+assert.doesNotMatch(detailComponentSource, /Sačuvaj izbor/);
+assert.doesNotMatch(detailComponentSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
+assert.doesNotMatch(detailComponentSource, reportSelectionImportPattern);
 
 console.log("Team Dynamics teams UI skeleton tests passed.");
