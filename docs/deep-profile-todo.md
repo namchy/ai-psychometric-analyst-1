@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / DB import + runtime handoff + save-on-next UI + DB rehydration + readiness + completion lifecycle stabilizovani | Team module / Runtime + Import | Sljedeći uski slice: final mixed-format scoring runtime, server-only, iz DB truth-a, bez reporta, AI generation-a, Team Fit outputa ili standard battery/candidate dashboard uključivanja. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / final mixed-format scoring runtime + contract hardening + member score read verifier završeni | Team module / Runtime + Import | Sljedeći uski slice: final team aggregation runtime za team_dynamics_assessment_v1, baziran isključivo na ready member-level mixed score snapshotovima, bez reporta, AI generation-a, Team Fit outputa ili standard battery/candidate dashboard uključivanja. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -2024,49 +2024,58 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Admin/team detail nije dobio nove report CTA-ove.
 - Admin/team detail ne prikazuje individualne odgovore, scoreve, report artefakte, AI sadržaj ili Team Fit output.
 
+### Completion note — Team Dynamics final mixed-format scoring runtime
+- Uveden je finalni mixed-format scoring runtime za `team_dynamics_assessment_v1` kao server-only slice.
+- Scoring koristi isključivo persisted DB responses kao source-of-truth; client payload nije scoring source.
+- Completion action nakon uspješnog completion transition-a pokreće best-effort post-completion scoring hook i vraća `postCompletionScoring` status.
+- Member-level score snapshot se persistira u `team_assessment_participant_scores`.
+- Idempotency je zaključan kroz `team_assessment_participant_id + scoring_version`; ponovni scoring update-a postojeći row i ne duplira snapshot.
+- Top-level unified overall score se namjerno ne proizvodi; top-level `raw_total` / `mean_raw` / `score_0_100` ostaju `null` jer unified mixed score nije metodološki zaključan.
+- Detaljni score rezultati žive u `score_snapshot.scoreEntries`.
+- Podržani score entry/blokovi:
+  - TDM-31 Likert block
+  - TDM domain scorevi
+  - `psychological_safety`
+  - `situational_judgment` (SJT best-worst)
+  - `outcome_pulse` kao odvojen signal
+- Unsupported ili nepotpuni scoring contract faila kontrolisano, bez silent partial score-a.
+
+### Completion note — Team Dynamics final mixed-format scoring contract hardening
+- Likert scorer sada eksplicitno validira očekivani contract: `likert_1_4_agreement` + `simple_linear_v1`.
+- TDM `reverse_scored` metadata više nema tihi fallback; missing/nevalidan metadata shape sada je controlled failure.
+- TDM domain metadata više ne može tiho proizvesti nepotpun domain output; nevalidan contract faila kontrolisano.
+- SJT scoring koristi isključivo eksplicitni `best_choice_points` i `worst_choice_points` metadata contract.
+- DB import smoke sada potvrđuje da SJT scoring metadata preživi import u runtime DB rows.
+
+### Completion note — Team Dynamics final mixed-format member score read/verification layer
+- Dodan je server-only read-only verifier za member-level mixed score snapshot.
+- Verifier statusi su `not_found`, `ready`, `invalid`.
+- Verifier čita postojeći score snapshot bez write-a i bez scoring rerun-a.
+- Verifier ne pokreće team aggregation.
+- Verifier ne pokreće report generation, AI generation ili Team Fit output.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
-  - `node scripts/test-team-dynamics-assessment-v1-answer-rehydration.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-completion-readiness.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-post-completion-safe-ui.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-completion-action.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-ui-preview-shell.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-manual-save-action.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-answer-payload-validator.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-answer-persistence.cjs`
-  - `node scripts/test-team-dynamics-run-route-shell.cjs`
-  - `node scripts/test-team-dynamics-run-handoff-skeleton.cjs`
-  - `node scripts/test-team-dynamics-privacy-guards.cjs`
-  - `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`
-  - `node scripts/test-standard-assessment-battery.cjs`
-  - `node scripts/test-report-capabilities.cjs`
   - `npm run typecheck`
+  - `node scripts/test-team-dynamics-assessment-v1-scoring.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-db-import.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-completion-action.cjs`
+  - `node scripts/test-team-dynamics-score-persistence.cjs`
+  - `node scripts/test-team-dynamics-assessment-v1-score-read.cjs`
 
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
-- Ovi slice-evi nisu uveli scoring runtime za finalni mixed format.
-- Ovi slice-evi nisu pokrenuli post-completion scoring hook za finalni mixed format.
-- Ovi slice-evi nisu mijenjali member score persistence.
-- Ovi slice-evi nisu mijenjali team aggregation.
-- Ovi slice-evi nisu pisali u `team_assessment_aggregation_snapshots`.
-- Ovi slice-evi nisu uveli Team Dynamics report.
-- Ovi slice-evi nisu pokrenuli report orchestration.
 - Ovi slice-evi nisu pisali u `attempt_reports`.
 - Ovi slice-evi nisu pisali u `assessment_reports`.
-- Ovi slice-evi nisu uveli AI/report generation.
+- Ovi slice-evi nisu uveli report generation.
+- Ovi slice-evi nisu uveli AI generation.
 - Ovi slice-evi nisu uveli Team Fit output.
-- Ovi slice-evi nisu uveli autosave.
-- Ovi slice-evi nisu uveli save-on-select.
 - Ovi slice-evi nisu uključili `team_dynamics_assessment_v1` u standard battery.
 - Ovi slice-evi nisu uključili `team_dynamics_assessment_v1` u candidate dashboard.
-- Ovi slice-evi nisu aktivirali participant/HR single-test report capability.
-- Ovi slice-evi nisu koristili generic `/app/attempts/[attemptId]/run` path.
-- Ovi slice-evi nisu importovali niti koristili `AssessmentForm`.
-- Ovi slice-evi nisu izložili raw `attemptId` u UI-u.
-- Ovi slice-evi nisu mijenjali DB schema niti dodavali Supabase migracije.
+- Ovi slice-evi nisu proizveli unified overall score; top-level overall score ostaje `null`.
 
 **Sljedeći korak:**
-Final mixed-format scoring runtime, server-only, iz DB-truth odgovora i current runtime handoffa. Scope mora ostati bez Team Dynamics reporta, report orchestration-a, `attempt_reports`, `assessment_reports`, AI/report generation-a, Team Fit outputa, standard battery inclusion-a i candidate dashboard inclusion-a.
+Sljedeći uski slice: final team aggregation runtime za `team_dynamics_assessment_v1`, baziran isključivo na ready member-level mixed score snapshotovima, bez reporta, AI generation-a, Team Fit outputa ili standard battery/candidate dashboard uključivanja.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
@@ -4351,6 +4360,18 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-28 — Team Dynamics final mixed-format scoring runtime, contract hardening i read verifier
+
+- Finalni mixed-format scoring runtime za `team_dynamics_assessment_v1` uveden je kao server-only lane.
+- Scoring koristi DB truth i persisted responses; client payload nije scoring source.
+- Completion action sada nakon uspješnog completion transition-a radi best-effort post-completion scoring hook i vraća `postCompletionScoring` status.
+- Member-level snapshot se persistira u `team_assessment_participant_scores` i ostaje idempotentan kroz `team_assessment_participant_id + scoring_version` update model.
+- Top-level unified overall score ostaje namjerno `null`; detaljni rezultati žive u `score_snapshot.scoreEntries`.
+- Podržani su TDM-31, TDM domain scorevi, `psychological_safety`, `situational_judgment` (best-worst) i `outcome_pulse`; unsupported/nepotpuni contract faila kontrolisano.
+- Contract je hardenovan za Likert `simple_linear_v1` shape, TDM `reverse_scored`, TDM domain metadata i SJT metadata scoring (`best_choice_points` / `worst_choice_points`).
+- DB import smoke potvrđuje da SJT scoring metadata preživi import u runtime DB rows.
+- Dodan je read-only member-level score verification layer sa statusima `not_found` / `ready` / `invalid`, bez write-a, bez scoring rerun-a, bez aggregation-a i bez report/AI/Team Fit side-effecta.
 
 ### 2026-05-27 — Team Dynamics final mixed-format readiness, completion lifecycle i post-completion safe UI
 
