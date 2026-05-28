@@ -42,10 +42,10 @@ export function HrTeamsTable({ teams }: HrTeamsTableProps) {
       <div className="border-b border-slate-200/80 px-4 py-5 sm:px-5">
         <div className="min-w-0">
           <h2 className="font-headline text-[1.8rem] font-bold tracking-[-0.04em] text-slate-950">
-            Timovi
+            Upravljanje timovima
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-            Pregled postojećih timova i pokretanje procjene timske dinamike kroz agregirani uvid, bez individualnog targetiranja članova.
+            Pregled timova i procjena timske dinamike unutar organizacije.
           </p>
         </div>
       </div>
@@ -142,7 +142,7 @@ export function HrTeamsTable({ teams }: HrTeamsTableProps) {
                         className={getDashboardCtaClassName({ variant: "secondary", fullWidth: true })}
                         href={`/dashboard/teams/${team.teamId}`}
                       >
-                        Otvori admin detalje
+                        Otvori tim
                       </Link>
                     </div>
                   </td>

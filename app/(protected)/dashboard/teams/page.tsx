@@ -35,9 +35,9 @@ export default async function TeamsDashboardPage() {
             <DashboardSectionHeader
               eyebrow="Team Dynamics"
               eyebrowClassName="text-teal-800/90"
-              title="Timovi"
+              title="Upravljanje timovima"
               titleClassName="text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
-              description="Timski modul daje agregirani uvid u dinamiku konkretnog tima. Ovaj surface ne prikazuje individualne rezultate članova niti služi za individualno targetiranje."
+              description="Pregled timova i procjena timske dinamike unutar organizacije."
               descriptionClassName="max-w-3xl"
             />
           </div>
