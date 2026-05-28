@@ -37,6 +37,11 @@ import {
   TEAM_DYNAMICS_ACTION_TEAM_ID_REQUIRED,
 } from "@/lib/assessment/team-dynamics-action-contract";
 import {
+  getTeamDynamicsReportSelectionReadModelForOrganization,
+  type TeamDynamicsReportSelectionReadModel,
+} from "@/lib/b2b/team-dynamics-report-selection";
+import { replaceTeamDynamicsReportSelectionInclusionSet } from "@/lib/b2b/team-dynamics-report-selection-inclusion";
+import {
   persistValidatedTeamDynamicsMixedAnswer,
   type TeamDynamicsMixedAnswerPersistenceResult,
 } from "@/lib/assessment/team-dynamics-mixed-answer-persistence";
@@ -57,6 +62,7 @@ import {
   AuthenticationRequiredError,
   requireAuthenticatedUserForAction,
 } from "@/lib/auth/session";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function getFormDataString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -264,6 +270,61 @@ type CompleteTeamAssessmentActionDependencies = {
   ) => Promise<TeamAssessmentMinimalScorePersistenceResult>;
 };
 
+type TeamDynamicsAssignmentActionContext = {
+  assignmentId: string;
+  teamId: string;
+  packageSlug: string;
+  organizationId: string;
+  teamArchivedAt: string | null;
+};
+
+type TeamDynamicsAssignmentParticipantContext = {
+  id: string;
+  teamAssessmentAssignmentId: string;
+};
+
+export type ReplaceTeamDynamicsReportSelectionInclusionActionInput = {
+  teamAssessmentAssignmentId: string;
+  includedTeamAssessmentParticipantIds: string[];
+};
+
+export type ReplaceTeamDynamicsReportSelectionInclusionActionResult =
+  | {
+      ok: true;
+      selection: TeamDynamicsReportSelectionReadModel;
+    }
+  | {
+      ok: false;
+      errorCode:
+        | "authentication_required"
+        | "no_active_organization"
+        | "invalid_payload"
+        | "assignment_not_found"
+        | "assignment_not_team_dynamics_final"
+        | "unknown_participant_ids"
+        | "participant_assignment_mismatch"
+        | "selection_not_found"
+        | "save_failed";
+      message: string;
+    };
+
+type ReplaceTeamDynamicsReportSelectionInclusionActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  getActiveOrganization?: typeof getActiveOrganizationForUser;
+  loadAssignmentContext?: (
+    input: {
+      teamAssessmentAssignmentId: string;
+    },
+  ) => Promise<TeamDynamicsAssignmentActionContext | null>;
+  loadAssignmentParticipantsByIds?: (
+    input: {
+      teamAssessmentParticipantIds: string[];
+    },
+  ) => Promise<TeamDynamicsAssignmentParticipantContext[]>;
+  replaceSelectionInclusionSet?: typeof replaceTeamDynamicsReportSelectionInclusionSet;
+  loadSelectionReadModel?: typeof getTeamDynamicsReportSelectionReadModelForOrganization;
+};
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -318,6 +379,107 @@ function buildMixedCompletionActionFailure(
         }
       : {}),
   };
+}
+
+async function loadTeamDynamicsAssignmentActionContext(input: {
+  teamAssessmentAssignmentId: string;
+}): Promise<TeamDynamicsAssignmentActionContext | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data: assignmentData, error: assignmentError } = await supabase
+    .from("team_assessment_assignments")
+    .select("id, team_id, package_slug")
+    .eq("id", input.teamAssessmentAssignmentId)
+    .maybeSingle();
+
+  if (assignmentError) {
+    throw new Error(
+      `Failed to load Team Dynamics selection assignment context: ${assignmentError.message}`,
+    );
+  }
+
+  const assignment = assignmentData as
+    | {
+        id: string;
+        team_id: string;
+        package_slug: string;
+      }
+    | null;
+
+  if (!assignment) {
+    return null;
+  }
+
+  const { data: teamData, error: teamError } = await supabase
+    .from("teams")
+    .select("id, organization_id, archived_at")
+    .eq("id", assignment.team_id)
+    .maybeSingle();
+
+  if (teamError) {
+    throw new Error(
+      `Failed to load Team Dynamics selection team context: ${teamError.message}`,
+    );
+  }
+
+  const team = teamData as
+    | {
+        id: string;
+        organization_id: string;
+        archived_at: string | null;
+      }
+    | null;
+
+  if (!team) {
+    return null;
+  }
+
+  return {
+    assignmentId: assignment.id,
+    teamId: assignment.team_id,
+    packageSlug: assignment.package_slug,
+    organizationId: team.organization_id,
+    teamArchivedAt: team.archived_at,
+  };
+}
+
+async function loadTeamAssessmentParticipantAssignmentContexts(input: {
+  teamAssessmentParticipantIds: string[];
+}): Promise<TeamDynamicsAssignmentParticipantContext[]> {
+  if (input.teamAssessmentParticipantIds.length === 0) {
+    return [];
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("team_assessment_participants")
+    .select("id, team_assessment_assignment_id")
+    .in("id", input.teamAssessmentParticipantIds);
+
+  if (error) {
+    throw new Error(
+      `Failed to load Team Dynamics selection participant contexts: ${error.message}`,
+    );
+  }
+
+  return ((data ?? []) as Array<{
+    id: string;
+    team_assessment_assignment_id: string;
+  }>)
+    .map((row) => ({
+      id: row.id,
+      teamAssessmentAssignmentId: row.team_assessment_assignment_id,
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function normalizeIncludedTeamAssessmentParticipantIds(values: string[]): string[] {
+  return Array.from(
+    new Set(
+      values.filter(
+        (value): value is string => typeof value === "string" && value.trim().length > 0,
+      ),
+    ),
+  ).sort();
 }
 
 export async function createTeamDynamicsAssessmentAction(
@@ -445,6 +607,160 @@ export async function saveTeamAssessmentAnswerAction(
     ok: true,
     mode: result.mode,
   };
+}
+
+export async function replaceTeamDynamicsReportSelectionInclusionAction(
+  input: ReplaceTeamDynamicsReportSelectionInclusionActionInput,
+  deps: ReplaceTeamDynamicsReportSelectionInclusionActionDependencies = {},
+): Promise<ReplaceTeamDynamicsReportSelectionInclusionActionResult> {
+  if (!isNonEmptyString(input.teamAssessmentAssignmentId)) {
+    return {
+      ok: false,
+      errorCode: "invalid_payload",
+      message: "teamAssessmentAssignmentId is required.",
+    };
+  }
+
+  if (!Array.isArray(input.includedTeamAssessmentParticipantIds)) {
+    return {
+      ok: false,
+      errorCode: "invalid_payload",
+      message: "includedTeamAssessmentParticipantIds must be an array.",
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization =
+    deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const loadAssignmentContext =
+    deps.loadAssignmentContext ?? loadTeamDynamicsAssignmentActionContext;
+  const loadAssignmentParticipantsByIds =
+    deps.loadAssignmentParticipantsByIds ??
+    loadTeamAssessmentParticipantAssignmentContexts;
+  const replaceSelectionInclusionSet =
+    deps.replaceSelectionInclusionSet ??
+    replaceTeamDynamicsReportSelectionInclusionSet;
+  const loadSelectionReadModel =
+    deps.loadSelectionReadModel ??
+    getTeamDynamicsReportSelectionReadModelForOrganization;
+  const includedTeamAssessmentParticipantIds =
+    normalizeIncludedTeamAssessmentParticipantIds(
+      input.includedTeamAssessmentParticipantIds,
+    );
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+
+    if (!organization) {
+      return {
+        ok: false,
+        errorCode: "no_active_organization",
+        message: "Active organization is not available for this user.",
+      };
+    }
+
+    const assignmentContext = await loadAssignmentContext({
+      teamAssessmentAssignmentId: input.teamAssessmentAssignmentId,
+    });
+
+    if (
+      !assignmentContext ||
+      assignmentContext.organizationId !== organization.id ||
+      assignmentContext.teamArchivedAt
+    ) {
+      return {
+        ok: false,
+        errorCode: "assignment_not_found",
+        message: "Team Dynamics assignment was not found in the active organization.",
+      };
+    }
+
+    if (assignmentContext.packageSlug !== TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG) {
+      return {
+        ok: false,
+        errorCode: "assignment_not_team_dynamics_final",
+        message: "The assignment does not belong to the final Team Dynamics package.",
+      };
+    }
+
+    const submittedParticipantContexts = await loadAssignmentParticipantsByIds({
+      teamAssessmentParticipantIds: includedTeamAssessmentParticipantIds,
+    });
+    const submittedParticipantIds = new Set(
+      submittedParticipantContexts.map((row) => row.id),
+    );
+    const unknownParticipantIds = includedTeamAssessmentParticipantIds.filter(
+      (participantId) => submittedParticipantIds.has(participantId) === false,
+    );
+
+    if (unknownParticipantIds.length > 0) {
+      return {
+        ok: false,
+        errorCode: "unknown_participant_ids",
+        message: `Unknown Team Dynamics participant ids: ${unknownParticipantIds.join(", ")}.`,
+      };
+    }
+
+    const mismatchedParticipantIds = submittedParticipantContexts
+      .filter(
+        (row) =>
+          row.teamAssessmentAssignmentId !==
+          input.teamAssessmentAssignmentId,
+      )
+      .map((row) => row.id)
+      .sort();
+
+    if (mismatchedParticipantIds.length > 0) {
+      return {
+        ok: false,
+        errorCode: "participant_assignment_mismatch",
+        message:
+          "All included Team Dynamics participants must belong to the requested assignment.",
+      };
+    }
+
+    await replaceSelectionInclusionSet({
+      organizationId: organization.id,
+      teamId: assignmentContext.teamId,
+      teamAssessmentAssignmentId: input.teamAssessmentAssignmentId,
+      includedTeamAssessmentParticipantIds,
+      actorUserId: user.id,
+    });
+
+    const selection = await loadSelectionReadModel({
+      organizationId: organization.id,
+      teamId: assignmentContext.teamId,
+      teamAssessmentAssignmentId: input.teamAssessmentAssignmentId,
+    });
+
+    if (!selection) {
+      return {
+        ok: false,
+        errorCode: "selection_not_found",
+        message: "Team Dynamics selection could not be reloaded after save.",
+      };
+    }
+
+    return {
+      ok: true,
+      selection,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return {
+        ok: false,
+        errorCode: "authentication_required",
+        message: "Authentication required.",
+      };
+    }
+
+    return {
+      ok: false,
+      errorCode: "save_failed",
+      message: "Unable to save the Team Dynamics report selection right now.",
+    };
+  }
 }
 
 export async function saveTeamDynamicsMixedAnswerAction(
