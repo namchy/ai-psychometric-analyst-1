@@ -7,6 +7,7 @@ import {
 import { TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION } from "@/lib/assessment/team-dynamics-mixed-score-persistence";
 import type { TeamDynamicsMixedScoreResult } from "@/lib/assessment/team-dynamics-mixed-scoring";
 import { TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG } from "@/lib/assessment/team-dynamics";
+import { loadTeamDynamicsReportSelectionInclusionState } from "@/lib/b2b/team-dynamics-report-selection-inclusion";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type TeamRow = {
@@ -105,6 +106,8 @@ export type TeamDynamicsReportSelectionTeamSizeStatus =
 export type TeamDynamicsReportSelectionReadModel = {
   teamId: string;
   teamAssessmentAssignmentId: string;
+  hasPersistedSelectionDraft: boolean;
+  selectionDraftId: string | null;
   availableMembers: TeamDynamicsReportSelectionMember[];
   includedMembers: TeamDynamicsReportSelectionMember[];
   selectedCount: number;
@@ -226,6 +229,9 @@ export function buildTeamDynamicsReportSelectionReadModel(input: {
   teamId: string;
   teamAssessmentAssignmentId: string;
   members: TeamDynamicsSelectionBuildMemberInput[];
+  includedTeamAssessmentParticipantIds?: string[];
+  hasPersistedSelectionDraft?: boolean;
+  selectionDraftId?: string | null;
 }): TeamDynamicsReportSelectionReadModel {
   const members = [...input.members]
     .map((member): TeamDynamicsReportSelectionMember => {
@@ -264,13 +270,26 @@ export function buildTeamDynamicsReportSelectionReadModel(input: {
       return (left.fullName ?? "").localeCompare(right.fullName ?? "", "bs");
     });
 
-  const selectedCount = members.length;
+  const includedIdSet =
+    input.includedTeamAssessmentParticipantIds &&
+    input.includedTeamAssessmentParticipantIds.length > 0
+      ? new Set(input.includedTeamAssessmentParticipantIds)
+      : new Set<string>();
+  const includedMembers = members.filter((member) =>
+    includedIdSet.has(member.teamAssessmentParticipantId),
+  );
+  const availableMembers = members.filter(
+    (member) => includedIdSet.has(member.teamAssessmentParticipantId) === false,
+  );
+  const selectedCount = includedMembers.length;
   const teamSizeStatus = getTeamSizeStatus(selectedCount);
-  const hasIncompleteMembers = members.some((member) => member.status !== "completed");
-  const hasMissingScores = members.some(
+  const hasIncompleteMembers = includedMembers.some(
+    (member) => member.status !== "completed",
+  );
+  const hasMissingScores = includedMembers.some(
     (member) => member.scoreReadinessStatus === "not_found",
   );
-  const hasInvalidScores = members.some(
+  const hasInvalidScores = includedMembers.some(
     (member) => member.scoreReadinessStatus === "invalid",
   );
   const disabledReasons = dedupeReasons([
@@ -284,10 +303,10 @@ export function buildTeamDynamicsReportSelectionReadModel(input: {
   return {
     teamId: input.teamId,
     teamAssessmentAssignmentId: input.teamAssessmentAssignmentId,
-    // MVP assumption: until a dedicated left/right inclusion model exists, existing
-    // assignment participants are the minimal read-only inclusion/source set.
-    availableMembers: [...members],
-    includedMembers: [...members],
+    hasPersistedSelectionDraft: input.hasPersistedSelectionDraft ?? false,
+    selectionDraftId: input.selectionDraftId ?? null,
+    availableMembers,
+    includedMembers,
     selectedCount,
     minRequiredMembers: MIN_REQUIRED_MEMBERS,
     recommendedMaxMembers: RECOMMENDED_MAX_MEMBERS,
@@ -353,6 +372,17 @@ export async function getTeamDynamicsReportSelectionReadModelForOrganization(inp
   if (!assignment) {
     return null;
   }
+
+  const inclusionState = await loadTeamDynamicsReportSelectionInclusionState(
+    {
+      organizationId: input.organizationId,
+      teamId: input.teamId,
+      teamAssessmentAssignmentId: assignment.id,
+    },
+    {
+      supabase,
+    },
+  );
 
   const { data: assignmentParticipantData, error: assignmentParticipantError } = await supabase
     .from("team_assessment_participants")
@@ -485,5 +515,9 @@ export async function getTeamDynamicsReportSelectionReadModelForOrganization(inp
     teamId: input.teamId,
     teamAssessmentAssignmentId: assignment.id,
     members,
+    includedTeamAssessmentParticipantIds:
+      inclusionState.includedTeamAssessmentParticipantIds,
+    hasPersistedSelectionDraft: inclusionState.hasPersistedSelectionDraft,
+    selectionDraftId: inclusionState.selectionDraftId,
   });
 }

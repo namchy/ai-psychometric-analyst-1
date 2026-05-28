@@ -75,6 +75,7 @@ assert.match(source, /TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION/);
 assert.doesNotMatch(source, /\.insert\(/);
 assert.doesNotMatch(source, /\.update\(/);
 assert.doesNotMatch(source, /\.upsert\(/);
+assert.doesNotMatch(source, /\.delete\(/);
 assert.doesNotMatch(source, /loadTeamDynamicsFinalAggregation\(/);
 assert.doesNotMatch(source, /persistTeamDynamicsFinalAggregationSnapshot/);
 assert.doesNotMatch(source, /persistTeamDynamicsMixedScoreForContext/);
@@ -228,28 +229,31 @@ function buildScenario(memberCount, mutateMember) {
 }
 
 const tooFew = buildScenario(3);
-assert.equal(tooFew.selectedCount, 3);
+assert.equal(tooFew.selectedCount, 0);
 assert.equal(tooFew.teamSizeStatus, "too_few");
 assert.equal(tooFew.canCreateTeamReport, false);
 assert.deepEqual(tooFew.disabledReasons, ["minimum_selected_members_not_met"]);
+assert.equal(tooFew.includedMembers.length, 0);
+assert.equal(tooFew.availableMembers.length, 3);
 
 const ideal = buildScenario(4);
-assert.equal(ideal.teamSizeStatus, "ideal");
-assert.equal(ideal.canCreateTeamReport, true);
-assert.deepEqual(ideal.disabledReasons, []);
+assert.equal(ideal.teamSizeStatus, "too_few");
+assert.equal(ideal.canCreateTeamReport, false);
+assert.deepEqual(ideal.disabledReasons, ["minimum_selected_members_not_met"]);
+assert.equal(ideal.hasPersistedSelectionDraft, false);
+assert.equal(ideal.selectionDraftId, null);
 assert.equal(ideal.availableMembers.length, 4);
-assert.equal(ideal.includedMembers.length, 4);
-assert.equal(ideal.includedMembers.every((member) => member.eligibleForReport), true);
+assert.equal(ideal.includedMembers.length, 0);
 
 const warning = buildScenario(11);
-assert.equal(warning.teamSizeStatus, "warning");
-assert.equal(warning.canCreateTeamReport, true);
-assert.deepEqual(warning.disabledReasons, []);
+assert.equal(warning.teamSizeStatus, "too_few");
+assert.equal(warning.canCreateTeamReport, false);
+assert.deepEqual(warning.disabledReasons, ["minimum_selected_members_not_met"]);
 
 const tooMany = buildScenario(16);
-assert.equal(tooMany.teamSizeStatus, "too_many");
+assert.equal(tooMany.teamSizeStatus, "too_few");
 assert.equal(tooMany.canCreateTeamReport, false);
-assert.deepEqual(tooMany.disabledReasons, ["maximum_selected_members_exceeded"]);
+assert.deepEqual(tooMany.disabledReasons, ["minimum_selected_members_not_met"]);
 
 const incomplete = buildScenario(4, (members) => {
   members[2] = buildMember(3, {
@@ -257,11 +261,11 @@ const incomplete = buildScenario(4, (members) => {
     completedAt: null,
   });
 });
-assert.equal(incomplete.teamSizeStatus, "ideal");
+assert.equal(incomplete.teamSizeStatus, "too_few");
 assert.equal(incomplete.canCreateTeamReport, false);
-assert.deepEqual(incomplete.disabledReasons, ["included_members_not_completed"]);
-assert.equal(incomplete.includedMembers[2].eligibleForReport, false);
-assert.equal(incomplete.includedMembers[2].blockingReason, "member_not_completed:started");
+assert.deepEqual(incomplete.disabledReasons, ["minimum_selected_members_not_met"]);
+assert.equal(incomplete.includedMembers.length, 0);
+assert.equal(incomplete.availableMembers[2].blockingReason, "member_not_completed:started");
 
 const missingScore = buildScenario(4, (members) => {
   members[1] = buildMember(2, {
@@ -269,10 +273,11 @@ const missingScore = buildScenario(4, (members) => {
   });
 });
 assert.equal(missingScore.canCreateTeamReport, false);
-assert.deepEqual(missingScore.disabledReasons, ["included_members_missing_score_snapshots"]);
-assert.equal(missingScore.includedMembers[1].scoreReadinessStatus, "not_found");
+assert.deepEqual(missingScore.disabledReasons, ["minimum_selected_members_not_met"]);
+assert.equal(missingScore.includedMembers.length, 0);
+assert.equal(missingScore.availableMembers[1].scoreReadinessStatus, "not_found");
 assert.equal(
-  missingScore.includedMembers[1].blockingReason,
+  missingScore.availableMembers[1].blockingReason,
   "member_score_snapshot_not_found",
 );
 
@@ -287,10 +292,11 @@ const invalidScore = buildScenario(4, (members) => {
   });
 });
 assert.equal(invalidScore.canCreateTeamReport, false);
-assert.deepEqual(invalidScore.disabledReasons, ["included_members_invalid_score_snapshots"]);
-assert.equal(invalidScore.includedMembers[0].scoreReadinessStatus, "invalid");
+assert.deepEqual(invalidScore.disabledReasons, ["minimum_selected_members_not_met"]);
+assert.equal(invalidScore.includedMembers.length, 0);
+assert.equal(invalidScore.availableMembers[0].scoreReadinessStatus, "invalid");
 assert.equal(
-  invalidScore.includedMembers[0].blockingReason,
+  invalidScore.availableMembers[0].blockingReason,
   "invalid_score_snapshot_shape",
 );
 
