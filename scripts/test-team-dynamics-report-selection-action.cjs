@@ -8,15 +8,22 @@ const ts = require("typescript");
 const projectRoot = path.resolve(__dirname, "..");
 const actionPath = path.join(projectRoot, "app", "actions", "team-assessments.ts");
 const actionSource = fs.readFileSync(actionPath, "utf8");
-const actionStart = actionSource.indexOf(
+const replaceActionStart = actionSource.indexOf(
   "export async function replaceTeamDynamicsReportSelectionInclusionAction",
 );
-const nextActionStart = actionSource.indexOf(
+const queueActionStart = actionSource.indexOf(
+  "export async function queueTeamDynamicsReportAction",
+);
+const saveActionStart = actionSource.indexOf(
   "export async function saveTeamDynamicsMixedAnswerAction",
 );
 const selectionActionSource =
-  actionStart >= 0 && nextActionStart > actionStart
-    ? actionSource.slice(actionStart, nextActionStart)
+  replaceActionStart >= 0 && queueActionStart > replaceActionStart
+    ? actionSource.slice(replaceActionStart, queueActionStart)
+    : actionSource;
+const queueActionSource =
+  queueActionStart >= 0 && saveActionStart > queueActionStart
+    ? actionSource.slice(queueActionStart, saveActionStart)
     : actionSource;
 
 assert.match(
@@ -32,6 +39,14 @@ assert.doesNotMatch(selectionActionSource, /persistTeamDynamicsMixedScoreForCont
 assert.doesNotMatch(selectionActionSource, /loadTeamDynamicsFinalAggregation/);
 assert.doesNotMatch(selectionActionSource, /AI generation/i);
 assert.doesNotMatch(selectionActionSource, /report generation/i);
+
+assert.match(queueActionSource, /export async function queueTeamDynamicsReportAction/);
+assert.match(queueActionSource, /queueTeamDynamicsReportShell/);
+assert.doesNotMatch(queueActionSource, /attempt_reports/);
+assert.doesNotMatch(queueActionSource, /assessment_reports/);
+assert.doesNotMatch(queueActionSource, /persistTeamDynamicsMixedScoreForContext/);
+assert.doesNotMatch(queueActionSource, /refreshTeamAssessmentAggregationSnapshot/);
+assert.doesNotMatch(queueActionSource, /OpenAI|AI provider|renderer|worker|Team Fit/i);
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "team-dynamics-selection-action-"));
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
@@ -91,6 +106,7 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     request === "@/lib/b2b/organizations" ||
     request === "@/lib/b2b/team-dynamics-report-selection" ||
     request === "@/lib/b2b/team-dynamics-report-selection-inclusion" ||
+    request === "@/lib/b2b/team-dynamics-report-lifecycle" ||
     request === "@/lib/assessment/team-assessments" ||
     request === "@/lib/assessment/team-assessment-execution" ||
     request === "@/lib/assessment/team-assessment-score-persistence" ||
@@ -135,7 +151,10 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
   module._compile(transpiled.outputText, filename);
 };
 
-const { replaceTeamDynamicsReportSelectionInclusionAction } = require(actionPath);
+const {
+  replaceTeamDynamicsReportSelectionInclusionAction,
+  queueTeamDynamicsReportAction,
+} = require(actionPath);
 const { AuthenticationRequiredError } = require(authStubPath);
 
 function buildMember(id, status = "completed", scoreReadinessStatus = "ready") {
@@ -252,6 +271,47 @@ function createHarness() {
     },
     setOrganizationLoader(loader) {
       deps.getActiveOrganization = loader;
+    },
+  };
+}
+
+function createQueueHarness() {
+  const queueCalls = [];
+  const deps = {
+    requireUser: async () => ({ id: "user-1" }),
+    getActiveOrganization: async () => ({ id: "org-1", name: "Org 1" }),
+    loadAssignmentContext: async ({ teamAssessmentAssignmentId }) => ({
+      assignmentId: teamAssessmentAssignmentId,
+      teamId: "team-1",
+      packageSlug: "team_dynamics_assessment_v1",
+      organizationId: "org-1",
+      teamArchivedAt: null,
+    }),
+    queueReportShell: async (input) => {
+      queueCalls.push(input);
+      return {
+        ok: true,
+        report: {
+          id: "report-1",
+        },
+      };
+    },
+  };
+
+  return {
+    deps,
+    queueCalls,
+    setRequireUser(loader) {
+      deps.requireUser = loader;
+    },
+    setOrganizationLoader(loader) {
+      deps.getActiveOrganization = loader;
+    },
+    setAssignmentContext(loader) {
+      deps.loadAssignmentContext = loader;
+    },
+    setQueueReportShell(loader) {
+      deps.queueReportShell = loader;
     },
   };
 }
@@ -424,6 +484,76 @@ Promise.resolve()
       ok: false,
       errorCode: "authentication_required",
       message: "Authentication required.",
+    });
+
+    const queueHarness = createQueueHarness();
+    const queuedResult = await queueTeamDynamicsReportAction(
+      {
+        teamId: "team-1",
+        teamAssessmentAssignmentId: "assignment-1",
+        selectionDraftId: "draft-1",
+      },
+      queueHarness.deps,
+    );
+
+    assert.deepEqual(queueHarness.queueCalls, [
+      {
+        organizationId: "org-1",
+        teamId: "team-1",
+        teamAssessmentAssignmentId: "assignment-1",
+        selectionDraftId: "draft-1",
+      },
+    ]);
+    assert.deepEqual(queuedResult, {
+      ok: true,
+      status: "queued",
+      message: "Timski izvještaj je stavljen u red za pripremu.",
+      reportId: "report-1",
+    });
+
+    const queueNotReadyHarness = createQueueHarness();
+    queueNotReadyHarness.setQueueReportShell(async () => ({
+      ok: false,
+      code: "aggregation_not_ready",
+      reason: "not ready",
+    }));
+    const queueNotReadyResult = await queueTeamDynamicsReportAction(
+      {
+        teamId: "team-1",
+        teamAssessmentAssignmentId: "assignment-1",
+        selectionDraftId: "draft-1",
+      },
+      queueNotReadyHarness.deps,
+    );
+
+    assert.deepEqual(queueNotReadyResult, {
+      ok: false,
+      status: "not_ready",
+      message:
+        "Izvještaj još nije moguće pripremiti. Provjeri da su uključeni članovi završili procjenu i da je timska agregacija spremna.",
+    });
+
+    const queueUnauthorizedHarness = createQueueHarness();
+    queueUnauthorizedHarness.setAssignmentContext(async () => ({
+      assignmentId: "assignment-1",
+      teamId: "team-2",
+      packageSlug: "team_dynamics_assessment_v1",
+      organizationId: "org-1",
+      teamArchivedAt: null,
+    }));
+    const queueUnauthorizedResult = await queueTeamDynamicsReportAction(
+      {
+        teamId: "team-1",
+        teamAssessmentAssignmentId: "assignment-1",
+        selectionDraftId: "draft-1",
+      },
+      queueUnauthorizedHarness.deps,
+    );
+
+    assert.deepEqual(queueUnauthorizedResult, {
+      ok: false,
+      status: "unauthorized",
+      message: "Team Dynamics assignment was not found in the active organization.",
     });
   })
   .catch((error) => {

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
+  queueTeamDynamicsReportAction,
   replaceTeamDynamicsReportSelectionInclusionAction,
 } from "@/app/actions/team-assessments";
 import {
@@ -18,15 +19,19 @@ import type {
 } from "@/lib/b2b/team-dynamics-report-selection";
 
 type TeamDynamicsReportMemberSelectionProps = {
+  teamId: string;
   teamAssessmentAssignmentId: string | null;
   initialSelection: TeamDynamicsReportSelectionReadModel | null;
 };
 
 type SelectionState = {
+  teamId: string | null;
+  selectionDraftId: string | null;
   availableMembers: TeamDynamicsReportSelectionMember[];
   includedMembers: TeamDynamicsReportSelectionMember[];
   selectedCount: number;
   teamSizeStatus: TeamDynamicsReportSelectionTeamSizeStatus;
+  canCreateTeamReport: boolean;
   disabledReasons: string[];
 };
 
@@ -36,6 +41,8 @@ type FeedbackState =
       message: string;
     }
   | null;
+
+type PendingIntent = "save" | "queue" | null;
 
 function sortMembers(members: TeamDynamicsReportSelectionMember[]) {
   return [...members].sort((left, right) => {
@@ -73,6 +80,8 @@ function getTeamSizeStatus(selectedCount: number): TeamDynamicsReportSelectionTe
 }
 
 function buildPreviewState(input: {
+  teamId?: string | null;
+  selectionDraftId?: string | null;
   availableMembers: TeamDynamicsReportSelectionMember[];
   includedMembers: TeamDynamicsReportSelectionMember[];
 }): SelectionState {
@@ -96,10 +105,13 @@ function buildPreviewState(input: {
   ]);
 
   return {
+    teamId: input.teamId ?? null,
+    selectionDraftId: input.selectionDraftId ?? null,
     availableMembers,
     includedMembers,
     selectedCount,
     teamSizeStatus,
+    canCreateTeamReport: disabledReasons.length === 0,
     disabledReasons,
   };
 }
@@ -109,19 +121,25 @@ function createSelectionState(
 ): SelectionState {
   if (!selection) {
     return {
+      teamId: null,
+      selectionDraftId: null,
       availableMembers: [],
       includedMembers: [],
       selectedCount: 0,
       teamSizeStatus: "too_few",
+      canCreateTeamReport: false,
       disabledReasons: ["minimum_selected_members_not_met"],
     };
   }
 
   return {
+    teamId: selection.teamId,
+    selectionDraftId: selection.selectionDraftId,
     availableMembers: sortMembers(selection.availableMembers),
     includedMembers: sortMembers(selection.includedMembers),
     selectedCount: selection.selectedCount,
     teamSizeStatus: selection.teamSizeStatus,
+    canCreateTeamReport: selection.canCreateTeamReport,
     disabledReasons: [...selection.disabledReasons],
   };
 }
@@ -317,17 +335,25 @@ function MemberCard({
 }
 
 export function TeamDynamicsReportMemberSelection({
+  teamId,
   teamAssessmentAssignmentId,
   initialSelection,
 }: TeamDynamicsReportMemberSelectionProps) {
   const [savedState, setSavedState] = useState(() => createSelectionState(initialSelection));
   const [draftState, setDraftState] = useState(() => createSelectionState(initialSelection));
   const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [pendingIntent, setPendingIntent] = useState<PendingIntent>(null);
   const [isPending, startTransition] = useTransition();
 
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(getIncludedIds(draftState)) !== JSON.stringify(getIncludedIds(savedState));
   }, [draftState, savedState]);
+  const canQueueSavedSelection =
+    savedState.canCreateTeamReport &&
+    savedState.disabledReasons.length === 0 &&
+    savedState.selectedCount >= 4 &&
+    savedState.selectionDraftId !== null &&
+    savedState.teamId === teamId;
 
   function moveMemberToIncluded(teamAssessmentParticipantId: string) {
     setDraftState((currentState) => {
@@ -340,6 +366,8 @@ export function TeamDynamicsReportMemberSelection({
       }
 
       return buildPreviewState({
+        teamId: currentState.teamId,
+        selectionDraftId: currentState.selectionDraftId,
         availableMembers: currentState.availableMembers.filter(
           (candidate) => candidate.teamAssessmentParticipantId !== teamAssessmentParticipantId,
         ),
@@ -360,6 +388,8 @@ export function TeamDynamicsReportMemberSelection({
       }
 
       return buildPreviewState({
+        teamId: currentState.teamId,
+        selectionDraftId: currentState.selectionDraftId,
         availableMembers: [...currentState.availableMembers, member],
         includedMembers: currentState.includedMembers.filter(
           (candidate) => candidate.teamAssessmentParticipantId !== teamAssessmentParticipantId,
@@ -379,29 +409,74 @@ export function TeamDynamicsReportMemberSelection({
     }
 
     const includedTeamAssessmentParticipantIds = getIncludedIds(draftState);
+    setPendingIntent("save");
 
     startTransition(() => {
       void (async () => {
-        const result = await replaceTeamDynamicsReportSelectionInclusionAction({
-          teamAssessmentAssignmentId,
-          includedTeamAssessmentParticipantIds,
-        });
+        try {
+          const result = await replaceTeamDynamicsReportSelectionInclusionAction({
+            teamAssessmentAssignmentId,
+            includedTeamAssessmentParticipantIds,
+          });
 
-        if (!result.ok) {
+          if (!result.ok) {
+            setFeedback({
+              tone: "error",
+              message: result.message,
+            });
+            return;
+          }
+
+          const nextState = createSelectionState(result.selection);
+          setSavedState(nextState);
+          setDraftState(nextState);
           setFeedback({
-            tone: "error",
+            tone: "success",
+            message: "Izbor članova je sačuvan.",
+          });
+        } finally {
+          setPendingIntent(null);
+        }
+      })();
+    });
+  }
+
+  function handleQueueReport() {
+    if (!teamAssessmentAssignmentId || !savedState.selectionDraftId || !canQueueSavedSelection) {
+      setFeedback({
+        tone: "error",
+        message:
+          "Izvještaj još nije moguće pripremiti. Provjeri da su uključeni članovi završili procjenu i da je timska agregacija spremna.",
+      });
+      return;
+    }
+
+    const selectionDraftId = savedState.selectionDraftId;
+    setPendingIntent("queue");
+    startTransition(() => {
+      void (async () => {
+        try {
+          const result = await queueTeamDynamicsReportAction({
+            teamId,
+            teamAssessmentAssignmentId,
+            selectionDraftId,
+          });
+
+          if (!result.ok) {
+            setFeedback({
+              tone: "error",
+              message: result.message,
+            });
+            return;
+          }
+
+          setFeedback({
+            tone: "success",
             message: result.message,
           });
-          return;
+        } finally {
+          setPendingIntent(null);
         }
-
-        const nextState = createSelectionState(result.selection);
-        setSavedState(nextState);
-        setDraftState(nextState);
-        setFeedback({
-          tone: "success",
-          message: "Izbor članova je sačuvan.",
-        });
       })();
     });
   }
@@ -555,19 +630,24 @@ export function TeamDynamicsReportMemberSelection({
               onClick={handleSaveSelection}
               type="button"
             >
-              {isPending ? "Čuvanje..." : "Sačuvaj izbor"}
+              {isPending && pendingIntent === "save" ? "Čuvanje..." : "Sačuvaj izbor"}
             </button>
             <button
-              className={getDashboardCtaClassName({ variant: "disabled" })}
-              disabled
+              className={getDashboardCtaClassName({
+                variant: isPending || !canQueueSavedSelection ? "disabled" : "secondary",
+              })}
+              disabled={isPending || !canQueueSavedSelection}
+              onClick={handleQueueReport}
               type="button"
             >
-              Kreiraj timski izvještaj
+              {isPending && pendingIntent === "queue"
+                ? "Stavljanje u red..."
+                : "Kreiraj timski izvještaj"}
             </button>
           </DashboardActionRow>
 
           <p className="text-sm leading-6 text-slate-600">
-            Generisanje timskog izvještaja bit će dostupno u sljedećem koraku.
+            Ovaj korak samo stavlja izvještaj u red. Generisanje sadržaja dolazi u sljedećem koraku.
           </p>
           {hasUnsavedChanges ? (
             <p className="text-sm leading-6 text-slate-600">

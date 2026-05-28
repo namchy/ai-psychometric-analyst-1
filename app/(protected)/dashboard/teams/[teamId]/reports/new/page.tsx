@@ -80,6 +80,7 @@ export default async function TeamReportPreparationPage({
         <DashboardSectionShell className="overflow-hidden rounded-[2rem] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(242,247,250,0.95))] px-5 py-5 shadow-[0_30px_70px_rgba(15,23,42,0.1)] sm:px-6">
           <TeamDynamicsReportMemberSelection
             initialSelection={selection}
+            teamId={detail.teamId}
             teamAssessmentAssignmentId={finalAssignment?.assignmentId ?? null}
           />
         </DashboardSectionShell>

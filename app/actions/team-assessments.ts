@@ -41,6 +41,7 @@ import {
   type TeamDynamicsReportSelectionReadModel,
 } from "@/lib/b2b/team-dynamics-report-selection";
 import { replaceTeamDynamicsReportSelectionInclusionSet } from "@/lib/b2b/team-dynamics-report-selection-inclusion";
+import { queueTeamDynamicsReportShell } from "@/lib/b2b/team-dynamics-report-lifecycle";
 import {
   persistValidatedTeamDynamicsMixedAnswer,
   type TeamDynamicsMixedAnswerPersistenceResult,
@@ -323,6 +324,36 @@ type ReplaceTeamDynamicsReportSelectionInclusionActionDependencies = {
   ) => Promise<TeamDynamicsAssignmentParticipantContext[]>;
   replaceSelectionInclusionSet?: typeof replaceTeamDynamicsReportSelectionInclusionSet;
   loadSelectionReadModel?: typeof getTeamDynamicsReportSelectionReadModelForOrganization;
+};
+
+export type QueueTeamDynamicsReportActionInput = {
+  teamId: string;
+  teamAssessmentAssignmentId: string;
+  selectionDraftId: string;
+};
+
+export type QueueTeamDynamicsReportActionResult =
+  | {
+      ok: true;
+      status: "queued";
+      message: string;
+      reportId: string;
+    }
+  | {
+      ok: false;
+      status: "not_ready" | "unauthorized" | "error";
+      message: string;
+    };
+
+type QueueTeamDynamicsReportActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  getActiveOrganization?: typeof getActiveOrganizationForUser;
+  loadAssignmentContext?: (
+    input: {
+      teamAssessmentAssignmentId: string;
+    },
+  ) => Promise<TeamDynamicsAssignmentActionContext | null>;
+  queueReportShell?: typeof queueTeamDynamicsReportShell;
 };
 
 function isNonEmptyString(value: unknown): value is string {
@@ -759,6 +790,138 @@ export async function replaceTeamDynamicsReportSelectionInclusionAction(
       ok: false,
       errorCode: "save_failed",
       message: "Unable to save the Team Dynamics report selection right now.",
+    };
+  }
+}
+
+export async function queueTeamDynamicsReportAction(
+  input: QueueTeamDynamicsReportActionInput,
+  deps: QueueTeamDynamicsReportActionDependencies = {},
+): Promise<QueueTeamDynamicsReportActionResult> {
+  if (!isNonEmptyString(input.teamId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "teamId is required.",
+    };
+  }
+
+  if (!isNonEmptyString(input.teamAssessmentAssignmentId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "teamAssessmentAssignmentId is required.",
+    };
+  }
+
+  if (!isNonEmptyString(input.selectionDraftId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "selectionDraftId is required.",
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization =
+    deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const loadAssignmentContext =
+    deps.loadAssignmentContext ?? loadTeamDynamicsAssignmentActionContext;
+  const queueReportShell = deps.queueReportShell ?? queueTeamDynamicsReportShell;
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+
+    if (!organization) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Active organization is not available for this user.",
+      };
+    }
+
+    const assignmentContext = await loadAssignmentContext({
+      teamAssessmentAssignmentId: input.teamAssessmentAssignmentId,
+    });
+
+    if (
+      !assignmentContext ||
+      assignmentContext.organizationId !== organization.id ||
+      assignmentContext.teamArchivedAt ||
+      assignmentContext.teamId !== input.teamId
+    ) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Dynamics assignment was not found in the active organization.",
+      };
+    }
+
+    if (assignmentContext.packageSlug !== TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG) {
+      return {
+        ok: false,
+        status: "error",
+        message: "The assignment does not belong to the final Team Dynamics package.",
+      };
+    }
+
+    const result = await queueReportShell({
+      organizationId: organization.id,
+      teamId: input.teamId,
+      teamAssessmentAssignmentId: input.teamAssessmentAssignmentId,
+      selectionDraftId: input.selectionDraftId,
+    });
+
+    if (!result.ok) {
+      if (result.code === "aggregation_not_ready") {
+        return {
+          ok: false,
+          status: "not_ready",
+          message:
+            "Izvještaj još nije moguće pripremiti. Provjeri da su uključeni članovi završili procjenu i da je timska agregacija spremna.",
+        };
+      }
+
+      if (
+        result.code === "team_not_found" ||
+        result.code === "assignment_not_found" ||
+        result.code === "selection_draft_not_found" ||
+        result.code === "selection_draft_mismatch"
+      ) {
+        return {
+          ok: false,
+          status: "unauthorized",
+          message: "Team Dynamics report context is not available in the active organization.",
+        };
+      }
+
+      return {
+        ok: false,
+        status: "error",
+        message: "Unable to queue the Team Dynamics report right now.",
+      };
+    }
+
+    return {
+      ok: true,
+      status: "queued",
+      message: "Timski izvještaj je stavljen u red za pripremu.",
+      reportId: result.report.id,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Authentication required.",
+      };
+    }
+
+    return {
+      ok: false,
+      status: "error",
+      message: "Unable to queue the Team Dynamics report right now.",
     };
   }
 }

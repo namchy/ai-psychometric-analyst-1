@@ -86,7 +86,7 @@ const detailComponentSource = fs.readFileSync(detailComponentPath, "utf8");
 const dashboardPageSource = fs.readFileSync(dashboardPagePath, "utf8");
 
 const reportSelectionImportPattern =
-  /replaceTeamDynamicsReportSelectionInclusionAction|replaceTeamDynamicsReportSelection(?!ReadModel)|aggregation refresh|createAssessmentReport|createAttemptReport|assessment_reports|attempt_reports|loadTeamDynamicsFinalAggregation|persistTeamDynamicsFinalAggregationSnapshot|persistTeamDynamicsMixedScoreForContext|OpenAI|AI provider|Team Fit/;
+  /replaceTeamDynamicsReportSelectionInclusionAction|replaceTeamDynamicsReportSelection(?!ReadModel)|queueTeamDynamicsReportShell|aggregation refresh|createAssessmentReport|createAttemptReport|assessment_reports|attempt_reports|loadTeamDynamicsFinalAggregation|persistTeamDynamicsFinalAggregationSnapshot|persistTeamDynamicsMixedScoreForContext|OpenAI|AI provider|Team Fit/;
 
 assert.match(pageSource, /requireAuthenticatedUser\(\)/);
 assert.match(pageSource, /getActiveOrganizationForUser\(user\.id\)/);
@@ -138,6 +138,7 @@ assert.match(reportPreparationPageSource, /getTeamAssessmentDetailForOrganizatio
 assert.match(reportPreparationPageSource, /getTeamDynamicsReportSelectionReadModelForOrganization/);
 assert.match(reportPreparationPageSource, /TeamDynamicsReportMemberSelection/);
 assert.match(reportPreparationPageSource, /initialSelection=\{selection\}/);
+assert.match(reportPreparationPageSource, /teamId=\{detail\.teamId\}/);
 assert.match(
   reportPreparationPageSource,
   /teamAssessmentAssignmentId=\{finalAssignment\?\.assignmentId \?\? null\}/,
@@ -156,10 +157,15 @@ assert.doesNotMatch(reportPreparationPageSource, /replaceTeamDynamicsReportSelec
 assert.doesNotMatch(reportPreparationPageSource, reportSelectionImportPattern);
 
 assert.match(reportSelectionComponentSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
+assert.match(reportSelectionComponentSource, /queueTeamDynamicsReportAction/);
 assert.match(reportSelectionComponentSource, /includedTeamAssessmentParticipantIds/);
 assert.match(reportSelectionComponentSource, /result\.selection/);
 assert.match(reportSelectionComponentSource, /setSavedState\(nextState\)/);
 assert.match(reportSelectionComponentSource, /setDraftState\(nextState\)/);
+assert.match(reportSelectionComponentSource, /savedState\.selectionDraftId/);
+assert.match(reportSelectionComponentSource, /savedState\.canCreateTeamReport/);
+assert.match(reportSelectionComponentSource, /handleQueueReport/);
+assert.match(reportSelectionComponentSource, /teamId,/);
 assert.match(reportSelectionComponentSource, /Svi članovi tima/);
 assert.match(reportSelectionComponentSource, /Uključeni u izvještaj/);
 assert.match(
@@ -191,7 +197,15 @@ assert.doesNotMatch(reportSelectionComponentSource, /return reason;/);
 assert.match(reportSelectionComponentSource, /Kreiraj timski izvještaj/);
 assert.match(
   reportSelectionComponentSource,
-  /Generisanje timskog izvještaja bit će dostupno u sljedećem koraku\./,
+  /result\.message/,
+);
+assert.match(
+  reportSelectionComponentSource,
+  /Izvještaj još nije moguće pripremiti\. Provjeri da su uključeni članovi završili procjenu i da je timska agregacija spremna\./,
+);
+assert.match(
+  reportSelectionComponentSource,
+  /Ovaj korak samo stavlja izvještaj u red\. Generisanje sadržaja dolazi u sljedećem koraku\./,
 );
 assert.doesNotMatch(reportSelectionComponentSource, /drag-and-drop/i);
 assert.doesNotMatch(reportSelectionComponentSource, /createAssessmentReport/);
@@ -200,6 +214,7 @@ assert.doesNotMatch(reportSelectionComponentSource, /assessment_reports/);
 assert.doesNotMatch(reportSelectionComponentSource, /loadTeamDynamicsFinalAggregation/);
 assert.doesNotMatch(reportSelectionComponentSource, /persistTeamDynamicsFinalAggregationSnapshot/);
 assert.doesNotMatch(reportSelectionComponentSource, /persistTeamDynamicsMixedScoreForContext/);
+assert.doesNotMatch(reportSelectionComponentSource, /queueTeamDynamicsReportShell/);
 assert.doesNotMatch(reportSelectionComponentSource, /OpenAI|AI provider|Team Fit/);
 
 assert.match(detailComponentSource, /Nazad na timove/);

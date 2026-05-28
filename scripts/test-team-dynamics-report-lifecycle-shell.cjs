@@ -162,12 +162,14 @@ assert.doesNotMatch(helperSource, /OpenAI|AI provider|Team Fit|renderer/i);
 
 assert.doesNotMatch(routeSource, /team-dynamics-report-lifecycle/);
 assert.doesNotMatch(componentSource, /team-dynamics-report-lifecycle/);
+assert.match(componentSource, /queueTeamDynamicsReportAction/);
 assert.match(componentSource, /Kreiraj timski izvještaj/);
 assert.match(
   componentSource,
-  /getDashboardCtaClassName\(\{ variant: "disabled" \}\)/,
+  /savedState\.selectionDraftId/,
 );
-assert.match(componentSource, /disabled/);
+assert.match(componentSource, /savedState\.canCreateTeamReport/);
+assert.match(componentSource, /disabled=\{isPending \|\| !canQueueSavedSelection\}/);
 
 fs.writeFileSync(
   teamDynamicsStubPath,
