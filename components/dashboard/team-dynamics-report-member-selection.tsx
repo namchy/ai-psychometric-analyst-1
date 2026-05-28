@@ -128,32 +128,35 @@ function createSelectionState(
 
 function getTeamSizeStatusLabel(status: TeamDynamicsReportSelectionTeamSizeStatus): string {
   switch (status) {
-    case "ideal":
-      return "Idealno";
-    case "warning":
-      return "Warning";
-    case "too_many":
-      return "Blocked";
     case "too_few":
+      return "Nedovoljno članova";
+    case "ideal":
+      return "Spremno po veličini tima";
+    case "warning":
+      return "Dozvoljeno uz upozorenje";
+    case "too_many":
+      return "Previše članova za MVP";
     default:
-      return "Nije spremno";
+      return "Status veličine tima nije dostupan";
   }
 }
 
 function getDisabledReasonLabel(reason: string): string {
   switch (reason) {
     case "minimum_selected_members_not_met":
-      return "Potrebno je uključiti najmanje 4 člana.";
+      return "Uključi najmanje 4 člana.";
     case "maximum_selected_members_exceeded":
-      return "MVP trenutno podržava najviše 15 uključenih članova.";
+      return "Za MVP možeš uključiti najviše 15 članova.";
+    case "included_member_not_completed":
     case "included_members_not_completed":
-      return "Neki uključeni članovi još nisu završili procjenu.";
+      return "Svi uključeni članovi moraju završiti procjenu.";
+    case "included_member_score_not_ready":
     case "included_members_missing_score_snapshots":
-      return "Nedostaju readiness snapshoti za neke uključene članove.";
+      return "Svi uključeni članovi moraju imati spreman score snapshot.";
     case "included_members_invalid_score_snapshots":
-      return "Neki readiness snapshoti nisu validni za timski izvještaj.";
+      return "Svi uključeni članovi moraju imati spreman score snapshot.";
     default:
-      return reason;
+      return "Potrebna je dodatna provjera prije kreiranja izvještaja.";
   }
 }
 
@@ -190,12 +193,12 @@ function getScoreReadinessLabel(
 ): string {
   switch (status) {
     case "ready":
-      return "Score readiness: spremno";
+      return "Score snapshot spreman";
     case "invalid":
-      return "Score readiness: nije validno";
+      return "Score snapshot nije spreman";
     case "not_found":
     default:
-      return "Score readiness: nedostaje";
+      return "Score snapshot nedostaje";
   }
 }
 
@@ -220,17 +223,17 @@ function getBlockingReasonLabel(reason: string | null): string | null {
 
   switch (reason) {
     case "member_score_snapshot_not_found":
-      return "Score readiness snapshot još nije dostupan.";
+      return "Score snapshot još nije dostupan za ovog člana.";
     case "score_row_version_mismatch":
-      return "Score readiness snapshot nije u očekivanoj verziji.";
+      return "Score snapshot nije u očekivanoj verziji.";
     case "score_row_not_scored":
-      return "Score readiness snapshot još nije označen kao scored.";
+      return "Score snapshot još nije označen kao spreman.";
     case "invalid_score_snapshot_shape":
-      return "Score readiness snapshot nema očekivanu strukturu.";
+      return "Score snapshot nema očekivanu strukturu.";
     case "score_snapshot_not_scored":
-      return "Score readiness snapshot još nije završen.";
+      return "Score snapshot još nije završen.";
     case "score_snapshot_contract_mismatch":
-      return "Score readiness snapshot nije validan za timski izvještaj.";
+      return "Score snapshot nije validan za timski izvještaj.";
     default:
       if (reason.startsWith("member_not_completed:")) {
         const status = reason.split(":")[1] ?? "invited";
@@ -239,7 +242,7 @@ function getBlockingReasonLabel(reason: string | null): string | null {
         ).toLowerCase()}.`;
       }
 
-      return reason;
+      return "Potrebna je dodatna provjera spremnosti ovog člana prije uključivanja u izvještaj.";
   }
 }
 
@@ -406,43 +409,63 @@ export function TeamDynamicsReportMemberSelection({
   return (
     <div className="space-y-5">
       <DashboardInfoCardShell className="rounded-[1.25rem] border-slate-200 bg-white/85 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              selectedCount
-            </p>
-            <p className="text-2xl font-bold tracking-[-0.04em] text-slate-950">
-              {draftState.selectedCount}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              teamSizeStatus
-            </p>
-            <DashboardStatusBadge className="w-fit border-slate-200 bg-slate-100 text-slate-700">
-              {getTeamSizeStatusLabel(draftState.teamSizeStatus)}
-            </DashboardStatusBadge>
-          </div>
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              disabledReasons
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {draftState.disabledReasons.length > 0 ? (
-                draftState.disabledReasons.map((reason) => (
-                  <DashboardStatusBadge
-                    key={reason}
-                    className="border-slate-200 bg-slate-100 text-slate-700"
-                  >
-                    {getDisabledReasonLabel(reason)}
-                  </DashboardStatusBadge>
-                ))
-              ) : (
-                <DashboardStatusBadge className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                  Spremno za sljedeći korak
-                </DashboardStatusBadge>
-              )}
+        <div className="space-y-5">
+          <DashboardSectionHeader
+            eyebrow="Readiness"
+            eyebrowClassName="text-teal-800/90"
+            title="Status izbora za timski izvještaj"
+            titleClassName="text-[1.2rem]"
+            description="Ovaj pregled jasno pokazuje koliko članova je trenutno uključeno i da li je izbor spreman za sljedeći korak po pravilima Team Dynamics MVP-a."
+            descriptionClassName="max-w-3xl text-sm text-slate-600"
+          />
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="rounded-[1.1rem] border border-slate-200 bg-white/80 px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Uključeno članova
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-[-0.04em] text-slate-950">
+                {draftState.selectedCount}
+              </p>
             </div>
+            <div className="rounded-[1.1rem] border border-slate-200 bg-white/80 px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Veličina izbora
+              </p>
+              <div className="mt-2">
+                <DashboardStatusBadge className="w-fit border-slate-200 bg-slate-100 text-slate-700">
+                  {getTeamSizeStatusLabel(draftState.teamSizeStatus)}
+                </DashboardStatusBadge>
+              </div>
+            </div>
+            <div className="rounded-[1.1rem] border border-slate-200 bg-white/80 px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Pravila MVP obuhvata
+              </p>
+              <ul className="mt-2 space-y-1 text-sm leading-6 text-slate-600">
+                <li>Minimalno potrebno: 4</li>
+                <li>Preporučeno: 4–10</li>
+                <li>Dozvoljeno uz upozorenje: 11–15</li>
+                <li>Blokirano u MVP-u: 16+</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="rounded-[1.1rem] border border-slate-200 bg-white/80 px-4 py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Razlozi koji trenutno blokiraju kreiranje izvještaja
+            </p>
+            {draftState.disabledReasons.length > 0 ? (
+              <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
+                {draftState.disabledReasons.map((reason) => (
+                  <li key={reason}>{getDisabledReasonLabel(reason)}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Trenutno nema blokirajućih razloga iz selection readinesa.
+              </p>
+            )}
           </div>
         </div>
       </DashboardInfoCardShell>
@@ -513,6 +536,10 @@ export function TeamDynamicsReportMemberSelection({
                 </div>
               )}
             </div>
+
+            <p className="text-sm leading-6 text-slate-600">
+              Članovi koji nisu uključeni u ovaj izbor ostaju u timu. Ovaj izbor važi samo za konkretni timski izvještaj.
+            </p>
           </div>
         </DashboardInfoCardShell>
       </div>

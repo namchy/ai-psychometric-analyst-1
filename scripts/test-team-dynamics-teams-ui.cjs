@@ -174,6 +174,20 @@ assert.match(reportSelectionComponentSource, /Sačuvaj izbor/);
 assert.match(reportSelectionComponentSource, /selectedCount/);
 assert.match(reportSelectionComponentSource, /teamSizeStatus/);
 assert.match(reportSelectionComponentSource, /disabledReasons/);
+assert.match(reportSelectionComponentSource, /Minimalno potrebno: 4/);
+assert.match(reportSelectionComponentSource, /Preporučeno: 4–10/);
+assert.match(reportSelectionComponentSource, /Dozvoljeno uz upozorenje: 11–15/);
+assert.match(reportSelectionComponentSource, /Blokirano u MVP-u: 16\+/);
+assert.match(reportSelectionComponentSource, /Uključi najmanje 4 člana\./);
+assert.match(
+  reportSelectionComponentSource,
+  /Članovi koji nisu uključeni u ovaj izbor ostaju u timu\. Ovaj izbor važi samo za konkretni timski izvještaj\./,
+);
+assert.match(
+  reportSelectionComponentSource,
+  /return "Potrebna je dodatna provjera prije kreiranja izvještaja\.";/,
+);
+assert.doesNotMatch(reportSelectionComponentSource, /return reason;/);
 assert.match(reportSelectionComponentSource, /Kreiraj timski izvještaj/);
 assert.match(
   reportSelectionComponentSource,
