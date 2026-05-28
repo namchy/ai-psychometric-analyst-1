@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / final scoring + full-readiness aggregation + report selection backend završen | Team module / Runtime + Import | Sljedeći uski slice: minimalni left/right HR UI za Team Dynamics report member selection, spojen na existing selection read model i replace action; CTA "Kreiraj timski izvještaj" ostaje bez report generation side-effecta dok report lane ne bude implementiran. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / final scoring + full-readiness aggregation + report selection backend + UI selection flow završen | Team module / Runtime + Import | Sljedeći uski slice: Team Dynamics report lane contract/storage/lifecycle shell bez AI generation-a, bez Team Fit outputa i bez report provider implementacije. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -2160,15 +2160,81 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Action ne blokira selection na osnovu min/max ili incomplete članova; samo snima izbor.
 - `canCreateTeamReport`, `teamSizeStatus` i `disabledReasons` dolaze iz read modela.
 
+### Completion note — Team Management entry / landing cleanup
+
+* HR dashboard ostaje centralni pregled firme i ljudi.
+* Team Management modul živi pod `/dashboard/teams`.
+* `/dashboard/teams` je usklađen kao Team Management landing sa naslovom `Upravljanje timovima` i opisom `Pregled timova i procjena timske dinamike unutar organizacije.`
+* HR dashboard entry vodi prema `/dashboard/teams`.
+* Team list CTA je user-facing preimenovan u `Otvori tim`.
+* Team list vodi prema `/dashboard/teams/[teamId]`.
+* Nije dodat Team Dynamics workspace UI na glavnom HR dashboardu.
+* Nije dodat left/right report-selection UI na HR dashboardu.
+* Nije dodan report generation, aggregation refresh, scoring rerun, AI generation ili Team Fit output.
+
+### Completion note — Dedicated Team Dynamics report-selection route shell
+
+* Dodana je dedicated protected ruta `/dashboard/teams/[teamId]/reports/new`.
+* Ruta služi kao read-only shell za pripremu timskog izvještaja.
+* Team detail `/dashboard/teams/[teamId]` sada prikazuje CTA `Pripremi timski izvještaj` samo kada postoji final Team Dynamics assignment context.
+* Ruta validira access kroz postojeći authenticated user / active organization / team detail pattern.
+* Ruta učitava postojeći Team Dynamics report selection read model kada postoji final assignment context.
+* Shell prikazuje naslov `Priprema timskog izvještaja`, opis i neutralni status blok.
+* U ovom slice-u nije dodat left/right selection UI, `Sačuvaj izbor`, report generation ili active `Kreiraj timski izvještaj` flow.
+* Nisu uvedeni scoring rerun, aggregation rerun/refresh, AI generation, Team Fit output, `attempt_reports` write, `assessment_reports` write ili DB migracija.
+
+### Completion note — Interactive Team Dynamics report member selection UI
+
+* Dodana je client komponenta za interactive left/right member selection na dedicated ruti `/dashboard/teams/[teamId]/reports/new`.
+* Lijevi panel je `Svi članovi tima`.
+* Desni panel je `Uključeni u izvještaj`.
+* Lijevi panel predstavlja članove koji pripadaju Team Dynamics assignmentu.
+* Desni panel predstavlja report-specific inclusion set za konkretni timski izvještaj.
+* Član van desnog panela nije obrisan iz tima i nije uklonjen iz assignmenta; samo nije uključen u taj konkretni izvještaj.
+* UI omogućava lokalno pomjeranje članova lijevo/desno bez drag-and-drop biblioteke.
+* `Sačuvaj izbor` poziva postojeći protected server action `replaceTeamDynamicsReportSelectionInclusionAction(...)`.
+* Payload šalje `teamAssessmentAssignmentId` i `includedTeamAssessmentParticipantIds`.
+* Nakon uspješnog save-a, action response selection read model postaje source of truth i resetuje lokalni draft state.
+* `Kreiraj timski izvještaj` je prikazan samo kao disabled placeholder bez `onClick`, bez submit side-effecta i bez report-generation poziva.
+* Left/right UI nije dodat na HR dashboard niti direktno na Team detail stranicu.
+* Nisu uvedeni scoring write, aggregation rerun/refresh, report generation, AI generation, Team Fit output, `attempt_reports` write, `assessment_reports` write, DB migracija ili promjena selection persistence modela.
+
+### Completion note — Team Dynamics report selection readiness UX polish
+
+* Existing selection komponenta je dobila UX/readiness polish bez backend promjena.
+* Readiness sekcija sada user-facing prikazuje:
+  * uključeni broj članova
+  * minimum 4 člana
+  * preporučeni raspon 4–10
+  * warning raspon 11–15
+  * MVP hard block 16+
+* `teamSizeStatus` se mapira u kontrolisani BHS copy:
+  * `too_few` → `Nedovoljno članova`
+  * `ideal` → `Spremno po veličini tima`
+  * `warning` → `Dozvoljeno uz upozorenje`
+  * `too_many` → `Previše članova za MVP`
+* `disabledReasons` se prikazuju kroz kontrolisani BHS mapper, ne kao raw enum vrijednosti.
+* `minimum_selected_members_not_met` više nije user-facing copy; prikazuje se `Uključi najmanje 4 člana.`
+* Unknown disabled reason koristi neutralni fallback: `Potrebna je dodatna provjera prije kreiranja izvještaja.`
+* Member-level blocking reason fallback je zatvoren tako da ne vraća raw internu vrijednost korisniku.
+* Dodana je jasna napomena da članovi koji nisu uključeni u izbor ostaju u timu i da izbor važi samo za konkretni timski izvještaj.
+* `Kreiraj timski izvještaj` i dalje ostaje disabled placeholder bez side-effecta.
+* Nisu mijenjani ruta, backend helperi, action contract, persistence model, DB schema, scoring, aggregation, report generation, AI generation ili Team Fit sloj.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
-  - `npm run typecheck`
+  - `node scripts/test-team-dynamics-teams-ui.cjs`
   - `node scripts/test-team-dynamics-report-selection-read-model.cjs`
   - `node scripts/test-team-dynamics-report-selection-inclusion-model.cjs`
   - `node scripts/test-team-dynamics-report-selection-action.cjs`
+  - `node scripts/test-team-dynamics-team-detail-read.cjs`
+  - `node scripts/test-team-dynamics-team-access.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-final-aggregation.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-final-aggregation-read.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-score-read.cjs`
+- `npm run typecheck` trenutno ostaje blokiran postojećim nepovezanim `arctic-interface/...` subtree problemom; prvi uočeni error:
+  - `arctic-interface/packages/arctic/script/build.ts(3,25): error TS2307: Cannot find module '../node_modules/@opentui/solid/scripts/solid-plugin' or its corresponding type declarations.`
+- Team Management / Team Dynamics fajlovi mijenjani u ovim UI slice-evima nisu prijavili nove TypeScript greške prije tog nepovezanog subtree pada.
 
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
@@ -2178,15 +2244,22 @@ Ovi slice-evi nisu uveli:
 - Ovi slice-evi nisu uveli Team Fit output.
 - Ovi slice-evi nisu pokrenuli scoring rerun.
 - Ovi slice-evi nisu pokrenuli aggregation rerun.
+- Ovi UI slice-evi nisu pokrenuli aggregation refresh.
 - Ovi slice-evi nisu pisali u `attempt_reports`.
 - Ovi slice-evi nisu pisali u `assessment_reports`.
+- Ovi UI slice-evi nisu dodali DB migraciju.
+- Ovi UI slice-evi nisu prikazali individualne odgovore.
+- Ovi UI slice-evi nisu prikazali individualne score vrijednosti.
+- Ovi UI slice-evi nisu prikazali raw attempt ID.
+- Ovi UI slice-evi nisu importovali report generation helpere u dashboard/team UI slice-u.
+- Ovi UI slice-evi nisu importovali scoring ili aggregation lifecycle helpere u dashboard/team UI slice-u.
 - Ovi slice-evi nisu brisali team/member/attempt/response podatke.
 - Ovi slice-evi nisu proizveli unified overall member score; top-level member overall score ostaje `null`.
 - Ovi slice-evi nisu proizveli unified overall team score.
 - Ovi slice-evi nisu dozvolili parcijalnu timsku agregaciju.
 
 **Sljedeći korak:**
-Sljedeći uski slice: minimalni left/right HR UI za Team Dynamics report member selection, spojen na existing selection read model i replace action; CTA "Kreiraj timski izvještaj" ostaje bez report generation side-effecta dok report lane ne bude implementiran.
+Sljedeći uski slice: Team Dynamics report lane contract/storage/lifecycle shell bez AI generation-a, bez Team Fit outputa i bez report provider implementacije.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
@@ -4471,6 +4544,16 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-28 — Team Management routing i Team Dynamics report-selection UI chain
+
+* HR dashboard remains the company/people overview and routes into Team Management instead of hosting Team Dynamics workspace UI.
+* Team Management lives under `/dashboard/teams`.
+* Report preparation lives under `/dashboard/teams/[teamId]/reports/new`.
+* Interactive left/right selection uses `Svi članovi tima` and `Uključeni u izvještaj`.
+* `Sačuvaj izbor` persists only the report-specific inclusion set through the existing replace action.
+* `Kreiraj timski izvještaj` remains a disabled placeholder until the report lane exists.
+* No report generation, AI generation, Team Fit, scoring rerun, aggregation refresh, `attempt_reports` write or `assessment_reports` write was introduced.
 
 ### 2026-05-28 — Team Dynamics report selection backend
 
