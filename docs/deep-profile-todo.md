@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / final scoring + full-readiness aggregation + report selection backend + UI selection flow završen | Team module / Runtime + Import | Sljedeći uski slice: Team Dynamics report lane contract/storage/lifecycle shell bez AI generation-a, bez Team Fit outputa i bez report provider implementacije. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Djelimično spremno / final scoring + aggregation + report selection UI + report lane storage/queue/input shell završen | Team module / Runtime + Import | Sljedeći uski slice: server-only queued -> processing lifecycle shell sa input snapshot persist korakom, bez AI providera, bez report renderera i bez Team Fit outputa. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -2221,45 +2221,70 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 * `Kreiraj timski izvještaj` i dalje ostaje disabled placeholder bez side-effecta.
 * Nisu mijenjani ruta, backend helperi, action contract, persistence model, DB schema, scoring, aggregation, report generation, AI generation ili Team Fit sloj.
 
+### Completion note — Team Dynamics report storage/lifecycle shell
+
+* Uveden je dedicated `team_assessment_reports`.
+* Team Dynamics report ne koristi `attempt_reports` ni postojeći `assessment_reports`.
+* Ownership je team-scoped: organization, team, team assessment assignment, selection draft.
+* `included_member_ids_snapshot` se sprema u report row tako da kasnije selection promjene ne mutiraju historijske redove.
+* Nema AI/provider/renderer/worker/report generation behaviora u ovom shell slice-u.
+
+### Completion note — Team Dynamics report queue action + CTA activation
+
+* Dodan je protected `queueTeamDynamicsReportAction(...)`.
+* CTA `Kreiraj timski izvještaj` sada kreira samo queued `team_assessment_reports` row kada je saved selection spreman.
+* CTA readiness koristi canonical saved selection state, ne unsaved lokalni draft.
+* Nema report content generation-a, AI-ja, provider-a, renderer-a, worker-a, scoring rerun-a ni aggregation refresh-a.
+
+### Completion note — Team Dynamics queued reports read/list UI
+
+* `/dashboard/teams/[teamId]/reports/new` sada prikazuje read-only metadata listu postojećih `team_assessment_reports`.
+* Lista prikazuje status, queued/created vrijeme, included member count iz snapshota i report version.
+* UI ne prikazuje `input_snapshot`, `report_snapshot`, individualne score vrijednosti, individualne odgovore ni raw attempt ID-jeve.
+
+### Completion note — Team Dynamics report input snapshot builder
+
+* Dodan je server-only deterministic input builder.
+* Public helperi:
+  * `buildTeamDynamicsReportInputSnapshot(...)`
+  * `persistTeamDynamicsReportInputSnapshot(...)`
+* Input snapshot uključuje report/team/assignment/selection identitet, included member snapshot, team context, team-level aggregation summary i guardrails.
+* Persist helper piše samo `team_assessment_reports.input_snapshot`.
+* Persist helper ne postavlja report status na `ready` i ne piše `report_snapshot`.
+* Nema raw response read-a, scoring rerun-a, aggregation rerun/refresh-a, AI/provider/renderer/worker poziva ni write-a u `attempt_reports` / `assessment_reports`.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-report-input-builder.cjs`
+  - `node scripts/test-team-dynamics-report-lifecycle-shell.cjs`
   - `node scripts/test-team-dynamics-teams-ui.cjs`
   - `node scripts/test-team-dynamics-report-selection-read-model.cjs`
   - `node scripts/test-team-dynamics-report-selection-inclusion-model.cjs`
   - `node scripts/test-team-dynamics-report-selection-action.cjs`
-  - `node scripts/test-team-dynamics-team-detail-read.cjs`
-  - `node scripts/test-team-dynamics-team-access.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-final-aggregation.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-final-aggregation-read.cjs`
-  - `node scripts/test-team-dynamics-assessment-v1-score-read.cjs`
+  - `node scripts/test-team-dynamics-team-access.cjs`
 - `npm run typecheck` trenutno ostaje blokiran postojećim nepovezanim `arctic-interface/...` subtree problemom; prvi uočeni error:
   - `arctic-interface/packages/arctic/script/build.ts(3,25): error TS2307: Cannot find module '../node_modules/@opentui/solid/scripts/solid-plugin' or its corresponding type declarations.`
-- Team Management / Team Dynamics fajlovi mijenjani u ovim UI slice-evima nisu prijavili nove TypeScript greške prije tog nepovezanog subtree pada.
+- Latest changed Team Dynamics fajlovi nisu prijavili nove TypeScript greške prije tog nepovezanog subtree pada.
 
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
-- Ovi slice-evi nemaju UI.
-- Ovi slice-evi nisu uveli report generation.
-- Ovi slice-evi nisu uveli AI generation.
-- Ovi slice-evi nisu uveli Team Fit output.
-- Ovi slice-evi nisu pokrenuli scoring rerun.
-- Ovi slice-evi nisu pokrenuli aggregation rerun.
-- Ovi UI slice-evi nisu pokrenuli aggregation refresh.
-- Ovi slice-evi nisu pisali u `attempt_reports`.
-- Ovi slice-evi nisu pisali u `assessment_reports`.
-- Ovi UI slice-evi nisu dodali DB migraciju.
-- Ovi UI slice-evi nisu prikazali individualne odgovore.
-- Ovi UI slice-evi nisu prikazali individualne score vrijednosti.
-- Ovi UI slice-evi nisu prikazali raw attempt ID.
-- Ovi UI slice-evi nisu importovali report generation helpere u dashboard/team UI slice-u.
-- Ovi UI slice-evi nisu importovali scoring ili aggregation lifecycle helpere u dashboard/team UI slice-u.
-- Ovi slice-evi nisu brisali team/member/attempt/response podatke.
-- Ovi slice-evi nisu proizveli unified overall member score; top-level member overall score ostaje `null`.
-- Ovi slice-evi nisu proizveli unified overall team score.
-- Ovi slice-evi nisu dozvolili parcijalnu timsku agregaciju.
+- no AI generation
+- no provider implementation
+- no renderer
+- no worker
+- no Team Fit output
+- no scoring rerun
+- no aggregation rerun/refresh
+- no raw responses read
+- no `attempt_reports` write
+- no `assessment_reports` write
+- no individual answer display
+- no individual score value display
+- no raw attempt ID display
 
 **Sljedeći korak:**
-Sljedeći uski slice: Team Dynamics report lane contract/storage/lifecycle shell bez AI generation-a, bez Team Fit outputa i bez report provider implementacije.
+Sljedeći uski slice: server-only queued -> processing lifecycle shell sa input snapshot persist korakom, bez AI providera, bez report renderera i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
@@ -4544,6 +4569,14 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-28 — Team Dynamics report lane storage, queue, read-list i input snapshot shell
+
+* Dedicated `team_assessment_reports` introduced as team-scoped report artefact.
+* Queue-only CTA creates queued report rows without generation.
+* Queued report rows are visible as read-only metadata on report-selection page.
+* Deterministic input snapshot builder prepares team-level report input without AI/provider/renderer.
+* Existing individual/composite report tables remain untouched.
 
 ### 2026-05-28 — Team Management routing i Team Dynamics report-selection UI chain
 
