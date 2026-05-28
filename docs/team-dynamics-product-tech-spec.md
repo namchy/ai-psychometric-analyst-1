@@ -39,9 +39,41 @@ Target item count: 36.
 
 ## Pragovi za dostupnost reporta
 
-- 0-2 validna odgovora: `blocked` (report nedostupan)
-- 3-4 validna odgovora: `indicative` (interni state, nije full user-facing)
-- 5+ validnih odgovora: full user-facing report
+- CTA `Kreiraj timski izvještaj` je `enabled` samo kada:
+  - odabrano je najmanje 4 člana
+  - svi odabrani članovi su `completed`
+  - svi odabrani članovi imaju validan `ready` member-level score snapshot
+- Ako je bilo koji odabrani član `invited` / `started` / `in_progress` ili nema validan score snapshot, CTA ostaje `disabled`.
+- Parcijalna agregacija nije dozvoljena za finalni timski izvještaj.
+
+## HR report member selection flow (zaključana odluka)
+
+- HR kreira konkretni timski izvještaj kroz lijevo/desno member selection ekran.
+- Lijevi panel prikazuje dostupne kandidate/članove.
+- Desni panel prikazuje članove uključene u konkretni timski izvještaj.
+- Desni panel je source-of-truth inclusion set za aggregation/report.
+- Član koji nije u desnom panelu nije obrisan iz tima; samo nije uključen u taj konkretni izvještaj.
+
+## Team size policy (MVP)
+
+- Minimum uključenih članova: `4` (hard requirement za CTA enable).
+- Preporučeni raspon: `4–10`.
+- `11–15`: dozvoljeno uz warning.
+- `16+`: hard block u MVP-u, uz preporuku podjele na manje timove.
+
+## AI input policy (Team Dynamics report lane)
+
+- AI input builder ne šalje raw responses.
+- AI input builder ne šalje kompletne individualne izvještaje kao source.
+- AI dobija deterministic team aggregation snapshot kao primarni input.
+- Dozvoljen je mali, kontrolisani set individualnih evidence signala, bez potrebe da glavni report imenuje osobe.
+- AI ne računa score; AI interpretira već izračunate signale.
+
+## Report privacy / naming policy
+
+- Glavni timski izvještaj ne imenuje pojedince.
+- Report komunicira team-level obrasce, varijacije i rizike.
+- Individual evidence appendix može postojati kao budući HR-only dodatak, ali nije MVP default.
 
 ## v0.1 role model
 
