@@ -37,6 +37,12 @@ const componentPath = path.join(
   "dashboard",
   "hr-teams-table.tsx",
 );
+const reportSelectionComponentPath = path.join(
+  projectRoot,
+  "components",
+  "dashboard",
+  "team-dynamics-report-member-selection.tsx",
+);
 const detailComponentPath = path.join(
   projectRoot,
   "components",
@@ -60,6 +66,11 @@ assert.equal(
 );
 assert.equal(fs.existsSync(componentPath), true, "Expected HR teams table component to exist.");
 assert.equal(
+  fs.existsSync(reportSelectionComponentPath),
+  true,
+  "Expected Team Dynamics report member selection component to exist.",
+);
+assert.equal(
   fs.existsSync(detailComponentPath),
   true,
   "Expected HR team assessment detail component to exist.",
@@ -70,6 +81,7 @@ const pageSource = fs.readFileSync(pagePath, "utf8");
 const detailPageSource = fs.readFileSync(detailPagePath, "utf8");
 const reportPreparationPageSource = fs.readFileSync(reportPreparationPagePath, "utf8");
 const componentSource = fs.readFileSync(componentPath, "utf8");
+const reportSelectionComponentSource = fs.readFileSync(reportSelectionComponentPath, "utf8");
 const detailComponentSource = fs.readFileSync(detailComponentPath, "utf8");
 const dashboardPageSource = fs.readFileSync(dashboardPagePath, "utf8");
 
@@ -124,19 +136,57 @@ assert.match(detailPageSource, /HrTeamAssessmentDetail/);
 
 assert.match(reportPreparationPageSource, /getTeamAssessmentDetailForOrganization/);
 assert.match(reportPreparationPageSource, /getTeamDynamicsReportSelectionReadModelForOrganization/);
+assert.match(reportPreparationPageSource, /TeamDynamicsReportMemberSelection/);
+assert.match(reportPreparationPageSource, /initialSelection=\{selection\}/);
+assert.match(
+  reportPreparationPageSource,
+  /teamAssessmentAssignmentId=\{finalAssignment\?\.assignmentId \?\? null\}/,
+);
 assert.match(reportPreparationPageSource, /title="Priprema timskog izvještaja"/);
 assert.match(
   reportPreparationPageSource,
   /Odaberi članove koji će biti uključeni u konkretni timski izvještaj\./,
 );
-assert.match(reportPreparationPageSource, /selectedCount/);
-assert.match(reportPreparationPageSource, /teamSizeStatus/);
-assert.match(reportPreparationPageSource, /disabledReasons/);
-assert.match(reportPreparationPageSource, /Placeholder za budući left\/right selection UI/);
+assert.doesNotMatch(reportPreparationPageSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
+assert.doesNotMatch(reportPreparationPageSource, /Svi članovi tima/);
+assert.doesNotMatch(reportPreparationPageSource, /Uključeni u izvještaj/);
 assert.doesNotMatch(reportPreparationPageSource, /Sačuvaj izbor/);
 assert.doesNotMatch(reportPreparationPageSource, /Kreiraj timski izvještaj/);
 assert.doesNotMatch(reportPreparationPageSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
 assert.doesNotMatch(reportPreparationPageSource, reportSelectionImportPattern);
+
+assert.match(reportSelectionComponentSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
+assert.match(reportSelectionComponentSource, /includedTeamAssessmentParticipantIds/);
+assert.match(reportSelectionComponentSource, /result\.selection/);
+assert.match(reportSelectionComponentSource, /setSavedState\(nextState\)/);
+assert.match(reportSelectionComponentSource, /setDraftState\(nextState\)/);
+assert.match(reportSelectionComponentSource, /Svi članovi tima/);
+assert.match(reportSelectionComponentSource, /Uključeni u izvještaj/);
+assert.match(
+  reportSelectionComponentSource,
+  /Članovi koji pripadaju ovom Team Dynamics assignmentu\. Premještanjem u desni panel uključuješ ih samo u ovaj konkretni timski izvještaj\./,
+);
+assert.match(
+  reportSelectionComponentSource,
+  /Ovi članovi će biti korišteni za pripremu timskog izvještaja\. Član koji nije ovdje ostaje u timu, ali nije uključen u ovaj izvještaj\./,
+);
+assert.match(reportSelectionComponentSource, /Sačuvaj izbor/);
+assert.match(reportSelectionComponentSource, /selectedCount/);
+assert.match(reportSelectionComponentSource, /teamSizeStatus/);
+assert.match(reportSelectionComponentSource, /disabledReasons/);
+assert.match(reportSelectionComponentSource, /Kreiraj timski izvještaj/);
+assert.match(
+  reportSelectionComponentSource,
+  /Generisanje timskog izvještaja bit će dostupno u sljedećem koraku\./,
+);
+assert.doesNotMatch(reportSelectionComponentSource, /drag-and-drop/i);
+assert.doesNotMatch(reportSelectionComponentSource, /createAssessmentReport/);
+assert.doesNotMatch(reportSelectionComponentSource, /attempt_reports/);
+assert.doesNotMatch(reportSelectionComponentSource, /assessment_reports/);
+assert.doesNotMatch(reportSelectionComponentSource, /loadTeamDynamicsFinalAggregation/);
+assert.doesNotMatch(reportSelectionComponentSource, /persistTeamDynamicsFinalAggregationSnapshot/);
+assert.doesNotMatch(reportSelectionComponentSource, /persistTeamDynamicsMixedScoreForContext/);
+assert.doesNotMatch(reportSelectionComponentSource, /OpenAI|AI provider|Team Fit/);
 
 assert.match(detailComponentSource, /Nazad na timove/);
 assert.match(detailComponentSource, /Ovaj admin pregled prikazuje samo status procjene na nivou tima/);
@@ -152,6 +202,8 @@ assert.doesNotMatch(detailComponentSource, /attemptId/);
 assert.doesNotMatch(detailComponentSource, /raw response/i);
 assert.doesNotMatch(detailComponentSource, /score/i);
 assert.doesNotMatch(detailComponentSource, /OpenAI|AI provider|generator_type|report_snapshot/);
+assert.doesNotMatch(detailComponentSource, /Svi članovi tima/);
+assert.doesNotMatch(detailComponentSource, /Uključeni u izvještaj/);
 assert.doesNotMatch(detailComponentSource, /left\s*\/\s*right/i);
 assert.doesNotMatch(detailComponentSource, /Sačuvaj izbor/);
 assert.doesNotMatch(detailComponentSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
