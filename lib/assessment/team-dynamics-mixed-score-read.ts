@@ -60,6 +60,16 @@ export type TeamDynamicsMixedScoreVerificationResult = {
   reason: string | null;
 };
 
+export type TeamDynamicsMixedScoreContractFlags = {
+  scoreEntries: TeamDynamicsMixedScoreEntry[];
+  hasTopLevelOverallScore: boolean;
+  hasTdmBlockScore: boolean;
+  hasTdmDomainScores: boolean;
+  hasPsychologicalSafetyScore: boolean;
+  hasSjtScore: boolean;
+  hasOutcomePulseScore: boolean;
+};
+
 type TeamDynamicsMixedScoreReadDependencies = {
   loadExecutionContext?: typeof loadTeamAssessmentExecutionContext;
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
@@ -99,7 +109,9 @@ function isValidScoreEntry(value: unknown): value is TeamDynamicsMixedScoreEntry
   );
 }
 
-function isValidScoreResult(value: unknown): value is TeamDynamicsMixedScoreResult {
+export function isValidTeamDynamicsMixedScoreResult(
+  value: unknown,
+): value is TeamDynamicsMixedScoreResult {
   if (!isRecord(value)) {
     return false;
   }
@@ -116,6 +128,37 @@ function isValidScoreResult(value: unknown): value is TeamDynamicsMixedScoreResu
   }
 
   return value.scoreEntries.every((entry) => isValidScoreEntry(entry));
+}
+
+export function deriveTeamDynamicsMixedScoreContractFlags(input: {
+  scoreSnapshot: TeamDynamicsMixedScoreResult;
+  rawTotal?: number | null;
+  meanRaw?: number | null;
+  score0To100?: number | null;
+}): TeamDynamicsMixedScoreContractFlags {
+  const scoreEntries = input.scoreSnapshot.scoreEntries;
+
+  return {
+    scoreEntries,
+    hasTopLevelOverallScore:
+      isFiniteNumber(input.rawTotal) ||
+      isFiniteNumber(input.meanRaw) ||
+      isFiniteNumber(input.score0To100) ||
+      isFiniteNumber(input.scoreSnapshot.rawTotal) ||
+      isFiniteNumber(input.scoreSnapshot.meanRaw) ||
+      isFiniteNumber(input.scoreSnapshot.score0To100),
+    hasTdmBlockScore: scoreEntries.some((entry) => entry.scoreKey === "tdm-31-V1_overall"),
+    hasTdmDomainScores: scoreEntries.some((entry) => entry.scoreKey.startsWith("tdm_domain_")),
+    hasPsychologicalSafetyScore: scoreEntries.some(
+      (entry) => entry.scoreKey === "psychological_safety_overall",
+    ),
+    hasSjtScore: scoreEntries.some(
+      (entry) => entry.scoreKey === "situational_judgment_overall",
+    ),
+    hasOutcomePulseScore: scoreEntries.some(
+      (entry) => entry.scoreKey === "outcome_pulse_overall",
+    ),
+  };
 }
 
 function buildResult(
@@ -322,7 +365,7 @@ export async function loadTeamDynamicsMixedScoreVerification(input: {
     });
   }
 
-  if (!isValidScoreResult(scoreRow.score_snapshot)) {
+  if (!isValidTeamDynamicsMixedScoreResult(scoreRow.score_snapshot)) {
     return buildResult({
       status: "invalid",
       teamAssessmentParticipantId: input.teamAssessmentParticipantId,
@@ -338,13 +381,12 @@ export async function loadTeamDynamicsMixedScoreVerification(input: {
   }
 
   const scoreSnapshot = scoreRow.score_snapshot;
-  const hasTopLevelOverallScore =
-    isFiniteNumber(scoreRow.raw_total) ||
-    isFiniteNumber(scoreRow.mean_raw) ||
-    isFiniteNumber(scoreRow.score_0_100) ||
-    isFiniteNumber(scoreSnapshot.rawTotal) ||
-    isFiniteNumber(scoreSnapshot.meanRaw) ||
-    isFiniteNumber(scoreSnapshot.score0To100);
+  const flags = deriveTeamDynamicsMixedScoreContractFlags({
+    scoreSnapshot,
+    rawTotal: scoreRow.raw_total,
+    meanRaw: scoreRow.mean_raw,
+    score0To100: scoreRow.score_0_100,
+  });
 
   return buildResult({
     status: "ready",
@@ -353,8 +395,13 @@ export async function loadTeamDynamicsMixedScoreVerification(input: {
     scoringVersion: scoreRow.scoring_version,
     scoreRowId: scoreRow.id,
     scoreSnapshot,
-    scoreEntries: scoreSnapshot.scoreEntries,
-    hasTopLevelOverallScore,
+    scoreEntries: flags.scoreEntries,
+    hasTopLevelOverallScore: flags.hasTopLevelOverallScore,
+    hasTdmBlockScore: flags.hasTdmBlockScore,
+    hasTdmDomainScores: flags.hasTdmDomainScores,
+    hasPsychologicalSafetyScore: flags.hasPsychologicalSafetyScore,
+    hasSjtScore: flags.hasSjtScore,
+    hasOutcomePulseScore: flags.hasOutcomePulseScore,
     createdAt: scoreRow.created_at,
     updatedAt: scoreRow.updated_at,
     calculatedAt: scoreRow.calculated_at,
