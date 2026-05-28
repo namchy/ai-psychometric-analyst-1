@@ -178,6 +178,15 @@ async function main() {
       (option) => option.metadata.scenario_id === "SJT_TD_01" && option.metadata.response_format === "best_worst",
     ),
   );
+  assert.ok(
+    firstSjtUnit.options.every(
+      (option) =>
+        typeof option.metadata.best_choice_points === "number" &&
+        Number.isFinite(option.metadata.best_choice_points) &&
+        typeof option.metadata.worst_choice_points === "number" &&
+        Number.isFinite(option.metadata.worst_choice_points),
+    ),
+  );
 
   const outcomeUnits = importedRuntimeShape.units.filter((unit) => unit.blockKey === "outcome_pulse");
   assert.equal(outcomeUnits.length, 4);

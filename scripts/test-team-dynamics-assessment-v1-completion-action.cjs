@@ -81,11 +81,12 @@ assert.match(actionSource, /export async function completeTeamDynamicsMixedAsses
 assert.match(actionBlock, /loadTeamDynamicsMixedCompletionReadinessForContext/);
 assert.match(actionBlock, /loadTeamDynamicsMixedRuntimeHandoff/);
 assert.match(actionBlock, /transitionTeamAssessmentExecutionToCompleted/);
+assert.match(actionSource, /persistTeamDynamicsMixedScoreForContext/);
+assert.match(actionSource, /TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION/);
 assert.match(actionBlock, /TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG/);
 assert.doesNotMatch(actionBlock, /input\.attemptId/);
 assert.doesNotMatch(actionBlock, /attemptId:/);
 assert.doesNotMatch(actionBlock, /AssessmentForm/);
-assert.doesNotMatch(actionBlock, /persistTeamAssessmentMinimalScoreForContext/);
 assert.doesNotMatch(actionBlock, /team-assessment-aggregation/);
 assert.doesNotMatch(actionBlock, /attempt_reports/);
 assert.doesNotMatch(actionBlock, /assessment_reports/);
@@ -201,6 +202,7 @@ async function runNotReadyTest() {
 
 async function runReadyPathTest() {
   let transitionCalls = 0;
+  let persistCalls = 0;
 
   const result = await completeTeamDynamicsMixedAssessmentAction(
     {
@@ -225,6 +227,28 @@ async function runReadyPathTest() {
           completedAt: "2026-05-27T12:00:00.000Z",
         };
       },
+      persistMixedScore: async ({ context, scoringVersion }) => {
+        persistCalls += 1;
+        assert.equal(context.attemptStatus, "completed");
+        assert.equal(context.wrapperStatus, "completed");
+        assert.equal(scoringVersion, "team_dynamics_assessment_v1_mixed_v1");
+        return {
+          ok: true,
+          mode: "inserted",
+          value: {
+            id: "score-1",
+            teamAssessmentParticipantId: "tap-final-1",
+            attemptId: "attempt-1",
+            scoringVersion,
+            scoringStatus: "scored",
+            calculatedAt: "2026-05-27T12:00:01.000Z",
+            sourceCompletedAt: "2026-05-27T12:00:00.000Z",
+            score: {
+              status: "scored",
+            },
+          },
+        };
+      },
     },
   );
 
@@ -236,13 +260,20 @@ async function runReadyPathTest() {
     supportedItemCount: 2,
     savedValidAnswerCount: 2,
     missingQuestionIds: [],
+    postCompletionScoring: {
+      ok: true,
+      mode: "inserted",
+      scoringVersion: "team_dynamics_assessment_v1_mixed_v1",
+    },
   });
   assert.equal(transitionCalls, 1);
+  assert.equal(persistCalls, 1);
   assert.equal("attemptId" in result, false);
 }
 
 async function runAlreadyCompletedTest() {
   let transitionCalls = 0;
+  let persistCalls = 0;
 
   const result = await completeTeamDynamicsMixedAssessmentAction(
     {
@@ -260,6 +291,10 @@ async function runAlreadyCompletedTest() {
       }),
       loadMixedRuntimeHandoff: async () => runtimeHandoff,
       loadMixedCompletionReadiness: async () => readinessReady,
+      persistMixedScore: async () => {
+        persistCalls += 1;
+        throw new Error("persistMixedScore should not run for already_completed.");
+      },
       transitionCompletion: async () => {
         transitionCalls += 1;
         throw new Error("transitionCompletion should not run for already_completed.");
@@ -277,6 +312,7 @@ async function runAlreadyCompletedTest() {
     missingQuestionIds: [],
   });
   assert.equal(transitionCalls, 0);
+  assert.equal(persistCalls, 0);
 }
 
 async function runNotRunnableTest() {
@@ -388,6 +424,7 @@ async function runNoSupportedItemsTest() {
 }
 
 async function runTransitionFailureTest() {
+  let persistCalls = 0;
   const result = await completeTeamDynamicsMixedAssessmentAction(
     {
       teamAssessmentParticipantId: "tap-final-1",
@@ -400,6 +437,10 @@ async function runTransitionFailureTest() {
       }),
       loadMixedRuntimeHandoff: async () => runtimeHandoff,
       loadMixedCompletionReadiness: async () => readinessReady,
+      persistMixedScore: async () => {
+        persistCalls += 1;
+        throw new Error("persistMixedScore should not run for transition failure.");
+      },
       transitionCompletion: async () => ({
         ok: false,
         code: "attempt_transition_failed",
@@ -417,6 +458,55 @@ async function runTransitionFailureTest() {
     supportedItemCount: 2,
     savedValidAnswerCount: 2,
     missingQuestionIds: [],
+  });
+  assert.equal(persistCalls, 0);
+}
+
+async function runScoringFailureBestEffortTest() {
+  const result = await completeTeamDynamicsMixedAssessmentAction(
+    {
+      teamAssessmentParticipantId: "tap-final-1",
+    },
+    {
+      requireUser: async () => ({ id: "user-1" }),
+      loadExecutionContext: async () => ({
+        ok: true,
+        context: finalContext,
+      }),
+      loadMixedRuntimeHandoff: async () => runtimeHandoff,
+      loadMixedCompletionReadiness: async () => readinessReady,
+      transitionCompletion: async () => ({
+        ok: true,
+        mode: "completed",
+        wrapperStatus: "completed",
+        attemptStatus: "completed",
+        completedAt: "2026-05-27T12:00:00.000Z",
+      }),
+      persistMixedScore: async ({ scoringVersion }) => ({
+        ok: false,
+        code: "score_not_persistable",
+        reason: "Team Dynamics mixed-format score is not in a persistable completed-state status.",
+        score: {
+          status: "failed",
+        },
+      }),
+    },
+  );
+
+  assert.deepEqual(result, {
+    ok: true,
+    status: "completed",
+    teamAssessmentParticipantId: "tap-final-1",
+    readinessStatus: "ready",
+    supportedItemCount: 2,
+    savedValidAnswerCount: 2,
+    missingQuestionIds: [],
+    postCompletionScoring: {
+      ok: false,
+      code: "score_not_persistable",
+      reason: "Team Dynamics mixed-format score is not in a persistable completed-state status.",
+      scoringVersion: "team_dynamics_assessment_v1_mixed_v1",
+    },
   });
 }
 
@@ -470,6 +560,7 @@ Promise.resolve()
     await runWrongSlugTest();
     await runNoSupportedItemsTest();
     await runTransitionFailureTest();
+    await runScoringFailureBestEffortTest();
     await runUnauthorizedTest();
     await runUnexpectedErrorTest();
   })

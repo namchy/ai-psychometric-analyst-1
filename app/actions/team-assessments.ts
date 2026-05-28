@@ -40,6 +40,12 @@ import {
   persistValidatedTeamDynamicsMixedAnswer,
   type TeamDynamicsMixedAnswerPersistenceResult,
 } from "@/lib/assessment/team-dynamics-mixed-answer-persistence";
+import {
+  persistTeamDynamicsMixedScoreForContext,
+  TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION,
+  type TeamDynamicsMixedScorePersistenceFailureCode,
+  type TeamDynamicsMixedScorePersistenceResult,
+} from "@/lib/assessment/team-dynamics-mixed-score-persistence";
 import type { TeamDynamicsMixedAnswerPayload } from "@/lib/assessment/team-dynamics-mixed-answer-payload-validator";
 import {
   loadTeamDynamicsMixedCompletionReadinessForContext,
@@ -151,6 +157,7 @@ export type CompleteTeamDynamicsMixedAssessmentActionResult =
       supportedItemCount: number;
       savedValidAnswerCount: number;
       missingQuestionIds: string[];
+      postCompletionScoring?: CompleteTeamDynamicsMixedPostCompletionScoringStatus;
     }
   | {
       ok: false;
@@ -166,6 +173,20 @@ export type CompleteTeamDynamicsMixedAssessmentActionResult =
       supportedItemCount?: number;
       savedValidAnswerCount?: number;
       missingQuestionIds?: string[];
+      postCompletionScoring?: CompleteTeamDynamicsMixedPostCompletionScoringStatus;
+    };
+
+type CompleteTeamDynamicsMixedPostCompletionScoringStatus =
+  | {
+      ok: true;
+      mode: "inserted" | "updated";
+      scoringVersion: string;
+    }
+  | {
+      ok: false;
+      code: TeamDynamicsMixedScorePersistenceFailureCode;
+      reason: string;
+      scoringVersion: string;
     };
 
 type CompleteTeamDynamicsMixedAssessmentActionDependencies = {
@@ -179,6 +200,12 @@ type CompleteTeamDynamicsMixedAssessmentActionDependencies = {
       completedAt?: string;
     },
   ) => Promise<TeamAssessmentExecutionCompletionTransitionResult>;
+  persistMixedScore?: (
+    input: {
+      context: Extract<TeamAssessmentExecutionContextResult, { ok: true }>["context"];
+      scoringVersion?: string;
+    },
+  ) => Promise<TeamDynamicsMixedScorePersistenceResult>;
 };
 
 export type CompleteTeamAssessmentActionInput = {
@@ -678,6 +705,8 @@ export async function completeTeamDynamicsMixedAssessmentAction(
     loadTeamDynamicsMixedCompletionReadinessForContext;
   const transitionCompletion =
     deps.transitionCompletion ?? transitionTeamAssessmentExecutionToCompleted;
+  const persistMixedScore =
+    deps.persistMixedScore ?? persistTeamDynamicsMixedScoreForContext;
 
   try {
     const user = await requireUser();
@@ -765,6 +794,35 @@ export async function completeTeamDynamicsMixedAssessmentAction(
       );
     }
 
+    let postCompletionScoring: CompleteTeamDynamicsMixedPostCompletionScoringStatus | undefined;
+
+    if (completionResult.mode === "completed") {
+      const completedScoringContext = {
+        ...context,
+        wrapperStatus: completionResult.wrapperStatus,
+        attemptStatus: completionResult.attemptStatus,
+      };
+      const scorePersistenceResult = await persistMixedScore({
+        context: completedScoringContext,
+        scoringVersion: TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION,
+      });
+
+      if (scorePersistenceResult.ok) {
+        postCompletionScoring = {
+          ok: true,
+          mode: scorePersistenceResult.mode,
+          scoringVersion: scorePersistenceResult.value.scoringVersion,
+        };
+      } else {
+        postCompletionScoring = {
+          ok: false,
+          code: scorePersistenceResult.code,
+          reason: scorePersistenceResult.reason,
+          scoringVersion: TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION,
+        };
+      }
+    }
+
     return {
       ok: true,
       status: completionResult.mode,
@@ -773,6 +831,7 @@ export async function completeTeamDynamicsMixedAssessmentAction(
       supportedItemCount: completionReadiness.supportedItemCount,
       savedValidAnswerCount: completionReadiness.savedValidAnswerCount,
       missingQuestionIds: completionReadiness.missingQuestionIds,
+      ...(postCompletionScoring ? { postCompletionScoring } : {}),
     };
   } catch (error) {
     if (error instanceof AuthenticationRequiredError) {
