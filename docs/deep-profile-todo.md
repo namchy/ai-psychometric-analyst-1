@@ -2757,8 +2757,67 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Sandbox `spawnSync node EPERM` je evidentiran kao sandbox ograničenje za child process, ne kao feature bug.
 - Nema renderer, provider, contract ili DB schema promjena u ovom smoke slice-u.
 
+### Completion note — Team Dynamics Executive Overview manual worker shell
+
+- Dodan je minimalni ručno pokretani worker shell za Team Dynamics Executive Overview report lane.
+- Dodan je server-only helper:
+  - `lib/b2b/team-dynamics-report-worker.ts`
+- Dodan je ručni CLI script:
+  - `scripts/process-team-dynamics-executive-overview-reports.cjs`
+- Dodan je package script:
+  - `npm run process:team-dynamics-reports`
+- Worker shell traži isključivo queued Team Dynamics Executive Overview reportove:
+  - `report_status = "queued"`
+  - `report_type = "team_dynamics_report_v1"`
+  - `report_version = "team_dynamics_executive_overview_v1"`
+- Worker shell ne claim-a/resetuje sam mimo postojećeg processora.
+- Non-dry-run mode:
+  - učita batch eligible queued reportova
+  - za svaki zove postojeći `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`
+  - vraća summary sa `processed`, `ready`, `failed`, `skipped`, `claimNotAcquired`, `errors`
+- Ishodi su mapirani:
+  - `ok: true` iz processora -> `ready`
+  - `operation = "claim_not_acquired"` -> `claim_not_acquired` i broji se u `skipped`
+  - ostali `ok: false` procesorski rezultati -> `failed`
+  - exception -> `error`
+- Dry-run mode:
+  - samo lista eligible queued reportove
+  - ne poziva processor
+  - ne radi DB write
+  - vraća/loguje `eligibleCount`, `wouldProcessCount`, eligible report listu, `requestedLimit`, `appliedLimit`
+- Batch limit pravilo:
+  - default `3`
+  - max `10`
+  - veći input se cap-a na `10`
+  - nevalidan ili nepozitivan input pada nazad na `3`
+- CLI/script podržava:
+  - `--limit 5`
+  - `--limit=5`
+  - `TEAM_DYNAMICS_REPORT_WORKER_LIMIT=5`
+  - `--dry-run`
+  - `TEAM_DYNAMICS_REPORT_WORKER_DRY_RUN=true`
+- Worker shell ne procesira `failed`, `ready` ili `processing` reportove.
+- Worker shell ne resetuje failed reportove.
+- Worker shell ne uvodi cron, scheduler, background loop ili automatic batch processing u aplikaciju.
+- Dodan je fokusirani test:
+  - `scripts/test-team-dynamics-executive-overview-worker-shell.cjs`
+- Test potvrđuje:
+  - dry-run ne mijenja DB
+  - dry-run ne poziva processor
+  - worker query uzima samo queued `team_dynamics_report_v1` + `team_dynamics_executive_overview_v1`
+  - ready/failed/processing reportovi se ne procesiraju
+  - default batch limit je `3`
+  - batch limit se cap-a na `10`
+  - non-dry-run koristi `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`
+  - result summary razlikuje ready/failed/claim_not_acquired
+  - nema write-a u `attempt_reports`
+  - nema write-a u postojećem `assessment_reports`
+  - worker ne importuje renderer/view sloj
+  - nema cron/background loop koda
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-worker-shell.cjs`
   - `node scripts/test-team-dynamics-executive-overview-retry-action.cjs`
   - `node scripts/test-team-dynamics-executive-overview-retry-ui.cjs`
   - `node scripts/test-team-dynamics-executive-overview-manual-ui.cjs`
@@ -2789,8 +2848,10 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
-- no worker/cron/background loop
-- no automatic batch processing
+- no cron
+- no scheduler
+- no automatic background loop
+- no automatic batch processing in app
 - no retry-and-process automation
 - no report generation from view
 - no Team Fit output
@@ -2801,11 +2862,12 @@ Ovi slice-evi nisu uveli:
 - no individual score value display in UI
 - no `attempt_reports` write
 - no existing `assessment_reports` write
+- no UI changes
 - no DB migration
 - no renderer redesign
 
 **Sljedeći korak:**
-Sljedeći uski slice: minimalni worker shell za Team Dynamics Executive Overview report lane, bez automatskog cron-a. Worker shell treba biti ručno pokretan script/helper koji pronađe ograničen broj queued `team_assessment_reports` redova za `team_dynamics_executive_overview_v1`, koristi postojeći provider-backed processor, poštuje lifecycle claim/failure/ready boundary, ima batch limit i dry-run/diagnostic mode, te ne uvodi report generation from view, scoring rerun, aggregation refresh, Team Fit output ili automatski background loop.
+Sljedeći uski slice: real worker shell smoke za Team Dynamics Executive Overview report lane. Smoke treba napraviti ili pronaći cleanup-safe queued fixture report, prvo pokrenuti worker dry-run i potvrditi da nema DB write-a, zatim pokrenuti non-dry-run sa limitom 1 i potvrditi `queued -> processing -> ready`, persisted `input_snapshot`, persisted valid `report_snapshot`, display helper ready path, i nepromijenjene `attempt_reports` / postojeći `assessment_reports` countove. Bez cron-a, bez scheduler-a, bez automatic background loop-a, bez report generation from view, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
