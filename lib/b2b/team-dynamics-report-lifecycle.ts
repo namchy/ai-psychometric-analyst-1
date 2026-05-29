@@ -5,6 +5,10 @@ import {
   loadTeamAssessmentAggregationVerification,
   type TeamAssessmentAggregationReadVerificationResult,
 } from "@/lib/assessment/team-assessment-aggregation-read";
+import {
+  persistTeamDynamicsReportInputSnapshot,
+  type PersistTeamDynamicsReportInputSnapshotResult,
+} from "@/lib/b2b/team-dynamics-report-input";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type TeamRow = {
@@ -55,6 +59,8 @@ type TeamAssessmentReportRow = {
 type TeamDynamicsReportLifecycleDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
   loadAggregationVerification?: typeof loadTeamAssessmentAggregationVerification;
+  persistInputSnapshot?: typeof persistTeamDynamicsReportInputSnapshot;
+  now?: () => string;
 };
 
 export const TEAM_DYNAMICS_REPORT_TYPE = "team_dynamics_report_v1";
@@ -113,6 +119,29 @@ export type QueueTeamDynamicsReportShellResult =
       aggregationVerification?: TeamAssessmentAggregationReadVerificationResult;
     };
 
+export type ClaimTeamDynamicsReportForProcessingResult =
+  | {
+      ok: true;
+      operation: "claimed";
+      report: TeamDynamicsReportRowSummary;
+      snapshot: PersistTeamDynamicsReportInputSnapshotResult & { ok: true };
+    }
+  | {
+      ok: false;
+      operation:
+        | "invalid_payload"
+        | "report_not_found"
+        | "already_processing"
+        | "already_ready"
+        | "failed_not_claimable"
+        | "not_claimable"
+        | "snapshot_persist_failed"
+        | "update_failed";
+      reason: string;
+      report?: TeamDynamicsReportRowSummary;
+      snapshot?: PersistTeamDynamicsReportInputSnapshotResult;
+    };
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -127,6 +156,12 @@ function toStringArray(value: unknown): string[] {
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter((value) => isNonEmptyString(value)))).sort();
+}
+
+function getNow(
+  deps: TeamDynamicsReportLifecycleDependencies = {},
+): string {
+  return deps.now?.() ?? new Date().toISOString();
 }
 
 function mapRow(row: TeamAssessmentReportRow): TeamDynamicsReportRowSummary {
@@ -351,6 +386,179 @@ export async function listTeamDynamicsReportRowsForAssignment(input: {
   }
 
   return ((data ?? []) as TeamAssessmentReportRow[]).map(mapRow);
+}
+
+async function loadTeamDynamicsReportRowForOrganization(input: {
+  teamAssessmentReportId: string;
+  organizationId: string;
+  supabase: ReturnType<typeof createSupabaseAdminClient>;
+}): Promise<TeamAssessmentReportRow | null> {
+  const { data, error } = await input.supabase
+    .from("team_assessment_reports")
+    .select(
+      "id, organization_id, team_id, team_assessment_assignment_id, selection_draft_id, aggregation_snapshot_id, report_type, report_version, report_status, generator_type, model_name, included_member_ids_snapshot, input_snapshot, report_snapshot, error_message, queued_at, started_at, completed_at, created_at, updated_at",
+    )
+    .eq("id", input.teamAssessmentReportId)
+    .eq("organization_id", input.organizationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load Team Dynamics report row: ${error.message}`);
+  }
+
+  return (data as TeamAssessmentReportRow | null) ?? null;
+}
+
+export async function claimTeamDynamicsReportForProcessing(input: {
+  teamAssessmentReportId: string;
+  organizationId: string;
+}, deps: TeamDynamicsReportLifecycleDependencies = {}): Promise<ClaimTeamDynamicsReportForProcessingResult> {
+  if (!isNonEmptyString(input.teamAssessmentReportId)) {
+    return {
+      ok: false,
+      operation: "invalid_payload",
+      reason: "teamAssessmentReportId is required.",
+    };
+  }
+
+  if (!isNonEmptyString(input.organizationId)) {
+    return {
+      ok: false,
+      operation: "invalid_payload",
+      reason: "organizationId is required.",
+    };
+  }
+
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const persistInputSnapshot =
+    deps.persistInputSnapshot ?? persistTeamDynamicsReportInputSnapshot;
+
+  let reportRow: TeamAssessmentReportRow | null = null;
+
+  try {
+    reportRow = await loadTeamDynamicsReportRowForOrganization({
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: input.organizationId,
+      supabase,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      operation: "report_not_found",
+      reason:
+        error instanceof Error
+          ? error.message
+          : "Failed to load Team Dynamics report row.",
+    };
+  }
+
+  if (!reportRow) {
+    return {
+      ok: false,
+      operation: "report_not_found",
+      reason: "Team Dynamics report row was not found for this organization.",
+    };
+  }
+
+  const report = mapRow(reportRow);
+
+  if (reportRow.report_status === "processing") {
+    return {
+      ok: false,
+      operation: "already_processing",
+      reason: "Team Dynamics report is already processing.",
+      report,
+    };
+  }
+
+  if (reportRow.report_status === "ready") {
+    return {
+      ok: false,
+      operation: "already_ready",
+      reason: "Team Dynamics report is already ready.",
+      report,
+    };
+  }
+
+  if (reportRow.report_status === "failed") {
+    return {
+      ok: false,
+      operation: "failed_not_claimable",
+      reason: "Failed Team Dynamics report rows are not claimable.",
+      report,
+    };
+  }
+
+  if (reportRow.report_status !== "queued") {
+    return {
+      ok: false,
+      operation: "not_claimable",
+      reason: "Team Dynamics report is not claimable from its current state.",
+      report,
+    };
+  }
+
+  const snapshotResult = await persistInputSnapshot(
+    {
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: input.organizationId,
+    },
+    {
+      supabase,
+    },
+  );
+
+  if (!snapshotResult.ok) {
+    return {
+      ok: false,
+      operation: "snapshot_persist_failed",
+      reason: snapshotResult.reason,
+      report,
+      snapshot: snapshotResult,
+    };
+  }
+
+  const startedAt = getNow(deps);
+  const { data, error } = await supabase
+    .from("team_assessment_reports")
+    .update({
+      report_status: "processing",
+      started_at: startedAt,
+    })
+    .eq("id", input.teamAssessmentReportId)
+    .eq("organization_id", input.organizationId)
+    .eq("report_status", "queued")
+    .select(
+      "id, organization_id, team_id, team_assessment_assignment_id, selection_draft_id, aggregation_snapshot_id, report_type, report_version, report_status, generator_type, model_name, included_member_ids_snapshot, input_snapshot, report_snapshot, error_message, queued_at, started_at, completed_at, created_at, updated_at",
+    )
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      operation: "update_failed",
+      reason: `Failed to mark Team Dynamics report as processing: ${error.message}`,
+      report,
+      snapshot: snapshotResult,
+    };
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      operation: "not_claimable",
+      reason: "Team Dynamics report could not be claimed because it is no longer queued.",
+      report,
+      snapshot: snapshotResult,
+    };
+  }
+
+  return {
+    ok: true,
+    operation: "claimed",
+    report: mapRow(data as TeamAssessmentReportRow),
+    snapshot: snapshotResult,
+  };
 }
 
 export async function queueTeamDynamicsReportShell(input: {
