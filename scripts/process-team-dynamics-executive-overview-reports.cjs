@@ -7,6 +7,38 @@ const projectRoot = path.resolve(__dirname, "..");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
+function loadEnvFileIfPresent(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  const raw = fs.readFileSync(filePath, "utf8");
+
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const value = trimmed
+      .slice(separatorIndex + 1)
+      .trim()
+      .replace(/^['"]|['"]$/g, "");
+
+    if (!(key in process.env)) {
+      process.env[key] = value;
+    }
+  }
+}
+
 function resolveWithExtensions(candidatePath) {
   if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
     return candidatePath;
@@ -107,6 +139,8 @@ function readCliOptions(argv) {
 }
 
 async function main() {
+  loadEnvFileIfPresent(path.join(projectRoot, ".env.local"));
+
   const cliOptions = readCliOptions(process.argv.slice(2));
   const envDryRun = parseBooleanFlag(process.env.TEAM_DYNAMICS_REPORT_WORKER_DRY_RUN ?? "");
   const envLimit = parseLimitValue(process.env.TEAM_DYNAMICS_REPORT_WORKER_LIMIT);

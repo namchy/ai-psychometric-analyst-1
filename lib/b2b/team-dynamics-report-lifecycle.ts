@@ -1350,8 +1350,8 @@ export async function processTeamDynamicsExecutiveOverviewWithOpenAI(input: {
   const providerResult = await generateExecutiveOverviewWithOpenAI(
     persistedInputSnapshot,
     deps.executiveOverviewOpenAiOptions ?? {
-      apiKey: null,
-      model: null,
+      apiKey: process.env.OPENAI_API_KEY ?? null,
+      model: process.env.AI_REPORT_MODEL ?? null,
       now: deps.now,
     },
   );
