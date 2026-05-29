@@ -2398,8 +2398,42 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Ovaj slice nije uveo AI providera, OpenAI poziv, provider registry, renderer, worker/cron/background loop, scoring rerun, aggregation rerun/refresh, Team Fit output, UI promjene ili DB migraciju.
 - Postojeći lifecycle guardrail testovi su poravnati tako da zabrane `ready` update samo u helper sekcijama koje ne smiju završavati kao ready, dok mock generation shell smije završiti validan report kao `ready`.
 
+### Completion note — Team Dynamics Executive Overview read-only renderer shell
+
+- Dodan je read-only display lanac za ready `team_assessment_reports` Executive Overview snapshot.
+- Dodan je server-only read helper `lib/b2b/team-dynamics-executive-overview-display.ts`.
+- Read helper učitava jedan report kroz `organizationId + teamId + teamAssessmentReportId` boundary.
+- Read helper čita samo `team_assessment_reports`.
+- Ako report nije vidljiv u tom org/team/report kontekstu, helper vraća kontrolisan missing/null rezultat i route ide na `notFound()`.
+- Ready report se prikazuje samo ako:
+  - `report_status = "ready"`
+  - `report_version = "team_dynamics_executive_overview_v1"`
+  - `report_snapshot` prolazi `validateTeamDynamicsExecutiveOverviewSnapshot(...)`
+- `queued`, `processing` i `failed` statusi prikazuju neutralan status state bez recovery CTA-a.
+- Ready report sa missing ili invalid snapshotom ne renderuje ready view, nego neutralno stanje `Izvještaj trenutno nije dostupan`.
+- Dodana je protected ruta `/dashboard/teams/[teamId]/reports/[teamAssessmentReportId]`.
+- Dodan je renderer component `components/dashboard/team-dynamics-executive-overview-report-view.tsx`.
+- Renderer prikazuje samo contract sekcije:
+  - `executiveSummary`
+  - `keyTeamSignals`
+  - `dimensionOverview`
+  - `alignmentAndFriction`
+  - `psychologicalSafetySignal`
+  - `situationalJudgmentSignal`
+  - `outcomePulseSignal`
+  - `risksToWatch`
+  - `leadershipRecommendations`
+  - `suggestedNextConversation`
+  - `interpretationLimits`
+- Existing Team Dynamics queue list dobila je minimalan ready entrypoint: ready report prikazuje link `Otvori izvještaj`.
+- View/read layer ne zove generation helper.
+- View/read layer ne pokušava regenerisati report.
+- View/read layer ne radi write u `team_assessment_reports`, `attempt_reports` ili postojeći `assessment_reports`.
+- Renderer ne prikazuje individualne odgovore, raw responses, individualne score vrijednosti, raw attempt ID-jeve, Team Fit output ili unified overall team score.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-renderer.cjs`
   - `node scripts/test-team-dynamics-executive-overview-mock-generation.cjs`
   - `node scripts/test-team-dynamics-executive-overview-contract.cjs`
   - `node scripts/test-team-dynamics-report-retry-lifecycle.cjs`
@@ -2423,7 +2457,7 @@ Ovi slice-evi nisu uveli:
 - no OpenAI call
 - no AI provider
 - no provider registry
-- no report renderer
+- no report generation from view
 - no worker/cron/background loop
 - no Team Fit output
 - no scoring rerun
@@ -2433,11 +2467,11 @@ Ovi slice-evi nisu uveli:
 - no existing `assessment_reports` write
 - no individual answer display
 - no individual score value display
-- no UI changes
+- no recovery CTA
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: read-only Team Dynamics Executive Overview ready report renderer route/shell za `team_assessment_reports` ready snapshot, bez OpenAI providera, bez provider registry-ja, bez worker loop-a, bez regeneracije reporta iz view-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: DB-backed smoke za kompletan local Team Dynamics Executive Overview report lane: saved selection -> queued `team_assessment_reports` row -> mock-safe processing -> ready snapshot -> read-only display route. Smoke ne smije uvoditi OpenAI provider, renderer redesign, worker loop, scoring rerun, aggregation refresh, Team Fit output ili report generation iz view-a.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
