@@ -2431,8 +2431,98 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - View/read layer ne radi write u `team_assessment_reports`, `attempt_reports` ili postojeći `assessment_reports`.
 - Renderer ne prikazuje individualne odgovore, raw responses, individualne score vrijednosti, raw attempt ID-jeve, Team Fit output ili unified overall team score.
 
+### Completion note — Team Dynamics Executive Overview local lane DB-backed smoke
+
+- Dodan je DB-backed script-level smoke za kompletan local Team Dynamics Executive Overview report lane.
+- Smoke script je `scripts/test-team-dynamics-executive-overview-local-lane-smoke.cjs`.
+- Smoke prvo traži postojeći report-ready Team Dynamics fixture.
+- Ako ne postoji spreman fixture, smoke pravi cleanup-safe DB fixture.
+- Cleanup-safe fixture uključuje:
+  - novu organizaciju
+  - novi tim
+  - 4 participant/member zapisa
+  - 4 completed wrappera
+  - 4 `team_assessment_participant_scores` reda
+  - ready final aggregation snapshot
+  - saved selection draft sa 4 included člana
+- Smoke koristi postojeće selection/queue/display/mock helper-e.
+- Smoke verifikuje full local lane:
+  - saved selection
+  - queue-ready selection read model sa minimum 4 included score-ready člana
+  - queued `team_assessment_reports` row
+  - `report_type = "team_dynamics_report_v1"`
+  - `report_version = "team_dynamics_executive_overview_v1"`
+  - persisted `included_member_ids_snapshot`
+  - mock processor `queued -> processing -> ready`
+  - persisted `input_snapshot`
+  - persisted `report_snapshot`
+  - `report_snapshot` prolazi `validateTeamDynamicsExecutiveOverviewSnapshot(...)`
+  - display helper učitava ready report kroz `organizationId + teamId + reportId` boundary
+  - wrong organization boundary vraća null
+  - wrong team boundary vraća null
+- Smoke potvrđuje da nema write-a u `attempt_reports`.
+- Smoke potvrđuje da nema write-a u postojećem `assessment_reports`.
+- Smoke čisti privremene podatke nakon prolaza.
+- Raniji PGRST205/schema exposure blocker je zatvoren: runtime Supabase API sada vidi potrebne Team Dynamics report-lane tabele.
+- Raniji `aggregation_not_ready` blocker je zatvoren kroz cleanup-safe fixture setup.
+- Napomena: za smoke queue readiness korišten je postojeći queue shell uz dependency override za final aggregation verification u samom test scriptu, bez izmjene feature code-a.
+
+### Completion note — Team Dynamics Executive Overview OpenAI provider skeleton
+
+- Dodan je server-only OpenAI provider skeleton za prvi Team Dynamics report kind: `team_dynamics_executive_overview_v1`.
+- Dodan je fajl `lib/b2b/team-dynamics-executive-overview-openai.ts`.
+- Glavni helper je `generateTeamDynamicsExecutiveOverviewWithOpenAI(inputSnapshot, options)`.
+- Provider koristi isključivo deterministic `TeamDynamicsReportInputSnapshot`.
+- Provider ne čita DB.
+- Provider ne čita raw responses.
+- Provider ne reruna scoring.
+- Provider ne reruna aggregation.
+- Provider ne zove lifecycle helper.
+- Provider ne piše u `team_assessment_reports`, `attempt_reports` ili postojeći `assessment_reports`.
+- Provider gradi JSON-schema OpenAI request.
+- Provider parsira JSON odgovor i validira ga kroz `validateTeamDynamicsExecutiveOverviewSnapshot(...)`.
+- Success rezultat vraća:
+  - `ok: true`
+  - `code: "success"`
+  - validan `TeamDynamicsExecutiveOverviewSnapshot`
+  - `provider: "openai"`
+  - `providerVersion: "v1"`
+  - `modelName`
+  - `generatedAt`
+  - `rawContent`
+- Controlled failure rezultati uključuju:
+  - `config_error`
+  - `provider_error`
+  - `parse_failure`
+  - `validation_failure`
+- Prompt guardrails uključuju:
+  - koristi samo `input_snapshot`
+  - zabrana individualnih odgovora
+  - zabrana individualnih score vrijednosti
+  - zabrana imenovanja pojedinaca kao problem
+  - zabrana Team Fit outputa
+  - zabrana hire/no-hire jezika
+  - zabrana “loš tim” i “disfunkcionalan tim”
+  - zabrana unified overall team score-a
+  - outcome pulse kao odvojen signal
+  - BHS, latinica, ijekavica, HR/leadership ton
+- Provider ima dependency-injection fake-client seam:
+  - `createChatCompletion(request) => Promise<{ content: string }>`
+- Dodan je test `scripts/test-team-dynamics-executive-overview-openai-provider.cjs`.
+- Test pokriva:
+  - valid fake JSON output prolazi
+  - output prolazi runtime validator
+  - invalid JSON vraća `parse_failure`
+  - pogrešan `reportType` vraća `validation_failure`
+  - zabranjena polja `individualScores` i `teamFitOutput` vraćaju `validation_failure`
+  - provider nema DB query/write ni lifecycle wiring
+- Provider skeleton ostaje namjerno van postojećeg lifecycle/mock processing path-a.
+- Runtime validator ostaje jedini gate za forbidden fields; nema silent repair logike.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-openai-provider.cjs`
+  - `node scripts/test-team-dynamics-executive-overview-local-lane-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-renderer.cjs`
   - `node scripts/test-team-dynamics-executive-overview-mock-generation.cjs`
   - `node scripts/test-team-dynamics-executive-overview-contract.cjs`
@@ -2454,24 +2544,21 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
-- no OpenAI call
-- no AI provider
-- no provider registry
-- no report generation from view
 - no worker/cron/background loop
+- no report generation from view
 - no Team Fit output
 - no scoring rerun
 - no aggregation rerun/refresh
 - no raw responses read
-- no `attempt_reports` write
-- no existing `assessment_reports` write
 - no individual answer display
 - no individual score value display
-- no recovery CTA
+- no `attempt_reports` write
+- no existing `assessment_reports` write
+- no UI changes
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: DB-backed smoke za kompletan local Team Dynamics Executive Overview report lane: saved selection -> queued `team_assessment_reports` row -> mock-safe processing -> ready snapshot -> read-only display route. Smoke ne smije uvoditi OpenAI provider, renderer redesign, worker loop, scoring rerun, aggregation refresh, Team Fit output ili report generation iz view-a.
+Sljedeći uski slice: provider-backed Team Dynamics Executive Overview processor koji koristi postojeći lifecycle claim/failure/ready boundary i OpenAI provider skeleton da obradi queued `team_assessment_reports` row u `ready` ili controlled `failed`, bez worker loop-a, bez renderer promjena, bez report generation iz view-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
