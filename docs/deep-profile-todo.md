@@ -2357,8 +2357,50 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - ne uvodi worker
 - Postojeći lifecycle/input shell testovi su poravnati na novi `report_version = "team_dynamics_executive_overview_v1"` discriminator.
 
+### Completion note — Team Dynamics Executive Overview mock-safe generation shell
+
+- Dodan je server-only local generation shell za prvi Team Dynamics report kind: `team_dynamics_executive_overview_v1`.
+- Dodan je helper `generateTeamDynamicsExecutiveOverviewMockSnapshot(...)`.
+- Helper koristi postojeći `team_assessment_reports.input_snapshot` kao source.
+- Ako `input_snapshot` nedostaje, helper vraća kontrolisan `missing_input_snapshot`.
+- Ako `input_snapshot` shape nije validan za očekivani Team Dynamics input, helper vraća kontrolisan `invalid_input_snapshot`.
+- Output je neutralan BHS-facing `team_dynamics_executive_overview_v1` snapshot.
+- Snapshot sadrži:
+  - `reportType = "team_dynamics_executive_overview_v1"`
+  - `reportVersion = "v1"`
+  - `locale`
+  - `teamContext`
+  - `includedMembersSummary`
+  - `executiveSummary`
+  - `keyTeamSignals`
+  - `dimensionOverview`
+  - `alignmentAndFriction`
+  - `psychologicalSafetySignal`
+  - `situationalJudgmentSignal`
+  - `outcomePulseSignal`
+  - `risksToWatch`
+  - `leadershipRecommendations`
+  - `suggestedNextConversation`
+  - `interpretationLimits`
+- `dimensionOverview` se mapira iz dostupnih `scoreEntryAggregations` kada postoje, ili koristi kontrolisan neutralni fallback kada ne postoje.
+- Snapshot ne sadrži individualne odgovore, raw responses, individualne score vrijednosti, Team Fit output ili unified overall team score.
+- Dodan je lifecycle/orchestration helper `processTeamDynamicsExecutiveOverviewMock(...)`.
+- Helper radi prvi kontrolisan happy path za dedicated `team_assessment_reports` lane:
+  - `queued -> processing -> ready`
+- Orchestrator:
+  - poziva postojeći `claimTeamDynamicsReportForProcessing(...)`
+  - koristi persisted `input_snapshot`
+  - gradi local/mock-safe report snapshot
+  - validira snapshot kroz `validateTeamDynamicsExecutiveOverviewSnapshot(...)`
+  - ako input snapshot nedostaje ili je nevalidan, kontrolisano završava kroz `markTeamDynamicsReportProcessingFailed(...)`
+  - ako validator padne, kontrolisano završava kroz `markTeamDynamicsReportProcessingFailed(...)`
+  - ako validacija prođe, update-uje isti `team_assessment_reports` row na `report_status = "ready"`, upisuje `report_snapshot`, postavlja `completed_at` i čisti `error_message`
+- Ovaj slice nije uveo AI providera, OpenAI poziv, provider registry, renderer, worker/cron/background loop, scoring rerun, aggregation rerun/refresh, Team Fit output, UI promjene ili DB migraciju.
+- Postojeći lifecycle guardrail testovi su poravnati tako da zabrane `ready` update samo u helper sekcijama koje ne smiju završavati kao ready, dok mock generation shell smije završiti validan report kao `ready`.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-mock-generation.cjs`
   - `node scripts/test-team-dynamics-executive-overview-contract.cjs`
   - `node scripts/test-team-dynamics-report-retry-lifecycle.cjs`
   - `node scripts/test-team-dynamics-report-processing-lifecycle.cjs`
@@ -2378,12 +2420,11 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
-- no AI generation
 - no OpenAI call
-- no provider implementation
-- no mock provider runtime
-- no renderer
-- no real worker/cron/background loop
+- no AI provider
+- no provider registry
+- no report renderer
+- no worker/cron/background loop
 - no Team Fit output
 - no scoring rerun
 - no aggregation rerun/refresh
@@ -2396,7 +2437,7 @@ Ovi slice-evi nisu uveli:
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: mock-safe Team Dynamics Executive Overview generation shell koji uzima postojeći deterministic input snapshot, proizvodi validan `team_dynamics_executive_overview_v1` report snapshot kroz local/mock generator, validira ga runtime validatorom i persista ga u `team_assessment_reports.report_snapshot` kao `ready`, bez OpenAI providera, bez renderera, bez worker loop-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: read-only Team Dynamics Executive Overview ready report renderer route/shell za `team_assessment_reports` ready snapshot, bez OpenAI providera, bez provider registry-ja, bez worker loop-a, bez regeneracije reporta iz view-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
