@@ -66,7 +66,8 @@ type TeamDynamicsReportLifecycleDependencies = {
 };
 
 export const TEAM_DYNAMICS_REPORT_TYPE = "team_dynamics_report_v1";
-export const TEAM_DYNAMICS_REPORT_VERSION = "team_dynamics_report_v1";
+export const TEAM_DYNAMICS_REPORT_VERSION =
+  "team_dynamics_executive_overview_v1";
 
 export const TEAM_DYNAMICS_REPORT_STATUSES = [
   "queued",

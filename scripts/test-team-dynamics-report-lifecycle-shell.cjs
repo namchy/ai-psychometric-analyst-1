@@ -146,7 +146,7 @@ assert.doesNotMatch(migrationSource, /attempt_reports/i);
 assert.doesNotMatch(migrationSource, /public\.assessment_reports/i);
 
 assert.match(helperSource, /TEAM_DYNAMICS_REPORT_TYPE = "team_dynamics_report_v1"/);
-assert.match(helperSource, /TEAM_DYNAMICS_REPORT_VERSION = "team_dynamics_report_v1"/);
+assert.match(helperSource, /TEAM_DYNAMICS_REPORT_VERSION =\s*"team_dynamics_executive_overview_v1"/);
 assert.match(helperSource, /"queued",\s*"processing",\s*"ready",\s*"failed"/);
 assert.match(helperSource, /export async function listTeamDynamicsReportRowsForAssignment/);
 assert.match(helperSource, /export async function queueTeamDynamicsReportShell/);
@@ -288,7 +288,7 @@ function createSupabaseStub(initialState = {}) {
 
 async function main() {
   assert.equal(TEAM_DYNAMICS_REPORT_TYPE, "team_dynamics_report_v1");
-  assert.equal(TEAM_DYNAMICS_REPORT_VERSION, "team_dynamics_report_v1");
+  assert.equal(TEAM_DYNAMICS_REPORT_VERSION, "team_dynamics_executive_overview_v1");
 
   const supabase = createSupabaseStub({
     teams: [

@@ -281,7 +281,7 @@ async function main() {
         selection_draft_id: "draft-1",
         aggregation_snapshot_id: "aggregation-1",
         report_type: "team_dynamics_report_v1",
-        report_version: "team_dynamics_report_v1",
+        report_version: "team_dynamics_executive_overview_v1",
         report_status: "queued",
         included_member_ids_snapshot: ["tap-4", "tap-1", "tap-2", "tap-3"],
         input_snapshot: null,
