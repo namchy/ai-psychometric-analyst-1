@@ -2812,12 +2812,68 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - result summary razlikuje ready/failed/claim_not_acquired
   - nema write-a u `attempt_reports`
   - nema write-a u postojećem `assessment_reports`
-  - worker ne importuje renderer/view sloj
-  - nema cron/background loop koda
+- worker ne importuje renderer/view sloj
+- nema cron/background loop koda
+
+### Completion note — Team Dynamics Executive Overview real worker shell smoke
+
+- Dodan je real worker shell smoke za Team Dynamics Executive Overview report lane.
+- Smoke script je `scripts/test-team-dynamics-executive-overview-worker-real-smoke.cjs`.
+- Smoke pravi ili reuse-a cleanup-safe fixture.
+- Smoke seed-a queued, failed, processing i ready reportove da provjeri status filtering.
+- Smoke koristi stvarni ručno pokretani worker shell dry-run i non-dry-run path.
+- Dry-run verifikuje:
+  - vidi samo eligible queued reportove
+  - vraća `eligibleCount`
+  - vraća `wouldProcessCount`
+  - ne poziva processor
+  - ne mijenja `team_assessment_reports`
+  - ne piše u `attempt_reports`
+  - ne piše u postojeći `assessment_reports`
+- Dry-run rezultat:
+  - `requestedLimit: 2`
+  - `appliedLimit: 2`
+  - `eligibleCount: 2`
+  - `wouldProcessCount: 2`
+- Non-dry-run smoke koristi `limit = 1`.
+- Non-dry-run verifikuje:
+  - worker procesira samo jedan queued report
+  - procesirani report ide `queued -> processing -> ready`
+  - `input_snapshot` je persisted
+  - `report_snapshot` je persisted
+  - `report_snapshot` prolazi `validateTeamDynamicsExecutiveOverviewSnapshot(...)`
+  - display helper učitava ready report kroz `organizationId + teamId + reportId`
+  - wrong `organizationId` vraća null
+  - wrong `teamId` vraća null
+  - drugi queued report ostaje queued
+  - seedani failed, processing i ready reportovi nisu obrađeni niti resetovani
+  - `attempt_reports` count ostaje nepromijenjen
+  - postojeći `assessment_reports` count ostaje nepromijenjen
+- Non-dry-run rezultat:
+  - `requestedLimit: 1`
+  - `appliedLimit: 1`
+  - `eligibleCount: 1`
+  - `processedCount: 1`
+  - `ready: 1`
+  - `failed: 0`
+  - `skipped: 0`
+  - `claimNotAcquired: 0`
+  - `errors: 0`
+- Smoke je otkrio i zatvorio uski runtime env bug:
+  - prije fixa worker shell real smoke je padao sa `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR`
+  - dokaz: `Missing required env var: OPENAI_API_KEY`
+  - uzrok: worker shell lane nije dobijao OpenAI config fallback kroz lifecycle, a shell entrypoint nije učitavao `.env.local`
+- Bugfix:
+  - `lib/b2b/team-dynamics-report-lifecycle.ts` sada ima runtime env fallback za OpenAI opcije u worker shell lane-u
+  - `scripts/process-team-dynamics-executive-overview-reports.cjs` učitava `.env.local`, kao ostali real smoke scriptovi
+- Nakon fixa, real worker shell smoke prolazi.
+- Existing OpenAI processor test, OpenAI DB smoke i manual UI real smoke i dalje prolaze.
+- Odluka: ručno pokretani worker shell koristi isti runtime env / `.env.local` model kao ostali real smoke scriptovi.
 
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
   - `node scripts/test-team-dynamics-executive-overview-worker-shell.cjs`
+  - `node scripts/test-team-dynamics-executive-overview-worker-real-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-retry-action.cjs`
   - `node scripts/test-team-dynamics-executive-overview-retry-ui.cjs`
   - `node scripts/test-team-dynamics-executive-overview-manual-ui.cjs`
@@ -2867,7 +2923,7 @@ Ovi slice-evi nisu uveli:
 - no renderer redesign
 
 **Sljedeći korak:**
-Sljedeći uski slice: real worker shell smoke za Team Dynamics Executive Overview report lane. Smoke treba napraviti ili pronaći cleanup-safe queued fixture report, prvo pokrenuti worker dry-run i potvrditi da nema DB write-a, zatim pokrenuti non-dry-run sa limitom 1 i potvrditi `queued -> processing -> ready`, persisted `input_snapshot`, persisted valid `report_snapshot`, display helper ready path, i nepromijenjene `attempt_reports` / postojeći `assessment_reports` countove. Bez cron-a, bez scheduler-a, bez automatic background loop-a, bez report generation from view, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: stabilizacijski cleanup i handover za Team Dynamics Executive Overview report lane prije odluke o cron/scheduleru. Prvo pregledati git status, očistiti lokalni `supabase/.temp/*` i repomix šum bez commita, commitati todo sync, zatim pripremiti kratki handover sa trenutnim stanjem, dokazanim tokovima, preostalim rizicima i kriterijima za budući cron/scheduler. Ne uvoditi novi feature u ovom koraku.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
