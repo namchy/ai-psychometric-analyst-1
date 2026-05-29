@@ -60,6 +60,8 @@ type TeamDynamicsReportLifecycleDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
   loadAggregationVerification?: typeof loadTeamAssessmentAggregationVerification;
   persistInputSnapshot?: typeof persistTeamDynamicsReportInputSnapshot;
+  claimReportForProcessing?: typeof claimTeamDynamicsReportForProcessing;
+  markReportProcessingFailed?: typeof markTeamDynamicsReportProcessingFailed;
   now?: () => string;
 };
 
@@ -170,6 +172,26 @@ export type MarkTeamDynamicsReportProcessingFailedResult =
       reason: string;
       report?: TeamDynamicsReportRowSummary;
     };
+
+export type ProcessTeamDynamicsReportDryRunResult =
+  | {
+      ok: true;
+      operation: "dry_run_failed_as_expected";
+      claim: ClaimTeamDynamicsReportForProcessingResult & { ok: true };
+      final: MarkTeamDynamicsReportProcessingFailedResult & { ok: true };
+      marker: "TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED";
+    }
+  | {
+      ok: false;
+      operation: "claim_not_acquired" | "fail_transition_failed";
+      claim: ClaimTeamDynamicsReportForProcessingResult;
+      final?: MarkTeamDynamicsReportProcessingFailedResult;
+      marker: "TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED";
+      reason: string;
+    };
+
+export const TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED =
+  "TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED" as const;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -751,6 +773,60 @@ export async function markTeamDynamicsReportProcessingFailed(input: {
     failure: {
       errorMessage: failureMessage,
     },
+  };
+}
+
+export async function processTeamDynamicsReportDryRun(input: {
+  teamAssessmentReportId: string;
+  organizationId: string;
+}, deps: TeamDynamicsReportLifecycleDependencies = {}): Promise<ProcessTeamDynamicsReportDryRunResult> {
+  const claimReportForProcessing =
+    deps.claimReportForProcessing ?? claimTeamDynamicsReportForProcessing;
+  const markReportProcessingFailed =
+    deps.markReportProcessingFailed ?? markTeamDynamicsReportProcessingFailed;
+
+  const claimResult = await claimReportForProcessing(input, deps);
+
+  if (!claimResult.ok) {
+    return {
+      ok: false,
+      operation: "claim_not_acquired",
+      claim: claimResult,
+      marker: TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED,
+      reason: claimResult.reason,
+    };
+  }
+
+  const failureResult = await markReportProcessingFailed(
+    {
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: input.organizationId,
+      failure: {
+        code: TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED,
+        reason: "dry_run_provider_not_implemented",
+        message: "Team Dynamics dry-run processor does not generate a report snapshot yet.",
+      },
+    },
+    deps,
+  );
+
+  if (!failureResult.ok) {
+    return {
+      ok: false,
+      operation: "fail_transition_failed",
+      claim: claimResult,
+      final: failureResult,
+      marker: TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED,
+      reason: failureResult.reason,
+    };
+  }
+
+  return {
+    ok: true,
+    operation: "dry_run_failed_as_expected",
+    claim: claimResult,
+    final: failureResult,
+    marker: TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED,
   };
 }
 
