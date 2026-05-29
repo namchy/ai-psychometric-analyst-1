@@ -2673,8 +2673,62 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - UI ne importuje lifecycle processor direktno
   - report view route ne generiše report
 
+### Completion note — Team Dynamics Executive Overview failed retry/reset action + UI
+
+- Dodan je zaseban failed-only retry/reset action za Team Dynamics Executive Overview report.
+- Backend je proširen u `app/actions/team-assessments.ts`.
+- Retry action prima `teamAssessmentReportId` i opcioni `teamId`.
+- Retry action koristi authenticated user + active organization boundary.
+- Retry action traži tačno:
+  - `report_type = "team_dynamics_report_v1"`
+  - `report_version = "team_dynamics_executive_overview_v1"`
+  - `report_status = "failed"`
+- Retry action zatim zove samo postojeći lifecycle helper:
+  - `resetFailedTeamDynamicsReportToQueued(...)`
+- Na success retry action vraća controlled `queued`.
+- Za wrong organization/team boundary vraća controlled `unauthorized`.
+- Za wrong report kind vraća `unsupported_report_kind`.
+- Za `queued`, `processing` ili `ready` vraća `not_failed`.
+- Za lifecycle problem vraća controlled error.
+- Retry action ne zove OpenAI provider.
+- Retry action ne zove provider-backed processor.
+- Retry action ne dira `report_snapshot` direktno.
+- Retry action ne pokreće obradu nakon resetovanja.
+- Dodan je zaseban retry UI child:
+  - `components/dashboard/team-dynamics-report-retry-action.tsx`
+- Queue UI je ažuriran u:
+  - `components/dashboard/team-dynamics-report-queue-list.tsx`
+- UI sada po statusu radi ovako:
+  - `queued` -> `Obradi izvještaj`
+  - `processing` -> `Obrada u toku`
+  - `ready` -> `Otvori izvještaj`
+  - `failed` -> `Nije uspješno kreiran` + `Pokušaj ponovo`
+- Retry ne pokreće obradu; nakon uspješnog resetovanja report ide nazad u `queued`, pa korisnik zasebno može kliknuti `Obradi izvještaj`.
+- Nema combined “retry and process” ponašanja.
+- Dodani su testovi:
+  - `scripts/test-team-dynamics-executive-overview-retry-action.cjs`
+  - `scripts/test-team-dynamics-executive-overview-retry-ui.cjs`
+- Ažurirani su povezani manual UI/action i retry lifecycle testovi zbog novog retry slota.
+- Testovi potvrđuju:
+  - failed report kroz retry action prelazi u queued
+  - retry action ne zove OpenAI provider
+  - retry action ne zove provider-backed processor
+  - retry action odbija queued/processing/ready kao `not_failed`
+  - retry action odbija wrong report version
+  - retry action odbija wrong organization/team boundary
+  - failed report u UI prikazuje `Pokušaj ponovo`
+  - queued report i dalje prikazuje `Obradi izvještaj`
+  - ready report i dalje prikazuje `Otvori izvještaj`
+  - processing report i dalje prikazuje `Obrada u toku`
+  - UI ne prikazuje combined retry-and-process ponašanje
+  - UI ne importuje OpenAI provider direktno
+  - UI ne importuje lifecycle processor direktno
+  - report view route ne generiše report
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-retry-action.cjs`
+  - `node scripts/test-team-dynamics-executive-overview-retry-ui.cjs`
   - `node scripts/test-team-dynamics-executive-overview-manual-ui.cjs`
   - `node scripts/test-team-dynamics-executive-overview-manual-action.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-db-smoke.cjs`
@@ -2704,6 +2758,7 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 Ovi slice-evi nisu uveli:
 - no worker/cron/background loop
 - no automatic batch processing
+- no retry-and-process automation
 - no report generation from view
 - no Team Fit output
 - no scoring rerun
@@ -2714,10 +2769,9 @@ Ovi slice-evi nisu uveli:
 - no `attempt_reports` write
 - no existing `assessment_reports` write
 - no DB migration
-- no retry UI for failed reports
 
 **Sljedeći korak:**
-Sljedeći uski slice: failed report retry/reset action + minimal retry UI. Backend treba koristiti postojeći `resetFailedTeamDynamicsReportToQueued(...)` lifecycle helper uz auth/active organization/report-kind boundary; UI može dodati retry dugme samo za failed Team Dynamics Executive Overview report, bez automatske obrade, bez worker loop-a, bez report generation from view, bez renderer redesign-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: završni manual UI/real smoke za Team Dynamics Executive Overview report lane. Validirati kroz runtime da HR/admin može iz queue liste ručno pokrenuti `Obradi izvještaj`, dobiti ready report, otvoriti `Otvori izvještaj`, te za failed report koristiti `Pokušaj ponovo` koji samo vraća report u queued. Bez worker loop-a, bez automatic batch processing-a, bez report generation from view, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
