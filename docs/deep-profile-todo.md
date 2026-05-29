@@ -2722,8 +2722,40 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - processing report i dalje prikazuje `Obrada u toku`
   - UI ne prikazuje combined retry-and-process ponašanje
   - UI ne importuje OpenAI provider direktno
-  - UI ne importuje lifecycle processor direktno
-  - report view route ne generiše report
+- UI ne importuje lifecycle processor direktno
+- report view route ne generiše report
+
+### Completion note — Team Dynamics Executive Overview manual UI real smoke
+
+- Dodan je završni manual UI/real smoke za Team Dynamics Executive Overview report lane.
+- Smoke script je `scripts/test-team-dynamics-executive-overview-manual-ui-real-smoke.cjs`.
+- Smoke validira runtime korisnički tok kroz manual UI/action lane.
+- Smoke potvrđuje:
+  - queued report postoji
+  - queue lista renderuje `Obradi izvještaj`
+  - manual server action obrađuje queued report kroz real OpenAI provider-backed processor do `ready`
+  - `report_snapshot` je persisted
+  - `report_snapshot` prolazi validator
+  - queue lista nakon obrade nudi `Otvori izvještaj`
+  - read-only display helper učitava ready report
+  - pogrešan organization boundary vraća null
+  - pogrešan team boundary vraća null
+- Smoke posebno potvrđuje failed retry tok:
+  - failed report renderuje `Nije uspješno kreiran`
+  - failed report renderuje `Pokušaj ponovo`
+  - retry action vraća report u `queued`
+  - retry ne pokreće automatsku obradu
+  - nakon retry-ja queue UI ponovo pokazuje `Obradi izvještaj`
+- Smoke potvrđuje da `attempt_reports` count ostaje nepromijenjen.
+- Smoke potvrđuje da postojeći `assessment_reports` count ostaje nepromijenjen.
+- Tokom prvog realnog smoke pokušaja otkriven je stvarni bug u manual process actionu:
+  - action nije prosljeđivao `OPENAI_API_KEY` i `AI_REPORT_MODEL` u provider-backed processor path
+  - rezultat je bio controlled `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR`
+- Bug je zatvoren u `app/actions/team-assessments.ts`.
+- Manual action sada prosljeđuje OpenAI env opcije processoru.
+- Nakon fixa, manual UI real smoke i postojeći OpenAI DB smoke prolaze.
+- Sandbox `spawnSync node EPERM` je evidentiran kao sandbox ograničenje za child process, ne kao feature bug.
+- Nema renderer, provider, contract ili DB schema promjena u ovom smoke slice-u.
 
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
@@ -2731,6 +2763,7 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - `node scripts/test-team-dynamics-executive-overview-retry-ui.cjs`
   - `node scripts/test-team-dynamics-executive-overview-manual-ui.cjs`
   - `node scripts/test-team-dynamics-executive-overview-manual-action.cjs`
+  - `node scripts/test-team-dynamics-executive-overview-manual-ui-real-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-db-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-processor.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-provider.cjs`
@@ -2769,9 +2802,10 @@ Ovi slice-evi nisu uveli:
 - no `attempt_reports` write
 - no existing `assessment_reports` write
 - no DB migration
+- no renderer redesign
 
 **Sljedeći korak:**
-Sljedeći uski slice: završni manual UI/real smoke za Team Dynamics Executive Overview report lane. Validirati kroz runtime da HR/admin može iz queue liste ručno pokrenuti `Obradi izvještaj`, dobiti ready report, otvoriti `Otvori izvještaj`, te za failed report koristiti `Pokušaj ponovo` koji samo vraća report u queued. Bez worker loop-a, bez automatic batch processing-a, bez report generation from view, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: minimalni worker shell za Team Dynamics Executive Overview report lane, bez automatskog cron-a. Worker shell treba biti ručno pokretan script/helper koji pronađe ograničen broj queued `team_assessment_reports` redova za `team_dynamics_executive_overview_v1`, koristi postojeći provider-backed processor, poštuje lifecycle claim/failure/ready boundary, ima batch limit i dry-run/diagnostic mode, te ne uvodi report generation from view, scoring rerun, aggregation refresh, Team Fit output ili automatski background loop.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
