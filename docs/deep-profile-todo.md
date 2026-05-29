@@ -2519,8 +2519,58 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Provider skeleton ostaje namjerno van postojećeg lifecycle/mock processing path-a.
 - Runtime validator ostaje jedini gate za forbidden fields; nema silent repair logike.
 
+### Completion note — Team Dynamics Executive Overview OpenAI provider-backed processor
+
+* Dodan je provider-backed processor za prvi Team Dynamics report kind: `team_dynamics_executive_overview_v1`.
+* Processor je implementiran u `lib/b2b/team-dynamics-report-lifecycle.ts`.
+* Glavni helper je `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`.
+* Processor koristi postojeći lifecycle boundary:
+
+  * `claimTeamDynamicsReportForProcessing(...)`
+  * `markTeamDynamicsReportProcessingFailed(...)`
+* Processor ne uvodi worker/cron/background loop.
+* Processor prima `teamAssessmentReportId`, `organizationId` i dependency/test injection opcije.
+* Ako claim nije uspješan, processor vraća controlled `claim_not_acquired` rezultat i ne radi dodatne write-ove.
+* Ako claim uspije, processor koristi persisted `input_snapshot` iz claim/persist koraka.
+* Processor provjerava da `input_snapshot` postoji i da ima minimalni očekivani Team Dynamics input shape.
+* Processor zatim poziva `generateTeamDynamicsExecutiveOverviewWithOpenAI(...)`.
+* Ako provider vrati failure, processor mapira failure u controlled marker i završava report kroz `markTeamDynamicsReportProcessingFailed(...)`.
+* Ako provider vrati success, processor dodatno validira snapshot kroz `validateTeamDynamicsExecutiveOverviewSnapshot(...)`.
+* Ako validacija prođe, processor update-uje isti `team_assessment_reports` row:
+
+  * `report_status = "ready"`
+  * `report_snapshot = provider snapshot`
+  * `completed_at = now`
+  * `error_message = null`
+* Processor ne mijenja `included_member_ids_snapshot`.
+* Failure mapping:
+
+  * `config_error` -> `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR`
+  * `provider_error` -> `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR`
+  * `parse_failure` -> `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PARSE_FAILURE`
+  * `validation_failure` -> `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE`
+  * missing persisted input snapshot -> `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING`
+  * invalid persisted input snapshot shape -> `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID`
+  * post-provider revalidation failure -> `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE`
+* Dodan je test `scripts/test-team-dynamics-executive-overview-openai-processor.cjs`.
+* Test pokriva:
+
+  * fake/stub valid provider path do `ready`
+  * persisted `report_snapshot`
+  * validator gate
+  * `error_message = null` na successu
+  * parse failure kao controlled `failed`
+  * validation failure kao controlled `failed`
+  * config/provider error kao controlled `failed`
+  * `claim_not_acquired` bez dodatnih write-ova
+  * nema write-a u `attempt_reports`
+  * nema write-a u postojećem `assessment_reports`
+* Existing local lane smoke i dalje prolazi i potvrđuje da `attempt_reports` i `assessment_reports` count ostaju nepromijenjeni.
+* Provider-backed processor ostaje namjerno van worker loop-a i nije povezan sa report view generacijom.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-openai-processor.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-provider.cjs`
   - `node scripts/test-team-dynamics-executive-overview-local-lane-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-renderer.cjs`
@@ -2551,14 +2601,14 @@ Ovi slice-evi nisu uveli:
 - no aggregation rerun/refresh
 - no raw responses read
 - no individual answer display
-- no individual score value display
+- no individual score value display in UI
 - no `attempt_reports` write
 - no existing `assessment_reports` write
 - no UI changes
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: provider-backed Team Dynamics Executive Overview processor koji koristi postojeći lifecycle claim/failure/ready boundary i OpenAI provider skeleton da obradi queued `team_assessment_reports` row u `ready` ili controlled `failed`, bez worker loop-a, bez renderer promjena, bez report generation iz view-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: real OpenAI DB-backed smoke za Team Dynamics Executive Overview provider-backed processor. Smoke treba koristiti cleanup-safe ili existing ready fixture, queued `team_assessment_reports` row, `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`, stvarni OpenAI provider kroz env, validirati persisted `report_snapshot`, potvrditi read-only display helper happy path i potvrditi da nema write-a u `attempt_reports` ili postojeći `assessment_reports`. Bez worker loop-a, bez report generation from view, bez renderer promjena, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
