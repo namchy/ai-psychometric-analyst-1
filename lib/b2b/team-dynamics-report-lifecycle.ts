@@ -14,6 +14,10 @@ import {
   type GenerateTeamDynamicsExecutiveOverviewMockSnapshotResult,
 } from "@/lib/b2b/team-dynamics-executive-overview-mock";
 import {
+  generateTeamDynamicsExecutiveOverviewWithOpenAI,
+  type GenerateTeamDynamicsExecutiveOverviewWithOpenAIResult,
+} from "@/lib/b2b/team-dynamics-executive-overview-openai";
+import {
   persistTeamDynamicsReportInputSnapshot,
   type TeamDynamicsReportInputSnapshot,
   type PersistTeamDynamicsReportInputSnapshotResult,
@@ -72,6 +76,10 @@ type TeamDynamicsReportLifecycleDependencies = {
   claimReportForProcessing?: typeof claimTeamDynamicsReportForProcessing;
   markReportProcessingFailed?: typeof markTeamDynamicsReportProcessingFailed;
   buildExecutiveOverviewMockSnapshot?: typeof generateTeamDynamicsExecutiveOverviewMockSnapshot;
+  generateExecutiveOverviewWithOpenAI?: typeof generateTeamDynamicsExecutiveOverviewWithOpenAI;
+  executiveOverviewOpenAiOptions?: Parameters<
+    typeof generateTeamDynamicsExecutiveOverviewWithOpenAI
+  >[1];
   validateExecutiveOverviewSnapshot?: typeof validateTeamDynamicsExecutiveOverviewSnapshot;
   now?: () => string;
 };
@@ -211,6 +219,14 @@ export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID =
   "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID" as const;
 export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID =
   "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID" as const;
+export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR =
+  "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR" as const;
+export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR =
+  "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR" as const;
+export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PARSE_FAILURE =
+  "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PARSE_FAILURE" as const;
+export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE =
+  "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE" as const;
 
 export type ProcessTeamDynamicsExecutiveOverviewMockResult =
   | {
@@ -236,6 +252,40 @@ export type ProcessTeamDynamicsExecutiveOverviewMockResult =
         | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING
         | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID
         | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID;
+      reason: string;
+      snapshot?: Record<string, unknown>;
+    };
+
+export type ProcessTeamDynamicsExecutiveOverviewOpenAiResult =
+  | {
+      ok: true;
+      operation: "completed_ready";
+      claim: ClaimTeamDynamicsReportForProcessingResult & { ok: true };
+      provider: GenerateTeamDynamicsExecutiveOverviewWithOpenAIResult & { ok: true };
+      report: TeamDynamicsReportRowSummary;
+      snapshot: TeamDynamicsExecutiveOverviewSnapshot;
+      finalStatus: "ready";
+    }
+  | {
+      ok: false;
+      operation:
+        | "claim_not_acquired"
+        | "input_snapshot_missing"
+        | "input_snapshot_invalid"
+        | "provider_failed"
+        | "snapshot_invalid"
+        | "ready_update_failed"
+        | "fail_transition_failed";
+      claim: ClaimTeamDynamicsReportForProcessingResult;
+      provider?: GenerateTeamDynamicsExecutiveOverviewWithOpenAIResult;
+      final?: MarkTeamDynamicsReportProcessingFailedResult;
+      marker:
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PARSE_FAILURE
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE;
       reason: string;
       snapshot?: Record<string, unknown>;
     };
@@ -1135,6 +1185,283 @@ export async function processTeamDynamicsExecutiveOverviewMock(input: {
     ok: true,
     operation: "completed_ready",
     claim: claimResult,
+    report: readyResult.report,
+    snapshot: validationResult.value,
+    finalStatus: "ready",
+  };
+}
+
+function mapExecutiveOverviewOpenAiFailureMarker(
+  providerResult: GenerateTeamDynamicsExecutiveOverviewWithOpenAIResult & { ok: false },
+): {
+  marker:
+    | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR
+    | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR
+    | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PARSE_FAILURE
+    | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE;
+  reason: string;
+  message: string;
+} {
+  switch (providerResult.code) {
+    case "config_error":
+      return {
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR,
+        reason: providerResult.code,
+        message: providerResult.reason,
+      };
+    case "provider_error":
+      return {
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR,
+        reason: providerResult.code,
+        message: providerResult.reason,
+      };
+    case "parse_failure":
+      return {
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PARSE_FAILURE,
+        reason: providerResult.code,
+        message: providerResult.reason,
+      };
+    case "validation_failure":
+    default:
+      return {
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE,
+        reason: providerResult.code,
+        message:
+          providerResult.validationErrors?.join(" | ") || providerResult.reason,
+      };
+  }
+}
+
+export async function processTeamDynamicsExecutiveOverviewWithOpenAI(input: {
+  teamAssessmentReportId: string;
+  organizationId: string;
+}, deps: TeamDynamicsReportLifecycleDependencies = {}): Promise<ProcessTeamDynamicsExecutiveOverviewOpenAiResult> {
+  const claimReportForProcessing =
+    deps.claimReportForProcessing ?? claimTeamDynamicsReportForProcessing;
+  const markReportProcessingFailed =
+    deps.markReportProcessingFailed ?? markTeamDynamicsReportProcessingFailed;
+  const generateExecutiveOverviewWithOpenAI =
+    deps.generateExecutiveOverviewWithOpenAI ??
+    generateTeamDynamicsExecutiveOverviewWithOpenAI;
+  const validateExecutiveOverviewSnapshot =
+    deps.validateExecutiveOverviewSnapshot ??
+    validateTeamDynamicsExecutiveOverviewSnapshot;
+
+  const claimResult = await claimReportForProcessing(input, deps);
+
+  if (!claimResult.ok) {
+    return {
+      ok: false,
+      operation: "claim_not_acquired",
+      claim: claimResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+      reason: claimResult.reason,
+    };
+  }
+
+  const persistedInputSnapshot =
+    asInputSnapshot(claimResult.report.inputSnapshot) ??
+    asInputSnapshot(claimResult.snapshot.snapshot);
+
+  if (!persistedInputSnapshot) {
+    const failureResult = await markReportProcessingFailed(
+      {
+        teamAssessmentReportId: input.teamAssessmentReportId,
+        organizationId: input.organizationId,
+        failure: {
+          code: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+          reason: "input_snapshot_missing",
+          message:
+            "Team Dynamics Executive Overview OpenAI processing requires a persisted input snapshot.",
+        },
+      },
+      deps,
+    );
+
+    if (!failureResult.ok) {
+      return {
+        ok: false,
+        operation: "fail_transition_failed",
+        claim: claimResult,
+        final: failureResult,
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+        reason: failureResult.reason,
+      };
+    }
+
+    return {
+      ok: false,
+      operation: "input_snapshot_missing",
+      claim: claimResult,
+      final: failureResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+      reason: "Persisted input snapshot is missing after claim.",
+    };
+  }
+
+  const requiredInputFieldsPresent =
+    persistedInputSnapshot.inputType === "team_dynamics_report_input_v1" &&
+    persistedInputSnapshot.inputVersion === "team_dynamics_report_input_v1" &&
+    isNonEmptyString(persistedInputSnapshot.organizationId) &&
+    isNonEmptyString(persistedInputSnapshot.teamId) &&
+    persistedInputSnapshot.teamContext !== null &&
+    typeof persistedInputSnapshot.teamContext === "object" &&
+    persistedInputSnapshot.aggregationSummary !== null &&
+    typeof persistedInputSnapshot.aggregationSummary === "object" &&
+    Array.isArray(persistedInputSnapshot.aggregationSummary.scoreEntryAggregations);
+
+  if (!requiredInputFieldsPresent) {
+    const failureResult = await markReportProcessingFailed(
+      {
+        teamAssessmentReportId: input.teamAssessmentReportId,
+        organizationId: input.organizationId,
+        failure: {
+          code: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID,
+          reason: "input_snapshot_invalid",
+          message:
+            "Team Dynamics Executive Overview OpenAI processing received an invalid input snapshot shape.",
+        },
+      },
+      deps,
+    );
+
+    if (!failureResult.ok) {
+      return {
+        ok: false,
+        operation: "fail_transition_failed",
+        claim: claimResult,
+        final: failureResult,
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID,
+        reason: failureResult.reason,
+      };
+    }
+
+    return {
+      ok: false,
+      operation: "input_snapshot_invalid",
+      claim: claimResult,
+      final: failureResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID,
+      reason:
+        "Persisted input snapshot is invalid for Team Dynamics Executive Overview OpenAI processing.",
+    };
+  }
+
+  const providerResult = await generateExecutiveOverviewWithOpenAI(
+    persistedInputSnapshot,
+    deps.executiveOverviewOpenAiOptions ?? {
+      apiKey: null,
+      model: null,
+      now: deps.now,
+    },
+  );
+
+  if (!providerResult.ok) {
+    const mappedFailure = mapExecutiveOverviewOpenAiFailureMarker(providerResult);
+    const failureResult = await markReportProcessingFailed(
+      {
+        teamAssessmentReportId: input.teamAssessmentReportId,
+        organizationId: input.organizationId,
+        failure: {
+          code: mappedFailure.marker,
+          reason: mappedFailure.reason,
+          message: mappedFailure.message,
+        },
+      },
+      deps,
+    );
+
+    if (!failureResult.ok) {
+      return {
+        ok: false,
+        operation: "fail_transition_failed",
+        claim: claimResult,
+        provider: providerResult,
+        final: failureResult,
+        marker: mappedFailure.marker,
+        reason: failureResult.reason,
+      };
+    }
+
+    return {
+      ok: false,
+      operation: "provider_failed",
+      claim: claimResult,
+      provider: providerResult,
+      final: failureResult,
+      marker: mappedFailure.marker,
+      reason: mappedFailure.message,
+    };
+  }
+
+  const validationResult = validateExecutiveOverviewSnapshot(providerResult.snapshot);
+
+  if (!validationResult.ok) {
+    const validationFailureReason = validationResult.errors.join(" | ");
+    const failureResult = await markReportProcessingFailed(
+      {
+        teamAssessmentReportId: input.teamAssessmentReportId,
+        organizationId: input.organizationId,
+        failure: {
+          code: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE,
+          reason: "post_provider_snapshot_validation_failed",
+          message: validationFailureReason,
+        },
+      },
+      deps,
+    );
+
+    if (!failureResult.ok) {
+      return {
+        ok: false,
+        operation: "fail_transition_failed",
+        claim: claimResult,
+        provider: providerResult,
+        final: failureResult,
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE,
+        reason: failureResult.reason,
+        snapshot: providerResult.snapshot,
+      };
+    }
+
+    return {
+      ok: false,
+      operation: "snapshot_invalid",
+      claim: claimResult,
+      provider: providerResult,
+      final: failureResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE,
+      reason: validationFailureReason,
+      snapshot: providerResult.snapshot,
+    };
+  }
+
+  const readyResult = await markTeamDynamicsReportReady(
+    {
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: input.organizationId,
+      reportSnapshot: validationResult.value,
+    },
+    deps,
+  );
+
+  if (!readyResult.ok) {
+    return {
+      ok: false,
+      operation: "ready_update_failed",
+      claim: claimResult,
+      provider: providerResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE,
+      reason: readyResult.reason,
+      snapshot: validationResult.value,
+    };
+  }
+
+  return {
+    ok: true,
+    operation: "completed_ready",
+    claim: claimResult,
+    provider: providerResult,
     report: readyResult.report,
     snapshot: validationResult.value,
     finalStatus: "ready",
