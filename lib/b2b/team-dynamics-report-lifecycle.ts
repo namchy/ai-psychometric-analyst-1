@@ -193,6 +193,26 @@ export type ProcessTeamDynamicsReportDryRunResult =
 export const TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED =
   "TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED" as const;
 
+export type ResetFailedTeamDynamicsReportToQueuedResult =
+  | {
+      ok: true;
+      operation: "reset_to_queued";
+      report: TeamDynamicsReportRowSummary;
+    }
+  | {
+      ok: false;
+      operation:
+        | "invalid_payload"
+        | "report_not_found"
+        | "already_queued"
+        | "processing_not_resettable"
+        | "ready_not_resettable"
+        | "not_resettable"
+        | "update_failed";
+      reason: string;
+      report?: TeamDynamicsReportRowSummary;
+    };
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -827,6 +847,134 @@ export async function processTeamDynamicsReportDryRun(input: {
     claim: claimResult,
     final: failureResult,
     marker: TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED,
+  };
+}
+
+export async function resetFailedTeamDynamicsReportToQueued(input: {
+  teamAssessmentReportId: string;
+  organizationId: string;
+}, deps: TeamDynamicsReportLifecycleDependencies = {}): Promise<ResetFailedTeamDynamicsReportToQueuedResult> {
+  if (!isNonEmptyString(input.teamAssessmentReportId)) {
+    return {
+      ok: false,
+      operation: "invalid_payload",
+      reason: "teamAssessmentReportId is required.",
+    };
+  }
+
+  if (!isNonEmptyString(input.organizationId)) {
+    return {
+      ok: false,
+      operation: "invalid_payload",
+      reason: "organizationId is required.",
+    };
+  }
+
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+
+  let reportRow: TeamAssessmentReportRow | null = null;
+
+  try {
+    reportRow = await loadTeamDynamicsReportRowForOrganization({
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: input.organizationId,
+      supabase,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      operation: "report_not_found",
+      reason:
+        error instanceof Error
+          ? error.message
+          : "Failed to load Team Dynamics report row.",
+    };
+  }
+
+  if (!reportRow) {
+    return {
+      ok: false,
+      operation: "report_not_found",
+      reason: "Team Dynamics report row was not found for this organization.",
+    };
+  }
+
+  const report = mapRow(reportRow);
+
+  if (reportRow.report_status === "queued") {
+    return {
+      ok: false,
+      operation: "already_queued",
+      reason: "Team Dynamics report is already queued.",
+      report,
+    };
+  }
+
+  if (reportRow.report_status === "processing") {
+    return {
+      ok: false,
+      operation: "processing_not_resettable",
+      reason: "Processing Team Dynamics report rows are not resettable.",
+      report,
+    };
+  }
+
+  if (reportRow.report_status === "ready") {
+    return {
+      ok: false,
+      operation: "ready_not_resettable",
+      reason: "Ready Team Dynamics report rows are not resettable.",
+      report,
+    };
+  }
+
+  if (reportRow.report_status !== "failed") {
+    return {
+      ok: false,
+      operation: "not_resettable",
+      reason: "Team Dynamics report cannot be reset to queued from its current state.",
+      report,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("team_assessment_reports")
+    .update({
+      report_status: "queued",
+      error_message: null,
+      started_at: null,
+      completed_at: null,
+    })
+    .eq("id", input.teamAssessmentReportId)
+    .eq("organization_id", input.organizationId)
+    .eq("report_status", "failed")
+    .select(
+      "id, organization_id, team_id, team_assessment_assignment_id, selection_draft_id, aggregation_snapshot_id, report_type, report_version, report_status, generator_type, model_name, included_member_ids_snapshot, input_snapshot, report_snapshot, error_message, queued_at, started_at, completed_at, created_at, updated_at",
+    )
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      operation: "update_failed",
+      reason: `Failed to reset Team Dynamics report to queued: ${error.message}`,
+      report,
+    };
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      operation: "not_resettable",
+      reason: "Team Dynamics report could not be reset because it is no longer failed.",
+      report,
+    };
+  }
+
+  return {
+    ok: true,
+    operation: "reset_to_queued",
+    report: mapRow(data as TeamAssessmentReportRow),
   };
 }
 
