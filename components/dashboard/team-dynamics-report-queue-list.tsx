@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TeamDynamicsReportProcessAction } from "@/components/dashboard/team-dynamics-report-process-action";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
@@ -87,6 +88,21 @@ export function TeamDynamicsReportQueueList({
                   <div className="space-y-1 text-sm leading-6 text-slate-600 sm:text-right">
                     <p>Uključeno članova: {reportRow.includedMemberIdsSnapshot.length}</p>
                     <p>Verzija izvještaja: {reportRow.reportVersion}</p>
+                    {reportRow.reportStatus === "queued" ? (
+                      <TeamDynamicsReportProcessAction
+                        teamAssessmentReportId={reportRow.id}
+                        teamId={teamId}
+                      />
+                    ) : null}
+                    {reportRow.reportStatus === "processing" ? (
+                      <div className="pt-1">
+                        <span
+                          className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}
+                        >
+                          Obrada u toku
+                        </span>
+                      </div>
+                    ) : null}
                     {reportRow.reportStatus === "ready" ? (
                       <div className="pt-1">
                         <Link
@@ -95,6 +111,13 @@ export function TeamDynamicsReportQueueList({
                         >
                           Otvori izvještaj
                         </Link>
+                      </div>
+                    ) : null}
+                    {reportRow.reportStatus === "failed" ? (
+                      <div className="pt-1">
+                        <span className="text-sm font-medium text-slate-500">
+                          Nije uspješno kreiran
+                        </span>
                       </div>
                     ) : null}
                   </div>
