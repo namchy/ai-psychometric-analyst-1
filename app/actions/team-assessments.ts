@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
 import { createTeamDynamicsAssessmentForTeam } from "@/lib/assessment/team-assessments";
 import {
@@ -41,7 +42,14 @@ import {
   type TeamDynamicsReportSelectionReadModel,
 } from "@/lib/b2b/team-dynamics-report-selection";
 import { replaceTeamDynamicsReportSelectionInclusionSet } from "@/lib/b2b/team-dynamics-report-selection-inclusion";
-import { queueTeamDynamicsReportShell } from "@/lib/b2b/team-dynamics-report-lifecycle";
+import {
+  processTeamDynamicsExecutiveOverviewWithOpenAI,
+  queueTeamDynamicsReportShell,
+  TEAM_DYNAMICS_REPORT_TYPE,
+  TEAM_DYNAMICS_REPORT_VERSION,
+  type ProcessTeamDynamicsExecutiveOverviewOpenAiResult,
+  type TeamDynamicsReportStatus,
+} from "@/lib/b2b/team-dynamics-report-lifecycle";
 import {
   persistValidatedTeamDynamicsMixedAnswer,
   type TeamDynamicsMixedAnswerPersistenceResult,
@@ -284,6 +292,15 @@ type TeamDynamicsAssignmentParticipantContext = {
   teamAssessmentAssignmentId: string;
 };
 
+type TeamDynamicsReportActionContext = {
+  id: string;
+  organizationId: string;
+  teamId: string;
+  reportType: string;
+  reportVersion: string;
+  reportStatus: TeamDynamicsReportStatus;
+};
+
 export type ReplaceTeamDynamicsReportSelectionInclusionActionInput = {
   teamAssessmentAssignmentId: string;
   includedTeamAssessmentParticipantIds: string[];
@@ -354,6 +371,45 @@ type QueueTeamDynamicsReportActionDependencies = {
     },
   ) => Promise<TeamDynamicsAssignmentActionContext | null>;
   queueReportShell?: typeof queueTeamDynamicsReportShell;
+};
+
+export type ProcessTeamDynamicsExecutiveOverviewReportActionInput = {
+  teamAssessmentReportId: string;
+  teamId?: string;
+};
+
+export type ProcessTeamDynamicsExecutiveOverviewReportActionResult =
+  | {
+      ok: true;
+      status: "ready";
+      message: string;
+      reportId: string;
+      teamId: string;
+    }
+  | {
+      ok: false;
+      status:
+        | "unauthorized"
+        | "not_queued"
+        | "unsupported_report_kind"
+        | "failed"
+        | "error";
+      message: string;
+      reportId: string | null;
+      teamId: string | null;
+      marker?: string;
+      processorOperation?: ProcessTeamDynamicsExecutiveOverviewOpenAiResult["operation"];
+      providerCode?: string;
+    };
+
+type ProcessTeamDynamicsExecutiveOverviewReportActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  getActiveOrganization?: typeof getActiveOrganizationForUser;
+  loadReportContext?: (input: {
+    teamAssessmentReportId: string;
+  }) => Promise<TeamDynamicsReportActionContext | null>;
+  processExecutiveOverviewReport?: typeof processTeamDynamicsExecutiveOverviewWithOpenAI;
+  revalidate?: typeof revalidatePath;
 };
 
 function isNonEmptyString(value: unknown): value is string {
@@ -501,6 +557,46 @@ async function loadTeamAssessmentParticipantAssignmentContexts(input: {
       teamAssessmentAssignmentId: row.team_assessment_assignment_id,
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+async function loadTeamDynamicsReportActionContext(input: {
+  teamAssessmentReportId: string;
+}): Promise<TeamDynamicsReportActionContext | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("team_assessment_reports")
+    .select("id, organization_id, team_id, report_type, report_version, report_status")
+    .eq("id", input.teamAssessmentReportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load Team Dynamics report action context: ${error.message}`);
+  }
+
+  const report = (data ??
+    null) as
+    | {
+        id: string;
+        organization_id: string;
+        team_id: string;
+        report_type: string;
+        report_version: string;
+        report_status: TeamDynamicsReportStatus;
+      }
+    | null;
+
+  if (!report) {
+    return null;
+  }
+
+  return {
+    id: report.id,
+    organizationId: report.organization_id,
+    teamId: report.team_id,
+    reportType: report.report_type,
+    reportVersion: report.report_version,
+    reportStatus: report.report_status,
+  };
 }
 
 function normalizeIncludedTeamAssessmentParticipantIds(values: string[]): string[] {
@@ -922,6 +1018,203 @@ export async function queueTeamDynamicsReportAction(
       ok: false,
       status: "error",
       message: "Unable to queue the Team Dynamics report right now.",
+    };
+  }
+}
+
+function getUnsupportedTeamDynamicsReportKindMessage(): string {
+  return "Ovaj Team Dynamics izvještaj nije podržan za ručnu obradu u ovom slice-u.";
+}
+
+function getProcessorFailureMessage(
+  result: Extract<ProcessTeamDynamicsExecutiveOverviewOpenAiResult, { ok: false }>,
+): string {
+  switch (result.marker) {
+    case "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_CONFIG_ERROR":
+      return "OpenAI konfiguracija za Team Dynamics Executive Overview nije spremna.";
+    case "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR":
+      return "OpenAI provider nije vratio upotrebljiv Team Dynamics Executive Overview rezultat.";
+    case "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PARSE_FAILURE":
+      return "OpenAI odgovor za Team Dynamics Executive Overview nije bilo moguće parsirati.";
+    case "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_VALIDATION_FAILURE":
+      return "OpenAI odgovor za Team Dynamics Executive Overview nije prošao runtime validaciju.";
+    case "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID":
+      return "Persisted Team Dynamics input snapshot nije validan za obradu izvještaja.";
+    case "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING":
+    default:
+      return "Persisted Team Dynamics input snapshot nije dostupan za obradu izvještaja.";
+  }
+}
+
+export async function processTeamDynamicsExecutiveOverviewReportAction(
+  input: ProcessTeamDynamicsExecutiveOverviewReportActionInput,
+  deps: ProcessTeamDynamicsExecutiveOverviewReportActionDependencies = {},
+): Promise<ProcessTeamDynamicsExecutiveOverviewReportActionResult> {
+  if (!isNonEmptyString(input.teamAssessmentReportId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "teamAssessmentReportId is required.",
+      reportId: null,
+      teamId: null,
+    };
+  }
+
+  if (typeof input.teamId !== "undefined" && !isNonEmptyString(input.teamId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "teamId must be a non-empty string when provided.",
+      reportId: input.teamAssessmentReportId,
+      teamId: null,
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization =
+    deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const loadReportContext =
+    deps.loadReportContext ?? loadTeamDynamicsReportActionContext;
+  const processExecutiveOverviewReport =
+    deps.processExecutiveOverviewReport ??
+    processTeamDynamicsExecutiveOverviewWithOpenAI;
+  const revalidate = deps.revalidate ?? revalidatePath;
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+
+    if (!organization) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Active organization is not available for this user.",
+        reportId: input.teamAssessmentReportId,
+        teamId: input.teamId ?? null,
+      };
+    }
+
+    const reportContext = await loadReportContext({
+      teamAssessmentReportId: input.teamAssessmentReportId,
+    });
+
+    if (
+      !reportContext ||
+      reportContext.organizationId !== organization.id ||
+      (isNonEmptyString(input.teamId) && reportContext.teamId !== input.teamId)
+    ) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Dynamics report was not found in the active organization.",
+        reportId: input.teamAssessmentReportId,
+        teamId: input.teamId ?? null,
+      };
+    }
+
+    if (
+      reportContext.reportType !== TEAM_DYNAMICS_REPORT_TYPE ||
+      reportContext.reportVersion !== TEAM_DYNAMICS_REPORT_VERSION
+    ) {
+      return {
+        ok: false,
+        status: "unsupported_report_kind",
+        message: getUnsupportedTeamDynamicsReportKindMessage(),
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+      };
+    }
+
+    if (reportContext.reportStatus !== "queued") {
+      return {
+        ok: false,
+        status: "not_queued",
+        message: "Samo queued Team Dynamics Executive Overview report može biti ručno obrađen.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+      };
+    }
+
+    const result = await processExecutiveOverviewReport({
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: organization.id,
+    });
+
+    if (!result.ok) {
+      if (
+        result.operation === "provider_failed" ||
+        result.operation === "input_snapshot_missing" ||
+        result.operation === "input_snapshot_invalid" ||
+        result.operation === "snapshot_invalid"
+      ) {
+        revalidate(`/dashboard/teams/${reportContext.teamId}`);
+        revalidate(`/dashboard/teams/${reportContext.teamId}/reports/new`);
+
+        return {
+          ok: false,
+          status: "failed",
+          message: getProcessorFailureMessage(result),
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          marker: result.marker,
+          processorOperation: result.operation,
+          providerCode: result.provider?.code,
+        };
+      }
+
+      if (result.operation === "claim_not_acquired") {
+        return {
+          ok: false,
+          status: "not_queued",
+          message: "Team Dynamics report više nije queued i nije preuzet za ručnu obradu.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          marker: result.marker,
+          processorOperation: result.operation,
+          providerCode: result.provider?.code,
+        };
+      }
+
+      return {
+        ok: false,
+        status: "error",
+        message: "Ručno pokretanje Team Dynamics Executive Overview obrade nije uspjelo.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        marker: result.marker,
+        processorOperation: result.operation,
+        providerCode: result.provider?.code,
+      };
+    }
+
+    revalidate(`/dashboard/teams/${reportContext.teamId}`);
+    revalidate(`/dashboard/teams/${reportContext.teamId}/reports/new`);
+    revalidate(`/dashboard/teams/${reportContext.teamId}/reports/${reportContext.id}`);
+
+    return {
+      ok: true,
+      status: "ready",
+      message: "Team Dynamics Executive Overview je obrađen i spreman za pregled.",
+      reportId: result.report.id,
+      teamId: result.report.teamId,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Authentication required.",
+        reportId: input.teamAssessmentReportId,
+        teamId: input.teamId ?? null,
+      };
+    }
+
+    return {
+      ok: false,
+      status: "error",
+      message: "Ručno pokretanje Team Dynamics Executive Overview obrade nije dostupno.",
+      reportId: input.teamAssessmentReportId,
+      teamId: input.teamId ?? null,
     };
   }
 }
