@@ -1176,6 +1176,11 @@ export async function processTeamDynamicsExecutiveOverviewReportAction(
     const result = await processExecutiveOverviewReport({
       teamAssessmentReportId: input.teamAssessmentReportId,
       organizationId: organization.id,
+    }, {
+      executiveOverviewOpenAiOptions: {
+        apiKey: process.env.OPENAI_API_KEY ?? null,
+        model: process.env.AI_REPORT_MODEL ?? null,
+      },
     });
 
     if (!result.ok) {
