@@ -1,7 +1,9 @@
+import Link from "next/link";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
   DashboardStatusBadge,
+  getDashboardCtaClassName,
 } from "@/components/dashboard/primitives";
 import type {
   TeamDynamicsReportRowSummary,
@@ -9,6 +11,7 @@ import type {
 } from "@/lib/b2b/team-dynamics-report-lifecycle";
 
 type TeamDynamicsReportQueueListProps = {
+  teamId: string;
   reportRows: TeamDynamicsReportRowSummary[];
 };
 
@@ -47,6 +50,7 @@ function getReportTimestampLabel(reportRow: TeamDynamicsReportRowSummary): strin
 }
 
 export function TeamDynamicsReportQueueList({
+  teamId,
   reportRows,
 }: TeamDynamicsReportQueueListProps) {
   return (
@@ -83,6 +87,16 @@ export function TeamDynamicsReportQueueList({
                   <div className="space-y-1 text-sm leading-6 text-slate-600 sm:text-right">
                     <p>Uključeno članova: {reportRow.includedMemberIdsSnapshot.length}</p>
                     <p>Verzija izvještaja: {reportRow.reportVersion}</p>
+                    {reportRow.reportStatus === "ready" ? (
+                      <div className="pt-1">
+                        <Link
+                          className={getDashboardCtaClassName({ variant: "secondary", size: "sm" })}
+                          href={`/dashboard/teams/${teamId}/reports/${reportRow.id}`}
+                        >
+                          Otvori izvještaj
+                        </Link>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
