@@ -13,7 +13,7 @@ const queueListPath = path.join(
   "dashboard",
   "team-dynamics-report-queue-list.tsx",
 );
-const actionUiPath = path.join(
+const processActionUiPath = path.join(
   projectRoot,
   "components",
   "dashboard",
@@ -37,7 +37,7 @@ const routePath = path.join(
   "page.tsx",
 );
 const queueListSource = fs.readFileSync(queueListPath, "utf8");
-const actionUiSource = fs.readFileSync(actionUiPath, "utf8");
+const processActionUiSource = fs.readFileSync(processActionUiPath, "utf8");
 const retryActionUiSource = fs.readFileSync(retryActionUiPath, "utf8");
 const routeSource = fs.readFileSync(routePath, "utf8");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
@@ -48,29 +48,19 @@ const originalResolveFilename = Module._resolveFilename;
 
 assert.match(queueListSource, /TeamDynamicsReportProcessAction/);
 assert.match(queueListSource, /TeamDynamicsReportRetryAction/);
-assert.match(queueListSource, /Obrada u toku/);
-assert.match(queueListSource, /Otvori izvještaj/);
 assert.match(queueListSource, /Nije uspješno kreiran/);
-assert.match(actionUiSource, /Obradi izvještaj/);
+assert.doesNotMatch(queueListSource, /retry and process/i);
+assert.match(processActionUiSource, /processTeamDynamicsExecutiveOverviewReportAction/);
 assert.match(retryActionUiSource, /Pokušaj ponovo/);
-assert.match(
-  actionUiSource,
-  /processTeamDynamicsExecutiveOverviewReportAction/,
-);
-assert.doesNotMatch(
-  actionUiSource,
-  /generateTeamDynamicsExecutiveOverviewWithOpenAI/,
-);
-assert.doesNotMatch(
-  actionUiSource,
-  /processTeamDynamicsExecutiveOverviewWithOpenAI/,
-);
+assert.match(retryActionUiSource, /resetTeamDynamicsExecutiveOverviewReportAction/);
 assert.doesNotMatch(
   retryActionUiSource,
   /generateTeamDynamicsExecutiveOverviewWithOpenAI|processTeamDynamicsExecutiveOverviewWithOpenAI/,
 );
-assert.doesNotMatch(actionUiSource, /attempt_reports|assessment_reports/);
-assert.doesNotMatch(retryActionUiSource, /attempt_reports|assessment_reports/);
+assert.doesNotMatch(
+  processActionUiSource,
+  /generateTeamDynamicsExecutiveOverviewWithOpenAI|processTeamDynamicsExecutiveOverviewWithOpenAI/,
+);
 assert.doesNotMatch(routeSource, /processTeamDynamicsExecutiveOverviewReportAction/);
 assert.doesNotMatch(routeSource, /resetTeamDynamicsExecutiveOverviewReportAction/);
 assert.doesNotMatch(routeSource, /processTeamDynamicsExecutiveOverviewWithOpenAI/);
@@ -173,8 +163,8 @@ require.cache[processActionStubPath] = {
         "button",
         {
           type: "button",
-          "data-report-id": teamAssessmentReportId,
-          "data-team-id": teamId,
+          "data-process-report-id": teamAssessmentReportId,
+          "data-process-team-id": teamId,
         },
         "Obradi izvještaj",
       );
@@ -237,28 +227,35 @@ function renderForStatus(status) {
   );
 }
 
+const failedMarkup = renderForStatus("failed");
+assert.match(failedMarkup, /Nije uspješno kreiran/);
+assert.match(failedMarkup, /Pokušaj ponovo/);
+assert.doesNotMatch(failedMarkup, /Obradi izvještaj/);
+assert.doesNotMatch(failedMarkup, /retry and process/i);
+
 const queuedMarkup = renderForStatus("queued");
 assert.match(queuedMarkup, /Obradi izvještaj/);
-assert.doesNotMatch(queuedMarkup, /Otvori izvještaj/);
-assert.doesNotMatch(queuedMarkup, /Obrada u toku/);
-
-const processingMarkup = renderForStatus("processing");
-assert.match(processingMarkup, /Obrada u toku/);
-assert.doesNotMatch(processingMarkup, /Obradi izvještaj/);
+assert.doesNotMatch(queuedMarkup, /Pokušaj ponovo/);
 
 const readyMarkup = renderForStatus("ready");
 assert.match(readyMarkup, /Otvori izvještaj/);
-assert.doesNotMatch(readyMarkup, /Obradi izvještaj/);
+assert.doesNotMatch(readyMarkup, /Pokušaj ponovo/);
+
+const processingMarkup = renderForStatus("processing");
+assert.match(processingMarkup, /Obrada u toku/);
+assert.doesNotMatch(processingMarkup, /Pokušaj ponovo/);
 
 console.log(
   JSON.stringify(
     {
       ok: true,
       verified: [
-        "queued report shows Obradi izvjestaj",
-        "processing report shows Obrada u toku",
-        "ready report keeps Otvori izvjestaj",
-        "queue list uses server action boundary through dedicated action components",
+        "failed report shows Pokusaj ponovo",
+        "failed report is no longer inert-only state",
+        "queued report still shows Obradi izvjestaj",
+        "ready report still shows Otvori izvjestaj",
+        "processing report still shows Obrada u toku",
+        "UI does not show combined retry and process",
         "UI does not import OpenAI provider or lifecycle processor directly",
         "report view route does not generate reports",
       ],

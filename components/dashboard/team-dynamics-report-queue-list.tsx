@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TeamDynamicsReportProcessAction } from "@/components/dashboard/team-dynamics-report-process-action";
+import { TeamDynamicsReportRetryAction } from "@/components/dashboard/team-dynamics-report-retry-action";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
@@ -114,10 +115,14 @@ export function TeamDynamicsReportQueueList({
                       </div>
                     ) : null}
                     {reportRow.reportStatus === "failed" ? (
-                      <div className="pt-1">
+                      <div className="space-y-2 pt-1">
                         <span className="text-sm font-medium text-slate-500">
                           Nije uspješno kreiran
                         </span>
+                        <TeamDynamicsReportRetryAction
+                          teamAssessmentReportId={reportRow.id}
+                          teamId={teamId}
+                        />
                       </div>
                     ) : null}
                   </div>

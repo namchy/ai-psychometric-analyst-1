@@ -45,9 +45,11 @@ import { replaceTeamDynamicsReportSelectionInclusionSet } from "@/lib/b2b/team-d
 import {
   processTeamDynamicsExecutiveOverviewWithOpenAI,
   queueTeamDynamicsReportShell,
+  resetFailedTeamDynamicsReportToQueued,
   TEAM_DYNAMICS_REPORT_TYPE,
   TEAM_DYNAMICS_REPORT_VERSION,
   type ProcessTeamDynamicsExecutiveOverviewOpenAiResult,
+  type ResetFailedTeamDynamicsReportToQueuedResult,
   type TeamDynamicsReportStatus,
 } from "@/lib/b2b/team-dynamics-report-lifecycle";
 import {
@@ -409,6 +411,42 @@ type ProcessTeamDynamicsExecutiveOverviewReportActionDependencies = {
     teamAssessmentReportId: string;
   }) => Promise<TeamDynamicsReportActionContext | null>;
   processExecutiveOverviewReport?: typeof processTeamDynamicsExecutiveOverviewWithOpenAI;
+  revalidate?: typeof revalidatePath;
+};
+
+export type ResetTeamDynamicsExecutiveOverviewReportActionInput = {
+  teamAssessmentReportId: string;
+  teamId?: string;
+};
+
+export type ResetTeamDynamicsExecutiveOverviewReportActionResult =
+  | {
+      ok: true;
+      status: "queued";
+      message: string;
+      reportId: string;
+      teamId: string;
+    }
+  | {
+      ok: false;
+      status:
+        | "unauthorized"
+        | "unsupported_report_kind"
+        | "not_failed"
+        | "error";
+      message: string;
+      reportId: string | null;
+      teamId: string | null;
+      lifecycleOperation?: ResetFailedTeamDynamicsReportToQueuedResult["operation"];
+    };
+
+type ResetTeamDynamicsExecutiveOverviewReportActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  getActiveOrganization?: typeof getActiveOrganizationForUser;
+  loadReportContext?: (input: {
+    teamAssessmentReportId: string;
+  }) => Promise<TeamDynamicsReportActionContext | null>;
+  resetExecutiveOverviewReport?: typeof resetFailedTeamDynamicsReportToQueued;
   revalidate?: typeof revalidatePath;
 };
 
@@ -1213,6 +1251,157 @@ export async function processTeamDynamicsExecutiveOverviewReportAction(
       ok: false,
       status: "error",
       message: "Ručno pokretanje Team Dynamics Executive Overview obrade nije dostupno.",
+      reportId: input.teamAssessmentReportId,
+      teamId: input.teamId ?? null,
+    };
+  }
+}
+
+export async function resetTeamDynamicsExecutiveOverviewReportAction(
+  input: ResetTeamDynamicsExecutiveOverviewReportActionInput,
+  deps: ResetTeamDynamicsExecutiveOverviewReportActionDependencies = {},
+): Promise<ResetTeamDynamicsExecutiveOverviewReportActionResult> {
+  if (!isNonEmptyString(input.teamAssessmentReportId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "teamAssessmentReportId is required.",
+      reportId: null,
+      teamId: null,
+    };
+  }
+
+  if (typeof input.teamId !== "undefined" && !isNonEmptyString(input.teamId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "teamId must be a non-empty string when provided.",
+      reportId: input.teamAssessmentReportId,
+      teamId: null,
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization =
+    deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const loadReportContext =
+    deps.loadReportContext ?? loadTeamDynamicsReportActionContext;
+  const resetExecutiveOverviewReport =
+    deps.resetExecutiveOverviewReport ?? resetFailedTeamDynamicsReportToQueued;
+  const revalidate = deps.revalidate ?? revalidatePath;
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+
+    if (!organization) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Active organization is not available for this user.",
+        reportId: input.teamAssessmentReportId,
+        teamId: input.teamId ?? null,
+      };
+    }
+
+    const reportContext = await loadReportContext({
+      teamAssessmentReportId: input.teamAssessmentReportId,
+    });
+
+    if (
+      !reportContext ||
+      reportContext.organizationId !== organization.id ||
+      (isNonEmptyString(input.teamId) && reportContext.teamId !== input.teamId)
+    ) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Dynamics report was not found in the active organization.",
+        reportId: input.teamAssessmentReportId,
+        teamId: input.teamId ?? null,
+      };
+    }
+
+    if (
+      reportContext.reportType !== TEAM_DYNAMICS_REPORT_TYPE ||
+      reportContext.reportVersion !== TEAM_DYNAMICS_REPORT_VERSION
+    ) {
+      return {
+        ok: false,
+        status: "unsupported_report_kind",
+        message: getUnsupportedTeamDynamicsReportKindMessage(),
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+      };
+    }
+
+    if (reportContext.reportStatus !== "failed") {
+      return {
+        ok: false,
+        status: "not_failed",
+        message: "Samo failed Team Dynamics Executive Overview report može biti vraćen u queued stanje.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+      };
+    }
+
+    const result = await resetExecutiveOverviewReport({
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: organization.id,
+    });
+
+    if (!result.ok) {
+      if (
+        result.operation === "already_queued" ||
+        result.operation === "processing_not_resettable" ||
+        result.operation === "ready_not_resettable" ||
+        result.operation === "not_resettable"
+      ) {
+        return {
+          ok: false,
+          status: "not_failed",
+          message: "Report više nije u failed stanju i nije moguće vratiti ga u queued.",
+          reportId: result.report?.id ?? reportContext.id,
+          teamId: result.report?.teamId ?? reportContext.teamId,
+          lifecycleOperation: result.operation,
+        };
+      }
+
+      return {
+        ok: false,
+        status: "error",
+        message: "Vraćanje Team Dynamics Executive Overview reporta u queued stanje nije uspjelo.",
+        reportId: result.report?.id ?? reportContext.id,
+        teamId: result.report?.teamId ?? reportContext.teamId,
+        lifecycleOperation: result.operation,
+      };
+    }
+
+    revalidate(`/dashboard/teams/${reportContext.teamId}`);
+    revalidate(`/dashboard/teams/${reportContext.teamId}/reports/new`);
+
+    return {
+      ok: true,
+      status: "queued",
+      message: "Team Dynamics Executive Overview je vraćen u queued stanje.",
+      reportId: result.report.id,
+      teamId: result.report.teamId,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Authentication required.",
+        reportId: input.teamAssessmentReportId,
+        teamId: input.teamId ?? null,
+      };
+    }
+
+    return {
+      ok: false,
+      status: "error",
+      message: "Vraćanje Team Dynamics Executive Overview reporta u queued stanje nije dostupno.",
       reportId: input.teamAssessmentReportId,
       teamId: input.teamId ?? null,
     };
