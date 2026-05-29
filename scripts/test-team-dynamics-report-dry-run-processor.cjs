@@ -13,6 +13,10 @@ const helperPath = path.join(
   "team-dynamics-report-lifecycle.ts",
 );
 const helperSource = fs.readFileSync(helperPath, "utf8");
+const dryRunSection =
+  helperSource.match(
+    /export async function processTeamDynamicsReportDryRun[\s\S]*?export async function processTeamDynamicsExecutiveOverviewMock/,
+  )?.[0] ?? "";
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const tempDir = fs.mkdtempSync(
   path.join(os.tmpdir(), "team-dynamics-report-dry-run-processor-"),
@@ -87,8 +91,8 @@ assert.match(helperSource, /claimReportForProcessing/);
 assert.match(helperSource, /markReportProcessingFailed/);
 assert.doesNotMatch(helperSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(helperSource, /\.from\("assessment_reports"\)/);
-assert.doesNotMatch(helperSource, /report_status:\s*"ready"/);
-assert.doesNotMatch(helperSource, /\.update\(\{\s*report_snapshot:/s);
+assert.doesNotMatch(dryRunSection, /report_status:\s*"ready"/);
+assert.doesNotMatch(dryRunSection, /\.update\(\{\s*report_snapshot:/s);
 assert.doesNotMatch(helperSource, /OpenAI|AI provider|renderer|worker|Team Fit/i);
 
 fs.writeFileSync(

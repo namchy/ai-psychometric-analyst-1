@@ -6,7 +6,16 @@ import {
   type TeamAssessmentAggregationReadVerificationResult,
 } from "@/lib/assessment/team-assessment-aggregation-read";
 import {
+  validateTeamDynamicsExecutiveOverviewSnapshot,
+  type TeamDynamicsExecutiveOverviewSnapshot,
+} from "@/lib/b2b/team-dynamics-executive-overview-contract";
+import {
+  generateTeamDynamicsExecutiveOverviewMockSnapshot,
+  type GenerateTeamDynamicsExecutiveOverviewMockSnapshotResult,
+} from "@/lib/b2b/team-dynamics-executive-overview-mock";
+import {
   persistTeamDynamicsReportInputSnapshot,
+  type TeamDynamicsReportInputSnapshot,
   type PersistTeamDynamicsReportInputSnapshotResult,
 } from "@/lib/b2b/team-dynamics-report-input";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -62,6 +71,8 @@ type TeamDynamicsReportLifecycleDependencies = {
   persistInputSnapshot?: typeof persistTeamDynamicsReportInputSnapshot;
   claimReportForProcessing?: typeof claimTeamDynamicsReportForProcessing;
   markReportProcessingFailed?: typeof markTeamDynamicsReportProcessingFailed;
+  buildExecutiveOverviewMockSnapshot?: typeof generateTeamDynamicsExecutiveOverviewMockSnapshot;
+  validateExecutiveOverviewSnapshot?: typeof validateTeamDynamicsExecutiveOverviewSnapshot;
   now?: () => string;
 };
 
@@ -194,6 +205,41 @@ export type ProcessTeamDynamicsReportDryRunResult =
 export const TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED =
   "TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED" as const;
 
+export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING =
+  "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING" as const;
+export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID =
+  "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID" as const;
+export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID =
+  "TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID" as const;
+
+export type ProcessTeamDynamicsExecutiveOverviewMockResult =
+  | {
+      ok: true;
+      operation: "completed_ready";
+      claim: ClaimTeamDynamicsReportForProcessingResult & { ok: true };
+      report: TeamDynamicsReportRowSummary;
+      snapshot: TeamDynamicsExecutiveOverviewSnapshot;
+      finalStatus: "ready";
+    }
+  | {
+      ok: false;
+      operation:
+        | "claim_not_acquired"
+        | "input_snapshot_missing"
+        | "input_snapshot_invalid"
+        | "snapshot_invalid"
+        | "ready_update_failed"
+        | "fail_transition_failed";
+      claim: ClaimTeamDynamicsReportForProcessingResult;
+      final?: MarkTeamDynamicsReportProcessingFailedResult;
+      marker:
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID
+        | typeof TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID;
+      reason: string;
+      snapshot?: Record<string, unknown>;
+    };
+
 export type ResetFailedTeamDynamicsReportToQueuedResult =
   | {
       ok: true;
@@ -272,6 +318,68 @@ function mapRow(row: TeamAssessmentReportRow): TeamDynamicsReportRowSummary {
     completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function asInputSnapshot(
+  value: unknown,
+): TeamDynamicsReportInputSnapshot | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as TeamDynamicsReportInputSnapshot;
+}
+
+async function markTeamDynamicsReportReady(input: {
+  teamAssessmentReportId: string;
+  organizationId: string;
+  reportSnapshot: TeamDynamicsExecutiveOverviewSnapshot;
+}, deps: TeamDynamicsReportLifecycleDependencies = {}): Promise<
+  | {
+      ok: true;
+      report: TeamDynamicsReportRowSummary;
+    }
+  | {
+      ok: false;
+      reason: string;
+    }
+> {
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const completedAt = getNow(deps);
+  const { data, error } = await supabase
+    .from("team_assessment_reports")
+    .update({
+      report_status: "ready",
+      report_snapshot: input.reportSnapshot,
+      completed_at: completedAt,
+      error_message: null,
+    })
+    .eq("id", input.teamAssessmentReportId)
+    .eq("organization_id", input.organizationId)
+    .eq("report_status", "processing")
+    .select(
+      "id, organization_id, team_id, team_assessment_assignment_id, selection_draft_id, aggregation_snapshot_id, report_type, report_version, report_status, generator_type, model_name, included_member_ids_snapshot, input_snapshot, report_snapshot, error_message, queued_at, started_at, completed_at, created_at, updated_at",
+    )
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      reason: `Failed to mark Team Dynamics report as ready: ${error.message}`,
+    };
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      reason: "Team Dynamics report could not be marked ready because it is no longer processing.",
+    };
+  }
+
+  return {
+    ok: true,
+    report: mapRow(data as TeamAssessmentReportRow),
   };
 }
 
@@ -848,6 +956,188 @@ export async function processTeamDynamicsReportDryRun(input: {
     claim: claimResult,
     final: failureResult,
     marker: TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED,
+  };
+}
+
+export async function processTeamDynamicsExecutiveOverviewMock(input: {
+  teamAssessmentReportId: string;
+  organizationId: string;
+}, deps: TeamDynamicsReportLifecycleDependencies = {}): Promise<ProcessTeamDynamicsExecutiveOverviewMockResult> {
+  const claimReportForProcessing =
+    deps.claimReportForProcessing ?? claimTeamDynamicsReportForProcessing;
+  const markReportProcessingFailed =
+    deps.markReportProcessingFailed ?? markTeamDynamicsReportProcessingFailed;
+  const buildExecutiveOverviewMockSnapshot =
+    deps.buildExecutiveOverviewMockSnapshot ??
+    generateTeamDynamicsExecutiveOverviewMockSnapshot;
+  const validateExecutiveOverviewSnapshot =
+    deps.validateExecutiveOverviewSnapshot ??
+    validateTeamDynamicsExecutiveOverviewSnapshot;
+
+  const claimResult = await claimReportForProcessing(input, deps);
+
+  if (!claimResult.ok) {
+    return {
+      ok: false,
+      operation: "claim_not_acquired",
+      claim: claimResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+      reason: claimResult.reason,
+    };
+  }
+
+  const persistedInputSnapshot =
+    asInputSnapshot(claimResult.report.inputSnapshot) ??
+    asInputSnapshot(claimResult.snapshot.snapshot);
+
+  if (!persistedInputSnapshot) {
+    const failureResult = await markReportProcessingFailed(
+      {
+        teamAssessmentReportId: input.teamAssessmentReportId,
+        organizationId: input.organizationId,
+        failure: {
+          code: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+          reason: "input_snapshot_missing",
+          message: "Team Dynamics Executive Overview mock generation requires a persisted input snapshot.",
+        },
+      },
+      deps,
+    );
+
+    if (!failureResult.ok) {
+      return {
+        ok: false,
+        operation: "fail_transition_failed",
+        claim: claimResult,
+        final: failureResult,
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+        reason: failureResult.reason,
+      };
+    }
+
+    return {
+      ok: false,
+      operation: "input_snapshot_missing",
+      claim: claimResult,
+      final: failureResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING,
+      reason: "Persisted input snapshot is missing after claim.",
+    };
+  }
+
+  const snapshotResult = buildExecutiveOverviewMockSnapshot({
+    inputSnapshot: persistedInputSnapshot,
+  });
+
+  if (!snapshotResult.ok) {
+    const marker =
+      snapshotResult.code === "missing_input_snapshot"
+        ? TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_MISSING
+        : TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_INPUT_SNAPSHOT_INVALID;
+    const failureResult = await markReportProcessingFailed(
+      {
+        teamAssessmentReportId: input.teamAssessmentReportId,
+        organizationId: input.organizationId,
+        failure: {
+          code: marker,
+          reason: snapshotResult.code,
+          message: snapshotResult.reason,
+        },
+      },
+      deps,
+    );
+
+    if (!failureResult.ok) {
+      return {
+        ok: false,
+        operation: "fail_transition_failed",
+        claim: claimResult,
+        final: failureResult,
+        marker,
+        reason: failureResult.reason,
+      };
+    }
+
+    return {
+      ok: false,
+      operation:
+        snapshotResult.code === "missing_input_snapshot"
+          ? "input_snapshot_missing"
+          : "input_snapshot_invalid",
+      claim: claimResult,
+      final: failureResult,
+      marker,
+      reason: snapshotResult.reason,
+    };
+  }
+
+  const validationResult = validateExecutiveOverviewSnapshot(snapshotResult.snapshot);
+
+  if (!validationResult.ok) {
+    const validationFailureReason = validationResult.errors.join(" | ");
+    const failureResult = await markReportProcessingFailed(
+      {
+        teamAssessmentReportId: input.teamAssessmentReportId,
+        organizationId: input.organizationId,
+        failure: {
+          code: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID,
+          reason: "snapshot_validation_failed",
+          message: validationFailureReason,
+        },
+      },
+      deps,
+    );
+
+    if (!failureResult.ok) {
+      return {
+        ok: false,
+        operation: "fail_transition_failed",
+        claim: claimResult,
+        final: failureResult,
+        marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID,
+        reason: failureResult.reason,
+        snapshot: snapshotResult.snapshot,
+      };
+    }
+
+    return {
+      ok: false,
+      operation: "snapshot_invalid",
+      claim: claimResult,
+      final: failureResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID,
+      reason: validationFailureReason,
+      snapshot: snapshotResult.snapshot,
+    };
+  }
+
+  const readyResult = await markTeamDynamicsReportReady(
+    {
+      teamAssessmentReportId: input.teamAssessmentReportId,
+      organizationId: input.organizationId,
+      reportSnapshot: validationResult.value,
+    },
+    deps,
+  );
+
+  if (!readyResult.ok) {
+    return {
+      ok: false,
+      operation: "ready_update_failed",
+      claim: claimResult,
+      marker: TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SNAPSHOT_INVALID,
+      reason: readyResult.reason,
+      snapshot: validationResult.value,
+    };
+  }
+
+  return {
+    ok: true,
+    operation: "completed_ready",
+    claim: claimResult,
+    report: readyResult.report,
+    snapshot: validationResult.value,
+    finalStatus: "ready",
   };
 }
 

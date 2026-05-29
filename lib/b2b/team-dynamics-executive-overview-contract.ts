@@ -1,10 +1,9 @@
 import "server-only";
 
 import type { ReportLocale } from "@/lib/assessment/locale";
-import { TEAM_DYNAMICS_REPORT_VERSION } from "@/lib/b2b/team-dynamics-report-lifecycle";
 
 export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_REPORT_TYPE =
-  TEAM_DYNAMICS_REPORT_VERSION;
+  "team_dynamics_executive_overview_v1";
 export const TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_SCHEMA_VERSION = "v1" as const;
 
 export type TeamDynamicsExecutiveOverviewSignal = {

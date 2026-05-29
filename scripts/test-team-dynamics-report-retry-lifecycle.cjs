@@ -13,6 +13,10 @@ const helperPath = path.join(
   "team-dynamics-report-lifecycle.ts",
 );
 const helperSource = fs.readFileSync(helperPath, "utf8");
+const resetSection =
+  helperSource.match(
+    /export async function resetFailedTeamDynamicsReportToQueued[\s\S]*$/,
+  )?.[0] ?? "";
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const tempDir = fs.mkdtempSync(
   path.join(os.tmpdir(), "team-dynamics-report-retry-lifecycle-"),
@@ -89,8 +93,8 @@ assert.match(helperSource, /operation: "ready_not_resettable"/);
 assert.match(helperSource, /operation: "not_resettable"/);
 assert.doesNotMatch(helperSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(helperSource, /\.from\("assessment_reports"\)/);
-assert.doesNotMatch(helperSource, /\.update\(\{\s*report_snapshot:/s);
-assert.doesNotMatch(helperSource, /report_status:\s*"ready"/);
+assert.doesNotMatch(resetSection, /\.update\(\{\s*report_snapshot:/s);
+assert.doesNotMatch(resetSection, /report_status:\s*"ready"/);
 assert.doesNotMatch(helperSource, /OpenAI|AI provider|renderer|worker|Team Fit/i);
 
 fs.writeFileSync(

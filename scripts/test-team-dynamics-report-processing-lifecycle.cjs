@@ -13,6 +13,10 @@ const helperPath = path.join(
   "team-dynamics-report-lifecycle.ts",
 );
 const helperSource = fs.readFileSync(helperPath, "utf8");
+const claimSection =
+  helperSource.match(
+    /export async function claimTeamDynamicsReportForProcessing[\s\S]*?export async function markTeamDynamicsReportProcessingFailed/,
+  )?.[0] ?? "";
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const tempDir = fs.mkdtempSync(
   path.join(os.tmpdir(), "team-dynamics-report-processing-lifecycle-"),
@@ -88,7 +92,8 @@ assert.match(helperSource, /operation: "failed_not_claimable"/);
 assert.match(helperSource, /operation: "not_claimable"/);
 assert.doesNotMatch(helperSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(helperSource, /\.from\("assessment_reports"\)/);
-assert.doesNotMatch(helperSource, /report_status:\s*"ready"/);
+assert.doesNotMatch(claimSection, /report_status:\s*"ready"/);
+assert.doesNotMatch(claimSection, /report_snapshot:/);
 assert.doesNotMatch(helperSource, /OpenAI|AI provider|renderer|worker|Team Fit/i);
 
 fs.writeFileSync(
