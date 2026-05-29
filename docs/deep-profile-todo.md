@@ -2253,8 +2253,36 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 * Persist helper ne postavlja report status na `ready` i ne piše `report_snapshot`.
 * Nema raw response read-a, scoring rerun-a, aggregation rerun/refresh-a, AI/provider/renderer/worker poziva ni write-a u `attempt_reports` / `assessment_reports`.
 
+### Completion note — Team Dynamics report processing/failure lifecycle shell
+
+* Dodan je server-only lifecycle shell za dedicated `team_assessment_reports` report lane.
+* Dodan je helper `claimTeamDynamicsReportForProcessing(...)`.
+* `claimTeamDynamicsReportForProcessing(...)` radi kontrolisan `queued -> processing` prelaz tek nakon uspješnog `input_snapshot` persist koraka.
+* Claim helper koristi `teamAssessmentReportId + organizationId` ownership boundary.
+* Org/ownership mismatch vraća kontrolisan `report_not_found`, bez otkrivanja da row postoji izvan trenutnog org konteksta.
+* Za non-queued statuse helper vraća kontrolisane statuse:
+  * `already_processing`
+  * `already_ready`
+  * `failed_not_claimable`
+  * `not_claimable`
+* Claim helper ne piše `report_snapshot` i ne postavlja `ready`.
+* Dodan je helper `markTeamDynamicsReportProcessingFailed(...)`.
+* Failure helper dozvoljava kontrolisan `processing -> failed` prelaz.
+* Failure helper prima controlled failure payload `{ code?, reason?, message }`.
+* Failure helper koristi postojeće kolone `report_status`, `error_message` i `completed_at`; nova migracija nije bila potrebna.
+* Failure helper ne briše `input_snapshot`, ne piše `report_snapshot` i ne postavlja `ready`.
+* Dodan je dry-run orchestrator `processTeamDynamicsReportDryRun(...)`.
+* Dry-run orchestrator povezuje postojeći claim helper i failure helper.
+* Efektivni dry-run tok za queued report je `queued -> processing -> failed`.
+* Dry-run processor završava uspješno claim-an report kao failed sa markerom `TEAM_DYNAMICS_REPORT_PROVIDER_NOT_IMPLEMENTED`.
+* Dry-run processor ne zove AI provider, ne generiše report snapshot, ne postavlja `ready` i ne uvodi worker/cron/background loop.
+* Ovaj lifecycle shell ostaje server-only i služi kao sigurna osnova za budući provider/worker layer.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-report-processing-lifecycle.cjs`
+  - `node scripts/test-team-dynamics-report-failure-lifecycle.cjs`
+  - `node scripts/test-team-dynamics-report-dry-run-processor.cjs`
   - `node scripts/test-team-dynamics-report-input-builder.cjs`
   - `node scripts/test-team-dynamics-report-lifecycle-shell.cjs`
   - `node scripts/test-team-dynamics-teams-ui.cjs`
@@ -2272,19 +2300,20 @@ Ovi slice-evi nisu uveli:
 - no AI generation
 - no provider implementation
 - no renderer
-- no worker
+- no real worker/cron/background loop
 - no Team Fit output
 - no scoring rerun
 - no aggregation rerun/refresh
 - no raw responses read
 - no `attempt_reports` write
-- no `assessment_reports` write
+- no existing `assessment_reports` write
 - no individual answer display
 - no individual score value display
-- no raw attempt ID display
+- no UI changes
+- no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: server-only queued -> processing lifecycle shell sa input snapshot persist korakom, bez AI providera, bez report renderera i bez Team Fit outputa.
+Sljedeći uski slice: odlučiti između `failed -> queued` retry/reset helpera i prvog provider contract/schema skeletona za Team Dynamics report. Preporuka je prvo dodati retry/reset lifecycle helper prije pravog AI providera, da report lane ima siguran recovery path.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
