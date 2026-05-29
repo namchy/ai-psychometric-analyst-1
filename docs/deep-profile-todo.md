@@ -2641,8 +2641,41 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Test potvrđuje action boundary i da se processing dešava samo kroz provider-backed processor.
 - Real OpenAI DB smoke i dalje prolazi i potvrđuje queued -> processing -> ready path, persisted `input_snapshot`, persisted `report_snapshot`, validator pass, display helper boundary pass, i nepromijenjene `attempt_reports` / `assessment_reports` countove.
 
+### Completion note — Team Dynamics Executive Overview manual processing UI entrypoint
+
+- Dodan je minimalni UI entrypoint za manual Team Dynamics Executive Overview processing na postojećoj Team Dynamics report queue listi.
+- Dodan je mali izolovani client action child:
+  - `components/dashboard/team-dynamics-report-process-action.tsx`
+- Ažuriran je status rendering u:
+  - `components/dashboard/team-dynamics-report-queue-list.tsx`
+- Queue lista sada po statusu prikazuje:
+  - `queued` -> dugme `Obradi izvještaj`
+  - `processing` -> disabled stanje `Obrada u toku`
+  - `ready` -> postojeći link `Otvori izvještaj`
+  - `failed` -> neutralno stanje `Nije uspješno kreiran`
+- Dugme `Obradi izvještaj` poziva postojeći server action:
+  - `processTeamDynamicsExecutiveOverviewReportAction(...)`
+- Failed report nema retry UI u ovom slice-u.
+- UI ne importuje OpenAI provider direktno.
+- UI ne importuje lifecycle processor direktno.
+- Report view route i dalje ne generiše report.
+- Nema route/view generation wiring-a.
+- Nema renderer redesign-a.
+- Dodan je test:
+  - `scripts/test-team-dynamics-executive-overview-manual-ui.cjs`
+- Test potvrđuje:
+  - queued report prikazuje `Obradi izvještaj`
+  - processing report prikazuje `Obrada u toku`
+  - ready report prikazuje `Otvori izvještaj`
+  - failed report prikazuje `Nije uspješno kreiran`
+  - failed report nema retry dugme
+  - UI ne importuje OpenAI provider direktno
+  - UI ne importuje lifecycle processor direktno
+  - report view route ne generiše report
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-manual-ui.cjs`
   - `node scripts/test-team-dynamics-executive-overview-manual-action.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-db-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-processor.cjs`
@@ -2680,11 +2713,11 @@ Ovi slice-evi nisu uveli:
 - no individual score value display in UI
 - no `attempt_reports` write
 - no existing `assessment_reports` write
-- no UI changes
 - no DB migration
+- no retry UI for failed reports
 
 **Sljedeći korak:**
-Sljedeći uski slice: minimalni UI entrypoint za manual Team Dynamics Executive Overview processing na report queue listi. Queued report može dobiti dugme `Obradi izvještaj` koje poziva postojeći `processTeamDynamicsExecutiveOverviewReportAction(...)`; ready report zadržava `Otvori izvještaj`; failed report ne dobija retry dugme u ovom slice-u. Bez worker loop-a, bez report generation from view, bez renderer redesign-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: failed report retry/reset action + minimal retry UI. Backend treba koristiti postojeći `resetFailedTeamDynamicsReportToQueued(...)` lifecycle helper uz auth/active organization/report-kind boundary; UI može dodati retry dugme samo za failed Team Dynamics Executive Overview report, bez automatske obrade, bez worker loop-a, bez report generation from view, bez renderer redesign-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
