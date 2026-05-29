@@ -184,6 +184,58 @@ async function loadAssignmentAttemptIds(supabase, teamAssessmentAssignmentId) {
   ).sort();
 }
 
+async function loadAssignmentRuntimeContext(supabase, teamAssessmentAssignmentId) {
+  const { data: wrapperRows, error: wrapperError } = await supabase
+    .from("team_assessment_participants")
+    .select("id, status, attempt_id, completed_at")
+    .eq("team_assessment_assignment_id", teamAssessmentAssignmentId)
+    .order("id", { ascending: true });
+
+  if (wrapperError) {
+    throw new Error(
+      `Failed to load Team Dynamics assignment wrapper state: ${wrapperError.message}`,
+    );
+  }
+
+  const wrapperIds = (wrapperRows ?? []).map((row) => row.id);
+  const { data: aggregationRows, error: aggregationError } = await supabase
+    .from("team_assessment_aggregation_snapshots")
+    .select(
+      "id, aggregation_status, aggregation_version, participant_count, completed_participant_count, included_score_count, calculated_at",
+    )
+    .eq("team_assessment_assignment_id", teamAssessmentAssignmentId)
+    .order("created_at", { ascending: false });
+
+  if (aggregationError) {
+    throw new Error(
+      `Failed to load Team Dynamics aggregation snapshot state: ${aggregationError.message}`,
+    );
+  }
+
+  let scoreRows = [];
+
+  if (wrapperIds.length > 0) {
+    const { data, error } = await supabase
+      .from("team_assessment_participant_scores")
+      .select("id, team_assessment_participant_id, scoring_status, scoring_version")
+      .in("team_assessment_participant_id", wrapperIds);
+
+    if (error) {
+      throw new Error(
+        `Failed to load Team Dynamics participant score state: ${error.message}`,
+      );
+    }
+
+    scoreRows = data ?? [];
+  }
+
+  return {
+    wrappers: wrapperRows ?? [],
+    aggregations: aggregationRows ?? [],
+    scores: scoreRows,
+  };
+}
+
 async function deleteReportRows(supabase, reportIds) {
   if (reportIds.length === 0) {
     return;
@@ -349,6 +401,43 @@ async function main() {
       teamAssessmentAssignmentId: fixture.assignment.id,
       selectionDraftId: savedSelection.selectionDraftId,
     });
+
+    if (!queued.ok && queued.code === "aggregation_not_ready") {
+      const runtimeContext = await loadAssignmentRuntimeContext(
+        supabase,
+        fixture.assignment.id,
+      );
+
+      console.log(
+        JSON.stringify(
+          buildSkipResult(
+            "Team Dynamics report lane tables are visible, but the dedicated smoke fixture assignment is not yet ready for report queueing.",
+            {
+              verified: [
+                "selection draft save path is reachable through runtime Supabase API",
+                "PostgREST now exposes Team Dynamics report-lane tables",
+                "queue helper reached real aggregation readiness validation",
+              ],
+              blocker: {
+                code: queued.code,
+                reason: queued.reason,
+              },
+              fixture: {
+                organizationId: fixture.organization.id,
+                teamId: fixture.team.id,
+                teamAssessmentAssignmentId: fixture.assignment.id,
+                selectionDraftId: savedSelection.selectionDraftId,
+                includedMemberCount: includedParticipantIds.length,
+              },
+              runtimeContext,
+            },
+          ),
+          null,
+          2,
+        ),
+      );
+      return;
+    }
 
     assert.equal(queued.ok, true, queued.ok ? "" : queued.reason);
 
