@@ -2568,8 +2568,45 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 * Existing local lane smoke i dalje prolazi i potvrđuje da `attempt_reports` i `assessment_reports` count ostaju nepromijenjeni.
 * Provider-backed processor ostaje namjerno van worker loop-a i nije povezan sa report view generacijom.
 
+### Completion note — Team Dynamics Executive Overview real OpenAI DB-backed smoke
+
+- Dodan je ručno pokretan real OpenAI DB-backed smoke za Team Dynamics Executive Overview provider-backed processor.
+- Smoke script je `scripts/test-team-dynamics-executive-overview-openai-db-smoke.cjs`.
+- Smoke koristi cleanup-safe fixture obrazac iz local lane smoke-a.
+- Smoke koristi:
+  - saved selection
+  - queued `team_assessment_reports` row
+  - `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`
+  - stvarni OpenAI provider kroz env
+  - `validateTeamDynamicsExecutiveOverviewSnapshot(...)`
+  - `loadTeamDynamicsExecutiveOverviewReportForDisplay(...)`
+- Smoke provjerava env preconditions:
+  - `OPENAI_API_KEY`
+  - `AI_REPORT_MODEL`
+  - Supabase runtime env
+- Ako env nije spreman, smoke jasno skip-a bez lažnog uspjeha.
+- Završni real OpenAI smoke je prošao.
+- Smoke je verificirao:
+  - saved selection postoji ili se kreira kroz postojeći helper
+  - queued `team_assessment_reports` row nastaje sa ispravnim `report_type`, `report_version` i `included_member_ids_snapshot`
+  - `processTeamDynamicsExecutiveOverviewWithOpenAI(...)` obradi queued row do `ready`
+  - `input_snapshot` je persisted
+  - `report_snapshot` je persisted
+  - `report_snapshot` prolazi `validateTeamDynamicsExecutiveOverviewSnapshot(...)`
+  - display helper učitava ready report kroz `organizationId + teamId + reportId` boundary
+  - pogrešan `organizationId` vraća null
+  - pogrešan `teamId` vraća null
+  - nema write-a u `attempt_reports`
+  - nema write-a u postojećem `assessment_reports`
+- Prvi eskalirani real run kontrolisano je failao sa markerom `TEAM_DYNAMICS_EXECUTIVE_OVERVIEW_OPENAI_PROVIDER_ERROR`.
+- Uzrok prvog realnog failure-a bio je OpenAI 400 `invalid_request_error`: JSON schema za `response_format` nije imala `additionalProperties: false` na object nivoima.
+- Fix je urađen u `lib/b2b/team-dynamics-executive-overview-openai.ts` pooštravanjem JSON schema buildera na OpenAI-compatible `additionalProperties: false`.
+- Nakon fixa, real OpenAI DB smoke je prošao.
+- Ovo je prvi real AI-backed end-to-end dokaz za Team Dynamics Executive Overview lane, bez worker loop-a i bez report generation from view.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-openai-db-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-processor.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-provider.cjs`
   - `node scripts/test-team-dynamics-executive-overview-local-lane-smoke.cjs`
@@ -2608,7 +2645,7 @@ Ovi slice-evi nisu uveli:
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: real OpenAI DB-backed smoke za Team Dynamics Executive Overview provider-backed processor. Smoke treba koristiti cleanup-safe ili existing ready fixture, queued `team_assessment_reports` row, `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`, stvarni OpenAI provider kroz env, validirati persisted `report_snapshot`, potvrditi read-only display helper happy path i potvrditi da nema write-a u `attempt_reports` ili postojeći `assessment_reports`. Bez worker loop-a, bez report generation from view, bez renderer promjena, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: manual admin/server action trigger za Team Dynamics Executive Overview processing. Trigger treba omogućiti ovlaštenom admin/superuser path-u da ručno obradi jedan queued `team_assessment_reports` row kroz `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`, bez worker loop-a, bez report generation from view, bez renderer promjena, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
