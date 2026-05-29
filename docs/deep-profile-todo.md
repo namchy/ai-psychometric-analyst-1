@@ -2604,8 +2604,46 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Nakon fixa, real OpenAI DB smoke je prošao.
 - Ovo je prvi real AI-backed end-to-end dokaz za Team Dynamics Executive Overview lane, bez worker loop-a i bez report generation from view.
 
+### Completion note — Team Dynamics Executive Overview manual admin/server action trigger
+
+- Dodan je protected manual server action trigger za Team Dynamics Executive Overview processing.
+- Action je `processTeamDynamicsExecutiveOverviewReportAction(...)`.
+- Action je implementiran u `app/actions/team-assessments.ts`.
+- Action prima `teamAssessmentReportId` i opcioni `teamId`.
+- Action koristi authenticated user + active organization boundary.
+- Ako nema active organization ili report nije u active organization boundary-ju, vraća controlled `unauthorized`.
+- Ako je `teamId` proslijeđen i ne odgovara report row-u, vraća controlled `unauthorized`.
+- Action učitava minimalni report context iz `team_assessment_reports`:
+  - `id`
+  - `organization_id`
+  - `team_id`
+  - `report_type`
+  - `report_version`
+  - `report_status`
+- Action dozvoljava samo:
+  - `report_type = "team_dynamics_report_v1"`
+  - `report_version = "team_dynamics_executive_overview_v1"`
+  - `report_status = "queued"`
+- Ako report kind nije podržan, vraća `unsupported_report_kind`.
+- Ako report nije queued, vraća `not_queued`.
+- Tek nakon boundary provjera action poziva `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`.
+- Ako processor uspije, action vraća `ok: true`, `status: "ready"`, `reportId`, `teamId` i revalidira relevantne team/report stranice.
+- Ako processor vrati controlled failed putanje, action vraća controlled failed rezultat sa markerom, processor operation i eventualnim provider code-om.
+- Ako processor vrati `claim_not_acquired`, action vraća `not_queued`.
+- Ako processor vrati interni lifecycle problem kao `ready_update_failed` ili `fail_transition_failed`, action vraća generic controlled error.
+- Action ne piše direktno `report_snapshot`.
+- Action ne mijenja lifecycle mimo processor helpera.
+- Action ne resetuje failed report.
+- UI entrypoint nije dodat u ovom slice-u.
+- Nema novog dugmeta, nema route/view generation wiring-a i nema renderer promjena.
+- Unauthorized rezultat pokriva i “not found outside active organization boundary” da ne otkriva cross-org postojanje report row-a.
+- Dodan je test `scripts/test-team-dynamics-executive-overview-manual-action.cjs`.
+- Test potvrđuje action boundary i da se processing dešava samo kroz provider-backed processor.
+- Real OpenAI DB smoke i dalje prolazi i potvrđuje queued -> processing -> ready path, persisted `input_snapshot`, persisted `report_snapshot`, validator pass, display helper boundary pass, i nepromijenjene `attempt_reports` / `assessment_reports` countove.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-manual-action.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-db-smoke.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-processor.cjs`
   - `node scripts/test-team-dynamics-executive-overview-openai-provider.cjs`
@@ -2632,6 +2670,7 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
 - no worker/cron/background loop
+- no automatic batch processing
 - no report generation from view
 - no Team Fit output
 - no scoring rerun
@@ -2645,7 +2684,7 @@ Ovi slice-evi nisu uveli:
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: manual admin/server action trigger za Team Dynamics Executive Overview processing. Trigger treba omogućiti ovlaštenom admin/superuser path-u da ručno obradi jedan queued `team_assessment_reports` row kroz `processTeamDynamicsExecutiveOverviewWithOpenAI(...)`, bez worker loop-a, bez report generation from view, bez renderer promjena, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
+Sljedeći uski slice: minimalni UI entrypoint za manual Team Dynamics Executive Overview processing na report queue listi. Queued report može dobiti dugme `Obradi izvještaj` koje poziva postojeći `processTeamDynamicsExecutiveOverviewReportAction(...)`; ready report zadržava `Otvori izvještaj`; failed report ne dobija retry dugme u ovom slice-u. Bez worker loop-a, bez report generation from view, bez renderer redesign-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
