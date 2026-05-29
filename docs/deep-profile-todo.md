@@ -2278,8 +2278,34 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 * Dry-run processor ne zove AI provider, ne generiše report snapshot, ne postavlja `ready` i ne uvodi worker/cron/background loop.
 * Ovaj lifecycle shell ostaje server-only i služi kao sigurna osnova za budući provider/worker layer.
 
+### Completion note — Team Dynamics report retry/reset lifecycle shell
+
+- Dodan je server-only retry/reset lifecycle helper za dedicated `team_assessment_reports` report lane.
+- Dodan je helper `resetFailedTeamDynamicsReportToQueued(...)`.
+- Helper omogućava kontrolisan `failed -> queued` recovery path.
+- Helper koristi `teamAssessmentReportId + organizationId` ownership boundary.
+- Org/ownership mismatch vraća kontrolisan `report_not_found`, bez otkrivanja da row postoji izvan trenutnog org konteksta.
+- Reset je dozvoljen samo iz `failed` statusa.
+- Za non-resettable statuse helper vraća kontrolisane statuse:
+  - `already_queued`
+  - `processing_not_resettable`
+  - `ready_not_resettable`
+  - `not_resettable`
+- Za `failed` status helper:
+  - postavlja `report_status = "queued"`
+  - čisti `error_message`
+  - čisti `started_at`
+  - čisti `completed_at`
+  - zadržava `included_member_ids_snapshot`
+  - zadržava `input_snapshot`
+  - ne piše `report_snapshot`
+  - ne postavlja `ready`
+- Odluka: `input_snapshot` se zadržava kao audit trag za isti report artefakt; retry/reset nije kreiranje novog reporta.
+- Retry/reset shell ostaje server-only i služi kao siguran recovery path prije budućeg AI/provider sloja.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-report-retry-lifecycle.cjs`
   - `node scripts/test-team-dynamics-report-processing-lifecycle.cjs`
   - `node scripts/test-team-dynamics-report-failure-lifecycle.cjs`
   - `node scripts/test-team-dynamics-report-dry-run-processor.cjs`
@@ -2313,7 +2339,7 @@ Ovi slice-evi nisu uveli:
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: odlučiti između `failed -> queued` retry/reset helpera i prvog provider contract/schema skeletona za Team Dynamics report. Preporuka je prvo dodati retry/reset lifecycle helper prije pravog AI providera, da report lane ima siguran recovery path.
+Sljedeći uski slice: Team Dynamics report contract/schema skeleton bez AI providera. Definisati minimalni V1 report snapshot contract, runtime validator i mock-safe fixture/test shape, ali još ne uvoditi OpenAI provider, renderer, worker loop, Team Fit output, scoring rerun ili aggregation refresh.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
