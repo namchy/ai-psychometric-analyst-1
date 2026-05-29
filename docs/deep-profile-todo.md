@@ -2303,8 +2303,63 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 - Odluka: `input_snapshot` se zadržava kao audit trag za isti report artefakt; retry/reset nije kreiranje novog reporta.
 - Retry/reset shell ostaje server-only i služi kao siguran recovery path prije budućeg AI/provider sloja.
 
+### Completion note — Team Dynamics report family foundation + Executive Overview V1 contract
+
+- Zaključana je product odluka da Team Dynamics nije jedan izvještaj nego report family.
+- Budući Team Dynamics report family može uključivati:
+  - Team Dynamics Executive Overview
+  - Team Development Report
+  - Leadership Guidance Report
+  - Team Risk & Friction Map
+  - Team Workshop Pack
+  - Team Fit Report
+  - Trend / Pulse Comparison
+- Ovaj implementation slice uvodi samo prvi report kind: `team_dynamics_executive_overview_v1`.
+- Nije dodana DB migracija.
+- Existing `team_assessment_reports.report_version` koristi se kao report kind discriminator.
+- Za ovaj slice je zaključano:
+  - `team_assessment_reports.report_type = "team_dynamics_report_v1"` kao family/lane marker
+  - `team_assessment_reports.report_version = "team_dynamics_executive_overview_v1"` kao konkretni report kind discriminator
+- Dodan je server-only contract/validator fajl `lib/b2b/team-dynamics-executive-overview-contract.ts`.
+- Contract uvodi Executive Overview V1 snapshot shape:
+  - `reportType`
+  - `reportVersion`
+  - `locale`
+  - `teamContext`
+  - `includedMembersSummary`
+  - `executiveSummary`
+  - `keyTeamSignals`
+  - `dimensionOverview`
+  - `alignmentAndFriction`
+  - `psychologicalSafetySignal`
+  - `situationalJudgmentSignal`
+  - `outcomePulseSignal`
+  - `risksToWatch`
+  - `leadershipRecommendations`
+  - `suggestedNextConversation`
+  - `interpretationLimits`
+- Dodan je minimalni mock-safe snapshot builder/test shape bez mock provider runtime-a.
+- Runtime validator potvrđuje required sekcije i report type.
+- Runtime validator zabranjuje:
+  - `individualAnswers`
+  - `rawResponses`
+  - `individualScores`
+  - `memberScores`
+  - `teamFitOutput`
+  - `unifiedOverallTeamScore`
+  - `overallTeamScore0To100`
+- Runtime validator zabranjuje hire/no-hire, “loš tim” i “disfunkcionalan tim” jezik.
+- Validator je pure/server-only contract layer:
+  - ne zove AI/provider
+  - ne piše u DB
+  - ne mijenja lifecycle statuse
+  - ne uvodi renderer
+  - ne uvodi worker
+- Postojeći lifecycle/input shell testovi su poravnati na novi `report_version = "team_dynamics_executive_overview_v1"` discriminator.
+
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
+  - `node scripts/test-team-dynamics-executive-overview-contract.cjs`
   - `node scripts/test-team-dynamics-report-retry-lifecycle.cjs`
   - `node scripts/test-team-dynamics-report-processing-lifecycle.cjs`
   - `node scripts/test-team-dynamics-report-failure-lifecycle.cjs`
@@ -2324,7 +2379,9 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
 **Guardrail note:**
 Ovi slice-evi nisu uveli:
 - no AI generation
+- no OpenAI call
 - no provider implementation
+- no mock provider runtime
 - no renderer
 - no real worker/cron/background loop
 - no Team Fit output
@@ -2339,7 +2396,7 @@ Ovi slice-evi nisu uveli:
 - no DB migration
 
 **Sljedeći korak:**
-Sljedeći uski slice: Team Dynamics report contract/schema skeleton bez AI providera. Definisati minimalni V1 report snapshot contract, runtime validator i mock-safe fixture/test shape, ali još ne uvoditi OpenAI provider, renderer, worker loop, Team Fit output, scoring rerun ili aggregation refresh.
+Sljedeći uski slice: mock-safe Team Dynamics Executive Overview generation shell koji uzima postojeći deterministic input snapshot, proizvodi validan `team_dynamics_executive_overview_v1` report snapshot kroz local/mock generator, validira ga runtime validatorom i persista ga u `team_assessment_reports.report_snapshot` kao `ready`, bez OpenAI providera, bez renderera, bez worker loop-a, bez scoring rerun-a, bez aggregation refresh-a i bez Team Fit outputa.
 
 **Scope (docs/spec):**
 - definisati finalne skale i item mapping po bloku za `team_dynamics_assessment_v1`
