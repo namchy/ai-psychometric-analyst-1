@@ -101,7 +101,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
 
   const signal = {
     type: "object",
-    additionalProperties: true,
+    additionalProperties: false,
     required: ["title", "summary"],
     properties: {
       title: nonEmptyString,
@@ -111,7 +111,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
 
   return {
     type: "object",
-    additionalProperties: true,
+    additionalProperties: false,
     required: [
       "reportType",
       "reportVersion",
@@ -142,7 +142,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
       locale: nonEmptyString,
       teamContext: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: [
           "organizationId",
           "teamId",
@@ -158,7 +158,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
       },
       includedMembersSummary: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: ["includedMemberCount", "completedMemberCount", "note"],
         properties: {
           includedMemberCount: {
@@ -172,7 +172,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
       },
       executiveSummary: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: ["headline", "summary"],
         properties: {
           headline: nonEmptyString,
@@ -186,7 +186,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
       },
       dimensionOverview: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: ["dimensions"],
         properties: {
           dimensions: {
@@ -194,7 +194,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
             minItems: 1,
             items: {
               type: "object",
-              additionalProperties: true,
+              additionalProperties: false,
               required: ["key", "label", "summary"],
               properties: {
                 key: nonEmptyString,
@@ -207,7 +207,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
       },
       alignmentAndFriction: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: ["alignmentSignals", "frictionSignals"],
         properties: {
           alignmentSignals: {
@@ -237,7 +237,7 @@ function buildExecutiveOverviewSchema(): Record<string, unknown> {
       },
       suggestedNextConversation: {
         type: "object",
-        additionalProperties: true,
+        additionalProperties: false,
         required: ["title", "prompts"],
         properties: {
           title: nonEmptyString,
