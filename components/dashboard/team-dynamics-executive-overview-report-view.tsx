@@ -5,7 +5,7 @@ import {
   PageNavigation,
 } from "@/components/dashboard/primitives";
 import type {
-  TeamDynamicsExecutiveOverviewDisplayRecord,
+  TeamDynamicsExecutiveOverviewReportDisplayRecord,
 } from "@/lib/b2b/team-dynamics-executive-overview-display";
 import type {
   TeamDynamicsExecutiveOverviewSnapshot,
@@ -13,7 +13,7 @@ import type {
 } from "@/lib/b2b/team-dynamics-executive-overview-contract";
 
 type TeamDynamicsExecutiveOverviewReportViewProps = {
-  report: TeamDynamicsExecutiveOverviewDisplayRecord;
+  report: TeamDynamicsExecutiveOverviewReportDisplayRecord;
   snapshot: TeamDynamicsExecutiveOverviewSnapshot;
   backHref: string;
 };

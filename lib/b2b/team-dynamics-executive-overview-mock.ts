@@ -101,7 +101,7 @@ function buildDimensionOverview(
     .map((entry) => ({
       key: entry.scoreKey,
       label: entry.label,
-      summary: describeAggregateSignal(entry.meanScore0To100),
+      summary: describeAggregateSignal(normalizeCount(entry.meanScore0To100, 50)),
     }));
 
   if (mapped.length > 0) {
