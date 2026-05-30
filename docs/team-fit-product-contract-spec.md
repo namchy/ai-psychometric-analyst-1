@@ -319,3 +319,11 @@ Team Fit je relacijski report: candidate + team.
 * Executive Overview context remains optional and may be deferred from first implementation slice.
 * MVP processing model remains manual/controlled, no scheduler default.
 * This planning summary does not approve implementation.
+
+### First implementation prerequisites
+
+* Dedicated `team_fit_reports` ostaje obavezan prvi storage artefakt.
+* MVP access ostaje HR/admin-only u odgovarajućem organization/team/candidate scope-u; manager/leadership access ostaje future explicit decision.
+* Executive Overview interpreted context ostaje optional i deferred iz prvog implementation slice-a.
+* Prvi implementation slice mora biti storage/lifecycle shell before provider/renderer/worker.
+* Manual retry u MVP-u koristi isti persisted `input_snapshot`, bez automatic rebuilda.

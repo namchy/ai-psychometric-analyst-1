@@ -37,6 +37,7 @@
 - Detaljni Team Fit decision draft ostaje u `docs/deep-profile-todo.md`.
 - Canonical Team Fit product/report contract spec je izdvojen u `docs/team-fit-product-contract-spec.md`.
 - Team Fit implementation planning trenutno preporučuje dedicated `team_fit_reports` relational lane; detaljni planning ostaje u `docs/deep-profile-todo.md` i `docs/team-fit-product-contract-spec.md`.
+- First Team Fit implementation prerequisites sada ciljaju dedicated `team_fit_reports` storage/lifecycle shell first, bez provider/renderer/worker sloja u prvom slice-u.
 - Još uvijek nema:
   - Team Fit output
   - unified overall team score
