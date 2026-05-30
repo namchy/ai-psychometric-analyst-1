@@ -28,6 +28,10 @@
 - Renderer sada bolje podržava HR executive-reading flow kroz jači headline opening, scanabilnije key signals, povezani risk/action tok, izdvojeni next-conversation blok i sekundarni supporting diagnostics sloj.
 - Ovo je urađeno bez promjene contracta, providera, workera ili lifecycle/orchestration sloja.
 - Detaljni completion log ostaje u `docs/deep-profile-todo.md`.
+- `team_fit_report_v1` je planiran kao relational HR report: kandidat + tim.
+- Team Fit koristi kandidatov kompozitni profil i timski agregirani profil kao osnovni ulazni odnos.
+- MVP ne uvodi numeric fit score, hire/no-hire output ni candidate-facing Team Fit prikaz.
+- Detaljni Team Fit decision draft ostaje u `docs/deep-profile-todo.md`.
 - Još uvijek nema:
   - Team Fit output
   - unified overall team score

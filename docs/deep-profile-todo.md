@@ -53,7 +53,7 @@ Komande:
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
-| P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
+| P1        | Timski fit kandidata product/report contract spec | Spec decision draft zaključan / bez implementacije | Relacijski report / Candidate-team fit | Sljedeći korak: pretvoriti decision draft u canonical contract/spec dokument ili kasnije implementation-ready spec, bez DB/provider/renderer rada sada. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
 | P1        | Queued vs processing HR report status UX            | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon razdvajanja `queued = Čeka generisanje` i `processing = Generiše se` u status labeli, opisu i disabled CTA-u. |
@@ -6185,6 +6185,137 @@ Završeno:
 * Potvrđeno je da postojeći `team_dynamics_v1_strong` scaffold ostaje timski assessment sloj.
 * Zaključano je da kandidat-facing `Timski stil saradnje` modul ide kroz zaseban product/spec task prije implementacije.
 * Zaključano je da Team Fit nije test, nego relacijski report koji koristi više ulaza.
+
+### Decision note — Timski fit kandidata / team_fit_report_v1 product contract draft
+
+* Team Fit je relational HR report: kandidat + postojeći tim.
+* Report tumači odnos između kandidatovog kompozitnog profila i timskog agregiranog profila.
+* Report vide HR, hiring manager / team lead i eventualno interni leadership stakeholder.
+* Kandidat ne vidi Team Fit report u MVP-u.
+* Pojedinačni članovi tima ne vide Team Fit report.
+* Report nije hire/no-hire preporuka.
+* Report ne smije proizvoditi numeric hire score ili numeric fit score kao presudu.
+* Report ne smije kandidata označiti kao “loš fit”.
+* Report ne smije tim označiti kao “loš” ili “disfunkcionalan”.
+* Report ne smije imenovati članove tima kao izvor trenja.
+* Report ne smije koristiti “culture fit” kao glavni framing.
+* Terminologija:
+  * pojedinac: kompozitni profil
+  * tim: agregirani profil
+  * odnos: timski fit kandidata
+
+#### MVP input model
+
+* Required inputi:
+  * kandidatov HR-safe kompozitni profil ili composite deterministic input snapshot
+  * kandidatovi HR-facing signali iz IPIP/SAFRAN/MWMS kada postoje u dozvoljenom HR input sloju
+  * timski agregirani profil / verified Team Dynamics aggregation input snapshot
+  * organization/team/candidate metadata
+  * locale
+  * report version / generatedAt metadata
+* Optional MVP input:
+  * Team Dynamics Executive Overview input/report snapshot kao pomoćni interpreted team context, ali ne kao jedini canonical team-side source
+* Future optional input:
+  * role context, samo kada postoji pouzdan i standardizovan source
+  * team composition context, samo kao privacy-safe aggregate
+* Forbidden inputi:
+  * raw individual answers članova tima
+  * individualne score vrijednosti članova tima u prikazu
+  * privatni narativni reportovi članova tima
+  * candidate-facing report kao jedini source of truth
+  * protected/private sadržaj van dozvoljenog HR/team inputa
+
+#### Proposed output sections (`team_fit_report_v1`)
+
+* `fitOverview`: glavni relationship summary bez presude.
+* `teamContextSummary`: timski obrasci koji su relevantni za tumačenje fit-a.
+* `candidateSignals`: kandidatovi obrasci koji su relevantni za fit.
+* `complementaritySignals`: gdje kandidat može dopuniti tim.
+* `frictionRisks`: gdje se mogu pojaviti trenja.
+* `interviewFocus`: šta HR treba dodatno provjeriti.
+* `onboardingGuidance`: kako uvesti kandidata u ovaj tim.
+* `managerGuidance`: kako lider treba raditi s kandidatom u ovom timu.
+* `watchouts`: oprezne hipoteze, ne presude.
+* `interpretationLimits`: kako čitati report.
+
+#### Fit semantics
+
+* MVP ne uvodi jedinstveni numeric fitScore.
+* Fit nije isto što i sličnost kandidata i tima.
+* Report mora razlikovati:
+  * alignment
+  * complementarity
+  * friction risk
+  * onboarding support need
+* Ako se koristi fit label/band, on smije biti samo navigacijski i oprezan, ne presuda.
+* Preferirani MVP pristup je structured relationship narrative + evidence, ne score.
+
+#### Contract outline (draft, docs-only; nije final implementation schema)
+
+```ts
+type TeamFitReportV1 = {
+  reportType: "team_fit_report_v1";
+  reportVersion: "v1";
+  locale: ReportLocale;
+  generatedAt: string;
+  audience: "hr_internal";
+  sourceType: "candidate_team_relational";
+  teamContext: { ... };
+  candidateContext: { ... };
+  source: { ... };
+  fitOverview: { ... };
+  teamContextSummary: { ... };
+  candidateSignals: Array<{ ... }>;
+  complementaritySignals: Array<{ ... }>;
+  frictionRisks: Array<{ ... }>;
+  interviewFocus: { ... };
+  onboardingGuidance: { ... };
+  managerGuidance: { ... };
+  watchouts: string[];
+  interpretationLimits: string[];
+  metadata: { ... };
+};
+```
+
+#### Guardrails
+
+* no hire/no-hire recommendation
+* no rejection recommendation
+* no candidate “bad fit” label
+* no team “bad/disfunctional” label
+* no individual team member naming as friction source
+* no raw answers
+* no individual team member score display
+* no private member narrative reports
+* no deterministic performance prediction
+* no causality claims
+* no medical/clinical language
+* no protected-class inference
+* no culture-fit bias framing
+* decision-support, not decision automation
+
+#### Out of MVP
+
+* implementation
+* DB migration
+* provider
+* renderer
+* worker
+* lifecycle/orchestration
+* scheduler/cron/background loop
+* candidate-facing Team Fit output
+* numeric hire score
+* raw team member details
+* automatic decisioning
+* second Team Dynamics report kind
+* Team Fit UI lane
+
+#### Open questions
+
+* Da li `fitOverview` u MVP-u treba enum `relationshipPattern` ili samo narativni headline/summary?
+* Koji je canonical candidate-side source: composite deterministic input snapshot, composite report snapshot ili kombinacija?
+* Da li Team Dynamics Executive Overview snapshot ostaje optional interpreted context ili ulazi kao required source kasnije?
+* Da li role context ostaje potpuno out-of-scope za MVP dok ne postoji standardizovan role source?
 
 ### 2026-05-22 — Team Dynamics run handoff skeleton
 
