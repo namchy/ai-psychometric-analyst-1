@@ -6661,6 +6661,21 @@ type TeamFitReportV1 = {
 * Fokusirani test za provider seam je dodan i prolazi.
 * Next step: read-only display helper ili OpenAI provider planning, samo nakon eksplicitnog odobrenja.
 
+### Completion note — Team Fit read-only display helper shell
+
+* Status: Read-only display helper shell implemented / no renderer UI worker.
+* Dodat je `lib/b2b/team-fit-report-display.ts`.
+* Dodat je read-only display loader.
+* Ready report vraća validirani `report_snapshot`.
+* Queued/processing/failed vraćaju safe status state bez raw `error_message`.
+* Dodat je org/team/participant/report boundary check.
+* Nema provider-a ni OpenAI-ja.
+* Nema renderer-a, UI-a, worker-a ni scheduler-a.
+* Nema lifecycle transitiona.
+* Nema write-a u `attempt_reports`, `assessment_reports` ni `team_assessment_reports`.
+* Fokusirani test za display helper je dodan i prolazi.
+* Next step: renderer shell ili OpenAI provider planning, samo nakon eksplicitnog odobrenja.
+
 #### 7. Retry snapshot policy
 
 * Manual retry koristi isti persisted `input_snapshot`.
