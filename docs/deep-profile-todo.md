@@ -60,6 +60,7 @@ Komande:
 - Ready Team Fit report linkuje na postojeću read-only rutu `/dashboard/teams/[teamId]/participants/[participantId]/team-fit-reports/[teamFitReportId]`.
 - Queued/processing/failed prikazuju safe status, a failed ne prikazuje raw `error_message`.
 - DB-backed smoke potvrđuje persisted `team_fit_reports` flow na istom `.env.local` Supabase runtime-u, uključujući wrong org/team/participant boundary guardrail.
+- Manual browser review je prošao za persisted Team Fit list entrypoint i read-only report route: HR participant reports page prikazuje Team Fit listu, ready entry otvara persisted report iz `team_fit_reports`, a prikaz nema raw error, OpenAI/provider copy, generation akciju, numeric fit score, hire/no-hire jezik, candidate-facing output ni individualne odgovore/skorove članova tima; privremeni browser-review fixture je očišćen nakon pregleda.
 - Nisu uvedeni OpenAI, provider, generation action, worker, scheduler, candidate-facing output ni DB write iz view/list sloja.
 
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
