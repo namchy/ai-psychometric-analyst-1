@@ -16,7 +16,9 @@ import {
   DashboardSectionShell,
   DashboardStatusBadge,
 } from "@/components/dashboard/primitives";
+import { TeamFitReportList } from "@/components/dashboard/team-fit-report-list";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { listTeamFitReportEntries } from "@/lib/b2b/team-fit-report-list";
 import {
   getActiveOrganizationForUser,
   getHrAttemptReportsForAttemptIds,
@@ -195,6 +197,10 @@ export default async function CandidateReportsPage({
     organization.id,
     participant.id,
   );
+  const teamFitReports = await listTeamFitReportEntries({
+    organizationId: organization.id,
+    participantId: participant.id,
+  });
   const hrReports = await getHrAttemptReportsForAttemptIds(attempts.map((attempt) => attempt.id));
   const activeCompositeAssignment = await loadLatestActiveStandardAssessmentAssignment({
     organizationId: organization.id,
@@ -467,6 +473,10 @@ export default async function CandidateReportsPage({
               )}
             </div>
           </DashboardInfoCardShell>
+        </DashboardSectionShell>
+
+        <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.18),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+          <TeamFitReportList entries={teamFitReports} />
         </DashboardSectionShell>
         </div>
       </div>
