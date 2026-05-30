@@ -57,6 +57,33 @@ function SignalCard({
   );
 }
 
+function PrioritySignalCard({
+  index,
+  signal,
+}: {
+  index: number;
+  signal: TeamDynamicsExecutiveOverviewSignal;
+}) {
+  return (
+    <DashboardInfoCardShell className="h-full rounded-[1.3rem] border-[rgba(17,138,178,0.16)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(17,138,178,0.06))] p-5">
+      <div className="flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#118ab2]/20 bg-[#118ab2]/10 text-sm font-bold text-[#118ab2]">
+          {index}
+        </div>
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#118ab2]">
+            Prioritetni signal
+          </p>
+          <h3 className="text-[1.08rem] font-bold tracking-[-0.03em] text-[#073b4c]">
+            {signal.title}
+          </h3>
+          <p className="text-sm leading-6 text-slate-600">{signal.summary}</p>
+        </div>
+      </div>
+    </DashboardInfoCardShell>
+  );
+}
+
 function BulletList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-3">
@@ -94,11 +121,11 @@ export function TeamDynamicsExecutiveOverviewReportView({
           <DashboardSectionHeader
             eyebrow="TEAM DYNAMICS EXECUTIVE OVERVIEW"
             eyebrowClassName="text-[#073b4c]"
-            title={snapshot.teamContext.teamName}
+            title={snapshot.executiveSummary.headline}
             description={snapshot.executiveSummary.summary}
             className="gap-2"
-            titleClassName="text-3xl font-extrabold tracking-[-0.05em] text-[#073b4c] sm:text-4xl"
-            descriptionClassName="max-w-3xl text-base text-slate-600"
+            titleClassName="max-w-4xl text-[2rem] font-extrabold tracking-[-0.06em] text-[#073b4c] sm:text-[2.7rem]"
+            descriptionClassName="max-w-3xl text-base leading-7 text-slate-600"
           />
 
           <div className="flex flex-wrap gap-2.5">
@@ -110,13 +137,26 @@ export function TeamDynamicsExecutiveOverviewReportView({
             </DashboardStatusBadge>
           </div>
 
+          <div className="rounded-[1.15rem] border border-[#118ab2]/15 bg-[linear-gradient(135deg,rgba(17,138,178,0.05),rgba(255,255,255,0.96))] px-4 py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#118ab2]">
+              Tim u fokusu
+            </p>
+            <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#073b4c]">
+              {snapshot.teamContext.teamName}
+            </p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Ovaj pregled sažima glavne timske obrasce, prioritetne signale za razgovor i
+              naredni operativni korak za lidera ili HR.
+            </p>
+          </div>
+
           <div className="grid gap-3 border-t border-slate-200/80 pt-5 md:grid-cols-3">
             <div className="rounded-[1rem] border border-slate-200/90 bg-slate-50/70 px-4 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Vrsta izvještaja
+                Fokus izvještaja
               </p>
               <p className="mt-1.5 text-sm font-semibold text-[#073b4c]">
-                {snapshot.executiveSummary.headline}
+                Timski executive pregled
               </p>
             </div>
             <div className="rounded-[1rem] border border-slate-200/90 bg-slate-50/70 px-4 py-3">
@@ -144,88 +184,137 @@ export function TeamDynamicsExecutiveOverviewReportView({
 
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
         <DashboardSectionHeader
-          eyebrow="Sažetak"
+          eyebrow="Ključni signali"
           eyebrowClassName="text-[#073b4c]"
-          title={snapshot.executiveSummary.headline}
-          description={snapshot.includedMembersSummary.note}
+          title="Šta ovaj tim signalizira na prvom čitanju"
+          description={`${snapshot.includedMembersSummary.note} Fokus je na signalima koje vrijedi prvo otvoriti u HR ili liderskom razgovoru.`}
           className="gap-2"
           titleClassName="text-[1.45rem] font-bold tracking-[-0.035em] text-[#073b4c]"
           descriptionClassName="text-sm leading-6 text-slate-600"
         />
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          <DashboardInfoCardShell className="rounded-[1.25rem] border-[rgba(17,138,178,0.14)] border-t-4 border-t-[#118ab2] bg-[linear-gradient(135deg,rgba(255,255,255,0.97),rgba(17,138,178,0.05))] p-4">
-            <DashboardSectionHeader
-              eyebrow="Ključni signali"
-              eyebrowClassName="text-[#118ab2]"
-              title="Šta vrijedi dalje provjeriti"
-              className="gap-2"
-              titleClassName="text-[1.1rem] font-semibold text-[#073b4c]"
-            />
-            <div className="mt-4">
-              <BulletList items={snapshot.keyTeamSignals.map((signal) => `${signal.title}: ${signal.summary}`)} />
-            </div>
-          </DashboardInfoCardShell>
-
-          <DashboardInfoCardShell className="rounded-[1.25rem] border-[rgba(7,59,76,0.14)] border-t-4 border-t-[#073b4c] bg-[linear-gradient(135deg,rgba(255,255,255,0.97),rgba(7,59,76,0.04))] p-4">
-            <DashboardSectionHeader
-              eyebrow="Dimenzije"
-              eyebrowClassName="text-[#073b4c]"
-              title="Pregled dostupnih timskih dimenzija"
-              className="gap-2"
-              titleClassName="text-[1.1rem] font-semibold text-[#073b4c]"
-            />
-            <div className="mt-4 space-y-3">
-              {snapshot.dimensionOverview.dimensions.map((dimension) => (
-                <div
-                  key={dimension.key}
-                  className="rounded-[1rem] border border-slate-200/80 bg-white/85 px-4 py-3"
-                >
-                  <p className="text-sm font-semibold text-[#073b4c]">{dimension.label}</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{dimension.summary}</p>
-                </div>
-              ))}
-            </div>
-          </DashboardInfoCardShell>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          {snapshot.keyTeamSignals.map((signal, index) => (
+            <PrioritySignalCard key={signal.title} index={index + 1} signal={signal} />
+          ))}
         </div>
       </DashboardInfoCardShell>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
+        <DashboardSectionHeader
+          eyebrow="Rizici i trenje"
+          eyebrowClassName="text-[#ef476f]"
+          title="Gdje tim trenutno traži najviše pažnje"
+          description="Prvo pogledaj gdje postoje signali trenja i koje rizike vrijedi pratiti prije sljedećeg timskog razgovora."
+          className="gap-2"
+          titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
+          descriptionClassName="text-sm leading-6 text-slate-600"
+        />
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[1.15rem] border border-slate-200/80 bg-white/85 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Usklađenost i trenje
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="rounded-[1.15rem] border border-emerald-200/70 bg-emerald-50/60 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                  Gdje tim djeluje usklađeno
+                </p>
+                <div className="mt-3">
+                  <BulletList items={snapshot.alignmentAndFriction.alignmentSignals} />
+                </div>
+              </div>
+              <div className="rounded-[1.15rem] border border-amber-200/80 bg-amber-50/70 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                  Gdje vrijedi otvoriti razgovor
+                </p>
+                <div className="mt-3">
+                  <BulletList items={snapshot.alignmentAndFriction.frictionSignals} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.15rem] border border-[#ef476f]/20 bg-[linear-gradient(135deg,rgba(239,71,111,0.07),rgba(255,255,255,0.98))] px-4 py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#ef476f]">
+              Rizici koje vrijedi pratiti
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Ovo su signali koji najviše zaslužuju praćenje prije naredne liderske ili HR
+              intervencije.
+            </p>
+            <div className="mt-4">
+              <BulletList items={snapshot.risksToWatch} />
+            </div>
+          </div>
+        </div>
+      </DashboardInfoCardShell>
+
+      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
           <DashboardSectionHeader
-            eyebrow="Usklađenost i trenje"
-            eyebrowClassName="text-[#073b4c]"
-            title="Gdje tim djeluje usklađeno, a gdje treba razgovor"
+            eyebrow="Preporuke za akciju"
+            eyebrowClassName="text-[#06d6a0]"
+            title="Šta lider ili HR radi sljedeće"
+            description="Preporuke čitaj kao praktičan odgovor na gore izdvojene rizike i signale trenja."
             className="gap-2"
             titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
+            descriptionClassName="text-sm leading-6 text-slate-600"
           />
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div className="rounded-[1.15rem] border border-emerald-200/70 bg-emerald-50/60 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                Signali usklađenosti
-              </p>
-              <div className="mt-3">
-                <BulletList items={snapshot.alignmentAndFriction.alignmentSignals} />
-              </div>
-            </div>
-            <div className="rounded-[1.15rem] border border-amber-200/80 bg-amber-50/70 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                Signali trenja
-              </p>
-              <div className="mt-3">
-                <BulletList items={snapshot.alignmentAndFriction.frictionSignals} />
-              </div>
-            </div>
+          <div className="mt-5">
+            <BulletList items={snapshot.leadershipRecommendations} />
           </div>
         </DashboardInfoCardShell>
 
         <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
           <DashboardSectionHeader
-            eyebrow="Razvojni signali"
-            eyebrowClassName="text-[#073b4c]"
-            title="Odvojeni signali za timski razgovor"
+            eyebrow="Naredni razgovor"
+            eyebrowClassName="text-[#118ab2]"
+            title={snapshot.suggestedNextConversation.title}
+            description="Koristi ovaj blok kao najkonkretniji naredni korak nakon čitanja izvještaja."
             className="gap-2"
             titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
+            descriptionClassName="text-sm leading-6 text-slate-600"
+          />
+          <div className="mt-5 rounded-[1.2rem] border border-[#118ab2]/20 bg-[linear-gradient(135deg,rgba(17,138,178,0.06),rgba(255,255,255,0.98))] p-4 sm:p-5">
+            <BulletList items={snapshot.suggestedNextConversation.prompts} />
+          </div>
+        </DashboardInfoCardShell>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
+          <DashboardSectionHeader
+            eyebrow="Podržavajuća dijagnostika"
+            eyebrowClassName="text-slate-500"
+            title="Pregled timskih dimenzija"
+            description="Ovaj dio pomaže da executive signal i prioritetni razgovori dobiju širi kontekst."
+            className="gap-2"
+            titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
+            descriptionClassName="text-sm leading-6 text-slate-600"
+          />
+          <div className="mt-5 space-y-3">
+            {snapshot.dimensionOverview.dimensions.map((dimension) => (
+              <div
+                key={dimension.key}
+                className="rounded-[1rem] border border-slate-200/80 bg-slate-50/70 px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-[#073b4c]">{dimension.label}</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">{dimension.summary}</p>
+              </div>
+            ))}
+          </div>
+        </DashboardInfoCardShell>
+
+        <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
+          <DashboardSectionHeader
+            eyebrow="Dodatni signali"
+            eyebrowClassName="text-slate-500"
+            title="Signali koji vrijede koristiti kao dodatni kontekst"
+            description="Ovo su supporting signali za dublji razgovor, ne glavni zaključak prvog čitanja."
+            className="gap-2"
+            titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
+            descriptionClassName="text-sm leading-6 text-slate-600"
           />
           <div className="mt-5 grid gap-4">
             <SignalCard eyebrow="Psihološka sigurnost" signal={snapshot.psychologicalSafetySignal} />
@@ -235,54 +324,15 @@ export function TeamDynamicsExecutiveOverviewReportView({
         </DashboardInfoCardShell>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
-          <DashboardSectionHeader
-            eyebrow="Rizici"
-            eyebrowClassName="text-[#ef476f]"
-            title="Rizici koje vrijedi pratiti"
-            className="gap-2"
-            titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
-          />
-          <div className="mt-5">
-            <BulletList items={snapshot.risksToWatch} />
-          </div>
-        </DashboardInfoCardShell>
-
-        <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
-          <DashboardSectionHeader
-            eyebrow="Preporuke"
-            eyebrowClassName="text-[#06d6a0]"
-            title="Preporuke za lidera"
-            className="gap-2"
-            titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
-          />
-          <div className="mt-5">
-            <BulletList items={snapshot.leadershipRecommendations} />
-          </div>
-        </DashboardInfoCardShell>
-      </div>
-
-      <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
-        <DashboardSectionHeader
-          eyebrow="Naredni razgovor"
-          eyebrowClassName="text-[#073b4c]"
-          title={snapshot.suggestedNextConversation.title}
-          className="gap-2"
-          titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
-        />
-        <div className="mt-5">
-          <BulletList items={snapshot.suggestedNextConversation.prompts} />
-        </div>
-      </DashboardInfoCardShell>
-
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
         <DashboardSectionHeader
           eyebrow="Ograničenja"
-          eyebrowClassName="text-[#073b4c]"
+          eyebrowClassName="text-slate-500"
           title="Kako čitati ovaj izvještaj"
+          description="Ove napomene čuvaju opreznu interpretaciju i ne mijenjaju prioritet glavnih timskih signala iznad."
           className="gap-2"
           titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
+          descriptionClassName="text-sm leading-6 text-slate-600"
         />
         <div className="mt-5">
           <BulletList items={snapshot.interpretationLimits} />
