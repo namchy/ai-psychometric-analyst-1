@@ -6606,6 +6606,15 @@ type TeamFitReportV1 = {
 * Nema worker-a u prvom code slice-u.
 * Nema Team Fit output generation-a u prvom code slice-u.
 
+### Completion note — Team Fit storage/lifecycle shell
+
+* Status: Storage/lifecycle shell implemented / no provider/renderer/worker.
+* Dedicated `team_fit_reports` migration je dodana.
+* Lifecycle helper shell je dodan u `lib/b2b/team-fit-report-lifecycle.ts`.
+* Fokusirani test je dodan i prolazi.
+* Nema provider/renderer/worker/UI/report generation-a u ovom slice-u.
+* Nema write-a u `attempt_reports`, `assessment_reports` ni `team_assessment_reports`.
+
 #### 7. Retry snapshot policy
 
 * Manual retry koristi isti persisted `input_snapshot`.
