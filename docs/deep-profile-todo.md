@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI i manual worker shell potvrđeni | Team module / Runtime + Import | Sljedeći uski korak: docs/spec runbook za manual worker MVP readiness: batch/concurrency, stuck processing recovery, retry policy, env preflight, observability i admin/internal visibility. Cron/scheduler ostaje kasnije, nakon dokazano potrebnog volumena i zaključanih ops guardraila. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI i manual worker shell potvrđeni | Team module / Runtime + Import | Sljedeći decision point: odlučiti da li je potreban minimalni ops/admin visibility polish ili je lane spreman za ograničeni MVP manual processing režim. Cron/scheduler ostaje kasnije. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -3039,6 +3039,180 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   * env preflight bude standardizovan
   * observability/admin visibility bude dovoljna
   * manual runbook pokaže da je volumen stvarno prevelik za ručni model
+
+### Decision note — Team Dynamics Executive Overview manual worker MVP runbook
+
+* Trenutni manual worker policy je dovoljan za MVP ako se dopuni konkretnim runbookom.
+* Code work nije potreban za definisanje operativnog modela.
+* Cron/scheduler se ne uvodi sada.
+* Manual worker command i controlled admin-triggered processing ostaju MVP model.
+
+#### Normalni queued -> ready tok
+
+1. Report je `queued`.
+2. UI prikazuje `Obradi izvještaj`.
+3. Prije obrade provjeriti env:
+   * `OPENAI_API_KEY`
+   * `AI_REPORT_MODEL`
+   * Supabase runtime access
+4. Za jedan report koristiti UI action.
+5. Za mali batch koristiti worker command.
+6. Za worker batch prvo pokrenuti dry-run.
+7. Preporučeni batch:
+   * `limit = 1` kao default oprezni run
+   * `limit = 3` za mali kontrolisani batch
+   * `limit = 10` ostaje hard cap, ne rutinski režim
+8. Nakon runa provjeriti:
+   * report status `ready`
+   * postoji `report_snapshot`
+   * `error_message` je prazan/null
+   * HR route nudi `Otvori izvještaj`
+
+#### Failed -> retry -> queued tok
+
+* Failed report prikazuje `Nije uspješno kreiran` + `Pokušaj ponovo`.
+* Retry/reset radi samo `failed -> queued`.
+* Retry ne pokreće automatsku obradu.
+* Retry zadržava isti report artefakt i postojeći `input_snapshot`.
+* Retry čisti operativne failure markere/status vremena prema postojećem helper ponašanju.
+* Nakon retry-a treba potvrditi da je status opet `queued`, pa posebno odlučiti da li ide UI process ili worker command.
+* Ne raditi slijepi višestruki retry bez provjere uzroka.
+* Odmah retry dozvoliti samo za:
+  * vjerovatni provider/network transient
+  * eventualno `unknown failure` ako postoje jasne indicije da je prolazan
+* Prvo intervencija, pa retry:
+  * config error
+  * parse failure
+  * validation failure
+  * input snapshot missing
+  * input snapshot invalid
+
+#### Stuck processing tok
+
+* MVP pragovi:
+  * `processing` potencijalno stuck nakon `10` minuta
+  * `processing` stvarno stuck nakon `30` minuta
+* Operativni slijed:
+  1. Provjeriti `started_at`.
+  2. Provjeriti da li je worker/manual action još aktivan.
+  3. Provjeriti worker output/logove za konkretan report.
+  4. Ako je proces završio ili pao, a row ostao `processing`, tretirati kao stuck incident.
+  5. Intervenciju smije raditi operator/dev, ne obični HR/admin.
+  6. Ne vraćati direktno u `queued` dok postoji sumnja da processing još traje.
+  7. Kada nema aktivnog procesa i prošao je stuck prag, ručno markirati kao failed prema dogovorenoj proceduri.
+  8. Automatic timeout sweeper / automatic recovery ostaju future automation, ne sada.
+
+#### Config/env error tok
+
+* Prije manual worker runa provjeriti:
+  * `OPENAI_API_KEY`
+  * `AI_REPORT_MODEL`
+  * Supabase runtime env
+  * očekivani env kontekst za worker path
+* Kod config errora:
+  * ne retry-ati odmah
+  * prvo popraviti env/config
+  * tek onda vratiti report u queued i ponovo pokrenuti obradu
+* Retry prije env fixa nema smisla.
+* Config error je deterministic missing-config problem, ne transient provider error.
+
+#### Provider/network error tok
+
+* Retry ima smisla ako je vjerovatno transient.
+* Ne ponavljati više puta zaredom bez provjere.
+* Koristiti isti report artefakt.
+* Retry ostaje manual da se izbjegnu petlje i nekontrolisan OpenAI trošak.
+
+#### Parse/validation failure tok
+
+* Ne tretirati kao obični transient provider/network error.
+* Može značiti:
+  * provider prompt/schema problem
+  * output-shape problem
+  * runtime validator mismatch
+* Prije retry-a provjeriti da li je failure izolovan ili ponovljiv.
+* Ako se ponavlja, eskalirati kao product/tech issue prije novog retry-a.
+
+#### Input snapshot missing/invalid tok
+
+* Ne klikati retry naslijepo.
+* Problem vjerovatno nije OpenAI transient nego input/integrity problem.
+* Provjeriti:
+  * report row
+  * `input_snapshot` persistence
+  * selection state
+  * aggregation readiness
+  * source-of-truth konzistentnost
+* Za MVP prvo istražiti isti artefakt; ne kreirati novi report artefakt napamet.
+
+#### Worker command policy
+
+* Preporučeni worker flow:
+  * dry-run
+  * zatim non-dry-run sa malim limitom
+* `limit = 1` koristiti:
+  * prvi run dana
+  * nakon incidenta
+  * za sumnjiv queued report
+  * za recovery provjeru
+* `limit = 3` koristiti:
+  * mali poznati backlog bez incidenta
+* `limit = 10` ne koristiti rutinski, bez nadzora ili prije boljih cost/ops guardraila.
+
+#### Admin/UI policy
+
+* HR/admin vidi:
+  * status
+  * vrijeme
+  * included member count
+  * report version
+  * `Obradi izvještaj`
+  * `Obrada u toku`
+  * `Otvori izvještaj`
+  * `Pokušaj ponovo`
+* HR/admin ne treba vidjeti:
+  * raw provider detalje
+  * raw `error_message`
+  * internu failure klasifikaciju u tehničkom obliku
+* Internal/dev-facing ostaje:
+  * failure marker
+  * worker output
+  * DB `error_message`
+* Failed reason u MVP-u ostaje generičan.
+* Kasniji admin-safe improvement može biti visokonivojska failure kategorija tipa:
+  * konfiguracija
+  * privremena greška servisa
+  * potrebna tehnička provjera
+
+#### Failure category policy table
+
+| Failure kategorija     | Retry odmah?     | Prvo provjeriti                                                    | Preporučena akcija                            | User-facing copy |
+| ---------------------- | ---------------- | ------------------------------------------------------------------ | --------------------------------------------- | ---------------- |
+| config error           | Ne               | env/config                                                         | popraviti config, pa retry kroz isti artefakt | generičan failed |
+| provider/network error | Da, kontrolisano | da nije outage ili config problem                                  | `failed -> queued`, pa jedan manual retry     | generičan failed |
+| parse failure          | Ne rutinski      | raw failure pattern, ponovljivost                                  | tehnički review prije retry-a                 | generičan failed |
+| validation failure     | Ne rutinski      | validator mismatch, provider output shape                          | tehnička provjera, pa tek onda retry          | generičan failed |
+| input snapshot missing | Ne               | report row, snapshot persistence, selection/aggregation integritet | internal investigation; ne blind retry        | generičan failed |
+| input snapshot invalid | Ne               | input shape i source integrity                                     | internal investigation; ne blind retry        | generičan failed |
+| unknown failure        | Oprezno          | logove i env                                                       | jedan kontrolisani retry ili eskalacija       | generičan failed |
+
+#### Scheduler decision
+
+* Scheduler se ne uvodi sada.
+* Signali koji kasnije mogu opravdati scheduler:
+  * stabilan i čest volumen queued reportova
+  * previše ručnih runova
+  * česta potreba za obradom bez prisustva operatora
+  * dokaz da manual model postaje usko grlo
+* Prije scheduler-a moraju postojati:
+  * batch/concurrency pravila
+  * stuck recovery pravila
+  * retry politika
+  * env preflight
+  * cost guard
+  * observability
+  * admin/internal visibility
+  * manual override fallback
 
 **Test coverage note:**
 - Verifikovano komande koje prolaze:

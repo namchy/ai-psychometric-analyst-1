@@ -36,6 +36,9 @@
 - Executive Overview lane trenutno ostaje manual/controlled processing model.
 - Cron/scheduler nije dio MVP odluke sada.
 - Manual worker command i admin-triggered processing su preferirani dok se ne dokaže potreba za automatskim schedulingom.
+- Manual worker MVP runbook sada zaključava normalni `queued -> ready` flow, `failed` retry flow, stuck `processing` pragove, failure category policy i scheduler decision.
+- Konkretni runbook detalji ostaju u `docs/deep-profile-todo.md`, ne u ovom product/tech spec dokumentu.
+- Scheduler nije dio MVP-a sada ni kao implicitni sljedeći korak.
 - Prije bilo kakvog scheduler-a moraju biti zaključani:
   - batch/concurrency
   - stuck processing recovery
