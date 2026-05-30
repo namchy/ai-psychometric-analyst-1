@@ -31,6 +31,9 @@
 - `team_fit_report_v1` je planiran kao relational HR report: kandidat + tim.
 - Team Fit koristi kandidatov kompozitni profil i timski agregirani profil kao osnovni ulazni odnos.
 - MVP ne uvodi numeric fit score, hire/no-hire output ni candidate-facing Team Fit prikaz.
+- Team Fit MVP contract draft sada ima zaključane odluke za `relationshipPattern`, candidate-side source, team-side source i role context.
+- Primary candidate-side source je HR-safe composite deterministic input snapshot, a primary team-side source je verified Team Dynamics aggregation/input snapshot.
+- Executive Overview snapshot ostaje optional interpreted context, dok role context ostaje future optional input.
 - Detaljni Team Fit decision draft ostaje u `docs/deep-profile-todo.md`.
 - Još uvijek nema:
   - Team Fit output
