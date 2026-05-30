@@ -24,7 +24,6 @@ db_backups/
 # Local database backup secrets
 backups/
 repomix-team-dynamics-ui.xml
-arctic-interface/
 
 
 repomix-team-dynamics-report-lane.xml

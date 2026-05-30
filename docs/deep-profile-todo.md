@@ -3269,8 +3269,6 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   - `node scripts/test-team-dynamics-report-selection-action.cjs`
   - `node scripts/test-team-dynamics-assessment-v1-final-aggregation-read.cjs`
   - `node scripts/test-team-dynamics-team-access.cjs`
-- `npm run typecheck` trenutno ostaje blokiran postojećim nepovezanim `arctic-interface/...` subtree problemom; prvi uočeni error:
-  - `arctic-interface/packages/arctic/script/build.ts(3,25): error TS2307: Cannot find module '../node_modules/@opentui/solid/scripts/solid-plugin' or its corresponding type declarations.`
 - Latest changed Team Dynamics fajlovi nisu prijavili nove TypeScript greške prije tog nepovezanog subtree pada.
 
 **Guardrail note:**
