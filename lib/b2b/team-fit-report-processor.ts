@@ -1,10 +1,13 @@
 import "server-only";
 
 import type { TeamFitReportV1 } from "@/lib/b2b/team-fit-report-contract";
-import {
-  validateTeamFitReportSnapshot,
-} from "@/lib/b2b/team-fit-report-contract";
 import { buildTeamFitReportInputSnapshot, persistTeamFitReportInputSnapshot, type TeamFitReportInputSnapshot } from "@/lib/b2b/team-fit-report-input";
+import {
+  createTeamFitFakeProvider,
+  type TeamFitReportProvider,
+  type TeamFitReportProviderFailureReason,
+  type TeamFitReportProviderResult,
+} from "@/lib/b2b/team-fit-report-provider";
 import {
   claimTeamFitReportForProcessing,
   markTeamFitReportProcessingFailed,
@@ -17,10 +20,17 @@ type TeamFitReportProcessorDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
   now?: () => string;
   buildMockSnapshot?: (inputSnapshot: TeamFitReportInputSnapshot) => TeamFitReportV1;
-  validateSnapshot?: typeof validateTeamFitReportSnapshot;
+  provider?: TeamFitReportProvider;
 };
 
-export type ProcessTeamFitReportWithMockResult =
+type TeamFitProviderFailureMarker =
+  | "TEAM_FIT_PROVIDER_CONFIG_ERROR"
+  | "TEAM_FIT_PROVIDER_REQUEST_FAILED"
+  | "TEAM_FIT_PROVIDER_PARSE_FAILURE"
+  | "TEAM_FIT_PROVIDER_VALIDATION_FAILURE"
+  | "TEAM_FIT_PROVIDER_UNKNOWN_ERROR";
+
+export type ProcessTeamFitReportWithProviderResult =
   | { ok: true; reportId: string; status: "ready" }
   | {
       ok: false;
@@ -33,12 +43,15 @@ export type ProcessTeamFitReportWithMockResult =
         | "not_claimable"
         | "update_failed"
         | "input_snapshot_failed"
-        | "snapshot_invalid"
+        | "provider_failed"
         | "ready_update_failed"
         | "fail_transition_failed";
       reportId?: string;
       message: string;
+      marker?: TeamFitProviderFailureMarker;
     };
+
+export type ProcessTeamFitReportWithMockResult = ProcessTeamFitReportWithProviderResult;
 
 type TeamFitReportRow = {
   id: string;
@@ -56,6 +69,26 @@ function isNonEmptyString(value: unknown): value is string {
 
 function getNow(deps: TeamFitReportProcessorDependencies): string {
   return deps.now ? deps.now() : new Date().toISOString();
+}
+
+function mapTeamFitProviderFailure(input: {
+  result: Extract<TeamFitReportProviderResult, { ok: false }>;
+}): {
+  marker: TeamFitProviderFailureMarker;
+  message: string;
+} {
+  const reasonMap: Record<TeamFitReportProviderFailureReason, TeamFitProviderFailureMarker> = {
+    provider_config_error: "TEAM_FIT_PROVIDER_CONFIG_ERROR",
+    provider_request_failed: "TEAM_FIT_PROVIDER_REQUEST_FAILED",
+    provider_parse_failure: "TEAM_FIT_PROVIDER_PARSE_FAILURE",
+    provider_validation_failure: "TEAM_FIT_PROVIDER_VALIDATION_FAILURE",
+    provider_unknown_error: "TEAM_FIT_PROVIDER_UNKNOWN_ERROR",
+  };
+
+  return {
+    marker: reasonMap[input.result.reason],
+    message: reasonMap[input.result.reason],
+  };
 }
 
 async function loadProcessingReportRow(input: {
@@ -167,6 +200,22 @@ export async function processTeamFitReportWithMock(input: {
   teamFitReportId: string;
   organizationId: string;
 }, deps: TeamFitReportProcessorDependencies = {}): Promise<ProcessTeamFitReportWithMockResult> {
+  const provider =
+    deps.provider ??
+    createTeamFitFakeProvider({
+      buildSnapshot: deps.buildMockSnapshot ?? buildMockTeamFitReportSnapshot,
+    });
+
+  return processTeamFitReportWithProvider(input, {
+    ...deps,
+    provider,
+  });
+}
+
+export async function processTeamFitReportWithProvider(input: {
+  teamFitReportId: string;
+  organizationId: string;
+}, deps: TeamFitReportProcessorDependencies = {}): Promise<ProcessTeamFitReportWithProviderResult> {
   if (!isNonEmptyString(input.teamFitReportId)) {
     return { ok: false, reason: "invalid_payload", message: "teamFitReportId is required." };
   }
@@ -229,17 +278,16 @@ export async function processTeamFitReportWithMock(input: {
     };
   }
 
-  const generator = deps.buildMockSnapshot ?? buildMockTeamFitReportSnapshot;
-  const snapshot = generator(inputResult.inputSnapshot);
-  const validation = (deps.validateSnapshot ?? validateTeamFitReportSnapshot)(snapshot);
+  const provider = deps.provider ?? createTeamFitFakeProvider();
+  const providerResult = await provider.generate(inputResult.inputSnapshot);
 
-  if (!validation.ok) {
-    const failureMessage = validation.errors.join(" | ");
+  if (!providerResult.ok) {
+    const failure = mapTeamFitProviderFailure({ result: providerResult });
     const failed = await failClaimedReport(
       {
         teamFitReportId: input.teamFitReportId,
         organizationId: input.organizationId,
-        errorMessage: failureMessage,
+        errorMessage: failure.message,
       },
       deps,
     );
@@ -250,14 +298,16 @@ export async function processTeamFitReportWithMock(input: {
         reason: "fail_transition_failed",
         reportId: input.teamFitReportId,
         message: failed.reason,
+        marker: failure.marker,
       };
     }
 
     return {
       ok: false,
-      reason: "snapshot_invalid",
+      reason: "provider_failed",
       reportId: input.teamFitReportId,
-      message: failureMessage,
+      message: failure.message,
+      marker: failure.marker,
     };
   }
 
@@ -265,7 +315,7 @@ export async function processTeamFitReportWithMock(input: {
     {
       teamFitReportId: input.teamFitReportId,
       organizationId: input.organizationId,
-      reportSnapshot: validation.snapshot,
+      reportSnapshot: providerResult.snapshot,
     },
     deps,
   );

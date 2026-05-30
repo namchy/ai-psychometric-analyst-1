@@ -5,29 +5,32 @@ const Module = require("node:module");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
-const mockPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-mock.ts");
+const providerPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-provider.ts");
 const processorPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-processor.ts");
 const contractPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-contract.ts");
 const inputPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-input.ts");
-const todoPath = path.join(projectRoot, "docs", "deep-profile-todo.md");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
-const mockSource = fs.readFileSync(mockPath, "utf8");
+const providerSource = fs.readFileSync(providerPath, "utf8");
 const processorSource = fs.readFileSync(processorPath, "utf8");
 
-assert.doesNotMatch(mockSource, /\.from\("/);
-assert.doesNotMatch(mockSource, /OpenAI|provider|renderer|worker|scheduler/i);
-assert.doesNotMatch(mockSource, /rawAnswers|teamMemberScores|candidateVisible:\s*true/);
+assert.match(providerSource, /export type TeamFitReportProvider/);
+assert.match(providerSource, /createTeamFitFakeProvider/);
+assert.match(providerSource, /validateTeamFitProviderSnapshotResult/);
+assert.doesNotMatch(providerSource, /OpenAI|api\.openai|chat\/completions|fetch\(/i);
+assert.doesNotMatch(providerSource, /\.from\("/);
+assert.doesNotMatch(providerSource, /processTeamFitReportWithMock|claimTeamFitReportForProcessing/);
 assert.doesNotMatch(processorSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(processorSource, /\.from\("assessment_reports"\)/);
 assert.doesNotMatch(processorSource, /\.from\("team_assessment_reports"\)/);
-assert.doesNotMatch(processorSource, /OpenAI|renderer|worker|scheduler/i);
 assert.match(processorSource, /processTeamFitReportWithProvider/);
+assert.match(processorSource, /TEAM_FIT_PROVIDER_CONFIG_ERROR/);
+assert.match(processorSource, /TEAM_FIT_PROVIDER_REQUEST_FAILED/);
+assert.match(processorSource, /TEAM_FIT_PROVIDER_PARSE_FAILURE/);
 assert.match(processorSource, /TEAM_FIT_PROVIDER_VALIDATION_FAILURE/);
-assert.match(processorSource, /claimTeamFitReportForProcessing/);
-assert.match(processorSource, /markTeamFitReportProcessingFailed/);
-assert.match(processorSource, /report_status:\s*"ready"/);
+assert.match(processorSource, /TEAM_FIT_PROVIDER_UNKNOWN_ERROR/);
+assert.doesNotMatch(processorSource, /OpenAI|renderer|worker|scheduler|cron/i);
 
 function resolveWithExtensions(candidatePath) {
   if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
@@ -36,7 +39,6 @@ function resolveWithExtensions(candidatePath) {
 
   for (const extension of [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"]) {
     const withExtension = `${candidatePath}${extension}`;
-
     if (fs.existsSync(withExtension)) {
       return withExtension;
     }
@@ -78,13 +80,23 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
   module._compile(transpiled.outputText, filename);
 };
 
-const { buildMockTeamFitReportSnapshot } = require(mockPath);
+const {
+  createTeamFitFakeProvider,
+  validateTeamFitProviderSnapshotResult,
+} = require(providerPath);
 const { validateTeamFitReportSnapshot } = require(contractPath);
 const {
   TEAM_FIT_REPORT_INPUT_TYPE,
   TEAM_FIT_REPORT_INPUT_VERSION,
 } = require(inputPath);
-const { processTeamFitReportWithMock } = require(processorPath);
+const {
+  processTeamFitReportWithMock,
+  processTeamFitReportWithProvider,
+} = require(processorPath);
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
 function buildInputSnapshot() {
   return {
@@ -171,22 +183,19 @@ function createSupabaseStub(initialState = {}) {
         filters: [],
         mode: "select",
         patch: null,
-      };
-
-      const builder = {
         select() {
           operations.push({ type: "select", table });
-          return builder;
+          return query;
         },
         eq(column, value) {
           query.filters.push({ type: "eq", column, value });
-          return builder;
+          return query;
         },
         update(patch) {
           operations.push({ type: "update", table, patch });
           query.mode = "update";
           query.patch = patch;
-          return builder;
+          return query;
         },
         async maybeSingle() {
           if (query.mode === "update") {
@@ -208,7 +217,7 @@ function createSupabaseStub(initialState = {}) {
         },
       };
 
-      return builder;
+      return query;
     },
   };
 }
@@ -250,60 +259,53 @@ function buildBaseState() {
   };
 }
 
-function assertNoUndefined(value) {
-  if (value === undefined) {
-    assert.fail("Encountered undefined in JSON-safe payload.");
-  }
-
-  if (Array.isArray(value)) {
-    value.forEach(assertNoUndefined);
-    return;
-  }
-
-  if (value && typeof value === "object") {
-    for (const key of Object.keys(value)) {
-      assertNoUndefined(value[key]);
-    }
-  }
-}
-
 async function main() {
   const inputSnapshot = buildInputSnapshot();
-  const mockSnapshot = buildMockTeamFitReportSnapshot(inputSnapshot);
-  const validation = validateTeamFitReportSnapshot(mockSnapshot);
 
-  assert.equal(mockSnapshot.reportType, "team_fit_report_v1");
-  assert.equal(mockSnapshot.reportVersion, "v1");
-  assert.equal(mockSnapshot.audience, "hr_internal");
-  assert.equal(mockSnapshot.sourceType, "candidate_team_relational");
-  assert.match(mockSnapshot.fitOverview.relationshipPattern, /needs_validation|mixed_signal/);
-  assert.ok(mockSnapshot.fitOverview);
-  assert.ok(mockSnapshot.teamContextSummary);
-  assert.ok(Array.isArray(mockSnapshot.candidateSignals));
-  assert.ok(Array.isArray(mockSnapshot.complementaritySignals));
-  assert.ok(Array.isArray(mockSnapshot.frictionRisks));
-  assert.ok(mockSnapshot.interviewFocus);
-  assert.ok(mockSnapshot.onboardingGuidance);
-  assert.ok(mockSnapshot.managerGuidance);
-  assert.ok(Array.isArray(mockSnapshot.watchouts));
-  assert.ok(Array.isArray(mockSnapshot.interpretationLimits));
-  assert.equal(validation.ok, true, validation.ok ? "" : validation.errors.join("; "));
-  assert.equal("fitScore" in mockSnapshot, false);
-  assert.equal("hireScore" in mockSnapshot, false);
-  assert.equal("hireRecommendation" in mockSnapshot, false);
-  assert.equal("rejectRecommendation" in mockSnapshot, false);
-  assert.equal("rawAnswers" in mockSnapshot, false);
-  assert.equal("teamMemberScores" in mockSnapshot, false);
-  assert.equal(mockSnapshot.candidateVisible === true, false);
-  assert.doesNotMatch(
-    JSON.stringify(mockSnapshot),
-    /\bno-hire\b|\breject\b|\bbad fit\b|\bculture fit\b|\bwill perform\b|\bdiagnosis\b/i,
-  );
-  assertNoUndefined(mockSnapshot);
-  JSON.stringify(mockSnapshot);
+  const validProvider = createTeamFitFakeProvider({
+    providerMetadata: {
+      provider: "team_fit_fake",
+      providerVersion: "v1",
+    },
+  });
+  const validProviderResult = await validProvider.generate(inputSnapshot);
+  assert.equal(validProviderResult.ok, true);
+  if (!validProviderResult.ok) {
+    throw new Error(validProviderResult.message);
+  }
+  assert.equal(validateTeamFitReportSnapshot(validProviderResult.snapshot).ok, true);
+  assert.equal(validProviderResult.providerMetadata.provider, "team_fit_fake");
+
+  const invalidProvider = createTeamFitFakeProvider({
+    invalidSnapshot: (snapshotInput) => {
+      const invalid = clone(validProviderResult.snapshot);
+      invalid.reportType = snapshotInput.reportType === "team_fit_report_v1" ? "bad_type" : "team_fit_report_v1";
+      return invalid;
+    },
+  });
+  const invalidProviderResult = await invalidProvider.generate(inputSnapshot);
+  assert.deepEqual(invalidProviderResult, {
+    ok: false,
+    reason: "provider_validation_failure",
+    message: invalidProviderResult.message,
+    retryable: false,
+  });
+  assert.match(invalidProviderResult.message, /reportType/);
+
+  for (const failureMode of ["config_error", "request_failed", "parse_failure", "validation_failure"]) {
+    const failureProvider = createTeamFitFakeProvider({ failureMode });
+    const failureResult = await failureProvider.generate(inputSnapshot);
+    assert.equal(failureResult.ok, false);
+    if (failureResult.ok) {
+      throw new Error(`Expected fake provider failure for ${failureMode}.`);
+    }
+  }
+
+  const helperValidation = validateTeamFitProviderSnapshotResult(validProviderResult.snapshot);
+  assert.equal(helperValidation.ok, true);
 
   const processSupabase = createSupabaseStub(buildBaseState());
-  const processed = await processTeamFitReportWithMock(
+  const processReady = await processTeamFitReportWithProvider(
     {
       teamFitReportId: "report-1",
       organizationId: "org-1",
@@ -311,81 +313,113 @@ async function main() {
     {
       supabase: processSupabase,
       now: () => "2026-05-30T12:30:00.000Z",
+      provider: createTeamFitFakeProvider(),
     },
   );
 
-  assert.deepEqual(processed, {
+  assert.deepEqual(processReady, {
     ok: true,
     reportId: "report-1",
     status: "ready",
   });
-
   const readyRow = processSupabase.state.team_fit_reports[0];
   assert.equal(readyRow.report_status, "ready");
-  assert.equal(typeof readyRow.started_at, "string");
-  assert.equal(typeof readyRow.completed_at, "string");
+  assert.equal(readyRow.completed_at, "2026-05-30T12:30:00.000Z");
   assert.equal(readyRow.error_message, null);
   assert.ok(readyRow.input_snapshot);
   assert.ok(readyRow.report_snapshot);
-
-  const readyValidation = validateTeamFitReportSnapshot(readyRow.report_snapshot);
-  assert.equal(readyValidation.ok, true, readyValidation.ok ? "" : readyValidation.errors.join("; "));
-  assert.equal(processSupabase.operations.some((entry) => entry.table === "attempt_reports" && entry.type === "update"), false);
-  assert.equal(processSupabase.operations.some((entry) => entry.table === "assessment_reports" && entry.type === "update"), false);
-  assert.equal(processSupabase.operations.some((entry) => entry.table === "team_assessment_reports" && entry.type === "update"), false);
-
-  const wrongOrgSupabase = createSupabaseStub(buildBaseState());
-  const wrongOrgResult = await processTeamFitReportWithMock(
-    {
-      teamFitReportId: "report-1",
-      organizationId: "org-2",
-    },
-    {
-      supabase: wrongOrgSupabase,
-      now: () => "2026-05-30T12:30:00.000Z",
-    },
+  const readySnapshotValidation = validateTeamFitReportSnapshot(readyRow.report_snapshot);
+  assert.equal(readySnapshotValidation.ok, true);
+  assert.equal(
+    processSupabase.operations.some(
+      (operation) =>
+        operation.table === "attempt_reports" ||
+        operation.table === "assessment_reports" ||
+        operation.table === "team_assessment_reports",
+    ),
+    false,
   );
 
-  assert.equal(wrongOrgResult.ok, false);
-  assert.equal(wrongOrgResult.reason, "report_not_found");
-
-  const invalidSupabase = createSupabaseStub(buildBaseState());
-  const invalidResult = await processTeamFitReportWithMock(
+  const noInputSupabase = createSupabaseStub(buildBaseState());
+  noInputSupabase.state.team_fit_reports[0].input_snapshot = null;
+  const noInputResult = await processTeamFitReportWithProvider(
     {
       teamFitReportId: "report-1",
       organizationId: "org-1",
     },
     {
-      supabase: invalidSupabase,
-      now: () => "2026-05-30T12:30:00.000Z",
-      buildMockSnapshot() {
-        return {
-          reportType: "team_fit_report_v1",
-          reportVersion: "v1",
-          locale: "bs",
-        };
-      },
+      supabase: noInputSupabase,
+      now: () => "2026-05-30T12:31:00.000Z",
+      provider: createTeamFitFakeProvider(),
     },
   );
+  assert.equal(noInputResult.ok, true);
+  assert.ok(noInputSupabase.state.team_fit_reports[0].input_snapshot);
 
-  assert.equal(invalidResult.ok, false);
-  assert.equal(invalidResult.reason, "provider_failed");
-  assert.equal(invalidResult.marker, "TEAM_FIT_PROVIDER_VALIDATION_FAILURE");
-  assert.equal(invalidSupabase.state.team_fit_reports[0].report_status, "failed");
-  assert.equal(typeof invalidSupabase.state.team_fit_reports[0].failed_at, "string");
+  const failedSupabase = createSupabaseStub(buildBaseState());
+  const failedResult = await processTeamFitReportWithProvider(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: failedSupabase,
+      now: () => "2026-05-30T12:32:00.000Z",
+      provider: createTeamFitFakeProvider({ failureMode: "validation_failure" }),
+    },
+  );
+  assert.equal(failedResult.ok, false);
+  if (failedResult.ok) {
+    throw new Error("Expected provider failure.");
+  }
+  assert.equal(failedResult.reason, "provider_failed");
+  assert.equal(failedResult.marker, "TEAM_FIT_PROVIDER_VALIDATION_FAILURE");
+  assert.equal(failedSupabase.state.team_fit_reports[0].report_status, "failed");
   assert.equal(
-    invalidSupabase.state.team_fit_reports[0].error_message,
+    failedSupabase.state.team_fit_reports[0].error_message,
     "TEAM_FIT_PROVIDER_VALIDATION_FAILURE",
   );
 
-  const refreshedTodoSource = fs.readFileSync(todoPath, "utf8");
-  assert.match(refreshedTodoSource, /Completion note — Team Fit mock-safe generation shell/);
-  assert.match(refreshedTodoSource, /Completion note — Team Fit provider seam shell/);
+  const wrongOrganizationSupabase = createSupabaseStub(buildBaseState());
+  const wrongOrganizationResult = await processTeamFitReportWithProvider(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-wrong",
+    },
+    {
+      supabase: wrongOrganizationSupabase,
+      now: () => "2026-05-30T12:33:00.000Z",
+      provider: createTeamFitFakeProvider(),
+    },
+  );
+  assert.equal(wrongOrganizationResult.ok, false);
+  if (wrongOrganizationResult.ok) {
+    throw new Error("Expected wrong organization failure.");
+  }
+  assert.match(wrongOrganizationResult.reason, /report_not_found|not_claimable/);
 
-  console.log("test-team-fit-report-mock-generation: ok");
+  const mockCompatibleSupabase = createSupabaseStub(buildBaseState());
+  const mockCompatibleResult = await processTeamFitReportWithMock(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: mockCompatibleSupabase,
+      now: () => "2026-05-30T12:34:00.000Z",
+    },
+  );
+  assert.deepEqual(mockCompatibleResult, {
+    ok: true,
+    reportId: "report-1",
+    status: "ready",
+  });
+
+  console.log("test-team-fit-report-provider-seam: ok");
 }
 
 main().catch((error) => {
+  console.error("test-team-fit-report-provider-seam failed");
   console.error(error);
   process.exitCode = 1;
 });

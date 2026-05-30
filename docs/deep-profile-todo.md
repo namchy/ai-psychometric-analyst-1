@@ -6649,6 +6649,20 @@ type TeamFitReportV1 = {
 * Nema write-a u forbidden report tabele.
 * Fokusirani test je dodan i prolazi.
 
+### Completion note — Team Fit provider seam shell
+
+* Status: Provider seam shell implemented / no OpenAI renderer worker UI.
+* Dodat je provider boundary bez OpenAI implementacije.
+* Dodat je fake/mock provider preko postojećeg mock generatora.
+* Processor sada može koristiti provider seam uz zadržan mock-safe public path.
+* Provider output prolazi validator prije persist-a.
+* Failure categories se mapiraju u controlled failed state.
+* Nema real provider-a ni OpenAI-ja.
+* Nema renderer-a, UI-a, worker-a ni scheduler-a.
+* Nema write-a u `attempt_reports`, `assessment_reports` ni `team_assessment_reports`.
+* Fokusirani test za provider seam je dodan i prolazi.
+* Next step: read-only display helper ili OpenAI provider planning, samo nakon eksplicitnog odobrenja.
+
 #### 7. Retry snapshot policy
 
 * Manual retry koristi isti persisted `input_snapshot`.
