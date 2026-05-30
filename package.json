@@ -75,7 +75,8 @@
     "test:safran-v1-scoring": "node scripts/test-safran-v1-scoring.cjs",
     "test:team-fit-report-lifecycle-shell": "node scripts/test-team-fit-report-lifecycle-shell.cjs",
     "test:team-fit-report-input-builder": "node scripts/test-team-fit-report-input-builder.cjs",
-    "test:team-fit-report-contract": "node scripts/test-team-fit-report-contract.cjs"
+    "test:team-fit-report-contract": "node scripts/test-team-fit-report-contract.cjs",
+    "test:team-fit-report-mock-generation": "node scripts/test-team-fit-report-mock-generation.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

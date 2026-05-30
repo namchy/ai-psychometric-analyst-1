@@ -350,10 +350,10 @@ export async function buildTeamFitReportInputSnapshot(input: {
     );
   }
 
-  if (reportRow.report_status !== "queued") {
+  if (reportRow.report_status !== "queued" && reportRow.report_status !== "processing") {
     return buildFailure(
       "report_not_queued",
-      "Team Fit report input snapshot can only be built for queued report rows when no persisted snapshot exists.",
+      "Team Fit report input snapshot can only be built for queued or processing report rows when no persisted snapshot exists.",
     );
   }
 
