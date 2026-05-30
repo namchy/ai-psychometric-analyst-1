@@ -6676,6 +6676,21 @@ type TeamFitReportV1 = {
 * Fokusirani test za display helper je dodan i prolazi.
 * Next step: renderer shell ili OpenAI provider planning, samo nakon eksplicitnog odobrenja.
 
+### Completion note — Team Fit renderer shell
+
+* Status: Renderer shell implemented / no route action provider worker.
+* Dodat je `components/dashboard/team-fit-report-view.tsx`.
+* Renderer je HR-only i read-only.
+* Ready report prikazuje validirani `team_fit_report_v1` snapshot.
+* Queued/processing/failed prikazuju safe status state.
+* Failed ne prikazuje raw `error_message`.
+* Nema provider/OpenAI-ja.
+* Nema generation from view.
+* Nema manual action/UI process/retry.
+* Nema worker-a ni scheduler-a.
+* Fokusirani renderer test je dodan i prolazi.
+* Next step: optional read-only route shell ili OpenAI provider planning, samo nakon eksplicitnog odobrenja.
+
 #### 7. Retry snapshot policy
 
 * Manual retry koristi isti persisted `input_snapshot`.
