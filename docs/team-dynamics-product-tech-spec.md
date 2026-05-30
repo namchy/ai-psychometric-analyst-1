@@ -24,6 +24,10 @@
   - manual process/retry UI
   - manual worker shell
   - real smoke potvrde
+- Executive Overview renderer/product polish V1 je završen.
+- Renderer sada bolje podržava HR executive-reading flow kroz jači headline opening, scanabilnije key signals, povezani risk/action tok, izdvojeni next-conversation blok i sekundarni supporting diagnostics sloj.
+- Ovo je urađeno bez promjene contracta, providera, workera ili lifecycle/orchestration sloja.
+- Detaljni completion log ostaje u `docs/deep-profile-todo.md`.
 - Još uvijek nema:
   - Team Fit output
   - unified overall team score

@@ -50,7 +50,7 @@ Komande:
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
-| P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI i manual worker shell potvrđeni | Team module / Runtime + Import | Sljedeći decision point: odlučiti da li je potreban minimalni ops/admin visibility polish ili je lane spreman za ograničeni MVP manual processing režim. Cron/scheduler ostaje kasnije. |
+| P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
 | P1        | Timski fit kandidata product/report contract spec | Planirano / Epic zabilježen | Relacijski report / Candidate-team fit | Definisati inpute, contract, guardrails i output sekcije nakon osnovnog Team Dynamics reporta. |
@@ -3213,6 +3213,33 @@ Ukupna ciljna dužina: 48 assessment jedinica (31 + 7 + 6 + 4).
   * observability
   * admin/internal visibility
   * manual override fallback
+
+### Completion note — Team Dynamics Executive Overview renderer/product polish V1
+
+* Zatvoren je uski Team Dynamics Executive Overview renderer/product polish slice za HR-facing V1.
+* Report struktura je preuređena prema executive-reading logici:
+  1. executive signal / glavni zaključak
+  2. key team signals
+  3. risks/friction
+  4. leadership recommendations
+  5. suggested next conversation
+  6. supporting diagnostics
+  7. interpretation limits
+* `executiveSummary.headline` je podignut kao glavni vizuelni zaključak, dok su metadata spuštene na sekundarni nivo.
+* `keyTeamSignals` su prebačeni iz ravne bullet/list strukture u scanabilnije prioritetne signal kartice.
+* `alignmentAndFriction` i `risksToWatch` su grupisani u povezan rizik/trenje blok, a `leadershipRecommendations` dolaze odmah kao problem/action nastavak.
+* `suggestedNextConversation` je izdvojen kao završni operativni next-step blok.
+* `dimensionOverview`, `psychologicalSafetySignal`, `situationalJudgmentSignal` i `outcomePulseSignal` ostaju prisutni kao supporting diagnostics sloj.
+* `interpretationLimits` ostaju na kraju sa diskretnijim guardrail framing-om.
+* Nisu mijenjani snapshot shape, report contract, provider, worker, lifecycle/orchestration, scoring ili aggregation; nije uveden novi report kind ni Team Fit output.
+* Dodan je dev-only visual review tooling:
+  * `scripts/create-team-dynamics-executive-overview-visual-fixture.cjs`
+  * `npm run create:team-dynamics-visual-fixture`
+* Verifikacija:
+  * `node scripts/test-team-dynamics-executive-overview-renderer.cjs`
+  * `node scripts/test-team-dynamics-executive-overview-local-lane-smoke.cjs`
+  * `npm run create:team-dynamics-visual-fixture`
+  Sve tri provjere su prošle, a ručni browser visual review na ready fixture reportu je potvrdio GO za zatvaranje Executive Overview renderer/product polish V1.
 
 **Test coverage note:**
 - Verifikovano komande koje prolaze:
