@@ -73,7 +73,8 @@
     "test:standard-battery-active": "node scripts/test-standard-battery-active.cjs",
     "test:standard-battery": "node scripts/test-standard-assessment-battery.cjs",
     "test:safran-v1-scoring": "node scripts/test-safran-v1-scoring.cjs",
-    "test:team-fit-report-lifecycle-shell": "node scripts/test-team-fit-report-lifecycle-shell.cjs"
+    "test:team-fit-report-lifecycle-shell": "node scripts/test-team-fit-report-lifecycle-shell.cjs",
+    "test:team-fit-report-input-builder": "node scripts/test-team-fit-report-input-builder.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
