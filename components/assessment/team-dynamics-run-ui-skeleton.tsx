@@ -410,7 +410,7 @@ export function TeamDynamicsRunUiSkeleton(props: {
 
       <p className="text-sm leading-6 text-slate-700">
         Navigacija ostaje lokalna, a odgovor za trenutno pitanje se sprema samo kada kliknes
-        "Spremi odgovor".
+        &quot;Spremi odgovor&quot;.
       </p>
       <p className="text-sm leading-6 text-slate-500">
         Osvjezavanje stranice moze obrisati lokalni UI state. Nema autosave-a, save-on-selecta,
