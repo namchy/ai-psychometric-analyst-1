@@ -31,6 +31,21 @@
   - raw responses in report input
   - cron/scheduler/background automation
 
+### Worker deployment-readiness policy
+
+- Executive Overview lane trenutno ostaje manual/controlled processing model.
+- Cron/scheduler nije dio MVP odluke sada.
+- Manual worker command i admin-triggered processing su preferirani dok se ne dokaže potreba za automatskim schedulingom.
+- Prije bilo kakvog scheduler-a moraju biti zaključani:
+  - batch/concurrency
+  - stuck processing recovery
+  - retry policy
+  - cost/rate-limit
+  - observability/logging
+  - admin visibility
+  - manual override
+  - production env validation
+
 ## Kontekst i cilj
 
 Team Dynamics uvodi timski modul koji mjeri dinamiku tima kroz agregirani pristup. Cilj nije evaluacija pojedinca unutar tima, nego opis tima kao sistema i operativni uvid za HR/lidera.
