@@ -53,7 +53,7 @@ Komande:
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
-| P1        | Timski fit kandidata product/report contract spec | Canonical product/report contract spec created / no implementation | Relacijski report / Candidate-team fit | Implementation planning slice only after explicit approval: decide storage artefact, input snapshot builder, validator/provider/renderer/lifecycle boundaries. No DB/provider/renderer work yet. |
+| P1        | Timski fit kandidata product/report contract spec | Implementation planning note documented / no code approved | Relacijski report / Candidate-team fit | First implementation slice only after explicit approval: dedicated team_fit_reports storage/lifecycle shell planning-to-code handoff. No provider/renderer/worker yet. |
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
 | P1        | Queued vs processing HR report status UX            | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon razdvajanja `queued = Čeka generisanje` i `processing = Generiše se` u status labeli, opisu i disabled CTA-u. |
@@ -6351,6 +6351,183 @@ type TeamFitReportV1 = {
 * Spec ostaje product/report contract draft, ne implementation plan.
 * Ovim korakom implementation nije odobren.
 * Sljedeći korak je implementation planning samo na eksplicitnu odluku.
+
+### Planning note — Team Fit implementation architecture boundaries
+
+#### Recommended architecture direction
+
+* Dedicated relational report lane za `team_fit_report_v1`.
+* Dedicated storage artefakt: `team_fit_reports`.
+* Deterministic input snapshot builder.
+* Zaseban contract/validator.
+* Provider koji prima samo input snapshot.
+* Lifecycle/processor sa statusima:
+  * `queued`
+  * `processing`
+  * `ready`
+  * `failed`
+* HR-only read/display boundary.
+* Manual/controlled processing za MVP.
+* Bez scheduler-a kao defaulta.
+
+#### Storage decision
+
+* Preporuka je nova tabela `team_fit_reports`.
+* Ownership mora uključiti:
+  * `organization_id`
+  * `team_id`
+  * `participant_id` ili candidate/participant reference
+  * candidate-side source reference
+  * team-side source reference
+  * optional interpreted context reference
+  * `report_type`
+  * `report_version`
+  * `report_status`
+  * `input_snapshot`
+  * `report_snapshot`
+  * `error_message`
+  * lifecycle timestamps
+* Svaki report mora snapshotovati source state iz trenutka generacije.
+* Ne koristiti `attempt_reports` jer Team Fit nije vezan za jedan attempt.
+* Ne koristiti postojeći `assessment_reports` jer Team Fit nije individual/composite-only lane.
+* Ne koristiti postojeći `team_assessment_reports` jer Team Fit nije team-only report nego candidate + team relational report.
+
+#### Input snapshot planning
+
+* Planning helper nazivi:
+  * `buildTeamFitReportInputSnapshot(...)`
+  * `persistTeamFitReportInputSnapshot(...)`
+* Snapshot pravila:
+  * provider dobija samo deterministic input snapshot
+  * snapshot mora biti versioned
+  * snapshot uključuje HR-safe candidate composite input
+  * snapshot uključuje verified Team Dynamics aggregation/input snapshot
+  * Executive Overview context je optional interpreted context i može ostati deferred za prvi code slice
+  * raw team member answers su zabranjeni
+  * individual team member scores u prikazu su zabranjeni
+  * private member narrative reports su zabranjeni
+  * candidate-facing report nije canonical source-of-truth
+
+#### Contract / validator planning
+
+* Predloženi budući fajl:
+  * `lib/b2b/team-fit-report-contract.ts`
+* Validator mora čuvati:
+  * required sections iz `team_fit_report_v1`
+  * allowed `relationshipPattern` vrijednosti:
+    * `alignment_signal`
+    * `complementarity_signal`
+    * `mixed_signal`
+    * `needs_validation`
+  * no numeric `fitScore`
+  * no hire/no-hire wording
+  * no rejection recommendation
+  * no raw answers
+  * no individual team member score display
+  * no protected-class inference
+  * no deterministic performance prediction
+  * no causality claims
+
+#### Provider boundary planning
+
+* Predloženi budući provider:
+  * `generateTeamFitReportWithOpenAI(inputSnapshot, options)`
+* Granice:
+  * provider prima samo deterministic input snapshot
+  * provider ne čita DB
+  * provider ne piše DB
+  * provider ne zove lifecycle
+  * output mora proći validator prije persist-a
+  * config/provider/parse/validation/input errors treba mapirati kao controlled failure categories
+
+#### Lifecycle / processor planning
+
+* Statusi:
+  * `queued`
+  * `processing`
+  * `ready`
+  * `failed`
+* Transitions:
+  * `queued -> processing`
+  * `processing -> ready`
+  * `processing -> failed`
+  * `failed -> queued` kroz manual retry/reset
+* MVP policy:
+  * manual/controlled processing
+  * no scheduler default
+  * no automatic retry
+  * no automatic stuck processing sweeper
+  * scheduler tek kasnije ako volumen i operativna praksa to opravdaju
+
+#### Access / visibility planning
+
+* Ko može vidjeti report:
+  * HR
+  * hiring manager / team lead ako product/access model to eksplicitno dozvoli
+  * eventualni leadership stakeholder sa odgovarajućim pristupom
+* Ko ne vidi report:
+  * kandidat
+  * pojedinačni članovi tima
+  * korisnik iz pogrešne organizacije
+  * korisnik iz pogrešnog tima
+  * korisnik bez candidate/report ovlasti
+* Boundary checks:
+  * `organization_id`
+  * `team_id`
+  * `participant_id`
+  * report ownership
+  * wrong boundary vraća generic not found/unavailable bez curenja postojanja reporta
+
+#### Renderer/display planning
+
+* Budući renderer mora biti:
+  * HR-only
+  * read-only
+  * no generation from view
+  * full report render samo za `ready`
+  * safe status states za `queued`, `processing`, `failed`
+  * user-safe failed copy
+  * no raw technical errors shown to HR
+  * no candidate/member access
+
+#### Test/smoke strategy
+
+* Budući testovi:
+  * contract validator test
+  * input snapshot builder test
+  * storage/lifecycle shell test
+  * provider fake-client test
+  * processor test
+  * display helper boundary test
+  * UI renderer test
+  * local DB smoke
+  * wrong org/team/candidate boundary tests
+  * no writes to forbidden report tables
+  * no raw team member data in output
+
+#### Proposed future implementation slice order
+
+1. Storage artefact + migration/RLS planning-to-code slice
+2. `team_fit_reports` lifecycle shell
+3. Input snapshot builder
+4. Contract + validator
+5. Mock-safe generation shell
+6. Provider skeleton with fake-client seam
+7. Provider-backed processor
+8. Read-only display helper + renderer shell
+9. Manual action/UI entrypoint
+10. Retry/reset policy
+11. Local smoke + visual fixture
+
+#### Decisions still needed before first code slice
+
+* Formalno potvrditi dedicated `team_fit_reports`.
+* Potvrditi tačne candidate/team identifiers u row-u i snapshotu.
+* Potvrditi da je `candidateContext.displayName` dozvoljen u HR-only snapshotu.
+* Potvrditi da optional Executive Overview context ostaje deferred u prvom implementation slice-u.
+* Potvrditi access model za hiring manager / leadership stakeholder.
+* Potvrditi da prvi implementation počinje mock/storage shellom, ne providerom.
+* Potvrditi retry snapshot policy: isti input snapshot za manual retry, bez automatic rebuilda u MVP-u.
 
 ### 2026-05-22 — Team Dynamics run handoff skeleton
 

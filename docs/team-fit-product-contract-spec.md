@@ -310,3 +310,12 @@ Team Fit je relacijski report: candidate + team.
   * access/visibility model
   * tests/smoke strategy
 * Ovaj spec sam po sebi ne odobrava implementation rad.
+
+## 16. Implementation planning summary
+
+* Future implementation should use dedicated `team_fit_reports`.
+* Primary candidate input remains composite deterministic input snapshot.
+* Primary team input remains verified Team Dynamics aggregation/input snapshot.
+* Executive Overview context remains optional and may be deferred from first implementation slice.
+* MVP processing model remains manual/controlled, no scheduler default.
+* This planning summary does not approve implementation.

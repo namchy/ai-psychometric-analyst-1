@@ -36,6 +36,7 @@
 - Executive Overview snapshot ostaje optional interpreted context, dok role context ostaje future optional input.
 - Detaljni Team Fit decision draft ostaje u `docs/deep-profile-todo.md`.
 - Canonical Team Fit product/report contract spec je izdvojen u `docs/team-fit-product-contract-spec.md`.
+- Team Fit implementation planning trenutno preporučuje dedicated `team_fit_reports` relational lane; detaljni planning ostaje u `docs/deep-profile-todo.md` i `docs/team-fit-product-contract-spec.md`.
 - Još uvijek nema:
   - Team Fit output
   - unified overall team score
