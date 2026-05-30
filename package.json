@@ -20,6 +20,7 @@
     "process-report-jobs": "node --env-file=.env.local ./scripts/run-process-report-jobs.cjs",
     "process-assessment-report-jobs": "node --env-file=.env.local ./scripts/process-assessment-report-jobs.cjs",
     "process:team-dynamics-reports": "node --env-file=.env.local ./scripts/process-team-dynamics-executive-overview-reports.cjs",
+    "create:team-dynamics-visual-fixture": "node --env-file=.env.local ./scripts/create-team-dynamics-executive-overview-visual-fixture.cjs",
     "verify:report-worker-trigger": "node --env-file=.env.local ./scripts/verify-report-worker-trigger.cjs",
     "verify:ipip-participant-consistency": "node ./scripts/verify-ipip-participant-consistency.cjs",
     "verify:ipip-neo-120-participant-ai-input-v2": "node scripts/verify-ipip-neo-120-participant-ai-input-v2.cjs",
