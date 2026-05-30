@@ -35,6 +35,7 @@
 - Primary candidate-side source je HR-safe composite deterministic input snapshot, a primary team-side source je verified Team Dynamics aggregation/input snapshot.
 - Executive Overview snapshot ostaje optional interpreted context, dok role context ostaje future optional input.
 - Detaljni Team Fit decision draft ostaje u `docs/deep-profile-todo.md`.
+- Canonical Team Fit product/report contract spec je izdvojen u `docs/team-fit-product-contract-spec.md`.
 - Još uvijek nema:
   - Team Fit output
   - unified overall team score
