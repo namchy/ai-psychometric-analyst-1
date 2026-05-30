@@ -6,6 +6,31 @@
 - Namjena: canonical dokument za Team Dynamics product/tech scope prije implementacije
 - Scope ovog dokumenta: produktne i tehničke odluke za prvi MVP slice, bez implementacije koda
 
+## Implementation status note — Executive Overview lane
+
+- Ovaj dokument ostaje product/architecture spec za Team Dynamics, ne puni implementation changelog.
+- Međutim, nakon v0.1 product/spec faze implementiran je prvi report family lane:
+  - `team_dynamics_executive_overview_v1`
+- Trenutni implementation status se kanonski prati u `docs/deep-profile-todo.md`.
+- Executive Overview lane trenutno ima:
+  - dedicated `team_assessment_reports` artefakt
+  - selection/queue flow
+  - deterministic input snapshot
+  - lifecycle helpers
+  - contract/validator
+  - mock-safe generation
+  - OpenAI provider-backed processor
+  - read-only display/renderer
+  - manual process/retry UI
+  - manual worker shell
+  - real smoke potvrde
+- Još uvijek nema:
+  - Team Fit output
+  - unified overall team score
+  - individual answers/scores display
+  - raw responses in report input
+  - cron/scheduler/background automation
+
 ## Kontekst i cilj
 
 Team Dynamics uvodi timski modul koji mjeri dinamiku tima kroz agregirani pristup. Cilj nije evaluacija pojedinca unutar tima, nego opis tima kao sistema i operativni uvid za HR/lidera.
@@ -703,6 +728,8 @@ Ova sekcija zakljucava docs/spec odluku za buduce cuvanje team-level Team Dynami
 - UI, response capture, scoring runtime, report, AI i Team Fit ostaju van tog slice-a.
 
 ## Prvi implementation task (nakon ovog spec sync-a)
+
+Historical note: Ova sekcija opisuje prvi scaffold implementation slice. Nije trenutni implementation status Executive Overview report lane-a. Kasniji slice-ovi su uveli dedicated report storage, selection/queue, input snapshot, Executive Overview contract, mock/OpenAI processor, read-only renderer, manual process/retry UI i manual worker shell. Trenutni canonical status je u `docs/deep-profile-todo.md`.
 
 Task: `Create Team Dynamics data model scaffold and placeholder package support`
 
