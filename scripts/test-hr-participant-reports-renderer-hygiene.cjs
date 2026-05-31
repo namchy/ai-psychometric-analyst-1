@@ -126,6 +126,28 @@ assert.equal(
   "Expected HR participant detail page to use the updated single-report section description.",
 );
 assert.equal(
+  candidateReportsPageSource.includes("Pojedinačne procjene nisu dodijeljene"),
+  true,
+  "Expected participant reports page to include the compact empty state heading for missing individual assessments.",
+);
+assert.equal(
+  /Kada kandidat završi IPIP, SAFRAN ili MWMS, ovdje će se prikazati\s+pojedinačni HR izvještaji\./.test(
+    candidateReportsPageSource,
+  ),
+  true,
+  "Expected participant reports page to include the compact empty state body for missing individual assessments.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("{hasTeamFitReports ? teamFitSection : null}"),
+  true,
+  "Expected Team Fit section to move above the individual reports section when Team Fit artefacts exist.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("{!hasTeamFitReports ? teamFitSection : null}"),
+  true,
+  "Expected Team Fit section to keep a stable fallback position when no Team Fit artefacts exist.",
+);
+assert.equal(
   candidateReportsPageSource.includes("Dostupni testovi i statusi"),
   false,
   "Expected outdated single-report section title to be removed.",

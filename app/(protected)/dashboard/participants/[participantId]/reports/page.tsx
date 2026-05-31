@@ -227,6 +227,224 @@ export default async function CandidateReportsPage({
   });
   const recoveryMessage = getReportRecoveryMessage(searchParams);
   const compositeQueueMessage = getCompositeQueueMessage(searchParams);
+  const hasTeamFitReports = teamFitReports.length > 0;
+
+  const individualReportsSection = (
+    <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+      <DashboardSectionHeader
+        eyebrow="Pojedinačni HR izvještaji"
+        eyebrowClassName="text-[#118ab2]"
+        title="Pojedinačni HR izvještaji"
+        description="Pregled statusa i izvještaja za svaku završenu procjenu kandidata."
+        className="gap-2"
+        titleClassName="text-[1.35rem]"
+      />
+
+      {recoveryMessage ? (
+        <div
+          className={`mt-4 rounded-[1.2rem] border px-4 py-3 text-sm ${
+            recoveryMessage.tone === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : recoveryMessage.tone === "error"
+                ? "border-rose-200 bg-rose-50 text-rose-800"
+                : "border-slate-200 bg-slate-50 text-slate-700"
+          }`}
+        >
+          {recoveryMessage.body}
+        </div>
+      ) : null}
+
+      {model.allIndividualReportsNotAssigned ? (
+        <DashboardInfoCardShell className="mt-6 max-w-[920px] rounded-[1.4rem] border-slate-200/80 p-5">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+              Pojedinačne procjene nisu dodijeljene
+            </h3>
+            <p className="text-sm leading-6 text-slate-600">
+              Kada kandidat završi IPIP, SAFRAN ili MWMS, ovdje će se prikazati
+              pojedinačni HR izvještaji.
+            </p>
+          </div>
+        </DashboardInfoCardShell>
+      ) : (
+        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+          {model.cards.map((card) => (
+            <DashboardInfoCardShell
+              key={card.slug}
+              className="flex h-full flex-col rounded-[1.4rem] border-slate-200/80 p-5"
+            >
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+                      {card.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">{card.subtitle}</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(card.visualVariant)}`}
+                  >
+                    {card.statusLabel}
+                  </span>
+                </div>
+
+                <p className="min-h-[3rem] text-sm leading-6 text-slate-600">{card.body}</p>
+
+                <div className="space-y-1.5 text-xs leading-5 text-slate-500">
+                  <p>
+                    <span className="font-semibold text-slate-700">ID procjene:</span>{" "}
+                    {formatHrShortId(card.attempt?.id)}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-slate-700">Status procjene:</span>{" "}
+                    {formatHrLifecycleStatus(card.attempt?.lifecycle)}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-slate-700">Završeno:</span>{" "}
+                    {formatHrDateTime(card.attempt?.completed_at)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="flex flex-wrap gap-3">
+                  {card.cta.disabled ? (
+                    <span className={getDashboardCtaClassName({ variant: "disabled" })}>
+                      {card.cta.label}
+                    </span>
+                  ) : (
+                    <Link
+                      className={getDashboardCtaClassName({ variant: "primary" })}
+                      href={card.cta.href}
+                    >
+                      {card.cta.label}
+                    </Link>
+                  )}
+
+                  {card.action.enabled && card.attempt ? (
+                    <form action={recoverHrCandidateAttemptReport}>
+                      <input name="participantId" type="hidden" value={participant.id} />
+                      <input name="attemptId" type="hidden" value={card.attempt.id} />
+                      <input name="testSlug" type="hidden" value={card.slug} />
+                      <input
+                        name="returnPath"
+                        type="hidden"
+                        value={`/dashboard/participants/${participant.id}/reports`}
+                      />
+                      <button
+                        className={getDashboardCtaClassName({ variant: "secondary" })}
+                        type="submit"
+                      >
+                        {card.action.label}
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
+              </div>
+            </DashboardInfoCardShell>
+          ))}
+        </div>
+      )}
+    </DashboardSectionShell>
+  );
+
+  const teamFitSection = (
+    <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.18),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+      <TeamFitReportList entries={teamFitReports} />
+    </DashboardSectionShell>
+  );
+
+  const compositeSection = (
+    <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.24),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+      <DashboardSectionHeader
+        eyebrow="Kompozitni HR izvještaj"
+        eyebrowClassName="text-[#073b4c]"
+        title={model.compositeCard.title}
+        description={model.compositeCard.subtitle}
+        className="gap-2"
+        titleClassName="text-[1.35rem]"
+      />
+
+      <DashboardInfoCardShell className="mt-6 max-w-[920px] rounded-[24px] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6">
+        {compositeQueueMessage ? (
+          <div
+            className={`mb-4 rounded-[1.2rem] border px-4 py-3 text-sm min-[900px]:col-span-2 ${
+              compositeQueueMessage.tone === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : compositeQueueMessage.tone === "error"
+                  ? "border-rose-200 bg-rose-50 text-rose-800"
+                  : "border-slate-200 bg-slate-50 text-slate-700"
+            }`}
+          >
+            {compositeQueueMessage.body}
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-[18px] min-[900px]:contents">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+                {model.compositeCard.title}
+              </h3>
+              <span
+                className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(model.compositeCard.visualVariant)}`}
+              >
+                {model.compositeCard.statusLabel}
+              </span>
+            </div>
+            <p className="mt-2 max-w-[520px] text-sm leading-6 text-slate-600">
+              {model.compositeCard.body}
+            </p>
+          </div>
+
+          {model.compositeCard.cta.action && !model.compositeCard.cta.disabled ? (
+            <form
+              className="mt-[18px] w-full min-[900px]:mt-0 min-[900px]:w-auto"
+              action={
+                model.compositeCard.cta.action === "generate_composite"
+                  ? generateCompositeHrReportAction
+                  : retryCompositeHrReportAction
+              }
+            >
+              <input name="participantId" type="hidden" value={participant.id} />
+              <input
+                name="assessmentAssignmentId"
+                type="hidden"
+                value={model.compositeCard.assignment?.id ?? ""}
+              />
+              <input
+                name="assessmentReportId"
+                type="hidden"
+                value={model.compositeCard.report?.id ?? ""}
+              />
+              <input
+                name="returnPath"
+                type="hidden"
+                value={`/dashboard/participants/${participant.id}/reports`}
+              />
+              <button
+                className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} justify-center min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
+                type="submit"
+              >
+                {model.compositeCard.cta.label}
+              </button>
+            </form>
+          ) : model.compositeCard.cta.href && !model.compositeCard.cta.disabled ? (
+            <Link
+              className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
+              href={model.compositeCard.cta.href}
+            >
+              {model.compositeCard.cta.label}
+            </Link>
+          ) : (
+            <span className={`${getDashboardCtaClassName({ variant: "disabled", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}>
+              {model.compositeCard.cta.label}
+            </span>
+          )}
+        </div>
+      </DashboardInfoCardShell>
+    </DashboardSectionShell>
+  );
 
   return (
     <AuthenticatedAppMainContent
@@ -282,202 +500,10 @@ export default async function CandidateReportsPage({
         </div>
 
         <div className="mt-8 space-y-8">
-          <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
-          <DashboardSectionHeader
-            eyebrow="Pojedinačni HR izvještaji"
-            eyebrowClassName="text-[#118ab2]"
-            title="Pojedinačni HR izvještaji"
-            description="Pregled statusa i izvještaja za svaku završenu procjenu kandidata."
-            className="gap-2"
-            titleClassName="text-[1.35rem]"
-          />
-
-          {recoveryMessage ? (
-            <div
-              className={`mt-4 rounded-[1.2rem] border px-4 py-3 text-sm ${
-                recoveryMessage.tone === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : recoveryMessage.tone === "error"
-                    ? "border-rose-200 bg-rose-50 text-rose-800"
-                    : "border-slate-200 bg-slate-50 text-slate-700"
-              }`}
-            >
-              {recoveryMessage.body}
-            </div>
-          ) : null}
-
-          <div className="mt-6 grid gap-4 xl:grid-cols-3">
-            {model.cards.map((card) => (
-              <DashboardInfoCardShell
-                key={card.slug}
-                className="flex h-full flex-col rounded-[1.4rem] border-slate-200/80 p-5"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                        {card.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-600">{card.subtitle}</p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(card.visualVariant)}`}
-                    >
-                      {card.statusLabel}
-                    </span>
-                  </div>
-
-                  <p className="min-h-[3rem] text-sm leading-6 text-slate-600">{card.body}</p>
-
-                  <div className="space-y-1.5 text-xs leading-5 text-slate-500">
-                    <p>
-                      <span className="font-semibold text-slate-700">ID procjene:</span>{" "}
-                      {formatHrShortId(card.attempt?.id)}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-700">Status procjene:</span>{" "}
-                      {formatHrLifecycleStatus(card.attempt?.lifecycle)}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-700">Završeno:</span>{" "}
-                      {formatHrDateTime(card.attempt?.completed_at)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <div className="flex flex-wrap gap-3">
-                    {card.cta.disabled ? (
-                      <span className={getDashboardCtaClassName({ variant: "disabled" })}>
-                        {card.cta.label}
-                      </span>
-                    ) : (
-                      <Link
-                        className={getDashboardCtaClassName({ variant: "primary" })}
-                        href={card.cta.href}
-                      >
-                        {card.cta.label}
-                      </Link>
-                    )}
-
-                    {card.action.enabled && card.attempt ? (
-                      <form action={recoverHrCandidateAttemptReport}>
-                        <input name="participantId" type="hidden" value={participant.id} />
-                        <input name="attemptId" type="hidden" value={card.attempt.id} />
-                        <input name="testSlug" type="hidden" value={card.slug} />
-                        <input
-                          name="returnPath"
-                          type="hidden"
-                          value={`/dashboard/participants/${participant.id}/reports`}
-                        />
-                        <button
-                          className={getDashboardCtaClassName({ variant: "secondary" })}
-                          type="submit"
-                        >
-                          {card.action.label}
-                        </button>
-                      </form>
-                    ) : null}
-                  </div>
-                </div>
-              </DashboardInfoCardShell>
-            ))}
-          </div>
-        </DashboardSectionShell>
-
-        <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.24),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
-          <DashboardSectionHeader
-            eyebrow="Kompozitni HR izvještaj"
-            eyebrowClassName="text-[#073b4c]"
-            title={model.compositeCard.title}
-            description={model.compositeCard.subtitle}
-            className="gap-2"
-            titleClassName="text-[1.35rem]"
-          />
-
-          <DashboardInfoCardShell className="mt-6 max-w-[920px] rounded-[24px] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6">
-            {compositeQueueMessage ? (
-              <div
-                className={`mb-4 rounded-[1.2rem] border px-4 py-3 text-sm min-[900px]:col-span-2 ${
-                  compositeQueueMessage.tone === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : compositeQueueMessage.tone === "error"
-                      ? "border-rose-200 bg-rose-50 text-rose-800"
-                      : "border-slate-200 bg-slate-50 text-slate-700"
-                }`}
-              >
-                {compositeQueueMessage.body}
-              </div>
-            ) : null}
-
-            <div className="flex flex-col gap-[18px] min-[900px]:contents">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                    {model.compositeCard.title}
-                  </h3>
-                  <span
-                    className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(model.compositeCard.visualVariant)}`}
-                  >
-                    {model.compositeCard.statusLabel}
-                  </span>
-                </div>
-                <p className="mt-2 max-w-[520px] text-sm leading-6 text-slate-600">
-                  {model.compositeCard.body}
-                </p>
-              </div>
-
-              {model.compositeCard.cta.action && !model.compositeCard.cta.disabled ? (
-                <form
-                  className="mt-[18px] w-full min-[900px]:mt-0 min-[900px]:w-auto"
-                  action={
-                    model.compositeCard.cta.action === "generate_composite"
-                      ? generateCompositeHrReportAction
-                      : retryCompositeHrReportAction
-                  }
-                >
-                  <input name="participantId" type="hidden" value={participant.id} />
-                  <input
-                    name="assessmentAssignmentId"
-                    type="hidden"
-                    value={model.compositeCard.assignment?.id ?? ""}
-                  />
-                  <input
-                    name="assessmentReportId"
-                    type="hidden"
-                    value={model.compositeCard.report?.id ?? ""}
-                  />
-                  <input
-                    name="returnPath"
-                    type="hidden"
-                    value={`/dashboard/participants/${participant.id}/reports`}
-                  />
-                  <button
-                    className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} justify-center min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
-                    type="submit"
-                  >
-                    {model.compositeCard.cta.label}
-                  </button>
-                </form>
-              ) : model.compositeCard.cta.href && !model.compositeCard.cta.disabled ? (
-                <Link
-                  className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
-                  href={model.compositeCard.cta.href}
-                >
-                  {model.compositeCard.cta.label}
-                </Link>
-              ) : (
-                <span className={`${getDashboardCtaClassName({ variant: "disabled", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}>
-                  {model.compositeCard.cta.label}
-                </span>
-              )}
-            </div>
-          </DashboardInfoCardShell>
-        </DashboardSectionShell>
-
-        <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.18),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
-          <TeamFitReportList entries={teamFitReports} />
-        </DashboardSectionShell>
+          {hasTeamFitReports ? teamFitSection : null}
+          {individualReportsSection}
+          {compositeSection}
+          {!hasTeamFitReports ? teamFitSection : null}
         </div>
       </div>
     </AuthenticatedAppMainContent>

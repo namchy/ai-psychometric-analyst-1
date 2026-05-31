@@ -784,9 +784,15 @@ export function buildHrCandidateAssessmentDetailModel(input: {
   compositeCard: HrCandidateCompositeCard;
   completedTests: number;
   readyHrReports: number;
+  hasAssignedIndividualAssessments: boolean;
+  allIndividualReportsNotAssigned: boolean;
   completedLabel: string;
   readyLabel: string;
-  availabilityLabel: "Spremno za pregled" | "Djelimično dostupno" | "Čeka rezultate";
+  availabilityLabel:
+    | "Spremno za pregled"
+    | "Djelimično dostupno"
+    | "Čeka rezultate"
+    | "Procjene nisu dodijeljene";
 } {
   const cards = buildHrCandidateReportCards({
     attempts: input.attempts,
@@ -794,8 +800,12 @@ export function buildHrCandidateAssessmentDetailModel(input: {
   });
   const completedTests = cards.filter((card) => card.attempt?.lifecycle === "completed").length;
   const readyHrReports = cards.filter((card) => card.state === "ready").length;
+  const hasAssignedIndividualAssessments = cards.some((card) => card.state !== "not_assigned");
+  const allIndividualReportsNotAssigned = cards.every((card) => card.state === "not_assigned");
   const availabilityLabel =
-    readyHrReports === cards.length
+    allIndividualReportsNotAssigned
+      ? "Procjene nisu dodijeljene"
+      : readyHrReports === cards.length
       ? "Spremno za pregled"
       : readyHrReports > 0
         ? "Djelimično dostupno"
@@ -813,8 +823,10 @@ export function buildHrCandidateAssessmentDetailModel(input: {
     compositeCard,
     completedTests,
     readyHrReports,
+    hasAssignedIndividualAssessments,
+    allIndividualReportsNotAssigned,
     completedLabel: `${completedTests}/${cards.length} testova završeno`,
-    readyLabel: `${readyHrReports} HR izvještaja dostupno`,
+    readyLabel: `${readyHrReports} pojedinačnih HR izvještaja dostupno`,
     availabilityLabel,
   };
 }

@@ -33,8 +33,8 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
       <DashboardSectionHeader
         eyebrow="Team Fit izvještaji"
         eyebrowClassName="text-[#073b4c]"
-        title="Persistirani Team Fit artefakti"
-        description="HR pregled postojećih Team Fit izvještaja za ovog kandidata, sa kontrolisanom manualnom pripremom queued zapisa i direktnim otvaranjem spremnih izvještaja."
+        title="Team Fit izvještaji"
+        description="Pregled odnosa kandidata i izabranog tima, uključujući izvještaje koji čekaju pripremu, nisu uspješno pripremljeni ili su spremni za otvaranje."
         className="gap-2"
         titleClassName="text-[1.35rem]"
         descriptionClassName="max-w-3xl text-sm leading-6 text-slate-600"
@@ -76,34 +76,13 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
 
                 <div className="space-y-1.5 text-xs leading-5 text-slate-500">
                   <p>
-                    <span className="font-semibold text-slate-700">Vrsta:</span> Team Fit report
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Verzija:</span>{" "}
-                    {entry.reportVersion}
-                  </p>
-                  <p>
                     <span className="font-semibold text-slate-700">Kreirano:</span>{" "}
                     {formatHrDateTime(entry.createdAt)}
                   </p>
-                  {entry.queuedAt ? (
-                    <p>
-                      <span className="font-semibold text-slate-700">Queued:</span>{" "}
-                      {formatHrDateTime(entry.queuedAt)}
-                    </p>
-                  ) : null}
-                  {entry.completedAt ? (
-                    <p>
-                      <span className="font-semibold text-slate-700">Spremno:</span>{" "}
-                      {formatHrDateTime(entry.completedAt)}
-                    </p>
-                  ) : null}
-                  {!entry.completedAt ? (
-                    <p>
-                      <span className="font-semibold text-slate-700">Zadnje ažuriranje:</span>{" "}
-                      {formatHrDateTime(entry.updatedAt)}
-                    </p>
-                  ) : null}
+                  <p>
+                    <span className="font-semibold text-slate-700">Zadnja promjena:</span>{" "}
+                    {formatHrDateTime(entry.updatedAt)}
+                  </p>
                 </div>
               </div>
 
@@ -129,18 +108,11 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
                   </Link>
                 ) : null}
                 {entry.status === "failed" ? (
-                  <div className="space-y-2 pt-1">
-                    <span
-                      className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}
-                    >
-                      Izvještaj nije pripremljen
-                    </span>
-                    <TeamFitReportRetryAction
-                      teamFitReportId={entry.id}
-                      teamId={entry.teamId}
-                      participantId={entry.participantId}
-                    />
-                  </div>
+                  <TeamFitReportRetryAction
+                    teamFitReportId={entry.id}
+                    teamId={entry.teamId}
+                    participantId={entry.participantId}
+                  />
                 ) : null}
               </div>
             </DashboardInfoCardShell>

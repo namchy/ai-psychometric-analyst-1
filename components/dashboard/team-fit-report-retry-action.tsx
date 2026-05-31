@@ -48,7 +48,7 @@ export function TeamFitReportRetryAction({
       <button
         type="button"
         className={getDashboardCtaClassName({
-          variant: isPending ? "disabled" : "secondary",
+          variant: isPending ? "disabled" : "primary",
           size: "sm",
         })}
         disabled={isPending}

@@ -58,10 +58,13 @@ assert.doesNotMatch(helperSource, /\.insert\(|\.update\(|\.delete\(/);
 assert.doesNotMatch(helperSource, /attempt_reports|assessment_reports|team_assessment_reports/);
 assert.doesNotMatch(helperSource, /error_message/);
 
-assert.match(componentSource, /Persistirani Team Fit artefakti/);
+assert.match(componentSource, /Team Fit izvještaji/);
+assert.match(
+  componentSource,
+  /Pregled odnosa kandidata i izabranog tima, uključujući izvještaje koji čekaju pripremu, nisu uspješno pripremljeni ili su spremni za otvaranje\./,
+);
 assert.match(componentSource, /Otvori Team Fit izvještaj/);
 assert.match(componentSource, /Priprema u toku/);
-assert.match(componentSource, /Izvještaj nije pripremljen/);
 assert.match(componentSource, /TeamFitReportProcessAction/);
 assert.match(componentSource, /TeamFitReportRetryAction/);
 assert.doesNotMatch(componentSource, /OpenAI|team-fit-report-provider|team-fit-report-processor/i);
@@ -69,6 +72,12 @@ assert.doesNotMatch(componentSource, /queueTeamFitReportShell|claimTeamFitReport
 assert.doesNotMatch(componentSource, /\.from\(|\.insert\(|\.update\(|\.delete\(/);
 assert.doesNotMatch(componentSource, /error_message|candidateVisible|fitScore|hireScore/i);
 assert.doesNotMatch(componentSource, /\bno-hire\b|\bhire\/no-hire\b|\bculture fit\b/i);
+assert.doesNotMatch(componentSource, /Persistirani Team Fit artefakti/);
+assert.doesNotMatch(componentSource, /Trenutno nedostupno/);
+assert.doesNotMatch(componentSource, /Izvještaj trenutno nije uspješno kreiran\./);
+assert.doesNotMatch(componentSource, /Vrsta:\s*<\/span>\s*Team Fit report/);
+assert.doesNotMatch(componentSource, /Verzija:/);
+assert.doesNotMatch(componentSource, />Queued:</);
 assert.match(processActionSource, /processTeamFitReportAction/);
 assert.match(processActionSource, /Pripremi Team Fit izvještaj/);
 assert.match(processActionSource, /Priprema u toku/);
@@ -255,7 +264,7 @@ function buildEntry(status, overrides = {}) {
           ? "Čeka obradu"
           : status === "processing"
             ? "U obradi"
-            : "Trenutno nedostupno",
+            : "Nije pripremljen",
     safeStatusMessage:
       status === "ready"
         ? "Izvještaj je spreman za pregled."
@@ -263,7 +272,7 @@ function buildEntry(status, overrides = {}) {
           ? "Izvještaj je pripremljen za obradu."
           : status === "processing"
             ? "Izvještaj je trenutno u obradi."
-            : "Izvještaj trenutno nije uspješno kreiran.",
+            : "Izvještaj nije pripremljen. Možeš ga vratiti u red za pripremu.",
     createdAt: "2026-05-30T12:00:00.000Z",
     updatedAt: "2026-05-30T12:15:00.000Z",
     queuedAt: "2026-05-30T12:01:00.000Z",
@@ -282,22 +291,32 @@ function main() {
   assert.match(emptyHtml, /Još nema dostupnih Team Fit izvještaja/);
 
   const readyHtml = render([buildEntry("ready")]);
-  assert.match(readyHtml, /Persistirani Team Fit artefakti/);
+  assert.match(readyHtml, /Team Fit izvještaji/);
+  assert.match(readyHtml, /Pregled odnosa kandidata i izabranog tima/);
   assert.match(readyHtml, /Tim A/);
   assert.match(readyHtml, /Izvještaj je spreman za pregled/);
   assert.match(readyHtml, /Otvori Team Fit izvještaj/);
+  assert.match(readyHtml, /Kreirano:/);
+  assert.match(readyHtml, /Zadnja promjena:/);
+  assert.doesNotMatch(readyHtml, /Persistirani Team Fit artefakti/);
+  assert.doesNotMatch(readyHtml, /Vrsta:/);
+  assert.doesNotMatch(readyHtml, /Verzija:/);
+  assert.doesNotMatch(readyHtml, />Queued:</);
   assert.doesNotMatch(readyHtml, /\bfit score\b|\bfitScore\b|\bhireScore\b/i);
   assert.doesNotMatch(readyHtml, /\bno-hire\b|\bhire\/no-hire\b|\bculture fit\b/i);
 
   const failedHtml = render([
     buildEntry("failed", {
-      safeStatusMessage: "Izvještaj trenutno nije uspješno kreiran.",
+      safeStatusMessage: "Izvještaj nije pripremljen. Možeš ga vratiti u red za pripremu.",
     }),
   ]);
-  assert.match(failedHtml, /Trenutno nedostupno/);
+  assert.match(failedHtml, /Nije pripremljen/);
   assert.match(failedHtml, /Izvještaj nije pripremljen/);
   assert.match(failedHtml, /Pokušaj ponovo/);
-  assert.match(failedHtml, /Izvještaj trenutno nije uspješno kreiran/);
+  assert.match(failedHtml, /Izvještaj nije pripremljen\. Možeš ga vratiti u red za pripremu\./);
+  assert.doesNotMatch(failedHtml, />Izvještaj nije pripremljen<\/button>/);
+  assert.doesNotMatch(failedHtml, /Trenutno nedostupno/);
+  assert.doesNotMatch(failedHtml, /Izvještaj trenutno nije uspješno kreiran\./);
   assert.doesNotMatch(failedHtml, /TEAM_FIT_PROVIDER_|error_message|raw error/i);
   assert.doesNotMatch(failedHtml, /Otvori Team Fit izvještaj/);
 

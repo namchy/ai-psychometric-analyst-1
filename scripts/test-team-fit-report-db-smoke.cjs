@@ -495,13 +495,19 @@ async function main() {
     const failedListEntry = failedListEntries.find((entry) => entry.id === failedQueued.reportId);
     assert.ok(failedListEntry);
     assert.equal(failedListEntry?.status, "failed");
-    assert.equal(failedListEntry?.safeStatusMessage, "Izvještaj trenutno nije uspješno kreiran.");
+    assert.equal(
+      failedListEntry?.safeStatusMessage,
+      "Izvještaj nije pripremljen. Možeš ga vratiti u red za pripremu.",
+    );
 
     const failedHtml = ReactDOMServer.renderToStaticMarkup(
       React.createElement(TeamFitReportList, { entries: [failedListEntry] }),
     );
     assert.doesNotMatch(failedHtml, /TEAM_FIT_PROVIDER_REQUEST_FAILED|raw backend 500 details|error_message/i);
-    assert.match(failedHtml, /Izvještaj trenutno nije uspješno kreiran/);
+    assert.match(
+      failedHtml,
+      /Izvještaj nije pripremljen\. Možeš ga vratiti u red za pripremu\./,
+    );
 
     const attemptIds = await loadAttemptIdsForParticipant(supabase, createdIds.participantId);
     const attemptReportCount = await countAttemptReportsForAttempts(supabase, attemptIds);

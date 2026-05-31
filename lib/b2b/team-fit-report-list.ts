@@ -44,7 +44,7 @@ export type TeamFitReportListEntry = {
   reportType: typeof TEAM_FIT_REPORT_TYPE;
   reportVersion: typeof TEAM_FIT_REPORT_VERSION;
   status: TeamFitReportStatus;
-  statusLabel: "Spremno" | "Čeka obradu" | "U obradi" | "Trenutno nedostupno";
+  statusLabel: "Spremno" | "Čeka obradu" | "U obradi" | "Nije pripremljen";
   safeStatusMessage: string;
   createdAt: string;
   updatedAt: string;
@@ -68,7 +68,7 @@ function getSafeStatusMessage(status: TeamFitReportStatus): string {
     case "processing":
       return "Izvještaj je trenutno u obradi.";
     case "failed":
-      return "Izvještaj trenutno nije uspješno kreiran.";
+      return "Izvještaj nije pripremljen. Možeš ga vratiti u red za pripremu.";
     case "ready":
     default:
       return "Izvještaj je spreman za pregled.";
@@ -82,7 +82,7 @@ function getStatusLabel(status: TeamFitReportStatus): TeamFitReportListEntry["st
     case "processing":
       return "U obradi";
     case "failed":
-      return "Trenutno nedostupno";
+      return "Nije pripremljen";
     case "ready":
     default:
       return "Spremno";

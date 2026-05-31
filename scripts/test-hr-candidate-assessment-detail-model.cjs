@@ -832,6 +832,8 @@ function main() {
   assert.equal(safranCard1?.cta.label, "Otvori HR izvještaj");
   assert.equal(ipipCard1?.action.enabled, false);
   assert.equal(safranCard1?.action.enabled, false);
+  assert.equal(model1.readyLabel, "1 pojedinačnih HR izvještaja dostupno");
+  assert.equal(model1.availabilityLabel, "Djelimično dostupno");
 
   const participant2 = buildParticipant("participant-2", "User 2", "user2@example.com");
   const ipipReadyAttempt = buildAttempt({
@@ -857,6 +859,16 @@ function main() {
   const ipipCard2 = model2.cards.find((card) => card.slug === "ipip-neo-120-v1");
   assert.equal(ipipCard2?.statusLabel, "Dostupno");
   assert.equal(ipipCard2?.cta.href, `/dashboard/attempts/${ipipReadyAttempt.id}`);
+
+  const noAssignmentsModel = buildDetailModel({
+    participant: buildParticipant("participant-empty", "User Empty", "empty@example.com"),
+    attempts: [],
+    hrReports: [],
+  });
+  assert.equal(noAssignmentsModel.hasAssignedIndividualAssessments, false);
+  assert.equal(noAssignmentsModel.allIndividualReportsNotAssigned, true);
+  assert.equal(noAssignmentsModel.readyLabel, "0 pojedinačnih HR izvještaja dostupno");
+  assert.equal(noAssignmentsModel.availabilityLabel, "Procjene nisu dodijeljene");
 
   const participant3 = buildParticipant("participant-3", "User 3", "user3@example.com");
   const queuedAttempt = buildAttempt({
@@ -899,6 +911,9 @@ function main() {
     model3.cards.find((card) => card.slug === "mwms_v1")?.statusLabel,
     "Nije dodijeljeno",
   );
+  assert.equal(model3.hasAssignedIndividualAssessments, true);
+  assert.equal(model3.allIndividualReportsNotAssigned, false);
+  assert.equal(model3.availabilityLabel, "Čeka rezultate");
 
   const participant4 = buildParticipant("participant-4", "User 4", "user4@example.com");
   const participantOnlyAttempt = buildAttempt({
