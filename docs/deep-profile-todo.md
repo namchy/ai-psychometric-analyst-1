@@ -53,7 +53,7 @@ Komande:
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
-| P1        | Timski fit kandidata product/report contract spec | Manual mock processing action + HR list CTA implemented / no OpenAI provider worker scheduler | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: Team Fit failed retry/reset policy. OpenAI/provider ostaju van scope-a dok se recovery flow eksplicitno ne potvrdi. |
+| P1        | Timski fit kandidata product/report contract spec | Manual mock processing + retry/reset recovery implemented / no OpenAI provider worker scheduler | Relacijski report / Candidate-team fit | Browser review manual lifecycle-a: failed -> queued -> manual prepare -> ready -> open. Nakon toga eksplicitno odlučiti da li je sljedeći zdravi slice Team Fit OpenAI provider ili dodatni UI/lifecycle polish. |
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
 - Dodat je read-only Team Fit report list/entrypoint u HR participant reports kontekstu.
@@ -87,6 +87,51 @@ Komande:
   - `node scripts/test-team-fit-report-lifecycle-shell.cjs`
   - `node scripts/test-team-fit-report-provider-seam.cjs`
   - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
+  - `npm run typecheck`
+
+**Completion note — Team Fit failed retry/reset recovery flow**
+- Dodan je protected HR-only retry/reset action za persisted `team_fit_reports` lane.
+- Action `resetTeamFitReportAction(...)` koristi authenticated user + active organization boundary i provjerava organization/team/participant ownership bez otkrivanja cross-org report row-a.
+- Retry/reset koristi postojeći server-only lifecycle helper `resetFailedTeamFitReportToQueued(...)`.
+- Ownership boundary za helper je `teamFitReportId + organizationId`.
+- Reset je dozvoljen samo kada je `report_status = "failed"`.
+- Non-resettable statusi vraćaju kontrolisane rezultate:
+  - `already_queued`
+  - `processing_not_resettable`
+  - `ready_not_resettable`
+  - `not_resettable`
+- Uspješan reset radi samo kontrolisani lifecycle write u `team_fit_reports`:
+  - `report_status = "queued"`
+  - novi `queued_at`
+  - `error_message = null`
+  - `started_at = null`
+  - `failed_at = null`
+  - `completed_at = null`
+- Reset ne pokreće processor, provider, OpenAI, worker, scheduler ili automatski retry loop.
+- Reset ne pokreće `processTeamFitReportAction(...)` automatski; HR nakon reset-a zasebno klikne `Pripremi Team Fit izvještaj`.
+- Reset ne briše `input_snapshot`, included/ownership snapshot polja ni postojeće audit/provider metadata kolone.
+- Reset ne piše novi `report_snapshot` i ne postavlja report u `ready`.
+- Team Fit lista u HR participant reports kontekstu sada za failed status prikazuje:
+  - neutralni status `Izvještaj nije pripremljen`
+  - CTA `Pokušaj ponovo`
+- Nakon uspješnog reset-a stanje se vraća u `queued`, pa UI ponovo prikazuje postojeći CTA `Pripremi Team Fit izvještaj`.
+- Failed stanje ne prikazuje raw `error_message`.
+- Status rendering ostaje:
+  - `queued` -> `Pripremi Team Fit izvještaj`
+  - `processing` -> `Priprema u toku`
+  - `ready` -> `Otvori Team Fit izvještaj`
+  - `failed` -> `Izvještaj nije pripremljen` + `Pokušaj ponovo`
+- Jedini dozvoljeni write u ovom recovery slice-u je kontrolisani lifecycle write u `team_fit_reports`; nema write-a u `attempt_reports`, `assessment_reports` ili `team_assessment_reports`.
+- Nisu uvedeni OpenAI, real provider, worker, scheduler, automatski retry loop, automatski processing nakon reset-a, report generation iz view route-a, candidate-facing output, numeric fit score, hire/no-hire copy, raw error prikaz ni individualni team member odgovori/skorovi u UI-u.
+- Team Dynamics lane nije mijenjan.
+- Verifikovano:
+  - `node scripts/test-team-fit-manual-process-action.cjs`
+  - `node scripts/test-team-fit-report-list-entrypoint.cjs`
+  - `node scripts/test-team-fit-report-route-shell.cjs`
+  - `node scripts/test-team-fit-report-lifecycle-shell.cjs`
+  - `node scripts/test-team-fit-report-provider-seam.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
+  - `node scripts/test-team-fit-report-retry-reset-action.cjs`
   - `npm run typecheck`
 
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
@@ -5632,6 +5677,14 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-05-31 — Team Fit failed retry/reset recovery flow
+
+- Team Fit lane je dobio protected HR-only failed retry/reset recovery flow za persisted `team_fit_reports`.
+- Failed Team Fit report sada se može kontrolisano vratiti iz `failed` u `queued` kroz CTA `Pokušaj ponovo`, bez automatskog procesiranja.
+- Nakon reset-a HR mora zasebno kliknuti `Pripremi Team Fit izvještaj`, čime retry/reset i manual processing ostaju odvojene lifecycle radnje.
+- Recovery flow ne uvodi OpenAI, real provider, worker, scheduler, report generation iz view route-a, candidate-facing output, numeric fit score, hire/no-hire copy, raw error prikaz ni individualne team member odgovore/skorove u UI-u.
+- Sljedeći korak je browser review punog manual lifecycle-a: `failed -> queued -> manual prepare -> ready -> open`, zatim eksplicitna odluka o Team Fit OpenAI provideru ili dodatnom UI/lifecycle polish-u.
 
 ### 2026-05-31 — Team Fit manual processing CTA i Team Dynamics report selection copy polish
 
