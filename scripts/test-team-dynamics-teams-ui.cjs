@@ -168,6 +168,7 @@ assert.doesNotMatch(reportPreparationPageSource, /Svi članovi tima/);
 assert.doesNotMatch(reportPreparationPageSource, /Uključeni u izvještaj/);
 assert.doesNotMatch(reportPreparationPageSource, /Sačuvaj izbor/);
 assert.doesNotMatch(reportPreparationPageSource, /Kreiraj timski izvještaj/);
+assert.doesNotMatch(reportPreparationPageSource, /Pripremljeni timski izvještaji/);
 assert.doesNotMatch(reportPreparationPageSource, /replaceTeamDynamicsReportSelectionInclusionAction/);
 assert.doesNotMatch(reportPreparationPageSource, reportSelectionImportPattern);
 assert.doesNotMatch(reportPreparationPageSource, /input_snapshot/);
@@ -211,7 +212,19 @@ assert.match(
   /return "Potrebna je dodatna provjera prije kreiranja izvještaja\.";/,
 );
 assert.doesNotMatch(reportSelectionComponentSource, /return reason;/);
-assert.match(reportSelectionComponentSource, /Kreiraj timski izvještaj/);
+assert.match(reportSelectionComponentSource, /Pripremi timski izvještaj/);
+assert.match(reportSelectionComponentSource, /Uključi u izvještaj/);
+assert.match(reportSelectionComponentSource, /Ukloni iz izvještaja/);
+assert.match(
+  reportSelectionComponentSource,
+  /Svi dostupni članovi su već uključeni u ovaj izbor\./,
+);
+assert.doesNotMatch(reportSelectionComponentSource, /Kreiraj timski izvještaj/);
+assert.doesNotMatch(reportSelectionComponentSource, /Vrati u sve članove/i);
+assert.doesNotMatch(
+  reportSelectionComponentSource,
+  /Trenutno nema dodatnih članova za uključivanje u izvještaj\./,
+);
 assert.match(
   reportSelectionComponentSource,
   /result\.message/,
@@ -234,19 +247,20 @@ assert.doesNotMatch(reportSelectionComponentSource, /persistTeamDynamicsMixedSco
 assert.doesNotMatch(reportSelectionComponentSource, /queueTeamDynamicsReportShell/);
 assert.doesNotMatch(reportSelectionComponentSource, /OpenAI|AI provider|Team Fit/);
 
-assert.match(reportQueueListComponentSource, /Pripremljeni timski izvještaji/);
+assert.match(reportQueueListComponentSource, /Timski izvještaji/);
 assert.match(
   reportQueueListComponentSource,
-  /Ovdje se prikazuju timski izvještaji koji su stavljeni u red ili su kasnije obrađeni\./,
+  /Prati status izvještaja i otvori one koji su spremni\./,
 );
 assert.match(reportQueueListComponentSource, /U redu za pripremu/);
 assert.match(reportQueueListComponentSource, /U obradi/);
-assert.match(reportQueueListComponentSource, /Spreman/);
+assert.match(reportQueueListComponentSource, /Spreman za otvaranje/);
 assert.match(reportQueueListComponentSource, /Greška/);
 assert.match(reportQueueListComponentSource, /Nepoznat status/);
 assert.match(reportQueueListComponentSource, /Uključeno članova:/);
 assert.match(reportQueueListComponentSource, /includedMemberIdsSnapshot\.length/);
 assert.match(reportQueueListComponentSource, /Još nema pripremljenih timskih izvještaja\./);
+assert.doesNotMatch(reportQueueListComponentSource, /Pripremljeni timski izvještaji/);
 assert.doesNotMatch(reportQueueListComponentSource, /inputSnapshot/);
 assert.doesNotMatch(reportQueueListComponentSource, /reportSnapshot/);
 assert.doesNotMatch(reportQueueListComponentSource, /attempt_reports/);

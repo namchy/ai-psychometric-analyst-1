@@ -14,16 +14,16 @@ const replaceActionStart = actionSource.indexOf(
 const queueActionStart = actionSource.indexOf(
   "export async function queueTeamDynamicsReportAction",
 );
-const saveActionStart = actionSource.indexOf(
-  "export async function saveTeamDynamicsMixedAnswerAction",
+const nextBlockAfterQueueStart = actionSource.indexOf(
+  "function getUnsupportedTeamDynamicsReportKindMessage",
 );
 const selectionActionSource =
   replaceActionStart >= 0 && queueActionStart > replaceActionStart
     ? actionSource.slice(replaceActionStart, queueActionStart)
     : actionSource;
 const queueActionSource =
-  queueActionStart >= 0 && saveActionStart > queueActionStart
-    ? actionSource.slice(queueActionStart, saveActionStart)
+  queueActionStart >= 0 && nextBlockAfterQueueStart > queueActionStart
+    ? actionSource.slice(queueActionStart, nextBlockAfterQueueStart)
     : actionSource;
 
 assert.match(

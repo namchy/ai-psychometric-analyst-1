@@ -579,7 +579,7 @@ export function TeamDynamicsReportMemberSelection({
                 ))
               ) : (
                 <div className="rounded-[1.1rem] border border-dashed border-slate-300 bg-slate-50/80 px-4 py-5 text-sm leading-6 text-slate-600">
-                  Trenutno nema dodatnih članova za uključivanje u izvještaj.
+                  Svi dostupni članovi su već uključeni u ovaj izbor.
                 </div>
               )}
             </div>
@@ -601,7 +601,7 @@ export function TeamDynamicsReportMemberSelection({
                   <MemberCard
                     key={member.teamAssessmentParticipantId}
                     member={member}
-                    actionLabel="Vrati u sve članove"
+                    actionLabel="Ukloni iz izvještaja"
                     onAction={moveMemberToAvailable}
                   />
                 ))
@@ -642,7 +642,7 @@ export function TeamDynamicsReportMemberSelection({
             >
               {isPending && pendingIntent === "queue"
                 ? "Stavljanje u red..."
-                : "Kreiraj timski izvještaj"}
+                : "Pripremi timski izvještaj"}
             </button>
           </DashboardActionRow>
 

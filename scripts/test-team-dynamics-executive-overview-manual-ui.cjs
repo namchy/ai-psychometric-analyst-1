@@ -51,6 +51,10 @@ assert.match(queueListSource, /TeamDynamicsReportRetryAction/);
 assert.match(queueListSource, /Obrada u toku/);
 assert.match(queueListSource, /Otvori izvještaj/);
 assert.match(queueListSource, /Nije uspješno kreiran/);
+assert.match(queueListSource, /Timski izvještaji/);
+assert.match(queueListSource, /Prati status izvještaja i otvori one koji su spremni\./);
+assert.match(queueListSource, /Spreman za otvaranje/);
+assert.doesNotMatch(queueListSource, /Pripremljeni timski izvještaji/);
 assert.match(actionUiSource, /Obradi izvještaj/);
 assert.match(retryActionUiSource, /Pokušaj ponovo/);
 assert.match(
@@ -248,6 +252,7 @@ assert.doesNotMatch(processingMarkup, /Obradi izvještaj/);
 
 const readyMarkup = renderForStatus("ready");
 assert.match(readyMarkup, /Otvori izvještaj/);
+assert.match(readyMarkup, /Spreman za otvaranje/);
 assert.doesNotMatch(readyMarkup, /Obradi izvještaj/);
 
 console.log(
@@ -257,7 +262,7 @@ console.log(
       verified: [
         "queued report shows Obradi izvjestaj",
         "processing report shows Obrada u toku",
-        "ready report keeps Otvori izvjestaj",
+        "ready report keeps Otvori izvjestaj and marks status as Spreman za otvaranje",
         "queue list uses server action boundary through dedicated action components",
         "UI does not import OpenAI provider or lifecycle processor directly",
         "report view route does not generate reports",

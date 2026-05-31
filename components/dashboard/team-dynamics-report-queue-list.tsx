@@ -24,7 +24,7 @@ function getReportStatusLabel(status: TeamDynamicsReportStatus): string {
     case "processing":
       return "U obradi";
     case "ready":
-      return "Spreman";
+      return "Spreman za otvaranje";
     case "failed":
       return "Greška";
     default:
@@ -61,9 +61,9 @@ export function TeamDynamicsReportQueueList({
         <DashboardSectionHeader
           eyebrow="Queue"
           eyebrowClassName="text-teal-800/90"
-          title="Pripremljeni timski izvještaji"
+          title="Timski izvještaji"
           titleClassName="text-[1.2rem]"
-          description="Ovdje se prikazuju timski izvještaji koji su stavljeni u red ili su kasnije obrađeni."
+          description="Prati status izvještaja i otvori one koji su spremni."
           descriptionClassName="max-w-3xl text-sm text-slate-600"
         />
 
