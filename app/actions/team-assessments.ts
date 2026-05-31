@@ -53,7 +53,7 @@ import {
   type TeamDynamicsReportStatus,
 } from "@/lib/b2b/team-dynamics-report-lifecycle";
 import {
-  processTeamFitReportWithMock,
+  processTeamFitReport as processConfiguredTeamFitReport,
 } from "@/lib/b2b/team-fit-report-processor";
 import {
   resetFailedTeamFitReportToQueued,
@@ -551,7 +551,7 @@ type ProcessTeamFitReportActionDependencies = {
   loadReportContext?: (input: {
     teamFitReportId: string;
   }) => Promise<TeamFitReportActionContext | null>;
-  processTeamFitReport?: typeof processTeamFitReportWithMock;
+  processTeamFitReport?: typeof processConfiguredTeamFitReport;
   revalidate?: typeof revalidatePath;
 };
 
@@ -1798,7 +1798,7 @@ export async function processTeamFitReportAction(
     deps.getActiveOrganization ?? getActiveOrganizationForUser;
   const loadReportContext = deps.loadReportContext ?? loadTeamFitReportActionContext;
   const processTeamFitReport =
-    deps.processTeamFitReport ?? processTeamFitReportWithMock;
+    deps.processTeamFitReport ?? processConfiguredTeamFitReport;
   const revalidate = deps.revalidate ?? revalidatePath;
 
   try {

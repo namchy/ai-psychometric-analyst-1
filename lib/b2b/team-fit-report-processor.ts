@@ -1,13 +1,19 @@
 import "server-only";
 
 import type { TeamFitReportV1 } from "@/lib/b2b/team-fit-report-contract";
+import { validateTeamFitReportSnapshot } from "@/lib/b2b/team-fit-report-contract";
 import { buildTeamFitReportInputSnapshot, persistTeamFitReportInputSnapshot, type TeamFitReportInputSnapshot } from "@/lib/b2b/team-fit-report-input";
 import {
   createTeamFitFakeProvider,
+  createTeamFitStaticFailureProvider,
   type TeamFitReportProvider,
   type TeamFitReportProviderFailureReason,
   type TeamFitReportProviderResult,
 } from "@/lib/b2b/team-fit-report-provider";
+import {
+  createTeamFitOpenAiProvider,
+  type TeamFitOpenAiProviderOptions,
+} from "@/lib/b2b/team-fit-report-openai-provider";
 import {
   claimTeamFitReportForProcessing,
   markTeamFitReportProcessingFailed,
@@ -16,11 +22,21 @@ import {
 import { buildMockTeamFitReportSnapshot } from "@/lib/b2b/team-fit-report-mock";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+export const TEAM_FIT_REPORT_PROVIDER_MOCK = "mock" as const;
+export const TEAM_FIT_REPORT_PROVIDER_OPENAI = "openai" as const;
+
+export type TeamFitReportProviderMode =
+  | typeof TEAM_FIT_REPORT_PROVIDER_MOCK
+  | typeof TEAM_FIT_REPORT_PROVIDER_OPENAI;
+
 type TeamFitReportProcessorDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
   now?: () => string;
   buildMockSnapshot?: (inputSnapshot: TeamFitReportInputSnapshot) => TeamFitReportV1;
   provider?: TeamFitReportProvider;
+  providerMode?: TeamFitReportProviderMode;
+  teamFitOpenAiOptions?: TeamFitOpenAiProviderOptions;
+  validateSnapshot?: typeof validateTeamFitReportSnapshot;
 };
 
 type TeamFitProviderFailureMarker =
@@ -69,6 +85,55 @@ function isNonEmptyString(value: unknown): value is string {
 
 function getNow(deps: TeamFitReportProcessorDependencies): string {
   return deps.now ? deps.now() : new Date().toISOString();
+}
+
+function resolveConfiguredProviderMode(
+  deps: TeamFitReportProcessorDependencies,
+): TeamFitReportProviderMode | "unsupported" {
+  const configuredMode = deps.providerMode ?? process.env.TEAM_FIT_REPORT_PROVIDER ?? "mock";
+  const normalizedMode = configuredMode.trim().toLowerCase();
+
+  if (!normalizedMode || normalizedMode === TEAM_FIT_REPORT_PROVIDER_MOCK) {
+    return TEAM_FIT_REPORT_PROVIDER_MOCK;
+  }
+
+  if (normalizedMode === TEAM_FIT_REPORT_PROVIDER_OPENAI) {
+    return TEAM_FIT_REPORT_PROVIDER_OPENAI;
+  }
+
+  return "unsupported";
+}
+
+function resolveProvider(
+  deps: TeamFitReportProcessorDependencies,
+): TeamFitReportProvider {
+  if (deps.provider) {
+    return deps.provider;
+  }
+
+  const configuredMode = resolveConfiguredProviderMode(deps);
+
+  if (configuredMode === TEAM_FIT_REPORT_PROVIDER_OPENAI) {
+    return createTeamFitOpenAiProvider(
+      deps.teamFitOpenAiOptions ?? {
+        apiKey: process.env.OPENAI_API_KEY ?? null,
+        model: process.env.AI_REPORT_MODEL ?? null,
+        now: deps.now,
+      },
+    );
+  }
+
+  if (configuredMode === "unsupported") {
+    return createTeamFitStaticFailureProvider({
+      reason: "provider_config_error",
+      message: "Unsupported Team Fit report provider configuration.",
+      retryable: false,
+    });
+  }
+
+  return createTeamFitFakeProvider({
+    buildSnapshot: deps.buildMockSnapshot ?? buildMockTeamFitReportSnapshot,
+  });
 }
 
 function mapTeamFitProviderFailure(input: {
@@ -200,15 +265,23 @@ export async function processTeamFitReportWithMock(input: {
   teamFitReportId: string;
   organizationId: string;
 }, deps: TeamFitReportProcessorDependencies = {}): Promise<ProcessTeamFitReportWithMockResult> {
-  const provider =
-    deps.provider ??
-    createTeamFitFakeProvider({
-      buildSnapshot: deps.buildMockSnapshot ?? buildMockTeamFitReportSnapshot,
-    });
+  const provider = deps.provider ?? createTeamFitFakeProvider({
+    buildSnapshot: deps.buildMockSnapshot ?? buildMockTeamFitReportSnapshot,
+  });
 
   return processTeamFitReportWithProvider(input, {
     ...deps,
     provider,
+  });
+}
+
+export async function processTeamFitReport(input: {
+  teamFitReportId: string;
+  organizationId: string;
+}, deps: TeamFitReportProcessorDependencies = {}): Promise<ProcessTeamFitReportWithProviderResult> {
+  return processTeamFitReportWithProvider(input, {
+    ...deps,
+    provider: resolveProvider(deps),
   });
 }
 
@@ -278,7 +351,7 @@ export async function processTeamFitReportWithProvider(input: {
     };
   }
 
-  const provider = deps.provider ?? createTeamFitFakeProvider();
+  const provider = deps.provider ?? resolveProvider(deps);
   const providerResult = await provider.generate(inputResult.inputSnapshot);
 
   if (!providerResult.ok) {
@@ -311,11 +384,43 @@ export async function processTeamFitReportWithProvider(input: {
     };
   }
 
+  const validateSnapshot = deps.validateSnapshot ?? validateTeamFitReportSnapshot;
+  const validatedSnapshot = validateSnapshot(providerResult.snapshot);
+
+  if (!validatedSnapshot.ok) {
+    const failed = await failClaimedReport(
+      {
+        teamFitReportId: input.teamFitReportId,
+        organizationId: input.organizationId,
+        errorMessage: "TEAM_FIT_PROVIDER_VALIDATION_FAILURE",
+      },
+      deps,
+    );
+
+    if (!failed.ok) {
+      return {
+        ok: false,
+        reason: "fail_transition_failed",
+        reportId: input.teamFitReportId,
+        message: failed.reason,
+        marker: "TEAM_FIT_PROVIDER_VALIDATION_FAILURE",
+      };
+    }
+
+    return {
+      ok: false,
+      reason: "provider_failed",
+      reportId: input.teamFitReportId,
+      message: validatedSnapshot.errors.join(" | "),
+      marker: "TEAM_FIT_PROVIDER_VALIDATION_FAILURE",
+    };
+  }
+
   const ready = await markTeamFitReportReady(
     {
       teamFitReportId: input.teamFitReportId,
       organizationId: input.organizationId,
-      reportSnapshot: providerResult.snapshot,
+      reportSnapshot: validatedSnapshot.snapshot,
     },
     deps,
   );

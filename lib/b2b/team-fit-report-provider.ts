@@ -56,6 +56,12 @@ export type CreateTeamFitFakeProviderOptions = {
   failureMode?: TeamFitFakeProviderFailureMode;
 };
 
+export type CreateTeamFitStaticFailureProviderOptions = {
+  reason: TeamFitReportProviderFailureReason;
+  message: string;
+  retryable?: boolean;
+};
+
 function mapFakeFailureReason(
   failureMode: TeamFitFakeProviderFailureMode,
 ): TeamFitReportProviderFailureReason {
@@ -134,6 +140,23 @@ export function createTeamFitFakeProvider(
         ok: true,
         snapshot: validated.snapshot,
         providerMetadata: options.providerMetadata,
+      };
+    },
+  };
+}
+
+export function createTeamFitStaticFailureProvider(
+  options: CreateTeamFitStaticFailureProviderOptions,
+): TeamFitReportProvider {
+  return {
+    async generate(
+      _inputSnapshot: TeamFitReportInputSnapshot,
+    ): Promise<TeamFitReportProviderResult> {
+      return {
+        ok: false,
+        reason: options.reason,
+        message: options.message,
+        retryable: options.retryable ?? false,
       };
     },
   };

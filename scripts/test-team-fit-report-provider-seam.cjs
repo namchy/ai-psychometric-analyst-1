@@ -6,31 +6,40 @@ const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
 const providerPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-provider.ts");
+const openAiProviderPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-openai-provider.ts");
 const processorPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-processor.ts");
 const contractPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-contract.ts");
 const inputPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-input.ts");
+const mockPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-mock.ts");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 const providerSource = fs.readFileSync(providerPath, "utf8");
+const openAiProviderSource = fs.readFileSync(openAiProviderPath, "utf8");
 const processorSource = fs.readFileSync(processorPath, "utf8");
 
 assert.match(providerSource, /export type TeamFitReportProvider/);
 assert.match(providerSource, /createTeamFitFakeProvider/);
+assert.match(providerSource, /createTeamFitStaticFailureProvider/);
 assert.match(providerSource, /validateTeamFitProviderSnapshotResult/);
 assert.doesNotMatch(providerSource, /OpenAI|api\.openai|chat\/completions|fetch\(/i);
 assert.doesNotMatch(providerSource, /\.from\("/);
 assert.doesNotMatch(providerSource, /processTeamFitReportWithMock|claimTeamFitReportForProcessing/);
+assert.match(openAiProviderSource, /createTeamFitOpenAiProvider/);
+assert.doesNotMatch(openAiProviderSource, /\.from\("/);
+assert.doesNotMatch(openAiProviderSource, /attempt_reports|assessment_reports|team_assessment_reports/);
 assert.doesNotMatch(processorSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(processorSource, /\.from\("assessment_reports"\)/);
 assert.doesNotMatch(processorSource, /\.from\("team_assessment_reports"\)/);
+assert.match(processorSource, /processTeamFitReport\(/);
 assert.match(processorSource, /processTeamFitReportWithProvider/);
+assert.match(processorSource, /TEAM_FIT_REPORT_PROVIDER_OPENAI/);
 assert.match(processorSource, /TEAM_FIT_PROVIDER_CONFIG_ERROR/);
 assert.match(processorSource, /TEAM_FIT_PROVIDER_REQUEST_FAILED/);
 assert.match(processorSource, /TEAM_FIT_PROVIDER_PARSE_FAILURE/);
 assert.match(processorSource, /TEAM_FIT_PROVIDER_VALIDATION_FAILURE/);
 assert.match(processorSource, /TEAM_FIT_PROVIDER_UNKNOWN_ERROR/);
-assert.doesNotMatch(processorSource, /OpenAI|renderer|worker|scheduler|cron/i);
+assert.doesNotMatch(processorSource, /renderer|worker|scheduler|cron/i);
 
 function resolveWithExtensions(candidatePath) {
   if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
@@ -85,12 +94,14 @@ const {
   validateTeamFitProviderSnapshotResult,
 } = require(providerPath);
 const { validateTeamFitReportSnapshot } = require(contractPath);
+const { buildMockTeamFitReportSnapshot } = require(mockPath);
 const {
   TEAM_FIT_REPORT_INPUT_TYPE,
   TEAM_FIT_REPORT_INPUT_VERSION,
 } = require(inputPath);
 const {
   processTeamFitReportWithMock,
+  processTeamFitReport,
   processTeamFitReportWithProvider,
 } = require(processorPath);
 
@@ -414,6 +425,107 @@ async function main() {
     reportId: "report-1",
     status: "ready",
   });
+
+  const envMockSupabase = createSupabaseStub(buildBaseState());
+  delete process.env.TEAM_FIT_REPORT_PROVIDER;
+  const envMockResult = await processTeamFitReport(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: envMockSupabase,
+      now: () => "2026-05-30T12:35:00.000Z",
+    },
+  );
+  assert.deepEqual(envMockResult, {
+    ok: true,
+    reportId: "report-1",
+    status: "ready",
+  });
+
+  const unsupportedProviderSupabase = createSupabaseStub(buildBaseState());
+  const unsupportedProviderResult = await processTeamFitReport(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: unsupportedProviderSupabase,
+      now: () => "2026-05-30T12:36:00.000Z",
+      providerMode: "mockish",
+    },
+  );
+  assert.equal(unsupportedProviderResult.ok, false);
+  if (unsupportedProviderResult.ok) {
+    throw new Error("Expected unsupported provider failure.");
+  }
+  assert.equal(unsupportedProviderResult.reason, "provider_failed");
+  assert.equal(unsupportedProviderResult.marker, "TEAM_FIT_PROVIDER_CONFIG_ERROR");
+
+  const openAiValidSnapshot = buildMockTeamFitReportSnapshot(buildInputSnapshot());
+  openAiValidSnapshot.metadata.provider = "openai";
+  openAiValidSnapshot.metadata.providerVersion = "v1";
+  const openAiReadySupabase = createSupabaseStub(buildBaseState());
+  const openAiReadyResult = await processTeamFitReport(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: openAiReadySupabase,
+      now: () => "2026-05-30T12:37:00.000Z",
+      providerMode: "openai",
+      teamFitOpenAiOptions: {
+        apiKey: "test-key",
+        model: "gpt-5.1",
+        now: () => "2026-05-30T12:37:00.000Z",
+        client: {
+          async createChatCompletion() {
+            return { content: JSON.stringify(openAiValidSnapshot) };
+          },
+        },
+      },
+    },
+  );
+  assert.deepEqual(openAiReadyResult, {
+    ok: true,
+    reportId: "report-1",
+    status: "ready",
+  });
+  assert.equal(openAiReadySupabase.state.team_fit_reports[0].report_status, "ready");
+
+  const openAiInvalidSnapshot = clone(openAiValidSnapshot);
+  delete openAiInvalidSnapshot.fitOverview;
+  const openAiFailedSupabase = createSupabaseStub(buildBaseState());
+  const openAiFailedResult = await processTeamFitReport(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: openAiFailedSupabase,
+      now: () => "2026-05-30T12:38:00.000Z",
+      providerMode: "openai",
+      teamFitOpenAiOptions: {
+        apiKey: "test-key",
+        model: "gpt-5.1",
+        now: () => "2026-05-30T12:38:00.000Z",
+        client: {
+          async createChatCompletion() {
+            return { content: JSON.stringify(openAiInvalidSnapshot) };
+          },
+        },
+      },
+    },
+  );
+  assert.equal(openAiFailedResult.ok, false);
+  if (openAiFailedResult.ok) {
+    throw new Error("Expected OpenAI invalid snapshot failure.");
+  }
+  assert.equal(openAiFailedResult.reason, "provider_failed");
+  assert.equal(openAiFailedResult.marker, "TEAM_FIT_PROVIDER_VALIDATION_FAILURE");
+  assert.equal(openAiFailedSupabase.state.team_fit_reports[0].report_status, "failed");
 
   console.log("test-team-fit-report-provider-seam: ok");
 }

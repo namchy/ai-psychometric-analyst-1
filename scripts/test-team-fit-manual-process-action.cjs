@@ -13,7 +13,7 @@ const manualActionSource =
   actionStart >= 0 ? actionSource.slice(actionStart) : actionSource;
 
 assert.match(manualActionSource, /export async function processTeamFitReportAction/);
-assert.match(manualActionSource, /processTeamFitReportWithMock/);
+assert.match(manualActionSource, /processConfiguredTeamFitReport/);
 assert.match(manualActionSource, /TEAM_FIT_REPORT_TYPE/);
 assert.match(manualActionSource, /TEAM_FIT_REPORT_VERSION/);
 assert.doesNotMatch(manualActionSource, /OpenAI|team-fit-report-provider|real provider/i);
@@ -63,8 +63,8 @@ fs.writeFileSync(
   teamFitProcessorStubPath,
   `
 module.exports = {
-  processTeamFitReportWithMock: async () => {
-    throw new Error("processTeamFitReportWithMock should be injected in this test.");
+  processTeamFitReport: async () => {
+    throw new Error("processTeamFitReport should be injected in this test.");
   },
 };
 `,

@@ -14,6 +14,7 @@ assert.match(tableSource, />\s*Pregled procjena\s*</);
 assert.match(tableSource, /href=\{participantReportsHref\}/);
 assert.match(tableSource, /const participantReportsHref = `\/dashboard\/participants\/\$\{row\.participant\.id\}\/reports`/);
 assert.doesNotMatch(tableSource, /team-fit-reports/);
+assert.doesNotMatch(tableSource, /team-fit-report-openai-provider|OpenAI/i);
 assert.doesNotMatch(tableSource, /report_status/);
 assert.doesNotMatch(tableSource, /error_message/);
 
