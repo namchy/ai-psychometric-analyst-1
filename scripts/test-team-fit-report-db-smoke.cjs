@@ -10,6 +10,7 @@ const ts = require("typescript");
 const projectRoot = path.resolve(__dirname, "..");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const nextLinkStubPath = path.join(__dirname, "next-link-stub.cjs");
+const retryActionStubPath = path.join(__dirname, "team-fit-retry-action-stub.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 function resolveWithExtensions(candidatePath) {
@@ -34,6 +35,10 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
 
   if (request === "next/link") {
     return nextLinkStubPath;
+  }
+
+  if (request === "@/components/dashboard/team-fit-report-retry-action") {
+    return retryActionStubPath;
   }
 
   if (request.startsWith("@/")) {
@@ -78,6 +83,26 @@ require.extensions[".tsx"] = function compileTsx(module, filename) {
   });
 
   module._compile(transpiled.outputText, filename);
+};
+
+require.cache[retryActionStubPath] = {
+  id: retryActionStubPath,
+  filename: retryActionStubPath,
+  loaded: true,
+  exports: {
+    TeamFitReportRetryAction({ teamFitReportId, teamId, participantId }) {
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-team-fit-retry-report-id": teamFitReportId,
+          "data-team-id": teamId,
+          "data-participant-id": participantId,
+        },
+        "Pokušaj ponovo",
+      );
+    },
+  },
 };
 
 const { createSupabaseAdminClient } = require("../lib/supabase/admin.ts");

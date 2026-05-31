@@ -25,16 +25,24 @@ const processActionPath = path.join(
   "dashboard",
   "team-fit-report-process-action.tsx",
 );
+const retryActionPath = path.join(
+  projectRoot,
+  "components",
+  "dashboard",
+  "team-fit-report-retry-action.tsx",
+);
 const appProtectedRoot = path.join(projectRoot, "app", "(protected)", "app");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const nextLinkStubPath = path.join(__dirname, "next-link-stub.cjs");
 const processActionStubPath = path.join(__dirname, "team-fit-process-action-stub.cjs");
+const retryActionStubPath = path.join(__dirname, "team-fit-retry-action-stub.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 const pageSource = fs.readFileSync(pagePath, "utf8");
 const helperSource = fs.readFileSync(helperPath, "utf8");
 const componentSource = fs.readFileSync(componentPath, "utf8");
 const processActionSource = fs.readFileSync(processActionPath, "utf8");
+const retryActionSource = fs.readFileSync(retryActionPath, "utf8");
 
 assert.match(pageSource, /listTeamFitReportEntries/);
 assert.match(pageSource, /TeamFitReportList/);
@@ -55,6 +63,7 @@ assert.match(componentSource, /Otvori Team Fit izvještaj/);
 assert.match(componentSource, /Priprema u toku/);
 assert.match(componentSource, /Izvještaj nije pripremljen/);
 assert.match(componentSource, /TeamFitReportProcessAction/);
+assert.match(componentSource, /TeamFitReportRetryAction/);
 assert.doesNotMatch(componentSource, /OpenAI|team-fit-report-provider|team-fit-report-processor/i);
 assert.doesNotMatch(componentSource, /queueTeamFitReportShell|claimTeamFitReportForProcessing|markTeamFitReportProcessingFailed|resetFailedTeamFitReportToQueued/);
 assert.doesNotMatch(componentSource, /\.from\(|\.insert\(|\.update\(|\.delete\(/);
@@ -68,6 +77,13 @@ assert.doesNotMatch(
   /processTeamFitReportWithMock|processTeamFitReportWithProvider|team-fit-report-provider|OpenAI/i,
 );
 assert.doesNotMatch(processActionSource, /attempt_reports|assessment_reports|team_assessment_reports/);
+assert.match(retryActionSource, /resetTeamFitReportAction/);
+assert.match(retryActionSource, /Pokušaj ponovo/);
+assert.doesNotMatch(
+  retryActionSource,
+  /processTeamFitReportWithMock|processTeamFitReportWithProvider|team-fit-report-provider|OpenAI/i,
+);
+assert.doesNotMatch(retryActionSource, /attempt_reports|assessment_reports|team_assessment_reports/);
 
 function walkFiles(dirPath, output = []) {
   if (!fs.existsSync(dirPath)) {
@@ -114,6 +130,10 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
 
   if (request === "@/components/dashboard/team-fit-report-process-action") {
     return processActionStubPath;
+  }
+
+  if (request === "@/components/dashboard/team-fit-report-retry-action") {
+    return retryActionStubPath;
   }
 
   if (request.startsWith("@/")) {
@@ -169,6 +189,26 @@ require.cache[processActionStubPath] = {
           "data-participant-id": participantId,
         },
         "Pripremi Team Fit izvještaj",
+      );
+    },
+  },
+};
+
+require.cache[retryActionStubPath] = {
+  id: retryActionStubPath,
+  filename: retryActionStubPath,
+  loaded: true,
+  exports: {
+    TeamFitReportRetryAction({ teamFitReportId, teamId, participantId }) {
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-team-fit-retry-report-id": teamFitReportId,
+          "data-team-id": teamId,
+          "data-participant-id": participantId,
+        },
+        "Pokušaj ponovo",
       );
     },
   },
@@ -256,18 +296,23 @@ function main() {
   ]);
   assert.match(failedHtml, /Trenutno nedostupno/);
   assert.match(failedHtml, /Izvještaj nije pripremljen/);
+  assert.match(failedHtml, /Pokušaj ponovo/);
   assert.match(failedHtml, /Izvještaj trenutno nije uspješno kreiran/);
   assert.doesNotMatch(failedHtml, /TEAM_FIT_PROVIDER_|error_message|raw error/i);
   assert.doesNotMatch(failedHtml, /Otvori Team Fit izvještaj/);
 
   const queuedHtml = render([buildEntry("queued")]);
   assert.match(queuedHtml, /Pripremi Team Fit izvještaj/);
+  assert.doesNotMatch(queuedHtml, /Pokušaj ponovo/);
   assert.doesNotMatch(queuedHtml, /Otvori Team Fit izvještaj/);
   assert.doesNotMatch(queuedHtml, /Priprema u toku/);
 
   const processingHtml = render([buildEntry("processing")]);
   assert.match(processingHtml, /Priprema u toku/);
+  assert.doesNotMatch(processingHtml, /Pokušaj ponovo/);
   assert.doesNotMatch(processingHtml, /Pripremi Team Fit izvještaj/);
+
+  assert.doesNotMatch(readyHtml, /Pokušaj ponovo/);
 }
 
 main();

@@ -317,6 +317,9 @@ async function main() {
     inputType: "team_fit_input_v1",
     persisted: true,
   };
+  claimSupabase.state.team_fit_reports[0].report_snapshot = {
+    stale: true,
+  };
   const failed = await markTeamFitReportProcessingFailed(
     {
       teamFitReportId: claimSupabase.state.team_fit_reports[0].id,
@@ -362,6 +365,42 @@ async function main() {
     inputType: "team_fit_input_v1",
     persisted: true,
   });
+  assert.deepEqual(reset.report.reportSnapshot, {
+    stale: true,
+  });
+
+  claimSupabase.state.team_fit_reports[0].report_status = "queued";
+  const alreadyQueuedReset = await resetFailedTeamFitReportToQueued(
+    {
+      teamFitReportId: claimSupabase.state.team_fit_reports[0].id,
+      organizationId: "org-1",
+    },
+    { supabase: claimSupabase },
+  );
+  assert.equal(alreadyQueuedReset.ok, false);
+  assert.equal(alreadyQueuedReset.reason, "already_queued");
+
+  claimSupabase.state.team_fit_reports[0].report_status = "processing";
+  const processingReset = await resetFailedTeamFitReportToQueued(
+    {
+      teamFitReportId: claimSupabase.state.team_fit_reports[0].id,
+      organizationId: "org-1",
+    },
+    { supabase: claimSupabase },
+  );
+  assert.equal(processingReset.ok, false);
+  assert.equal(processingReset.reason, "processing_not_resettable");
+
+  claimSupabase.state.team_fit_reports[0].report_status = "ready";
+  const readyReset = await resetFailedTeamFitReportToQueued(
+    {
+      teamFitReportId: claimSupabase.state.team_fit_reports[0].id,
+      organizationId: "org-1",
+    },
+    { supabase: claimSupabase },
+  );
+  assert.equal(readyReset.ok, false);
+  assert.equal(readyReset.reason, "ready_not_resettable");
 
   const wrongOrgClaim = await claimTeamFitReportForProcessing(
     {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TeamFitReportProcessAction } from "@/components/dashboard/team-fit-report-process-action";
+import { TeamFitReportRetryAction } from "@/components/dashboard/team-fit-report-retry-action";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
@@ -128,9 +129,18 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
                   </Link>
                 ) : null}
                 {entry.status === "failed" ? (
-                  <span className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}>
-                    Izvještaj nije pripremljen
-                  </span>
+                  <div className="space-y-2 pt-1">
+                    <span
+                      className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}
+                    >
+                      Izvještaj nije pripremljen
+                    </span>
+                    <TeamFitReportRetryAction
+                      teamFitReportId={entry.id}
+                      teamId={entry.teamId}
+                      participantId={entry.participantId}
+                    />
+                  </div>
                 ) : null}
               </div>
             </DashboardInfoCardShell>

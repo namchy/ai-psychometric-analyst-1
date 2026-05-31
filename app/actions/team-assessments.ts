@@ -56,6 +56,7 @@ import {
   processTeamFitReportWithMock,
 } from "@/lib/b2b/team-fit-report-processor";
 import {
+  resetFailedTeamFitReportToQueued,
   TEAM_FIT_REPORT_TYPE,
   TEAM_FIT_REPORT_VERSION,
   type TeamFitReportStatus,
@@ -465,6 +466,48 @@ type ResetTeamDynamicsExecutiveOverviewReportActionDependencies = {
     teamAssessmentReportId: string;
   }) => Promise<TeamDynamicsReportActionContext | null>;
   resetExecutiveOverviewReport?: typeof resetFailedTeamDynamicsReportToQueued;
+  revalidate?: typeof revalidatePath;
+};
+
+export type ResetTeamFitReportActionInput = {
+  teamFitReportId: string;
+  teamId?: string;
+  participantId?: string;
+};
+
+export type ResetTeamFitReportActionResult =
+  | {
+      ok: true;
+      status: "queued";
+      message: string;
+      reportId: string;
+      teamId: string;
+      participantId: string;
+    }
+  | {
+      ok: false;
+      status:
+        | "unauthorized"
+        | "unsupported_report_kind"
+        | "already_queued"
+        | "processing_not_resettable"
+        | "ready_not_resettable"
+        | "not_resettable"
+        | "error";
+      message: string;
+      reportId: string | null;
+      teamId: string | null;
+      participantId: string | null;
+      lifecycleReason?: string;
+    };
+
+type ResetTeamFitReportActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  getActiveOrganization?: typeof getActiveOrganizationForUser;
+  loadReportContext?: (input: {
+    teamFitReportId: string;
+  }) => Promise<TeamFitReportActionContext | null>;
+  resetTeamFitReport?: typeof resetFailedTeamFitReportToQueued;
   revalidate?: typeof revalidatePath;
 };
 
@@ -1513,6 +1556,224 @@ export async function resetTeamDynamicsExecutiveOverviewReportAction(
       message: "Vraćanje Team Dynamics Executive Overview reporta u queued stanje nije dostupno.",
       reportId: input.teamAssessmentReportId,
       teamId: input.teamId ?? null,
+    };
+  }
+}
+
+export async function resetTeamFitReportAction(
+  input: ResetTeamFitReportActionInput,
+  deps: ResetTeamFitReportActionDependencies = {},
+): Promise<ResetTeamFitReportActionResult> {
+  if (!isNonEmptyString(input.teamFitReportId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "Team Fit izvještaj nije moguće vratiti u red bez identifikatora.",
+      reportId: null,
+      teamId: null,
+      participantId: null,
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization =
+    deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const loadReportContext = deps.loadReportContext ?? loadTeamFitReportActionContext;
+  const resetTeamFitReport =
+    deps.resetTeamFitReport ?? resetFailedTeamFitReportToQueued;
+  const revalidate = deps.revalidate ?? revalidatePath;
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+
+    if (!organization) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    const reportContext = await loadReportContext({
+      teamFitReportId: input.teamFitReportId,
+    });
+
+    if (!reportContext || reportContext.organizationId !== organization.id) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    if (isNonEmptyString(input.teamId) && input.teamId !== reportContext.teamId) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    if (
+      isNonEmptyString(input.participantId) &&
+      input.participantId !== reportContext.participantId
+    ) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    if (
+      reportContext.reportType !== TEAM_FIT_REPORT_TYPE ||
+      reportContext.reportVersion !== TEAM_FIT_REPORT_VERSION
+    ) {
+      return {
+        ok: false,
+        status: "unsupported_report_kind",
+        message: "Ovaj zapis nije podržan za Team Fit retry/reset.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        participantId: reportContext.participantId,
+      };
+    }
+
+    if (reportContext.reportStatus === "queued") {
+      return {
+        ok: false,
+        status: "already_queued",
+        message: "Team Fit izvještaj je već vraćen u queued stanje.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        participantId: reportContext.participantId,
+      };
+    }
+
+    if (reportContext.reportStatus === "processing") {
+      return {
+        ok: false,
+        status: "processing_not_resettable",
+        message: "Team Fit izvještaj koji je u obradi nije moguće vratiti u queued stanje.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        participantId: reportContext.participantId,
+      };
+    }
+
+    if (reportContext.reportStatus === "ready") {
+      return {
+        ok: false,
+        status: "ready_not_resettable",
+        message: "Spreman Team Fit izvještaj nije moguće vratiti u queued stanje.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        participantId: reportContext.participantId,
+      };
+    }
+
+    if (reportContext.reportStatus !== "failed") {
+      return {
+        ok: false,
+        status: "not_resettable",
+        message: "Samo failed Team Fit izvještaj može biti vraćen u queued stanje.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        participantId: reportContext.participantId,
+      };
+    }
+
+    const result = await resetTeamFitReport({
+      teamFitReportId: input.teamFitReportId,
+      organizationId: organization.id,
+    });
+
+    if (!result.ok) {
+      if (
+        result.reason === "already_queued" ||
+        result.reason === "processing_not_resettable" ||
+        result.reason === "ready_not_resettable" ||
+        result.reason === "not_resettable"
+      ) {
+        return {
+          ok: false,
+          status: result.reason,
+          message: "Team Fit izvještaj više nije u failed stanju i nije moguće vratiti ga u queued.",
+          reportId: result.report?.id ?? reportContext.id,
+          teamId: result.report?.teamId ?? reportContext.teamId,
+          participantId: result.report?.participantId ?? reportContext.participantId,
+          lifecycleReason: result.reason,
+        };
+      }
+
+      if (result.reason === "report_not_found") {
+        return {
+          ok: false,
+          status: "unauthorized",
+          message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+          reportId: null,
+          teamId: null,
+          participantId: null,
+          lifecycleReason: result.reason,
+        };
+      }
+
+      return {
+        ok: false,
+        status: "error",
+        message: "Vraćanje Team Fit izvještaja u queued stanje nije uspjelo.",
+        reportId: result.report?.id ?? reportContext.id,
+        teamId: result.report?.teamId ?? reportContext.teamId,
+        participantId: result.report?.participantId ?? reportContext.participantId,
+        lifecycleReason: result.reason,
+      };
+    }
+
+    revalidate(`/dashboard/participants/${reportContext.participantId}/reports`);
+    revalidate(
+      `/dashboard/teams/${reportContext.teamId}/participants/${reportContext.participantId}/team-fit-reports/${reportContext.id}`,
+    );
+
+    return {
+      ok: true,
+      status: "queued",
+      message: "Team Fit izvještaj je vraćen u queued stanje i spreman za novu ručnu pripremu.",
+      reportId: result.report.id,
+      teamId: result.report.teamId,
+      participantId: result.report.participantId,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Authentication required.",
+        reportId: input.teamFitReportId,
+        teamId: input.teamId ?? null,
+        participantId: input.participantId ?? null,
+      };
+    }
+
+    return {
+      ok: false,
+      status: "error",
+      message: "Vraćanje Team Fit izvještaja u queued stanje nije dostupno.",
+      reportId: input.teamFitReportId,
+      teamId: input.teamId ?? null,
+      participantId: input.participantId ?? null,
     };
   }
 }
