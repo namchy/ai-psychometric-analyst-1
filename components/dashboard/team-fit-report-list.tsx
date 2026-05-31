@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TeamFitReportProcessAction } from "@/components/dashboard/team-fit-report-process-action";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
@@ -32,7 +33,7 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
         eyebrow="Team Fit izvještaji"
         eyebrowClassName="text-[#073b4c]"
         title="Persistirani Team Fit artefakti"
-        description="Read-only pregled postojećih Team Fit izvještaja za ovog kandidata, sa sigurnim statusima i direktnim otvaranjem spremnih izvještaja."
+        description="HR pregled postojećih Team Fit izvještaja za ovog kandidata, sa kontrolisanom manualnom pripremom queued zapisa i direktnim otvaranjem spremnih izvještaja."
         className="gap-2"
         titleClassName="text-[1.35rem]"
         descriptionClassName="max-w-3xl text-sm leading-6 text-slate-600"
@@ -106,18 +107,31 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
               </div>
 
               <div className="mt-6">
+                {entry.status === "queued" ? (
+                  <TeamFitReportProcessAction
+                    teamFitReportId={entry.id}
+                    teamId={entry.teamId}
+                    participantId={entry.participantId}
+                  />
+                ) : null}
+                {entry.status === "processing" ? (
+                  <span className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}>
+                    Priprema u toku
+                  </span>
+                ) : null}
                 {entry.status === "ready" ? (
                   <Link
-                    className={getDashboardCtaClassName({ variant: "primary" })}
+                    className={getDashboardCtaClassName({ variant: "primary", size: "sm" })}
                     href={entry.href}
                   >
                     Otvori Team Fit izvještaj
                   </Link>
-                ) : (
-                  <span className={getDashboardCtaClassName({ variant: "disabled" })}>
-                    {entry.statusLabel}
+                ) : null}
+                {entry.status === "failed" ? (
+                  <span className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}>
+                    Izvještaj nije pripremljen
                   </span>
-                )}
+                ) : null}
               </div>
             </DashboardInfoCardShell>
           ))}

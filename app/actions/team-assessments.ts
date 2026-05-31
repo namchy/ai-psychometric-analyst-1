@@ -53,6 +53,14 @@ import {
   type TeamDynamicsReportStatus,
 } from "@/lib/b2b/team-dynamics-report-lifecycle";
 import {
+  processTeamFitReportWithMock,
+} from "@/lib/b2b/team-fit-report-processor";
+import {
+  TEAM_FIT_REPORT_TYPE,
+  TEAM_FIT_REPORT_VERSION,
+  type TeamFitReportStatus,
+} from "@/lib/b2b/team-fit-report-lifecycle";
+import {
   persistValidatedTeamDynamicsMixedAnswer,
   type TeamDynamicsMixedAnswerPersistenceResult,
 } from "@/lib/assessment/team-dynamics-mixed-answer-persistence";
@@ -303,6 +311,16 @@ type TeamDynamicsReportActionContext = {
   reportStatus: TeamDynamicsReportStatus;
 };
 
+type TeamFitReportActionContext = {
+  id: string;
+  organizationId: string;
+  teamId: string;
+  participantId: string;
+  reportType: string;
+  reportVersion: string;
+  reportStatus: TeamFitReportStatus;
+};
+
 export type ReplaceTeamDynamicsReportSelectionInclusionActionInput = {
   teamAssessmentAssignmentId: string;
   includedTeamAssessmentParticipantIds: string[];
@@ -447,6 +465,50 @@ type ResetTeamDynamicsExecutiveOverviewReportActionDependencies = {
     teamAssessmentReportId: string;
   }) => Promise<TeamDynamicsReportActionContext | null>;
   resetExecutiveOverviewReport?: typeof resetFailedTeamDynamicsReportToQueued;
+  revalidate?: typeof revalidatePath;
+};
+
+export type ProcessTeamFitReportActionInput = {
+  teamFitReportId: string;
+  teamId?: string;
+  participantId?: string;
+};
+
+export type ProcessTeamFitReportActionResult =
+  | {
+      ok: true;
+      status: "ready";
+      message: string;
+      reportId: string;
+      teamId: string;
+      participantId: string;
+    }
+  | {
+      ok: false;
+      status:
+        | "unauthorized"
+        | "unsupported_report_kind"
+        | "not_queued"
+        | "already_processing"
+        | "already_ready"
+        | "failed_not_processable"
+        | "failed"
+        | "error";
+      message: string;
+      reportId: string | null;
+      teamId: string | null;
+      participantId: string | null;
+      marker?: string;
+      processorReason?: string;
+    };
+
+type ProcessTeamFitReportActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  getActiveOrganization?: typeof getActiveOrganizationForUser;
+  loadReportContext?: (input: {
+    teamFitReportId: string;
+  }) => Promise<TeamFitReportActionContext | null>;
+  processTeamFitReport?: typeof processTeamFitReportWithMock;
   revalidate?: typeof revalidatePath;
 };
 
@@ -631,6 +693,48 @@ async function loadTeamDynamicsReportActionContext(input: {
     id: report.id,
     organizationId: report.organization_id,
     teamId: report.team_id,
+    reportType: report.report_type,
+    reportVersion: report.report_version,
+    reportStatus: report.report_status,
+  };
+}
+
+async function loadTeamFitReportActionContext(input: {
+  teamFitReportId: string;
+}): Promise<TeamFitReportActionContext | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("team_fit_reports")
+    .select("id, organization_id, team_id, participant_id, report_type, report_version, report_status")
+    .eq("id", input.teamFitReportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load Team Fit report action context: ${error.message}`);
+  }
+
+  const report = (data ??
+    null) as
+    | {
+        id: string;
+        organization_id: string;
+        team_id: string;
+        participant_id: string;
+        report_type: string;
+        report_version: string;
+        report_status: TeamFitReportStatus;
+      }
+    | null;
+
+  if (!report) {
+    return null;
+  }
+
+  return {
+    id: report.id,
+    organizationId: report.organization_id,
+    teamId: report.team_id,
+    participantId: report.participant_id,
     reportType: report.report_type,
     reportVersion: report.report_version,
     reportStatus: report.report_status,
@@ -1409,6 +1513,260 @@ export async function resetTeamDynamicsExecutiveOverviewReportAction(
       message: "Vraćanje Team Dynamics Executive Overview reporta u queued stanje nije dostupno.",
       reportId: input.teamAssessmentReportId,
       teamId: input.teamId ?? null,
+    };
+  }
+}
+
+export async function processTeamFitReportAction(
+  input: ProcessTeamFitReportActionInput,
+  deps: ProcessTeamFitReportActionDependencies = {},
+): Promise<ProcessTeamFitReportActionResult> {
+  if (!isNonEmptyString(input.teamFitReportId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "Team Fit izvještaj nije moguće pripremiti bez identifikatora.",
+      reportId: null,
+      teamId: null,
+      participantId: null,
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization =
+    deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const loadReportContext = deps.loadReportContext ?? loadTeamFitReportActionContext;
+  const processTeamFitReport =
+    deps.processTeamFitReport ?? processTeamFitReportWithMock;
+  const revalidate = deps.revalidate ?? revalidatePath;
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+
+    if (!organization) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    const reportContext = await loadReportContext({
+      teamFitReportId: input.teamFitReportId,
+    });
+
+    if (!reportContext || reportContext.organizationId !== organization.id) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    if (isNonEmptyString(input.teamId) && input.teamId !== reportContext.teamId) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    if (
+      isNonEmptyString(input.participantId) &&
+      input.participantId !== reportContext.participantId
+    ) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    if (
+      reportContext.reportType !== TEAM_FIT_REPORT_TYPE ||
+      reportContext.reportVersion !== TEAM_FIT_REPORT_VERSION
+    ) {
+      return {
+        ok: false,
+        status: "unsupported_report_kind",
+        message: "Ovaj zapis nije podržan za manualnu Team Fit pripremu.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        participantId: reportContext.participantId,
+      };
+    }
+
+    switch (reportContext.reportStatus) {
+      case "processing":
+        return {
+          ok: false,
+          status: "already_processing",
+          message: "Priprema Team Fit izvještaja je već u toku.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+        };
+      case "ready":
+        return {
+          ok: false,
+          status: "already_ready",
+          message: "Team Fit izvještaj je već spreman za pregled.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+        };
+      case "failed":
+        return {
+          ok: false,
+          status: "failed_not_processable",
+          message: "Neuspješan Team Fit izvještaj se u ovom slice-u ne može ponovo pripremiti.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+        };
+      case "queued":
+        break;
+      default:
+        return {
+          ok: false,
+          status: "not_queued",
+          message: "Team Fit izvještaj trenutno nije u stanju za manualnu pripremu.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+        };
+    }
+
+    const result = await processTeamFitReport(
+      {
+        teamFitReportId: input.teamFitReportId,
+        organizationId: organization.id,
+      },
+      {},
+    );
+
+    if (!result.ok) {
+      if (result.reason === "already_processing") {
+        return {
+          ok: false,
+          status: "already_processing",
+          message: "Priprema Team Fit izvještaja je već u toku.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+          processorReason: result.reason,
+        };
+      }
+
+      if (result.reason === "already_ready") {
+        return {
+          ok: false,
+          status: "already_ready",
+          message: "Team Fit izvještaj je već spreman za pregled.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+          processorReason: result.reason,
+        };
+      }
+
+      if (result.reason === "failed_not_claimable") {
+        return {
+          ok: false,
+          status: "failed_not_processable",
+          message: "Neuspješan Team Fit izvještaj se u ovom slice-u ne može ponovo pripremiti.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+          processorReason: result.reason,
+        };
+      }
+
+      if (result.reason === "not_claimable") {
+        return {
+          ok: false,
+          status: "not_queued",
+          message: "Team Fit izvještaj trenutno nije u stanju za manualnu pripremu.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+          processorReason: result.reason,
+        };
+      }
+
+      if (
+        result.reason === "input_snapshot_failed" ||
+        result.reason === "provider_failed"
+      ) {
+        return {
+          ok: false,
+          status: "failed",
+          message: "Priprema Team Fit izvještaja nije uspjela. Izvještaj je označen kao neuspješan.",
+          reportId: reportContext.id,
+          teamId: reportContext.teamId,
+          participantId: reportContext.participantId,
+          marker: result.marker,
+          processorReason: result.reason,
+        };
+      }
+
+      return {
+        ok: false,
+        status: "error",
+        message: "Priprema Team Fit izvještaja trenutno nije uspjela. Pokušajte kasnije.",
+        reportId: reportContext.id,
+        teamId: reportContext.teamId,
+        participantId: reportContext.participantId,
+        marker: result.marker,
+        processorReason: result.reason,
+      };
+    }
+
+    revalidate(`/dashboard/participants/${reportContext.participantId}/reports`);
+    revalidate(
+      `/dashboard/teams/${reportContext.teamId}/participants/${reportContext.participantId}/team-fit-reports/${reportContext.id}`,
+    );
+
+    return {
+      ok: true,
+      status: "ready",
+      message: "Team Fit izvještaj je pripremljen i spreman za pregled.",
+      reportId: reportContext.id,
+      teamId: reportContext.teamId,
+      participantId: reportContext.participantId,
+    };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        teamId: null,
+        participantId: null,
+      };
+    }
+
+    return {
+      ok: false,
+      status: "error",
+      message: "Priprema Team Fit izvještaja trenutno nije uspjela. Pokušajte kasnije.",
+      reportId: input.teamFitReportId,
+      teamId: isNonEmptyString(input.teamId) ? input.teamId : null,
+      participantId: isNonEmptyString(input.participantId) ? input.participantId : null,
     };
   }
 }
