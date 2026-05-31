@@ -110,6 +110,7 @@ const {
   queueTeamFitReportShell,
   claimTeamFitReportForProcessing,
   markTeamFitReportProcessingFailed,
+  resetFailedTeamFitReportToQueued,
 } = require("../lib/b2b/team-fit-report-lifecycle.ts");
 const { processTeamFitReportWithMock } = require("../lib/b2b/team-fit-report-processor.ts");
 const { loadTeamFitReportDisplayRecord } = require("../lib/b2b/team-fit-report-display.ts");
@@ -508,6 +509,49 @@ async function main() {
       failedHtml,
       /Izvještaj nije pripremljen\. Možeš ga vratiti u red za pripremu\./,
     );
+
+    const reset = await resetFailedTeamFitReportToQueued(
+      {
+        teamFitReportId: failedQueued.reportId,
+        organizationId: createdIds.organizationId,
+      },
+      {
+        supabase,
+        now: () => "2026-05-30T13:15:00.000Z",
+      },
+    );
+
+    if (!reset.ok) {
+      throw new Error(reset.message);
+    }
+    assert.equal(reset.ok, true);
+    assert.equal(reset.report.reportStatus, "queued");
+
+    const reprocessed = await processTeamFitReportWithMock(
+      {
+        teamFitReportId: failedQueued.reportId,
+        organizationId: createdIds.organizationId,
+      },
+      {
+        supabase,
+        now: () => "2026-05-30T13:30:00.000Z",
+      },
+    );
+
+    assert.deepEqual(reprocessed, {
+      ok: true,
+      reportId: failedQueued.reportId,
+      status: "ready",
+    });
+
+    const recoveredRow = await loadReportRow(supabase, failedQueued.reportId);
+    assert.equal(recoveredRow?.report_status, "ready");
+    assert.equal(typeof recoveredRow?.error_message, "object");
+
+    const recoveredValidation = validateTeamFitReportSnapshot(
+      recoveredRow?.report_snapshot ?? null,
+    );
+    assert.equal(recoveredValidation.ok, true);
 
     const attemptIds = await loadAttemptIdsForParticipant(supabase, createdIds.participantId);
     const attemptReportCount = await countAttemptReportsForAttempts(supabase, attemptIds);
