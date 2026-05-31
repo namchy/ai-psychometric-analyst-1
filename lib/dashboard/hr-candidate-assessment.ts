@@ -228,7 +228,7 @@ export type ParticipantAssessmentRow = {
       }
     | {
         kind: "link";
-        label: "Pogledaj procjenu";
+        label: "Pregled procjena";
         href: string;
       };
   testItems: Array<{
@@ -746,7 +746,7 @@ export function buildParticipantAssessmentRows(input: {
     } else if (completedCount > 0) {
       primaryAction = {
         kind: "link",
-        label: "Pogledaj procjenu",
+        label: "Pregled procjena",
         href: `/dashboard/participants/${participant.id}/reports`,
       };
     } else if (openAttempt || archivedOnlyAttempt) {

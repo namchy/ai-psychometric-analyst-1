@@ -802,6 +802,7 @@ function main() {
     attempts: [ipipQueuedAttempt, safranReadyAttempt],
   });
   assert.equal(rows1[0].primaryAction.kind, "link");
+  assert.equal(rows1[0].primaryAction.label, "Pregled procjena");
   assert.equal(rows1[0].primaryAction.href, `/dashboard/participants/${participant1.id}/reports`);
 
   const model1 = buildDetailModel({
