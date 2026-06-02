@@ -53,7 +53,7 @@ Komande:
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
-| P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti između sitnog Team Fit renderer/copy polish-a i real upstream source coverage-a za composite + Team Dynamics dereference; bez worker/scheduler-a i bez automatske produkcijske generacije. |
+| P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: Team Fit real upstream source coverage audit za composite + Team Dynamics dereference ili zaseban V2 information hierarchy polish; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
 - Dodat je read-only Team Fit report list/entrypoint u HR participant reports kontekstu.
@@ -442,6 +442,37 @@ Komande:
   - ujednačiti HR-friendly terminologiju
   - jasnije vizuelno razdvojiti interview pitanje, šta slušati i signal koji se provjerava
 - Nije uveden candidate-facing output, numeric fit score, hire/no-hire language, renderer promjena, lifecycle promjena, provider default promjena, worker/scheduler ili Team Dynamics runtime izmjena.
+
+**Completion note — Team Fit renderer/copy polish V1**
+- Završen je uski read-only Team Fit renderer/copy polish V1.
+- Poliran je `components/dashboard/team-fit-report-view.tsx`.
+- Ažuriran je uski renderer hygiene test `scripts/test-team-fit-report-renderer.cjs`.
+- Hero headline je vizuelno sužen i dobio display-side shortening helper bez promjene persisted snapshot contracta.
+- Dodan je uvodni HR-facing blok `Kako koristiti ovaj izvještaj`.
+- Interview guidance je restrukturiran u jasne podblokove:
+  - `Pitanje`
+  - `Šta HR treba slušati`
+  - `Koji signal se provjerava`
+- Onboarding i menadžerske smjernice su razbijeni u manje operativne blokove sa HR-friendly labelama.
+- Team Fit terminologija je ujednačena u hero i sekcijama.
+- Uklonjene su engleske UI labele poput `Support needs`, `Manager guidance`, `Watchouts` i `Interpretation limits`.
+- Candidate/complementarity/friction kartice sada jasnije odvajaju:
+  - relacijski signal
+  - hipotezu za provjeru
+  - šta HR treba provjeriti
+- Snapshot contract nije mijenjan.
+- Report view ostaje read-only i ne generiše novi report.
+- Manual browser review nakon polish-a: `PASS za MVP`, uz napomenu da report još nije premium final UI.
+- Zaključak browser review-a: sadržaj je zreo i layout čist, ali information hierarchy još može biti bolja jer mnoge kartice imaju sličnu vizuelnu težinu i report je dug.
+- Budući polish kandidat: `Team Fit report information hierarchy V2`, sa fokusom na kraći headline model, executive summary, bolju prioritizaciju kartica, manje uniformnosti, eventualne section navigation/collapse obrasce i jasnije rangiranje glavnog zaključka, provjera, onboarding implikacija, dodatnih signala i ograničenja.
+- Nisu uvedeni DB schema promjena, lifecycle promjena, provider/OpenAI prompt promjena, Team Dynamics promjena, worker/scheduler, report generation iz view route-a, candidate-facing output, numeric fit score, hire/no-hire jezik, raw answers ili member scores prikaz.
+- Verifikovano:
+  - `node scripts/test-team-fit-report-renderer.cjs`
+  - `npm run typecheck`
+  - `node scripts/test-team-fit-report-route-shell.cjs`
+  - `node scripts/test-team-fit-report-display-helper.cjs`
+  - `node scripts/test-team-fit-report-list-entrypoint.cjs`
+  - `node scripts/test-hr-participant-reports-team-fit-ux.cjs`
 
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
@@ -5995,6 +6026,13 @@ Zaključak:
 - Invalid JSON, invalid contract i provider/config greške završavaju kao controlled failed stanja bez raw provider error prikaza u UI-u.
 - Slice ne uvodi worker, scheduler, automatsku produkcijsku generaciju, report generation iz view route-a, candidate-facing output, numeric fit score, hire/no-hire copy ili individualne team member odgovore/skorove.
 - Sljedeći preporučeni slice je ručno pokretan Team Fit real OpenAI DB smoke kroz postojeći manual lifecycle, bez worker/scheduler-a i bez automatske produkcijske generacije.
+
+### 2026-06-02 — Team Fit renderer/copy polish V1
+
+- Završeno je usko Team Fit renderer/copy polish V1 nakon manual HR browser review-a.
+- Report je dobio bolji hero treatment, uvodni blok `Kako koristiti ovaj izvještaj`, jasniju interview strukturu i HR-friendly terminologiju.
+- Browser review je dao `PASS za MVP`, uz budući V2 kandidat za information hierarchy polish.
+- Guardraili su očuvani: bez score-a, hire/no-hire jezika, candidate-facing outputa, raw answers/member scores prikaza, provider copy-ja, lifecycle promjena, DB promjena, Team Dynamics promjena ili worker/scheduler-a.
 
 ### 2026-05-31 — HR dashboard navigation polish za participant reports
 
