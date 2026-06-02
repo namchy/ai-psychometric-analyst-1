@@ -611,7 +611,24 @@ async function resolveTeamAggregationSource(input: {
     teamAssessmentAssignmentId: input.teamSourceId,
   });
 
-  if (directResult.status === "ready" || directResult.status === "invalid") {
+  if (directResult.status === "ready") {
+    return {
+      result: directResult,
+      sourceMetadata: {
+        sourceId: input.teamSourceId,
+        sourceVersion: directResult.aggregationVersion,
+        teamAssessmentAssignmentId: directResult.teamAssessmentAssignmentId,
+        aggregationSnapshotId: directResult.aggregationSnapshotId,
+      },
+    };
+  }
+
+  const shouldAttemptSnapshotReferenceLookup =
+    directResult.status === "not_found" ||
+    (directResult.status === "invalid" &&
+      directResult.reason === "team_assessment_assignment_not_found");
+
+  if (!shouldAttemptSnapshotReferenceLookup) {
     return {
       result: directResult,
       sourceMetadata: {

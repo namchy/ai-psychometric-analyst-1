@@ -426,7 +426,7 @@ async function main() {
       loadTeamAggregationVerification: async ({ teamAssessmentAssignmentId }) => {
         if (teamAssessmentAssignmentId === "agg-snapshot-1") {
           return {
-            status: "not_found",
+            status: "invalid",
             aggregationVersion: "team_dynamics_final_aggregation_v1",
             teamAssessmentAssignmentId,
             scoreEntryAggregations: [],
@@ -441,7 +441,7 @@ async function main() {
             missingScoreCount: null,
             invalidScoreCount: null,
             aggregationSnapshotId: null,
-            reason: null,
+            reason: "team_assessment_assignment_not_found",
           };
         }
 
@@ -461,6 +461,83 @@ async function main() {
     false,
   );
   assert.equal(JSON.stringify(teamResult.inputSnapshot.teamSignals).includes("memberScores"), false);
+  assert.equal(teamResult.inputSnapshot.teamSignals.sourceMetadata.aggregationSnapshotId, "agg-snapshot-1");
+  assert.equal(
+    teamResult.inputSnapshot.teamSignals.sourceMetadata.teamAssessmentAssignmentId,
+    "team-assignment-1",
+  );
+
+  const invalidSnapshotState = buildBaseState({
+    team_fit_reports: [
+      {
+        ...buildBaseState().team_fit_reports[0],
+        team_source_id: "agg-snapshot-invalid",
+      },
+    ],
+    team_assessment_aggregation_snapshots: [
+      {
+        id: "agg-snapshot-invalid",
+        team_assessment_assignment_id: "team-assignment-invalid",
+        aggregation_version: "team_dynamics_final_aggregation_v1",
+      },
+    ],
+  });
+  const invalidSnapshotResult = await buildTeamFitReportInputSnapshot(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: createSupabaseStub(invalidSnapshotState),
+      buildCompositeInputSnapshot: async () => {
+        throw new Error("invalid snapshot resolver test should not need candidate dereference");
+      },
+      loadTeamAggregationVerification: async ({ teamAssessmentAssignmentId }) => {
+        if (teamAssessmentAssignmentId === "agg-snapshot-invalid") {
+          return {
+            status: "invalid",
+            aggregationVersion: "team_dynamics_final_aggregation_v1",
+            teamAssessmentAssignmentId,
+            scoreEntryAggregations: [],
+            hasTdmDomainAggregations: false,
+            hasPsychologicalSafetyAggregation: false,
+            hasSjtAggregation: false,
+            hasOutcomePulseAggregation: false,
+            includedMemberCount: null,
+            completedMemberCount: null,
+            readyScoredMemberCount: null,
+            incompleteMemberCount: null,
+            missingScoreCount: null,
+            invalidScoreCount: null,
+            aggregationSnapshotId: null,
+            reason: "team_assessment_assignment_not_found",
+          };
+        }
+
+        return {
+          status: "invalid",
+          aggregationVersion: "team_dynamics_final_aggregation_v1",
+          teamAssessmentAssignmentId,
+          scoreEntryAggregations: [],
+          hasTdmDomainAggregations: false,
+          hasPsychologicalSafetyAggregation: false,
+          hasSjtAggregation: false,
+          hasOutcomePulseAggregation: false,
+          includedMemberCount: null,
+          completedMemberCount: null,
+          readyScoredMemberCount: null,
+          incompleteMemberCount: null,
+          missingScoreCount: 1,
+          invalidScoreCount: 0,
+          aggregationSnapshotId: "agg-snapshot-invalid",
+          reason: "partial_aggregation_detected_missing_scores",
+        };
+      },
+    },
+  );
+
+  assert.equal(invalidSnapshotResult.ok, true);
+  assert.equal(invalidSnapshotResult.inputSnapshot.teamSignals.sourceStatus, "source_invalid");
 
   const combinedState = buildBaseState({
     team_fit_reports: [

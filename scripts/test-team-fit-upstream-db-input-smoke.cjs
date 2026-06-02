@@ -262,6 +262,7 @@ async function createClonedAggregationSnapshot(supabase, input) {
     ...(input.sourceRow.aggregation_snapshot ?? {}),
     teamAssessmentAssignmentId: input.teamAssessmentAssignmentId,
     aggregationVersion: input.sourceRow.aggregation_version,
+    ...(input.aggregationSnapshotOverrides ?? {}),
   };
 
   const { data, error } = await supabase
@@ -273,16 +274,23 @@ async function createClonedAggregationSnapshot(supabase, input) {
       aggregation_status: input.sourceRow.aggregation_status,
       source_scoring_version: input.sourceRow.source_scoring_version,
       source_score_snapshot_ids: input.sourceRow.source_score_snapshot_ids ?? [],
-      participant_count: input.sourceRow.participant_count,
-      completed_participant_count: input.sourceRow.completed_participant_count,
-      included_score_count: input.sourceRow.included_score_count,
-      excluded_score_count: input.sourceRow.excluded_score_count,
+      participant_count: input.rowOverrides?.participant_count ?? input.sourceRow.participant_count,
+      completed_participant_count:
+        input.rowOverrides?.completed_participant_count ??
+        input.sourceRow.completed_participant_count,
+      included_score_count:
+        input.rowOverrides?.included_score_count ?? input.sourceRow.included_score_count,
+      excluded_score_count:
+        input.rowOverrides?.excluded_score_count ?? input.sourceRow.excluded_score_count,
       missing_completed_score_participant_ids:
-        input.sourceRow.missing_completed_score_participant_ids ?? [],
-      mean_score_0_100: input.sourceRow.mean_score_0_100,
-      min_score_0_100: input.sourceRow.min_score_0_100,
-      max_score_0_100: input.sourceRow.max_score_0_100,
-      range_score_0_100: input.sourceRow.range_score_0_100,
+        input.rowOverrides?.missing_completed_score_participant_ids ??
+        input.sourceRow.missing_completed_score_participant_ids ??
+        [],
+      mean_score_0_100: input.rowOverrides?.mean_score_0_100 ?? input.sourceRow.mean_score_0_100,
+      min_score_0_100: input.rowOverrides?.min_score_0_100 ?? input.sourceRow.min_score_0_100,
+      max_score_0_100: input.rowOverrides?.max_score_0_100 ?? input.sourceRow.max_score_0_100,
+      range_score_0_100:
+        input.rowOverrides?.range_score_0_100 ?? input.sourceRow.range_score_0_100,
       aggregation_snapshot: clonedAggregationSnapshot,
       calculated_at: input.sourceRow.calculated_at,
     })
@@ -401,6 +409,33 @@ async function main() {
     });
     cleanup.snapshotIds.push(clonedSnapshot.id);
 
+    const partialTeamAssignment = await createTempTeamAssessmentAssignment(
+      supabase,
+      tempTeam.id,
+    );
+    cleanup.assignmentIds.push(partialTeamAssignment.id);
+
+    const partialSnapshot = await createClonedAggregationSnapshot(supabase, {
+      teamAssessmentAssignmentId: partialTeamAssignment.id,
+      teamId: tempTeam.id,
+      sourceRow: teamSource.sourceRow,
+      rowOverrides: {
+        included_score_count: Math.max((teamSource.sourceRow.included_score_count ?? 1) - 1, 0),
+        excluded_score_count: (teamSource.sourceRow.excluded_score_count ?? 0) + 1,
+      },
+      aggregationSnapshotOverrides: {
+        teamAssessmentAssignmentId: partialTeamAssignment.id,
+        readyScoredMemberCount: Math.max(
+          (teamSource.verification.readyScoredMemberCount ?? 1) - 1,
+          0,
+        ),
+        missingScoreCount: 1,
+        missingScoreParticipantIds: ["partial-member-placeholder"],
+        reasons: ["partial_aggregation_detected_missing_scores"],
+      },
+    });
+    cleanup.snapshotIds.push(partialSnapshot.id);
+
     const clonedVerification = await loadTeamDynamicsFinalAggregationVerification({
       teamAssessmentAssignmentId: tempTeamAssignment.id,
       aggregationVersion: clonedSnapshot.aggregation_version,
@@ -412,7 +447,15 @@ async function main() {
     assert.equal(clonedVerification.missingScoreCount, 0);
     assert.equal(clonedVerification.invalidScoreCount, 0);
 
-    const readyShell = await queueSmokeReportShell({
+    const partialVerification = await loadTeamDynamicsFinalAggregationVerification({
+      teamAssessmentAssignmentId: partialTeamAssignment.id,
+      aggregationVersion: partialSnapshot.aggregation_version,
+    });
+
+    assert.equal(partialVerification.status, "invalid");
+    assert.equal(partialVerification.aggregationSnapshotId, partialSnapshot.id);
+
+    const assignmentSourceShell = await queueSmokeReportShell({
       queueTeamFitReportShell,
       organizationId: candidateSource.assignment.organization_id,
       teamId: tempTeam.id,
@@ -422,47 +465,85 @@ async function main() {
       TEAM_FIT_CANDIDATE_SOURCE_TYPE,
       TEAM_FIT_TEAM_SOURCE_TYPE,
     });
-    cleanup.reportIds.push(readyShell.reportId);
+    cleanup.reportIds.push(assignmentSourceShell.reportId);
 
-    const built = await buildTeamFitReportInputSnapshot({
-      teamFitReportId: readyShell.reportId,
+    const assignmentBuilt = await buildTeamFitReportInputSnapshot({
+      teamFitReportId: assignmentSourceShell.reportId,
       organizationId: candidateSource.assignment.organization_id,
     });
 
-    assert.equal(built.ok, true);
-    assert.equal(built.inputSnapshot.inputVersion, TEAM_FIT_REPORT_INPUT_VERSION);
-    assert.equal(built.inputSnapshot.candidateSignals.sourceStatus, "available");
+    assert.equal(assignmentBuilt.ok, true);
+    assert.equal(assignmentBuilt.inputSnapshot.inputVersion, TEAM_FIT_REPORT_INPUT_VERSION);
+    assert.equal(assignmentBuilt.inputSnapshot.candidateSignals.sourceStatus, "available");
     assert.equal(
-      built.inputSnapshot.teamSignals.sourceStatus,
+      assignmentBuilt.inputSnapshot.teamSignals.sourceStatus,
       "available",
-      JSON.stringify(built.inputSnapshot.teamSignals, null, 2),
+      JSON.stringify(assignmentBuilt.inputSnapshot.teamSignals, null, 2),
     );
     assert.ok(
-      (built.inputSnapshot.candidateSignals.summary?.personalityHighestDomains?.length ?? 0) > 0,
+      (assignmentBuilt.inputSnapshot.candidateSignals.summary?.personalityHighestDomains?.length ?? 0) >
+        0,
     );
-    assert.ok((built.inputSnapshot.candidateSignals.collaborationRelevantSignals?.length ?? 0) > 0);
-    assert.ok(isNonEmptyString(built.inputSnapshot.teamSignals.summary?.aggregationStatus));
-    assert.ok((built.inputSnapshot.teamSignals.coreSignals?.length ?? 0) > 0);
+    assert.ok(
+      (assignmentBuilt.inputSnapshot.candidateSignals.collaborationRelevantSignals?.length ?? 0) > 0,
+    );
+    assert.ok(isNonEmptyString(assignmentBuilt.inputSnapshot.teamSignals.summary?.aggregationStatus));
+    assert.ok((assignmentBuilt.inputSnapshot.teamSignals.coreSignals?.length ?? 0) > 0);
     assert.deepEqual(
-      built.inputSnapshot.relationshipReasoningGuardrails.allowedPatterns,
+      assignmentBuilt.inputSnapshot.relationshipReasoningGuardrails.allowedPatterns,
       ["alignment_signal", "complementarity_signal", "mixed_signal", "needs_validation"],
     );
     assert.equal(
-      built.inputSnapshot.candidateSignals.sourceMetadata?.assessmentAssignmentId,
+      assignmentBuilt.inputSnapshot.candidateSignals.sourceMetadata?.assessmentAssignmentId,
       candidateSource.assignment.id,
     );
     assert.equal(
-      built.inputSnapshot.teamSignals.sourceMetadata?.aggregationSnapshotId,
+      assignmentBuilt.inputSnapshot.teamSignals.sourceMetadata?.aggregationSnapshotId,
       clonedSnapshot.id,
     );
     assert.equal(
-      built.inputSnapshot.teamSignals.sourceMetadata?.teamAssessmentAssignmentId,
+      assignmentBuilt.inputSnapshot.teamSignals.sourceMetadata?.teamAssessmentAssignmentId,
       tempTeamAssignment.id,
     );
 
-    assertForbiddenKeysAbsent(built.inputSnapshot, "Team Fit upstream input snapshot");
+    const snapshotSourceShell = await queueSmokeReportShell({
+      queueTeamFitReportShell,
+      organizationId: candidateSource.assignment.organization_id,
+      teamId: tempTeam.id,
+      participantId: candidateSource.assignment.participant_id,
+      candidateSourceId: candidateSource.assignment.id,
+      teamSourceId: clonedSnapshot.id,
+      TEAM_FIT_CANDIDATE_SOURCE_TYPE,
+      TEAM_FIT_TEAM_SOURCE_TYPE,
+    });
+    cleanup.reportIds.push(snapshotSourceShell.reportId);
+
+    const snapshotBuilt = await buildTeamFitReportInputSnapshot({
+      teamFitReportId: snapshotSourceShell.reportId,
+      organizationId: candidateSource.assignment.organization_id,
+    });
+
+    assert.equal(snapshotBuilt.ok, true);
+    assert.equal(snapshotBuilt.inputSnapshot.inputVersion, TEAM_FIT_REPORT_INPUT_VERSION);
+    assert.equal(snapshotBuilt.inputSnapshot.candidateSignals.sourceStatus, "available");
     assert.equal(
-      JSON.stringify(built.inputSnapshot).includes("assessment_reports"),
+      snapshotBuilt.inputSnapshot.teamSignals.sourceStatus,
+      "available",
+      JSON.stringify(snapshotBuilt.inputSnapshot.teamSignals, null, 2),
+    );
+    assert.equal(
+      snapshotBuilt.inputSnapshot.teamSignals.sourceMetadata?.aggregationSnapshotId,
+      clonedSnapshot.id,
+    );
+    assert.equal(
+      snapshotBuilt.inputSnapshot.teamSignals.sourceMetadata?.teamAssessmentAssignmentId,
+      tempTeamAssignment.id,
+    );
+
+    assertForbiddenKeysAbsent(assignmentBuilt.inputSnapshot, "Team Fit upstream input snapshot");
+    assertForbiddenKeysAbsent(snapshotBuilt.inputSnapshot, "Team Fit upstream input snapshot");
+    assert.equal(
+      JSON.stringify(snapshotBuilt.inputSnapshot).includes("assessment_reports"),
       false,
       "Input snapshot must not require composite assessment_reports artefact references.",
     );
@@ -505,13 +586,33 @@ async function main() {
     });
 
     assert.equal(missingTeamBuilt.ok, true);
-    assert.notEqual(missingTeamBuilt.inputSnapshot.teamSignals.sourceStatus, "available");
+    assert.equal(missingTeamBuilt.inputSnapshot.teamSignals.sourceStatus, "source_unavailable");
+
+    const partialTeamShell = await queueSmokeReportShell({
+      queueTeamFitReportShell,
+      organizationId: candidateSource.assignment.organization_id,
+      teamId: tempTeam.id,
+      participantId: candidateSource.assignment.participant_id,
+      candidateSourceId: candidateSource.assignment.id,
+      teamSourceId: partialSnapshot.id,
+      TEAM_FIT_CANDIDATE_SOURCE_TYPE,
+      TEAM_FIT_TEAM_SOURCE_TYPE,
+    });
+    cleanup.reportIds.push(partialTeamShell.reportId);
+
+    const partialTeamBuilt = await buildTeamFitReportInputSnapshot({
+      teamFitReportId: partialTeamShell.reportId,
+      organizationId: candidateSource.assignment.organization_id,
+    });
+
+    assert.equal(partialTeamBuilt.ok, true);
+    assert.equal(partialTeamBuilt.inputSnapshot.teamSignals.sourceStatus, "source_invalid");
 
     console.log(
       JSON.stringify(
         {
           ok: true,
-          reportInputVersion: built.inputSnapshot.inputVersion,
+          reportInputVersion: assignmentBuilt.inputSnapshot.inputVersion,
           candidateSource: {
             assessmentAssignmentId: candidateSource.assignment.id,
             compositeInputAvailable: true,
@@ -521,12 +622,20 @@ async function main() {
             originalAggregationSnapshotId: teamSource.sourceRow.id,
             clonedAggregationSnapshotId: clonedSnapshot.id,
             teamAssessmentAssignmentId: tempTeamAssignment.id,
-            builderSourceIdUsed: tempTeamAssignment.id,
+            builderSourceIdUsed: {
+              assignmentId: tempTeamAssignment.id,
+              aggregationSnapshotId: clonedSnapshot.id,
+            },
             verificationStatus: clonedVerification.status,
+          },
+          positivePaths: {
+            assignmentSourceStatus: assignmentBuilt.inputSnapshot.teamSignals.sourceStatus,
+            snapshotSourceStatus: snapshotBuilt.inputSnapshot.teamSignals.sourceStatus,
           },
           negativeChecks: {
             wrongCandidateSourceStatus: wrongCandidateBuilt.inputSnapshot.candidateSignals.sourceStatus,
             missingTeamSourceStatus: missingTeamBuilt.inputSnapshot.teamSignals.sourceStatus,
+            partialSnapshotSourceStatus: partialTeamBuilt.inputSnapshot.teamSignals.sourceStatus,
           },
           privacyScan: {
             forbiddenKeysAbsent: true,
