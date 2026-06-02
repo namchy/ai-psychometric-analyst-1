@@ -1,0 +1,458 @@
+import "server-only";
+
+import {
+  INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE,
+  INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE,
+  INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION,
+  validateIndividualDevelopmentProfileSnapshot,
+  type IndividualDevelopmentManagerWatchpoint,
+  type IndividualDevelopmentOneOnOneGuidanceItem,
+  type IndividualDevelopmentProfileSnapshot,
+  type IndividualDevelopmentRisk,
+} from "@/lib/assessment/individual-development-profile-contract";
+import {
+  INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_TYPE,
+  INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_VERSION,
+  type IndividualDevelopmentProfileInputSignal,
+  type IndividualDevelopmentProfileInputSnapshot,
+  type IndividualDevelopmentProfileInputSourceBlock,
+  type IndividualDevelopmentProfileInputSourceStatus,
+} from "@/lib/assessment/individual-development-profile-input";
+
+export const INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_TYPE = "mock" as const;
+export const INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_VERSION =
+  "individual_development_profile_mock_v1" as const;
+
+export type IndividualDevelopmentProfileMockProviderResult =
+  | {
+      ok: true;
+      reportSnapshot: IndividualDevelopmentProfileSnapshot;
+    }
+  | {
+      ok: false;
+      reason: "invalid_input" | "validation_failed";
+      errors: string[];
+    };
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function getStatusLabel(status: IndividualDevelopmentProfileInputSourceStatus): string {
+  switch (status) {
+    case "available":
+      return "dostupan";
+    case "partial":
+      return "djelimično dostupan";
+    case "invalid":
+      return "nevalidan";
+    case "unavailable":
+    default:
+      return "nedostupan";
+  }
+}
+
+function getSignalEntries(
+  source: IndividualDevelopmentProfileInputSourceBlock,
+): Array<IndividualDevelopmentProfileInputSignal | { code: string; label: string; signal: string }> {
+  const relevantSignals = source.relevantSignals ?? [];
+  const integratedSignals = source.integratedSignals ?? [];
+
+  return [...relevantSignals, ...integratedSignals];
+}
+
+function getLeadingSignals(
+  source: IndividualDevelopmentProfileInputSourceBlock,
+  count: number,
+): Array<IndividualDevelopmentProfileInputSignal | { code: string; label: string; signal: string }> {
+  return getSignalEntries(source).filter((entry) => isNonEmptyString(entry.signal)).slice(0, count);
+}
+
+function buildSourceStatusLimit(
+  sourceName: string,
+  status: IndividualDevelopmentProfileInputSourceStatus,
+): string | null {
+  if (status === "available") {
+    return null;
+  }
+
+  if (status === "partial") {
+    return `${sourceName} signal je djelimično dostupan i traži dodatnu provjeru prije praktičnih razvojnih zaključaka.`;
+  }
+
+  if (status === "invalid") {
+    return `${sourceName} signal trenutno nije dovoljno pouzdan za čvršće razvojne zaključke i treba ga tretirati kao ograničenje inputa.`;
+  }
+
+  return `${sourceName} signal trenutno nije dostupan, pa se preporuke u toj zoni moraju potvrditi kroz razgovor i radni kontekst.`;
+}
+
+function buildSummaryHeadline(input: IndividualDevelopmentProfileInputSnapshot): string {
+  const availableSources = [
+    input.sourceSignals.personality,
+    input.sourceSignals.motivation,
+    input.sourceSignals.problemSolving,
+    input.sourceSignals.composite,
+  ].filter((source) => source.sourceStatus === "available").length;
+
+  if (availableSources >= 3) {
+    return "Razvojni profil daje dovoljno signala za strukturisan HR i menadžerski rad.";
+  }
+
+  if (availableSources >= 1) {
+    return "Razvojni profil daje početne signale, ali traži oprezno čitanje i dodatnu provjeru.";
+  }
+
+  return "Razvojni profil je trenutno ograničen i treba ga koristiti samo kao okvir za dodatna pitanja.";
+}
+
+function buildOverallPattern(input: IndividualDevelopmentProfileInputSnapshot): string {
+  const strongestSignals = [
+    ...getLeadingSignals(input.sourceSignals.personality, 1).map((entry) => entry.signal),
+    ...getLeadingSignals(input.sourceSignals.motivation, 1).map((entry) => entry.signal),
+    ...getLeadingSignals(input.sourceSignals.problemSolving, 1).map((entry) => entry.signal),
+  ];
+
+  if (strongestSignals.length > 0) {
+    return `Najkorisniji razvojni tragovi trenutno dolaze iz ovih reduced signala: ${strongestSignals.join(
+      " ",
+    )}`;
+  }
+
+  return "Trenutni input ne daje dovoljno stabilnih individualnih signala za širu razvojnu naraciju, pa izvještaj ostaje usmjeren na provjeru konteksta, podrške i načina rada.";
+}
+
+function buildStrongestContributionSignals(
+  input: IndividualDevelopmentProfileInputSnapshot,
+): string[] {
+  const compositeSignals = getLeadingSignals(input.sourceSignals.composite, 2).map((entry) => entry.signal);
+  const fallbackSignals = [
+    ...getLeadingSignals(input.sourceSignals.personality, 1).map((entry) => entry.signal),
+    ...getLeadingSignals(input.sourceSignals.problemSolving, 1).map((entry) => entry.signal),
+    ...getLeadingSignals(input.sourceSignals.motivation, 1).map((entry) => entry.signal),
+  ];
+
+  const values = [...compositeSignals, ...fallbackSignals].filter(isNonEmptyString);
+
+  if (values.length > 0) {
+    return values.slice(0, 3);
+  }
+
+  return [
+    "Najsigurniji naredni korak je strukturisano provjeriti kako osoba traži jasnoću, podršku i ritam povratne informacije u stvarnom radu.",
+  ];
+}
+
+function buildMainSupportNeed(input: IndividualDevelopmentProfileInputSnapshot): string {
+  const nonAvailableSource = [
+    ["ličnosni", input.sourceSignals.personality.sourceStatus],
+    ["motivacijski", input.sourceSignals.motivation.sourceStatus],
+    ["problem-solving", input.sourceSignals.problemSolving.sourceStatus],
+    ["kompozitni", input.sourceSignals.composite.sourceStatus],
+  ].find((entry) => entry[1] !== "available");
+
+  if (nonAvailableSource) {
+    return `Glavna potreba u ovoj fazi je dodatno provjeriti ${nonAvailableSource[0]} signal, jer je trenutno ${getStatusLabel(
+      nonAvailableSource[1] as IndividualDevelopmentProfileInputSourceStatus,
+    )}.`;
+  }
+
+  return "Glavna potreba u ovoj fazi je rano uskladiti očekivanja, nivo autonomije i ritam povratne informacije kako bi se signal pretvorio u operativnu razvojnu podršku.";
+}
+
+function buildContributionPattern(input: IndividualDevelopmentProfileInputSnapshot) {
+  const personalitySignals = getLeadingSignals(input.sourceSignals.personality, 2);
+  const problemSolvingSignals = getLeadingSignals(input.sourceSignals.problemSolving, 1);
+  const motivationSignals = getLeadingSignals(input.sourceSignals.motivation, 2);
+
+  return {
+    bestConditions:
+      problemSolvingSignals.length > 0
+        ? problemSolvingSignals.map(
+            (entry) =>
+              `Može doprinijeti najbolje kada se način rada i zadaci testiraju kroz kontekst u kojem vrijedi provjeriti: ${entry.signal}`,
+          )
+        : [
+            "Može doprinijeti najbolje kada su prioriteti, standard uspjeha i naredni koraci pregledni od početka saradnje.",
+          ],
+    collaborationConditions:
+      personalitySignals.length > 0
+        ? personalitySignals.map(
+            (entry) =>
+              `U saradnji vrijedi provjeriti kako se ovaj signal pokazuje u praksi: ${entry.signal}`,
+          )
+        : [
+            "Vrijedi rano dogovoriti ritam saradnje, način eskalacije pitanja i očekivani nivo samostalnosti.",
+          ],
+    supportPreferences:
+      motivationSignals.length > 0
+        ? motivationSignals.map(
+            (entry) =>
+              `Signal sugeriše moguću razvojnu korist od uslova rada povezanih sa ovim obrascem: ${entry.signal}`,
+          )
+        : [
+            "Kako motivacijski signal nije potpuno dostupan, podršku treba graditi kroz kratke provjere šta osobi daje energiju, a šta je usporava.",
+          ],
+    roleShapingImplications: [
+      "HR i menadžer treba da provjere koliko osobi pomažu jasan okvir, pregled očekivanja i rani radni primjeri prije širenja odgovornosti.",
+      input.sourceSignals.composite.sourceStatus === "available"
+        ? "Reduced kompozitni signal je dostupan i može pomoći u planiranju razvoja bez oslanjanja na AI narativ."
+        : "Kako reduced kompozitni signal nije potpuno dostupan, implikacije za oblikovanje uloge treba držati užim i više validirati kroz praksu.",
+    ],
+  };
+}
+
+function buildDevelopmentRisks(
+  input: IndividualDevelopmentProfileInputSnapshot,
+): IndividualDevelopmentRisk[] {
+  const risks: IndividualDevelopmentRisk[] = [];
+  const nonAvailableSources = [
+    ["ličnosni", input.sourceSignals.personality.sourceStatus],
+    ["motivacijski", input.sourceSignals.motivation.sourceStatus],
+    ["problem-solving", input.sourceSignals.problemSolving.sourceStatus],
+  ].filter((entry) => entry[1] !== "available");
+
+  risks.push({
+    possibleBlocker: "Neusklađen nivo jasnoće i podrške može usporiti rani razvojni zamah.",
+    whyItMatters:
+      "Kada očekivanja, autonomija i ritam povratne informacije nisu rano usklađeni, i dobar individualni signal može ostati slabo iskorišten.",
+    whatToCheck:
+      "Provjeriti kako osoba reaguje na promjenu prioriteta, koliko traži pojašnjenje i kada se osjeća dovoljno sigurno da samostalno povuče naredni korak.",
+    howToSupport:
+      "Rano definisati kriterije uspjeha, vlasništvo nad zadatkom i kratke check-in tačke koje omogućavaju korekciju bez pretjerane kontrole.",
+  });
+
+  if (nonAvailableSources.length > 0) {
+    risks.push({
+      possibleBlocker: `Dio razvoja može biti pogrešno procijenjen jer su neki ključni izvori trenutno ${nonAvailableSources
+        .map((entry) => getStatusLabel(entry[1] as IndividualDevelopmentProfileInputSourceStatus))
+        .join(", ")}.`,
+      whyItMatters:
+        "Kada input nije potpun, postoji veći rizik da HR ili menadžer prerano generalizuju obrazac koji još nije dovoljno potvrđen.",
+      whatToCheck:
+        "U razgovoru ciljano dopuniti nedostajuće informacije o motivaciji, načinu rada i uslovima u kojima osoba lakše održava fokus i kvalitet.",
+      howToSupport:
+        "Zadržati preporuke na nivou razvojnih hipoteza i periodično ih revidirati čim se pojavi kvalitetniji individualni signal.",
+    });
+  }
+
+  return risks;
+}
+
+function buildCommunicationGuidance(input: IndividualDevelopmentProfileInputSnapshot) {
+  const personalitySignal = getLeadingSignals(input.sourceSignals.personality, 1)[0]?.signal ?? null;
+  const problemSolvingSignal = getLeadingSignals(input.sourceSignals.problemSolving, 1)[0]?.signal ?? null;
+
+  return {
+    whatHelps: [
+      "Najviše pomaže konkretan feedback koji jasno odvaja šta funkcioniše, šta traži korekciju i koji je sljedeći korak.",
+      personalitySignal
+        ? `Lično-komunikacijska hipoteza za provjeru: ${personalitySignal}`
+        : "Kada ličnosni signal nije potpun, način komunikacije treba provjeravati kroz kratke iteracije i direktna pitanja.",
+    ],
+    whatToAvoid: [
+      "Izbjegavati nejasne ili kontradiktorne poruke bez dogovora o tome šta je trenutno prioritet.",
+      "Izbjegavati da se jedan razvojni signal pretvori u čvrstu etiketu ili zaključak o osobi.",
+    ],
+    howToPhraseFeedback: [
+      "Feedback je najbolje dati kroz jasan opis ponašanja, uticaja i očekivane naredne prilagodbe.",
+      problemSolvingSignal
+        ? `Vrijedi provjeriti kako osoba prima feedback kada se razgovor naslanja na ovaj problem-solving trag: ${problemSolvingSignal}`
+        : "Ako problem-solving signal nije potpun, feedback treba ostati uz konkretne radne primjere umjesto šire procjene kapaciteta.",
+    ],
+    whatToClarify: [
+      "Vrijedi razjasniti koliko autonomije osoba trenutno očekuje, kada treba tražiti podršku i kako izgleda dobar standard izvršenja.",
+      "Korisno je unaprijed usaglasiti šta znači dovoljno dobar napredak u prvim sedmicama razvoja.",
+    ],
+  };
+}
+
+function buildMotivationGuidance(input: IndividualDevelopmentProfileInputSnapshot) {
+  const motivationSignals = getLeadingSignals(input.sourceSignals.motivation, 2);
+
+  if (motivationSignals.length > 0) {
+    return {
+      likelySourcesOfEnergy: motivationSignals.map(
+        (entry) => `Mogući izvor energije za provjeru: ${entry.signal}`,
+      ),
+      likelySourcesOfDrain: [
+        "Pad energije vrijedi provjeriti kada su očekivanja nejasna, smisao zadatka slabo objašnjen ili napredak nije vidljiv.",
+      ],
+      supportSignals: [
+        "Korisno je povezati zadatke sa jasnim razlogom zašto su važni i kakav se doprinos od osobe očekuje.",
+        "Vrijedi periodično provjeriti da li trenutni način podrške pojačava angažman ili više stvara pritisak nego jasnoću.",
+      ],
+      whatToValidate: motivationSignals.map(
+        (entry) => `U razvojnom razgovoru provjeriti kako se ovaj motivacijski signal vidi u stvarnim radnim uslovima: ${entry.signal}`,
+      ),
+    };
+  }
+
+  return {
+    likelySourcesOfEnergy: [
+      "Motivacijski input nije dovoljno potpun, pa izvore energije treba otkrivati kroz konkretne primjere zadataka i radnih uslova.",
+    ],
+    likelySourcesOfDrain: [
+      "Bez stabilnog motivacijskog signala posebno vrijedi paziti na nejasne prioritete, prenaglu promjenu očekivanja i slab osjećaj napretka.",
+    ],
+    supportSignals: [
+      "Korisno je rano provjeriti šta osobi daje osjećaj smisla, kontrole i mjerljivog napretka.",
+    ],
+    whatToValidate: [
+      "U prvih nekoliko razgovora direktno pitati koje vrste zadataka, autonomije i povratne informacije najviše pomažu angažmanu.",
+    ],
+  };
+}
+
+function buildOneOnOneGuidance(
+  input: IndividualDevelopmentProfileInputSnapshot,
+): IndividualDevelopmentOneOnOneGuidanceItem[] {
+  const primarySignal =
+    getLeadingSignals(input.sourceSignals.composite, 1)[0]?.signal ??
+    getLeadingSignals(input.sourceSignals.personality, 1)[0]?.signal ??
+    "Kako osoba traži jasnoću, podršku i prostor za samostalnost u radu.";
+
+  return [
+    {
+      question: "Koji uslovi vam najviše pomažu da uhvatite ritam i osjećaj sigurnog napretka u radu?",
+      whatToListenFor:
+        "Da li osoba spontano traži strukturu, više autonomije, češći feedback ili jasniju sliku o tome kako izgleda dobar rezultat.",
+      signalBeingChecked: primarySignal,
+      possibleFollowUp:
+        "Možete li opisati situaciju u kojoj ste najbrže počeli doprinositi i šta je tada bilo posebno korisno?",
+    },
+    {
+      question: "Šta vam najviše otežava da održite kvalitet i energiju kada se prioriteti promijene?",
+      whatToListenFor:
+        "Da li je glavni izazov nejasan kontekst, previše prekida, slab osjećaj smisla ili nedovoljno povratne informacije.",
+      signalBeingChecked:
+        "Kako osoba reaguje na promjenu očekivanja i gdje joj najviše treba razvojna podrška.",
+      possibleFollowUp:
+        "Koja vrsta podrške vam tada najviše pomaže da se vratite na jasan i koristan radni ritam?",
+    },
+  ];
+}
+
+function buildOnboardingPlan(input: IndividualDevelopmentProfileInputSnapshot) {
+  const hasComposite = input.sourceSignals.composite.sourceStatus === "available";
+
+  return {
+    first30Days: [
+      "Definisati očekivanja, kriterije uspjeha i ritam kratkih check-in razgovora od samog početka.",
+      hasComposite
+        ? "Koristiti reduced kompozitni signal samo kao pomoć za izbor pitanja i podrške, ne kao zamjenu za direktnu provjeru ponašanja."
+        : "Kako reduced kompozitni signal nije potpuno dostupan, prve sedmice koristiti za prikupljanje konkretnih primjera načina rada i motivacije.",
+    ],
+    days31To60: [
+      "Provjeriti kako osoba reaguje na veći nivo samostalnosti i da li trenutni model podrške ostaje koristan.",
+      "Pregledati koje vrste zadataka, feedbacka i strukture ubrzavaju razvoj, a koje ga usporavaju.",
+    ],
+    days61To90: [
+      "Revidirati početne razvojne hipoteze i zadržati samo one koje su potvrđene kroz radni kontekst.",
+      "Dogovoriti naredni razvojni fokus na osnovu opaženih obrazaca, ne samo početnog input signala.",
+    ],
+  };
+}
+
+function buildManagerWatchpoints(
+  input: IndividualDevelopmentProfileInputSnapshot,
+): IndividualDevelopmentManagerWatchpoint[] {
+  const watchpoints: IndividualDevelopmentManagerWatchpoint[] = [
+    {
+      watchpoint: "Rani razvojni signal može ostati nedovoljno iskorišten ako su očekivanja i podrška previše implicitni.",
+      whyItMatters:
+        "Osoba može djelovati tiše ili sporije nego što realno jeste kada standard rada, prioritet i način donošenja odluka nisu dovoljno razjašnjeni.",
+      earlySignal:
+        "Traži dodatna pojašnjenja, odgađa odluku bez jasnog okvira ili djeluje opreznije nego što situacija traži.",
+      suggestedManagerResponse:
+        "Skratiti nejasnoću kroz jasan dogovor o cilju, nivou autonomije i prvoj mjeri napretka koju treba pratiti.",
+    },
+  ];
+
+  if (input.sourceSignals.motivation.sourceStatus !== "available") {
+    watchpoints.push({
+      watchpoint: "Motivacijski signal nije potpuno stabilan, pa angažman treba pratiti kroz praksu umjesto pretpostavke.",
+      whyItMatters:
+        "Bez dovoljno dobrog motivacijskog inputa lako je pogrešno pripisati pad energije karakteristici osobe umjesto uslovima rada.",
+      earlySignal:
+        "Angažman varira zavisno od tipa zadatka, smisla koji osoba vidi u radu i količine strukture koju dobija.",
+      suggestedManagerResponse:
+        "U redovnim razgovorima pitati šta trenutno pomaže angažmanu i koje uslove rada treba prilagoditi prije šire interpretacije.",
+    });
+  }
+
+  return watchpoints;
+}
+
+function buildInterpretationLimits(input: IndividualDevelopmentProfileInputSnapshot): string[] {
+  const limits = [...input.interpretationLimits];
+  const sourceStatusLimits = [
+    buildSourceStatusLimit("Ličnosni", input.sourceSignals.personality.sourceStatus),
+    buildSourceStatusLimit("Motivacijski", input.sourceSignals.motivation.sourceStatus),
+    buildSourceStatusLimit("Problem-solving", input.sourceSignals.problemSolving.sourceStatus),
+    buildSourceStatusLimit("Kompozitni", input.sourceSignals.composite.sourceStatus),
+  ].filter(isNonEmptyString);
+
+  return [...limits, ...sourceStatusLimits];
+}
+
+export function generateIndividualDevelopmentProfileWithMock(
+  inputSnapshot: IndividualDevelopmentProfileInputSnapshot,
+): IndividualDevelopmentProfileMockProviderResult {
+  if (
+    inputSnapshot.inputType !== INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_TYPE ||
+    inputSnapshot.inputVersion !== INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_VERSION
+  ) {
+    return {
+      ok: false,
+      reason: "invalid_input",
+      errors: [
+        `Expected ${INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_VERSION} input snapshot for Individual Development Profile mock generation.`,
+      ],
+    };
+  }
+
+  const reportSnapshot: IndividualDevelopmentProfileSnapshot = {
+    reportType: INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE,
+    reportVersion: INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION,
+    locale: inputSnapshot.locale,
+    audience: INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE,
+    developmentSummary: {
+      headline: buildSummaryHeadline(inputSnapshot),
+      overallPattern: buildOverallPattern(inputSnapshot),
+      strongestContributionSignals: buildStrongestContributionSignals(inputSnapshot),
+      mainSupportNeed: buildMainSupportNeed(inputSnapshot),
+      usageNote:
+        "Ovaj izvještaj je HR-facing razvojni radni dokument i signale treba potvrditi kroz razgovor, onboarding i stvarni radni kontekst.",
+    },
+    contributionPattern: buildContributionPattern(inputSnapshot),
+    developmentRisks: buildDevelopmentRisks(inputSnapshot),
+    communicationAndFeedbackGuidance: buildCommunicationGuidance(inputSnapshot),
+    motivationAndEnergyGuidance: buildMotivationGuidance(inputSnapshot),
+    oneOnOneGuidance: buildOneOnOneGuidance(inputSnapshot),
+    onboardingAndDevelopmentPlan: buildOnboardingPlan(inputSnapshot),
+    managerWatchpoints: buildManagerWatchpoints(inputSnapshot),
+    interpretationLimits: buildInterpretationLimits(inputSnapshot),
+    metadata: {
+      generatedAt: new Date().toISOString(),
+      generatorType: INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_TYPE,
+      generatorVersion: INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_VERSION,
+      inputVersion: inputSnapshot.inputVersion,
+    },
+  };
+
+  const validation = validateIndividualDevelopmentProfileSnapshot(reportSnapshot);
+
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: "validation_failed",
+      errors: validation.errors,
+    };
+  }
+
+  return {
+    ok: true,
+    reportSnapshot: validation.value,
+  };
+}

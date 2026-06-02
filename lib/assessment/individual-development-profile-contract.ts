@@ -65,6 +65,9 @@ export type IndividualDevelopmentProfileSnapshot = {
   interpretationLimits: string[];
   metadata: {
     generatedAt: string;
+    generatorType?: string;
+    generatorVersion?: string;
+    inputVersion?: string;
   };
 };
 
