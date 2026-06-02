@@ -53,7 +53,7 @@ Komande:
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
-| P1        | Timski fit kandidata product/report contract spec | OpenAI provider skeleton implemented behind provider seam / mock default / no worker scheduler | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: ručno pokretan Team Fit real OpenAI DB smoke kroz postojeći manual lifecycle, bez worker/scheduler-a, bez automatske produkcijske generacije i bez report generation iz view route-a. |
+| P1        | Timski fit kandidata product/report contract spec | Real OpenAI DB smoke potvrđen / manual lifecycle ostaje mock-default | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti između Team Fit input enrichment audit/spec-a i quality review-a real OpenAI outputa; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
 - Dodat je read-only Team Fit report list/entrypoint u HR participant reports kontekstu.
@@ -229,6 +229,39 @@ Komande:
   - `node scripts/test-team-fit-report-retry-reset-action.cjs`
   - `node scripts/test-hr-participant-reports-team-fit-ux.cjs`
   - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
+  - `npm run typecheck`
+
+**Completion note — Team Fit real OpenAI DB-backed smoke**
+- Dodan je real OpenAI DB-backed smoke za Team Fit report lane.
+- Smoke potvrđuje postojeći persisted `team_fit_reports` lifecycle kroz real OpenAI provider path:
+  - `queued -> processing -> ready`
+- Smoke se pokreće kroz `.env.local` runtime i eksplicitno koristi OpenAI provider path samo u smoke-u.
+- Ako `OPENAI_API_KEY` ili `AI_REPORT_MODEL` nisu dostupni, smoke završava kontrolisano kao skipped/no-op bez DB write-a.
+- Default Team Fit provider path ostaje mock-safe.
+- OpenAI se ne uključuje kao produkcijski default.
+- Smoke koristi postojeći processor/provider seam i ne piše `report_snapshot` direktno.
+- Smoke potvrđuje da persisted `input_snapshot` ima canonical Team Fit input type/version.
+- Persisted `report_snapshot` se validira kroz postojeći `validateTeamFitReportSnapshot(...)`.
+- Ready report se dodatno provjerava kroz postojeći display/read helper path i Team Fit list read helper.
+- Smoke potvrđuje wrong organization/team/participant boundary ponašanje.
+- Smoke potvrđuje da nema write-a u:
+  - `attempt_reports`
+  - `assessment_reports`
+  - `team_assessment_reports`
+- Tokom real smoke-a pronađen je i popravljen OpenAI `response_format` schema bug u Team Fit OpenAI provideru.
+- Bug je bio u tome što JSON schema `metadata.required` nije uključivala sve deklarisane ključeve, pa je real OpenAI request padao na 400.
+- OpenAI provider output sada može proći real request, JSON parse, Team Fit contract validation i persisted lifecycle update do `ready`.
+- Nisu uvedeni worker, scheduler, automatska produkcijska generacija, report generation iz view route-a, candidate-facing output, numeric fit score, hire/no-hire copy, raw provider error prikaz, individualni team member odgovori/skorovi, Team Dynamics izmjene ili DB migracija.
+- Verifikovano:
+  - `node scripts/test-team-fit-openai-provider.cjs`
+  - `node scripts/test-team-fit-report-provider-seam.cjs`
+  - `node scripts/test-team-fit-manual-process-action.cjs`
+  - `node scripts/test-team-fit-report-lifecycle-shell.cjs`
+  - `node scripts/test-team-fit-report-route-shell.cjs`
+  - `node scripts/test-team-fit-report-list-entrypoint.cjs`
+  - `node scripts/test-team-fit-report-retry-reset-action.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-openai-db-smoke.cjs`
   - `npm run typecheck`
 
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
