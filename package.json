@@ -82,7 +82,8 @@
     "test:team-fit-report-renderer": "node scripts/test-team-fit-report-renderer.cjs",
     "test:team-fit-report-route-shell": "node scripts/test-team-fit-report-route-shell.cjs",
     "test:team-fit-report-list-entrypoint": "node scripts/test-team-fit-report-list-entrypoint.cjs",
-    "test:team-fit-report-db-smoke": "node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs"
+    "test:team-fit-report-db-smoke": "node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs",
+    "test:team-fit-openai-db-smoke": "node --env-file=.env.local scripts/test-team-fit-openai-db-smoke.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

@@ -349,7 +349,7 @@ function buildTeamFitSchema(): Record<string, unknown> {
       metadata: {
         type: "object",
         additionalProperties: false,
-        required: ["generatedAt"],
+        required: ["provider", "providerVersion", "generatedAt"],
         properties: {
           provider: nonEmptyString,
           providerVersion: nonEmptyString,
