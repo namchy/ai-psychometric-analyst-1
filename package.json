@@ -85,7 +85,8 @@
     "test:team-fit-report-db-smoke": "node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs",
     "test:team-fit-report-quality-review": "node scripts/test-team-fit-report-quality-review.cjs",
     "test:team-fit-openai-db-smoke": "node --env-file=.env.local scripts/test-team-fit-openai-db-smoke.cjs",
-    "test:team-fit-input-enrichment": "node scripts/test-team-fit-input-enrichment.cjs"
+    "test:team-fit-input-enrichment": "node scripts/test-team-fit-input-enrichment.cjs",
+    "test:team-fit-enriched-openai-output-qa-smoke": "node --env-file=.env.local scripts/test-team-fit-enriched-openai-output-qa-smoke.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
