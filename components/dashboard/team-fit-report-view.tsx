@@ -50,6 +50,22 @@ function mapRelationshipPatternLabel(value: TeamFitRelationshipPattern): string 
   }
 }
 
+function buildHeroHeadline(headline: string): string {
+  const normalized = headline.trim();
+
+  if (normalized.length <= 78) {
+    return normalized;
+  }
+
+  const firstClause = normalized.split(/[.!?]/)[0]?.trim();
+
+  if (firstClause && firstClause.length >= 24 && firstClause.length <= 78) {
+    return firstClause;
+  }
+
+  return `${normalized.slice(0, 75).trimEnd()}...`;
+}
+
 function MetaCard({
   label,
   value,
@@ -86,20 +102,45 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
+function InfoPanel({
+  label,
+  children,
+  tone = "neutral",
+}: {
+  label: string;
+  children: React.ReactNode;
+  tone?: "neutral" | "info" | "warning";
+}) {
+  const toneClassName =
+    tone === "info"
+      ? "border-[#118ab2]/15 bg-[#118ab2]/[0.06]"
+      : tone === "warning"
+        ? "border-[#ffd166]/45 bg-[#fff5d6]"
+        : "border-slate-200/80 bg-white/80";
+
+  return (
+    <div className={`rounded-[1rem] border px-4 py-3 ${toneClassName}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <div className="mt-2 text-sm leading-6 text-slate-700">{children}</div>
+    </div>
+  );
+}
+
 function CandidateSignalCard({ signal }: { signal: TeamFitReportCandidateSignal }) {
   return (
     <DashboardInfoCardShell className="h-full rounded-[1.3rem] border-slate-200/80 p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#118ab2]">
-        Signal kandidata
-      </p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#118ab2]">Signal kandidata</p>
       <h3 className="mt-2 text-[1.08rem] font-bold tracking-[-0.03em] text-[#073b4c]">
         {signal.title}
       </h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{signal.summary}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-700">
-        <span className="font-semibold text-[#073b4c]">Šta ovo znači za HR razgovor: </span>
-        {signal.relevanceToFit}
-      </p>
+      <div className="mt-4 space-y-3">
+        <InfoPanel label="Relacijski signal">{signal.summary}</InfoPanel>
+        <InfoPanel label="Hipoteza za provjeru" tone="info">
+          {signal.relevanceToFit}
+        </InfoPanel>
+      </div>
     </DashboardInfoCardShell>
   );
 }
@@ -117,11 +158,12 @@ function ComplementarityCard({
       <h3 className="mt-2 text-[1.08rem] font-bold tracking-[-0.03em] text-[#073b4c]">
         {signal.title}
       </h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{signal.summary}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-700">
-        <span className="font-semibold text-[#073b4c]">Praktična vrijednost: </span>
-        {signal.practicalValue}
-      </p>
+      <div className="mt-4 space-y-3">
+        <InfoPanel label="Relacijski signal">{signal.summary}</InfoPanel>
+        <InfoPanel label="Šta HR treba provjeriti" tone="info">
+          {signal.practicalValue}
+        </InfoPanel>
+      </div>
     </DashboardInfoCardShell>
   );
 }
@@ -135,15 +177,15 @@ function FrictionRiskCard({ risk }: { risk: TeamFitReportFrictionRisk }) {
       <h3 className="mt-2 text-[1.08rem] font-bold tracking-[-0.03em] text-[#073b4c]">
         {risk.title}
       </h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{risk.summary}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-700">
-        <span className="font-semibold text-[#073b4c]">Zašto je važno: </span>
-        {risk.whyItMayMatter}
-      </p>
-      <p className="mt-2 text-sm leading-6 text-slate-700">
-        <span className="font-semibold text-[#073b4c]">Mitigation fokus: </span>
-        {risk.mitigationFocus}
-      </p>
+      <div className="mt-4 space-y-3">
+        <InfoPanel label="Hipoteza za provjeru">{risk.summary}</InfoPanel>
+        <InfoPanel label="Zašto je važno" tone="warning">
+          {risk.whyItMayMatter}
+        </InfoPanel>
+        <InfoPanel label="Šta HR treba provjeriti" tone="info">
+          {risk.mitigationFocus}
+        </InfoPanel>
+      </div>
     </DashboardInfoCardShell>
   );
 }
@@ -157,14 +199,14 @@ function InterviewAreaCard({ area }: { area: TeamFitReportInterviewArea }) {
       <h3 className="mt-2 text-[1.08rem] font-bold tracking-[-0.03em] text-[#073b4c]">
         {area.title}
       </h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{area.rationale}</p>
-      <div className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Pitanja za razgovor
-        </p>
-        <div className="mt-3">
+      <div className="mt-4 space-y-3">
+        <InfoPanel label="Koji signal se provjerava">{area.title}</InfoPanel>
+        <InfoPanel label="Šta HR treba slušati" tone="warning">
+          {area.rationale}
+        </InfoPanel>
+        <InfoPanel label="Pitanje" tone="info">
           <BulletList items={area.prompts} />
-        </div>
+        </InfoPanel>
       </div>
     </DashboardInfoCardShell>
   );
@@ -180,6 +222,33 @@ function PatternCard({ pattern }: { pattern: TeamFitReportPatternSummary }) {
         {pattern.title}
       </h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">{pattern.summary}</p>
+    </DashboardInfoCardShell>
+  );
+}
+
+function UsageGuidanceCard() {
+  return (
+    <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
+      <DashboardSectionHeader
+        eyebrow="Kako koristiti ovaj izvještaj"
+        eyebrowClassName="text-[#118ab2]"
+        title="Brzi HR okvir za čitanje Team Fit izvještaja"
+        description="Ovaj prikaz je read-only i služi kao razvojni HR pregled relacijskih signala, ne kao završna presuda."
+        className="gap-2"
+        titleClassName="text-[1.35rem] font-bold tracking-[-0.035em] text-[#073b4c]"
+        descriptionClassName="max-w-3xl text-sm leading-6 text-slate-600"
+      />
+      <div className="mt-5 grid gap-3 lg:grid-cols-3">
+        <InfoPanel label="1. Čitaj kao signal">
+          Počni od glavnog relacijskog signala i tretiraj ga kao hipotezu za provjeru, ne kao odluku.
+        </InfoPanel>
+        <InfoPanel label="2. Provjeri kroz intervju" tone="warning">
+          Interview guidance koristi za konkretna pitanja, za ono što HR treba slušati i za signal koji se provjerava.
+        </InfoPanel>
+        <InfoPanel label="3. Prenesi u saradnju" tone="info">
+          Onboarding i menadžerske smjernice koristi za rane dogovore o radu, komunikaciji i očekivanjima.
+        </InfoPanel>
+      </div>
     </DashboardInfoCardShell>
   );
 }
@@ -202,12 +271,12 @@ function NonReadyState({ record }: TeamFitReportViewProps) {
       <DashboardInfoCardShell className="rounded-[1.6rem] border-slate-200/80 p-6 sm:p-7">
         <div className="space-y-4">
           <DashboardSectionHeader
-            eyebrow="TEAM FIT REPORT"
+            eyebrow="Team Fit izvještaj"
             eyebrowClassName="text-[#073b4c]"
             title="HR pregled statusa Team Fit izvještaja"
             description={record.safeStatusMessage}
             className="gap-2"
-            titleClassName="max-w-4xl text-[2rem] font-extrabold tracking-[-0.06em] text-[#073b4c] sm:text-[2.5rem]"
+            titleClassName="max-w-3xl text-[1.85rem] font-extrabold tracking-[-0.05em] text-[#073b4c] sm:text-[2.2rem]"
             descriptionClassName="max-w-3xl text-base leading-7 text-slate-600"
           />
 
@@ -242,20 +311,20 @@ function NonReadyState({ record }: TeamFitReportViewProps) {
       </DashboardInfoCardShell>
 
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
-        <DashboardSectionHeader
-          eyebrow="Status obrade"
-          eyebrowClassName="text-[#073b4c]"
-          title="Šta je trenutno dostupno"
-          description="Ovaj prikaz je read-only i ne nudi obradu, retry ili druge akcije u ovom slice-u."
+          <DashboardSectionHeader
+            eyebrow="Status obrade"
+            eyebrowClassName="text-[#073b4c]"
+            title="Šta je trenutno dostupno"
+            description="Ovaj prikaz je read-only i ne nudi obradu, retry ili druge akcije u ovom slice-u."
           className="gap-2"
           titleClassName="text-[1.4rem] font-bold tracking-[-0.035em] text-[#073b4c]"
           descriptionClassName="text-sm leading-6 text-slate-600"
         />
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {queuedAtLabel ? <MetaCard label="Queued" value={queuedAtLabel} /> : null}
-          {startedAtLabel ? <MetaCard label="Started" value={startedAtLabel} /> : null}
-          {failedAtLabel ? <MetaCard label="Failed" value={failedAtLabel} /> : null}
+          {queuedAtLabel ? <MetaCard label="Pripremljeno" value={queuedAtLabel} /> : null}
+          {startedAtLabel ? <MetaCard label="Obrada počela" value={startedAtLabel} /> : null}
+          {failedAtLabel ? <MetaCard label="Označeno kao neuspješno" value={failedAtLabel} /> : null}
         </div>
       </DashboardInfoCardShell>
     </div>
@@ -269,6 +338,7 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
 
   const snapshot = record.reportSnapshot;
   const relationshipLabel = mapRelationshipPatternLabel(snapshot.fitOverview.relationshipPattern);
+  const heroHeadline = buildHeroHeadline(snapshot.fitOverview.headline);
   const generatedAtLabel = formatTimestamp(snapshot.generatedAt) ?? snapshot.generatedAt;
 
   return (
@@ -276,13 +346,13 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
       <DashboardInfoCardShell className="rounded-[1.6rem] border-slate-200/80 p-6 sm:p-7">
         <div className="space-y-4">
           <DashboardSectionHeader
-            eyebrow="TEAM FIT REPORT"
+            eyebrow="Team Fit izvještaj"
             eyebrowClassName="text-[#073b4c]"
-            title={snapshot.fitOverview.headline}
+            title={heroHeadline}
             description={snapshot.fitOverview.summary}
             className="gap-2"
-            titleClassName="max-w-4xl text-[2rem] font-extrabold tracking-[-0.06em] text-[#073b4c] sm:text-[2.6rem]"
-            descriptionClassName="max-w-3xl text-base leading-7 text-slate-600"
+            titleClassName="max-w-3xl text-[1.9rem] font-extrabold tracking-[-0.05em] text-[#073b4c] sm:text-[2.2rem]"
+            descriptionClassName="max-w-2xl text-[15px] leading-7 text-slate-600"
           />
 
           <div className="flex flex-wrap gap-2.5">
@@ -306,6 +376,8 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
         </div>
       </DashboardInfoCardShell>
 
+      <UsageGuidanceCard />
+
       <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
         <DashboardSectionHeader
           eyebrow="Timski kontekst"
@@ -327,7 +399,7 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
         <DashboardSectionHeader
           eyebrow="Signali kandidata"
           eyebrowClassName="text-[#073b4c]"
-          title="Šta ovo znači za HR razgovor"
+          title="Šta relacijski signal znači za HR"
           description="Ovdje su izdvojeni kandidat-side obrasci koji pomažu čitanju relacijskog signala bez rangiranja osobe."
           className="gap-2"
           titleClassName="text-[1.45rem] font-bold tracking-[-0.035em] text-[#073b4c]"
@@ -361,7 +433,7 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
         <DashboardSectionHeader
           eyebrow="Rizici i trenje"
           eyebrowClassName="text-[#ef476f]"
-          title="Šta provjeriti prije odluke"
+          title="Šta HR treba provjeriti"
           description="Ovo su oprezne hipoteze o tome gdje bi mogla nastati trenja i kako ih vrijedi rano otvoriti."
           className="gap-2"
           titleClassName="text-[1.4rem] font-bold tracking-[-0.035em] text-[#073b4c]"
@@ -378,8 +450,8 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
         <DashboardSectionHeader
           eyebrow="Interview fokus"
           eyebrowClassName="text-[#073b4c]"
-          title="Kako otvoriti praktičan HR razgovor"
-          description="Ova pitanja služe kao pomoć za dodatnu provjeru relacijskog signala kroz konkretne radne situacije."
+          title="Kako provjeriti signal kroz intervju"
+          description="Svaki blok razdvaja pitanje, šta HR treba slušati i koji relacijski signal se provjerava."
           className="gap-2"
           titleClassName="text-[1.4rem] font-bold tracking-[-0.035em] text-[#073b4c]"
           descriptionClassName="text-sm leading-6 text-slate-600"
@@ -396,59 +468,39 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
           <DashboardSectionHeader
             eyebrow="Onboarding"
             eyebrowClassName="text-[#118ab2]"
-            title="Kako podržati onboarding"
-            description="Početni onboarding fokus treba čitati kao praktičnu podršku, ne kao presudu o kandidatu."
+            title="Onboarding smjernice"
+            description="Ove tačke pomažu da prvi radni koraci budu jasni, operativni i usklađeni sa timskim kontekstom."
             className="gap-2"
             titleClassName="text-[1.3rem] font-bold tracking-[-0.035em] text-[#073b4c]"
             descriptionClassName="text-sm leading-6 text-slate-600"
           />
-          <div className="mt-5 space-y-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Prioriteti
-              </p>
-              <div className="mt-3">
-                <BulletList items={snapshot.onboardingGuidance.priorities} />
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Support needs
-              </p>
-              <div className="mt-3">
-                <BulletList items={snapshot.onboardingGuidance.supportNeeds} />
-              </div>
-            </div>
+          <div className="mt-5 space-y-4">
+            <InfoPanel label="Prvi prioriteti">
+              <BulletList items={snapshot.onboardingGuidance.priorities} />
+            </InfoPanel>
+            <InfoPanel label="Šta HR treba provjeriti" tone="info">
+              <BulletList items={snapshot.onboardingGuidance.supportNeeds} />
+            </InfoPanel>
           </div>
         </DashboardInfoCardShell>
 
         <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
           <DashboardSectionHeader
-            eyebrow="Manager guidance"
+            eyebrow="Menadžerske smjernice"
             eyebrowClassName="text-[#073b4c]"
-            title="Kako voditi saradnju"
-            description="Smjernice služe za operativnu podršku lideru ili HR-u pri uvođenju kandidata u tim."
+            title="Kako voditi saradnju nakon ulaska u tim"
+            description="Smjernice služe kao operativni okvir za očekivanja, način rada i komunikaciju."
             className="gap-2"
             titleClassName="text-[1.3rem] font-bold tracking-[-0.035em] text-[#073b4c]"
             descriptionClassName="text-sm leading-6 text-slate-600"
           />
-          <div className="mt-5 space-y-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Working style guidance
-              </p>
-              <div className="mt-3">
-                <BulletList items={snapshot.managerGuidance.workingStyleGuidance} />
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Communication guidance
-              </p>
-              <div className="mt-3">
-                <BulletList items={snapshot.managerGuidance.communicationGuidance} />
-              </div>
-            </div>
+          <div className="mt-5 space-y-4">
+            <InfoPanel label="Način rada">
+              <BulletList items={snapshot.managerGuidance.workingStyleGuidance} />
+            </InfoPanel>
+            <InfoPanel label="Komunikacija" tone="info">
+              <BulletList items={snapshot.managerGuidance.communicationGuidance} />
+            </InfoPanel>
           </div>
         </DashboardInfoCardShell>
       </div>
@@ -456,9 +508,9 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
       <div className="grid gap-4 xl:grid-cols-2">
         <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
           <DashboardSectionHeader
-            eyebrow="Watchouts"
+            eyebrow="Hipoteze za provjeru"
             eyebrowClassName="text-[#ef476f]"
-            title="Oprezne hipoteze"
+            title="Šta još vrijedi provjeriti"
             description="Ove tačke ne treba čitati kao završni sud, nego kao teme koje traže dodatnu provjeru."
             className="gap-2"
             titleClassName="text-[1.3rem] font-bold tracking-[-0.035em] text-[#073b4c]"
@@ -471,7 +523,7 @@ export function TeamFitReportView({ record }: TeamFitReportViewProps) {
 
         <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
           <DashboardSectionHeader
-            eyebrow="Interpretation limits"
+            eyebrow="Ograničenja tumačenja"
             eyebrowClassName="text-slate-500"
             title="Kako oprezno čitati ovaj izvještaj"
             description="Guardrail napomene ostaju dio HR/internal čitanja i ne služe za automatsko decisioning tumačenje."
