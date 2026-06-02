@@ -28,9 +28,13 @@ fs.writeFileSync(
 
 assert.match(helperSource, /\.from\("team_fit_reports"\)/);
 assert.match(helperSource, /TEAM_FIT_REPORT_INPUT_TYPE = "team_fit_report_input_v1"/);
-assert.match(helperSource, /TEAM_FIT_REPORT_INPUT_VERSION = "team_fit_report_input_v1"/);
+assert.match(helperSource, /TEAM_FIT_REPORT_INPUT_VERSION = "team_fit_report_input_v2_enriched"/);
+assert.match(helperSource, /TEAM_FIT_REPORT_INPUT_LEGACY_VERSION = "team_fit_report_input_v1"/);
+assert.match(helperSource, /buildCompositeHrInputSnapshot/);
+assert.match(helperSource, /loadTeamDynamicsFinalAggregationVerification/);
 assert.match(helperSource, /sourceStatus: "placeholder_pending_composite_input"/);
 assert.match(helperSource, /sourceStatus: "placeholder_pending_team_aggregation_input"/);
+assert.match(helperSource, /relationshipReasoningGuardrails/);
 assert.match(helperSource, /executiveOverviewContextIncluded: false/);
 assert.match(helperSource, /roleContextIncluded: false/);
 assert.match(helperSource, /\.update\(\{\s*input_snapshot: buildResult\.inputSnapshot/s);
@@ -41,7 +45,7 @@ assert.doesNotMatch(helperSource, /\.from\("team_assessment_reports"\)/);
 assert.doesNotMatch(helperSource, /report_snapshot:\s*buildResult/);
 assert.doesNotMatch(helperSource, /report_status:\s*"ready"/);
 assert.doesNotMatch(helperSource, /OpenAI|provider|renderer|worker/i);
-assert.doesNotMatch(helperSource, /raw team member answers/i);
+assert.doesNotMatch(helperSource, /rawAnswers|rawResponses|individualAnswers|memberScores|individualScores|fullSnapshot|rawItemText|fitScore|hireRecommendation/);
 
 function resolveWithExtensions(candidatePath) {
   if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
@@ -209,9 +213,9 @@ function buildBaseState() {
         team_id: "team-1",
         participant_id: "participant-1",
         candidate_source_type: "composite_deterministic_input_snapshot",
-        candidate_source_id: "candidate-source-1",
+        candidate_source_id: null,
         team_source_type: "team_dynamics_aggregation_input_snapshot",
-        team_source_id: "team-source-1",
+        team_source_id: null,
         optional_context: { locale: "bs" },
         report_type: "team_fit_report_v1",
         report_version: "v1",
@@ -271,13 +275,13 @@ async function main() {
     teamId: "team-1",
     teamName: "Team A",
     teamSourceType: "team_dynamics_aggregation_input_snapshot",
-    teamSourceId: "team-source-1",
+    teamSourceId: null,
   });
   assert.deepEqual(built.inputSnapshot.candidateContext, {
     participantId: "participant-1",
     displayName: "Amina Candidate",
     candidateSourceType: "composite_deterministic_input_snapshot",
-    candidateSourceId: "candidate-source-1",
+    candidateSourceId: null,
   });
   assert.equal(built.inputSnapshot.sourceReferences.executiveOverviewContextIncluded, false);
   assert.equal(built.inputSnapshot.sourceReferences.roleContextIncluded, false);
@@ -285,6 +289,12 @@ async function main() {
   assert.equal(built.inputSnapshot.candidateSignals.summary, null);
   assert.equal(built.inputSnapshot.teamSignals.sourceStatus, "placeholder_pending_team_aggregation_input");
   assert.equal(built.inputSnapshot.teamSignals.summary, null);
+  assert.deepEqual(built.inputSnapshot.relationshipReasoningGuardrails.allowedPatterns, [
+    "alignment_signal",
+    "complementarity_signal",
+    "mixed_signal",
+    "needs_validation",
+  ]);
   assert.deepEqual(built.inputSnapshot.interpretationGuardrails, {
     noNumericFitScore: true,
     noHireNoHire: true,
@@ -293,6 +303,12 @@ async function main() {
     noCandidateFacingOutput: true,
   });
   assert.equal(JSON.stringify(built.inputSnapshot).includes('undefined'), false);
+  assert.equal(
+    /rawAnswers|rawResponses|individualAnswers|memberScores|individualScores|fullSnapshot|rawItemText|fitScore|score0To100|hireRecommendation/.test(
+      JSON.stringify(built.inputSnapshot),
+    ),
+    false,
+  );
   assertNoUndefined(built.inputSnapshot);
 
   const persistSupabase = createSupabaseStub(buildBaseState());
