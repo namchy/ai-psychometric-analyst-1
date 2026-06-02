@@ -53,7 +53,7 @@ Komande:
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
-| P1        | Timski fit kandidata product/report contract spec | Real OpenAI DB smoke potvrđen / manual lifecycle ostaje mock-default | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti između Team Fit input enrichment audit/spec-a i quality review-a real OpenAI outputa; bez worker/scheduler-a i bez automatske produkcijske generacije. |
+| P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti između sitnog Team Fit renderer/copy polish-a i real upstream source coverage-a za composite + Team Dynamics dereference; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
 - Dodat je read-only Team Fit report list/entrypoint u HR participant reports kontekstu.
@@ -263,6 +263,185 @@ Komande:
   - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
   - `node --env-file=.env.local scripts/test-team-fit-openai-db-smoke.cjs`
   - `npm run typecheck`
+
+**Completion note — Team Fit input enrichment audit/spec**
+- Dodan je docs-only Team Fit input enrichment audit/spec.
+- Audit je potvrdio da je dotadašnji Team Fit input uglavnom identity shell sa placeholder signalima.
+- Candidate side je tada sadržavao samo participant identity/source reference, bez dereferenciranih composite/candidate signala.
+- Team side je tada sadržavao samo team identity/source reference, bez dereferenciranog Team Dynamics aggregation/team signal payload-a.
+- Najveći quality limit je bio da real OpenAI provider dobija siguran, ali tanak input, pa output može biti guardrail-safe, ali generičan.
+- Spec je definisao minimalni enriched vNext pristup:
+  - reduced candidateSignals
+  - reduced teamSignals
+  - relationshipReasoningGuardrails
+  - source/version metadata
+- Spec je eksplicitno zabranio raw candidate answers, raw team member answers, individualne member scoreve, full upstream snapshotove, candidate-facing text, numeric fit score i hire/no-hire zaključke.
+- Nije bilo runtime promjene, DB schema promjene, provider prompt promjene, renderer promjene, lifecycle promjene, worker/scheduler-a ili Team Dynamics runtime izmjena.
+
+**Completion note — Team Fit enriched input builder v2**
+- Team Fit input builder sada persistira enriched input snapshot sa `inputVersion = "team_fit_report_input_v2_enriched"`.
+- Legacy `team_fit_report_input_v1` ostaje prihvaćen za ranije persistirane artefakte.
+- Candidate side read-only dereferencira dostupni HR-safe composite/deterministic source i upisuje samo reduced payload:
+  - summary
+  - collaborationRelevantSignals
+  - motivationSignals ako su dostupni
+  - problemSolvingSignals ako su dostupni
+  - interpretationLimits
+  - sourceMetadata
+- Team side read-only dereferencira verified Team Dynamics aggregation/input source i upisuje samo reduced team-level payload:
+  - summary
+  - coreSignals
+  - communicationAndCoordinationSignals
+  - optional psychologicalSafety / SJT / outcomePulse signal blokove ako su dostupni
+  - varianceAndConfidence
+  - interpretationLimits
+  - sourceMetadata
+- Builder čuva controlled fallback ponašanje:
+  - bez source ID-ja ostaje placeholder
+  - source nedostupan vraća `source_unavailable`
+  - source koji se ne može sigurno reducirati vraća `source_invalid`
+  - optional upstream nedostupnost ne ruši cijeli Team Fit lifecycle
+- Input snapshot sada sadrži `relationshipReasoningGuardrails` sa dozvoljenim patternima:
+  - `alignment_signal`
+  - `complementarity_signal`
+  - `mixed_signal`
+  - `needs_validation`
+- Guardrails potvrđuju da enriched input ne sadrži raw candidate answers, raw team member answers, individual member scores, full upstream snapshots, candidate-facing text, numeric fit score ili hire/no-hire recommendation.
+- Nije bilo DB schema promjene, provider default promjene, worker/scheduler-a, report generation iz view route-a, renderer promjene, Team Dynamics runtime izmjena ili write-a u `attempt_reports`, `assessment_reports`, `team_assessment_reports`.
+- Verifikovano:
+  - `node scripts/test-team-fit-input-enrichment.cjs`
+  - `node scripts/test-team-fit-report-quality-review.cjs`
+  - `node scripts/test-team-fit-openai-provider.cjs`
+  - `node scripts/test-team-fit-report-provider-seam.cjs`
+  - `node scripts/test-team-fit-manual-process-action.cjs`
+  - `node scripts/test-team-fit-report-lifecycle-shell.cjs`
+  - `node scripts/test-team-fit-report-route-shell.cjs`
+  - `node scripts/test-team-fit-report-list-entrypoint.cjs`
+  - `node scripts/test-team-fit-report-retry-reset-action.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-openai-db-smoke.cjs`
+  - `npm run typecheck`
+
+**Completion note — Team Fit enriched OpenAI output QA smoke**
+- Dodan je real OpenAI QA smoke za Team Fit enriched input/output putanju.
+- Smoke koristi postojeći manual lifecycle i provider seam.
+- Smoke potvrđuje persisted enriched input snapshot:
+  - `inputVersion = "team_fit_report_input_v2_enriched"`
+  - `candidateSignals.sourceStatus = "available"`
+  - `teamSignals.sourceStatus = "available"`
+  - candidate/team reduced summary payload postoji
+  - `relationshipReasoningGuardrails.allowedPatterns` sadrži sve dozvoljene relationship pattern-e
+- Smoke pokreće real OpenAI provider path eksplicitno samo za smoke.
+- Ako `OPENAI_API_KEY` ili `AI_REPORT_MODEL` nisu dostupni, smoke završava kontrolisano kao skipped bez DB write-a.
+- Nakon ready reporta, smoke validira persisted `report_snapshot` kroz `validateTeamFitReportSnapshot(...)`.
+- Zatim pokreće postojeći `reviewTeamFitReportQuality(...)`.
+- Smoke faila na blocking findings, dok warning findings ostaju QA signal.
+- Smoke potvrđuje da real OpenAI output pokazuje barem minimalan trag candidate-side i team-side enriched signala.
+- Smoke potvrđuje lifecycle:
+  - `queued -> processing -> ready`
+- Smoke potvrđuje read/display/list helper putanje i wrong org/team/participant boundary ponašanje.
+- Smoke potvrđuje da nema write-a u:
+  - `attempt_reports`
+  - `assessment_reports`
+  - `team_assessment_reports`
+- Nije bilo DB schema promjene, provider default promjene, worker/scheduler-a, report generation iz view route-a, renderer promjene, Team Dynamics runtime izmjena ili full upstream snapshot persistence-a.
+- Verifikovano:
+  - `node --env-file=.env.local scripts/test-team-fit-enriched-openai-output-qa-smoke.cjs`
+  - `node scripts/test-team-fit-input-enrichment.cjs`
+  - `node scripts/test-team-fit-report-quality-review.cjs`
+  - `node scripts/test-team-fit-openai-provider.cjs`
+  - `node scripts/test-team-fit-report-provider-seam.cjs`
+  - `node scripts/test-team-fit-manual-process-action.cjs`
+  - `node scripts/test-team-fit-report-lifecycle-shell.cjs`
+  - `node scripts/test-team-fit-report-route-shell.cjs`
+  - `node scripts/test-team-fit-report-list-entrypoint.cjs`
+  - `node scripts/test-team-fit-report-retry-reset-action.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-openai-db-smoke.cjs`
+  - `npm run typecheck`
+
+**Completion note — Team Fit OpenAI prompt polish over enriched input**
+- Team Fit OpenAI prompt je usko poliran za enriched input.
+- Prompt sada jače traži signal-grounded writing nad dostupnim `candidateSignals` i `teamSignals`.
+- Prompt eksplicitno traži da manjak signala bude tretiran kao ograničenje, ne kao prostor za izmišljanje evidencije.
+- Relationship reasoning je pojačan za:
+  - `alignment_signal`
+  - `complementarity_signal`
+  - `mixed_signal`
+  - `needs_validation`
+- Prompt zabranjuje da `relationshipPattern` zvuči kao score, rang, odluka, automatska preporuka ili hire/no-hire signal.
+- Interview focus sada traži:
+  - konkretna pitanja
+  - šta HR treba slušati u odgovoru
+  - koji signal ili hipotezu pitanje provjerava
+- Onboarding/manager guidance sada traži:
+  - praktične prve korake
+  - očekivanja koja treba razjasniti
+  - konkretne 30–60 day watchpoint-e
+- Prompt dodatno potiskuje generičke fraze bez signalnog uporišta i radne implikacije.
+- Guardrails su očuvani i pojačani:
+  - bez numeric fit score-a
+  - bez hire/no-hire jezika
+  - bez candidate-facing outputa
+  - bez raw answers
+  - bez individualnih team member skorova/odgovora
+  - bez protected/sensitive attribute inferencija
+  - bez finalnog “bad fit” judgment-a
+- Nisu mijenjani input builder, reviewer, smoke, renderer, lifecycle, schema ili provider default.
+- Verifikovano:
+  - `node --env-file=.env.local scripts/test-team-fit-enriched-openai-output-qa-smoke.cjs`
+  - `node scripts/test-team-fit-input-enrichment.cjs`
+  - `node scripts/test-team-fit-report-quality-review.cjs`
+  - `node scripts/test-team-fit-openai-provider.cjs`
+  - `node scripts/test-team-fit-report-provider-seam.cjs`
+  - `node scripts/test-team-fit-manual-process-action.cjs`
+  - `node scripts/test-team-fit-report-lifecycle-shell.cjs`
+  - `node scripts/test-team-fit-report-route-shell.cjs`
+  - `node scripts/test-team-fit-report-list-entrypoint.cjs`
+  - `node scripts/test-team-fit-report-retry-reset-action.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
+  - `node --env-file=.env.local scripts/test-team-fit-openai-db-smoke.cjs`
+  - `npm run typecheck`
+
+**Completion note — Team Fit enriched manual HR browser review**
+- Prvi otvoreni browser report `d115eff6-e350-4ad8-a00d-fa34009e5972` je auditom potvrđen kao star/mock-ish artefakt:
+  - `inputVersion = "team_fit_report_input_v1"`
+  - `candidateSignals.sourceStatus = "placeholder_pending_composite_input"`
+  - `teamSignals.sourceStatus = "placeholder_pending_team_aggregation_input"`
+  - provider metadata nije pokazivao real OpenAI enriched path
+- Zbog toga nije korišten kao validan sadržajni review artefakt.
+- Pripremljen je novi fresh manual review artefakt:
+  - `teamFitReportId = 54c7ad39-361c-4f17-963c-ea5ed0764aae`
+  - `provider/generator = openai / v1`
+  - `inputVersion = "team_fit_report_input_v2_enriched"`
+  - `candidateSignals.sourceStatus = "available"`
+  - `teamSignals.sourceStatus = "available"`
+  - `relationshipPattern = "mixed_signal"`
+  - `report_status = "ready"`
+- Fresh artefakt je prošao:
+  - `validateTeamFitReportSnapshot(...)`
+  - `reviewTeamFitReportQuality(...)`
+  - no blocking findings
+  - no warnings
+- Manual HR browser review je potvrdio:
+  - HR dashboard -> `Pregled procjena` radi
+  - participant reports Team Fit sekcija je vidljiva
+  - ready Team Fit report se otvara kroz read-only route
+  - report nema numeric fit score, hire/no-hire jezik, candidate-facing “ti” obraćanje, raw answers, raw item text, individualne member scoreve/odgovore ili bad-fit/dysfunctional-team final judgment
+- Manual HR review ocjene:
+  - Relacijski kvalitet: 4.5/5
+  - Specifičnost: 4/5
+  - HR operativnost: 4.5/5
+  - Oprez i fer upotreba: 5/5
+  - Čitljivost: 4/5
+- Zaključak manual review-a:
+  - `PASS uz manji copy/renderer polish kasnije`
+- Uočeni budući polish kandidati:
+  - skratiti predug hero headline
+  - smanjiti tekstualnu gustoću kartica
+  - ujednačiti HR-friendly terminologiju
+  - jasnije vizuelno razdvojiti interview pitanje, šta slušati i signal koji se provjerava
+- Nije uveden candidate-facing output, numeric fit score, hire/no-hire language, renderer promjena, lifecycle promjena, provider default promjena, worker/scheduler ili Team Dynamics runtime izmjena.
 
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
