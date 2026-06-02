@@ -366,13 +366,23 @@ function buildSystemPrompt(): string {
     "Return JSON only.",
     "Output must match the supplied JSON schema exactly.",
     "Use only the canonical Team Fit input_snapshot provided by the caller.",
+    "Ground each interpretative section in the specific candidateSignals and teamSignals that are actually present in the input.",
+    "If a relevant signal is missing, say that it is a limitation and reduce certainty instead of inventing evidence.",
+    "Avoid generic fit language that does not connect a candidate-side signal with a team-side context, friction or support need.",
     "Do not output any numeric fit score, fit percentage, rank or score band.",
     "Do not use hiring, selection, hire/no-hire or accept/reject language.",
     "Do not produce candidate-facing advice, candidate-facing conclusions or self-reflection content for the candidate.",
     "Do not quote, reconstruct or disclose raw test items, raw answers, raw responses or response-level evidence.",
     "Do not output individual team member answers, individual team member scores, rankings or person-level diagnostics.",
+    "Do not infer protected or sensitive attributes.",
     "Do not diagnose, label or pathologize the candidate or the team.",
+    "Do not present the candidate or the team as the problem; describe work-context hypotheses instead.",
     "Frame findings as cautious relational hypotheses for HR, interview and onboarding use.",
+    "Use relationshipPattern as a descriptive hypothesis only: alignment_signal, complementarity_signal, mixed_signal or needs_validation.",
+    "relationshipPattern must never read like a score, rank, verdict, decision or recommendation.",
+    "Explain what a candidate signal may mean in this specific team context, where complementarity may help, where friction may emerge and what HR should validate in conversation.",
+    "Interview guidance must be concrete: include targeted questions, what to listen for in the answer and which signal the question is validating.",
+    "Onboarding and manager guidance must include practical first-step actions, expectations to clarify and concrete 30-60 day observation points.",
     "Tone: HR-facing, Bosnian, Latin script, ijekavica, cautious, developmental, non-diagnostic.",
     "Include interview guidance, onboarding guidance, manager guidance and interpretation limits.",
   ].join(" ");
@@ -389,6 +399,40 @@ function buildUserPrompt(inputSnapshot: TeamFitReportInputSnapshot): string {
         "This is HR-internal, relational and team-contextual. It is not a hiring verdict and not a candidate-facing report.",
       tone_rule:
         "Write in bosanski, latinica, ijekavica. Keep the tone cautious, developmental, relational and practical.",
+      reasoning_rules: [
+        "Every major interpretative section should use at least one relevant candidate-side or team-side enriched signal when that signal is available.",
+        "Do not write empty statements such as 'dobro se uklapa', 'treba dodatno razgovarati' or 'važno je pratiti komunikaciju' unless you tie them to a concrete signal and a concrete work implication.",
+        "Translate signals into work implications: what they may mean in collaboration, coordination, clarity of expectations, feedback rhythm, onboarding support or interview validation.",
+        "If both candidate-side and team-side signals exist, connect them explicitly instead of describing them in isolation.",
+        "If evidence is thin, conflicting or incomplete, prefer needs_validation framing and explain why.",
+      ],
+      relationship_pattern_rules: [
+        "Use alignment_signal when candidate signals suggest useful compatibility with the team's current way of working.",
+        "Use complementarity_signal when candidate signals suggest a useful addition or balancing effect rather than similarity.",
+        "Use mixed_signal when both useful alignment/complementarity and plausible friction are present.",
+        "Use needs_validation when source signals are thin, incomplete, conflicting or too weak for a stronger framing.",
+        "relationshipPattern must not function as a score, rank, hiring decision or automatic recommendation.",
+      ],
+      section_rules: {
+        fitOverview:
+          "Summarize the candidate-team relationship as a cautious hypothesis grounded in concrete signals, not as a verdict.",
+        teamContextSummary:
+          "Describe team-side patterns that matter for this candidate fit question, especially coordination, clarity, friction or support conditions.",
+        candidateSignals:
+          "Each candidate signal should explain what the signal may mean in day-to-day collaboration with this team.",
+        complementaritySignals:
+          "Show where the candidate may add value or useful contrast to the team's current pattern, with a concrete practical implication.",
+        frictionRisks:
+          "State plausible friction as a work-context risk with a reason and a mitigation focus, not as a blame statement.",
+        interviewFocus:
+          "Each interview area should include concrete prompts, what HR should listen for and which signal or hypothesis is being validated.",
+        onboardingGuidance:
+          "Give specific first-step onboarding actions, expectations to clarify and support conditions to set up early.",
+        managerGuidance:
+          "Give specific manager actions, feedback or coordination rhythm suggestions and concrete 30-60 day watchpoints.",
+        interpretationLimits:
+          "State where the evidence is reduced, incomplete or hypothesis-level so HR does not overread the output.",
+      },
       structure_rules: [
         "Return valid JSON only.",
         `Keep reportType exactly ${TEAM_FIT_REPORT_TYPE}.`,
@@ -405,7 +449,9 @@ function buildUserPrompt(inputSnapshot: TeamFitReportInputSnapshot): string {
         "No raw answer disclosure.",
         "No individual team member answers.",
         "No individual team member scores.",
+        "No protected or sensitive attribute inference.",
         "No diagnosis or psychological labeling.",
+        "No final bad-fit judgment.",
       ],
     },
     input_snapshot: inputSnapshot,
