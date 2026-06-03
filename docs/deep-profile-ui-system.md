@@ -215,9 +215,23 @@ Status badge je semantički indikator, ne dekorativni čip.
 - Previše badgeva u jednom redu bez prioriteta.
 - Miješanje status badgeva i navigacijskih čipova kao da su isti element.
 
-## 9. Navigacijski obrazac
+## 9. Iconography standards
 
-### 9.1 Page-level navigation
+- Ikone su funkcionalni signal, ne dekoracija.
+- Ikona mora pomoći HR korisniku da brzo razlikuje: kandidat/osoba, pojedinačna procjena, HR izvještaj, individualni razvojni profil, kompozitni profil, Team Fit, Team Dynamics, intervju/provjeru, oprez/rizik, spremno/završeno, u pripremi i nije pripremljen/greška.
+- Preferirati line ikone sa rounded stroke stilom, mirne, profesionalne i human-centered.
+- Izbjegavati cyber, AI, gaming i medical estetiku.
+- Preferirati postojeću icon biblioteku u repou; ako je `lucide-react` već standard, ostati na njoj.
+- Ne uvoditi novu icon biblioteku bez eksplicitne product/tech odluke.
+- Izbjegavati kao osnovni obrazac `Bot`, `Cpu`, `Scan`, `Gauge`, `Sparkles` i `Brain`, osim ako postoji eksplicitna lokalna i opravdana semantika.
+- Preferirati semantiku osobe, profila, dokumenta, razvoja, tima, razgovora, provjere i statusa umjesto algoritma, mašine, skeniranja, dijagnostike ili presude.
+- Ista semantička kategorija treba koristiti isti ili srodan icon obrazac kroz aplikaciju.
+- Ikona može imati blago obojenu pozadinu ili pill kontejner, ali boja mora pratiti postojeću semantiku iz color sekcije.
+- Ikona ne smije nositi značenje koje tekst ili status ne potvrđuju.
+
+## 10. Navigacijski obrazac
+
+### 10.1 Page-level navigation
 
 Za report i dashboard detaljne ekrane koristiti isti obrazac:
 
@@ -225,21 +239,21 @@ Za report i dashboard detaljne ekrane koristiti isti obrazac:
 - context label desno ili ispod na malim ekranima
 - koristiti `PageNavigation` kada obrazac odgovara
 
-### 9.2 Pravila
+### 10.2 Pravila
 
 - Nazad akcija mora biti odmah vidljiva pri vrhu ekrana.
 - Context label je pomoćni orijentir, ne glavni naslov.
 - Ne uvoditi zaseban navigacijski čip obrazac po ekranu ako već postoji `PageNavigation`.
 - Mobile i desktop moraju ostati isti obrazac, samo drugačiji flow.
 
-### 9.3 Zabranjeno
+### 10.3 Zabranjeno
 
 - Jedan ekran sa back pill linkom, drugi sa plain text linkom, treći sa ikonim-only povratkom bez razloga.
 - Navigacijski elementi koji izgledaju kao status pills.
 
-## 10. Report layout obrasci
+## 11. Report layout obrasci
 
-### 10.1 Opšti princip
+### 11.1 Opšti princip
 
 Report nije članak i nije debug dump. Mora podržati brzo skeniranje.
 
@@ -252,7 +266,7 @@ Svaka bitna sekcija treba odgovoriti barem na jedno pitanje:
 - Kako koristiti ovo u onboarding-u?
 - Koja su ograničenja?
 
-### 10.2 Obavezni layout obrasci
+### 11.2 Obavezni layout obrasci
 
 | Obrazac | Pravilo |
 | --- | --- |
@@ -263,23 +277,23 @@ Svaka bitna sekcija treba odgovoriti barem na jedno pitanje:
 | Guidance | zaseban panel ili kartica za intervju ili onboarding |
 | Limitations | sekundarna sekcija, vizuelno mirnija od glavnih insight sekcija |
 
-### 10.3 Grid pravila
+### 11.3 Grid pravila
 
 - Dvokolonski layout koristiti kada sekcije imaju paralelnu funkciju, na primjer intervju i onboarding.
 - Na mobile i tablet širini sekcije moraju pasti u jednu kolonu bez horizontalnog scrolla.
 - Ako su dvije susjedne kartice iste važnosti, koristiti `h-full` kada sadržaj to dozvoljava.
 - Gap između srodnih kartica držati u rasponu `gap-4` do `gap-6`, osim ako ekran jasno traži drugačije.
 
-### 10.4 Zabranjeno
+### 11.4 Zabranjeno
 
 - Neutralne dokument kartice za sekcije koje trebaju izgledati kao decision-support moduli.
 - Wide text blanket preko pune širine bez podjele na funkcionalne blokove.
 - Evidence kao fusnota bez jasnog naslova i grupisanja.
 - Sekcije koje izgledaju kao da pripadaju različitim proizvodima.
 
-## 11. Copy pravila za BHS UX
+## 12. Copy pravila za BHS UX
 
-### 11.1 Opšti ton
+### 12.1 Opšti ton
 
 - bosanski, ijekavica, latinica
 - direktno, jasno, profesionalno
@@ -289,7 +303,7 @@ Svaka bitna sekcija treba odgovoriti barem na jedno pitanje:
 - Snapshot/model output se ne mijenja automatski bez eksplicitnog copy taska.
 - Ako se problematična riječ pojavi iz snapshot/model outputa, prijaviti je kao sadržajni input problem, ne kao renderer bug.
 
-### 11.2 Preferirano
+### 12.2 Preferirano
 
 | Preferirati | Umjesto |
 | --- | --- |
@@ -301,7 +315,7 @@ Svaka bitna sekcija treba odgovoriti barem na jedno pitanje:
 | obrasci ponašanja | ponašajni |
 | spremnost na saradnju / saradnička orijentacija | ugodnost / saradljiv |
 
-### 11.3 Zabranjene ili nepoželjne riječi
+### 12.3 Zabranjene ili nepoželjne riječi
 
 - nalaz
 - nalazi
@@ -321,7 +335,7 @@ Pravila:
 - Ako je riječ zabranjena u hardcoded UI copyju, zamijeniti je prije isporuke.
 - Ako zabranjena riječ dolazi iz snapshot ili model sadržaja, ne mijenjati je automatski bez eksplicitnog zadatka. To treba prijaviti kao sadržajni ulaz, ne rendererski bug.
 
-## 12. Do / Don’t sažetak
+## 13. Do / Don’t sažetak
 
 | Do | Don’t |
 | --- | --- |
@@ -332,7 +346,7 @@ Pravila:
 | čuvati focus-visible i hover konzistentnost | praviti CTA hover/focus regresije |
 | koristiti purpose strip kada sekcija traži kratko operativno objašnjenje | uvoditi dugačke uvodne paragrafe bez funkcije |
 
-## 13. Codex implementation rules
+## 14. Codex implementation rules
 
 Codex pravila za svaki budući UI task:
 
@@ -347,7 +361,7 @@ Codex pravila za svaki budući UI task:
 - Ako task dira report renderer, provjeriti da sekcije izgledaju kao dio istog proizvoda.
 - Ako task dira hardcoded BHS UI copy, provjeriti zabranjene riječi iz ovog dokumenta.
 
-## 14. Definition of done za UI task
+## 15. Definition of done za UI task
 
 UI task nije završen dok nisu ispunjeni sljedeći uslovi:
 
@@ -360,6 +374,6 @@ UI task nije završen dok nisu ispunjeni sljedeći uslovi:
 - copy ne uvodi zabranjene riječi u hardcoded UI
 - summary jasno navodi svako odstupanje od ovog dokumenta
 
-## 15. Status dokumenta
+## 16. Status dokumenta
 
 Ovaj dokument je aktivni Deep Profile UI standard dok ne bude eksplicitno zamijenjen novijom verzijom.
