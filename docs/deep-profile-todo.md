@@ -30,6 +30,8 @@ Komande:
 - “sync todo” = pripremiti jedan Codex prompt za ažuriranje `docs/deep-profile-todo.md`.
 - “sync todo + github” = pripremiti jedan Codex prompt za ažuriranje `docs/deep-profile-todo.md` i zatim sinhronizaciju odgovarajućih GitHub issues / Project items.
 
+UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivni UI standard za buduće Deep Profile UI zadatke, a prvi referentni ekran je `/dashboard/participants/[participantId]/reports`.
+
 ## Kompaktni prioritetni pregled taskova
 
 | Prioritet | Task                                                 | Status      | Kategorija                   | Sljedeći korak                                                                                 |

@@ -75,6 +75,21 @@ Osnovna paleta:
 - Ne koristiti više od dvije akcentne boje u istoj kartici, osim kada je kartica eksplicitno multi-signalni prikaz.
 - Ne graditi cijelu sekciju na emerald atmosferi. Emerald nije osnovna površinska boja proizvoda.
 
+### 3.3 Foundation vs signal color usage
+
+- Neutralne i tople površine nose miran premium HR workspace osjećaj.
+- Jasne boje nose signal: status, provjeru, rizik, analitiku ili aktivnu radnju.
+- Jasne boje same po sebi nisu problem dok god zadržavaju semantiku i funkciju.
+- Problem nastaje kada boja postane dekoracija, izgubi značenje ili dominira cijelom površinom bez razloga.
+- Akcentne boje smiju biti vidljive i jasne, ali moraju imati konkretnu informacijsku ulogu.
+- Ne uvoditi dodatne boje dok postojeća semantika pokriva potrebu.
+- Ne pretvarati svaku karticu u multi-color prikaz ako kartica nema multi-signalnu funkciju.
+
+### 3.4 Reference screen
+
+- `/dashboard/participants/[participantId]/reports`
+- Pravac za ovaj ekran: candidate-first hero, warm premium HR workspace, dark-teal identitet, jasni semantički akcenti, soft report cards, status pills i mirna, profesionalna, human-centered prezentacija.
+
 ## 4. Typography and font roles
 
 Deep Profile koristi tri tipografske uloge:
@@ -270,6 +285,9 @@ Svaka bitna sekcija treba odgovoriti barem na jedno pitanje:
 - direktno, jasno, profesionalno
 - HR-korisno, ne akademski napuhano
 - interpretativno, ali ne teatralno
+- “zabranjene” ili nepoželjne riječi se odnose na novi hardcoded UI copy, ne na snapshot ili model output.
+- Snapshot/model output se ne mijenja automatski bez eksplicitnog copy taska.
+- Ako se problematična riječ pojavi iz snapshot/model outputa, prijaviti je kao sadržajni input problem, ne kao renderer bug.
 
 ### 11.2 Preferirano
 
