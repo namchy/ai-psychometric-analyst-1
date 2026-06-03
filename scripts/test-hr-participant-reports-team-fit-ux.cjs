@@ -67,6 +67,7 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     request === "@/components/app/authenticated-app-chrome" ||
     request === "@/components/dashboard/primitives" ||
     request === "@/components/dashboard/team-fit-report-list" ||
+    request === "@/lib/assessment/individual-development-profile-report-list" ||
     request === "@/lib/auth/session" ||
     request === "@/lib/b2b/team-fit-report-list" ||
     request === "@/lib/b2b/organizations" ||
@@ -188,6 +189,7 @@ require.cache[emptyModulePath] = {
         ),
       );
     },
+    listIndividualDevelopmentProfileReportEntries: async () => [],
     requireAuthenticatedUser: async () => ({ id: "user-1" }),
     listTeamFitReportEntries: async () => stubState.teamFitReports,
     getActiveOrganizationForUser: async () => ({ id: "org-1", name: "Org 1" }),
