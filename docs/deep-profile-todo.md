@@ -52,7 +52,7 @@ Komande:
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
-| P1        | Individualni razvojni profil product/report contract spec | Planirano | Individualni razvojni profil / Product architecture | Definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails bez implementacije koda, bez promjene postojećeg report pipeline-a i bez spajanja sa Team Dynamics reportom. |
+| P1        | Individualni razvojni profil product/report contract spec | U toku / Spec + contract + input + mock provider + lifecycle + processor + display + renderer + read-only HR route + DB smoke završeni | Individualni razvojni profil / Product architecture | Dodati IDP entrypoint/list card na HR participant reports page-u za postojeće IDP artefakte, bez generate/process/retry CTA-a, bez OpenAI-a, bez worker/scheduler-a i bez candidate-facing outputa. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
@@ -4264,6 +4264,99 @@ Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti or
 - scope: definisati sekcije outputa, deterministic input iz individualne baterije, AI-generated sekcije i guardrails
 - granice: ne implementirati kod, ne mijenjati postojeći report pipeline, ne spajati sa Team Dynamics reportom
 
+**Completion note — Individual Development Profile V1 shell lane through HR-only renderer**
+- Kreiran je product/report contract spec dokument `docs/individual-development-profile-product-spec.md`.
+- Zaključan je canonical report key `individual_development_profile_v1`.
+- V1 audience je HR / manager / development context.
+- Report odgovara na pitanje `Kako raditi s ovom osobom?`, a ne `Da li treba zaposliti ovu osobu?`.
+- Candidate-facing verzija je out of scope za V1.
+- Dodan je runtime contract/validator shell u `lib/assessment/individual-development-profile-contract.ts`.
+- Dodan je input snapshot builder shell u `lib/assessment/individual-development-profile-input.ts`.
+- Input snapshot koristi `individual_development_profile_input_v1` i reduced HR-safe deterministic source signale iz IPIP, MWMS, SAFRAN i composite deterministic summary sloja.
+- Input builder podržava `available`, `unavailable`, `partial` i `invalid` source statuse.
+- Dodan je mock provider shell u `lib/assessment/individual-development-profile-mock-provider.ts`.
+- Dodan je mock-only provider seam u `lib/assessment/individual-development-profile-provider.ts`.
+- Provider seam trenutno podržava samo `mock`; nema OpenAI branch, env config ili external provider call.
+- Storage/lifecycle shell je vezan na postojeći `assessment_reports` model kao assessment-level HR artefakt.
+- Dodana je minimalna migracija `supabase/migrations/20260602143000_expand_assessment_reports_for_individual_development_profile.sql`, koja proširuje `assessment_reports.report_type` check na `individual_development_profile`.
+- IDP storage koristi:
+  - `report_type = "individual_development_profile"`
+  - `audience = "hr"`
+  - `source_type = "assessment"`
+  - ownership boundary preko `assessment_assignment_id` / `organization_id` / optional `participant_id`.
+- Dodan je lifecycle shell za queue/read/reset failed ponašanje.
+- Dodan je manual server-only processor shell koji radi `queued -> processing -> ready | failed`.
+- Processor koristi input builder, mock-only provider seam i contract validator.
+- Processor persista reduced `input_snapshot` i validiran `report_snapshot`.
+- Dodan je read/display helper shell koji učitava samo IDP artefakte, validira ready snapshot i vraća display-safe model.
+- Display helper ne fallbackuje na Composite, `attempt_reports`, `team_assessment_reports` ili `team_fit_reports`.
+- Dodan je HR-only renderer shell `components/dashboard/individual-development-profile-report-view.tsx`.
+- Renderer je prop-driven, read-only, HR-facing i ne učitava DB.
+- Renderer ne poziva display helper, processor, input builder, provider seam, mock provider, OpenAI, route ili app/actions.
+- Guardrails su potvrđeni:
+  - bez raw answers
+  - bez raw item text
+  - bez scoring key exposure
+  - bez full upstream snapshot dumpa
+  - bez candidate-facing outputa
+  - bez numeric fit score-a
+  - bez hire/no-hire jezika
+  - bez dijagnoza
+  - bez Team Fit zaključaka
+  - bez Team Dynamics zaključaka
+  - bez `attempt_reports` usage-a
+  - bez team-scoped storage usage-a
+  - bez worker/scheduler-a
+  - bez OpenAI-a
+  - bez route/UI action-a.
+- Verifikovano:
+  - `node scripts/test-individual-development-profile-contract.cjs`
+  - `node scripts/test-individual-development-profile-input.cjs`
+  - `node scripts/test-individual-development-profile-mock-provider.cjs`
+  - `node scripts/test-individual-development-profile-provider-seam.cjs`
+  - `node scripts/test-individual-development-profile-lifecycle-shell.cjs`
+  - `node scripts/test-individual-development-profile-processor-shell.cjs`
+  - `node scripts/test-individual-development-profile-display-helper.cjs`
+  - `node scripts/test-individual-development-profile-renderer.cjs`
+  - `npm run typecheck`
+
+**Completion note — Individual Development Profile read-only HR route + DB smoke**
+- Dodana je HR-only read-only ruta za postojeći Individual Development Profile artefakt: `/dashboard/individual-development-profile-reports/[assessmentReportId]`.
+- Ruta koristi authenticated user + active organization boundary.
+- Ruta koristi postojeći `loadIndividualDevelopmentProfileDisplay(...)` kao canonical read/display helper.
+- Ruta renderuje `IndividualDevelopmentProfileReportView` samo za validan ready display model.
+- Missing, queued, processing, failed i invalid stanja prikazuju safe neutralan HR-facing state.
+- Missing i cross-org/unauthorized ponašanje ne otkriva postojanje reporta van aktivne organizacije.
+- Ruta ne čita `assessment_reports` direktno.
+- Ruta ne generiše report iz view route-a.
+- Ruta ne poziva processor, provider seam, mock provider, OpenAI provider, input builder, lifecycle write helper ili app/action generation flow.
+- Nema processing, generate, retry ili reset CTA-a.
+- Nema worker/scheduler/cron scope-a.
+- Nema candidate-facing IDP outputa.
+- Nema raw `input_snapshot`, raw `report_snapshot`, raw `error_message`, raw JSON/payload prikaza, raw answers, raw item texta, scoring keys ili full upstream snapshot dumpa.
+- Dodan je route-shell hygiene test `scripts/test-individual-development-profile-route-shell.cjs`.
+- Dodan je DB-backed route smoke `scripts/test-individual-development-profile-route-db-smoke.cjs`.
+- Runtime schema blocker `assessment_reports_report_type_check` je zatvoren ručnim apply-em postojeće migracije `20260602143000_expand_assessment_reports_for_individual_development_profile.sql` na `.env.local` Supabase runtime.
+- Upisan je canonical migration marker `20260602143000`.
+- DB smoke fixture identity je usklađen sa unique constraintom `assessment_reports_artifact_identity_unique`.
+- Unique artifact identity za `assessment_reports` je potvrđen kao `(assessment_assignment_id, report_type, audience, source_type)`.
+- Smoke fixture sada koristi zaseban `assessment_assignment_id` po persisted status row-u.
+- Persisted IDP route DB smoke je potvrđen.
+- Nisu uvedeni OpenAI, provider branch, generation action, worker/scheduler, candidate-facing output, Team Fit izmjene, Team Dynamics izmjene, nova DB schema ili nova migracija iz smoke fixa.
+- Verifikovano:
+  - `node scripts/test-individual-development-profile-route-db-smoke.cjs`
+  - `node scripts/test-individual-development-profile-route-shell.cjs`
+  - `node scripts/test-individual-development-profile-display-helper.cjs`
+  - `node scripts/test-individual-development-profile-renderer.cjs`
+  - `npm run typecheck`
+
+### 2026-06-03 — Individual Development Profile read-only HR route i DB smoke potvrđeni
+
+- Zatvoren je IDP read-only HR route slice za prikaz postojećeg `assessment_reports` artefakta kroz postojeći display helper i renderer.
+- Ruta ostaje read-only, HR-only i bez generation side-effecta.
+- DB smoke je potvrđen nakon ručnog apply-a postojeće IDP migracije na `.env.local` Supabase runtime i nakon popravke fixture identity-ja u skladu sa `assessment_reports_artifact_identity_unique`.
+- Sljedeći preporučeni IDP slice je entrypoint/list card na HR participant reports page-u za postojeće IDP artefakte, bez generate/process/retry CTA-a i bez OpenAI/worker/scheduler scope-a.
+
 ---
 
 ### P1 — Timski fit kandidata
@@ -6061,6 +6154,13 @@ Zaključak:
 ---
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-03 — Individual Development Profile read-only HR route i DB smoke potvrđeni
+
+- Zatvoren je IDP read-only HR route slice za prikaz postojećeg `assessment_reports` artefakta kroz postojeći display helper i renderer.
+- Ruta ostaje read-only, HR-only i bez generation side-effecta.
+- DB smoke je potvrđen nakon ručnog apply-a postojeće IDP migracije na `.env.local` Supabase runtime i nakon popravke fixture identity-ja u skladu sa `assessment_reports_artifact_identity_unique`.
+- Sljedeći preporučeni IDP slice je entrypoint/list card na HR participant reports page-u za postojeće IDP artefakte, bez generate/process/retry CTA-a i bez OpenAI/worker/scheduler scope-a.
 
 ### 2026-06-02 — Team Fit upstream source decision, DB smoke i resolver fix
 
