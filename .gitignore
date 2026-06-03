@@ -31,3 +31,6 @@ backups/
 # Repomix local snapshots
 repomix-team-dynamics-ui.xml
 repomix-team-dynamics-report-lane.xml
+
+# Local repomix UI polish snapshots
+repomix-deep-profile-ui-polish.xml
