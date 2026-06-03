@@ -92,6 +92,8 @@ Osnovna paleta:
 
 ## 4. Typography and font roles
 
+Deep Profile koristi Jakarta Sans kao glavni font za sada. Problem nije font stack, nego preteška i previše zbijena primjena u naslovima.
+
 Deep Profile koristi tri tipografske uloge:
 
 | Uloga | Implementacija | Namjena |
@@ -104,11 +106,11 @@ Deep Profile koristi tri tipografske uloge:
 
 | Element | Preporuka |
 | --- | --- |
-| Hero identitet | `text-3xl` do `text-4xl`, `font-extrabold`, `tracking-[-0.05em]`, `text-[#073b4c]` |
-| Sekcijski naslov | `text-2xl` ili `text-[1.55rem]`, `font-semibold` ili `font-bold`, `tracking-[-0.035em]` |
+| Hero identitet | `text-3xl` do `text-4xl`, `font-bold` ili rijetko `font-extrabold`, blaži negativni tracking, balansiran `leading` i `text-[#073b4c]` |
+| Sekcijski naslov | `text-2xl` ili `text-[1.55rem]`, `font-semibold` ili `font-bold`, `tracking-[-0.02em]` do `tracking-[-0.035em]` |
 | Naslov unutrašnjeg panela | `text-[0.95rem]` do `text-base`, `font-semibold`, `leading-5` |
-| Body tekst | `text-sm` ili `text-[14px]`, `leading-6` ili `leading-7` |
-| Eyebrow / label | `text-[11px]`, `font-semibold`, `uppercase`, `tracking-[0.18em]` do `tracking-[0.2em]` |
+| Body tekst | `text-sm` ili `text-[14px]`, bez negativnog tracking-a, `leading-6` ili `leading-7` |
+| Eyebrow / label | `text-[11px]`, `font-semibold`, `uppercase`, `tracking-[0.18em]` do `tracking-[0.2em]` samo za kratke labele |
 
 ### 4.2 Pravila tipografije
 
@@ -117,6 +119,16 @@ Deep Profile koristi tri tipografske uloge:
 - Ne koristiti uppercase za duže body rečenice.
 - Eyebrow služi za vrstu sekcije, ne za glavni sadržaj.
 - Naslov sekcije mora biti semantički jači od eyebrow-a i metadata reda.
+- Za headinge preferirati `font-semibold` ili `font-bold`; `font-extrabold` koristiti rijetko i samo kada hero to zaista traži.
+- Ne koristiti `font-black` za Deep Profile headinge.
+- Ne koristiti `tracking-[-0.05em]` kao default za headinge.
+- Za velike naslove preferirati blaži raspon tracking-a; kada naslov već djeluje gust ili težak, koristiti `tracking-normal`.
+- Hero identitet kandidata/osobe mora ostati jasan, miran i premium, bez stisnutog, masivnog ili agresivno boldiranog izgleda.
+- Sekcijski naslov ne smije konkurisati hero naslovu; hijerarhiju graditi kroz spacing i ton, ne samo kroz težinu fonta.
+- Body tekst ne smije imati negativan tracking niti biti spušten u presitan, muted tekst kada nosi ključni HR uvid.
+- Uppercase i wide tracking koristiti samo za kratke eyebrow/labele, ne za rečenice.
+- Nema lokalnih heading stilova koji naslove čine zbijenim, brutalno boldiranim ili “default SaaS hero” izgledom.
+- Nema nasumičnog miješanja `font-extrabold`, `tracking-[-0.05em]` i velikih headline veličina bez eksplicitnog razloga.
 
 ## 5. Surface, card i panel sistem
 
