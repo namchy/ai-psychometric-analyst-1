@@ -47,7 +47,7 @@ Komande:
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
-| P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / Read-only audit završen | UI system / Product quality / Look and feel | Pripremiti prvi implementation slice: HR participant reports premium reference pass kroz shared primitives; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
+| P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -6392,6 +6392,10 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 * Ne koristi se destruktivan repair bez prethodne potvrde.
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-03 — HR participant reports premium reference pass
+
+Završen je prvi Deep Profile premium UI/UX implementation slice nad HR participant reports ekranom. Slice je standardizovao page header, status badges, CTA, metadata grid, empty state i report/list kartice kroz shared primitive/pattern layer. Naknadni mini copy/status polish zamijenio je neprecizni status “Čeka rezultate” sa “HR izvještaji nisu generisani” i uklonio disabled/button-like “Nije dostupno” iz pojedinačnih HR report kartica kada postoji aktivni CTA “Generiši HR izvještaj”. Scope je ostao structural UI/pattern consistency; nisu mijenjani business logic, DB/migracije, provider/OpenAI, lifecycle, report contract/snapshot shape ili assessment runtime.
 
 ### 2026-06-03 — Onboarding plan vezan za IDP, ne za Team Fit
 
