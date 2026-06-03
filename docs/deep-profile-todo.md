@@ -47,6 +47,7 @@ Komande:
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
+| P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / Read-only audit završen | UI system / Product quality / Look and feel | Pripremiti prvi implementation slice: HR participant reports premium reference pass kroz shared primitives; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -5970,6 +5971,40 @@ Razlog za sljedeći prioritet:
 * Riječ “nalaz” / “nalazi” ne koristiti u HR/psihometrijskom UI copyju; koristiti “izvještaj”, “rezultat”, “pregled”, “procjena” ili “interpretacija”, zavisno od konteksta.
 * Codex ne smije donositi dizajn odluku; UI prompt mora specificirati fajlove, copy, klase/tokene, zabrane, acceptance criteria i test komande.
 
+### 5.21 Deep Profile premium UI/UX system implementation
+
+* **Status:** Otvoreno / Read-only audit završen
+* **Kategorija:** UI system / Product quality / Look and feel
+* **Audit nalaz:**
+  * Aplikacija je djelimično usklađena sa UI sistemom, ali postoje paralelni vizuelni slojevi: dashboard primitive layer, legacy candidate/report CSS layer i inline assessment skin.
+  * Zbog toga aplikacija djeluje nekonzistentno i povremeno ispod željenog premium standarda.
+* **Product odluka:**
+  * Ne raditi jedan veliki “redesign svega”.
+  * UI/UX refactor ide fazno kroz shared design tokens, primitive/pattern komponente i jedan premium reference screen.
+* **Prvi reference screen:**
+  * HR participant reports page: `/dashboard/participants/[participantId]/reports`.
+* **Prioritetne komponente za standardizaciju:**
+  * `DpButton`
+  * `DpStatusBadge`
+  * `DpPageHeader`
+  * `DpMetaGrid`
+  * `DpEmptyState`
+* **Guardrails:**
+  * Ne uvoditi četvrti vizuelni sistem.
+  * Ne mijenjati DB schema.
+  * Ne mijenjati lifecycle state mašine.
+  * Ne mijenjati provider/generation seams.
+  * Ne mijenjati report contracts ili snapshot shape.
+  * Ne dirati assessment answer persistence/autosave u prvom talasu.
+  * Ne dirati auth/ownership boundary logiku.
+* **Fazni plan:**
+  1. Design token/source-of-truth cleanup.
+  2. Core UI primitives: button, status badge, page navigation, meta grid, empty state.
+  3. HR participant reports premium reference pass.
+  4. Report view family alignment: Composite, Team Fit, IDP, Team Dynamics.
+  5. Candidate dashboard polish.
+  6. Assessment execution UX kasnije, kao high-risk zaseban talas.
+
 ### 5.20 Team Fit & Dynamics terminologija i MVP smjer
 
 * Zaključana su tri odvojena, ali povezana sloja:
@@ -6361,6 +6396,10 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 ### 2026-06-03 — Onboarding plan vezan za IDP, ne za Team Fit
 
 Odlučeno je da osnovni Onboarding plan bude dio Individualnog razvojnog profila i da ne zavisi od Team Fit-a. Team Fit kasnije može obogatiti plan timskim kontekstom, ali nije preduvjet. U MVP-u ne uvoditi poseban onboarding report lane; preferirani oblik je strukturirana 7/30/60/90 sekcija unutar IDP reporta.
+
+### 2026-06-03 — UI/UX audit otvorio P1 premium design system refactor
+
+Read-only UI/UX audit je potvrdio da aplikacija ima paralelne vizuelne slojeve i da premium look-and-feel ne treba rješavati ekran-po-ekran ad hoc. Otvoren je P1 epic za Deep Profile premium UI/UX system implementation. Prvi implementation fokus treba biti HR participant reports page kao reference screen, uz shared primitives i bez promjene business logike, DB-a, providera, lifecycle-a ili report contracta.
 
 ### 2026-06-03 — IDP Onboarding plan contract uveden
 
