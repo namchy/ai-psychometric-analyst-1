@@ -50,6 +50,7 @@ const teamDynamicsRoutePath = path.join(
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const nextLinkStubPath = path.join(__dirname, "next-link-stub.cjs");
 const idpListHelperStubPath = path.join(__dirname, "idp-report-list-helper-stub.cjs");
+const idpActionStubPath = path.join(__dirname, "idp-process-action-stub.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 const pageSource = fs.readFileSync(pagePath, "utf8");
@@ -95,12 +96,13 @@ assert.match(componentSource, /Razvojni profil — spreman za pregled/);
 assert.match(componentSource, /Razvojni profil — čeka obradu/);
 assert.match(componentSource, /Razvojni profil — u obradi/);
 assert.match(componentSource, /Razvojni profil — nije dostupan/);
+assert.match(componentSource, /Pripremi individualni razvojni profil/);
 assert.doesNotMatch(
   componentSource,
   /individual-development-profile-processor|individual-development-profile-provider|mock provider|OpenAI|openai/i,
 );
 assert.doesNotMatch(componentSource, /buildIndividualDevelopmentProfileInputSnapshot/);
-assert.doesNotMatch(componentSource, /Pripremi Individualni razvojni profil|Generiši Individualni razvojni profil|Pokušaj ponovo|Reset|cta-disabled/);
+assert.doesNotMatch(componentSource, /Generiši Individualni razvojni profil|Pokušaj ponovo|Reset|Priprema u toku|cta-disabled/);
 assert.doesNotMatch(componentSource, /input_snapshot|report_snapshot|error_message|JSON\.stringify|raw JSON|raw payload/i);
 assert.doesNotMatch(componentSource, /raw answers|raw item text|scoring keys|numeric fit score|hire\/no-hire|candidate-facing/i);
 
@@ -157,6 +159,10 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
 
   if (request === "@/lib/assessment/individual-development-profile-report-list") {
     return idpListHelperStubPath;
+  }
+
+  if (request === "@/app/actions/individual-development-profile") {
+    return idpActionStubPath;
   }
 
   if (
@@ -235,6 +241,28 @@ require.cache[idpListHelperStubPath] = {
   loaded: true,
   exports: {
     listIndividualDevelopmentProfileReportEntries: async () => stubState.idpEntries,
+  },
+};
+
+require.cache[idpActionStubPath] = {
+  id: idpActionStubPath,
+  filename: idpActionStubPath,
+  loaded: true,
+  exports: {
+    processIndividualDevelopmentProfileReportAction: async () => ({
+      ok: true,
+      status: "processed",
+      message: "ok",
+      reportId: "idp-ready",
+      participantId: "participant-1",
+    }),
+    processIndividualDevelopmentProfileReportFormAction: async () => ({
+      ok: true,
+      status: "processed",
+      message: "ok",
+      reportId: "idp-ready",
+      participantId: "participant-1",
+    }),
   },
 };
 
@@ -335,12 +363,29 @@ function buildBaseModel() {
 }
 
 async function renderPage() {
-  const element = await CandidateReportsPage({
-    params: { participantId: "participant-1" },
-    searchParams: {},
-  });
+  const originalConsoleError = console.error;
 
-  return ReactDOMServer.renderToStaticMarkup(element);
+  console.error = (...args) => {
+    const [firstArg] = args;
+    const message = typeof firstArg === "string" ? firstArg : "";
+
+    if (message.includes("Invalid value for prop `action` on <form> tag")) {
+      return;
+    }
+
+    originalConsoleError(...args);
+  };
+
+  try {
+    const element = await CandidateReportsPage({
+      params: { participantId: "participant-1" },
+      searchParams: {},
+    });
+
+    return ReactDOMServer.renderToStaticMarkup(element);
+  } finally {
+    console.error = originalConsoleError;
+  }
 }
 
 async function main() {
@@ -442,6 +487,7 @@ async function main() {
 
   assert.match(html, /Individualni razvojni profili/);
   assert.match(html, /Otvori individualni razvojni profil/);
+  assert.match(html, /Pripremi individualni razvojni profil/);
   assert.match(html, /Razvojni profil — spreman za pregled/);
   assert.match(html, /Razvojni profil — čeka obradu/);
   assert.match(html, /Razvojni profil — u obradi/);
@@ -466,6 +512,9 @@ async function main() {
     html.includes("/dashboard/individual-development-profile-reports/idp-invalid"),
     false,
   );
+  assert.equal(html.includes("Priprema u toku"), false);
+  assert.equal(html.includes("Pokušaj ponovo"), false);
+  assert.equal(html.includes("Reset"), false);
   for (const forbidden of [
     "input_snapshot",
     "report_snapshot",
@@ -478,10 +527,7 @@ async function main() {
     "fit score",
     "hire/no-hire",
     "candidate-facing",
-    "Pripremi Individualni razvojni profil",
     "Generiši Individualni razvojni profil",
-    "Pokušaj ponovo",
-    "Reset",
   ]) {
     assert.equal(
       html.includes(forbidden),

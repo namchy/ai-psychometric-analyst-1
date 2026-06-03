@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { processIndividualDevelopmentProfileReportFormAction } from "@/app/actions/individual-development-profile";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
@@ -104,6 +105,21 @@ export function IndividualDevelopmentProfileReportList({
             </div>
 
             <div className="mt-6">
+              {entry.status === "queued" ? (
+                <form
+                  action={processIndividualDevelopmentProfileReportFormAction.bind(null, {
+                    assessmentReportId: entry.id,
+                    participantId: entry.participantId,
+                  })}
+                >
+                  <button
+                    type="submit"
+                    className={getDashboardCtaClassName({ variant: "secondary", size: "sm" })}
+                  >
+                    Pripremi individualni razvojni profil
+                  </button>
+                </form>
+              ) : null}
               {entry.status === "ready" ? (
                 <Link
                   className={getDashboardCtaClassName({ variant: "primary", size: "sm" })}

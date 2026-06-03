@@ -64,6 +64,7 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
 
   if (
     request === "@/app/actions/assessment" ||
+    request === "@/app/actions/individual-development-profile" ||
     request === "@/components/app/authenticated-app-chrome" ||
     request === "@/components/dashboard/primitives" ||
     request === "@/components/dashboard/team-fit-report-list" ||
