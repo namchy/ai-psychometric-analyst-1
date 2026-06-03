@@ -81,6 +81,7 @@
     "test:team-fit-report-display-helper": "node scripts/test-team-fit-report-display-helper.cjs",
     "test:team-fit-report-renderer": "node scripts/test-team-fit-report-renderer.cjs",
     "test:team-fit-report-route-shell": "node scripts/test-team-fit-report-route-shell.cjs",
+    "test:individual-development-profile-route-shell": "node scripts/test-individual-development-profile-route-shell.cjs",
     "test:team-fit-report-list-entrypoint": "node scripts/test-team-fit-report-list-entrypoint.cjs",
     "test:team-fit-report-db-smoke": "node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs",
     "test:team-fit-report-quality-review": "node scripts/test-team-fit-report-quality-review.cjs",
