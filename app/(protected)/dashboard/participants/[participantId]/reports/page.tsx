@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   generateCompositeHrReportAction,
@@ -9,12 +8,15 @@ import {
   AuthenticatedAppMainContent,
 } from "@/components/app/authenticated-app-chrome";
 import {
-  DashboardInfoCardShell,
-  PageNavigation,
-  getDashboardCtaClassName,
   DashboardSectionHeader,
   DashboardSectionShell,
-  DashboardStatusBadge,
+  DpButton,
+  DpEmptyState,
+  DpInlineMessage,
+  DpMetaGrid,
+  DpMetaItem,
+  DpPageHeader,
+  DpStatusBadge,
 } from "@/components/dashboard/primitives";
 import { IndividualDevelopmentProfileReportList } from "@/components/dashboard/individual-development-profile-report-list";
 import { TeamFitReportList } from "@/components/dashboard/team-fit-report-list";
@@ -54,22 +56,19 @@ type CandidateReportsPageProps = {
   };
 };
 
-const EMERALD_STATUS_BADGE_CLASS_NAME =
-  "border-[rgba(6,214,160,0.22)] bg-[rgba(6,214,160,0.14)] text-[#073b4c]";
-const ORGANIZATION_BADGE_CLASS_NAME =
-  "border-[rgba(7,59,76,0.08)] bg-[rgba(255,255,255,0.72)] text-[#073b4c]";
-
-function getCardStatusClassName(visualVariant: HrCandidateAssessmentCardVisualVariant): string {
+function getCardStatusTone(
+  visualVariant: HrCandidateAssessmentCardVisualVariant,
+): "success" | "warning" | "danger" | "neutral" {
   switch (visualVariant) {
     case "success":
-      return EMERALD_STATUS_BADGE_CLASS_NAME;
+      return "success";
     case "progress":
-      return "border-[rgba(255,209,102,0.32)] bg-[rgba(255,209,102,0.16)] text-[#073b4c]";
+      return "warning";
     case "error":
-      return "border-[rgba(239,71,111,0.24)] bg-[rgba(239,71,111,0.14)] text-[#073b4c]";
+      return "danger";
     case "info":
     default:
-      return "border-slate-200 bg-slate-50 text-slate-600";
+      return "neutral";
   }
 }
 
@@ -237,6 +236,10 @@ export default async function CandidateReportsPage({
   const hasTeamFitReports = teamFitReports.length > 0;
   const hasIndividualDevelopmentProfileReports =
     individualDevelopmentProfileReports.length > 0;
+  const availabilityStatusLabel =
+    model.availabilityLabel === "Čeka rezultate"
+      ? "HR izvještaji nisu generisani"
+      : model.availabilityLabel;
 
   const individualReportsSection = (
     <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
@@ -250,37 +253,23 @@ export default async function CandidateReportsPage({
       />
 
       {recoveryMessage ? (
-        <div
-          className={`mt-4 rounded-[1.2rem] border px-4 py-3 text-sm ${
-            recoveryMessage.tone === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : recoveryMessage.tone === "error"
-                ? "border-rose-200 bg-rose-50 text-rose-800"
-                : "border-slate-200 bg-slate-50 text-slate-700"
-          }`}
-        >
+        <DpInlineMessage className="mt-4" tone={recoveryMessage.tone}>
           {recoveryMessage.body}
-        </div>
+        </DpInlineMessage>
       ) : null}
 
       {model.allIndividualReportsNotAssigned ? (
-        <DashboardInfoCardShell className="mt-6 max-w-[920px] rounded-[1.4rem] border-slate-200/80 p-5">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-              Pojedinačne procjene nisu dodijeljene
-            </h3>
-            <p className="text-sm leading-6 text-slate-600">
-              Kada kandidat završi IPIP, SAFRAN ili MWMS, ovdje će se prikazati
-              pojedinačni HR izvještaji.
-            </p>
-          </div>
-        </DashboardInfoCardShell>
+        <DpEmptyState
+          className="mt-6 max-w-[920px]"
+          title="Pojedinačne procjene nisu dodijeljene"
+          body="Kada kandidat završi IPIP, SAFRAN ili MWMS, ovdje će se prikazati pojedinačni HR izvještaji."
+        />
       ) : (
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
           {model.cards.map((card) => (
-            <DashboardInfoCardShell
+            <article
               key={card.slug}
-              className="flex h-full flex-col rounded-[1.4rem] border-slate-200/80 p-5"
+              className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]"
             >
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
@@ -290,45 +279,39 @@ export default async function CandidateReportsPage({
                     </h3>
                     <p className="mt-1 text-sm text-slate-600">{card.subtitle}</p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(card.visualVariant)}`}
-                  >
+                  <DpStatusBadge tone={getCardStatusTone(card.visualVariant)}>
                     {card.statusLabel}
-                  </span>
+                  </DpStatusBadge>
                 </div>
 
                 <p className="min-h-[3rem] text-sm leading-6 text-slate-600">{card.body}</p>
 
-                <div className="space-y-1.5 text-xs leading-5 text-slate-500">
-                  <p>
-                    <span className="font-semibold text-slate-700">ID procjene:</span>{" "}
-                    {formatHrShortId(card.attempt?.id)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Status procjene:</span>{" "}
-                    {formatHrLifecycleStatus(card.attempt?.lifecycle)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Završeno:</span>{" "}
-                    {formatHrDateTime(card.attempt?.completed_at)}
-                  </p>
-                </div>
+                <DpMetaGrid columns={3}>
+                  <DpMetaItem
+                    helper="Interni skraćeni identifikator"
+                    label="ID procjene"
+                    value={formatHrShortId(card.attempt?.id)}
+                  />
+                  <DpMetaItem
+                    label="Status procjene"
+                    value={formatHrLifecycleStatus(card.attempt?.lifecycle)}
+                  />
+                  <DpMetaItem
+                    label="Završeno"
+                    value={formatHrDateTime(card.attempt?.completed_at)}
+                  />
+                </DpMetaGrid>
               </div>
 
               <div className="mt-6">
                 <div className="flex flex-wrap gap-3">
-                  {card.cta.disabled ? (
-                    <span className={getDashboardCtaClassName({ variant: "disabled" })}>
+                  {card.cta.disabled && card.cta.label !== "Nije dostupno" ? (
+                    <DpButton disabled>{card.cta.label}</DpButton>
+                  ) : !card.cta.disabled ? (
+                    <DpButton href={card.cta.href} variant="primary">
                       {card.cta.label}
-                    </span>
-                  ) : (
-                    <Link
-                      className={getDashboardCtaClassName({ variant: "primary" })}
-                      href={card.cta.href}
-                    >
-                      {card.cta.label}
-                    </Link>
-                  )}
+                    </DpButton>
+                  ) : null}
 
                   {card.action.enabled && card.attempt ? (
                     <form action={recoverHrCandidateAttemptReport}>
@@ -340,17 +323,14 @@ export default async function CandidateReportsPage({
                         type="hidden"
                         value={`/dashboard/participants/${participant.id}/reports`}
                       />
-                      <button
-                        className={getDashboardCtaClassName({ variant: "secondary" })}
-                        type="submit"
-                      >
+                      <DpButton type="submit" variant="secondary">
                         {card.action.label}
-                      </button>
+                      </DpButton>
                     </form>
                   ) : null}
                 </div>
               </div>
-            </DashboardInfoCardShell>
+            </article>
           ))}
         </div>
       )}
@@ -380,19 +360,14 @@ export default async function CandidateReportsPage({
         titleClassName="text-[1.35rem]"
       />
 
-      <DashboardInfoCardShell className="mt-6 max-w-[920px] rounded-[24px] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6">
+      <article className="mt-6 max-w-[920px] rounded-[1.5rem] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6">
         {compositeQueueMessage ? (
-          <div
-            className={`mb-4 rounded-[1.2rem] border px-4 py-3 text-sm min-[900px]:col-span-2 ${
-              compositeQueueMessage.tone === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : compositeQueueMessage.tone === "error"
-                  ? "border-rose-200 bg-rose-50 text-rose-800"
-                  : "border-slate-200 bg-slate-50 text-slate-700"
-            }`}
+          <DpInlineMessage
+            className="mb-4 min-[900px]:col-span-2"
+            tone={compositeQueueMessage.tone}
           >
             {compositeQueueMessage.body}
-          </div>
+          </DpInlineMessage>
         ) : null}
 
         <div className="flex flex-col gap-[18px] min-[900px]:contents">
@@ -401,11 +376,9 @@ export default async function CandidateReportsPage({
               <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
                 {model.compositeCard.title}
               </h3>
-              <span
-                className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getCardStatusClassName(model.compositeCard.visualVariant)}`}
-              >
+              <DpStatusBadge tone={getCardStatusTone(model.compositeCard.visualVariant)}>
                 {model.compositeCard.statusLabel}
-              </span>
+              </DpStatusBadge>
             </div>
             <p className="mt-2 max-w-[520px] text-sm leading-6 text-slate-600">
               {model.compositeCard.body}
@@ -437,27 +410,35 @@ export default async function CandidateReportsPage({
                 type="hidden"
                 value={`/dashboard/participants/${participant.id}/reports`}
               />
-              <button
-                className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} justify-center min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
+              <DpButton
+                className="justify-center min-[900px]:w-auto min-[900px]:whitespace-nowrap"
+                fullWidth
                 type="submit"
+                variant="primary"
               >
                 {model.compositeCard.cta.label}
-              </button>
+              </DpButton>
             </form>
           ) : model.compositeCard.cta.href && !model.compositeCard.cta.disabled ? (
-            <Link
-              className={`${getDashboardCtaClassName({ variant: "primary", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}
+            <DpButton
+              className="mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap"
+              fullWidth
               href={model.compositeCard.cta.href}
+              variant="primary"
             >
               {model.compositeCard.cta.label}
-            </Link>
+            </DpButton>
           ) : (
-            <span className={`${getDashboardCtaClassName({ variant: "disabled", fullWidth: true })} mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap`}>
+            <DpButton
+              className="mt-[18px] justify-center min-[900px]:mt-0 min-[900px]:w-auto min-[900px]:whitespace-nowrap"
+              disabled
+              fullWidth
+            >
               {model.compositeCard.cta.label}
-            </span>
+            </DpButton>
           )}
         </div>
-      </DashboardInfoCardShell>
+      </article>
     </DashboardSectionShell>
   );
 
@@ -467,52 +448,34 @@ export default async function CandidateReportsPage({
       topPaddingClassName="pt-0"
     >
       <div className="-mt-10 pb-12">
-        <div className="space-y-1.5">
-          <PageNavigation
-            backHref="/dashboard"
-            backLabel="Nazad na HR dashboard"
-            backLinkVariant="subtle"
-          />
-
-          <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
-          <div className="relative space-y-6">
-            <div className="flex flex-col gap-5">
-              <div className="space-y-4">
-                <DashboardSectionHeader
-                  eyebrow="HR PROCJENA KANDIDATA"
-                  eyebrowClassName="text-teal-800/90"
-                  title={model.participant.full_name}
-                  titleClassName="text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl"
-                  description={model.participant.email}
-                  descriptionClassName="text-base text-slate-600"
-                />
-
-                <div className="flex flex-wrap gap-2.5">
-                  <DashboardStatusBadge className={EMERALD_STATUS_BADGE_CLASS_NAME} emphasized>
-                    {model.completedLabel}
-                  </DashboardStatusBadge>
-                  <DashboardStatusBadge
-                    className={
-                      model.readyHrReports > 0
-                        ? EMERALD_STATUS_BADGE_CLASS_NAME
-                        : undefined
-                    }
-                    tone={model.readyHrReports > 0 ? "success" : "neutral"}
-                  >
-                    {model.readyLabel}
-                  </DashboardStatusBadge>
-                  <DashboardStatusBadge className={EMERALD_STATUS_BADGE_CLASS_NAME}>
-                    {model.availabilityLabel}
-                  </DashboardStatusBadge>
-                  <DashboardStatusBadge className={ORGANIZATION_BADGE_CLASS_NAME}>
-                    {model.organizationName}
-                  </DashboardStatusBadge>
-                </div>
-              </div>
-            </div>
-          </div>
-          </DashboardSectionShell>
-        </div>
+        <DpPageHeader
+          backHref="/dashboard"
+          backLabel="Nazad na HR dashboard"
+          eyebrow="HR procjena kandidata"
+          title={model.participant.full_name}
+          description={model.participant.email}
+          badges={
+            <>
+              <DpStatusBadge emphasized tone="success">
+                {model.completedLabel}
+              </DpStatusBadge>
+              <DpStatusBadge tone={model.readyHrReports > 0 ? "success" : "neutral"}>
+                {model.readyLabel}
+              </DpStatusBadge>
+              <DpStatusBadge tone={model.completedTests > 0 ? "info" : "warning"}>
+                {availabilityStatusLabel}
+              </DpStatusBadge>
+              <DpStatusBadge tone="neutral">{model.organizationName}</DpStatusBadge>
+            </>
+          }
+          meta={
+            <DpMetaGrid columns={3}>
+              <DpMetaItem label="Kandidat" value={model.participant.full_name} />
+              <DpMetaItem label="Email" value={model.participant.email} />
+              <DpMetaItem label="HR workspace" value="Pregled izvještaja i narednih akcija" />
+            </DpMetaGrid>
+          }
+        />
 
         <div className="mt-8 space-y-8">
           {hasTeamFitReports ? teamFitSection : null}

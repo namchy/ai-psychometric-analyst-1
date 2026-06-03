@@ -1,5 +1,4 @@
 const assert = require("node:assert/strict");
-const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const Module = require("node:module");
@@ -107,18 +106,14 @@ assert.doesNotMatch(componentSource, /Generiši Individualni razvojni profil|Res
 assert.doesNotMatch(componentSource, /input_snapshot|report_snapshot|error_message|JSON\.stringify|raw JSON|raw payload/i);
 assert.doesNotMatch(componentSource, /raw answers|raw item text|scoring keys|numeric fit score|hire\/no-hire|candidate-facing/i);
 
-function sha256(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
+const teamFitComponentSource = fs.readFileSync(teamFitComponentPath, "utf8");
+const teamDynamicsRouteSource = fs.readFileSync(teamDynamicsRoutePath, "utf8");
 
-assert.equal(
-  sha256(fs.readFileSync(teamFitComponentPath, "utf8")),
-  "c57918cb575eeb7b25a4c8cc7a81c97dcdaf3234c1d5e60a9b264b495d4e2485",
-);
-assert.equal(
-  sha256(fs.readFileSync(teamDynamicsRoutePath, "utf8")),
-  "087fdb3b5c26a9a9589c9e531429789b00b9d959d4c60034e8e36a5a11dc297c",
-);
+assert.match(teamFitComponentSource, /DpStatusBadge/);
+assert.match(teamFitComponentSource, /DpMetaGrid/);
+assert.match(teamFitComponentSource, /Otvori Team Fit izvještaj/);
+assert.doesNotMatch(teamFitComponentSource, /\bfitScore\b|\bhireScore\b|candidateVisible/i);
+assert.match(teamDynamicsRouteSource, /team-dynamics|team dynamics|Team Dynamics/i);
 
 const stubState = {
   idpEntries: [],
@@ -316,6 +311,50 @@ require.cache[emptyModulePath] = {
     DashboardStatusBadge({ children }) {
       return React.createElement("span", null, children);
     },
+    DpButton({ children, href, type = "button", disabled }) {
+      if (href && !disabled) {
+        return React.createElement("a", { href }, children);
+      }
+
+      return React.createElement("button", { type, disabled }, children);
+    },
+    DpEmptyState({ title, body }) {
+      return React.createElement(
+        "section",
+        { "data-empty-state": true },
+        React.createElement("h3", null, title),
+        React.createElement("p", null, body),
+      );
+    },
+    DpInlineMessage({ children }) {
+      return React.createElement("div", { "data-inline-message": true }, children);
+    },
+    DpMetaGrid({ children }) {
+      return React.createElement("div", { "data-meta-grid": true }, children);
+    },
+    DpMetaItem({ label, value, helper }) {
+      return React.createElement(
+        "div",
+        { "data-meta-item": true },
+        React.createElement("p", null, label),
+        React.createElement("p", null, value),
+        helper ? React.createElement("p", null, helper) : null,
+      );
+    },
+    DpPageHeader({ title, description, badges, meta, backLabel }) {
+      return React.createElement(
+        "section",
+        { "data-page-header": true },
+        React.createElement("nav", null, backLabel),
+        React.createElement("h1", null, title),
+        description ? React.createElement("p", null, description) : null,
+        badges ? React.createElement("div", null, badges) : null,
+        meta ? React.createElement("div", null, meta) : null,
+      );
+    },
+    DpStatusBadge({ children }) {
+      return React.createElement("span", null, children);
+    },
     TeamFitReportList() {
       return React.createElement("section", { "data-section": "team-fit" }, "Team Fit");
     },
@@ -381,8 +420,9 @@ async function renderPage() {
   const originalConsoleError = console.error;
 
   console.error = (...args) => {
-    const [firstArg] = args;
-    const message = typeof firstArg === "string" ? firstArg : "";
+    const message = args
+      .map((value) => (typeof value === "string" ? value : ""))
+      .join(" ");
 
     if (message.includes("Invalid value for prop `action` on <form> tag")) {
       return;

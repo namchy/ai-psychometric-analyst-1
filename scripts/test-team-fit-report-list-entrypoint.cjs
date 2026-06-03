@@ -296,8 +296,8 @@ function main() {
   assert.match(readyHtml, /Tim A/);
   assert.match(readyHtml, /Izvještaj je spreman za pregled/);
   assert.match(readyHtml, /Otvori Team Fit izvještaj/);
-  assert.match(readyHtml, /Kreirano:/);
-  assert.match(readyHtml, /Zadnja promjena:/);
+  assert.match(readyHtml, /Kreirano/);
+  assert.match(readyHtml, /Zadnja promjena/);
   assert.doesNotMatch(readyHtml, /Persistirani Team Fit artefakti/);
   assert.doesNotMatch(readyHtml, /Vrsta:/);
   assert.doesNotMatch(readyHtml, /Verzija:/);

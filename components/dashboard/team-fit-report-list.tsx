@@ -1,10 +1,12 @@
-import Link from "next/link";
 import { TeamFitReportProcessAction } from "@/components/dashboard/team-fit-report-process-action";
 import { TeamFitReportRetryAction } from "@/components/dashboard/team-fit-report-retry-action";
 import {
-  DashboardInfoCardShell,
   DashboardSectionHeader,
-  getDashboardCtaClassName,
+  DpButton,
+  DpEmptyState,
+  DpMetaGrid,
+  DpMetaItem,
+  DpStatusBadge,
 } from "@/components/dashboard/primitives";
 import type { TeamFitReportListEntry } from "@/lib/b2b/team-fit-report-list";
 import { formatHrDateTime } from "@/lib/dashboard/hr-ui-format";
@@ -13,17 +15,19 @@ type TeamFitReportListProps = {
   entries: TeamFitReportListEntry[];
 };
 
-function getStatusClassName(status: TeamFitReportListEntry["status"]): string {
+function getStatusTone(
+  status: TeamFitReportListEntry["status"],
+): "success" | "warning" | "info" | "danger" {
   switch (status) {
     case "ready":
-      return "border-[rgba(6,214,160,0.22)] bg-[rgba(6,214,160,0.14)] text-[#073b4c]";
+      return "success";
     case "queued":
-      return "border-[rgba(255,209,102,0.32)] bg-[rgba(255,209,102,0.16)] text-[#073b4c]";
+      return "warning";
     case "processing":
-      return "border-[rgba(17,138,178,0.18)] bg-[rgba(17,138,178,0.1)] text-[#073b4c]";
+      return "info";
     case "failed":
     default:
-      return "border-[rgba(239,71,111,0.24)] bg-[rgba(239,71,111,0.14)] text-[#073b4c]";
+      return "danger";
   }
 }
 
@@ -41,17 +45,16 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
       />
 
       {entries.length === 0 ? (
-        <DashboardInfoCardShell className="rounded-[1.4rem] border-slate-200/80 p-5">
-          <p className="text-sm leading-6 text-slate-600">
-            Još nema dostupnih Team Fit izvještaja za ovog kandidata u trenutnom HR kontekstu.
-          </p>
-        </DashboardInfoCardShell>
+        <DpEmptyState
+          title="Team Fit izvještaji još nisu dostupni"
+          body="Još nema dostupnih Team Fit izvještaja za ovog kandidata u trenutnom HR kontekstu."
+        />
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {entries.map((entry) => (
-            <DashboardInfoCardShell
+            <article
               key={entry.id}
-              className="flex h-full flex-col rounded-[1.4rem] border-slate-200/80 p-5"
+              className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]"
             >
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
@@ -63,27 +66,19 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
                       {entry.teamName ?? "Tim nije dostupan"}
                     </p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${getStatusClassName(entry.status)}`}
-                  >
+                  <DpStatusBadge tone={getStatusTone(entry.status)}>
                     {entry.statusLabel}
-                  </span>
+                  </DpStatusBadge>
                 </div>
 
                 <p className="min-h-[3rem] text-sm leading-6 text-slate-600">
                   {entry.safeStatusMessage}
                 </p>
 
-                <div className="space-y-1.5 text-xs leading-5 text-slate-500">
-                  <p>
-                    <span className="font-semibold text-slate-700">Kreirano:</span>{" "}
-                    {formatHrDateTime(entry.createdAt)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-slate-700">Zadnja promjena:</span>{" "}
-                    {formatHrDateTime(entry.updatedAt)}
-                  </p>
-                </div>
+                <DpMetaGrid columns={2}>
+                  <DpMetaItem label="Kreirano" value={formatHrDateTime(entry.createdAt)} />
+                  <DpMetaItem label="Zadnja promjena" value={formatHrDateTime(entry.updatedAt)} />
+                </DpMetaGrid>
               </div>
 
               <div className="mt-6">
@@ -95,17 +90,14 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
                   />
                 ) : null}
                 {entry.status === "processing" ? (
-                  <span className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}>
+                  <DpButton disabled size="sm">
                     Priprema u toku
-                  </span>
+                  </DpButton>
                 ) : null}
                 {entry.status === "ready" ? (
-                  <Link
-                    className={getDashboardCtaClassName({ variant: "primary", size: "sm" })}
-                    href={entry.href}
-                  >
+                  <DpButton href={entry.href} size="sm" variant="primary">
                     Otvori Team Fit izvještaj
-                  </Link>
+                  </DpButton>
                 ) : null}
                 {entry.status === "failed" ? (
                   <TeamFitReportRetryAction
@@ -115,7 +107,7 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
                   />
                 ) : null}
               </div>
-            </DashboardInfoCardShell>
+            </article>
           ))}
         </div>
       )}

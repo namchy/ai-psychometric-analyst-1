@@ -168,6 +168,49 @@ require.cache[emptyModulePath] = {
     DashboardStatusBadge({ children }) {
       return React.createElement("span", null, children);
     },
+    DpButton({ children, href, type = "button", disabled }) {
+      if (href && !disabled) {
+        return React.createElement("a", { href }, children);
+      }
+
+      return React.createElement("button", { type, disabled }, children);
+    },
+    DpEmptyState({ title, body }) {
+      return React.createElement(
+        "section",
+        { "data-empty-state": true },
+        React.createElement("h3", null, title),
+        React.createElement("p", null, body),
+      );
+    },
+    DpInlineMessage({ children }) {
+      return React.createElement("div", { "data-inline-message": true }, children);
+    },
+    DpMetaGrid({ children }) {
+      return React.createElement("div", { "data-meta-grid": true }, children);
+    },
+    DpMetaItem({ label, value }) {
+      return React.createElement(
+        "div",
+        { "data-meta-item": true },
+        React.createElement("p", null, label),
+        React.createElement("p", null, value),
+      );
+    },
+    DpPageHeader({ title, description, badges, meta, backLabel }) {
+      return React.createElement(
+        "section",
+        { "data-page-header": true },
+        React.createElement("nav", null, backLabel),
+        React.createElement("h1", null, title),
+        description ? React.createElement("p", null, description) : null,
+        badges ? React.createElement("div", null, badges) : null,
+        meta ? React.createElement("div", null, meta) : null,
+      );
+    },
+    DpStatusBadge({ children }) {
+      return React.createElement("span", null, children);
+    },
     TeamFitReportList({ entries }) {
       return React.createElement(
         "section",
@@ -231,7 +274,33 @@ function buildBaseModel() {
   return {
     participant: stubState.participant,
     organizationName: "Org 1",
-    cards: [],
+    cards: [
+      {
+        slug: "ipip-neo-120-v1",
+        title: "IPIP-NEO-120",
+        subtitle: "HR interpretacija za kandidatov lični profil.",
+        state: "completed_without_report",
+        statusLabel: "Nije generisano",
+        body: "Procjena je završena, ali HR izvještaj još nije generisan.",
+        visualVariant: "info",
+        action: {
+          label: "Generiši HR izvještaj",
+          kind: "generate",
+          enabled: true,
+        },
+        attempt: {
+          id: "attempt-1",
+          lifecycle: "completed",
+          completed_at: "2026-05-31T08:30:00.000Z",
+        },
+        report: null,
+        cta: {
+          label: "Nije dostupno",
+          href: null,
+          disabled: true,
+        },
+      },
+    ],
     compositeCard: {
       title: "Kompozitni HR izvještaj",
       subtitle: "Integrisani profil kandidata",
@@ -250,11 +319,11 @@ function buildBaseModel() {
     },
     completedTests: 0,
     readyHrReports: 0,
-    hasAssignedIndividualAssessments: false,
-    allIndividualReportsNotAssigned: true,
+    hasAssignedIndividualAssessments: true,
+    allIndividualReportsNotAssigned: false,
     completedLabel: "0/3 testova završeno",
     readyLabel: "0 pojedinačnih HR izvještaja dostupno",
-    availabilityLabel: "Procjene nisu dodijeljene",
+    availabilityLabel: "Čeka rezultate",
   };
 }
 
@@ -287,11 +356,15 @@ async function main() {
   const html = await renderPage();
 
   assert.match(html, /0 pojedinačnih HR izvještaja dostupno/);
-  assert.match(html, /Procjene nisu dodijeljene/);
-  assert.match(html, /Pojedinačne procjene nisu dodijeljene/);
-  assert.match(
-    html,
-    /Kada kandidat završi IPIP, SAFRAN ili MWMS, ovdje će se prikazati pojedinačni HR izvještaji\./,
+  assert.match(html, /HR izvještaji nisu generisani/);
+  assert.doesNotMatch(html, /Čeka rezultate/);
+  assert.match(html, /Nije generisano/);
+  assert.match(html, /Generiši HR izvještaj/);
+  assert.equal(
+    html.includes(
+      '<div class="mt-6"><div class="flex flex-wrap gap-3"><form><input name="participantId" type="hidden" value="participant-1"/><input name="attemptId" type="hidden" value="attempt-1"/><input name="testSlug" type="hidden" value="ipip-neo-120-v1"/><input name="returnPath" type="hidden" value="/dashboard/participants/participant-1/reports"/><button type="submit">Generiši HR izvještaj</button></form></div></div>',
+    ),
+    true,
   );
   assert.match(html, /Nije pripremljen/);
   assert.match(

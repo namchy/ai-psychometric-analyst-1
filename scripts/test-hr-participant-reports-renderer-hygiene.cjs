@@ -14,9 +14,9 @@ const dashboardPrimitivesSource = fs.readFileSync(
 );
 
 assert.equal(
-  candidateReportsPageSource.includes("PageNavigation"),
+  candidateReportsPageSource.includes("DpPageHeader"),
   true,
-  "Expected HR participant detail page to use shared PageNavigation.",
+  "Expected HR participant detail page to use the shared DP page header wrapper.",
 );
 assert.equal(
   candidateReportsPageSource.includes('className="-mt-10 pb-12"'),
@@ -29,9 +29,9 @@ assert.equal(
   "Expected HR participant detail page to use the simple HR dashboard back label.",
 );
 assert.equal(
-  candidateReportsPageSource.includes('backLinkVariant="subtle"'),
+  candidateReportsPageSource.includes('backHref="/dashboard"'),
   true,
-  "Expected HR participant detail page to use the subtle ghost/text back link variant.",
+  "Expected HR participant detail page to point the shared header back action to the HR dashboard.",
 );
 assert.equal(
   candidateReportsPageSource.includes('backLabel="Dashboard"'),
@@ -74,17 +74,17 @@ assert.equal(
   "Expected HR participant detail page to remove the raw test status label.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("ID procjene:"),
+  candidateReportsPageSource.includes('label="ID procjene"'),
   true,
   "Expected HR participant detail page to label the shortened attempt id as assessment id.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("Status procjene:"),
+  candidateReportsPageSource.includes('label="Status procjene"'),
   true,
   "Expected HR participant detail page to label the lifecycle as assessment status.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("Završeno:"),
+  candidateReportsPageSource.includes('label="Završeno"'),
   true,
   "Expected HR participant detail page to label completion metadata with the localized past-tense label.",
 );
@@ -158,6 +158,21 @@ assert.equal(
   "Expected updated participant report page copy to avoid the word 'nalaz'.",
 );
 assert.equal(
+  candidateReportsPageSource.includes('"HR izvještaji nisu generisani"'),
+  true,
+  "Expected participant reports page to map the top pending-results status to the explicit non-generated HR report copy.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('"Čeka rezultate"'),
+  true,
+  "Expected participant reports page to preserve a local display mapping from the legacy model status copy.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('card.cta.disabled && card.cta.label !== "Nije dostupno"'),
+  true,
+  "Expected participant reports page to suppress disabled button-like rendering for the 'Nije dostupno' single-report CTA label.",
+);
+assert.equal(
   candidateReportsPageSource.includes("max-w-[920px]"),
   true,
   "Expected composite inner card to use a fixed max width on desktop.",
@@ -173,16 +188,14 @@ assert.equal(
   "Expected composite CTA to remain nowrap on desktop.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("bg-[rgba(6,214,160,0.14)]"),
+  candidateReportsPageSource.includes("tone=\"success\""),
   true,
-  "Expected emerald status semantics on the participant reports page.",
+  "Expected participant reports page to route positive statuses through the shared success badge tone.",
 );
 assert.equal(
-  candidateReportsPageSource.includes(
-    'border-[rgba(7,59,76,0.08)] bg-[rgba(255,255,255,0.72)] text-[#073b4c]',
-  ),
+  candidateReportsPageSource.includes('<DpStatusBadge tone="neutral">{model.organizationName}</DpStatusBadge>'),
   true,
-  "Expected organization chip to use the neutral treatment instead of emerald.",
+  "Expected organization chip to use the shared neutral status badge treatment.",
 );
 assert.equal(
   candidateReportsPageSource.includes('eyebrowClassName="text-[#118ab2]"'),
@@ -274,14 +287,14 @@ assert.equal(
   "Expected shared dashboard CTA helper to keep white text on darker hover states.",
 );
 assert.equal(
-  candidateReportsPageSource.includes('getDashboardCtaClassName({ variant: "primary" })'),
+  candidateReportsPageSource.includes("<DpButton"),
   true,
-  "Expected HR participant detail page to use shared primary CTA styling.",
+  "Expected HR participant detail page to route CTAs through the shared DP button primitive.",
 );
 assert.equal(
-  candidateReportsPageSource.includes('getDashboardCtaClassName({ variant: "disabled" })'),
+  candidateReportsPageSource.includes("disabled>{card.cta.label}</DpButton>"),
   true,
-  "Expected HR participant detail page to use shared disabled CTA styling.",
+  "Expected HR participant detail page to use the shared disabled DP button treatment.",
 );
 
 console.log("HR participant reports renderer hygiene tests passed.");
