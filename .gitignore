@@ -21,3 +21,7 @@ db_backups/
 # Local database backup secrets
 .env.supabase-backup
 backups/
+
+# Local account/env files
+.env.arman
+.env.naim
