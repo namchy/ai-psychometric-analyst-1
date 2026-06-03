@@ -87,16 +87,20 @@ assert.doesNotMatch(helperSource, /attempt_reports|team_fit_reports|team_assessm
 assert.doesNotMatch(helperSource, /failure_reason|error_message/);
 
 assert.match(componentSource, /Individualni razvojni profili/);
-assert.match(componentSource, /Otvori Individualni razvojni profil/);
-assert.match(componentSource, /Čeka obradu/);
-assert.match(componentSource, /U obradi/);
-assert.match(componentSource, /Nije dostupno/);
+assert.match(componentSource, /Otvori individualni razvojni profil/);
+assert.match(componentSource, /čeka obradu/i);
+assert.match(componentSource, /u obradi/i);
+assert.match(componentSource, /nije dostupan/i);
+assert.match(componentSource, /Razvojni profil — spreman za pregled/);
+assert.match(componentSource, /Razvojni profil — čeka obradu/);
+assert.match(componentSource, /Razvojni profil — u obradi/);
+assert.match(componentSource, /Razvojni profil — nije dostupan/);
 assert.doesNotMatch(
   componentSource,
   /individual-development-profile-processor|individual-development-profile-provider|mock provider|OpenAI|openai/i,
 );
 assert.doesNotMatch(componentSource, /buildIndividualDevelopmentProfileInputSnapshot/);
-assert.doesNotMatch(componentSource, /Pripremi Individualni razvojni profil|Generiši Individualni razvojni profil|Pokušaj ponovo|Reset/);
+assert.doesNotMatch(componentSource, /Pripremi Individualni razvojni profil|Generiši Individualni razvojni profil|Pokušaj ponovo|Reset|cta-disabled/);
 assert.doesNotMatch(componentSource, /input_snapshot|report_snapshot|error_message|JSON\.stringify|raw JSON|raw payload/i);
 assert.doesNotMatch(componentSource, /raw answers|raw item text|scoring keys|numeric fit score|hire\/no-hire|candidate-facing/i);
 
@@ -367,7 +371,7 @@ async function main() {
       participantId: "participant-1",
       status: "queued",
       statusLabel: "Čeka obradu",
-      safeStatusMessage: "Izvještaj je pripremljen za obradu.",
+      safeStatusMessage: "Izvještaj je u redu čekanja. Obrada još nije pokrenuta.",
       createdAt: "2026-06-03T08:00:00.000Z",
       updatedAt: "2026-06-03T08:00:00.000Z",
       queuedAt: "2026-06-03T08:00:00.000Z",
@@ -437,9 +441,13 @@ async function main() {
   const html = await renderPage();
 
   assert.match(html, /Individualni razvojni profili/);
-  assert.match(html, /Otvori Individualni razvojni profil/);
+  assert.match(html, /Otvori individualni razvojni profil/);
+  assert.match(html, /Razvojni profil — spreman za pregled/);
+  assert.match(html, /Razvojni profil — čeka obradu/);
+  assert.match(html, /Razvojni profil — u obradi/);
+  assert.match(html, /Razvojni profil — nije dostupan/);
   assert.match(html, /href=\"\/dashboard\/individual-development-profile-reports\/idp-ready\"/);
-  assert.match(html, /Izvještaj je pripremljen za obradu\./);
+  assert.match(html, /Izvještaj je u redu čekanja\. Obrada još nije pokrenuta\./);
   assert.match(html, /Izvještaj je trenutno u obradi\./);
   assert.match(html, /Izvještaj trenutno nije dostupan za pregled\./);
   assert.equal(
@@ -458,7 +466,6 @@ async function main() {
     html.includes("/dashboard/individual-development-profile-reports/idp-invalid"),
     false,
   );
-
   for (const forbidden of [
     "input_snapshot",
     "report_snapshot",
@@ -471,6 +478,10 @@ async function main() {
     "fit score",
     "hire/no-hire",
     "candidate-facing",
+    "Pripremi Individualni razvojni profil",
+    "Generiši Individualni razvojni profil",
+    "Pokušaj ponovo",
+    "Reset",
   ]) {
     assert.equal(
       html.includes(forbidden),

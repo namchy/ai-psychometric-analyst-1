@@ -26,16 +26,18 @@ function getStatusClassName(status: IndividualDevelopmentProfileReportListEntry[
   }
 }
 
-function getDisabledLabel(status: IndividualDevelopmentProfileReportListEntry["status"]): string {
+function getCardTitle(status: IndividualDevelopmentProfileReportListEntry["status"]): string {
   switch (status) {
+    case "ready":
+      return "Razvojni profil — spreman za pregled";
     case "queued":
-      return "Čeka obradu";
+      return "Razvojni profil — čeka obradu";
     case "processing":
-      return "U obradi";
+      return "Razvojni profil — u obradi";
     case "failed":
     case "invalid":
     default:
-      return "Nije dostupno";
+      return "Razvojni profil — nije dostupan";
   }
 }
 
@@ -68,7 +70,7 @@ export function IndividualDevelopmentProfileReportList({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                    Individualni razvojni profil
+                    {getCardTitle(entry.status)}
                   </h3>
                   <p className="mt-1 text-sm text-slate-600">
                     Razvojni HR pregled za postojeći procjenski ciklus.
@@ -107,13 +109,9 @@ export function IndividualDevelopmentProfileReportList({
                   className={getDashboardCtaClassName({ variant: "primary", size: "sm" })}
                   href={entry.href}
                 >
-                  Otvori Individualni razvojni profil
+                  Otvori individualni razvojni profil
                 </Link>
-              ) : (
-                <span className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}>
-                  {getDisabledLabel(entry.status)}
-                </span>
-              )}
+              ) : null}
             </div>
           </DashboardInfoCardShell>
         ))}

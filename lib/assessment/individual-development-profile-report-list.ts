@@ -63,7 +63,7 @@ function isNonEmptyString(value: unknown): value is string {
 function getSafeStatusMessage(status: IndividualDevelopmentProfileReportListStatus): string {
   switch (status) {
     case "queued":
-      return "Izvještaj je pripremljen za obradu.";
+      return "Izvještaj je u redu čekanja. Obrada još nije pokrenuta.";
     case "processing":
       return "Izvještaj je trenutno u obradi.";
     case "failed":
