@@ -52,7 +52,7 @@ Komande:
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
-| P1        | Individualni razvojni profil product/report contract spec | U toku / Spec + contract + input + mock provider + lifecycle + processor + display + renderer + read-only HR route + DB smoke + participant reports entrypoint + browser review fixture + entrypoint UX polish + manual process CTA + real upstream process smoke završeni | Individualni razvojni profil / Product architecture | Odlučiti redoslijed: failed retry/reset flow, IDP Onboarding plan structure, ili OpenAI provider decision. Onboarding plan ostaje dio IDP-a; Team Fit ga može kasnije obogatiti, ali nije preduvjet. |
+| P1        | Individualni razvojni profil product/report contract spec | U toku / Spec + contract + input + mock provider + lifecycle + processor + display + renderer + read-only HR route + DB smoke + participant reports entrypoint + browser review fixture + entrypoint UX polish + manual process CTA + real upstream process smoke + onboarding plan contract završeni | Individualni razvojni profil / Product architecture | Odlučiti redoslijed: failed retry/reset flow, IDP Onboarding plan renderer/browser polish, ili OpenAI provider decision. Onboarding plan ostaje dio IDP-a; Team Fit ga može kasnije obogatiti, ali nije preduvjet. |
 | P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Otvoreno / Read-only nalaz potvrđen | Infrastructure / Supabase / Migration history | Kontrolisano riješiti remote-only migration marker 20260530183640 koji je alias za lokalnu Team Fit migraciju 20260530110000_add_team_fit_reports.sql; prije bilo kakvog repair/db push zahvata definisati sigurnu strategiju mirror/repair-a i potvrditi da nema runtime schema razlike. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
@@ -4336,6 +4336,26 @@ Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti or
   - `node scripts/test-individual-development-profile-renderer.cjs`
   - `npm run typecheck`
 
+**Completion note — IDP Onboarding plan product + contract**
+- Onboarding plan je potvrđen kao dio Individualnog razvojnog profila.
+- Osnovni Onboarding plan ne zavisi od Team Fit-a.
+- Team Fit kasnije može obogatiti onboarding plan timskim kontekstom, ali nije gatekeeper.
+- Nije uveden poseban onboarding report lane.
+- Dodan je canonical `onboardingPlan` block u IDP contract.
+- Struktura uključuje: `summary`, `first7Days`, `first30Days`, `days31To60`, `days61To90`, `managerCheckpoints`, `watchouts`.
+- Svaka vremenska faza ima: `focus`, `managerActions`, `feedbackGuidance`, `riskSignals`.
+- Validator je backward-compatible: legacy `onboardingAndDevelopmentPlan` se normalizuje u canonical `onboardingPlan`.
+- Mock provider vraća validan onboarding plan.
+- Renderer je minimalno usklađen da prikaže novu onboarding sekciju.
+- Nema Team Fit dependency-ja, nove migracije, OpenAI branch-a, worker/scheduler-a, posebnog onboarding lifecycle-a ili candidate-facing outputa.
+- Verifikovano:
+  - `node scripts/test-individual-development-profile-contract.cjs`
+  - `node scripts/test-individual-development-profile-mock-provider.cjs`
+  - `node scripts/test-individual-development-profile-display-helper.cjs`
+  - `node scripts/test-individual-development-profile-renderer.cjs`
+  - `node scripts/test-individual-development-profile-manual-process-db-smoke.cjs`
+  - `npm run typecheck`
+
 **Completion note — Individual Development Profile read-only HR route + DB smoke**
 - Dodana je HR-only read-only ruta za postojeći Individual Development Profile artefakt: `/dashboard/individual-development-profile-reports/[assessmentReportId]`.
 - Ruta koristi authenticated user + active organization boundary.
@@ -6341,6 +6361,10 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 ### 2026-06-03 — Onboarding plan vezan za IDP, ne za Team Fit
 
 Odlučeno je da osnovni Onboarding plan bude dio Individualnog razvojnog profila i da ne zavisi od Team Fit-a. Team Fit kasnije može obogatiti plan timskim kontekstom, ali nije preduvjet. U MVP-u ne uvoditi poseban onboarding report lane; preferirani oblik je strukturirana 7/30/60/90 sekcija unutar IDP reporta.
+
+### 2026-06-03 — IDP Onboarding plan contract uveden
+
+Uveden je structured `onboardingPlan` kao dio Individualnog razvojnog profila. Osnovni Onboarding plan ne zavisi od Team Fit-a; Team Fit ga kasnije može obogatiti timskim kontekstom. Nije uveden poseban onboarding report lane. Contract, validator, mock provider i renderer su usklađeni, uz backward-compatible normalizaciju legacy onboarding bloka.
 
 ### 2026-06-03 — Individual Development Profile manual process happy path potvrđen
 
