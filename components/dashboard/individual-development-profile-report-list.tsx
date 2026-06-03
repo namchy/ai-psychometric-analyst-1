@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { processIndividualDevelopmentProfileReportFormAction } from "@/app/actions/individual-development-profile";
+import {
+  processIndividualDevelopmentProfileReportFormAction,
+  resetIndividualDevelopmentProfileReportFormAction,
+} from "@/app/actions/individual-development-profile";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
@@ -127,6 +130,21 @@ export function IndividualDevelopmentProfileReportList({
                 >
                   Otvori individualni razvojni profil
                 </Link>
+              ) : null}
+              {entry.status === "failed" ? (
+                <form
+                  action={resetIndividualDevelopmentProfileReportFormAction.bind(null, {
+                    assessmentReportId: entry.id,
+                    participantId: entry.participantId,
+                  })}
+                >
+                  <button
+                    type="submit"
+                    className={getDashboardCtaClassName({ variant: "secondary", size: "sm" })}
+                  >
+                    Pokušaj ponovo
+                  </button>
+                </form>
               ) : null}
             </div>
           </DashboardInfoCardShell>

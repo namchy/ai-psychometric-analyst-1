@@ -97,12 +97,13 @@ assert.match(componentSource, /Razvojni profil — čeka obradu/);
 assert.match(componentSource, /Razvojni profil — u obradi/);
 assert.match(componentSource, /Razvojni profil — nije dostupan/);
 assert.match(componentSource, /Pripremi individualni razvojni profil/);
+assert.match(componentSource, /Pokušaj ponovo/);
 assert.doesNotMatch(
   componentSource,
   /individual-development-profile-processor|individual-development-profile-provider|mock provider|OpenAI|openai/i,
 );
 assert.doesNotMatch(componentSource, /buildIndividualDevelopmentProfileInputSnapshot/);
-assert.doesNotMatch(componentSource, /Generiši Individualni razvojni profil|Pokušaj ponovo|Reset|Priprema u toku|cta-disabled/);
+assert.doesNotMatch(componentSource, /Generiši Individualni razvojni profil|Reset|Priprema u toku|cta-disabled/);
 assert.doesNotMatch(componentSource, /input_snapshot|report_snapshot|error_message|JSON\.stringify|raw JSON|raw payload/i);
 assert.doesNotMatch(componentSource, /raw answers|raw item text|scoring keys|numeric fit score|hire\/no-hire|candidate-facing/i);
 
@@ -261,6 +262,20 @@ require.cache[idpActionStubPath] = {
       status: "processed",
       message: "ok",
       reportId: "idp-ready",
+      participantId: "participant-1",
+    }),
+    resetIndividualDevelopmentProfileReportAction: async () => ({
+      ok: true,
+      status: "queued",
+      message: "ok",
+      reportId: "idp-failed",
+      participantId: "participant-1",
+    }),
+    resetIndividualDevelopmentProfileReportFormAction: async () => ({
+      ok: true,
+      status: "queued",
+      message: "ok",
+      reportId: "idp-failed",
       participantId: "participant-1",
     }),
   },
@@ -496,6 +511,7 @@ async function main() {
   assert.match(html, /Izvještaj je u redu čekanja\. Obrada još nije pokrenuta\./);
   assert.match(html, /Izvještaj je trenutno u obradi\./);
   assert.match(html, /Izvještaj trenutno nije dostupan za pregled\./);
+  assert.match(html, /Pokušaj ponovo/);
   assert.equal(
     html.includes("/dashboard/individual-development-profile-reports/idp-queued"),
     false,
@@ -513,8 +529,8 @@ async function main() {
     false,
   );
   assert.equal(html.includes("Priprema u toku"), false);
-  assert.equal(html.includes("Pokušaj ponovo"), false);
   assert.equal(html.includes("Reset"), false);
+  assert.equal((html.match(/Pokušaj ponovo/g) ?? []).length, 1);
   for (const forbidden of [
     "input_snapshot",
     "report_snapshot",

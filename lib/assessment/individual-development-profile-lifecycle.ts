@@ -987,3 +987,92 @@ export async function resetFailedIndividualDevelopmentProfileAssessmentReportToQ
     report: data,
   };
 }
+
+export async function resetIndividualDevelopmentProfileAssessmentReportToQueued(input: {
+  assessmentReportId: string;
+  organizationId: string;
+  participantId?: string;
+  requestedByUserId?: string | null;
+}, deps: IndividualDevelopmentProfileLifecycleDependencies = {}): Promise<IndividualDevelopmentProfileAssessmentReportResetResult> {
+  if (!isNonEmptyString(input.assessmentReportId) || !isNonEmptyString(input.organizationId)) {
+    return buildFailure(
+      "invalid_payload",
+      "assessmentReportId and organizationId are required.",
+    );
+  }
+
+  const supabase = getSupabaseClient(deps);
+  let query = supabase
+    .from("assessment_reports")
+    .select(REPORT_SELECT)
+    .eq("id", input.assessmentReportId)
+    .eq("organization_id", input.organizationId)
+    .eq("report_type", INDIVIDUAL_DEVELOPMENT_PROFILE_ASSESSMENT_REPORT_TYPE)
+    .eq("audience", INDIVIDUAL_DEVELOPMENT_PROFILE_ASSESSMENT_REPORT_AUDIENCE)
+    .eq("source_type", INDIVIDUAL_DEVELOPMENT_PROFILE_ASSESSMENT_REPORT_SOURCE_TYPE);
+
+  if (isNonEmptyString(input.participantId)) {
+    query = query.eq("participant_id", input.participantId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    return buildFailure(
+      "report_load_failed",
+      `Failed to load Individual Development Profile assessment report for reset: ${error.message}`,
+    );
+  }
+
+  if (!isIndividualDevelopmentProfileAssessmentReportRecord(data)) {
+    return {
+      ok: true,
+      action: "noop_missing",
+      report: null,
+    };
+  }
+
+  if (data.report_status !== "failed") {
+    return {
+      ok: true,
+      action: "noop_not_failed",
+      report: data,
+    };
+  }
+
+  const patch = buildRetryFailedIndividualDevelopmentProfileAssessmentReportPatch({
+    existingReport: data,
+    requestedByUserId: input.requestedByUserId,
+    queuedAt: getNow(deps),
+  });
+
+  if (!patch) {
+    return {
+      ok: true,
+      action: "noop_not_failed",
+      report: data,
+    };
+  }
+
+  const { data: updatedRow, error: updateError } = await supabase
+    .from("assessment_reports")
+    .update(patch)
+    .eq("id", data.id)
+    .eq("organization_id", input.organizationId)
+    .eq("report_status", "failed")
+    .select(REPORT_SELECT)
+    .single();
+
+  if (updateError || !isIndividualDevelopmentProfileAssessmentReportRecord(updatedRow)) {
+    return buildFailure(
+      "report_update_failed",
+      `Failed to reset Individual Development Profile assessment report: ${updateError?.message ?? "Unknown error"}`,
+    );
+  }
+
+  return {
+    ok: true,
+    action: "reset_to_queued",
+    report: updatedRow,
+  };
+}
