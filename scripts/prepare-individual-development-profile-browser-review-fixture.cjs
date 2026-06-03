@@ -203,12 +203,16 @@ function buildInputSnapshot(input) {
   };
 }
 
-function buildChecklist(relativeParticipantReportsUrl, relativeReadyReportUrl) {
+function buildChecklist(input) {
   return [
-    `Otvori HR participant reports URL: ${relativeParticipantReportsUrl}`,
+    `Login kao HR fixture user: ${FIXTURE.hrEmail}`,
+    `Otvori HR participant reports URL: ${input.participantReportsUrl}`,
     "Potvrdi da se IDP sekcija prikazuje samo ako artefakt postoji.",
-    "Potvrdi da ready IDP card ima CTA/link za otvaranje reporta.",
-    `Otvori dedicated IDP report URL: ${relativeReadyReportUrl}`,
+    "Na queued IDP kartici klikni 'Pripremi individualni razvojni profil'.",
+    "Potvrdi da nakon akcije kartica više nije queued.",
+    "Potvrdi da se pojavi 'SPREMNO' i CTA 'Otvori individualni razvojni profil'.",
+    "Klikni 'Otvori individualni razvojni profil'.",
+    `Očekivani dedicated IDP report URL nakon obrade queued artefakta: ${input.expectedPostProcessReportUrl}`,
     "Potvrdi da se prikazuje 'Individualni razvojni profil' ili odgovarajući HR-facing naslov.",
     "Potvrdi da report izgleda kao HR/development guidance, ne kao candidate report.",
     "Potvrdi da nema input_snapshot.",
@@ -224,7 +228,8 @@ function buildChecklist(relativeParticipantReportsUrl, relativeReadyReportUrl) {
     "Potvrdi da nema raw item texta.",
     "Potvrdi da nema scoring keys.",
     "Potvrdi da nema full upstream snapshot dumpa.",
-    "Potvrdi da view route ne generiše novi report i nema process/generate/retry CTA.",
+    "Potvrdi da view route ne generiše novi report.",
+    "Potvrdi da nema retry/reset CTA-a.",
   ];
 }
 
@@ -751,10 +756,11 @@ async function main() {
 
   const relativeParticipantReportsUrl = `/dashboard/participants/${participant.id}/reports`;
   const relativeReadyReportUrl = `/dashboard/individual-development-profile-reports/${readyFixture.reportRow.id}`;
-  const checklist = buildChecklist(
-    relativeParticipantReportsUrl,
-    relativeReadyReportUrl,
-  );
+  const relativeQueuedReportUrl = `/dashboard/individual-development-profile-reports/${queuedFixture.reportRow.id}`;
+  const checklist = buildChecklist({
+    participantReportsUrl: relativeParticipantReportsUrl,
+    expectedPostProcessReportUrl: relativeQueuedReportUrl,
+  });
 
   console.log(
     JSON.stringify(
@@ -767,6 +773,7 @@ async function main() {
           "participant fixture exists in the same organization",
           "persisted IDP assessment_reports rows exist for ready, queued, processing, failed, and invalid review states",
           "each persisted row uses a distinct assessment_assignment_id to satisfy assessment_reports_artifact_identity_unique",
+          "queued review artefact is available for manual process CTA verification on participant reports page",
           "ready report snapshot was created through the existing IDP mock provider path and passed the runtime validator",
           "listIndividualDevelopmentProfileReportEntries(...) returned ready, queued, processing, failed, and invalid states for the fixture participant",
           "loadIndividualDevelopmentProfileDisplay(...) loaded the ready report for the fixture organization",
@@ -796,9 +803,18 @@ async function main() {
             invalid: invalidFixture.assignment.id,
           },
         },
+        manualProcessReview: {
+          queuedAssessmentReportId: queuedFixture.reportRow.id,
+          queuedAssessmentAssignmentId: queuedFixture.assignment.id,
+          expectedReadyAssessmentReportIdAfterProcess: queuedFixture.reportRow.id,
+        },
         urls: {
           participantReportsRelative: relativeParticipantReportsUrl,
           participantReportsAbsolute: `${getAppUrl()}${relativeParticipantReportsUrl}`,
+          queuedReportRelative: relativeQueuedReportUrl,
+          queuedReportAbsolute: `${getAppUrl()}${relativeQueuedReportUrl}`,
+          expectedPostProcessReportRelative: relativeQueuedReportUrl,
+          expectedPostProcessReportAbsolute: `${getAppUrl()}${relativeQueuedReportUrl}`,
           readyReportRelative: relativeReadyReportUrl,
           readyReportAbsolute: `${getAppUrl()}${relativeReadyReportUrl}`,
         },
