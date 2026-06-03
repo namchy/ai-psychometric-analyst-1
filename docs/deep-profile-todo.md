@@ -53,6 +53,7 @@ Komande:
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | U toku / Spec + contract + input + mock provider + lifecycle + processor + display + renderer + read-only HR route + DB smoke + participant reports entrypoint + browser review fixture + entrypoint UX polish završeni | Individualni razvojni profil / Product architecture | Odlučiti sljedeći IDP slice: manual prepare/process CTA nad postojećim lifecycleom ili read-only istražiti runtime/migration drift prije nove lifecycle akcije; bez OpenAI-a, bez worker/scheduler-a i bez candidate-facing outputa kao default. |
+| P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Otvoreno / Read-only nalaz potvrđen | Infrastructure / Supabase / Migration history | Kontrolisano riješiti remote-only migration marker 20260530183640 koji je alias za lokalnu Team Fit migraciju 20260530110000_add_team_fit_reports.sql; prije bilo kakvog repair/db push zahvata definisati sigurnu strategiju mirror/repair-a i potvrditi da nema runtime schema razlike. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
@@ -6219,7 +6220,53 @@ Zaključak:
 
 ---
 
+### Supabase migration history drift — Team Fit remote alias `20260530183640`
+
+**Status:** Otvoreno / Read-only nalaz potvrđen
+**Kategorija:** Infrastructure / Supabase / Migration history
+
+**Problem / context:**
+Remote Supabase migration history za project `njczzzxmjwzjbtzwwsda` sadrži marker `20260530183640`, ali lokalni repo nema odgovarajući migration file. Zbog toga `supabase db push` nije siguran kao default workflow jer remote history sadrži verziju koja lokalno ne postoji.
+
+**Read-only nalaz:**
+Remote marker `20260530183640` ima `name = 20260530110000_add_team_fit_reports` i statements koji odgovaraju Team Fit migration SQL-u za `public.team_fit_reports`, indekse, updated_at trigger i HR/admin RLS policies. Lokalni canonical migration file postoji kao `supabase/migrations/20260530110000_add_team_fit_reports.sql`.
+
+**Zaključak:**
+Ovo je migration-history alias/duplicate marker za Team Fit migraciju, ne nepoznata schema promjena. Trenutno nema dokaza da je runtime aplikacije slomljen. Problem primarno utiče na migration tooling i buduće `supabase db push`/schema sync operacije.
+
+**Guardrails dok se ne riješi:**
+
+* Ne koristiti `supabase db push` naslijepo.
+* Ne koristiti `supabase migration repair` bez eksplicitne odluke.
+* Ne brisati remote marker ručno.
+* Ne duplicirati Team Fit SQL u novoj lokalnoj migraciji bez jasne strategije.
+* Za urgentne migracije koristiti kontrolisani manual SQL apply + marker postupak, uz prethodnu provjeru.
+* Prije budućih DB-heavy taskova provjeriti da li drift utiče na planirani workflow.
+
+**Budući fix task:**
+Kontrolisano riješiti drift tako da lokalni migration history i remote marker više ne blokiraju siguran schema sync. Prije implementacije fix-a treba odlučiti strategiju:
+
+1. local mirror/alias migration file koji dokumentuje remote marker bez promjene runtime sheme,
+2. kontrolisani Supabase migration repair,
+3. ili druga sigurna strategija nakon dodatne provjere remote/local schema parity-ja.
+
+**Acceptance criteria za budući fix:**
+
+* Jasno je dokumentovano šta predstavlja `20260530183640`.
+* Lokalni repo i remote migration history više ne blokiraju siguran migration workflow.
+* `supabase db push --dry-run` više ne pada zbog remote-only `20260530183640`.
+* Nema runtime schema regresije.
+* Team Fit table, indexes, trigger i RLS policies ostaju očuvani.
+* Nema promjene application behaviora.
+* Fix je dokumentovan u runbooku.
+* Ne koristi se destruktivan repair bez prethodne potvrde.
+
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-03 — Supabase migration drift `20260530183640` identifikovan kao Team Fit remote alias
+
+Read-only istraga je potvrdila da remote-only marker `20260530183640` nije nepoznata schema promjena, nego remote migration-history alias za lokalnu Team Fit migraciju `20260530110000_add_team_fit_reports.sql`. Marker sadrži SQL za `team_fit_reports` tabelu, indekse, updated_at trigger i HR/admin RLS policies. Runtime problem nije uočen, ali drift ostaje P1 infrastructure/tooling dug jer blokira ili čini rizičnim naivni `supabase db push`. Dodan je poseban task da se drift kasnije kontrolisano popravi bez brzopletog `repair` ili schema write zahvata.
+
 
 ### 2026-06-03 — Individual Development Profile read-only HR route i DB smoke potvrđeni
 

@@ -199,3 +199,14 @@ Operativna napomena:
 
 - cilj je popraviti isti runtime koji koristi app i smoke, ne tražiti "lakši" paralelni projekat
 - ako repo migracija već postoji, prvo se primjenjuje ta migracija; nova migracija nije korektan odgovor na missing apply stanje
+
+## Known migration history drift: `20260530183640`
+
+- Remote project `njczzzxmjwzjbtzwwsda` ima migration marker `20260530183640`.
+- Marker je read-only potvrđen kao alias za `20260530110000_add_team_fit_reports`.
+- Lokalni canonical file je `supabase/migrations/20260530110000_add_team_fit_reports.sql`.
+- Dok se drift ne riješi:
+  - ne koristiti `supabase db push` naslijepo
+  - ne koristiti `supabase migration repair` bez eksplicitne odluke
+  - za urgentne migracije koristiti kontrolisani manual SQL apply + marker postupak
+- Budući fix treba prvo potvrditi remote/local schema parity i zatim odlučiti mirror/repair strategiju.
