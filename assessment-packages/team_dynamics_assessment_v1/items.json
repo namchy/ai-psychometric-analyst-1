@@ -1,0 +1,707 @@
+[
+  {
+    "code": "TDM31_01",
+    "text": "Clanovi tima govore ono sto zaista misle reci.",
+    "question_type": "single_choice",
+    "question_order": 1,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_02",
+    "text": "Clanovi tima otvoreno iznose ono sto stvarno misle.",
+    "question_type": "single_choice",
+    "question_order": 2,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_03",
+    "text": "Clanovi tima govore jedni o drugima iza ledja.",
+    "question_type": "single_choice",
+    "question_order": 3,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": true },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": true }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": true, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_04",
+    "text": "Svi clanovi tima ucestvuju u odlukama koje uticu na rad tima.",
+    "question_type": "single_choice",
+    "question_order": 4,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_05",
+    "text": "Clanovi tima se osjecaju slobodno da podijele svoje ideje.",
+    "question_type": "single_choice",
+    "question_order": 5,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_06",
+    "text": "Clanovi tima se osjecaju slobodno da izraze kako se osjecaju u vezi s radom tima.",
+    "question_type": "single_choice",
+    "question_order": 6,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_07",
+    "text": "Tim pokazuje toleranciju, fleksibilnost i postovanje prema razlikama medju clanovima.",
+    "question_type": "single_choice",
+    "question_order": 7,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_08",
+    "text": "Tim rjesava konflikte smireno, pazljivo i konstruktivno.",
+    "question_type": "single_choice",
+    "question_order": 8,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_09",
+    "text": "Komunikacija u timu je direktna, iskrena, postovana i usmjerena na rjesenje.",
+    "question_type": "single_choice",
+    "question_order": 9,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_10",
+    "text": "Tim otvoreno razgovara o vaznim odlukama prije nego sto se one donesu.",
+    "question_type": "single_choice",
+    "question_order": 10,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_11",
+    "text": "Clanovi tima pruzaju podrsku jedni drugima.",
+    "question_type": "single_choice",
+    "question_order": 11,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_OVERALL_RASCH_ONLY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "overall_rasch_only", "domain_scored": false, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_12",
+    "text": "Tim ima jasne kriterije za procjenu rezultata zajednickog rada.",
+    "question_type": "single_choice",
+    "question_order": 12,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_OVERALL_RASCH_ONLY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "overall_rasch_only", "domain_scored": false, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_13",
+    "text": "Kao tim dolazimo do kreativnih rjesenja za probleme.",
+    "question_type": "single_choice",
+    "question_order": 13,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_OVERALL_RASCH_ONLY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "overall_rasch_only", "domain_scored": false, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_14",
+    "text": "U timu je vise prisutan osjecaj \"mi\" nego osjecaj \"ja\".",
+    "question_type": "single_choice",
+    "question_order": 14,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_15",
+    "text": "Postoji nejasnoca oko toga sta tim zapravo treba raditi.",
+    "question_type": "single_choice",
+    "question_order": 15,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": true },
+      { "dimension_code": "TDM_ROLES_AND_GOALS", "weight": 1, "reverse_scored": true }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Roles and Goals", "domain_scored": true, "reverse_scored": true, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_16",
+    "text": "Postoji nejasnoca oko toga kako tim treba obaviti svoj posao.",
+    "question_type": "single_choice",
+    "question_order": 16,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": true },
+      { "dimension_code": "TDM_ROLES_AND_GOALS", "weight": 1, "reverse_scored": true }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Roles and Goals", "domain_scored": true, "reverse_scored": true, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_17",
+    "text": "Uloge i odgovornosti clanova tima jasno su razumljive svim clanovima.",
+    "question_type": "single_choice",
+    "question_order": 17,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_ROLES_AND_GOALS", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Roles and Goals", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_18",
+    "text": "Clanovi tima stavljaju uspjeh tima ispred vlastitog individualnog uspjeha.",
+    "question_type": "single_choice",
+    "question_order": 18,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_TEAM_PRIMACY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Team Primacy", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_19",
+    "text": "Ciljevi tima jasno su razumljivi svim clanovima.",
+    "question_type": "single_choice",
+    "question_order": 19,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_ROLES_AND_GOALS", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Roles and Goals", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_20",
+    "text": "Clanovi tima ciljeve tima smatraju vaznijim od vlastitih licnih ciljeva.",
+    "question_type": "single_choice",
+    "question_order": 20,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_TEAM_PRIMACY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Team Primacy", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_21",
+    "text": "Zadovoljan/na sam dosadasnjim rezultatima rada ovog tima.",
+    "question_type": "single_choice",
+    "question_order": 21,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_OVERALL_RASCH_ONLY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "overall_rasch_only", "domain_scored": false, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_22",
+    "text": "Prija mi raditi i saradivati s clanovima ovog tima.",
+    "question_type": "single_choice",
+    "question_order": 22,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COHESION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Cohesion", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_23",
+    "text": "Rad u ovom timu za mene ima licni smisao.",
+    "question_type": "single_choice",
+    "question_order": 23,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COHESION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Cohesion", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_24",
+    "text": "Jasno razumijem sta drugi clanovi tima ocekuju od mene.",
+    "question_type": "single_choice",
+    "question_order": 24,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_OVERALL_RASCH_ONLY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "overall_rasch_only", "domain_scored": false, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_25",
+    "text": "Drugi clanovi tima cijene moj doprinos ovom timu.",
+    "question_type": "single_choice",
+    "question_order": 25,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COHESION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Cohesion", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_26",
+    "text": "U ovom timu mogu koristiti svoje posebne vjestine i sposobnosti za dobrobit tima.",
+    "question_type": "single_choice",
+    "question_order": 26,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COHESION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Cohesion", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_27",
+    "text": "Neki clanovi ovog tima se opiru vodjenju.",
+    "question_type": "single_choice",
+    "question_order": 27,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": true },
+      { "dimension_code": "TDM_OVERALL_RASCH_ONLY", "weight": 1, "reverse_scored": true }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "overall_rasch_only", "domain_scored": false, "reverse_scored": true, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_28",
+    "text": "Vazne informacije se otvoreno dijele medju svim clanovima tima.",
+    "question_type": "single_choice",
+    "question_order": 28,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_29",
+    "text": "Svi clanovi tima mogu predloziti kako da tim bolje funkcionise.",
+    "question_type": "single_choice",
+    "question_order": 29,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_30",
+    "text": "Kada se pojave problemi, tim otvoreno razmatra razlicite opcije za njihovo rjesavanje.",
+    "question_type": "single_choice",
+    "question_order": 30,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_COMMUNICATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "Communication", "domain_scored": true, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TDM31_31",
+    "text": "U ovom timu vodjstvo preuzima osoba koja je najprikladnija za konkretan zadatak.",
+    "question_type": "single_choice",
+    "question_order": 31,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "TDM_CORE_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "TDM_OVERALL_RASCH_ONLY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "tdm-31-V1", "domain_group": "overall_rasch_only", "domain_scored": false, "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TPSDP_1",
+    "text": "Kada se u ovom timu napravi greska, cesce razgovaramo o tome sta mozemo nauciti nego o tome koga treba okriviti.",
+    "question_type": "single_choice",
+    "question_order": 32,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "PSYCHOLOGICAL_SAFETY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "psychological_safety", "construct": "Greske", "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TPSDP_2",
+    "text": "U ovom timu je uobicajeno otvoreno reci kada nesto ne funkcionise, cak i ako je razgovor neugodan.",
+    "question_type": "single_choice",
+    "question_order": 33,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "PSYCHOLOGICAL_SAFETY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "psychological_safety", "construct": "Problemi i rizici", "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TPSDP_3",
+    "text": "Ljudi u ovom timu ozbiljno razmatraju ideje koje se razlikuju od uobicajenog nacina razmisljanja.",
+    "question_type": "single_choice",
+    "question_order": 34,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "PSYCHOLOGICAL_SAFETY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "psychological_safety", "construct": "Drugacije misljenje", "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TPSDP_4",
+    "text": "Mogu predloziti rjesenje za koje nisam siguran/na da ce uspjeti, bez straha da ce to narusiti moj ugled u timu.",
+    "question_type": "single_choice",
+    "question_order": 35,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "PSYCHOLOGICAL_SAFETY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "psychological_safety", "construct": "Interpersonalni rizik", "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TPSDP_5",
+    "text": "Prirodno mi je zatraziti pomoc od nekoga iz tima kada zapnem.",
+    "question_type": "single_choice",
+    "question_order": 36,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "PSYCHOLOGICAL_SAFETY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "psychological_safety", "construct": "Trazenje pomoci", "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TPSDP_6",
+    "text": "Imam povjerenje da clanovi ovog tima nece namjerno otezati moj rad.",
+    "question_type": "single_choice",
+    "question_order": 37,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "PSYCHOLOGICAL_SAFETY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "psychological_safety", "construct": "Povjerenje u namjere", "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "TPSDP_7",
+    "text": "Imam osjecaj da ovaj tim prepoznaje i koristi moje najjace vjestine.",
+    "question_type": "single_choice",
+    "question_order": 38,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "PSYCHOLOGICAL_SAFETY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "psychological_safety", "construct": "Vrednovanje doprinosa", "reverse_scored": false, "response_scale": "likert_1_4_agreement" }
+  },
+  {
+    "code": "SJT_TD_01",
+    "text": "Na timskom sastanku razgovarate o kasnjenju vaznog zadatka. Rasprava pocinje kao razgovor o poslu, ali se brzo pretvara u licne komentare. Jedan clan tima kaze drugom: \"Ti uvijek zakomplikujes stvari i nikad ne zavrsis ono sto obecas.\" Druga osoba se brani povisenim tonom, a ostatak tima uglavnom suti. Rok je blizu i jasno je da problem treba rijesiti, ali atmosfera postaje sve napetija.",
+    "question_type": "multiple_choice",
+    "question_order": 39,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "SJT_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_CONSTRUCTIVE_CONFLICT", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": {
+      "block_key": "situational_judgment",
+      "response_format": "best_worst",
+      "instruction_type": "knowledge_based_should_do",
+      "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+      "scenario_title": "Konflikt koji prelazi u personalizaciju",
+      "primary_dimension": "constructive_conflict",
+      "user_facing_dimension": "Konstruktivno rjesavanje konflikta",
+      "options": [
+        { "option_id": "SJT_TD_01_A", "option_order": 1, "option_text": "Predlozim da se razgovor vrati na konkretan zadatak: sta tacno kasni, sta je blokada i koji je prvi sljedeci korak. Naglasim da licne ocjene ne pomazu rjesavanju problema.", "option_level": "Acceptable" },
+        { "option_id": "SJT_TD_01_B", "option_order": 2, "option_text": "Sacekam da se rasprava sama smiri, jer bi moje ukljucivanje moglo dodatno pojacati tenziju. Nakon sastanka bih mozda pojedinacno pitao/la sta se desilo.", "option_level": "Weak" },
+        { "option_id": "SJT_TD_01_C", "option_order": 3, "option_text": "Kazem da je ocigledno ko je odgovoran za kasnjenje i da tim vise ne moze stalno tolerisati isti obrazac ponasanja.", "option_level": "Harmful" },
+        { "option_id": "SJT_TD_01_D", "option_order": 4, "option_text": "Predlozim kratku pauzu da se smiri ton, pa da razgovor vratimo na cinjenice: sta kasni, kakav je uticaj na rok i koji je sljedeci dogovor.", "option_level": "Best" }
+      ]
+    }
+  },
+  {
+    "code": "SJT_TD_02",
+    "text": "Radite na zajednickom zadatku koji treba biti zavrsen do kraja sedmice. Jedan clan tima je preuzeo vazan dio posla, ali jos nije isporucio dogovoreno. Bez tog dijela ostatak tima ne moze zavrsiti svoj posao. Rok je blizu, a osoba koja kasni na sastancima govori da \"radi na tome\", ali ne daje konkretan novi termin. U timu raste frustracija, ali niko ne zeli otvoriti neugodan razgovor.",
+    "question_type": "multiple_choice",
+    "question_order": 40,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "SJT_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_OWNERSHIP", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_COORDINATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": {
+      "block_key": "situational_judgment",
+      "response_format": "best_worst",
+      "instruction_type": "knowledge_based_should_do",
+      "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+      "scenario_title": "Kasnjenje ili neizvrsenje dogovora",
+      "primary_dimension": "ownership",
+      "secondary_dimension": "coordination",
+      "user_facing_dimension": "Preuzimanje odgovornosti",
+      "options": [
+        { "option_id": "SJT_TD_02_A", "option_order": 1, "option_text": "Direktno razgovaram s clanom tima koji kasni, trazim da jasno kaze sta ga blokira i predlazem da zajedno dogovorimo realan novi rok i sljedeci korak.", "option_level": "Acceptable" },
+        { "option_id": "SJT_TD_02_B", "option_order": 2, "option_text": "Preuzmem njegov dio posla da tim ne bi probio rok, a kasnije cemo razgovarati o tome zasto se ovo desilo.", "option_level": "Weak" },
+        { "option_id": "SJT_TD_02_C", "option_order": 3, "option_text": "Na zajednickom kanalu napisem da cijeli tim kasni zbog jedne osobe, kako bi svima bilo jasno gdje je problem.", "option_level": "Harmful" },
+        { "option_id": "SJT_TD_02_D", "option_order": 4, "option_text": "Predlozim da odmah razjasnimo sta nedostaje, sta blokira ostatak tima, ko moze pomoci i koji je realan novi rok.", "option_level": "Best" }
+      ]
+    }
+  },
+  {
+    "code": "SJT_TD_03",
+    "text": "Tokom rada na zajednickom projektu pojavljuje se vazan zadatak koji mora biti zavrsen prije sljedeceg sastanka s klijentom. Zadatak se nalazi izmedju nekoliko podrucja rada i nije jasno ko je njegov vlasnik. Zadatak nije tezak sam po sebi, ali trazi informacije iz vise dijelova tima. Svako pretpostavlja da ce ga preuzeti neko drugi. Na sastanku se tema kratko spomene, ali niko ne preuzima odgovornost, a rok se priblizava. Ako zadatak ostane nerijesen, cijeli tim ce izgledati nespremno.",
+    "question_type": "multiple_choice",
+    "question_order": 41,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "SJT_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_OWNERSHIP", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": {
+      "block_key": "situational_judgment",
+      "response_format": "best_worst",
+      "instruction_type": "knowledge_based_should_do",
+      "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+      "scenario_title": "Nejasno vlasnistvo nad zadatkom",
+      "primary_dimension": "ownership",
+      "secondary_dimension_context": "role_clarity",
+      "user_facing_dimension": "Preuzimanje odgovornosti",
+      "options": [
+        { "option_id": "SJT_TD_03_A", "option_order": 1, "option_text": "Predlozim da odmah razjasnimo sta treba zavrsiti, ko daje potrebne informacije i ko privremeno vodi zadatak dok se vlasnistvo ne potvrdi.", "option_level": "Best" },
+        { "option_id": "SJT_TD_03_B", "option_order": 2, "option_text": "Sacekam da voditelj tima odluci kome zadatak pripada, jer nije dobro da clanovi tima sami preuzimaju stvari koje mozda nisu u njihovoj nadleznosti.", "option_level": "Weak" },
+        { "option_id": "SJT_TD_03_C", "option_order": 3, "option_text": "Preuzmem zadatak sam/a i zavrsim ga sto prije, bez dodatnog razgovora, jer je najvaznije da tim ne izgleda nespremno pred klijentom.", "option_level": "Acceptable" },
+        { "option_id": "SJT_TD_03_D", "option_order": 4, "option_text": "Napisem u zajednicki kanal da zadatak ocigledno nema vlasnika i da ce biti problem ako ga niko ne preuzme, ali ne predlozim konkretan sljedeci korak.", "option_level": "Harmful" }
+      ]
+    }
+  },
+  {
+    "code": "SJT_TD_04",
+    "text": "Tokom rada na vaznoj isporuci primjecujete problem koji trenutno nije vidljiv ostatku tima. Ako se nista ne uradi, problem vjerovatno nece izazvati posljedice odmah, ali bi mogao ozbiljno uticati na kvalitet isporuke za nekoliko sedmica. Rjesenje sada trazi dodatni napor i moglo bi poremetiti trenutni plan. Tim je vec pod pritiskom, a ranije se desavalo da se ljudi naljute kada neko otvori novi problem pred rok.",
+    "question_type": "multiple_choice",
+    "question_order": 42,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "SJT_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_RISK_TRANSPARENCY", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": {
+      "block_key": "situational_judgment",
+      "response_format": "best_worst",
+      "instruction_type": "knowledge_based_should_do",
+      "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+      "scenario_title": "Presucivanje rizika ili problema",
+      "primary_dimension": "risk_transparency",
+      "secondary_dimension_context": "psychological_safety_in_action",
+      "user_facing_dimension": "Pravovremeno otvaranje rizika",
+      "options": [
+        { "option_id": "SJT_TD_04_A", "option_order": 1, "option_text": "Zabiljezim sta sam primijetio/la, procijenim moguci uticaj i predlozim kratak razgovor o tome da li problem rjesavamo sada ili uvodimo jasnu kontrolu.", "option_level": "Best" },
+        { "option_id": "SJT_TD_04_B", "option_order": 2, "option_text": "Sacekam da vidim hoce li problem stvarno postati ozbiljan, jer je tim vec pod pritiskom i nije korisno otvarati svaku mogucu komplikaciju.", "option_level": "Weak" },
+        { "option_id": "SJT_TD_04_C", "option_order": 3, "option_text": "Odmah posaljem poruku svima da postoji ozbiljan problem i da trenutni plan vjerovatno nece uspjeti ako se hitno ne promijeni.", "option_level": "Acceptable" },
+        { "option_id": "SJT_TD_04_D", "option_order": 4, "option_text": "Pokusam sam/a rijesiti problem usput, bez otvaranja teme timu, jer ne zelim dodatno opteretiti druge niti izazvati novu raspravu pred rok.", "option_level": "Harmful" }
+      ]
+    }
+  },
+  {
+    "code": "SJT_TD_05",
+    "text": "Tim vec nekoliko sedmica radi na vaznom zadatku. Tokom sedmice dolazi nova informacija: prioritet organizacije se promijenio i tim sada mora preusmjeriti paznju na drugi, hitniji zadatak. Dio clanova je frustriran jer smatraju da se prethodni rad sada \"baca\", dok drugi zele odmah krenuti na novi prioritet bez dodatnog razgovora. Rok za novi zadatak je kratak, ali postoji rizik da tim izgubi vrijeme ako ne razjasni sta se desava sa prethodnim poslom.",
+    "question_type": "multiple_choice",
+    "question_order": 43,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "SJT_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_ADAPTABILITY", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_COORDINATION", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": {
+      "block_key": "situational_judgment",
+      "response_format": "best_worst",
+      "instruction_type": "knowledge_based_should_do",
+      "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+      "scenario_title": "Promjena prioriteta",
+      "primary_dimension": "adaptability",
+      "secondary_dimension": "coordination",
+      "user_facing_dimension": "Prilagodba promjeni prioriteta",
+      "options": [
+        { "option_id": "SJT_TD_05_A", "option_order": 1, "option_text": "Predlozim kratak dogovor: sta se zaustavlja, sta se cuva za kasnije, sta prelazi u novi prioritet i koji su prvi koraci za naredna dva dana.", "option_level": "Best" },
+        { "option_id": "SJT_TD_05_B", "option_order": 2, "option_text": "Prihvatim novi prioritet i odmah krenem raditi na njemu, jer je najvaznije pokazati fleksibilnost i ne gubiti vrijeme na raspravu o odluci koja je vec donesena.", "option_level": "Acceptable" },
+        { "option_id": "SJT_TD_05_C", "option_order": 3, "option_text": "Kazem da tim ne treba mijenjati plan dok se ne dobije detaljno objasnjenje zasto se raniji rad prekida i ko je odgovoran za promjenu smjera.", "option_level": "Weak" },
+        { "option_id": "SJT_TD_05_D", "option_order": 4, "option_text": "Nastavim raditi po starom planu dok se situacija ne razjasni, jer su ceste promjene prioriteta los signal i ne treba stalno prekidati zapoceti posao.", "option_level": "Harmful" }
+      ]
+    }
+  },
+  {
+    "code": "SJT_TD_06",
+    "text": "Dva clana tima su tri dana radila na slicnim analizama, ali to nisu znali jer su informacije bile podijeljene kroz razlicite poruke i kratke usmene dogovore. Sada je jasno da se dio posla duplirao, rok je blizi nego prije, a u timu raste frustracija. Neki clanovi govore da je problem u tome sto \"niko ne cita poruke\", dok drugi tvrde da informacije nisu bile dovoljno jasno podijeljene. Ipak, obje analize sadrze korisne dijelove.",
+    "question_type": "multiple_choice",
+    "question_order": 44,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "SJT_TOTAL", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_COORDINATION", "weight": 1, "reverse_scored": false },
+      { "dimension_code": "SJT_OWNERSHIP", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": {
+      "block_key": "situational_judgment",
+      "response_format": "best_worst",
+      "instruction_type": "knowledge_based_should_do",
+      "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem.",
+      "scenario_title": "Losa razmjena informacija / koordinacijski propust",
+      "primary_dimension": "coordination",
+      "secondary_dimension": "ownership",
+      "user_facing_dimension": "Koordinacija i razmjena informacija",
+      "options": [
+        { "option_id": "SJT_TD_06_A", "option_order": 1, "option_text": "Predlozim da tim prvo spoji korisne dijelove obje analize, a zatim dogovori jedno jasno mjesto za vazne informacije i kratku provjeru zaduzenja prije nastavka rada.", "option_level": "Best" },
+        { "option_id": "SJT_TD_06_B", "option_order": 2, "option_text": "Predlozim da se ubuduce sve vazne informacije salju u zajednicki kanal, ali sada nastavim raditi na dijelu koji je meni dodijeljen da ne gubimo dodatno vrijeme.", "option_level": "Acceptable" },
+        { "option_id": "SJT_TD_06_C", "option_order": 3, "option_text": "Kazem da se ovakve stvari desavaju kada ljudi ne prate komunikaciju i da svako mora preuzeti odgovornost da redovno cita sve poruke.", "option_level": "Harmful" },
+        { "option_id": "SJT_TD_06_D", "option_order": 4, "option_text": "Predlozim sastanak na kojem bi svako objasnio sta je radio, kako bismo razumjeli gdje je nastao propust prije nego nastavimo dalje.", "option_level": "Weak" }
+      ]
+    }
+  },
+  {
+    "code": "OUTCOME_1",
+    "text": "Ovaj tim uspjesno ostvaruje ono sto se od njega ocekuje.",
+    "question_type": "single_choice",
+    "question_order": 45,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "OUTCOME_PULSE", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "outcome_pulse", "construct": "Efektivnost tima", "reverse_scored": false, "response_scale": "likert_1_4_agreement", "report_role": "criterion_outcome_signal", "diagnostic_index_role": "excluded_in_v1" }
+  },
+  {
+    "code": "OUTCOME_2",
+    "text": "Kvalitet rada ovog tima je stabilan i pouzdan.",
+    "question_type": "single_choice",
+    "question_order": 46,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "OUTCOME_PULSE", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "outcome_pulse", "construct": "Kvalitet zajednickog rada", "reverse_scored": false, "response_scale": "likert_1_4_agreement", "report_role": "criterion_outcome_signal", "diagnostic_index_role": "excluded_in_v1" }
+  },
+  {
+    "code": "OUTCOME_3",
+    "text": "Kada ovaj tim nesto dogovori, uglavnom to i isporuci.",
+    "question_type": "single_choice",
+    "question_order": 47,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "OUTCOME_PULSE", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "outcome_pulse", "construct": "Pouzdanost isporuke", "reverse_scored": false, "response_scale": "likert_1_4_agreement", "report_role": "criterion_outcome_signal", "diagnostic_index_role": "excluded_in_v1" }
+  },
+  {
+    "code": "OUTCOME_4",
+    "text": "Ovaj tim moze nastaviti raditi ovim tempom i nacinom bez ozbiljnog iscrpljivanja.",
+    "question_type": "single_choice",
+    "question_order": 48,
+    "is_required": true,
+    "is_active": true,
+    "mappings": [
+      { "dimension_code": "OUTCOME_PULSE", "weight": 1, "reverse_scored": false }
+    ],
+    "metadata": { "block_key": "outcome_pulse", "construct": "Odrzivost saradnje", "reverse_scored": false, "response_scale": "likert_1_4_agreement", "report_role": "criterion_outcome_signal", "diagnostic_index_role": "excluded_in_v1" }
+  }
+]

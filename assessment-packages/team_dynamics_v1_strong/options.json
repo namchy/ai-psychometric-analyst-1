@@ -1,0 +1,32 @@
+[
+  {
+    "code": "TD_1",
+    "label": "Uopste se ne slazem",
+    "value": 1,
+    "option_order": 1
+  },
+  {
+    "code": "TD_2",
+    "label": "Uglavnom se ne slazem",
+    "value": 2,
+    "option_order": 2
+  },
+  {
+    "code": "TD_3",
+    "label": "Niti se slazem niti se ne slazem",
+    "value": 3,
+    "option_order": 3
+  },
+  {
+    "code": "TD_4",
+    "label": "Uglavnom se slazem",
+    "value": 4,
+    "option_order": 4
+  },
+  {
+    "code": "TD_5",
+    "label": "U potpunosti se slazem",
+    "value": 5,
+    "option_order": 5
+  }
+]

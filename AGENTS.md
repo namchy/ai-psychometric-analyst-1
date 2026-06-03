@@ -134,3 +134,6 @@ Before finishing any task:
 
 \- Keep changes easy to review
 
+## Report design skill
+
+- For report UI or report copy tasks, use the repo skill `deep-profile-report-design-taste`.

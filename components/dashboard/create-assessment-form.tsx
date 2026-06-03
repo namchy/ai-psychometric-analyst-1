@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { getDashboardCtaClassName } from "@/components/dashboard/primitives";
 import {
   DEFAULT_ASSESSMENT_LOCALE,
   getAssessmentLocaleLabel,
@@ -12,7 +13,9 @@ function SubmitButton({ label }: { label: string }) {
 
   return (
     <button
-      className="min-h-0 w-full rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none sm:w-auto"
+      className={`${pending
+        ? getDashboardCtaClassName({ variant: "disabled" })
+        : getDashboardCtaClassName({ variant: "primary" })} w-full sm:w-auto`}
       disabled={pending}
       type="submit"
     >

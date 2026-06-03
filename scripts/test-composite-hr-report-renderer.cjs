@@ -1,0 +1,613 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const Module = require("node:module");
+const React = require("react");
+const { renderToStaticMarkup } = require("react-dom/server");
+const ts = require("typescript");
+
+const projectRoot = path.resolve(__dirname, "..");
+const emptyModulePath = path.join(__dirname, "empty-module.cjs");
+const originalResolveFilename = Module._resolveFilename;
+
+function resolveWithExtensions(candidatePath) {
+  if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
+    return candidatePath;
+  }
+
+  for (const extension of [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"]) {
+    const withExtension = `${candidatePath}${extension}`;
+
+    if (fs.existsSync(withExtension)) {
+      return withExtension;
+    }
+  }
+
+  return candidatePath;
+}
+
+Module._resolveFilename = function resolveFilename(request, parent, isMain, options) {
+  if (request === "server-only") {
+    return emptyModulePath;
+  }
+
+  if (request.startsWith("@/")) {
+    return originalResolveFilename.call(
+      this,
+      resolveWithExtensions(path.join(projectRoot, request.slice(2))),
+      parent,
+      isMain,
+      options,
+    );
+  }
+
+  return originalResolveFilename.call(this, request, parent, isMain, options);
+};
+
+function compileTypeScript(module, filename, jsx = false) {
+  const source = fs.readFileSync(filename, "utf8");
+  const transpiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      moduleResolution: ts.ModuleResolutionKind.NodeJs,
+      target: ts.ScriptTarget.ES2022,
+      esModuleInterop: true,
+      resolveJsonModule: true,
+      jsx: jsx ? ts.JsxEmit.ReactJSX : undefined,
+    },
+    fileName: filename,
+  });
+
+  module._compile(transpiled.outputText, filename);
+}
+
+require.extensions[".ts"] = function compileTs(module, filename) {
+  compileTypeScript(module, filename, false);
+};
+
+require.extensions[".tsx"] = function compileTsx(module, filename) {
+  compileTypeScript(module, filename, true);
+};
+
+const {
+  CompositeHrReportView,
+  buildCompositeHrReportViewModel,
+} = require("../components/dashboard/composite-hr-report-view.tsx");
+const {
+  generateMockCompositeHrReport,
+} = require("../lib/assessment/composite-hr-report-provider-mock.ts");
+const {
+  resolveReadyCompositeHrAssessmentReport,
+} = require("../lib/assessment/assessment-reports.ts");
+
+function buildCompositeInputSnapshotFixture() {
+  return {
+    contractVersion: "composite_hr_input_v1",
+    targetReportContractVersion: "composite_hr_v1",
+    sourceType: "assessment",
+    reportType: "composite",
+    audience: "hr",
+    locale: "bs",
+    generatedFor: {
+      organizationId: "org-1",
+      participantId: "participant-1",
+      assessmentAssignmentId: "assignment-1",
+    },
+    assessmentAssignment: {
+      id: "assignment-1",
+      assignmentType: "standard_battery",
+      status: "active",
+      locale: "bs",
+      createdAt: "2026-05-12T06:00:00.000Z",
+    },
+    sourceAttempts: [
+      {
+        attemptId: "attempt-ipip",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        status: "completed",
+        completedAt: "2026-05-12T06:30:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 0,
+      },
+      {
+        attemptId: "attempt-safran",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        status: "completed",
+        completedAt: "2026-05-12T06:45:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 1,
+      },
+      {
+        attemptId: "attempt-mwms",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        status: "completed",
+        completedAt: "2026-05-12T07:00:00.000Z",
+        requiredForComposite: true,
+        requiredForTeamFit: false,
+        position: 2,
+      },
+    ],
+    coverage: {
+      requiredCount: 3,
+      completedCount: 3,
+      requiredTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      completedTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      missingTestSlugs: [],
+    },
+    deterministicInputs: {
+      ipip: {
+        attemptId: "attempt-ipip",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        scale: { min: 1, max: 5 },
+        domains: [],
+        summarySignals: {
+          rankedDomains: ["CONSCIENTIOUSNESS", "AGREEABLENESS", "EXTRAVERSION"],
+          highestDomains: ["CONSCIENTIOUSNESS"],
+          lowestDomains: ["NEUROTICISM"],
+          balancedDomains: [],
+          topFacets: [],
+          lowestFacets: [],
+        },
+      },
+      safran: {
+        attemptId: "attempt-safran",
+        testId: "test-safran",
+        testSlug: "safran_v1",
+        overall: { rawScore: 36, maxScore: 54, band: "moderate_raw", interpretation: "moderate" },
+        verbal: { rawScore: 14, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        figural: { rawScore: 10, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        numeric: { rawScore: 12, maxScore: 18, band: "moderate_raw", interpretation: "moderate" },
+        summarySignals: {
+          strongestDomain: "verbal",
+          lowestDomain: "figural",
+        },
+      },
+      mwms: {
+        attemptId: "attempt-mwms",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        scale: { min: 1, max: 7 },
+        dimensions: [],
+        motivationStructure: {
+          autonomousMotivationScore: 6,
+          controlledMotivationScore: 3.5,
+          amotivationScore: 1.8,
+        },
+        summarySignals: {
+          dominantDrivers: ["intrinsic", "identified"],
+          lowerDrivers: ["amotivation", "external_social"],
+          cautionFlags: {
+            elevatedAmotivation: false,
+            highControlledRelativeToAutonomous: false,
+            mixedProfile: false,
+          },
+        },
+      },
+    },
+    summarySignals: {
+      personalityHighestDomains: ["CONSCIENTIOUSNESS"],
+      personalityLowestDomains: ["NEUROTICISM"],
+      cognitiveStrongestDomain: "verbal",
+      cognitiveLowestDomain: "figural",
+      motivationHighestDrivers: ["intrinsic", "identified"],
+      motivationLowestDrivers: ["amotivation", "external_social"],
+      crossInstrumentFlags: [],
+    },
+    guardrails: {
+      usesOnlyLinkedAssignmentAttempts: true,
+      usesHistoricalAttemptFallback: false,
+      usesSingleTestAiReportsAsPrimaryInput: false,
+      aiMayNotChangeScores: true,
+    },
+    metadata: {
+      builtAt: "2026-05-12T09:00:00.000Z",
+      builderVersion: "v1",
+    },
+  };
+}
+
+function buildReadyReport(snapshot) {
+  return {
+    id: "assessment-report-ready",
+    assessment_assignment_id: "assignment-1",
+    organization_id: "org-1",
+    participant_id: "participant-1",
+    report_type: "composite",
+    audience: "hr",
+    source_type: "assessment",
+    report_status: "ready",
+    generator_type: "mock",
+    contract_version: "composite_hr_v1",
+    prompt_version_id: null,
+    model_name: null,
+    generator_version: "v1",
+    input_snapshot: null,
+    report_snapshot: snapshot,
+    failure_code: null,
+    failure_reason: null,
+    queued_at: null,
+    started_at: "2026-05-12T09:05:00.000Z",
+    completed_at: "2026-05-12T09:06:00.000Z",
+    generated_at: "2026-05-12T09:06:00.000Z",
+    created_at: "2026-05-12T09:00:00.000Z",
+    updated_at: "2026-05-12T09:06:00.000Z",
+    metadata: {},
+  };
+}
+
+function buildParticipant(overrides = {}) {
+  return {
+    fullName: "Amra Afgan",
+    email: "amrafagan@nestox.com",
+    ...overrides,
+  };
+}
+
+function main() {
+  const snapshot = generateMockCompositeHrReport(buildCompositeInputSnapshotFixture());
+  const readyReport = buildReadyReport(snapshot);
+  const participant = buildParticipant();
+  const resolved = resolveReadyCompositeHrAssessmentReport(readyReport);
+
+  assert.equal(resolved.status, "ready");
+
+  const model = buildCompositeHrReportViewModel({
+    report: readyReport,
+    snapshot,
+    participant,
+  });
+
+  assert.equal(model.title, "Kompozitni HR izvještaj");
+  assert.equal(model.statusLabel, "Spremno za pregled");
+  assert.equal(model.participantFullName, "Amra Afgan");
+  assert.equal(model.participantEmail, "amrafagan@nestox.com");
+  assert.equal(
+    model.description,
+    "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
+  );
+  assert.equal(model.participantReportsHref, "/dashboard/participants/participant-1/reports");
+  assert.equal(model.source.assessmentAssignmentId, "assignment-1");
+  assert.equal(model.source.assessmentCycleLabel, "Standardna baterija procjena");
+  assert.equal(model.source.assessmentCycleIdLabel, "ID: assignme...");
+  assert.equal(model.source.assessmentCountLabel, "3 završene procjene");
+  assert.equal(model.source.sourceAttemptCount, 3);
+  assert.equal(
+    model.source.overviewDescription,
+    "Ovaj izvještaj povezuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan praktičan HR pregled.",
+  );
+  assert.equal(model.summary.headline, snapshot.summary.headline);
+  assert.equal(model.summary.profileOverview, snapshot.summary.profileOverview);
+  assert.deepEqual(model.structuredSummaryBlocks, [
+    {
+      label: "Glavni signal",
+      body: "Ovaj pregled koristi deterministic rezultate kao osnovu za HR interpretaciju, intervju i onboarding planiranje.",
+    },
+    {
+      label: "Fokus za provjeru",
+      body: "Najkorisnije je dodatno provjeriti konkretne primjere ponasanja i nacin rada pod pritiskom.",
+    },
+    {
+      label: "Kako koristiti izvještaj",
+      body: "Signal treba koristiti kao hipotezu za provjeru kroz razgovor i radne primjere, a ne kao automatski zakljucak.",
+    },
+  ]);
+  assert.equal(model.integratedSignals.length > 0, true);
+  assert.equal(model.integratedSignals[0].structuredBody.primary !== null, true);
+  assert.equal(model.integratedSignals[0].evidenceGroups.length > 0, true);
+  assert.equal(
+    model.integratedSignals.flatMap((signal) => signal.evidence).some((item) => item.displayTestLabel === "Ličnost"),
+    true,
+  );
+  assert.equal(
+    model.integratedSignals
+      .flatMap((signal) => signal.evidence)
+      .some((item) => item.displayTestLabel === "Kognitivni rezultat"),
+    true,
+  );
+  assert.equal(
+    model.integratedSignals
+      .flatMap((signal) => signal.evidence)
+      .some((item) => item.displayTestLabel === "Motivacija"),
+    true,
+  );
+  assert.equal(model.interviewGuidance.focusAreas.length > 0, true);
+  assert.equal(model.onboardingGuidance.managementTips.length > 0, true);
+  assert.equal(model.onboardingGuidance.supportNeeds.length > 0, true);
+  assert.equal(model.limitations.length > 0, true);
+  assert.equal(
+    model.limitations.some((item) => item.includes("source attempts") || item.includes("score vrijednosti")),
+    false,
+  );
+
+  const html = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot,
+      participant,
+    }),
+  );
+
+  assert.equal(html.includes("Kratki pregled izvještaja"), true);
+  assert.equal(html.includes("Nazad na pregled kandidata"), true);
+  assert.equal(html.includes("Amra Afgan"), true);
+  assert.equal(html.includes("amrafagan@nestox.com"), true);
+  assert.equal(html.includes("Kompozitni HR izvještaj"), true);
+  assert.equal(
+    html.includes(
+      "text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400",
+    ),
+    true,
+  );
+  assert.equal(
+    html.includes(
+      "inline-flex min-h-0 items-center self-start text-[11px] font-medium tracking-[0.01em] text-slate-500 transition hover:text-[#073b4c] hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#118ab2]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+    ),
+    true,
+  );
+  assert.equal(html.includes("rounded-full border border-slate-200 bg-white/80 px-3 py-1.5"), false);
+  assert.equal(
+    html.includes(
+      "Objedinjuje rezultate procjene ličnosti, kognitivne procjene i motivacije za rad u jedan HR pregled za intervju i onboarding.",
+    ),
+    true,
+  );
+  assert.equal(
+    html.includes("Ovaj prikaz koristi već generisan izvještaj i ne mijenja rezultate procjena"),
+    false,
+  );
+  assert.equal(html.includes("Kompozitni HR izvještaj"), true);
+  assert.equal(html.includes("Spremno za pregled"), true);
+  assert.equal(html.includes("Glavni signal"), true);
+  assert.equal(html.includes("Glavni zaključak"), true);
+  assert.equal(html.includes("Fokus za provjeru"), true);
+  assert.equal(html.includes("Tačka opreza"), false);
+  assert.equal(html.includes("Tačke opreza"), false);
+  assert.equal(html.includes("Kako koristiti izvještaj"), true);
+  assert.equal(html.includes("Kako koristiti nalaz"), false);
+  assert.equal(html.includes("Ključne snage"), true);
+  assert.equal(html.includes("Integrisani signali"), true);
+  assert.equal(
+    html.includes("Radni signali povezani iz ličnosti, motivacije i kognitivnog rezultata."),
+    true,
+  );
+  assert.equal(html.includes("Integrisana interpretacija"), false);
+  assert.equal(html.includes("Signali su prikazani kao HR hipoteze"), false);
+  assert.equal(html.includes("INTERVJU"), true);
+  assert.equal(html.includes("ONBOARDING"), true);
+  assert.equal(
+    html.includes(
+      "Koristi ove teme za strukturiran razgovor i provjeru ključnih pretpostavki iz izvještaja.",
+    ),
+    true,
+  );
+  assert.equal(
+    html.includes(
+      "Koristi ove smjernice za prve razgovore, očekivanja i podršku menadžera nakon procjene.",
+    ),
+    true,
+  );
+  assert.equal(html.includes("border-t-[#118ab2]"), true);
+  assert.equal(html.includes("border-t-[#073b4c]"), true);
+  assert.equal(html.includes("marker:text-[#118ab2]"), true);
+  assert.equal(html.includes("marker:text-[#073b4c]"), true);
+  assert.equal(html.includes("ŠTA ZNAČI U RADU"), true);
+  assert.equal(html.includes("ŠTA HR TREBA PROVJERITI"), true);
+  assert.equal(html.includes("DOKAZI IZ PROCJENA"), true);
+  assert.equal(html.includes("metadata-strip-grid"), true);
+  assert.equal(html.includes("summary-signal-block"), true);
+  assert.equal(html.includes("summary-strengths-block"), true);
+  assert.equal(html.includes("summary-watchout-block"), false);
+  assert.equal(
+    html.indexOf("Nazad na pregled kandidata") < html.indexOf("KOMPOZITNI HR IZVJEŠTAJ"),
+    true,
+  );
+  assert.equal(html.indexOf("Amra Afgan") > html.indexOf("KOMPOZITNI HR IZVJEŠTAJ"), true);
+  const summarySectionStart = html.indexOf("Sažetak");
+  const summarySectionEnd = html.indexOf("Integrisani signali", summarySectionStart);
+  assert.equal(summarySectionStart >= 0, true);
+  assert.equal(summarySectionEnd > summarySectionStart, true);
+  const summarySectionHtml = html.slice(summarySectionStart, summarySectionEnd);
+  assert.equal(summarySectionHtml.indexOf("Glavni zaključak") > summarySectionHtml.indexOf("Sažetak"), true);
+  assert.equal(summarySectionHtml.indexOf("Glavni zaključak") < summarySectionHtml.indexOf("Ključne snage"), true);
+  assert.equal(summarySectionHtml.indexOf("Ključne snage") < summarySectionHtml.indexOf("Fokus za provjeru"), true);
+  assert.equal(summarySectionHtml.indexOf("Glavni signal") < summarySectionHtml.indexOf("Kako koristiti izvještaj"), true);
+  assert.equal(
+    html.includes("bg-[linear-gradient(135deg,rgba(7,59,76,0.085),rgba(17,138,178,0.055))]"),
+    true,
+  );
+  assert.equal(html.includes("border-l-4 border-l-[#073b4c]"), true);
+  assert.equal(html.includes("h-1 w-20 rounded-full bg-[#073b4c]"), false);
+  assert.equal(html.includes("integrated-signal-module"), true);
+  assert.equal(html.includes("integrated-signal-insight-grid"), true);
+  assert.equal(html.includes("integrated-signal-meaning-panel"), true);
+  assert.equal(html.includes("integrated-signal-verification-panel"), true);
+  assert.equal(html.includes("integrated-signal-evidence-panel"), true);
+  assert.equal(html.includes("integrated-signal-evidence-bar"), false);
+  assert.equal(html.includes("integrated-signal-evidence-group"), true);
+  assert.equal(html.includes("integrated-signal-evidence-row"), true);
+  assert.equal(html.includes("Signal 1"), true);
+  assert.equal(html.includes("lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(18rem,1.08fr)]"), true);
+  assert.equal(html.includes("#06d6a0"), true);
+  assert.equal(html.includes("#ffd166"), true);
+  assert.equal(html.includes("#118ab2"), true);
+  assert.equal(html.includes("#073b4c"), true);
+  assert.equal(html.includes("rounded-[0.95rem] px-3.5 py-3"), true);
+  assert.equal(html.includes("inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase"), true);
+  assert.equal(html.includes("shadow-[0_10px_20px_rgba(15,23,42,0.035)]"), true);
+  assert.equal(html.includes("inset 0 2px 0"), false);
+  assert.equal(html.includes("bg-white/72"), false);
+  assert.equal(html.includes("bg-[#073b4c]/8"), true);
+  assert.equal(html.includes("text-[0.95rem] leading-7 text-slate-800"), true);
+  assert.equal(html.includes("font-semibold text-[#073b4c]"), true);
+  assert.equal(html.includes("inset 3px 0 0"), false);
+  assert.equal(html.includes("#ef476f"), false);
+  const integratedSectionStart = html.indexOf("Integrisani signali");
+  const integratedSectionEnd = html.indexOf("INTERVJU", integratedSectionStart);
+  assert.equal(integratedSectionStart >= 0, true);
+  assert.equal(integratedSectionEnd > integratedSectionStart, true);
+  const integratedSignalsHtml = html.slice(integratedSectionStart, integratedSectionEnd);
+  assert.equal(/hipotez/i.test(integratedSignalsHtml), false);
+  snapshot.integratedSignals.forEach((signal) => {
+    assert.equal(html.includes(signal.title), true);
+  });
+  assert.equal(html.includes(snapshot.summary.headline), true);
+  assert.equal(html.includes("Procjene uključene u izvještaj"), false);
+  assert.equal(html.includes("procjenski"), false);
+  assert.equal(html.includes("procjenskog"), false);
+  assert.equal(html.includes("ponašajni"), false);
+  assert.equal(html.includes("saradljiv"), false);
+  assert.equal(html.includes("Način generisanja"), false);
+  assert.equal(html.includes("AI interpretacija"), false);
+  assert.equal(html.includes("Obuhvat"), true);
+  assert.equal(html.includes("Datum izvještaja"), true);
+  assert.equal(html.includes("Svrha izvještaja"), false);
+  assert.equal(html.includes("HR pregled za intervju i uvođenje u posao"), false);
+  assert.equal(html.includes("ponašajni"), false);
+  assert.equal(html.includes("ponašajni obrasci i saradnja"), false);
+  assert.equal(html.includes("zaključivanje i rad sa informacijama"), false);
+  assert.equal(html.includes("pokretači angažmana"), false);
+  assert.equal(html.includes(">Ličnost<"), true);
+  assert.equal(html.includes(">Kognitivni rezultat<"), true);
+  assert.equal(html.includes(">Motivacija<"), true);
+  assert.equal(html.includes("3 završene procjene"), true);
+  assert.equal(html.includes("Generisano"), false);
+  assert.equal(html.includes("mock / v1"), false);
+  assert.equal(html.includes("linked attemptova"), false);
+  assert.equal(html.includes("snapshot"), false);
+  assert.equal(html.includes("renderer"), false);
+  assert.equal(html.includes("source attempts"), false);
+  assert.equal(html.includes("3 povezana pokušaja"), false);
+  assert.equal(html.includes("ipip-neo-120-v1"), false);
+  assert.equal(html.includes("safran_v1"), false);
+  assert.equal(html.includes("mwms_v1"), false);
+  assert.equal(html.includes("Ugodnost"), false);
+  assert.equal(html.includes("AGREEABLENESS"), false);
+
+  const longOverviewSnapshot = {
+    ...snapshot,
+    summary: {
+      ...snapshot.summary,
+      profileOverview:
+        "Prva rečenica opisuje glavni integrisani signal. Druga rečenica opisuje glavnu tačku opreza. Treća rečenica objašnjava kako HR treba koristiti nalaz. Četvrta rečenica dodaje dodatni kontekst za upotrebu u intervjuu.",
+    },
+  };
+  const longOverviewHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot: longOverviewSnapshot,
+      participant,
+    }),
+  );
+
+  assert.equal(longOverviewHtml.includes("Glavni signal"), true);
+  assert.equal(longOverviewHtml.includes("Fokus za provjeru"), true);
+  assert.equal(longOverviewHtml.includes("Tačka opreza"), false);
+  assert.equal(longOverviewHtml.includes("Tačke opreza"), false);
+  assert.equal(longOverviewHtml.includes("Kako koristiti izvještaj"), true);
+  assert.equal(
+    longOverviewHtml.includes(
+      "Druga rečenica opisuje glavnu tačku opreza. Treća rečenica objašnjava kako HR treba koristiti nalaz. Četvrta rečenica dodaje dodatni kontekst za upotrebu u intervjuu.",
+    ),
+    true,
+  );
+
+  const multiSentenceSignalSnapshot = {
+    ...snapshot,
+    integratedSignals: snapshot.integratedSignals.map((signal, index) =>
+      index === 0
+        ? {
+            ...signal,
+            body: "Prva rečenica objašnjava značenje u radu. Druga rečenica opisuje šta HR treba dodatno provjeriti.",
+          }
+        : signal,
+    ),
+  };
+  const multiSentenceSignalHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot: multiSentenceSignalSnapshot,
+      participant,
+    }),
+  );
+
+  assert.equal(multiSentenceSignalHtml.includes("ŠTA ZNAČI U RADU"), true);
+  assert.equal(multiSentenceSignalHtml.includes("ŠTA HR TREBA PROVJERITI"), true);
+  assert.equal(multiSentenceSignalHtml.includes("integrated-signal-verification-panel"), true);
+  assert.equal(multiSentenceSignalHtml.includes("integrated-signal-evidence-panel"), true);
+  assert.equal(
+    multiSentenceSignalHtml.includes(
+      "Druga rečenica opisuje šta HR treba dodatno provjeriti.",
+    ),
+    true,
+  );
+  assert.equal(multiSentenceSignalHtml.includes(">Ličnost<"), true);
+  assert.equal(multiSentenceSignalHtml.includes(">Kognitivni rezultat<"), true);
+  assert.equal(multiSentenceSignalHtml.includes(">Motivacija<"), true);
+
+  const agreeablenessDisplaySnapshot = {
+    ...snapshot,
+    integratedSignals: snapshot.integratedSignals.map((signal, index) =>
+      index === 0
+        ? {
+            ...signal,
+            title: "Ugodnost i dosljednost traže provjeru kroz primjere rada.",
+            body: "Ugodnost u timu može olakšati saradnju. AGREEABLENESS signal traži provjeru granica u radu sa drugima.",
+            evidence: [
+              {
+                testSlug: "ipip-neo-120-v1",
+                label: "Ugodnost",
+                value: "4.5, AGREEABLENESS",
+              },
+              ...signal.evidence,
+            ],
+          }
+        : signal,
+    ),
+  };
+  const agreeablenessDisplayHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot: agreeablenessDisplaySnapshot,
+      participant,
+    }),
+  );
+
+  assert.equal(agreeablenessDisplayHtml.includes("Ugodnost"), false);
+  assert.equal(agreeablenessDisplayHtml.includes("AGREEABLENESS"), false);
+  assert.equal(agreeablenessDisplayHtml.includes("Spremnost na saradnju"), true);
+  assert.equal(agreeablenessDisplayHtml.includes("Saradljivost"), true);
+  assert.equal(agreeablenessDisplayHtml.includes("integrated-signal-evidence-panel"), true);
+
+  const fallbackHtml = renderToStaticMarkup(
+    React.createElement(CompositeHrReportView, {
+      report: readyReport,
+      snapshot,
+      participant: null,
+    }),
+  );
+
+  assert.equal(fallbackHtml.includes("Kompozitni HR izvještaj"), true);
+  assert.equal(fallbackHtml.includes("Amra Afgan"), false);
+  assert.equal(fallbackHtml.includes("amrafagan@nestox.com"), false);
+  assert.equal(fallbackHtml.includes("participantName"), false);
+  assert.equal(fallbackHtml.includes("participantEmail"), false);
+
+  const invalid = resolveReadyCompositeHrAssessmentReport(
+    buildReadyReport({
+      ...snapshot,
+      summary: null,
+    }),
+  );
+  assert.equal(invalid.status, "invalid_snapshot");
+  assert.equal(invalid.message.includes("validaciju"), true);
+
+  console.log("Composite HR report renderer tests passed.");
+}
+
+main();

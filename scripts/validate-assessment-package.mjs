@@ -31,6 +31,18 @@ function assertArray(value, label) {
   }
 }
 
+function assertString(value, label) {
+  if (typeof value !== "string" || value.length === 0) {
+    fail(`${label} must be a non-empty string.`);
+  }
+}
+
+function assertNumber(value, label) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    fail(`${label} must be a number.`);
+  }
+}
+
 function assertKeys(value, label, keys) {
   for (const key of keys) {
     if (!(key in value)) {
@@ -101,6 +113,495 @@ function detectPackageMode({ dimensions, items, options, locales, prompts }) {
   return "full_assessment_or_partial_content";
 }
 
+function mapItemsByCode(items) {
+  return new Map(items.map((item) => [item.code, item]));
+}
+
+function getBlockItems(items, blockKey) {
+  return items.filter((item) => item.metadata?.block_key === blockKey);
+}
+
+function mapItemsByQuestionOrder(items) {
+  return [...items].sort((left, right) => left.question_order - right.question_order);
+}
+
+function mapLocalizedQuestionsByCode(localeCatalog) {
+  return new Map((localeCatalog?.questions ?? []).map((item) => [item.code, item.text]));
+}
+
+function getPreferredPackageLocale({ test, locales, locale }) {
+  if (locale && locales[locale]) {
+    return locale;
+  }
+
+  if (test.default_locale && locales[test.default_locale]) {
+    return test.default_locale;
+  }
+
+  return Object.keys(locales)[0] ?? null;
+}
+
+function getLikertOptionCatalog(contentSpec) {
+  const labels = contentSpec?.response_scales?.likert_1_4_agreement?.labels ?? {};
+
+  return [1, 2, 3, 4].map((value) => ({
+    value,
+    label: labels[String(value)],
+  }));
+}
+
+function getLikertConstruct(item) {
+  return (
+    item.mappings.find(
+      (mapping) => mapping.dimension_code !== "TDM_CORE_TOTAL" && mapping.dimension_code !== "SJT_TOTAL",
+    )?.dimension_code ?? null
+  );
+}
+
+function buildLikertItemOptionCatalog({ item, contentSpec }) {
+  const responseScaleKey = item.metadata?.response_scale;
+
+  if (responseScaleKey !== "likert_1_4_agreement") {
+    return [];
+  }
+
+  return getLikertOptionCatalog(contentSpec).map((option) => ({
+    code: `${item.code}_OPTION_${option.value}`,
+    label: option.label,
+    value: option.value,
+    option_order: option.value,
+    metadata: {
+      option_catalog_source: "content_spec_response_scale",
+      response_scale: responseScaleKey,
+      response_format: "single_select_likert",
+      block_key: item.metadata?.block_key ?? null,
+    },
+  }));
+}
+
+function buildSjtItemOptionCatalog({ item, contentSpec }) {
+  const sjtScoringSpec = contentSpec?.blocks?.situational_judgment;
+
+  if (item.metadata?.response_format !== "best_worst") {
+    return [];
+  }
+
+  return [...(item.metadata?.options ?? [])]
+    .sort((left, right) => left.option_order - right.option_order)
+    .map((option) => ({
+      code: option.option_id,
+      label: option.option_text,
+      value: option.option_order,
+      option_order: option.option_order,
+      metadata: {
+        option_catalog_source: "scenario_level_sjt_options",
+        response_format: "best_worst",
+        block_key: item.metadata?.block_key ?? null,
+        scenario_id: item.code,
+        scenario_title: item.metadata?.scenario_title ?? null,
+        instruction_type: item.metadata?.instruction_type ?? null,
+        option_id: option.option_id,
+        option_level: option.option_level,
+        option_role: "scenario_action",
+        best_choice_points: sjtScoringSpec?.best_choice_scoring?.[option.option_level] ?? null,
+        worst_choice_points: sjtScoringSpec?.worst_choice_scoring?.[option.option_level] ?? null,
+        primary_dimension: item.metadata?.primary_dimension ?? null,
+        secondary_dimension: item.metadata?.secondary_dimension ?? null,
+      },
+    }));
+}
+
+export function buildMixedFormatImportPlan({ test, dimensions, items, contentSpec }) {
+  if (!contentSpec) {
+    return null;
+  }
+
+  const itemOptionCatalogs = Object.fromEntries(
+    items.map((item) => [
+      item.code,
+      item.metadata?.response_format === "best_worst"
+        ? buildSjtItemOptionCatalog({ item, contentSpec })
+        : buildLikertItemOptionCatalog({ item, contentSpec }),
+    ]),
+  );
+
+  return {
+    mode: "mixed_format_content_spec_v1",
+    assessment_key: contentSpec.assessment.assessment_key,
+    block_order: contentSpec.assessment.blocks,
+    response_scales: contentSpec.response_scales ?? {},
+    item_option_catalogs: itemOptionCatalogs,
+    dimension_metadata_by_code: Object.fromEntries(
+      dimensions.map((dimension) => [dimension.code, dimension.metadata ?? {}]),
+    ),
+    item_metadata_by_code: Object.fromEntries(
+      items.map((item) => [item.code, item.metadata ?? {}]),
+    ),
+    test_metadata: {
+      ...((test.metadata && typeof test.metadata === "object" && !Array.isArray(test.metadata))
+        ? test.metadata
+        : {}),
+      version: test.version,
+      intended_use: test.intended_use,
+      report_family: test.report_family,
+      default_locale: test.default_locale ?? null,
+      supported_locales: test.supported_locales ?? [],
+      content_spec: contentSpec,
+    },
+  };
+}
+
+function validateMixedFormatContentSpec({ test, items, options, locales, contentSpec }) {
+  assertObject(contentSpec, "content-spec.json");
+  assertObject(contentSpec.assessment, "content-spec.json.assessment");
+  assertObject(contentSpec.blocks, "content-spec.json.blocks");
+
+  assertString(contentSpec.assessment.assessment_key, "content-spec.json.assessment.assessment_key");
+  assertString(contentSpec.assessment.display_name, "content-spec.json.assessment.display_name");
+  assertString(contentSpec.assessment.validation_status, "content-spec.json.assessment.validation_status");
+  assertArray(contentSpec.assessment.blocks, "content-spec.json.assessment.blocks");
+
+  if (contentSpec.assessment.assessment_key !== test.slug) {
+    fail(
+      `content-spec.json.assessment.assessment_key must match test.json slug for ${test.slug}.`,
+    );
+  }
+
+  if (contentSpec.assessment.display_name !== test.name) {
+    fail(`content-spec.json.assessment.display_name must match test.json name for ${test.slug}.`);
+  }
+
+  if (test.metadata?.validation_status && contentSpec.assessment.validation_status !== test.metadata.validation_status) {
+    fail(
+      `content-spec.json.assessment.validation_status must match test.json metadata.validation_status for ${test.slug}.`,
+    );
+  }
+
+  const declaredBlocks = test.metadata?.blocks ?? [];
+
+  if (
+    Array.isArray(declaredBlocks) &&
+    JSON.stringify(contentSpec.assessment.blocks) !== JSON.stringify(declaredBlocks)
+  ) {
+    fail(`content-spec.json.assessment.blocks must match test.json metadata.blocks for ${test.slug}.`);
+  }
+
+  if (options.length !== 0) {
+    fail(`${test.slug} mixed-format content-spec package must keep root options.json empty.`);
+  }
+
+  for (const [locale, localeCatalog] of Object.entries(locales)) {
+    if (localeCatalog.options.length !== 0) {
+      fail(`${test.slug} mixed-format content-spec package must keep locales/${locale}/options.json empty.`);
+    }
+  }
+
+  const blockKeys = new Set(contentSpec.assessment.blocks);
+  const seenItemCodes = new Set();
+
+  for (const item of items) {
+    const blockKey = item.metadata?.block_key;
+
+    if (!blockKeys.has(blockKey)) {
+      fail(`items.json item ${item.code} references unknown block_key ${blockKey}.`);
+    }
+
+    if (seenItemCodes.has(item.code)) {
+      fail(`items.json contains duplicate item code ${item.code}.`);
+    }
+
+    seenItemCodes.add(item.code);
+  }
+
+  const tdmSpec = contentSpec.blocks["tdm-31-V1"];
+  const tdmItems = getBlockItems(items, "tdm-31-V1");
+  assertObject(tdmSpec, 'content-spec.json.blocks["tdm-31-V1"]');
+  assertNumber(tdmSpec.item_count, 'content-spec.json.blocks["tdm-31-V1"].item_count');
+  if (tdmItems.length !== tdmSpec.item_count) {
+    fail(`tdm-31-V1 item count mismatch: items.json=${tdmItems.length}, content-spec=${tdmSpec.item_count}.`);
+  }
+
+  const psychologicalSafetySpec = contentSpec.blocks.psychological_safety;
+  const psychologicalSafetyItems = getBlockItems(items, "psychological_safety");
+  assertObject(psychologicalSafetySpec, "content-spec.json.blocks.psychological_safety");
+  assertNumber(
+    psychologicalSafetySpec.item_count,
+    "content-spec.json.blocks.psychological_safety.item_count",
+  );
+  if (psychologicalSafetyItems.length !== psychologicalSafetySpec.item_count) {
+    fail(
+      `psychological_safety item count mismatch: items.json=${psychologicalSafetyItems.length}, content-spec=${psychologicalSafetySpec.item_count}.`,
+    );
+  }
+
+  const outcomePulseSpec = contentSpec.blocks.outcome_pulse;
+  const outcomePulseItems = getBlockItems(items, "outcome_pulse");
+  assertObject(outcomePulseSpec, "content-spec.json.blocks.outcome_pulse");
+  assertNumber(outcomePulseSpec.item_count, "content-spec.json.blocks.outcome_pulse.item_count");
+  if (outcomePulseItems.length !== outcomePulseSpec.item_count) {
+    fail(
+      `outcome_pulse item count mismatch: items.json=${outcomePulseItems.length}, content-spec=${outcomePulseSpec.item_count}.`,
+    );
+  }
+
+  const sjtSpec = contentSpec.blocks.situational_judgment;
+  const sjtItems = getBlockItems(items, "situational_judgment");
+  assertObject(sjtSpec, "content-spec.json.blocks.situational_judgment");
+  assertNumber(
+    sjtSpec.scenario_count,
+    "content-spec.json.blocks.situational_judgment.scenario_count",
+  );
+  assertNumber(
+    sjtSpec.options_per_scenario,
+    "content-spec.json.blocks.situational_judgment.options_per_scenario",
+  );
+  assertString(
+    sjtSpec.scoring_model,
+    "content-spec.json.blocks.situational_judgment.scoring_model",
+  );
+
+  if (sjtItems.length !== sjtSpec.scenario_count) {
+    fail(
+      `situational_judgment scenario count mismatch: items.json=${sjtItems.length}, content-spec=${sjtSpec.scenario_count}.`,
+    );
+  }
+
+  for (const item of sjtItems) {
+    if (item.question_type !== "multiple_choice") {
+      fail(`SJT item ${item.code} must use question_type="multiple_choice".`);
+    }
+
+    if (item.metadata?.response_format !== "best_worst") {
+      fail(`SJT item ${item.code} must declare metadata.response_format="best_worst".`);
+    }
+
+    if (item.metadata?.instruction_type !== "knowledge_based_should_do") {
+      fail(
+        `SJT item ${item.code} must declare metadata.instruction_type="knowledge_based_should_do".`,
+      );
+    }
+
+    assertArray(item.metadata?.options, `items.json item ${item.code}.metadata.options`);
+
+    if (item.metadata.options.length !== sjtSpec.options_per_scenario) {
+      fail(
+        `SJT item ${item.code} must contain exactly ${sjtSpec.options_per_scenario} scenario-level options.`,
+      );
+    }
+
+    const optionLevels = new Set();
+    const optionIds = new Set();
+
+    for (const [index, option] of item.metadata.options.entries()) {
+      assertObject(option, `items.json item ${item.code}.metadata.options[${index}]`);
+      assertString(option.option_id, `items.json item ${item.code}.metadata.options[${index}].option_id`);
+      assertString(option.option_text, `items.json item ${item.code}.metadata.options[${index}].option_text`);
+      assertNumber(option.option_order, `items.json item ${item.code}.metadata.options[${index}].option_order`);
+      assertString(option.option_level, `items.json item ${item.code}.metadata.options[${index}].option_level`);
+      optionIds.add(option.option_id);
+      optionLevels.add(option.option_level);
+    }
+
+    if (optionIds.size !== sjtSpec.options_per_scenario) {
+      fail(`SJT item ${item.code} must contain unique scenario option ids.`);
+    }
+
+    if (
+      JSON.stringify([...optionLevels].sort()) !==
+      JSON.stringify(["Acceptable", "Best", "Harmful", "Weak"])
+    ) {
+      fail(`SJT item ${item.code} must contain exactly one Best/Acceptable/Weak/Harmful option.`);
+    }
+  }
+}
+
+export function normalizeMixedAssessmentSpec({ test, items, contentSpec }) {
+  if (!contentSpec) {
+    return null;
+  }
+
+  const normalizedBlocks = contentSpec.assessment.blocks.map((blockKey) => {
+    const blockItems = getBlockItems(items, blockKey);
+    const blockSpec = contentSpec.blocks[blockKey];
+
+    if (blockKey === "situational_judgment") {
+      return {
+        blockKey,
+        blockType: "sjt_best_worst",
+        displayName: blockSpec.display_name,
+        scenarioIds: blockItems.map((item) => item.code),
+        optionsPerScenario: blockSpec.options_per_scenario,
+        scoringModel: blockSpec.scoring_model,
+      };
+    }
+
+    const scoringMode =
+      blockKey === "tdm-31-V1"
+        ? blockSpec.scoring?.phase_1?.method ?? "simple_linear_v1"
+        : blockSpec.scoring_mode ?? "simple_linear_v1";
+
+    return {
+      blockKey,
+      blockType: "likert",
+      displayName: blockSpec.display_name,
+      responseScaleKey: blockSpec.response_scale,
+      itemIds: blockItems.map((item) => item.code),
+      scoringMode,
+    };
+  });
+
+  return {
+    assessmentKey: contentSpec.assessment.assessment_key,
+    displayName: contentSpec.assessment.display_name,
+    validationStatus: contentSpec.assessment.validation_status,
+    estimatedDuration: contentSpec.assessment.estimated_duration ?? test.metadata?.estimated_duration,
+    audience: contentSpec.assessment.audience ?? test.metadata?.audience,
+    blocks: normalizedBlocks,
+    sharedScales: contentSpec.response_scales ?? {},
+    scoring: {
+      assessmentScoringMode: contentSpec.assessment.scoring_mode ?? test.scoring_method,
+      teamAggregation: contentSpec.team_aggregation ?? null,
+      sharedScoringBands: contentSpec.shared_scoring_bands ?? [],
+    },
+    guardrails: contentSpec.guardrails ?? [],
+  };
+}
+
+export function buildTeamDynamicsExecutionSpec({
+  test,
+  items,
+  locales,
+  contentSpec,
+  mixedAssessmentSpec,
+  locale,
+}) {
+  if (
+    !contentSpec ||
+    !mixedAssessmentSpec ||
+    mixedAssessmentSpec.assessmentKey !== "team_dynamics_assessment_v1"
+  ) {
+    return null;
+  }
+
+  const resolvedLocale = getPreferredPackageLocale({ test, locales, locale });
+  const localizedQuestionsByCode = mapLocalizedQuestionsByCode(
+    resolvedLocale ? locales[resolvedLocale] : null,
+  );
+  const itemsByCode = mapItemsByCode(items);
+  const likertOptions = getLikertOptionCatalog(contentSpec);
+  const sjtScoringSpec = contentSpec.blocks.situational_judgment;
+  const bestWorstInstruction =
+    contentSpec.response_scales?.best_worst?.user_instruction ?? null;
+  const units = [];
+
+  for (const block of mixedAssessmentSpec.blocks) {
+    const blockItems = mapItemsByQuestionOrder(
+      block.blockType === "sjt_best_worst"
+        ? block.scenarioIds.map((scenarioId) => itemsByCode.get(scenarioId)).filter(Boolean)
+        : block.itemIds.map((itemId) => itemsByCode.get(itemId)).filter(Boolean),
+    );
+
+    for (const item of blockItems) {
+      const itemText = localizedQuestionsByCode.get(item.code) ?? item.text;
+
+      if (block.blockType === "likert") {
+        const construct = getLikertConstruct(item);
+        const scoringMetadata = {};
+
+        if (typeof item.metadata?.reverse_scored === "boolean") {
+          scoringMetadata.reverseScored = item.metadata.reverse_scored;
+        }
+
+        if (typeof item.metadata?.domain_group === "string") {
+          scoringMetadata.domainGroup = item.metadata.domain_group;
+        }
+
+        if (typeof item.metadata?.domain_scored === "boolean") {
+          scoringMetadata.domainScored = item.metadata.domain_scored;
+        }
+
+        if (construct) {
+          scoringMetadata.construct = construct;
+        }
+
+        units.push({
+          unitType: "likert_item",
+          itemId: item.code,
+          order: item.question_order,
+          blockKey: block.blockKey,
+          blockDisplayName: block.displayName,
+          itemText,
+          responseScaleKey: "likert_1_4_agreement",
+          options: likertOptions,
+          scoringMetadata,
+        });
+        continue;
+      }
+
+      const scenarioOptions = [...(item.metadata?.options ?? [])]
+        .sort((left, right) => left.option_order - right.option_order)
+        .map((option, index) => ({
+          optionId: option.option_id,
+          label: ["A", "B", "C", "D"][index],
+          text: option.option_text,
+          optionLevel: option.option_level,
+        }));
+
+      units.push({
+        unitType: "sjt_best_worst_scenario",
+        scenarioId: item.code,
+        order: item.question_order,
+        blockKey: block.blockKey,
+        blockDisplayName: block.displayName,
+        scenarioTitle: item.metadata?.scenario_title ?? item.code,
+        scenarioText: itemText,
+        instruction: item.metadata?.user_instruction ?? bestWorstInstruction,
+        responseFormat: "best_worst",
+        options: scenarioOptions,
+        scoringMetadata: {
+          scoringModel: sjtScoringSpec.scoring_model,
+          primaryDimension: item.metadata?.primary_dimension,
+          ...(item.metadata?.secondary_dimension
+            ? { secondaryDimension: item.metadata.secondary_dimension }
+            : {}),
+          bestChoicePoints: Object.fromEntries(
+            scenarioOptions.map((option) => [
+              option.optionId,
+              sjtScoringSpec.best_choice_scoring[option.optionLevel],
+            ]),
+          ),
+          worstChoicePoints: Object.fromEntries(
+            scenarioOptions.map((option) => [
+              option.optionId,
+              sjtScoringSpec.worst_choice_scoring[option.optionLevel],
+            ]),
+          ),
+        },
+      });
+    }
+  }
+
+  const sjtUnits = units.filter((unit) => unit.unitType === "sjt_best_worst_scenario");
+
+  return {
+    assessmentKey: "team_dynamics_assessment_v1",
+    displayName: mixedAssessmentSpec.displayName,
+    estimatedDuration: mixedAssessmentSpec.estimatedDuration,
+    units,
+    optionCatalogs: {
+      likert_1_4_agreement: likertOptions,
+    },
+    metadata: {
+      totalUnits: units.length,
+      likertUnitCount: units.filter((unit) => unit.unitType === "likert_item").length,
+      sjtScenarioCount: sjtUnits.length,
+      sjtOptionCount: sjtUnits.reduce((total, unit) => total + unit.options.length, 0),
+      blockKeys: mixedAssessmentSpec.blocks.map((block) => block.blockKey),
+      validationStatus: mixedAssessmentSpec.validationStatus,
+    },
+  };
+}
+
 export async function loadAssessmentPackage(packageDirArg) {
   const packageDir = path.resolve(packageDirArg);
 
@@ -120,6 +621,10 @@ export async function loadAssessmentPackage(packageDirArg) {
   const options = await readJson(path.join(packageDir, "options.json"));
   const prompts = await readJson(path.join(packageDir, "prompts.json"));
   const locales = await loadLocaleCatalogs(packageDir);
+  const contentSpecFile = test?.metadata?.content_spec_file;
+  const contentSpec = contentSpecFile
+    ? await readJson(path.join(packageDir, contentSpecFile))
+    : null;
 
   assertObject(test, "test.json");
   assertKeys(test, "test.json", [
@@ -237,6 +742,35 @@ export async function loadAssessmentPackage(packageDirArg) {
     }
   }
 
+  if (contentSpec) {
+    validateMixedFormatContentSpec({
+      test,
+      items,
+      options,
+      locales,
+      contentSpec,
+    });
+  }
+
+  const mixedAssessmentSpec = normalizeMixedAssessmentSpec({
+    test,
+    items,
+    contentSpec,
+  });
+  const teamDynamicsExecutionSpec = buildTeamDynamicsExecutionSpec({
+    test,
+    items,
+    locales,
+    contentSpec,
+    mixedAssessmentSpec,
+  });
+  const mixedFormatImportPlan = buildMixedFormatImportPlan({
+    test,
+    dimensions,
+    items,
+    contentSpec,
+  });
+
   return {
     packageDir,
     test,
@@ -245,6 +779,10 @@ export async function loadAssessmentPackage(packageDirArg) {
     options,
     prompts,
     locales,
+    contentSpec,
+    mixedAssessmentSpec,
+    mixedFormatImportPlan,
+    teamDynamicsExecutionSpec,
     packageMode: detectPackageMode({
       dimensions,
       items,
@@ -262,7 +800,19 @@ async function main() {
     fail("Usage: node scripts/validate-assessment-package.mjs <package-directory>");
   }
 
-  const { packageDir, test, dimensions, items, options, prompts, locales, packageMode } =
+  const {
+    packageDir,
+    test,
+    dimensions,
+    items,
+    options,
+    prompts,
+    locales,
+    contentSpec,
+    mixedAssessmentSpec,
+    mixedFormatImportPlan,
+    packageMode,
+  } =
     await loadAssessmentPackage(packageDirArg);
 
   console.log(
@@ -275,6 +825,24 @@ async function main() {
         items: items.length,
         options: options.length,
         prompts: prompts.length,
+        contentSpec: Boolean(contentSpec),
+        mixedAssessmentSpec:
+          mixedAssessmentSpec === null
+            ? null
+            : {
+                assessmentKey: mixedAssessmentSpec.assessmentKey,
+                blocks: mixedAssessmentSpec.blocks.map((block) => ({
+                  blockKey: block.blockKey,
+                  blockType: block.blockType,
+                })),
+              },
+        mixedFormatImportPlan:
+          mixedFormatImportPlan === null
+            ? null
+            : {
+                mode: mixedFormatImportPlan.mode,
+                blockOrder: mixedFormatImportPlan.block_order,
+              },
         locales: Object.fromEntries(
           Object.entries(locales).map(([locale, localeCatalog]) => [
             locale,

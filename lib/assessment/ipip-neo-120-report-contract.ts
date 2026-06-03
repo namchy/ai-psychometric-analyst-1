@@ -11,7 +11,7 @@ import {
 
 export const IPIP_NEO_120_REPORT_TYPE = "individual";
 export const IPIP_NEO_120_REPORT_SOURCE_TYPE = "single_test";
-export const IPIP_NEO_120_HR_PROMPT_KEY = "ipip_neo_120_hr_v1";
+export const IPIP_NEO_120_HR_PROMPT_KEY = "ipip_neo_120_hr_v2";
 export const IPIP_NEO_120_PARTICIPANT_PROMPT_KEY = "ipip_neo_120_participant_v1";
 
 export type IpipNeo120ParticipantReportBand = "lower" | "balanced" | "higher";
@@ -108,7 +108,7 @@ export type IpipNeo120ParticipantSchemaReference = {
 
 export type IpipNeo120HrSchemaReference = {
   audience: "hr";
-  schemaId: "ipip-neo-120-hr-v1";
+  schemaId: "ipip-neo-120-hr-v2";
   schemaPath: "@/lib/assessment/schemas/ipip-neo-120-hr-v1.json";
   outputSchemaJson: typeof ipipNeo120HrSchemaJson;
   promptKey: typeof IPIP_NEO_120_HR_PROMPT_KEY;
@@ -127,7 +127,7 @@ export type IpipNeo120PromptContractDefinition =
       sourceType: typeof IPIP_NEO_120_REPORT_SOURCE_TYPE;
       testFamily: typeof IPIP_NEO_120_TEST_FAMILY;
       audienceGuidance:
-        "Focus on an HR-facing IPIP-NEO-120 narrative with 5 Big Five domains, 6 facets per domain, and explicit workplace-oriented interpretation.";
+        "Focus on an HR-facing IPIP-NEO-120 decision-support report with concrete interview, onboarding, and team-context guidance based only on deterministic domain and facet results.";
     });
 
 export const IPIP_NEO_120_HR_REPORT_CONTRACT: IpipNeo120PromptContractDefinition = {
@@ -136,11 +136,11 @@ export const IPIP_NEO_120_HR_REPORT_CONTRACT: IpipNeo120PromptContractDefinition
   sourceType: IPIP_NEO_120_REPORT_SOURCE_TYPE,
   testFamily: IPIP_NEO_120_TEST_FAMILY,
   promptKey: IPIP_NEO_120_HR_PROMPT_KEY,
-  schemaId: "ipip-neo-120-hr-v1",
+  schemaId: "ipip-neo-120-hr-v2",
   schemaPath: "@/lib/assessment/schemas/ipip-neo-120-hr-v1.json",
   outputSchemaJson: ipipNeo120HrSchemaJson,
   audienceGuidance:
-    "Focus on an HR-facing IPIP-NEO-120 narrative with 5 Big Five domains, 6 facets per domain, and explicit workplace-oriented interpretation.",
+    "Focus on an HR-facing IPIP-NEO-120 decision-support report with concrete interview, onboarding, and team-context guidance based only on deterministic domain and facet results.",
 };
 
 export const IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT: IpipNeo120PromptContractDefinition = {

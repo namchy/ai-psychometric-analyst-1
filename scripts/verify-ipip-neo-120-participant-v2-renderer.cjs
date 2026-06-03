@@ -38,6 +38,17 @@ function main() {
     fail("V2 renderer must not call buildParticipantIpipProfileOverview.");
   }
 
+  assertIncludes(
+    componentBody,
+    "getParticipantIpipRadarDomainsV2(report)",
+    "V2 radar domain mapping helper",
+  );
+  assertIncludes(componentBody, "const shouldRenderRadarSection =", "V2 radar guard");
+  assertIncludes(componentBody, "<PersonalityRadarChart", "V2 radar chart usage");
+  assertIncludes(componentBody, "Vizuelni profil osobina", "V2 radar section title");
+  assertIncludes(componentBody, "Radar prikazuje pet glavnih domena na skali od 1 do 5.", "V2 radar section copy");
+  assertIncludes(componentBody, "domains={radarDomains}", "V2 radar mapped domains");
+
   assertIncludes(source, "scrollIntoView(", "participant scroll helper presence");
   assertIncludes(
     componentBody,
@@ -79,8 +90,13 @@ function main() {
     "report.development_recommendations",
     "report.interpretation_note",
     "participant_display_label",
+    "display_score",
   ]) {
     assertIncludes(componentBody, needle, "V2 renderer snapshot field usage");
+  }
+
+  if (componentBody.includes("getParticipantIpipRadarDomains(report)")) {
+    fail("V2 renderer must not use the V1 radar domain helper.");
   }
 
   console.info("IPIP-NEO-120 participant V2 renderer verification passed");

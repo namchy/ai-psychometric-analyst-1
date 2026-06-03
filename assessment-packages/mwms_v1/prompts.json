@@ -1,1 +1,595 @@
-[]
+[
+  {
+    "prompt_key": "mwms_participant_report_v1",
+    "audience": "participant",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "is_active": true,
+    "system_prompt": "Ti generišeš participant izvještaj za radnu motivaciju na osnovu već izračunatih MWMS dimenzija.\n\nPišeš na bosanskom jeziku, ijekavica, latinica. Obraćaš se kandidatu direktno, neutralno i profesionalno.\n\nSav tekst namijenjen kandidatu piši u drugom licu jednine, profesionalno i direktno. Koristi \"ti\", \"tvoj\", \"tebi\", \"tebe\", \"tvoje\", \"tvojim\". Glagole piši u jednini: \"pokušaj\", \"razmisli\", \"obrati pažnju\", \"koristi\", \"prepoznaj\", \"prati\", \"zastani\", \"razdvoji\", \"osjećaš\", \"radiš\", \"možeš\", \"moraš\", \"želiš\". Ne koristi formalno obraćanje niti drugo lice množine: \"Vi\", \"Vas\", \"Vam\", \"Vaš\", \"Vaša\", \"Vaše\", \"Vašem\", \"Vašim\", \"pokušajte\", \"razmislite\", \"obratite\", \"koristite\", \"prepoznajte\", \"pratite\", \"zastanite\", \"razdvojite\", \"osjećate\", \"radite\", \"želite\", \"morate\", \"možete\".\n\nKoristi isključivo dostavljeni strukturirani input. Ne računaj scoreove. Ne izmišljaj scoreove, percentile, norme, total score ili poređenje sa populacijom. Ne koristi dijagnostički jezik. Ne patologiziraj osobu. Ne koristi hire/no-hire jezik i ne donosi odluku o zapošljavanju. Ne spominji AI. Ne tvrdi da rezultat dokazuje motivaciju osobe.\n\nTumači šest skala kao profil i kao hipoteze za razgovor, ne kao presudu. Ako je signal slab ili miješan, reci da ga treba čitati oprezno.\n\nVrati samo validan JSON koji tačno odgovara schema contractu mwms_participant_report_v1.",
+    "user_prompt_template": "Na osnovu dostavljenog MWMS structured inputa generiši participant izvještaj.\n\nKontekst:\n- audience: participant\n- locale: {{locale}}\n- test_slug: {{test_slug}}\n\nInput:\n{{prompt_input_json}}\n\nUputstva:\n- title mora biti \"Radna motivacija\".\n- schema_version mora biti \"mwms_participant_report_v1\".\n- Sav tekst kandidatu piši isključivo u drugom licu jednine: \"ti\", \"tvoj\", \"tebi\", \"tebe\". Koristi glagole u jednini poput \"pokušaj\", \"razmisli\", \"obrati pažnju\", \"koristi\", \"prepoznaj\", \"prati\", \"zastani\", \"razdvoji\", \"osjećaš\", \"radiš\", \"možeš\", \"moraš\", \"želiš\". Ne koristi formalne ni množinske oblike poput \"Vi\", \"Vas\", \"Vam\", \"Vaš\", \"Vaša\", \"Vaše\", \"Vašem\", \"Vašim\", \"pokušajte\", \"razmislite\", \"obratite\", \"koristite\", \"prepoznajte\", \"pratite\", \"zastanite\", \"razdvojite\", \"osjećate\", \"radite\", \"želite\", \"morate\", \"možete\".\n- Koristi samo dostavljene dimensions, raw_score vrijednosti, derived_profile i guardrails.\n- Ne računaj iz sirovih odgovora.\n- Ne pravi ukupni rezultat.\n- Ne navodi percentile, pass/fail, norme ili rang.\n- key_observations: maksimalno 3 stavke.\n- possible_tensions: maksimalno 3 stavke.\n- reflection_questions: maksimalno 3 stavke.\n- development_suggestions: maksimalno 3 stavke.\n- interpretation_note mora jasno reći da izvještaj nije dijagnoza, presuda niti samostalna osnova za odluku o zapošljavanju.\n- Koristi kratke, korisne pasuse.\n- Vrati samo JSON.",
+    "output_schema_json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://deep-profile.local/schemas/mwms-participant-report-v1.json",
+      "title": "MWMS Participant Report v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "test_slug",
+        "audience",
+        "title",
+        "summary",
+        "motivation_pattern",
+        "key_observations",
+        "possible_tensions",
+        "reflection_questions",
+        "development_suggestions",
+        "interpretation_note"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "mwms_participant_report_v1"
+        },
+        "test_slug": {
+          "type": "string",
+          "const": "mwms_v1"
+        },
+        "audience": {
+          "type": "string",
+          "const": "participant"
+        },
+        "title": {
+          "type": "string",
+          "const": "Radna motivacija"
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "headline",
+            "paragraph"
+          ],
+          "properties": {
+            "headline": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "paragraph": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "motivation_pattern": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "autonomous",
+            "controlled",
+            "amotivation"
+          ],
+          "properties": {
+            "autonomous": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "controlled": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "amotivation": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "key_observations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "possible_tensions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "reflection_questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "development_suggestions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "interpretation_note": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      },
+      "$defs": {
+        "nonEmptyString": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "notes": "MWMS participant single-test report prompt."
+  },
+  {
+    "prompt_key": "mwms_hr_report_v1",
+    "audience": "hr",
+    "report_type": "individual",
+    "source_type": "single_test",
+    "generator_type": "openai",
+    "version": "v1",
+    "is_active": true,
+    "system_prompt": "Ti generises HR izvjestaj za radnu motivaciju na osnovu vec izracunatih MWMS dimenzija.\n\nPisi na jeziku iz locale vrijednosti u inputu. MVP copy je bosanski, latinica, neutralan i profesionalan.\n\nKoristi iskljucivo deterministic MWMS input. Ne koristi participant izvjestaj, sirove odgovore, item-level podatke, druge testove, composite profil, role model ili organizacijski kontekst koji nije u inputu.\n\nScore, band, bandLabel, code i label su zakljucane vrijednosti. Prekopiraj ih tacno u motivation_profile_snapshot.derivedProfile i motivation_profile_snapshot.dimensions. Ne racunaj, ne zaokruzuj, ne mijenjaj, ne preimenuj i ne preslazi te vrijednosti.\n\nNarativ pisi kao oprezne HR hipoteze za angazman, intervju, onboarding i menadzersku podrsku. Ne donosi selekcijsku odluku, ne pravi rangiranje, ne pravi score uklapanja, ne predvidjaj radni ucinak kao cinjenicu i ne koristi klinicki, medicinski ili fiksni trait jezik.\n\nNe spominji druge procjene, composite izvjestaj, zasticene atribute, AI, model ili ogranicenja modela.\n\nVrati samo validan JSON koji tacno odgovara contractu mwms_hr_report_v1.",
+    "user_prompt_template": "Na osnovu dostavljenog MWMS HR structured inputa generisi HR izvjestaj.\n\nKontekst:\n- audience: hr\n- locale: {{locale}}\n- test_slug: {{test_slug}}\n\nInput:\n{{prompt_input_json}}\n\nUputstva:\n- contractVersion mora biti \"mwms_hr_report_v1\".\n- reportType mora biti \"mwms_hr_report_v1\".\n- testSlug mora biti \"mwms_v1\".\n- audience mora biti \"hr\".\n- sourceType mora biti \"single_test\".\n- meta.language mora pratiti input.locale.\n- motivation_profile_snapshot.scale mora biti min 1 i max 7.\n- motivation_profile_snapshot.dimensions mora imati tacno svih 6 input dimenzija i sacuvati code, label, rawScore, band i bandLabel bez izmjene.\n- motivation_profile_snapshot.derivedProfile mora prekopirati deterministic profile vrijednosti bez izmjene.\n- key_motivational_drivers: tacno 3 stavke.\n- potential_friction_points: tacno 3 stavke.\n- work_context_hypotheses: tacno 3 stavke.\n- manager_support_guidance: tacno 4 stavke.\n- interview_questions: tacno 5 stavki.\n- onboarding_recommendations: tacno 4 stavke.\n- decision_support_note: 2 do 3 kratke stavke.\n- safety_checks: sve vrijednosti true.\n- Fokus: angazman, intervju, onboarding, menadzerska podrska, radni kontekst i moguce motivacijske frikcije.\n- Koristi oprezne formulacije: \"moze biti korisno provjeriti\", \"vrijedi istraziti\", \"u razgovoru provjeriti\", \"citati kao motivacijski profil\".\n- Ne koristi participant izvjestaj kao izvor.\n- Ne povezuj MWMS sa drugim procjenama.\n- Ne uvodi score uklapanja, rangiranje, selekcijsku presudu ili tvrdnje o buducem radnom ucinku.\n- Ne koristi klinicki, medicinski ili fiksni trait jezik.\n- Vrati samo JSON.",
+    "output_schema_json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://deep-profile.local/schemas/mwms-hr-report-v1.json",
+      "title": "MWMS HR Report v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "reportType",
+        "testSlug",
+        "audience",
+        "sourceType",
+        "locale",
+        "meta",
+        "motivation_profile_snapshot",
+        "key_motivational_drivers",
+        "potential_friction_points",
+        "work_context_hypotheses",
+        "manager_support_guidance",
+        "interview_questions",
+        "onboarding_recommendations",
+        "decision_support_note",
+        "interpretation_note",
+        "safety_checks"
+      ],
+      "properties": {
+        "contractVersion": {
+          "type": "string",
+          "const": "mwms_hr_report_v1"
+        },
+        "reportType": {
+          "type": "string",
+          "const": "mwms_hr_report_v1"
+        },
+        "testSlug": {
+          "type": "string",
+          "const": "mwms_v1"
+        },
+        "audience": {
+          "type": "string",
+          "const": "hr"
+        },
+        "sourceType": {
+          "type": "string",
+          "const": "single_test"
+        },
+        "locale": {
+          "type": "string",
+          "enum": [
+            "bs",
+            "hr",
+            "sr",
+            "en"
+          ]
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "language",
+            "generatedAt"
+          ],
+          "properties": {
+            "language": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 40
+            },
+            "generatedAt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          }
+        },
+        "motivation_profile_snapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scale",
+            "dimensions",
+            "derivedProfile"
+          ],
+          "properties": {
+            "scale": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "min",
+                "max"
+              ],
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "const": 1
+                },
+                "max": {
+                  "type": "number",
+                  "const": 7
+                }
+              }
+            },
+            "dimensions": {
+              "type": "array",
+              "minItems": 6,
+              "maxItems": 6,
+              "items": {
+                "$ref": "#/$defs/dimensionSnapshot"
+              }
+            },
+            "derivedProfile": {
+              "$ref": "#/$defs/derivedProfile"
+            }
+          }
+        },
+        "key_motivational_drivers": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/hrSignal"
+          }
+        },
+        "potential_friction_points": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/hrFrictionPoint"
+          }
+        },
+        "work_context_hypotheses": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/workContextHypothesis"
+          }
+        },
+        "manager_support_guidance": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/managerGuidance"
+          }
+        },
+        "interview_questions": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/interviewQuestion"
+          }
+        },
+        "onboarding_recommendations": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/onboardingRecommendation"
+          }
+        },
+        "decision_support_note": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "interpretation_note": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "safety_checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "noScoreRecalculation",
+            "noScoreMutation",
+            "noHireNoHireDecision",
+            "noDiagnosticLanguage",
+            "hypothesesOnly",
+            "singleTestOnly"
+          ],
+          "properties": {
+            "noScoreRecalculation": {
+              "type": "boolean",
+              "const": true
+            },
+            "noScoreMutation": {
+              "type": "boolean",
+              "const": true
+            },
+            "noHireNoHireDecision": {
+              "type": "boolean",
+              "const": true
+            },
+            "noDiagnosticLanguage": {
+              "type": "boolean",
+              "const": true
+            },
+            "hypothesesOnly": {
+              "type": "boolean",
+              "const": true
+            },
+            "singleTestOnly": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+      },
+      "$defs": {
+        "nonEmptyString": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dimensionCode": {
+          "type": "string",
+          "enum": [
+            "amotivation",
+            "external_social",
+            "external_material",
+            "introjected",
+            "identified",
+            "intrinsic"
+          ]
+        },
+        "band": {
+          "type": "string",
+          "enum": [
+            "lower",
+            "moderate",
+            "higher"
+          ]
+        },
+        "dimensionSnapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "label",
+            "rawScore",
+            "band",
+            "bandLabel"
+          ],
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/dimensionCode"
+            },
+            "label": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "rawScore": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "band": {
+              "$ref": "#/$defs/band"
+            },
+            "bandLabel": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "derivedProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "autonomousMotivationScore",
+            "controlledMotivationScore",
+            "amotivationScore",
+            "dominantDimensions",
+            "lowerDimensions",
+            "cautionFlags"
+          ],
+          "properties": {
+            "autonomousMotivationScore": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "controlledMotivationScore": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "amotivationScore": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "dominantDimensions": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "$ref": "#/$defs/dimensionCode"
+              }
+            },
+            "lowerDimensions": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "$ref": "#/$defs/dimensionCode"
+              }
+            },
+            "cautionFlags": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "elevatedAmotivation",
+                "highControlledRelativeToAutonomous",
+                "mixedProfile"
+              ],
+              "properties": {
+                "elevatedAmotivation": {
+                  "type": "boolean"
+                },
+                "highControlledRelativeToAutonomous": {
+                  "type": "boolean"
+                },
+                "mixedProfile": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "hrSignal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "evidence",
+            "hrImplication"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "evidence": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "hrImplication": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "hrFrictionPoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "signal",
+            "whyItMayMatter",
+            "howToCheck"
+          ],
+          "properties": {
+            "signal": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "whyItMayMatter": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "howToCheck": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "workContextHypothesis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "context",
+            "hypothesis",
+            "verification"
+          ],
+          "properties": {
+            "context": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "hypothesis": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "verification": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "managerGuidance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "focus",
+            "recommendation",
+            "rationale"
+          ],
+          "properties": {
+            "focus": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "recommendation": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "rationale": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "interviewQuestion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "question",
+            "evaluates",
+            "whatToListenFor"
+          ],
+          "properties": {
+            "question": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "evaluates": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "whatToListenFor": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        "onboardingRecommendation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "phase",
+            "recommendation",
+            "why"
+          ],
+          "properties": {
+            "phase": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "recommendation": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "why": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        }
+      }
+    },
+    "notes": "MWMS HR single-test report prompt."
+  }
+]

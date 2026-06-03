@@ -1,0 +1,223 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { TeamDynamicsMixedRunPreview } from "@/components/assessment/team-dynamics-mixed-run-preview";
+import { TeamDynamicsRunUiSkeleton } from "@/components/assessment/team-dynamics-run-ui-skeleton";
+import { requireAuthenticatedUser } from "@/lib/auth/session";
+import { TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG } from "@/lib/assessment/team-dynamics";
+import {
+  loadTeamAssessmentExecutionContext,
+  loadTeamAssessmentRunHandoff,
+  markTeamAssessmentExecutionStartedIfInvited,
+  resolveTeamAssessmentExecutionShellState,
+} from "@/lib/assessment/team-assessment-execution";
+
+type TeamAssessmentRunPageProps = {
+  params: {
+    teamAssessmentParticipantId: string;
+  };
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function TeamAssessmentRunPage({ params }: TeamAssessmentRunPageProps) {
+  const user = await requireAuthenticatedUser();
+  const access = await loadTeamAssessmentExecutionContext({
+    teamAssessmentParticipantId: params.teamAssessmentParticipantId,
+    userId: user.id,
+  });
+
+  if (!access.ok) {
+    notFound();
+  }
+
+  let wrapperStatus = access.context.wrapperStatus;
+  let shellState = resolveTeamAssessmentExecutionShellState({
+    route: "run",
+    wrapperStatus,
+  });
+
+  if (shellState.shouldTransitionToStarted) {
+    const transition = await markTeamAssessmentExecutionStartedIfInvited({
+      teamAssessmentParticipantId: access.context.teamAssessmentParticipantId,
+    });
+
+    wrapperStatus = transition.status;
+    shellState = resolveTeamAssessmentExecutionShellState({
+      route: "run",
+      wrapperStatus,
+    });
+  }
+
+  const handoff = await loadTeamAssessmentRunHandoff({
+    context: {
+      ...access.context,
+      wrapperStatus,
+    },
+    shellState,
+  });
+
+  const isMixedRuntimePreview =
+    handoff.runShellVariant === "mixed_runtime_preview" && handoff.mixedRuntimeHandoff !== null;
+  const shouldRenderActiveMixedRuntimePreview =
+    isMixedRuntimePreview && handoff.isRunnableShellState;
+
+  return (
+    <main className="mx-auto w-full max-w-4xl px-4 pb-10 sm:px-6 lg:px-8">
+      <section className="space-y-6 rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,245,249,0.95))] p-6 shadow-[0_24px_54px_rgba(15,23,42,0.08)] sm:p-8">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm font-semibold tracking-[-0.01em] text-slate-700">
+            <Link
+              href={`/app/team-assessments/${params.teamAssessmentParticipantId}`}
+              className="inline-flex items-center gap-2 transition-colors duration-200 hover:text-slate-900"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Nazad na uvod</span>
+            </Link>
+            <span className="text-slate-300">•</span>
+            <Link
+              href="/app"
+              className="inline-flex items-center gap-2 transition-colors duration-200 hover:text-slate-900"
+            >
+              <span>Nazad na dashboard</span>
+            </Link>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Team Dynamics
+            </p>
+            <h1 className="text-3xl font-extrabold tracking-[-0.05em] text-slate-950 sm:text-4xl">
+              Procjena timske dinamike
+            </h1>
+            <p className="max-w-2xl text-sm leading-6 text-slate-700 sm:text-[15px]">
+              {shouldRenderActiveMixedRuntimePreview
+                ? "4 kratka bloka, oko 12–15 minuta. Ovaj prikaz je kontrolisani UI-only preview finalnog mixed-format runtime handoffa."
+                : "Ova procjena je dio timske procjene, ne individualni psihološki profil."}
+            </p>
+          </div>
+        </div>
+
+        <dl className="grid gap-3 rounded-[1.5rem] border border-slate-200/80 bg-white/75 p-5 sm:grid-cols-2">
+          <div className="space-y-1">
+            <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Status wrappera
+            </dt>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.statusLabel}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Paket procjene
+            </dt>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.packageSlug}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Status attempta
+            </dt>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.attemptStatus}</dd>
+          </div>
+          <div className="space-y-1">
+            <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Broj pitanja
+            </dt>
+            <dd className="text-sm font-semibold text-slate-900">{handoff.activeQuestionCount}</dd>
+          </div>
+        </dl>
+
+        <section className="space-y-3 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/80 p-5">
+          <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">
+            {handoff.placeholderTitle}
+          </h2>
+          {handoff.isRunnableShellState ? (
+            <>
+              <p className="text-sm font-semibold text-slate-900">Podaci za rjesavanje su pripremljeni.</p>
+              <p className="text-sm leading-6 text-slate-700">
+                {handoff.placeholderMessage}
+              </p>
+              {shouldRenderActiveMixedRuntimePreview ? (
+                <>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Finalni mixed-format runtime handoff je ucitan iz imported DB shape-a i
+                    prikazuje se kroz lokalni preview sa rucnim spremanjem odgovora i DB
+                    rehydration read path-om.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Ucitana su 4 bloka i {handoff.activeQuestionCount} assessment jedinica za{" "}
+                    {handoff.testName}.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Rjesavanje procjene jos nije omoguceno u ovoj verziji.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Ucitani su osnovni execution podaci za {handoff.testName} i broj aktivnih pitanja:{" "}
+                    {handoff.activeQuestionCount}.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Sekcije su pripremljene za sljedeci korak: {handoff.blockOutlineCount}.
+                  </p>
+                  <p className="text-sm leading-6 text-slate-700">
+                    Pitanja su pripremljena za sljedeci korak: {handoff.questionOutlineCount}.
+                  </p>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-slate-900">
+                Ovaj wrapper je u sigurnom post-completion ili unavailable stanju.
+              </p>
+              <p className="text-sm leading-6 text-slate-700">
+                {handoff.placeholderMessage}
+              </p>
+              {handoff.wrapperStatus === "completed" &&
+              handoff.packageSlug === TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG ? (
+                <p className="text-sm leading-6 text-slate-700">
+                  Odgovori su spremljeni i procjena je oznacena kao zavrsena. Izvjestaji i
+                  dalja obrada bice omoguceni kroz zaseban korak.
+                </p>
+              ) : null}
+              <p className="text-sm leading-6 text-slate-700">
+                Aktivni run više nije dostupan za ovaj wrapper i pitanja se više ne prikazuju.
+              </p>
+            </>
+          )}
+          {handoff.warningCode === "unexpected_question_count" ? (
+            <p className="text-sm leading-6 text-amber-800">
+              Handoff je ucitan, ali broj aktivnih pitanja odstupa od ocekivanog Team Dynamics
+              footprinta ili outline nije uskladjen sa aktivnim pitanjima.
+            </p>
+          ) : null}
+        </section>
+
+        {shouldRenderActiveMixedRuntimePreview ? (
+          <TeamDynamicsMixedRunPreview
+            teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
+            runtimeHandoff={handoff.mixedRuntimeHandoff!}
+            savedLikertSelectionsByQuestionId={handoff.mixedSavedLikertSelectionsByQuestionId}
+            savedSjtSelectionsByQuestionId={handoff.mixedSavedSjtSelectionsByQuestionId}
+            completionReadiness={handoff.mixedCompletionReadiness}
+            wrapperStatus={handoff.wrapperStatus}
+            isRunnableShellState={handoff.isRunnableShellState}
+          />
+        ) : (
+          <TeamDynamicsRunUiSkeleton
+            teamAssessmentParticipantId={handoff.teamAssessmentParticipantId}
+            wrapperStatus={handoff.wrapperStatus}
+            uiOnlyItems={handoff.uiOnlyItems}
+            uiOnlyItemCount={handoff.uiOnlyItemCount}
+            uiOnlyUnsupportedCount={handoff.uiOnlyUnsupportedCount}
+            uiOnlySkeletonMode={handoff.uiOnlySkeletonMode}
+            savedSelectedOptionIdsByQuestionId={handoff.savedSelectedOptionIdsByQuestionId}
+            savedAnswerQuestionIds={handoff.savedAnswerQuestionIds}
+            savedAnswerCount={handoff.savedAnswerCount}
+            completionReadiness={handoff.completionReadiness}
+            isRunnableShellState={handoff.isRunnableShellState}
+          />
+        )}
+      </section>
+    </main>
+  );
+}

@@ -3,7 +3,7 @@ import { SafranPracticeExampleView } from "@/components/assessment/safran-practi
 import { getSafranScoredRunHref } from "@/lib/assessment/attempt-lifecycle";
 import { getSafranPracticeExample } from "@/lib/assessment/safran-practice";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+import { getGenericCandidateAttemptForUser } from "@/lib/candidate/attempts";
 
 type CandidateAttemptPracticeExamplePageProps = {
   params: {
@@ -22,7 +22,7 @@ export default async function CandidateAttemptPracticeExamplePage({
   params,
 }: CandidateAttemptPracticeExamplePageProps) {
   const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+  const attempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();

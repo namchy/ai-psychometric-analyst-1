@@ -10,6 +10,7 @@ export type AssessmentLocale = (typeof SUPPORTED_ASSESSMENT_LOCALES)[number];
 export type AssessmentLocaleAlias =
   | AssessmentLocale
   | (typeof SUPPORTED_BCP47_ASSESSMENT_LOCALES)[number];
+export type ReportLocale = AssessmentLocale;
 
 export function isAssessmentLocale(
   value: string | null | undefined,
@@ -53,6 +54,13 @@ export function normalizeAssessmentLocale(
 export function toLegacyAssessmentLocale(
   value: string | null | undefined,
 ): AssessmentLocale {
+  return normalizeAssessmentLocale(value);
+}
+
+// Future HR report snapshots must include this normalized locale value.
+export function resolveReportLocale(
+  value: string | null | undefined,
+): ReportLocale {
   return normalizeAssessmentLocale(value);
 }
 

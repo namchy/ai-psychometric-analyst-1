@@ -1,10 +1,21 @@
 import type { AssessmentLocale } from "@/lib/assessment/locale";
+import type { AddressingForm } from "@/lib/auth/addressing-form";
 
 export type TestCategory = "personality" | "behavioral" | "cognitive";
 export type TestStatus = "draft" | "active" | "archived";
-export type ScoringMethod = "likert_sum" | "correct_answers" | "weighted_correct";
+export type ScoringMethod =
+  | "likert_sum"
+  | "correct_answers"
+  | "weighted_correct"
+  | "mixed_v1";
 
 export type QuestionType = "single_choice" | "multiple_choice" | "text";
+export type ResponseKind =
+  | "single_choice"
+  | "multiple_choice"
+  | "text"
+  | "best_worst";
+export type ResponseSelectionRole = "best" | "worst";
 export type Difficulty = "easy" | "medium" | "hard";
 export type AttemptStatus = "in_progress" | "completed" | "abandoned";
 
@@ -63,6 +74,7 @@ export type Attempt = {
   participant_id: string | null;
   test_id: string;
   locale: AssessmentLocale;
+  addressing_form_snapshot: AddressingForm | null;
   status: AttemptStatus;
   started_at: string;
   scored_started_at: string | null;
@@ -75,7 +87,7 @@ export type Response = {
   id: string;
   attempt_id: string;
   question_id: string;
-  response_kind: QuestionType;
+  response_kind: ResponseKind;
   answer_option_id: string | null;
   raw_value: number | null;
   scored_value: number | null;
@@ -87,6 +99,7 @@ export type ResponseSelection = {
   response_id: string;
   question_id: string;
   answer_option_id: string;
+  selection_role: ResponseSelectionRole | null;
   created_at: string;
 };
 

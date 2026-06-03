@@ -36,6 +36,36 @@ import {
   type IpcReportPromptInput,
 } from "@/lib/assessment/ipc-report-contract";
 import {
+  MWMS_PARTICIPANT_REPORT_CONTRACT,
+  isMwmsTestSlug,
+  type MwmsParticipantReportPromptInput,
+} from "@/lib/assessment/mwms-report-contract";
+import {
+  MWMS_HR_REPORT_V1_CONTRACT,
+  formatMwmsHrReportValidationErrors,
+  validateMwmsHrReportV1,
+  type MwmsHrReportInput,
+  type MwmsHrReportV1,
+} from "@/lib/assessment/mwms-hr-report-v1";
+import {
+  SAFRAN_HR_REPORT_V1_CONTRACT,
+  validateSafranHrReport,
+  type SafranHrReportInput,
+  type SafranHrReportV1,
+} from "@/lib/assessment/safran-hr-report-v1";
+import {
+  SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT,
+  isSafranTestSlug,
+  validateSafranParticipantAiReport,
+  type SafranAiReportInput,
+  type SafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
+  formatMwmsParticipantReportV1ValidationErrors,
+  validateMwmsParticipantReportV1,
+  type MwmsParticipantReportV1,
+} from "@/lib/assessment/mwms-participant-report-v1";
+import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
   validateIpcParticipantReportV1,
@@ -47,7 +77,7 @@ import type { ScoringMethod } from "@/lib/assessment/types";
 import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
 
 export type ReportGeneratorType = "mock" | "openai";
-export type ReportFamily = "big_five" | "ipc";
+export type ReportFamily = "big_five" | "ipc" | "mwms" | "safran";
 export type ReportAudience = "participant" | "hr";
 export type ReportVersion = "v1" | "v2";
 export type ReportRenderFormat =
@@ -56,7 +86,11 @@ export type ReportRenderFormat =
   | "big_five_participant_v1"
   | "big_five_hr_v1"
   | "ipc_participant_v1"
-  | "ipc_hr_v1";
+  | "ipc_hr_v1"
+  | "mwms_participant_report_v1"
+  | "mwms_hr_report_v1"
+  | "safran_participant_ai_report_v1"
+  | "safran_hr_report_v1";
 export type AttemptReportStatus =
   | "queued"
   | "processing"
@@ -70,7 +104,11 @@ export type RuntimeCompletedAssessmentReport =
   | IpipNeo120HrReportV1
   | IpipNeo120ParticipantReportV1
   | IpipNeo120ParticipantReportV2
-  | IpcCompletedAssessmentReport;
+  | IpcCompletedAssessmentReport
+  | MwmsParticipantReportV1
+  | MwmsHrReportV1
+  | SafranParticipantAiReport
+  | SafranHrReportV1;
 export type CompletedAssessmentReport = RuntimeCompletedAssessmentReport;
 
 export type CompletedAssessmentReportRequest = {
@@ -115,7 +153,11 @@ export type ReportPromptInput =
   | AiReportPromptInput
   | IpipNeo120HrReportPromptInput
   | IpipNeo120ParticipantReportPromptInput
-  | IpcReportPromptInput;
+  | IpcReportPromptInput
+  | MwmsParticipantReportPromptInput
+  | MwmsHrReportInput
+  | SafranAiReportInput
+  | SafranHrReportInput;
 
 export type ReportContractDescriptor = {
   family: ReportFamily;
@@ -158,7 +200,11 @@ export function isCompletedAssessmentReport(value: unknown): value is CompletedA
     validateIpipNeo120ParticipantReportV1(value).ok ||
     validateIpipNeo120ParticipantReportV2(value).ok ||
     validateIpcParticipantReportV1(value).ok ||
-    validateIpcHrReportV1(value).ok
+    validateIpcHrReportV1(value).ok ||
+    validateMwmsParticipantReportV1(value).ok ||
+    validateMwmsHrReportV1(value).ok
+    || validateSafranParticipantAiReport(value).ok
+    || validateSafranHrReport(value).ok
   );
 }
 
@@ -203,6 +249,57 @@ export function resolveReportContract(
     };
   }
 
+  if (isMwmsTestSlug(testSlug) && audience === "participant") {
+    return {
+      family: "mwms",
+      reportType: MWMS_PARTICIPANT_REPORT_CONTRACT.reportType,
+      sourceType: MWMS_PARTICIPANT_REPORT_CONTRACT.sourceType,
+      promptKey: MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey,
+      schemaName: MWMS_PARTICIPANT_REPORT_CONTRACT.schemaId,
+      outputSchemaJson:
+        MWMS_PARTICIPANT_REPORT_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
+  if (isMwmsTestSlug(testSlug) && audience === "hr") {
+    return {
+      family: "mwms",
+      reportType: MWMS_HR_REPORT_V1_CONTRACT.reportType,
+      sourceType: MWMS_HR_REPORT_V1_CONTRACT.sourceType,
+      promptKey: MWMS_HR_REPORT_V1_CONTRACT.promptKey,
+      schemaName: MWMS_HR_REPORT_V1_CONTRACT.schemaId,
+      outputSchemaJson:
+        MWMS_HR_REPORT_V1_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
+  if (isSafranTestSlug(testSlug) && audience === "participant") {
+    return {
+      family: "safran",
+      reportType: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.reportType,
+      sourceType: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.sourceType,
+      promptKey: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey,
+      schemaName: SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.schemaId,
+      outputSchemaJson:
+        SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.outputSchemaJson as Record<
+          string,
+          unknown
+        >,
+    };
+  }
+
+  if (isSafranTestSlug(testSlug) && audience === "hr") {
+    return {
+      family: "safran",
+      reportType: SAFRAN_HR_REPORT_V1_CONTRACT.reportType,
+      sourceType: SAFRAN_HR_REPORT_V1_CONTRACT.sourceType,
+      promptKey: SAFRAN_HR_REPORT_V1_CONTRACT.promptKey,
+      schemaName: SAFRAN_HR_REPORT_V1_CONTRACT.schemaId,
+      outputSchemaJson:
+        SAFRAN_HR_REPORT_V1_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    };
+  }
+
   return {
     family: "big_five",
     reportType: "individual",
@@ -214,7 +311,19 @@ export function resolveReportContract(
 }
 
 export function resolveReportFamily(testSlug: string): ReportFamily {
-  return isIpcTestSlug(testSlug) ? "ipc" : "big_five";
+  if (isIpcTestSlug(testSlug)) {
+    return "ipc";
+  }
+
+  if (isMwmsTestSlug(testSlug)) {
+    return "mwms";
+  }
+
+  if (isSafranTestSlug(testSlug)) {
+    return "safran";
+  }
+
+  return "big_five";
 }
 
 export function resolveReportSignal(context: {
@@ -237,6 +346,14 @@ export function resolveReportSignal(context: {
       ? reportVersion === "v2"
         ? "ipip_neo_120_participant_v2"
         : "ipip_neo_120_participant_v1"
+      : isMwmsTestSlug(context.testSlug) && context.audience === "participant"
+        ? "mwms_participant_report_v1"
+      : isMwmsTestSlug(context.testSlug) && context.audience === "hr"
+        ? "mwms_hr_report_v1"
+      : isSafranTestSlug(context.testSlug) && context.audience === "participant"
+        ? "safran_participant_ai_report_v1"
+      : isSafranTestSlug(context.testSlug) && context.audience === "hr"
+        ? "safran_hr_report_v1"
       : resolveReportRenderFormat({
           reportFamily,
           reportAudience,
@@ -267,6 +384,14 @@ export function resolveReportRenderFormat(context: {
       return "ipc_participant_v1";
     case "ipc:hr:v1":
       return "ipc_hr_v1";
+    case "mwms:participant:v1":
+      return "mwms_participant_report_v1";
+    case "mwms:hr:v1":
+      return "mwms_hr_report_v1";
+    case "safran:participant:v1":
+      return "safran_participant_ai_report_v1";
+    case "safran:hr:v1":
+      return "safran_hr_report_v1";
     default:
       return null;
   }
@@ -337,6 +462,70 @@ export function validateRuntimeCompletedAssessmentReport(
       return {
         ok: false,
         reason: formatIpcReportValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isMwmsTestSlug(context.testSlug) && context.audience === "participant") {
+    const validationResult = validateMwmsParticipantReportV1(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: formatMwmsParticipantReportV1ValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isMwmsTestSlug(context.testSlug) && context.audience === "hr") {
+    const validationResult = validateMwmsHrReportV1(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: formatMwmsHrReportValidationErrors(validationResult.errors),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isSafranTestSlug(context.testSlug) && context.audience === "participant") {
+    const validationResult = validateSafranParticipantAiReport(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: validationResult.errors.join(" | "),
+      };
+    }
+
+    return {
+      ok: true,
+      value: validationResult.value,
+    };
+  }
+
+  if (isSafranTestSlug(context.testSlug) && context.audience === "hr") {
+    const validationResult = validateSafranHrReport(value);
+
+    if (!validationResult.ok) {
+      return {
+        ok: false,
+        reason: validationResult.errors.join(" | "),
       };
     }
 

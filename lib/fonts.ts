@@ -1,10 +1,9 @@
-import { Plus_Jakarta_Sans } from "next/font/google";
 import localFont from "next/font/local";
 
-export const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-plus-jakarta-sans",
-});
+export const plusJakartaSans = {
+  className: "",
+  variable: "",
+};
 
 export const zodiak = localFont({
   src: [

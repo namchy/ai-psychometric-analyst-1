@@ -170,6 +170,110 @@ assert.equal(
   "in-progress-scored",
 );
 
+const completedBeatsNewEmptySafranAttempts = [
+  {
+    id: "safran-completed",
+    test_id: "test-safran",
+    status: "completed",
+    responseCount: 45,
+    scored_started_at: null,
+    created_at: "2026-05-09T18:17:36.716Z",
+  },
+  {
+    id: "safran-empty-new",
+    test_id: "test-safran",
+    status: "in_progress",
+    responseCount: 0,
+    scored_started_at: null,
+    created_at: "2026-05-09T18:59:44.041Z",
+  },
+];
+
+assert.equal(
+  selectPrimaryAttemptForTest({
+    attempts: completedBeatsNewEmptySafranAttempts,
+    testId: "test-safran",
+    testSlug: "safran_v1",
+  })?.id,
+  "safran-completed",
+);
+
+const onlyEmptyInProgressSafranAttempts = [
+  {
+    id: "safran-empty-only",
+    test_id: "test-safran",
+    status: "in_progress",
+    responseCount: 0,
+    scored_started_at: null,
+    created_at: "2026-05-10T08:00:00.000Z",
+  },
+];
+
+assert.equal(
+  selectPrimaryAttemptForTest({
+    attempts: onlyEmptyInProgressSafranAttempts,
+    testId: "test-safran",
+    testSlug: "safran_v1",
+  })?.id,
+  "safran-empty-only",
+);
+
+const inProgressWithResponsesSafranAttempts = [
+  {
+    id: "safran-completed",
+    test_id: "test-safran",
+    status: "completed",
+    responseCount: 45,
+    scored_started_at: null,
+    created_at: "2026-05-09T18:17:36.716Z",
+  },
+  {
+    id: "safran-active-responses",
+    test_id: "test-safran",
+    status: "in_progress",
+    responseCount: 3,
+    scored_started_at: null,
+    created_at: "2026-05-10T08:10:00.000Z",
+  },
+];
+
+assert.equal(
+  selectPrimaryAttemptForTest({
+    attempts: inProgressWithResponsesSafranAttempts,
+    testId: "test-safran",
+    testSlug: "safran_v1",
+  })?.id,
+  "safran-active-responses",
+);
+
+const completedBeatsAbandonedSafranAttempts = [
+  {
+    id: "safran-completed",
+    test_id: "test-safran",
+    status: "completed",
+    responseCount: 45,
+    scored_started_at: null,
+    created_at: "2026-05-09T18:17:36.716Z",
+  },
+  {
+    id: "safran-abandoned",
+    test_id: "test-safran",
+    status: "abandoned",
+    responseCount: 45,
+    scored_started_at: null,
+    created_at: "2026-05-10T08:20:00.000Z",
+  },
+];
+
+assert.equal(
+  selectPrimaryAttemptForTest({
+    attempts: completedBeatsAbandonedSafranAttempts,
+    testId: "test-safran",
+    testSlug: "safran_v1",
+  })?.id,
+  "safran-completed",
+);
+
 assert.equal(
   getAssessmentAttemptLifecycle({
     status: "in_progress",
@@ -205,7 +309,7 @@ assert.equal(
     testId: "test-ipip",
     testSlug: "ipip-neo-120-v1",
   })?.id,
-  "ipip-not-started",
+  "ipip-completed",
 );
 
 console.log("Attempt lifecycle tests passed.");

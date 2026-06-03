@@ -1,0 +1,22 @@
+[
+  {
+    "option_order": 1,
+    "label": "Uopste se ne slazem"
+  },
+  {
+    "option_order": 2,
+    "label": "Uglavnom se ne slazem"
+  },
+  {
+    "option_order": 3,
+    "label": "Niti se slazem niti se ne slazem"
+  },
+  {
+    "option_order": 4,
+    "label": "Uglavnom se slazem"
+  },
+  {
+    "option_order": 5,
+    "label": "U potpunosti se slazem"
+  }
+]

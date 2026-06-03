@@ -1,8 +1,11 @@
 import "server-only";
 
 import { getAssessmentAttemptLifecycle, type AssessmentAttemptLifecycle } from "@/lib/assessment/attempt-lifecycle";
+import type { AttemptReportStatus } from "@/lib/assessment/report-providers";
 import { STANDARD_ASSESSMENT_BATTERY_SLUGS } from "@/lib/assessment/standard-battery";
+import { shouldHideTeamDynamicsAttemptFromHrIndividualFlow } from "@/lib/assessment/team-dynamics";
 import type { AssessmentLocale } from "@/lib/assessment/locale";
+import type { AddressingForm } from "@/lib/auth/addressing-form";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type OrganizationSummary = {
@@ -26,6 +29,7 @@ export type ParticipantSummary = {
   user_id: string | null;
   email: string;
   full_name: string;
+  addressing_form: AddressingForm | null;
   participant_type: "employee" | "candidate";
   status: "active" | "inactive";
   created_at: string;
@@ -72,6 +76,20 @@ export type OrganizationScopedAttemptSummary = {
   } | null;
 };
 
+export type OrganizationScopedAttemptReportSummary = {
+  id: string;
+  attempt_id: string;
+  test_slug: string;
+  audience: "participant" | "hr";
+  report_type: string;
+  source_type: string;
+  report_status: AttemptReportStatus;
+  generated_at: string;
+  completed_at: string | null;
+  failure_code: string | null;
+  failure_reason: string | null;
+};
+
 type AttemptRelation<T> = T | T[] | null;
 
 type MembershipRow = {
@@ -116,6 +134,8 @@ type AttemptRow = {
 type AttemptResponseRow = {
   attempt_id: string;
 };
+
+type AttemptReportRow = OrganizationScopedAttemptReportSummary;
 
 type OrganizationRunnableStandardBatteryTestRow = {
   test_id: string;
@@ -251,7 +271,7 @@ export async function getParticipantsForOrganization(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .select("id, organization_id, user_id, email, full_name, addressing_form, participant_type, status, created_at")
     .eq("organization_id", organizationId)
     .eq("status", "active")
     .order("created_at", { ascending: true })
@@ -271,7 +291,7 @@ export async function getParticipantForOrganization(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .select("id, organization_id, user_id, email, full_name, addressing_form, participant_type, status, created_at")
     .eq("organization_id", organizationId)
     .eq("id", participantId)
     .eq("status", "active")
@@ -381,7 +401,7 @@ export async function getLinkedParticipantForUser(
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("participants")
-    .select("id, organization_id, user_id, email, full_name, participant_type, status, created_at")
+    .select("id, organization_id, user_id, email, full_name, addressing_form, participant_type, status, created_at")
     .eq("user_id", userId)
     .eq("status", "active")
     .order("created_at", { ascending: true })
@@ -442,6 +462,10 @@ export async function getAttemptForOrganization(
   const responseCounts = await getResponseCountsForAttemptIds([attemptRow.id]);
   const attempt = mapOrganizationAttemptSummary(attemptRow, responseCounts.get(attemptRow.id) ?? 0);
 
+  if (shouldHideTeamDynamicsAttemptFromHrIndividualFlow(attempt.tests?.slug)) {
+    return null;
+  }
+
   if (
     attempt.participants &&
     attempt.participants.organization_id !== organizationId
@@ -488,7 +512,12 @@ export async function getAttemptsForOrganization(
 
   const attemptRows = ((data ?? []) as AttemptRow[]).filter((attempt) => {
     const participant = normalizeAttemptRelation(attempt.participants);
-    return !participant || participant.organization_id === organizationId;
+    const tests = normalizeAttemptRelation(attempt.tests);
+
+    return (
+      (!participant || participant.organization_id === organizationId) &&
+      !shouldHideTeamDynamicsAttemptFromHrIndividualFlow(tests?.slug)
+    );
   });
   const responseCounts = await getResponseCountsForAttemptIds(attemptRows.map((attempt) => attempt.id));
 
@@ -504,4 +533,40 @@ export async function getAttemptsForOrganization(
 
       return Date.parse(right.started_at) - Date.parse(left.started_at);
     });
+}
+
+export async function getAttemptsForParticipantInOrganization(
+  organizationId: string,
+  participantId: string,
+): Promise<OrganizationScopedAttemptSummary[]> {
+  const attempts = await getAttemptsForOrganization(organizationId);
+
+  return attempts.filter((attempt) => attempt.participant_id === participantId);
+}
+
+export async function getHrAttemptReportsForAttemptIds(
+  attemptIds: string[],
+): Promise<OrganizationScopedAttemptReportSummary[]> {
+  if (attemptIds.length === 0) {
+    return [];
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select(
+      "id, attempt_id, test_slug, audience, report_type, source_type, report_status, generated_at, completed_at, failure_code, failure_reason",
+    )
+    .in("attempt_id", attemptIds)
+    .eq("audience", "hr")
+    .eq("report_type", "individual")
+    .eq("source_type", "single_test")
+    .order("generated_at", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load HR attempt reports: ${error.message}`);
+  }
+
+  return (data ?? []) as AttemptReportRow[];
 }

@@ -1,12 +1,8 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { logout } from "@/app/actions/auth";
+import { cookies } from "next/headers";
 import { createParticipant, createStandardAssessmentBattery } from "@/app/actions/participants";
 import {
-  AuthenticatedAppFooterShell,
-  AuthenticatedAppHeaderShell,
   AuthenticatedAppMainContent,
-  AuthenticatedAppPageShell,
 } from "@/components/app/authenticated-app-chrome";
 import {
   DashboardActionRow,
@@ -14,6 +10,7 @@ import {
   DashboardSectionHeader,
   DashboardStatusBadge,
   DashboardSectionShell,
+  getDashboardCtaClassName,
 } from "@/components/dashboard/primitives";
 import { HrAssessmentsTable } from "@/components/dashboard/hr-assessments-table";
 import { SingleOpenPanelGroup } from "@/components/dashboard/single-open-panel-group";
@@ -31,9 +28,8 @@ import {
   getAttemptsForOrganization,
   type MembershipSummary,
   type OrganizationRunnableStandardBatteryTestSummary,
-  type OrganizationScopedAttemptSummary,
-  type ParticipantSummary,
 } from "@/lib/b2b/organizations";
+import { buildParticipantAssessmentRows } from "@/lib/dashboard/hr-candidate-assessment";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 
 type DashboardPageProps = {
@@ -49,123 +45,9 @@ type ParticipantProvisioningFlash = {
   };
 };
 
-type AssessmentAggregateStatus =
-  | "Čeka kandidata"
-  | "U toku"
-  | "Djelimično završeno"
-  | "Spremno za pregled"
-  | "Traži pažnju";
-
 type AssessmentFilterKey = "all" | "in-progress" | "review-ready" | "attention";
 
-type HrFriendlyTestStatus =
-  | "Završeno"
-  | "U toku"
-  | "Čeka"
-  | "Nije dodijeljeno"
-  | "Arhivirano"
-  | "Greška";
-
-type ParticipantAssessmentRow = {
-  participant: ParticipantSummary;
-  totalTests: number;
-  completedTests: number;
-  hasOpenAssessment: boolean;
-  aggregateStatus: AssessmentAggregateStatus;
-  primaryAction:
-    | {
-        kind: "create";
-        label: "Dodijeli procjenu";
-      }
-    | {
-        kind: "info";
-        label: "Čeka kandidata" | "Traži pažnju";
-        note: string;
-      }
-    | {
-        kind: "link";
-        label: "Pogledaj procjenu";
-        href: string;
-      };
-  testItems: Array<{
-    key: string;
-    shortLabel: string;
-    status: HrFriendlyTestStatus;
-  }>;
-};
-
-type StandardBatteryDisplayTest = {
-  slug: "ipip-neo-120-v1" | "safran_v1" | "mwms_v1";
-  shortLabel: "IPIP-NEO-120" | "SAFRAN" | "MWMS";
-};
-
-const STANDARD_BATTERY_DISPLAY_TESTS: readonly StandardBatteryDisplayTest[] = [
-  { slug: "ipip-neo-120-v1", shortLabel: "IPIP-NEO-120" },
-  { slug: "safran_v1", shortLabel: "SAFRAN" },
-  { slug: "mwms_v1", shortLabel: "MWMS" },
-] as const;
-
 const PARTICIPANT_CREDENTIALS_COOKIE = "participant-provisioning-flash";
-
-function HrDashboardHeader() {
-  return (
-    <AuthenticatedAppHeaderShell>
-      <div className="flex min-w-0 items-center gap-4">
-        <Link
-          href="/dashboard"
-          className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
-        >
-          Deep Profile
-        </Link>
-        <span className="hidden rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] lg:inline-flex">
-          HR Workspace
-        </span>
-      </div>
-
-      <form action={logout} className="shrink-0">
-        <button
-          className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-          type="submit"
-        >
-          Sign out
-        </button>
-      </form>
-    </AuthenticatedAppHeaderShell>
-  );
-}
-
-function HrDashboardFooter() {
-  return (
-    <AuthenticatedAppFooterShell>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
-        <p className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600">
-          © 2026 <strong>RE:SELEKCIJA</strong>. All rights reserved.
-        </p>
-      </div>
-
-      <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
-          href="/"
-        >
-          Privacy Policy
-        </a>
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
-          href="/"
-        >
-          Terms of Service
-        </a>
-        <a
-          className="font-label text-[11px] uppercase tracking-[0.16em] text-slate-600 transition-colors duration-200 hover:text-teal-700"
-          href="/"
-        >
-          Security
-        </a>
-      </nav>
-    </AuthenticatedAppFooterShell>
-  );
-}
 
 function getOrganizationName(membership: MembershipSummary): string {
   return membership.organization?.name ?? "Unknown organization";
@@ -293,189 +175,6 @@ function getStringParam(value: string | string[] | undefined): string | null {
   return null;
 }
 
-function getTestStatusLabel(attempt: OrganizationScopedAttemptSummary | null): HrFriendlyTestStatus {
-  if (!attempt) {
-    return "Nije dodijeljeno";
-  }
-
-  if (attempt.lifecycle === "completed") {
-    return "Završeno";
-  }
-
-  if (attempt.lifecycle === "in_progress") {
-    return "U toku";
-  }
-
-  if (attempt.lifecycle === "not_started") {
-    return "Čeka";
-  }
-
-  if (attempt.lifecycle === "abandoned") {
-    return "Arhivirano";
-  }
-
-  return "Greška";
-}
-
-function selectRelevantAttempt(attempts: OrganizationScopedAttemptSummary[]): OrganizationScopedAttemptSummary | null {
-  if (attempts.length === 0) {
-    return null;
-  }
-
-  const priority = (attempt: OrganizationScopedAttemptSummary) => {
-    switch (attempt.lifecycle) {
-      case "completed":
-        return 0;
-      case "in_progress":
-        return 1;
-      case "not_started":
-        return 2;
-      case "abandoned":
-        return 3;
-      default:
-        return 4;
-    }
-  };
-
-  return [...attempts].sort((left, right) => {
-    const priorityDifference = priority(left) - priority(right);
-
-    if (priorityDifference !== 0) {
-      return priorityDifference;
-    }
-
-    const leftTimestamp = Date.parse(left.completed_at ?? left.started_at);
-    const rightTimestamp = Date.parse(right.completed_at ?? right.started_at);
-    return rightTimestamp - leftTimestamp;
-  })[0] ?? null;
-}
-
-function buildParticipantAssessmentRows(input: {
-  participants: ParticipantSummary[];
-  attempts: OrganizationScopedAttemptSummary[];
-  standardBatteryTests: OrganizationRunnableStandardBatteryTestSummary[];
-}): ParticipantAssessmentRow[] {
-  const attemptsByParticipantId = new Map<string, OrganizationScopedAttemptSummary[]>();
-
-  for (const attempt of input.attempts) {
-    if (!attempt.participant_id) {
-      continue;
-    }
-
-    const participantAttempts = attemptsByParticipantId.get(attempt.participant_id) ?? [];
-    participantAttempts.push(attempt);
-    attemptsByParticipantId.set(attempt.participant_id, participantAttempts);
-  }
-
-  return input.participants.map((participant) => {
-    const participantAttempts = attemptsByParticipantId.get(participant.id) ?? [];
-    const attemptsBySlug = new Map<string, OrganizationScopedAttemptSummary[]>();
-
-    for (const attempt of participantAttempts) {
-      const slug = attempt.tests?.slug;
-
-      if (!slug) {
-        continue;
-      }
-
-      const testAttempts = attemptsBySlug.get(slug) ?? [];
-      testAttempts.push(attempt);
-      attemptsBySlug.set(slug, testAttempts);
-    }
-
-    const testItems = STANDARD_BATTERY_DISPLAY_TESTS.map((test) => {
-      const relevantAttempt = selectRelevantAttempt(attemptsBySlug.get(test.slug) ?? []);
-      const status = getTestStatusLabel(relevantAttempt);
-
-      return {
-        key: test.slug,
-        shortLabel: test.shortLabel,
-        status,
-      };
-    });
-
-    const relevantAttempts = STANDARD_BATTERY_DISPLAY_TESTS
-      .map((test) => selectRelevantAttempt(attemptsBySlug.get(test.slug) ?? []))
-      .filter((attempt): attempt is OrganizationScopedAttemptSummary => Boolean(attempt));
-    const completedAttempts = relevantAttempts.filter((attempt) => attempt.lifecycle === "completed");
-    const openAttempt =
-      relevantAttempts.find((attempt) => attempt.lifecycle === "in_progress") ??
-      relevantAttempts.find((attempt) => attempt.lifecycle === "not_started") ??
-      null;
-    const archivedOnlyAttempt =
-      !openAttempt && completedAttempts.length === 0
-        ? relevantAttempts.find((attempt) => attempt.lifecycle === "abandoned") ?? null
-        : null;
-    const completedCount = completedAttempts.length;
-    const totalTests = STANDARD_BATTERY_DISPLAY_TESTS.length;
-    const hasInvalidState = relevantAttempts.some(
-      (attempt) =>
-        attempt.lifecycle !== "completed" &&
-        attempt.lifecycle !== "in_progress" &&
-        attempt.lifecycle !== "not_started" &&
-        attempt.lifecycle !== "abandoned",
-    );
-    const hasInProgressAttempt = relevantAttempts.some((attempt) => attempt.lifecycle === "in_progress");
-    const hasNotStartedAttempt = relevantAttempts.some((attempt) => attempt.lifecycle === "not_started");
-    const hasOpenAssessment = hasInProgressAttempt || hasNotStartedAttempt;
-
-    let aggregateStatus: AssessmentAggregateStatus = "Čeka kandidata";
-
-    if (hasInvalidState) {
-      aggregateStatus = "Traži pažnju";
-    } else if (completedCount === totalTests) {
-      aggregateStatus = "Spremno za pregled";
-    } else if (completedCount > 0) {
-      aggregateStatus = "Djelimično završeno";
-    } else if (hasInProgressAttempt) {
-      aggregateStatus = "U toku";
-    } else if (hasNotStartedAttempt || completedCount === 0) {
-      aggregateStatus = "Čeka kandidata";
-    }
-
-    let primaryAction: ParticipantAssessmentRow["primaryAction"] = {
-      kind: "create",
-      label: "Dodijeli procjenu",
-    };
-
-    if (hasInvalidState) {
-      primaryAction = {
-        kind: "info",
-        label: "Traži pažnju",
-        note: "Provjeri status procjene.",
-      };
-    } else if (totalTests > 0 && completedCount === totalTests && completedAttempts[0]) {
-      primaryAction = {
-        kind: "link",
-        label: "Pogledaj procjenu",
-        href: `/dashboard/attempts/${completedAttempts[0].id}`,
-      };
-    } else if (completedCount > 0 && completedAttempts[0]) {
-      primaryAction = {
-        kind: "link",
-        label: "Pogledaj procjenu",
-        href: `/dashboard/attempts/${completedAttempts[0].id}`,
-      };
-    } else if (openAttempt || archivedOnlyAttempt) {
-      primaryAction = {
-        kind: "info",
-        label: "Čeka kandidata",
-        note: "Rezultati će biti dostupni nakon završenog testa.",
-      };
-    }
-
-    return {
-      participant,
-      totalTests,
-      completedTests: completedCount,
-      hasOpenAssessment,
-      aggregateStatus,
-      primaryAction,
-      testItems,
-    };
-  });
-}
-
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -519,7 +218,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const assessmentRows = buildParticipantAssessmentRows({
     participants,
     attempts,
-    standardBatteryTests,
   });
   const activeAssessmentCount = assessmentRows.filter((row) => row.hasOpenAssessment).length;
   const waitingCount = assessmentRows.filter(
@@ -529,10 +227,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const reportsAvailableCount = assessmentRows.filter((row) => row.completedTests > 0).length;
 
   return (
-    <AuthenticatedAppPageShell>
-      <HrDashboardHeader />
-
-      <AuthenticatedAppMainContent className="mx-auto max-w-[92rem] px-4 sm:px-6 lg:px-10">
+      <AuthenticatedAppMainContent
+        className="mx-auto max-w-[92rem] px-4 sm:px-6 lg:px-10"
+        topPaddingClassName="pt-0"
+      >
         <div className="space-y-10 pb-12">
           <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
             <div
@@ -774,7 +472,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       ) : null}
                       <DashboardActionRow className="flex items-center justify-end pt-1">
                         <button
-                          className="min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)] focus:outline-none focus:ring-2 focus:ring-teal-500/25"
+                          className={getDashboardCtaClassName({ variant: "primary" })}
                           type="submit"
                         >
                           Create participant
@@ -788,6 +486,28 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   </div>
                 )}
               </SingleOpenPanelGroup>
+            </section>
+          </DashboardInfoCardShell>
+
+          <DashboardInfoCardShell className="rounded-[1.2rem] border-slate-200/60 bg-white/65 p-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.035)] sm:p-4">
+            <section aria-labelledby="teams-entry-heading" className="space-y-4">
+              <DashboardSectionHeader
+                eyebrow="Team Dynamics"
+                eyebrowClassName="text-teal-800/80"
+                title={<span id="teams-entry-heading">Timovi</span>}
+                description="Pregled timova i procjena timske dinamike kroz agregirani timski uvid."
+                className="gap-2"
+                titleClassName="text-[1.15rem] text-slate-800"
+                descriptionClassName="mt-1 max-w-2xl text-[12px] leading-5 text-slate-500"
+              />
+              <DashboardActionRow className="pt-1">
+                <Link
+                  className={getDashboardCtaClassName({ variant: "secondary" })}
+                  href="/dashboard/teams"
+                >
+                  Otvori timove
+                </Link>
+              </DashboardActionRow>
             </section>
           </DashboardInfoCardShell>
 
@@ -828,8 +548,5 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           ) : null}
         </div>
       </AuthenticatedAppMainContent>
-
-      <HrDashboardFooter />
-    </AuthenticatedAppPageShell>
   );
 }

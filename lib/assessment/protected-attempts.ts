@@ -5,7 +5,7 @@ import type { AssessmentLocale } from "@/lib/assessment/locale";
 import type {
   CompletedAssessmentReportSnapshot,
   CompletedAssessmentReportState,
-} from "@/lib/assessment/reports";
+} from "@/lib/assessment/report-state-types";
 import {
   getAnswerOptionsForQuestions,
   getAssessmentResumeState,
@@ -13,6 +13,7 @@ import {
   getCompletedAssessmentResults,
   getQuestionsForTest,
 } from "@/lib/assessment/tests";
+import { getPersistedHrCompletedAssessmentReportState } from "@/lib/assessment/reports";
 
 type ProtectedAttemptLike = {
   id: string;
@@ -153,6 +154,21 @@ export async function loadProtectedAttemptReportPageData(
   const [results, reportState] = await Promise.all([
     getCompletedAssessmentResults(attempt.test_id, attempt.id),
     getCompletedAssessmentReportState(attempt.test_id, attempt.id),
+  ]);
+
+  return {
+    results,
+    report: reportState,
+    reportState: normalizeProtectedAttemptReportState(reportState),
+  };
+}
+
+export async function loadProtectedHrAttemptReportPageData(
+  attempt: Pick<ProtectedAttemptLike, "id" | "test_id">,
+) {
+  const [results, reportState] = await Promise.all([
+    getCompletedAssessmentResults(attempt.test_id, attempt.id),
+    getPersistedHrCompletedAssessmentReportState(attempt.id),
   ]);
 
   return {

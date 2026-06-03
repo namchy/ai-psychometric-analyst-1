@@ -9,6 +9,7 @@ import {
 import {
   IPIP_NEO_120_DOMAIN_ORDER,
   IPIP_NEO_120_FACETS_BY_DOMAIN,
+  getIpipNeo120DomainLabel,
   getIpipNeo120FacetLabel,
   type IpipNeo120DomainCode,
 } from "@/lib/assessment/ipip-neo-120-labels";
@@ -31,6 +32,31 @@ import {
   type IpipNeo120ParticipantReportV2,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
 import type { IpcReportPromptInput } from "@/lib/assessment/ipc-report-contract";
+import type { MwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-report-contract";
+import type { MwmsHrReportInput } from "@/lib/assessment/mwms-hr-report-v1";
+import {
+  MWMS_HR_REPORT_CONTRACT_VERSION,
+  MWMS_HR_REPORT_TYPE,
+  formatMwmsHrReportValidationErrors,
+  validateMwmsHrReportV1,
+} from "@/lib/assessment/mwms-hr-report-v1";
+import {
+  MWMS_PARTICIPANT_REPORT_SCHEMA_VERSION,
+  formatMwmsParticipantReportV1ValidationErrors,
+  validateMwmsParticipantReportV1,
+} from "@/lib/assessment/mwms-participant-report-v1";
+import type { SafranAiReportInput } from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
+  buildMockSafranParticipantAiReport,
+  formatSafranParticipantAiReportValidationErrors,
+  validateSafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
+import type { SafranHrReportInput } from "@/lib/assessment/safran-hr-report-v1";
+import {
+  buildMockSafranHrReportV1,
+  formatSafranHrReportValidationErrors,
+  validateSafranHrReport,
+} from "@/lib/assessment/safran-hr-report-v1";
 import {
   formatIpcReportValidationErrors,
   validateIpcHrReportV1,
@@ -481,14 +507,117 @@ function buildIpipNeo120HrMockReport(
     (left, right) => right.score - left.score || left.domain_code.localeCompare(right.domain_code),
   );
   const highestDomain = rankedDomains[0] ?? null;
-  const lowestDomain = rankedDomains[rankedDomains.length - 1] ?? null;
   const topFacets = neoPromptInput.domains
     .flatMap((domain) => (Array.isArray(domain.facets) ? domain.facets : []))
     .sort((left, right) => right.score - left.score || left.facet_code.localeCompare(right.facet_code))
     .slice(0, 5);
+  const topFacetLabel = topFacets[0]?.label?.toLowerCase() ?? "ključne facete";
+  const secondFacetLabel = topFacets[1]?.label?.toLowerCase() ?? "radne reakcije";
+  const topThreeDomains = rankedDomains.slice(0, 3);
+  const domainByCode = new Map(
+    neoPromptInput.domains.map((domain) => [domain.domain_code, domain] as const),
+  );
+
+  function buildDomainMeaning(domainCode: IpipNeo120DomainCode, band: "low" | "moderate" | "high") {
+    const label = getIpipNeo120DomainLabel(domainCode) ?? domainCode;
+
+    if (domainCode === "AGREEABLENESS") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Pokazuje izraženiji saradnički i obziran stil u odnosima s drugima.",
+          hrRelevance: "Za HR je važno provjeriti kako održava saradnju kada mora postaviti granicu ili dati direktan feedback.",
+          checkInInterview: "Tražiti primjer neslaganja, zaštite prioriteta i davanja neugodnog feedbacka.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može djelovati direktnije i manje popustljivo u svakodnevnoj saradnji.",
+          hrRelevance: "Za HR je korisno provjeriti kako balansira jasnoću stava i kvalitet odnosa u timu.",
+          checkInInterview: "Tražiti primjer kada je morala uskladiti odlučnost sa odnosom prema kolegama.",
+        };
+      }
+    }
+
+    if (domainCode === "CONSCIENTIOUSNESS") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Profil sugeriše veću usmjerenost na standard, obaveze i dovršavanje zadataka.",
+          hrRelevance: "Za HR je važno povezati ovaj domen sa rokovima, prioritetima i tolerancijom na promjenu plana.",
+          checkInInterview: "Provjeriti kako reaguje kada rokovi ostanu isti, ali se prioriteti ili zahtjevi promijene.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može tražiti više strukture da bi ritam rada ostao stabilan pod više paralelnih zahtjeva.",
+          hrRelevance: "Za HR je korisno provjeriti kako organizuje zadatke, prati rokove i traži pojašnjenje.",
+          checkInInterview: "Tražiti primjer organizacije rada kada je istovremeno vodila više obaveza.",
+        };
+      }
+    }
+
+    if (domainCode === "NEUROTICISM") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Rezultat sugeriše osjetljiviji odgovor na pritisak, neizvjesnost ili zasićenje zahtjevima.",
+          hrRelevance: "Za HR je posebno važno provjeriti samoregulaciju, traženje podrške i stabilnost ponašanja pod pritiskom.",
+          checkInInterview: "Tražiti primjer rada pod pritiskom i kako je održala fokus, ritam i komunikaciju.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može djelovati smirenije i stabilnije kada su zahtjevi, pritisak ili nejasnoća pojačani.",
+          hrRelevance: "Za HR je korisno provjeriti da li ta stabilnost ostaje prisutna i u dužem periodu većeg opterećenja.",
+          checkInInterview: "Tražiti primjer zahtjevnog perioda i kako je održala energiju, fokus i kvalitet odluka.",
+        };
+      }
+    }
+
+    if (domainCode === "EXTRAVERSION") {
+      if (band === "high") {
+        return {
+          conciseMeaning: "Profil sugeriše energičniji i vidljiviji stil u interakciji, iniciranju i timskom prisustvu.",
+          hrRelevance: "Za HR je važno provjeriti kako ovu energiju prevodi u saradnju, slušanje i praktične odluke.",
+          checkInInterview: "Provjeriti primjer kada je trebalo balansirati inicijativu sa slušanjem drugih perspektiva.",
+        };
+      }
+
+      if (band === "low") {
+        return {
+          conciseMeaning: "Može preferirati mirniji, promišljeniji i manje upadljiv način uključivanja u tim.",
+          hrRelevance: "Za HR je korisno provjeriti kako se uključuje kada uloga traži više vidljivosti, inicijative ili uticaja.",
+          checkInInterview: "Tražiti primjer kada je morala aktivnije zauzeti prostor ili preuzeti riječ u grupi.",
+        };
+      }
+    }
+
+    if (band === "high") {
+      return {
+        conciseMeaning: `${label} je izraženija i vjerovatno snažnije oblikuje svakodnevni radni obrazac.`,
+        hrRelevance: `Za HR je korisno provjeriti kako se ${label.toLowerCase()} vidi u konkretnoj ulozi, tempu rada i odnosima u timu.`,
+        checkInInterview: `Tražiti primjer ponašanja koji potvrđuje kako se ${label.toLowerCase()} pokazuje u realnom radnom kontekstu.`,
+      };
+    }
+
+    if (band === "low") {
+      return {
+        conciseMeaning: `${label} je manje izražena i može tražiti više konteksta da bi se pravilno tumačila u radu.`,
+        hrRelevance: `Za HR je važno provjeriti gdje tiši signal iz ${label.toLowerCase()} postaje relevantan za zahtjeve konkretne uloge.`,
+        checkInInterview: `Tražiti primjer situacije u kojoj je uloga ipak tražila više ${label.toLowerCase()} nego što je bilo prirodno.`,
+      };
+    }
+
+    return {
+      conciseMeaning: `${label} djeluje uravnoteženo i vjerovatno se prilagođava zahtjevima konteksta bez jasnog ekstrema.`,
+      hrRelevance: `Za HR je korisno provjeriti kada ${label.toLowerCase()} ostaje stabilna, a kada zavisi od vrste zadatka i okruženja.`,
+      checkInInterview: `Tražiti primjer različitih radnih situacija da se vidi kako se ${label.toLowerCase()} mijenja kroz kontekst.`,
+    };
+  }
 
   const report = {
-    contract_version: "ipip_neo_120_hr_v1",
+    contract_version: "ipip_neo_120_hr_v2",
     test: {
       code: "ipip_neo_120",
       name: "IPIP-NEO-120",
@@ -498,26 +627,118 @@ function buildIpipNeo120HrMockReport(
       audience: "hr",
     },
     headline: highestDomain
-      ? `${highestDomain.label} trenutno daje najuočljiviji profesionalni signal u profilu.`
-      : "Profil pokazuje uravnotežen profesionalni pregled bez jedne potpuno dominantne domene.",
-    executive_summary:
-      highestDomain && lowestDomain && highestDomain.domain_code !== lowestDomain.domain_code
-        ? `Najizraženiji signal trenutno se vidi u domeni ${highestDomain.label.toLowerCase()}, dok domena ${lowestDomain.label.toLowerCase()} traži nešto pažljivije upravljanje kroz kontekst, očekivanja i razvojnu podršku.`
-        : "Ovaj HR pregled koristi već izračunate IPIP-NEO-120 rezultate kako bi opisao radni stil, saradnju, komunikaciju i praktične razvojne signale bez hiring presuda.",
-    workplace_signals: [
-      highestDomain
-        ? `${highestDomain.label} djeluje kao najstabilniji izvor radnog ritma i profesionalnog tona.`
-        : "Profil pokazuje nekoliko uravnoteženih profesionalnih signala bez jedne dominantne domene.",
-      topFacets[0]
-        ? `Najizraženija faceta trenutno je ${topFacets[0].label.toLowerCase()}, što može pomoći finijem razumijevanju svakodnevnog radnog stila.`
-        : "Facete nude dodatni sloj za operativno čitanje svakodnevnog ponašanja i saradnje.",
-      "Profil je najkorisnije čitati kao razvojni i radni signal, ne kao fiksnu etiketu.",
-      "Najviše vrijednosti obično daju najjasnije obrasce ponašanja pod tipičnim radnim zahtjevima.",
-      lowestDomain
-        ? `Domena ${lowestDomain.label.toLowerCase()} može biti dobar fokus za razvojnu podršku i situacionu fleksibilnost.`
-        : "Mirniji dijelovi profila mogu biti koristan razvojni fokus kada uloga traži širi raspon ponašanja.",
-    ] as IpipNeo120HrReportV1["workplace_signals"],
-    domains: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+      ? `Profil ukazuje na ${highestDomain.label.toLowerCase()} kao važan radni signal koji vrijedi provjeriti kroz konkretne situacije saradnje i odlučivanja.`
+      : "Profil ukazuje na više ravnotežnih radnih obrazaca koje vrijedi provjeriti kroz konkretne situacije uloge.",
+    executive_summary: highestDomain
+      ? `Profil sugeriše da ${highestDomain.label.toLowerCase()} snažnije oblikuje svakodnevni radni obrazac, posebno kroz ${topFacetLabel} i ${secondFacetLabel}. U intervjuu vrijedi provjeriti kako se taj obrazac vidi kada osoba mora zaštititi prioritet, dati direktan feedback ili reagovati na pritisak. Nalaz je najkorisnije prevesti u strukturirana pitanja i rani onboarding razgovor.`
+      : "Profil sugeriše više uravnoteženih obrazaca rada bez jedne potpuno dominantne domene. U intervjuu vrijedi provjeriti kako osoba održava saradnju, ritam rada i reakciju na pritisak kroz konkretne primjere. Nalaz je najkorisnije koristiti kao vodič za strukturirani intervju i rani onboarding razgovor.",
+    key_hr_signals: [
+      {
+        title: highestDomain
+          ? `${highestDomain.label} kao dominantni radni obrazac`
+          : "Dominantni radni obrazac traži kontekstualnu provjeru",
+        evidence: highestDomain
+          ? `Najizraženiji domen u inputu je ${highestDomain.label}, uz dodatni signal iz faceta poput ${topFacetLabel}.`
+          : "Najviši domeni su bliski, pa profil traži provjeru kroz više konkretnih radnih situacija.",
+        hr_implication:
+          "Koristiti strukturirana pitanja da se provjeri kako se ovaj obrazac vidi u stvarnoj saradnji, prioritizaciji i donošenju odluka.",
+      },
+      {
+        title: "Provjera ponašanja pod pritiskom",
+        evidence: domainByCode.get("NEUROTICISM")
+          ? `Domen Neuroticizam i povezane facete daju signal kako osoba može reagovati kada su pritisak ili nejasnoća veći.`
+          : "Rad pod pritiskom vrijedi provjeriti i kada nema ekstremnog signala, jer kontekst uloge može pojačati razlike u ponašanju.",
+        hr_implication:
+          "U intervjuu tražiti primjer zahtjevnog perioda i kako je osoba održala fokus, komunikaciju i kvalitet odluka.",
+      },
+      {
+        title: "Prevesti profil u onboarding prakse",
+        evidence:
+          "Kombinacija dominantnih domena i faceta daje najviše vrijednosti kada se poveže sa stvarnim zadacima, povratnom informacijom i timskim očekivanjima.",
+        hr_implication:
+          "Rano dogovoriti očekivanja, granice saradnje i ritam kratkih check-in razgovora u prvih 30 dana.",
+      },
+    ] as IpipNeo120HrReportV1["key_hr_signals"],
+    verification_focus: [
+      {
+        area: "Postavljanje granica",
+        why_it_matters:
+          "Dominantni stil saradnje ili usmjerenosti na odnos vrijedi provjeriti i kroz situacije kada osoba mora zaštititi prioritet ili reći ne.",
+        how_to_check:
+          "U intervjuu tražiti primjer neslaganja, odbijanja zahtjeva ili zaštite prioriteta pod vremenskim pritiskom.",
+      },
+      {
+        area: "Direktna povratna informacija",
+        why_it_matters:
+          "Jače izražene interpersonalne osobine mogu izgledati drugačije kada osoba mora dati jasan i neugodan feedback.",
+        how_to_check:
+          "Kroz behavioral pitanje ili reference provjeriti kako osoba vodi zahtjevne razgovore i zadržava jasnoću poruke.",
+      },
+      {
+        area: "Reakcija na pritisak",
+        why_it_matters:
+          "Signal iz Neuroticizma i povezanih faceta vrijedi tumačiti kroz stvarni posao, posebno kada se rokovi, nejasnoća ili opterećenje povećaju.",
+        how_to_check:
+          "Tražiti konkretan primjer rada pod pritiskom ili kratki case zadatak sa promjenom prioriteta i naknadnom refleksijom.",
+      },
+    ] as IpipNeo120HrReportV1["verification_focus"],
+    interview_questions: [
+      {
+        question: "Opišite situaciju kada se niste slagali s odlukom tima. Kako ste reagovali?",
+        evaluates: "Postavljanje granica, neslaganje i zaštitu stava pod socijalnim pritiskom.",
+        what_good_answer_may_show:
+          "Da osoba može ostati saradljiva, ali i jasno obrazložiti stav te preuzeti odgovornost za posljedice odluke.",
+      },
+      {
+        question: "Kada pomažete kolegama, kako odlučujete gdje je granica između podrške i preuzimanja tuđeg posla?",
+        evaluates: "Balans saradnje, prioriteta i lične odgovornosti.",
+        what_good_answer_may_show:
+          "Da osoba prepoznaje granice podrške, štiti prioritete i ne gubi fokus na vlastite obaveze.",
+      },
+      {
+        question: "Kako reagujete kada morate dati direktnu, neugodnu povratnu informaciju?",
+        evaluates: "Direktnu komunikaciju, emocionalnu zrelost i sposobnost vođenja teških razgovora.",
+        what_good_answer_may_show:
+          "Da osoba zna biti jasna, poštena i profesionalna čak i kada razgovor nije ugodan.",
+      },
+      {
+        question: "Recite primjer kada ste morali braniti svoj stav iako je većina mislila drugačije.",
+        evaluates: "Samostalnost u odlučivanju i otpornost na grupni pritisak.",
+        what_good_answer_may_show:
+          "Da osoba razlikuje saradnju od popuštanja i zna argumentovano ostati pri stavu kada za to postoji osnov.",
+      },
+      {
+        question: "Kako balansirate dobar odnos s timom i potrebu da se donese brza odluka?",
+        evaluates: "Balans odnosa, brzine odluke i praktičnog prosuđivanja u timskom kontekstu.",
+        what_good_answer_may_show:
+          "Da osoba zna kada graditi saglasnost, a kada skratiti proces i preuzeti odgovornost za odluku.",
+      },
+    ] as IpipNeo120HrReportV1["interview_questions"],
+    strengths_and_overuse_risks: topThreeDomains.map((domain) => ({
+      trait_or_pattern:
+        domain.domain_code === "AGREEABLENESS"
+          ? "Izraženija saradničnost"
+          : domain.domain_code === "CONSCIENTIOUSNESS"
+            ? "Naglašena savjesnost i usmjerenost na standard"
+            : domain.domain_code === "EXTRAVERSION"
+              ? "Vidljiviji i energičniji stil uključivanja"
+              : domain.domain_code === "NEUROTICISM"
+                ? "Osjetljiviji odgovor na pritisak"
+                : `Relevantan obrazac u domeni ${domain.label.toLowerCase()}`,
+      possible_strengths: [
+        `Može podržati situacije u kojima je ${domain.label.toLowerCase()} direktno važna za ulogu.`,
+        `Može dati prepoznatljiv obrazac rada koji je timu i menadžeru lakše operativno pratiti.`,
+        `Može pomoći boljem uklapanju u dio posla gdje ova osobina nosi stvarnu radnu vrijednost.`,
+      ] as [string, string, string],
+      possible_overuse_risks: [
+        `U određenim kontekstima ${domain.label.toLowerCase()} može otići u pretjerivanje ako zahtjevi uloge nisu dobro postavljeni.`,
+        "Vrijedi provjeriti kako se obrazac mijenja kada poraste pritisak, nejasnoća ili međuzavisnost u timu.",
+        "Ako se tumači bez radnog konteksta, nalaz može izgledati šire nego što stvarno jeste.",
+      ] as [string, string, string],
+      hr_handling_tip:
+        `U intervjuu i onboardingu povezati ${domain.label.toLowerCase()} sa konkretnim zadacima, granicama odgovornosti i načinom davanja feedbacka.`,
+    })) as IpipNeo120HrReportV1["strengths_and_overuse_risks"],
+    domain_overview: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
       const domain = neoPromptInput.domains.find(
         (item: IpipNeo120HrReportPromptInput["domains"][number]) => item.domain_code === domainCode,
       );
@@ -526,71 +747,91 @@ function buildIpipNeo120HrMockReport(
         throw new Error(`Missing neo HR prompt domain ${domainCode}.`);
       }
 
-      const inputFacets = Array.isArray(domain.facets) ? domain.facets : [];
-      const inputFacetByCode = new Map(inputFacets.map((facet) => [facet.facet_code, facet]));
-      const facets = IPIP_NEO_120_FACETS_BY_DOMAIN[domainCode].map((facetCode) => {
-        const facet = inputFacetByCode.get(facetCode);
-
-        return {
-          code: facetCode,
-          label: getIpipNeo120FacetLabel(facetCode) ?? facetCode,
-          score_band: facet?.score_band ?? domain.score_band,
-          summary: facet
-            ? `${facet.label} djeluje kao radno relevantna faceta koja dodatno nijansira ovu domenu u profesionalnom kontekstu.`
-            : `${(getIpipNeo120FacetLabel(facetCode) ?? facetCode).toLowerCase()} služi kao pomoćni signal za čitanje ove domene u radnom kontekstu kada detaljniji facet podaci nisu dostupni.`,
-        };
-      });
+      const overview = buildDomainMeaning(domain.domain_code, domain.score_band);
+      const topDomainFacets = [...domain.facets]
+        .sort((left, right) => right.score - left.score || left.facet_code.localeCompare(right.facet_code))
+        .slice(0, 2);
 
       return {
-        code:
-          domain.domain_code === "NEUROTICISM"
-            ? "N"
-            : domain.domain_code === "EXTRAVERSION"
-              ? "E"
-              : domain.domain_code === "OPENNESS_TO_EXPERIENCE"
-                ? "O"
-                : domain.domain_code === "AGREEABLENESS"
-                  ? "A"
-                  : "C",
-        label: domain.label,
-        score_band: domain.score_band,
-        summary: `${domain.label} trenutno daje prepoznatljiv profesionalni signal koji vrijedi čitati kroz radni kontekst, očekivanja i nivo podrške.`,
-        workplace_strengths: [
-          `Kada je ${domain.label.toLowerCase()} dobro usklađena s ulogom, može podržati stabilniji ritam rada i jasnije prioritete.`,
-          `Ova domena može pomoći u predvidivijem ponašanju i lakšem usklađivanju sa zahtjevima radnog okruženja.`,
-        ] as [string, string],
-        workplace_watchouts: [
-          `Vrijedi pratiti kako se ${domain.label.toLowerCase()} pokazuje pod pritiskom, promjenom prioriteta ili pojačanom međuzavisnošću.`,
-          `Bez jasnog konteksta, ova domena se može tumačiti preširoko umjesto kroz konkretna radna ponašanja.`,
-        ] as [string, string],
-        management_notes: [
-          `Koristan je konkretan feedback o tome kako se ${domain.label.toLowerCase()} vidi u svakodnevnom radu i saradnji.`,
-          `Najviše koristi daje kada su očekivanja, odgovornosti i razvojni fokus vezani za stvarne situacije iz uloge.`,
-        ] as [string, string],
-        facets: facets as IpipNeo120HrReportV1["domains"][number]["facets"],
+        domain_name: domain.label,
+        score_label_or_band: domain.score_band,
+        concise_meaning: overview.conciseMeaning,
+        hr_relevance: overview.hrRelevance,
+        check_in_interview: overview.checkInInterview,
+        top_facets: topDomainFacets.map((facet) => ({
+          facet_name: facet.label || getIpipNeo120FacetLabel(facet.facet_code) || facet.facet_code,
+          score_label_or_band: facet.score_band,
+          relevance: `${facet.label} daje dodatni signal za praktičnu provjeru ovog domena u radnom kontekstu.`,
+        })),
       };
-    }) as IpipNeo120HrReportV1["domains"],
-    collaboration_style:
-      "Stil saradnje je najkorisnije tumačiti kroz kombinaciju izraženijih i mirnijih domena, posebno tamo gdje rad traži usklađivanje sa drugima, dijeljenje odgovornosti i stabilan ritam komunikacije.",
-    communication_style:
-      "Komunikacijski stil vjerovatno odražava dominantnije obrasce iz profila, ali ga vrijedi čitati situaciono: kroz zahtjeve uloge, timsku dinamiku i način na koji osoba reaguje na povratnu informaciju.",
-    leadership_and_influence:
-      "Uticaj i vođstvo ne proizlaze iz jedne domene izolovano, nego iz kombinacije prioriteta, samoregulacije, energije, otvorenosti i odnosa prema drugima u konkretnom okruženju rada.",
-    team_watchouts: [
-      "Preusko tumačenje jednog izraženog signala može zamagliti širu sliku o tome kako osoba funkcioniše kroz različite zadatke i timove.",
-      "Timska očekivanja, tempo rada i stil saradnje vrijedi rano uskladiti kako bi se smanjila pogrešna čitanja profila.",
-      "Profil je korisniji kao okvir za razgovor i podršku nego kao samostalan zaključak o učinku ili potencijalu.",
-    ] as [string, string, string],
-    onboarding_or_management_recommendations: [
-      "U prvim sedmicama definišite jasan ritam feedbacka i nekoliko konkretnih radnih očekivanja koja olakšavaju tumačenje profila kroz praksu.",
-      "Povežite razvojni razgovor s jednom izraženijom i jednom mirnijom domenom kako bi fokus ostao praktičan i upotrebljiv.",
-      "Profil koristite kao ulaz za upravljanje saradnjom, komunikacijom i podrškom, a ne kao zamjenu za posmatranje stvarnog ponašanja u radu.",
-    ] as [string, string, string],
+    }) as IpipNeo120HrReportV1["domain_overview"],
+    onboarding_and_management_guidance: [
+      {
+        recommendation: "U prvim sedmicama dogovoriti očekivanja oko prioriteta i granica saradnje.",
+        why:
+          "To pomaže da dominantni interpersonalni i radni obrasci budu čitani kroz konkretan posao, a ne kroz apstraktan opis ličnosti.",
+        first_30_days_application:
+          "Na prvom ili drugom check-in razgovoru pregledati kako osoba štiti prioritete i kako traži pomoć ili pojašnjenje.",
+      },
+      {
+        recommendation: "Uvesti ritam kratkog feedbacka nakon prvih timskih interakcija.",
+        why:
+          "Rani feedback pokazuje kako profil izgleda u stvarnoj saradnji i gdje se javljaju jače ili tiše reakcije od očekivanih.",
+        first_30_days_application:
+          "Nakon prvih sastanaka ili zajedničkih zadataka tražiti osvrt na saradnju, jasnoću poruke i upravljanje neslaganjem.",
+      },
+      {
+        recommendation: "Provjeriti kako osoba reaguje na nejasne zadatke prije nego se uloga potpuno stabilizuje.",
+        why:
+          "To je operativno važan test samoregulacije, traženja pojašnjenja i preuzimanja odgovornosti kada struktura nije potpuna.",
+        first_30_days_application:
+          "U prvom mjesecu uključiti barem jedan zadatak sa djelimično otvorenim parametrima i kasnije ga kratko analizirati.",
+      },
+      {
+        recommendation: "Povezati onboarding razgovore sa načinom davanja i primanja direktnog feedbacka.",
+        why:
+          "Dominantne osobine daju veću praktičnu vrijednost kada se rano vidi kako osoba vodi zahtjevne razgovore i štiti standard rada.",
+        first_30_days_application:
+          "Nakon prve zahtjevnije situacije pregledati šta je osoba uradila, šta je zaštitila i kako bi drugi put postupila.",
+      },
+    ] as IpipNeo120HrReportV1["onboarding_and_management_guidance"],
+    team_fit_notes: [
+      {
+        fit_condition: "Tim sa visokom potrebom za saradnjom",
+        may_work_well_when:
+          "Uloga traži koordinaciju, razmjenu informacija i održavanje stabilnih odnosa u svakodnevnom radu.",
+        watchout:
+          "Provjeriti da li tim istovremeno traži česte direktne konflikte, brze rezove ili snažno suprotstavljanje bez mnogo pripreme.",
+      },
+      {
+        fit_condition: "Okruženje sa jasnim standardima i odgovornostima",
+        may_work_well_when:
+          "Radni okvir dovoljno jasno pokazuje šta znači dobar rezultat i kako se donose odluke.",
+        watchout:
+          "Ako je uloga stalno nejasna ili promjenjiva, vrijedi provjeriti kako osoba održava fokus, tempo i komunikaciju.",
+      },
+      {
+        fit_condition: "Tim koji koristi strukturirani feedback",
+        may_work_well_when:
+          "Menadžer i tim rano prevode zapažanja u konkretno ponašanje, primjere i razvojne dogovore.",
+        watchout:
+          "Bez takvog ritma profil može ostati previše opšti i izgubiti praktičnu vrijednost za vođenje i onboarding.",
+      },
+    ] as IpipNeo120HrReportV1["team_fit_notes"],
+    decision_support_note: [
+      "Ne koristiti ovaj profil kao samostalnu odluku o kandidatu.",
+      "Koristiti ga za pripremu strukturiranog intervjua i provjeru ponašanja u relevantnim radnim situacijama.",
+      "Posebno provjeriti kako osoba postavlja granice, komunicira neslaganje i reaguje na pritisak.",
+      "Zaključke kombinovati sa iskustvom, intervjuom, referencama i zahtjevima konkretne uloge.",
+    ] as IpipNeo120HrReportV1["decision_support_note"],
     interpretation_note:
-      "Ovaj izvještaj je profesionalni razvojni pregled IPIP-NEO-120 rezultata. Ne predstavlja dijagnozu, ne potvrđuje zaštićene osobine i ne daje hiring odluku ili konačnu istinu o osobi.",
+      "Ovaj izvještaj nije dijagnoza niti odluka o zapošljavanju, ne potvrđuje zaštićene osobine i treba ga čitati uz kontekst uloge i druge izvore informacija.",
   };
 
-  const validationResult = validateIpipNeo120HrReportV1(report);
+  const validationResult = validateIpipNeo120HrReportV1(report, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
 
   if (!validationResult.ok) {
     throw new Error(
@@ -958,6 +1199,350 @@ function buildIpcMockReport(input: PreparedReportGenerationInput): RuntimeComple
   return validationResult.value;
 }
 
+function buildMwmsParticipantMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as MwmsParticipantReportPromptInput;
+  const scoreByCode = new Map(promptInput.dimensions.map((dimension) => [dimension.code, dimension]));
+  const dominantLabels = promptInput.derived_profile.dominant_dimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+  const lowerLabels = promptInput.derived_profile.lower_dimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+  const hasElevatedAmotivation = promptInput.derived_profile.caution_flags.elevated_amotivation;
+  const hasMixedProfile = promptInput.derived_profile.caution_flags.mixed_profile;
+
+  const report = {
+    schema_version: MWMS_PARTICIPANT_REPORT_SCHEMA_VERSION,
+    test_slug: "mwms_v1",
+    audience: "participant",
+    title: "Radna motivacija",
+    summary: {
+      headline: dominantLabels
+        ? `${dominantLabels} trenutno su najizraženiji dijelovi tvog profila motivacije.`
+        : "Profil motivacije daje pregled više izvora radnog angažmana.",
+      paragraph:
+        "Ovaj izvještaj koristi već izračunate skorove na šest skala i čita ih kao profil, bez ukupnog rezultata ili presude o osobi.",
+    },
+    motivation_pattern: {
+      autonomous:
+        `Autonomni oblici motivacije imaju prosjek ${promptInput.derived_profile.autonomous_motivation_score.toFixed(2)} / 7 i opisuju koliko se posao može povezati sa vrijednostima, interesom ili smislom.`,
+      controlled:
+        `Kontrolisani oblici motivacije imaju prosjek ${promptInput.derived_profile.controlled_motivation_score.toFixed(2)} / 7 i opisuju koliko napor može dolaziti iz očekivanja, pritiska, nagrade ili izbjegavanja negativnih posljedica.`,
+      amotivation: hasElevatedAmotivation
+        ? "Amotivacija je povišena i vrijedi je čitati oprezno, kao poziv na razgovor o kontekstu, energiji i jasnoći uloge."
+        : "Amotivacija nije jedini zaključak o profilu i korisna je uglavnom kao signal za provjeru konteksta i jasnoće uloge.",
+    },
+    key_observations: [
+      dominantLabels
+        ? `Najizraženije skale su ${dominantLabels.toLowerCase()}, što daje početnu sliku o tome koji izvori motivacije su trenutno vidljiviji.`
+        : "Profil nema jedan potpuno dominantan izvor motivacije.",
+      hasMixedProfile
+        ? "Autonomni i kontrolisani izvori motivacije su istovremeno izraženi, pa profil vrijedi čitati kao mješovit."
+        : "Skale je korisnije čitati zajedno nego izdvajati jednu vrijednost kao konačan zaključak.",
+    ],
+    possible_tensions: [
+      lowerLabels
+        ? `Niže izražene skale (${lowerLabels.toLowerCase()}) mogu pokazati gdje vrijedi dodatno provjeriti šta osobi daje ili oduzima energiju.`
+        : "Moguće napetosti treba provjeravati kroz konkretan radni kontekst.",
+      promptInput.derived_profile.caution_flags.high_controlled_relative_to_autonomous
+        ? "Kontrolisani izvori motivacije su vidljivo jači od autonomnih, što može značiti da dio napora dolazi iz pritiska ili očekivanja."
+        : "Profil ne treba tumačiti kao dokaz motivacije, nego kao hipotezu za razgovor.",
+    ],
+    reflection_questions: [
+      "Koji aspekti posla ti najviše daju osjećaj smisla, interesa ili lične vrijednosti?",
+      "U kojim situacijama osjećaš da radiš više zbog pritiska, očekivanja ili posljedica nego zbog samog značaja posla?",
+      "Šta bi u konkretnom radnom kontekstu moglo povećati jasnoću, energiju i osjećaj odgovornosti?",
+    ],
+    development_suggestions: [
+      "Poveži jedan važan zadatak sa konkretnom vrijednošću ili ishodom koji ti ima smisla.",
+      "Razgovaraj o uslovima rada koji povećavaju osjećaj autonomije, jasnoće i odgovornosti.",
+      "Ne koristi jednu skalu kao etiketu, nego profil poveži sa stvarnim primjerima iz rada.",
+    ],
+    interpretation_note:
+      "Ovaj izvještaj ne predstavlja procjenu vrijednosti osobe niti samostalnu osnovu za odluku o zapošljavanju. Najkorisniji je kada se poveže sa konkretnom ulogom, razgovorom i drugim rezultatima procjene.",
+  };
+
+  const validationResult = validateMwmsParticipantReportV1(report);
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock MWMS participant report failed validation: ${formatMwmsParticipantReportV1ValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
+function buildMwmsHrMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as MwmsHrReportInput;
+  const dimensions = promptInput.dimensions.map(({ code, label, rawScore, band, bandLabel }) => ({
+    code,
+    label,
+    rawScore,
+    band,
+    bandLabel,
+  })) as MwmsHrReportInput["dimensions"];
+  const scoreByCode = new Map(promptInput.dimensions.map((dimension) => [dimension.code, dimension]));
+  const dominantLabels = promptInput.derivedProfile.dominantDimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+  const lowerLabels = promptInput.derivedProfile.lowerDimensions
+    .map((dimensionCode) => scoreByCode.get(dimensionCode)?.label ?? dimensionCode)
+    .join(" i ");
+
+  const report = {
+    contractVersion: MWMS_HR_REPORT_CONTRACT_VERSION,
+    reportType: MWMS_HR_REPORT_TYPE,
+    testSlug: "mwms_v1",
+    audience: "hr",
+    sourceType: "single_test",
+    locale: promptInput.locale,
+    meta: {
+      language: promptInput.locale,
+      generatedAt: new Date().toISOString(),
+    },
+    motivation_profile_snapshot: {
+      scale: promptInput.scale,
+      dimensions,
+      derivedProfile: promptInput.derivedProfile,
+    },
+    key_motivational_drivers: [
+      {
+        title: "Vidljivi motivacijski oslonci",
+        evidence: dominantLabels
+          ? `Najizrazeniji signali u profilu su ${dominantLabels.toLowerCase()}.`
+          : "Profil pokazuje vise izvora radne motivacije bez jednog dominantnog oslonca.",
+        hrImplication:
+          "U razgovoru vrijedi provjeriti koji zadaci najlakse povezuju trud sa smislom, interesom ili jasnim ishodom.",
+      },
+      {
+        title: "Autonomni izvori motivacije",
+        evidence:
+          `Autonomni motivacijski skor je ${promptInput.derivedProfile.autonomousMotivationScore.toFixed(2)} na skali 1-7.`,
+        hrImplication:
+          "Korisno je istraziti koliko osoba rad povezuje sa vrijednoscu posla, odgovornoscu i interesom za zadatke.",
+      },
+      {
+        title: "Kontrolisani izvori motivacije",
+        evidence:
+          `Kontrolisani motivacijski skor je ${promptInput.derivedProfile.controlledMotivationScore.toFixed(2)} na skali 1-7.`,
+        hrImplication:
+          "Jasni kriteriji, ritam povratne informacije i predvidiva ocekivanja mogu biti vazan dio radnog okvira.",
+      },
+    ],
+    potential_friction_points: [
+      {
+        signal: lowerLabels
+          ? `Tisi signali u profilu su ${lowerLabels.toLowerCase()}.`
+          : "Neki motivacijski izvori mogu biti manje vidljivi u trenutnom profilu.",
+        whyItMayMatter:
+          "Manje izrazeni izvori mogu ukazivati na kontekste u kojima angazman trazi dodatnu jasnocu ili podrsku.",
+        howToCheck:
+          "Pitati za konkretne situacije u kojima osobi opada energija, interes ili osjecaj svrhe.",
+      },
+      {
+        signal: promptInput.derivedProfile.cautionFlags.elevatedAmotivation
+          ? "Amotivacijski signal je izrazeniji i trazi oprezno kontekstualno citanje."
+          : "Amotivacijski signal treba citati kao jedan dio sireg motivacijskog profila.",
+        whyItMayMatter:
+          "Ovaj signal moze biti povezan sa jasnocom uloge, energijom i uslovima rada.",
+        howToCheck:
+          "Provjeriti sta osobi pomaze da prepozna razlog za ulaganje truda u manje zanimljive zadatke.",
+      },
+      {
+        signal: promptInput.derivedProfile.cautionFlags.highControlledRelativeToAutonomous
+          ? "Kontrolisani izvori su vidljivo jaci od autonomnih izvora."
+          : "Autonomni i kontrolisani izvori treba citati zajedno.",
+        whyItMayMatter:
+          "Motivacija moze biti stabilnija kada su vanjski zahtjevi povezani sa jasnom svrhom rada.",
+        howToCheck:
+          "U intervjuu traziti primjere rada pod pritiskom, uz rokove, standarde ili promjenjiva ocekivanja.",
+      },
+    ],
+    work_context_hypotheses: [
+      {
+        context: "Uloge sa jasnim ciljevima",
+        hypothesis:
+          "Profil moze dobiti bolji oslonac kada su svrha zadatka i kriteriji uspjeha eksplicitni.",
+        verification:
+          "Provjeriti kroz primjere zadataka u kojima je osoba brzo razumjela zasto je rad vazan.",
+      },
+      {
+        context: "Uloge sa promjenjivim prioritetima",
+        hypothesis:
+          "Motivacijski profil moze traziti cesce uskladjivanje ocekivanja i povratne informacije.",
+        verification:
+          "Pitati kako osoba odrzava trud kada se prioriteti ili pravila promijene.",
+      },
+      {
+        context: "Uloge sa samostalnim radom",
+        hypothesis:
+          "Autonomni izvori motivacije mogu biti korisni kada osoba ima dovoljno konteksta i prostor za nacin rada.",
+        verification:
+          "Provjeriti koliko osobi pomazu jasni okviri prije samostalnog preuzimanja zadatka.",
+      },
+    ],
+    manager_support_guidance: [
+      {
+        focus: "Svrha zadataka",
+        recommendation:
+          "Povezati zadatke sa korisnikom, ciljem ili poslovnim ishodom prije ulaska u detalje izvedbe.",
+        rationale:
+          "Identificirana i intrinzicna motivacija se lakse koriste kada osoba vidi zasto je rad bitan.",
+      },
+      {
+        focus: "Jasni kriteriji",
+        recommendation:
+          "Dogovoriti standarde, rokove i ritam povratne informacije na pocetku rada.",
+        rationale:
+          "Vanjski i kontrolisani izvori motivacije mogu biti funkcionalni kada su ocekivanja stabilna.",
+      },
+      {
+        focus: "Autonomija u nacinu rada",
+        recommendation:
+          "Dati okvir za rezultat, a gdje je moguce ostaviti izbor u nacinu dolaska do rezultata.",
+        rationale:
+          "Takav pristup podrzava motivaciju kroz odgovornost i osjecaj izbora.",
+      },
+      {
+        focus: "Rani razgovor o energiji",
+        recommendation:
+          "U prvim sedmicama provjeriti koji zadaci osobi daju energiju, a koji traze dodatnu jasnocu.",
+        rationale:
+          "Motivacijske frikcije se sigurnije tumace kroz konkretan radni kontekst.",
+      },
+    ],
+    interview_questions: [
+      {
+        question: "Koji tip zadataka vam najbrze postane smislen i zbog cega?",
+        evaluates: "Vezu izmedju vrijednosti, interesa i radnog angazmana.",
+        whatToListenFor:
+          "Konkretne primjere svrhe, odgovornosti i interesa u stvarnom radu.",
+      },
+      {
+        question: "Kako odrzavate trud kada zadatak nije licno zanimljiv?",
+        evaluates: "Balans autonomnih i kontrolisanih izvora motivacije.",
+        whatToListenFor:
+          "Strategije povezivanja zadatka sa ciljem, standardom ili korisnim ishodom.",
+      },
+      {
+        question: "Kakva povratna informacija vam najvise pomaze da ostanete usmjereni?",
+        evaluates: "Ulogu priznanja, jasnih kriterija i socijalnog konteksta.",
+        whatToListenFor:
+          "Prakticne potrebe za ritmom, jasnocom i vrstom povratne informacije.",
+      },
+      {
+        question: "Sta vam u novoj ulozi najvise pomaze da uhvatite radni ritam?",
+        evaluates: "Onboarding uslove koji mogu podrzati rani angazman.",
+        whatToListenFor:
+          "Potrebu za strukturom, autonomijom, primjerima ili razgovorom o svrsi.",
+      },
+      {
+        question: "U kojim situacijama vam najvise opadne osjecaj razloga za ulaganje truda?",
+        evaluates: "Moguce motivacijske frikcije i kontekstualne okidace.",
+        whatToListenFor:
+          "Konkretne okolnosti koje uticu na jasnocu, energiju i osjecaj vrijednosti rada.",
+      },
+    ],
+    onboarding_recommendations: [
+      {
+        phase: "Prvih 30 dana",
+        recommendation:
+          "Razjasniti svrhu uloge, kriterije uspjeha i najvaznije kratkorocne prioritete.",
+        why:
+          "Profil se lakse tumaci kada osoba zna zasto su prvi zadaci vazni.",
+      },
+      {
+        phase: "Prvih 30 dana",
+        recommendation:
+          "Uvesti kratak sedmicni razgovor o napretku, preprekama i jasnoci ocekivanja.",
+        why:
+          "Rani feedback moze pomoci da se vanjski i autonomni izvori bolje povezu.",
+      },
+      {
+        phase: "60 dana",
+        recommendation:
+          "Provjeriti koji zadaci najvise podrzavaju angazman, a koji traze dodatni kontekst.",
+        why:
+          "Motivacijski signali su korisniji kada se povezu sa stvarnim zadacima.",
+      },
+      {
+        phase: "90 dana",
+        recommendation:
+          "Uskladiti nivo autonomije, jasnih ciljeva i priznanja za naredni period.",
+        why:
+          "Kombinovani profil moze traziti balans izmedju smisla, strukture i vidljivih ishoda.",
+      },
+    ],
+    decision_support_note: [
+      "Ovaj izvjestaj daje HR hipoteze za razgovor, onboarding i menadzersku podrsku.",
+      "Nalaze treba citati zajedno sa intervjuom, iskustvom i kontekstom konkretne uloge.",
+    ],
+    interpretation_note:
+      "MWMS HR izvjestaj koristi vec izracunate rezultate kao motivacijski profil. Score, band i label ostaju deterministic vrijednosti iz inputa.",
+    safety_checks: {
+      noScoreRecalculation: true,
+      noScoreMutation: true,
+      noHireNoHireDecision: true,
+      noDiagnosticLanguage: true,
+      hypothesesOnly: true,
+      singleTestOnly: true,
+    },
+  };
+
+  const validationResult = validateMwmsHrReportV1(report, {
+    expectedInput: promptInput,
+  });
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock MWMS HR report failed validation: ${formatMwmsHrReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
+function buildSafranParticipantMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as SafranAiReportInput;
+  const report = buildMockSafranParticipantAiReport(promptInput);
+  const validationResult = validateSafranParticipantAiReport(report, {
+    expectedInput: promptInput,
+  });
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock SAFRAN participant report failed validation: ${formatSafranParticipantAiReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
+function buildSafranHrMockReport(
+  input: PreparedReportGenerationInput,
+): RuntimeCompletedAssessmentReport {
+  const promptInput = input.promptInput as SafranHrReportInput;
+  const report = buildMockSafranHrReportV1(promptInput);
+  const validationResult = validateSafranHrReport(report, {
+    expectedInput: promptInput,
+  });
+
+  if (!validationResult.ok) {
+    throw new Error(
+      `Mock SAFRAN HR report failed validation: ${formatSafranHrReportValidationErrors(validationResult.errors)}`,
+    );
+  }
+
+  return validationResult.value;
+}
+
 function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompletedAssessmentReport {
   if ("domains" in input.promptInput) {
     if (input.promptInput.audience === "hr") {
@@ -969,6 +1554,22 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
     }
 
     return buildIpipNeo120MockReport(input);
+  }
+
+  if ("dimensions" in input.promptInput && "testSlug" in input.promptInput && input.promptInput.testSlug === "mwms_v1") {
+    return buildMwmsHrMockReport(input);
+  }
+
+  if ("dimensions" in input.promptInput && input.promptInput.test_slug === "mwms_v1") {
+    return buildMwmsParticipantMockReport(input);
+  }
+
+  if ("test" in input.promptInput && input.promptInput.test.slug === "safran_v1") {
+    if (input.promptInput.test.audience === "hr") {
+      return buildSafranHrMockReport(input);
+    }
+
+    return buildSafranParticipantMockReport(input);
   }
 
   if (!("dimension_scores" in input.promptInput)) {
@@ -998,11 +1599,12 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
       development_focus: insightCopy.development_focus,
     };
   });
+  const promptAudience = input.promptInput.audience;
 
   const strengths = primaryDimensions.map((dimensionCode, index) => {
     const dimension = dimensionsByCode.get(dimensionCode);
     const insight = dimensionInsights.find((item) => item.dimension_code === dimensionCode);
-    const isHrAudience = input.promptInput.audience === "hr";
+    const isHrAudience = promptAudience === "hr";
 
     return buildTitleDescriptionItem(
       isHrAudience
@@ -1016,7 +1618,7 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
   const blindSpots = lowestDimensions.map((dimensionCode, index) => {
     const dimension = dimensionsByCode.get(dimensionCode);
     const insight = dimensionInsights.find((item) => item.dimension_code === dimensionCode);
-    const isHrAudience = input.promptInput.audience === "hr";
+    const isHrAudience = promptAudience === "hr";
 
     return buildTitleDescriptionItem(
       isHrAudience
@@ -1034,7 +1636,7 @@ function buildMockReport(input: PreparedReportGenerationInput): RuntimeCompleted
       highestDimension !== null
         ? dimensionsByCode.get(highestDimension)?.dimension_label ?? highestDimension
         : null;
-    const isHrAudience = input.promptInput.audience === "hr";
+    const isHrAudience = promptAudience === "hr";
 
     return {
       title: isHrAudience

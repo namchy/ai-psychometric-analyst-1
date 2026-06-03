@@ -43,24 +43,76 @@ type Domain = {
 
 type HrBand = "low" | "moderate" | "high";
 
-type IpipNeo120HrDomainCode = "N" | "E" | "O" | "A" | "C";
+type HrRelevantFacet = {
+  facet_name: string;
+  score_label_or_band: HrBand;
+  relevance: string;
+};
 
-type HrFacet = {
+type HrKeySignal = {
+  title: string;
+  evidence: string;
+  hr_implication: string;
+};
+
+type HrVerificationFocus = {
+  area: string;
+  why_it_matters: string;
+  how_to_check: string;
+};
+
+type HrInterviewQuestion = {
+  question: string;
+  evaluates: string;
+  what_good_answer_may_show: string;
+};
+
+type HrStrengthsAndOveruseRisk = {
+  trait_or_pattern: string;
+  possible_strengths: [string, string, string];
+  possible_overuse_risks: [string, string, string];
+  hr_handling_tip: string;
+};
+
+type HrDomainOverview = {
+  domain_name: string;
+  score_label_or_band: HrBand;
+  concise_meaning: string;
+  hr_relevance: string;
+  check_in_interview: string;
+  top_facets: HrRelevantFacet[];
+};
+
+type HrOnboardingGuidance = {
+  recommendation: string;
+  why: string;
+  first_30_days_application: string;
+};
+
+type HrTeamFitNote = {
+  fit_condition: string;
+  may_work_well_when: string;
+  watchout: string;
+};
+
+type LegacyIpipNeo120HrDomainCode = "N" | "E" | "O" | "A" | "C";
+
+type LegacyHrFacet = {
   code: string;
   label: string;
   score_band: HrBand;
   summary: string;
 };
 
-type HrDomain = {
-  code: IpipNeo120HrDomainCode;
+type LegacyHrDomain = {
+  code: LegacyIpipNeo120HrDomainCode;
   label: string;
   score_band: HrBand;
   summary: string;
   workplace_strengths: [string, string];
   workplace_watchouts: [string, string];
   management_notes: [string, string];
-  facets: [HrFacet, HrFacet, HrFacet, HrFacet, HrFacet, HrFacet];
+  facets: [LegacyHrFacet, LegacyHrFacet, LegacyHrFacet, LegacyHrFacet, LegacyHrFacet, LegacyHrFacet];
 };
 
 export type IpipNeo120ParticipantReportV1 = {
@@ -92,7 +144,7 @@ export const ipipNeo120ParticipantReportV1Schema = ipipNeo120ParticipantSchemaJs
 export const ipipNeo120HrReportV1Schema = ipipNeo120HrSchemaJson;
 
 export type IpipNeo120HrReportV1 = {
-  contract_version: "ipip_neo_120_hr_v1";
+  contract_version: "ipip_neo_120_hr_v2";
   test: {
     code: "ipip_neo_120";
     name: "IPIP-NEO-120";
@@ -103,13 +155,35 @@ export type IpipNeo120HrReportV1 = {
   };
   headline: string;
   executive_summary: string;
-  workplace_signals: [string, string, string, string, string];
-  domains: [HrDomain, HrDomain, HrDomain, HrDomain, HrDomain];
-  collaboration_style: string;
-  communication_style: string;
-  leadership_and_influence: string;
-  team_watchouts: [string, string, string];
-  onboarding_or_management_recommendations: [string, string, string];
+  key_hr_signals: [HrKeySignal, HrKeySignal, HrKeySignal];
+  verification_focus: [HrVerificationFocus, HrVerificationFocus, HrVerificationFocus];
+  interview_questions: [
+    HrInterviewQuestion,
+    HrInterviewQuestion,
+    HrInterviewQuestion,
+    HrInterviewQuestion,
+    HrInterviewQuestion,
+  ];
+  strengths_and_overuse_risks: [
+    HrStrengthsAndOveruseRisk,
+    HrStrengthsAndOveruseRisk,
+    ...HrStrengthsAndOveruseRisk[],
+  ];
+  domain_overview: [
+    HrDomainOverview,
+    HrDomainOverview,
+    HrDomainOverview,
+    HrDomainOverview,
+    HrDomainOverview,
+  ];
+  onboarding_and_management_guidance: [
+    HrOnboardingGuidance,
+    HrOnboardingGuidance,
+    HrOnboardingGuidance,
+    HrOnboardingGuidance,
+  ];
+  team_fit_notes: [HrTeamFitNote, HrTeamFitNote, HrTeamFitNote];
+  decision_support_note: [string, string, ...string[]];
   interpretation_note: string;
 };
 
@@ -222,33 +296,180 @@ function validateHrBand(value: unknown, path: string, errors: ValidationError[])
   return false;
 }
 
-function validateHrFacet(
+function normalizeStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(normalizeTextField).filter(Boolean) : [];
+}
+
+function countWords(value: string): number {
+  const normalized = normalizeWhitespace(value);
+  return normalized.length === 0 ? 0 : normalized.split(" ").length;
+}
+
+function countSentences(value: string): number {
+  return normalizeWhitespace(value)
+    .split(/[.!?]+/u)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean).length;
+}
+
+function validateSentenceRange(
+  value: string,
+  path: string,
+  minSentences: number,
+  maxSentences: number,
+  errors: ValidationError[],
+) {
+  const sentenceCount = countSentences(value);
+
+  if (sentenceCount < minSentences || sentenceCount > maxSentences) {
+    errors.push({
+      path,
+      message: `Expected ${minSentences} to ${maxSentences} sentence(s).`,
+    });
+  }
+}
+
+function validateWordLimit(
+  value: string,
+  path: string,
+  maxWords: number,
+  errors: ValidationError[],
+) {
+  if (countWords(value) > maxWords) {
+    errors.push({
+      path,
+      message: `Expected at most ${maxWords} words.`,
+    });
+  }
+}
+
+function validateExactObjectArrayLength(
+  value: unknown,
+  path: string,
+  expectedLength: number,
+  errors: ValidationError[],
+): value is Record<string, unknown>[] {
+  if (!Array.isArray(value) || value.length !== expectedLength) {
+    errors.push({
+      path,
+      message: `Expected exactly ${expectedLength} item(s).`,
+    });
+    return false;
+  }
+
+  return true;
+}
+
+function validateStringArrayRange(
+  value: unknown,
+  path: string,
+  minLength: number,
+  maxLength: number,
+  errors: ValidationError[],
+): value is string[] {
+  if (!Array.isArray(value) || value.length < minLength || value.length > maxLength) {
+    errors.push({
+      path,
+      message: `Expected ${minLength} to ${maxLength} non-empty string item(s).`,
+    });
+    return false;
+  }
+
+  value.forEach((item, index) => {
+    validateNonEmptyString(item, `${path}[${index}]`, errors);
+  });
+
+  return true;
+}
+
+function validateHrRelevantFacet(
   value: unknown,
   path: string,
   errors: ValidationError[],
-): value is HrFacet {
+): value is HrRelevantFacet {
   if (!isNonArrayObject(value)) {
     errors.push({ path, message: "HR report: Expected an object." });
     return false;
   }
 
-  errors.push(...validateExactKeys(value, ["code", "label", "score_band", "summary"], path));
-  const codeOk = validateNonEmptyString(value.code, `${path}.code`, errors);
-  const labelOk = validateNonEmptyString(value.label, `${path}.label`, errors);
-  const bandOk = validateHrBand(value.score_band, `${path}.score_band`, errors);
-  const summaryOk = validateNonEmptyString(value.summary, `${path}.summary`, errors);
+  errors.push(...validateExactKeys(value, ["facet_name", "score_label_or_band", "relevance"], path));
+  const facetNameOk = validateNonEmptyString(value.facet_name, `${path}.facet_name`, errors);
+  const bandOk = validateHrBand(value.score_label_or_band, `${path}.score_label_or_band`, errors);
+  const relevanceOk = validateNonEmptyString(value.relevance, `${path}.relevance`, errors);
 
-  return codeOk && labelOk && bandOk && summaryOk;
+  return facetNameOk && bandOk && relevanceOk;
 }
 
-function validateHrDomain(
+function validateHrKeySignal(
   value: unknown,
   path: string,
-  seenDomainCodes: Set<IpipNeo120HrDomainCode>,
   errors: ValidationError[],
-): value is HrDomain {
-  const allowedCodes = ["N", "E", "O", "A", "C"] satisfies IpipNeo120HrDomainCode[];
+): value is HrKeySignal {
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
+  }
 
+  errors.push(...validateExactKeys(value, ["title", "evidence", "hr_implication"], path));
+  return (
+    validateNonEmptyString(value.title, `${path}.title`, errors) &&
+    validateNonEmptyString(value.evidence, `${path}.evidence`, errors) &&
+    validateNonEmptyString(value.hr_implication, `${path}.hr_implication`, errors)
+  );
+}
+
+function validateHrVerificationFocus(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): value is HrVerificationFocus {
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
+  }
+
+  errors.push(...validateExactKeys(value, ["area", "why_it_matters", "how_to_check"], path));
+  return (
+    validateNonEmptyString(value.area, `${path}.area`, errors) &&
+    validateNonEmptyString(value.why_it_matters, `${path}.why_it_matters`, errors) &&
+    validateNonEmptyString(value.how_to_check, `${path}.how_to_check`, errors)
+  );
+}
+
+function validateHrInterviewQuestion(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): value is HrInterviewQuestion {
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
+  }
+
+  errors.push(
+    ...validateExactKeys(
+      value,
+      ["question", "evaluates", "what_good_answer_may_show"],
+      path,
+    ),
+  );
+
+  return (
+    validateNonEmptyString(value.question, `${path}.question`, errors) &&
+    validateNonEmptyString(value.evaluates, `${path}.evaluates`, errors) &&
+    validateNonEmptyString(
+      value.what_good_answer_may_show,
+      `${path}.what_good_answer_may_show`,
+      errors,
+    )
+  );
+}
+
+function validateHrStrengthsAndOveruseRisk(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): value is HrStrengthsAndOveruseRisk {
   if (!isNonArrayObject(value)) {
     errors.push({ path, message: "HR report: Expected an object." });
     return false;
@@ -258,89 +479,160 @@ function validateHrDomain(
     ...validateExactKeys(
       value,
       [
-        "code",
-        "label",
-        "score_band",
-        "summary",
-        "workplace_strengths",
-        "workplace_watchouts",
-        "management_notes",
-        "facets",
+        "trait_or_pattern",
+        "possible_strengths",
+        "possible_overuse_risks",
+        "hr_handling_tip",
       ],
       path,
     ),
   );
 
-  const codeOk = validateNonEmptyString(value.code, `${path}.code`, errors);
+  const traitOk = validateNonEmptyString(value.trait_or_pattern, `${path}.trait_or_pattern`, errors);
+  const strengthsOk = validateExactStringArrayLength(
+    value.possible_strengths,
+    `${path}.possible_strengths`,
+    3,
+    errors,
+  );
+  const risksOk = validateExactStringArrayLength(
+    value.possible_overuse_risks,
+    `${path}.possible_overuse_risks`,
+    3,
+    errors,
+  );
+  const tipOk = validateNonEmptyString(value.hr_handling_tip, `${path}.hr_handling_tip`, errors);
 
-  if (typeof value.code === "string") {
-    if (!allowedCodes.includes(value.code as IpipNeo120HrDomainCode)) {
-      errors.push({
-        path: `${path}.code`,
-        message: 'HR report: Expected one of "N", "E", "O", "A", or "C".',
-      });
-    } else if (seenDomainCodes.has(value.code as IpipNeo120HrDomainCode)) {
-      errors.push({
-        path: `${path}.code`,
-        message: `HR report: Duplicate domain code "${value.code}".`,
-      });
-    } else {
-      seenDomainCodes.add(value.code as IpipNeo120HrDomainCode);
-    }
+  return traitOk && strengthsOk && risksOk && tipOk;
+}
+
+function validateHrDomainOverview(
+  value: unknown,
+  path: string,
+  expectedDomainCode: IpipNeo120DomainCode,
+  enforceSentenceConstraints: boolean,
+  errors: ValidationError[],
+): value is HrDomainOverview {
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
   }
 
-  const labelOk = validateNonEmptyString(value.label, `${path}.label`, errors);
-  const bandOk = validateHrBand(value.score_band, `${path}.score_band`, errors);
-  const summaryOk = validateNonEmptyString(value.summary, `${path}.summary`, errors);
-  const strengthsOk = validateExactStringArrayLength(
-    value.workplace_strengths,
-    `${path}.workplace_strengths`,
-    2,
+  errors.push(
+    ...validateExactKeys(
+      value,
+      [
+        "domain_name",
+        "score_label_or_band",
+        "concise_meaning",
+        "hr_relevance",
+        "check_in_interview",
+        "top_facets",
+      ],
+      path,
+    ),
+  );
+
+  const expectedLabel = getIpipNeo120DomainLabel(expectedDomainCode) ?? expectedDomainCode;
+  const domainNameOk = validateNonEmptyString(value.domain_name, `${path}.domain_name`, errors);
+
+  if (typeof value.domain_name === "string" && normalizeWhitespace(value.domain_name) !== expectedLabel) {
+    errors.push({
+      path: `${path}.domain_name`,
+      message: `Expected canonical label "${expectedLabel}".`,
+    });
+  }
+
+  const bandOk = validateHrBand(value.score_label_or_band, `${path}.score_label_or_band`, errors);
+  const conciseMeaningOk = validateNonEmptyString(
+    value.concise_meaning,
+    `${path}.concise_meaning`,
     errors,
   );
-  const watchoutsOk = validateExactStringArrayLength(
-    value.workplace_watchouts,
-    `${path}.workplace_watchouts`,
-    2,
+  const relevanceOk = validateNonEmptyString(value.hr_relevance, `${path}.hr_relevance`, errors);
+  const interviewOk = validateNonEmptyString(
+    value.check_in_interview,
+    `${path}.check_in_interview`,
     errors,
   );
-  const managementNotesOk = validateExactStringArrayLength(
-    value.management_notes,
-    `${path}.management_notes`,
-    2,
-    errors,
-  );
+
+  if (enforceSentenceConstraints) {
+    validateSentenceRange(normalizeTextField(value.concise_meaning), `${path}.concise_meaning`, 1, 1, errors);
+    validateSentenceRange(normalizeTextField(value.hr_relevance), `${path}.hr_relevance`, 1, 1, errors);
+    validateSentenceRange(
+      normalizeTextField(value.check_in_interview),
+      `${path}.check_in_interview`,
+      1,
+      1,
+      errors,
+    );
+  }
 
   let facetsOk = true;
 
-  if (!Array.isArray(value.facets) || value.facets.length !== 6) {
+  if (!Array.isArray(value.top_facets) || value.top_facets.length > 2) {
     errors.push({
-      path: `${path}.facets`,
-      message: "HR report: Expected exactly 6 facets.",
+      path: `${path}.top_facets`,
+      message: "Expected at most 2 top_facets.",
     });
     facetsOk = false;
   } else {
-    value.facets.forEach((facet, facetIndex) => {
-      if (!validateHrFacet(facet, `${path}.facets[${facetIndex}]`, errors)) {
+    value.top_facets.forEach((item, index) => {
+      if (!validateHrRelevantFacet(item, `${path}.top_facets[${index}]`, errors)) {
         facetsOk = false;
       }
     });
   }
 
+  return domainNameOk && bandOk && conciseMeaningOk && relevanceOk && interviewOk && facetsOk;
+}
+
+function validateHrOnboardingGuidance(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): value is HrOnboardingGuidance {
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
+  }
+
+  errors.push(
+    ...validateExactKeys(
+      value,
+      ["recommendation", "why", "first_30_days_application"],
+      path,
+    ),
+  );
+
   return (
-    codeOk &&
-    labelOk &&
-    bandOk &&
-    summaryOk &&
-    strengthsOk &&
-    watchoutsOk &&
-    managementNotesOk &&
-    facetsOk
+    validateNonEmptyString(value.recommendation, `${path}.recommendation`, errors) &&
+    validateNonEmptyString(value.why, `${path}.why`, errors) &&
+    validateNonEmptyString(
+      value.first_30_days_application,
+      `${path}.first_30_days_application`,
+      errors,
+    )
   );
 }
 
-function normalizeStringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.map(normalizeTextField).filter(Boolean) : [];
+function validateHrTeamFitNote(
+  value: unknown,
+  path: string,
+  errors: ValidationError[],
+): value is HrTeamFitNote {
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "HR report: Expected an object." });
+    return false;
+  }
+
+  errors.push(...validateExactKeys(value, ["fit_condition", "may_work_well_when", "watchout"], path));
+
+  return (
+    validateNonEmptyString(value.fit_condition, `${path}.fit_condition`, errors) &&
+    validateNonEmptyString(value.may_work_well_when, `${path}.may_work_well_when`, errors) &&
+    validateNonEmptyString(value.watchout, `${path}.watchout`, errors)
+  );
 }
 
 function validateSummary(value: unknown, path: string, errors: ValidationError[]): value is Summary {
@@ -692,11 +984,304 @@ export function validateIpipNeo120ParticipantReportV1(value: unknown):
   return { ok: true, value: normalized };
 }
 
+const FORBIDDEN_HR_REPORT_PHRASES = [
+  "najistaknutiji profesionalni signal",
+  "djeluje kao najstabilniji izvor radnog ritma",
+  "može pomoći finijem razumijevanju",
+  "zaposliti",
+  "ne zaposliti",
+  "hiring odluka",
+] as const;
+
+function isLegacyIpipNeo120HrReportShape(value: unknown): value is {
+  contract_version: "ipip_neo_120_hr_v1";
+  workplace_signals: unknown;
+  domains: unknown;
+} {
+  return (
+    isNonArrayObject(value) &&
+    value.contract_version === "ipip_neo_120_hr_v1" &&
+    Array.isArray(value.workplace_signals) &&
+    Array.isArray(value.domains)
+  );
+}
+
+function normalizeHrRelevantFacets(value: unknown): HrRelevantFacet[] {
+  return Array.isArray(value)
+    ? value
+        .map((item) => ({
+          facet_name: normalizeTextField(item?.facet_name),
+          score_label_or_band: item?.score_label_or_band as HrBand,
+          relevance: normalizeTextField(item?.relevance),
+        }))
+        .filter((item) => item.facet_name)
+        .slice(0, 2)
+    : [];
+}
+
+function legacyDomainCodeToIpipCode(code: LegacyIpipNeo120HrDomainCode): IpipNeo120DomainCode {
+  switch (code) {
+    case "E":
+      return "EXTRAVERSION";
+    case "A":
+      return "AGREEABLENESS";
+    case "C":
+      return "CONSCIENTIOUSNESS";
+    case "N":
+      return "NEUROTICISM";
+    case "O":
+    default:
+      return "OPENNESS_TO_EXPERIENCE";
+  }
+}
+
+function normalizeLegacyIpipNeo120HrReportV1(
+  value: Partial<{
+    headline: unknown;
+    executive_summary: unknown;
+    workplace_signals: unknown;
+    domains: unknown;
+    collaboration_style: unknown;
+    communication_style: unknown;
+    leadership_and_influence: unknown;
+    team_watchouts: unknown;
+    onboarding_or_management_recommendations: unknown;
+    interpretation_note: unknown;
+  }>,
+): IpipNeo120HrReportV1 {
+  const domains = (Array.isArray(value.domains) ? value.domains : []) as Array<Partial<LegacyHrDomain>>;
+  const domainsByCode = new Map(
+    domains
+      .map((domain) =>
+        typeof domain.code === "string"
+          ? [legacyDomainCodeToIpipCode(domain.code as LegacyIpipNeo120HrDomainCode), domain]
+          : null,
+      )
+      .filter(Boolean) as Array<[IpipNeo120DomainCode, Partial<LegacyHrDomain>]>,
+  );
+  const workplaceSignals = normalizeStringList(value.workplace_signals);
+  const watchouts = normalizeStringList(value.team_watchouts);
+  const onboardingNotes = normalizeStringList(value.onboarding_or_management_recommendations);
+  const interviewQuestions: IpipNeo120HrReportV1["interview_questions"] = [
+    {
+      question: "Opišite situaciju kada ste morali zauzeti stav uprkos neslaganju tima. Kako ste postupili?",
+      evaluates: "Postavljanje granica i ponašanje u neslaganju.",
+      what_good_answer_may_show:
+        "Jasan primjer kako osoba održava saradnju, ali i štiti odluku, prioritet ili standard rada.",
+    },
+    {
+      question: "Recite primjer kada ste morali dati direktnu, neugodnu povratnu informaciju.",
+      evaluates: "Direktna komunikacija i odgovornost u zahtjevnim razgovorima.",
+      what_good_answer_may_show:
+        "Sposobnost da ostane konkretna, poštena i profesionalna bez izbjegavanja teških tema.",
+    },
+    {
+      question: "Kako reagujete kada zadatak postane nejasan ili se prioriteti promijene u zadnji čas?",
+      evaluates: "Reakcija na promjenu, nejasnoću i operativni pritisak.",
+      what_good_answer_may_show:
+        "Primjer samoregulacije, traženja pojašnjenja i očuvanja fokusa kada kontekst nije stabilan.",
+    },
+    {
+      question: "Opišite situaciju kada ste morali balansirati brzinu odluke i kvalitet odnosa u timu.",
+      evaluates: "Balans saradnje, odlučnosti i praktičnog prosuđivanja.",
+      what_good_answer_may_show:
+        "Kako osoba procjenjuje kada treba graditi saglasnost, a kada donijeti odluku bez odlaganja.",
+    },
+    {
+      question: "Kada pomažete drugima, kako procjenjujete granicu između podrške i preuzimanja tuđeg posla?",
+      evaluates: "Upravljanje saradnjom, prioritetima i ličnom odgovornošću.",
+      what_good_answer_may_show:
+        "Zdrav osjećaj granice, prioriteta i odgovornosti prema vlastitim obavezama.",
+    },
+  ];
+
+  return {
+    contract_version: "ipip_neo_120_hr_v2",
+    test: {
+      code: "ipip_neo_120",
+      name: "IPIP-NEO-120",
+    },
+    meta: {
+      language: "bs",
+      audience: "hr",
+    },
+    headline:
+      normalizeTextField(value.headline) ||
+      "Profil ukazuje na obrasce saradnje i samoregulacije koje vrijedi provjeriti kroz konkretne radne situacije.",
+    executive_summary:
+      normalizeTextField(value.executive_summary) ||
+      "Ovaj raniji HR snapshot sažima dominantne obrasce rada i saradnje. U intervjuu ga vrijedi koristiti za provjeru ponašanja pod pritiskom, u neslaganju i pri postavljanju prioriteta.",
+    key_hr_signals: [
+      {
+        title: workplaceSignals[0] || "Prepoznatljiv radni obrazac",
+        evidence: "Preuzeto iz ranije verzije HR izvještaja i vezano za dominantne domene i facete iz snapshota.",
+        hr_implication:
+          "Koristiti kao hipotezu za intervju i provjeriti kako se obrazac vidi u konkretnim radnim situacijama.",
+      },
+      {
+        title: workplaceSignals[1] || "Način saradnje i komunikacije",
+        evidence:
+          normalizeTextField(value.collaboration_style) || "Raniji izvještaj naglašava saradnju i komunikaciju kao ključni kontekst čitanja profila.",
+        hr_implication:
+          "Provjeriti kako osoba održava saradnju kada treba dati direktan feedback ili zauzeti stav.",
+      },
+      {
+        title: workplaceSignals[2] || "Razvojna tačka za provjeru",
+        evidence:
+          normalizeTextField(value.leadership_and_influence) || "Raniji snapshot daje dodatni signal o uticaju, inicijativi i ponašanju u timskom kontekstu.",
+        hr_implication:
+          "Povezati nalaz sa zahtjevima konkretne uloge i provjeriti ga kroz primjere ponašanja.",
+      },
+    ],
+    verification_focus: [
+      {
+        area: "Postavljanje granica",
+        why_it_matters:
+          "Raniji HR snapshot sugeriše da stil saradnje vrijedi provjeriti i kroz situacije kada treba zaštititi prioritet ili odluku.",
+        how_to_check:
+          "U strukturiranom intervjuu tražiti konkretan primjer neslaganja, zaštite prioriteta ili odbijanja zahtjeva.",
+      },
+      {
+        area: "Direktna povratna informacija",
+        why_it_matters:
+          "Profil je korisno čitati i kroz to kako osoba komunicira kada razgovor postane neugodan ili osjetljiv.",
+        how_to_check:
+          "Zatražiti primjer davanja direktnog feedbacka i provjeriti kako je osoba održala jasnoću i odnos.",
+      },
+      {
+        area: "Reakcija na pritisak",
+        why_it_matters:
+          "Bez provjere pod pritiskom, stari snapshot može ostati preširoka interpretacija svakodnevnog radnog stila.",
+        how_to_check:
+          "Kroz intervju ili onboarding razgovor tražiti primjer rada kada su rokovi, nejasnoća ili promjena prioriteta bili pojačani.",
+      },
+    ],
+    interview_questions: interviewQuestions,
+    strengths_and_overuse_risks: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+      const domain = domainsByCode.get(domainCode);
+      if (!domain) {
+        return null;
+      }
+
+      return {
+        trait_or_pattern: normalizeTextField(domain.label) || getIpipNeo120DomainLabel(domainCode) || domainCode,
+        possible_strengths: [
+          normalizeStringList(domain.workplace_strengths)[0] || "Može podržati stabilniji način rada u kontekstu koji traži ovu osobinu.",
+          normalizeStringList(domain.workplace_strengths)[1] || "Može pomoći predvidivijoj saradnji i jasnijem usklađivanju s očekivanjima.",
+          "Može dati koristan signal o tome kako osoba prirodnije pristupa radu i odnosima.",
+        ] as [string, string, string],
+        possible_overuse_risks: [
+          normalizeStringList(domain.workplace_watchouts)[0] || "U određenim kontekstima može tražiti dodatnu provjeru kroz konkretne situacije.",
+          normalizeStringList(domain.workplace_watchouts)[1] || "Vrijedi provjeriti kako se obrazac vidi kada su pritisak i nejasnoća veći.",
+          "Ako se čita bez konteksta uloge, može voditi preširokoj interpretaciji.",
+        ] as [string, string, string],
+        hr_handling_tip:
+          normalizeStringList(domain.management_notes)[0] ||
+          "U intervjuu i onboardingu povezati nalaz sa konkretnim zadacima, saradnjom i povratnom informacijom.",
+      };
+    })
+      .filter(Boolean)
+      .slice(0, 3) as IpipNeo120HrReportV1["strengths_and_overuse_risks"],
+    domain_overview: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
+      const domain = domainsByCode.get(domainCode);
+      const fallbackLabel = getIpipNeo120DomainLabel(domainCode) ?? domainCode;
+      const facets = Array.isArray(domain?.facets) ? domain.facets : [];
+
+      return {
+        domain_name: normalizeTextField(domain?.label) || fallbackLabel,
+        score_label_or_band: (domain?.score_band as HrBand) ?? "moderate",
+        concise_meaning:
+          normalizeTextField(domain?.summary) ||
+          `${fallbackLabel} daje dodatni signal o radnom stilu koji vrijedi čitati uz kontekst uloge.`,
+        hr_relevance:
+          normalizeStringList(domain?.management_notes)[0] ||
+          `U HR kontekstu ovaj domen vrijedi povezati sa zahtjevima saradnje, odlučivanja i svakodnevnog rada.`,
+        check_in_interview:
+          normalizeStringList(domain?.management_notes)[1] ||
+          "U intervjuu tražiti primjer ponašanja koji potvrđuje kako se ovaj obrazac vidi u praksi.",
+        top_facets: facets.slice(0, 2).map((facet) => ({
+          facet_name: normalizeTextField(facet.label),
+          score_label_or_band: (facet.score_band as HrBand) ?? "moderate",
+          relevance:
+            normalizeTextField(facet.summary) ||
+            "Ova faceta daje dodatni signal za praktičnu provjeru u intervjuu.",
+        })),
+      };
+    }) as IpipNeo120HrReportV1["domain_overview"],
+    onboarding_and_management_guidance: [
+      {
+        recommendation: onboardingNotes[0] || "U prvim sedmicama razjasniti prioritete, odgovornosti i očekivanja saradnje.",
+        why:
+          "Stari HR snapshot daje veću vrijednost kada se profil odmah poveže sa stvarnim radnim zahtjevima i granicama uloge.",
+        first_30_days_application:
+          "Dogovoriti ritam kratkih check-in razgovora nakon prvih timskih i zadatkovnih situacija.",
+      },
+      {
+        recommendation: onboardingNotes[1] || "Rano provjeriti kako osoba traži pojašnjenje kada zadatak nije potpuno jasan.",
+        why:
+          "To pomaže da se razlikuje stabilan radni obrazac od ponašanja koje zavisi od strukture, podrške ili pritiska.",
+        first_30_days_application:
+          "Tokom prvih 30 dana uvesti barem jedan zadatak sa djelimično otvorenim parametrima i refleksiju nakon toga.",
+      },
+      {
+        recommendation: onboardingNotes[2] || "Dogovoriti kako će izgledati direktan feedback i eskalacija neslaganja.",
+        why:
+          "Profil vrijedi čitati i kroz to kako osoba štiti prioritete, daje feedback i reaguje kada saradnja postane zahtjevnija.",
+        first_30_days_application:
+          "Nakon prvih zahtjevnijih interakcija kratko pregledati kako je osoba komunicirala, šta je zaštitila i šta bi uradila drugačije.",
+      },
+      {
+        recommendation: "Povezati profil sa konkretnim zahtjevima uloge, a ne samo sa opštim opisom ličnosti.",
+        why:
+          "Time se smanjuje rizik da se stari snapshot tumači preširoko ili van konteksta stvarnog posla.",
+        first_30_days_application:
+          "Na kraju prvog mjeseca pregledati koje su se hipoteze iz izvještaja potvrdile, a koje traže dodatnu provjeru.",
+      },
+    ],
+    team_fit_notes: [
+      {
+        fit_condition: "Tim koji traži stabilnu saradnju i razmjenu informacija",
+        may_work_well_when:
+          "Uloga zavisi od koordinacije, međuzavisnosti i redovnog usklađivanja sa drugima.",
+        watchout:
+          watchouts[0] || "Provjeriti kako osoba reaguje kada tim traži češće neslaganje, direktniji konflikt ili brže odluke.",
+      },
+      {
+        fit_condition: "Okruženje sa jasnim očekivanjima i odgovornostima",
+        may_work_well_when:
+          "Radni kontekst ima dovoljno jasnoće da se vidi kako osoba postavlja prioritete i prati dogovoreno.",
+        watchout:
+          watchouts[1] || "Vrijedi provjeriti kako funkcioniše kada se očekivanja mijenjaju ili ostanu djelimično nejasna.",
+      },
+      {
+        fit_condition: "Tim koji koristi strukturirani feedback i kratke razvojne check-in razgovore",
+        may_work_well_when:
+          "Postoji prostor da se dominantni obrasci brzo prevedu u konkretno ponašanje i podršku.",
+        watchout:
+          watchouts[2] || "Ne oslanjati se na snapshot bez provjere kroz stvarne primjere rada i zahtjeve konkretne uloge.",
+      },
+    ],
+    decision_support_note: [
+      "Ne koristiti ovaj profil kao samostalnu odluku o kandidatu.",
+      "Koristiti ga za pripremu strukturiranog intervjua i provjeru ponašanja u relevantnim radnim situacijama.",
+      "Ključne hipoteze provjeriti kroz konkretne primjere ponašanja, reference i zahtjeve konkretne uloge.",
+      "Zaključke kombinovati sa iskustvom, intervjuom, referencama i drugim relevantnim izvorima informacija.",
+    ],
+    interpretation_note:
+      normalizeTextField(value.interpretation_note) ||
+      "Ovaj izvještaj nije dijagnoza niti odluka o zapošljavanju, ne potvrđuje zaštićene osobine i treba ga čitati uz kontekst uloge i druge izvore informacija.",
+  };
+}
+
 export function normalizeIpipNeo120HrReportV1(value: unknown): IpipNeo120HrReportV1 {
+  if (isLegacyIpipNeo120HrReportShape(value)) {
+    return normalizeLegacyIpipNeo120HrReportV1(value);
+  }
+
   const report = value as Partial<IpipNeo120HrReportV1>;
 
   return {
-    contract_version: "ipip_neo_120_hr_v1",
+    contract_version: "ipip_neo_120_hr_v2",
     test: {
       code: "ipip_neo_120",
       name: "IPIP-NEO-120",
@@ -707,38 +1292,115 @@ export function normalizeIpipNeo120HrReportV1(value: unknown): IpipNeo120HrRepor
     },
     headline: normalizeTextField(report.headline),
     executive_summary: normalizeTextField(report.executive_summary),
-    workplace_signals: normalizeStringList(report.workplace_signals).slice(0, 5) as IpipNeo120HrReportV1["workplace_signals"],
-    domains: (Array.isArray(report.domains) ? report.domains : []).map((domain) => ({
-      code: typeof domain?.code === "string" ? (domain.code as IpipNeo120HrDomainCode) : "N",
-      label: normalizeTextField(domain?.label),
-      score_band: domain?.score_band as HrBand,
-      summary: normalizeTextField(domain?.summary),
-      workplace_strengths: normalizeStringList(domain?.workplace_strengths).slice(0, 2) as HrDomain["workplace_strengths"],
-      workplace_watchouts: normalizeStringList(domain?.workplace_watchouts).slice(0, 2) as HrDomain["workplace_watchouts"],
-      management_notes: normalizeStringList(domain?.management_notes).slice(0, 2) as HrDomain["management_notes"],
-      facets: (Array.isArray(domain?.facets) ? domain.facets : []).map((facet) => ({
-        code: normalizeTextField(facet?.code),
-        label: normalizeTextField(facet?.label),
-        score_band: facet?.score_band as HrBand,
-        summary: normalizeTextField(facet?.summary),
-      })) as HrDomain["facets"],
-    })) as IpipNeo120HrReportV1["domains"],
-    collaboration_style: normalizeTextField(report.collaboration_style),
-    communication_style: normalizeTextField(report.communication_style),
-    leadership_and_influence: normalizeTextField(report.leadership_and_influence),
-    team_watchouts: normalizeStringList(report.team_watchouts).slice(0, 3) as IpipNeo120HrReportV1["team_watchouts"],
-    onboarding_or_management_recommendations: normalizeStringList(
-      report.onboarding_or_management_recommendations,
-    ).slice(0, 3) as IpipNeo120HrReportV1["onboarding_or_management_recommendations"],
+    key_hr_signals: (Array.isArray(report.key_hr_signals) ? report.key_hr_signals : []).map((item) => ({
+      title: normalizeTextField(item?.title),
+      evidence: normalizeTextField(item?.evidence),
+      hr_implication: normalizeTextField(item?.hr_implication),
+    })).slice(0, 3) as IpipNeo120HrReportV1["key_hr_signals"],
+    verification_focus: (Array.isArray(report.verification_focus) ? report.verification_focus : []).map((item) => ({
+      area: normalizeTextField(item?.area),
+      why_it_matters: normalizeTextField(item?.why_it_matters),
+      how_to_check: normalizeTextField(item?.how_to_check),
+    })).slice(0, 3) as IpipNeo120HrReportV1["verification_focus"],
+    interview_questions: (Array.isArray(report.interview_questions) ? report.interview_questions : []).map((item) => ({
+      question: normalizeTextField(item?.question),
+      evaluates: normalizeTextField(item?.evaluates),
+      what_good_answer_may_show: normalizeTextField(item?.what_good_answer_may_show),
+    })).slice(0, 5) as IpipNeo120HrReportV1["interview_questions"],
+    strengths_and_overuse_risks: (Array.isArray(report.strengths_and_overuse_risks)
+      ? report.strengths_and_overuse_risks
+      : []).map((item) => ({
+      trait_or_pattern: normalizeTextField(item?.trait_or_pattern),
+      possible_strengths: normalizeStringList(item?.possible_strengths).slice(0, 3) as [string, string, string],
+      possible_overuse_risks: normalizeStringList(item?.possible_overuse_risks).slice(0, 3) as [string, string, string],
+      hr_handling_tip: normalizeTextField(item?.hr_handling_tip),
+    })).slice(0, 3) as IpipNeo120HrReportV1["strengths_and_overuse_risks"],
+    domain_overview: (Array.isArray(report.domain_overview) ? report.domain_overview : []).map((item) => ({
+      domain_name: normalizeTextField(item?.domain_name),
+      score_label_or_band: item?.score_label_or_band as HrBand,
+      concise_meaning: normalizeTextField(item?.concise_meaning),
+      hr_relevance: normalizeTextField(item?.hr_relevance),
+      check_in_interview: normalizeTextField(item?.check_in_interview),
+      top_facets: normalizeHrRelevantFacets(item?.top_facets),
+    })).slice(0, 5) as IpipNeo120HrReportV1["domain_overview"],
+    onboarding_and_management_guidance: (Array.isArray(report.onboarding_and_management_guidance)
+      ? report.onboarding_and_management_guidance
+      : []).map((item) => ({
+      recommendation: normalizeTextField(item?.recommendation),
+      why: normalizeTextField(item?.why),
+      first_30_days_application: normalizeTextField(item?.first_30_days_application),
+    })).slice(0, 4) as IpipNeo120HrReportV1["onboarding_and_management_guidance"],
+    team_fit_notes: (Array.isArray(report.team_fit_notes) ? report.team_fit_notes : []).map((item) => ({
+      fit_condition: normalizeTextField(item?.fit_condition),
+      may_work_well_when: normalizeTextField(item?.may_work_well_when),
+      watchout: normalizeTextField(item?.watchout),
+    })).slice(0, 3) as IpipNeo120HrReportV1["team_fit_notes"],
+    decision_support_note: normalizeStringList(report.decision_support_note).slice(0, 4) as IpipNeo120HrReportV1["decision_support_note"],
     interpretation_note: normalizeTextField(report.interpretation_note),
   };
 }
 
-export function validateIpipNeo120HrReportV1(value: unknown):
+function collectNestedStrings(value: unknown): string[] {
+  if (typeof value === "string") {
+    return [value];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectNestedStrings(item));
+  }
+
+  if (isNonArrayObject(value)) {
+    return Object.values(value).flatMap((item) => collectNestedStrings(item));
+  }
+
+  return [];
+}
+
+function validateHrGuardrails(
+  report: IpipNeo120HrReportV1,
+  errors: ValidationError[],
+) {
+  const loweredText = collectNestedStrings(report)
+    .map((item) => normalizeWhitespace(item).toLocaleLowerCase("bs"))
+    .join("\n");
+
+  FORBIDDEN_HR_REPORT_PHRASES.forEach((phrase) => {
+    if (loweredText.includes(phrase)) {
+      errors.push({
+        path: "",
+        message: `Forbidden phrase detected: "${phrase}".`,
+      });
+    }
+  });
+}
+
+export function coerceIpipNeo120HrReportV1ForDisplay(value: unknown): IpipNeo120HrReportV1 | null {
+  if (
+    !isNonArrayObject(value) ||
+    (value.contract_version !== "ipip_neo_120_hr_v1" &&
+      value.contract_version !== "ipip_neo_120_hr_v2")
+  ) {
+    return null;
+  }
+
+  return normalizeIpipNeo120HrReportV1(value);
+}
+
+export function validateIpipNeo120HrReportV1(
+  value: unknown,
+  options?: {
+    strictContract?: boolean;
+    enforceGuardrails?: boolean;
+  },
+):
   | { ok: true; value: IpipNeo120HrReportV1 }
   | { ok: false; errors: ValidationError[] } {
   const normalized = normalizeIpipNeo120HrReportV1(value);
   const errors: ValidationError[] = [];
+  const strictContract = options?.strictContract ?? false;
+  const enforceGuardrails = options?.enforceGuardrails ?? false;
+  const isLegacyShape = isLegacyIpipNeo120HrReportShape(value);
+  const enforceNarrativeConstraints = strictContract || !isLegacyShape;
 
   if (!isNonArrayObject(value)) {
     return {
@@ -747,101 +1409,159 @@ export function validateIpipNeo120HrReportV1(value: unknown):
     };
   }
 
-  errors.push(
-    ...validateExactKeys(
-      value,
-      [
-        "contract_version",
-        "test",
-        "meta",
-        "headline",
-        "executive_summary",
-        "workplace_signals",
-        "domains",
-        "collaboration_style",
-        "communication_style",
-        "leadership_and_influence",
-        "team_watchouts",
-        "onboarding_or_management_recommendations",
-        "interpretation_note",
-      ],
-      "",
-    ),
-  );
+  const objectValue = value as Record<string, unknown>;
 
-  if (value.contract_version !== "ipip_neo_120_hr_v1") {
+  if (strictContract && isLegacyShape) {
     errors.push({
-      path: "contract_version",
-      message: 'HR report: Expected "ipip_neo_120_hr_v1".',
+      path: "",
+      message: "HR report: Legacy HR snapshot shape is not allowed for strict contract validation.",
     });
   }
 
-  if (!isNonArrayObject(value.test)) {
+  if (strictContract && !isLegacyShape) {
+    errors.push(
+      ...validateExactKeys(
+        value,
+        [
+          "contract_version",
+          "test",
+          "meta",
+          "headline",
+          "executive_summary",
+          "key_hr_signals",
+          "verification_focus",
+          "interview_questions",
+          "strengths_and_overuse_risks",
+          "domain_overview",
+          "onboarding_and_management_guidance",
+          "team_fit_notes",
+          "decision_support_note",
+          "interpretation_note",
+        ],
+        "",
+      ),
+    );
+  }
+
+  const isCurrentShape = objectValue.contract_version === "ipip_neo_120_hr_v2";
+  const isSupportedLegacyShape = objectValue.contract_version === "ipip_neo_120_hr_v1" && isLegacyShape;
+
+  if (!isCurrentShape && !isSupportedLegacyShape) {
+    errors.push({
+      path: "contract_version",
+      message: 'HR report: Expected "ipip_neo_120_hr_v2" or supported legacy "ipip_neo_120_hr_v1".',
+    });
+  }
+
+  if (!isNonArrayObject(objectValue.test)) {
     errors.push({ path: "test", message: "HR report: Expected an object." });
   } else {
-    errors.push(...validateExactKeys(value.test, ["code", "name"], "test"));
+    errors.push(...validateExactKeys(objectValue.test, ["code", "name"], "test"));
 
-    if (value.test.code !== "ipip_neo_120") {
+    if (objectValue.test.code !== "ipip_neo_120") {
       errors.push({ path: "test.code", message: 'HR report: Expected "ipip_neo_120".' });
     }
 
-    if (value.test.name !== "IPIP-NEO-120") {
+    if (objectValue.test.name !== "IPIP-NEO-120") {
       errors.push({ path: "test.name", message: 'HR report: Expected "IPIP-NEO-120".' });
     }
   }
 
-  if (!isNonArrayObject(value.meta)) {
+  if (!isNonArrayObject(objectValue.meta)) {
     errors.push({ path: "meta", message: "HR report: Expected an object." });
   } else {
-    errors.push(...validateExactKeys(value.meta, ["language", "audience"], "meta"));
+    errors.push(...validateExactKeys(objectValue.meta, ["language", "audience"], "meta"));
 
-    if (value.meta.language !== "bs") {
+    if (objectValue.meta.language !== "bs") {
       errors.push({ path: "meta.language", message: 'HR report: Expected "bs".' });
     }
 
-    if (value.meta.audience !== "hr") {
+    if (objectValue.meta.audience !== "hr") {
       errors.push({ path: "meta.audience", message: 'HR report: Expected "hr".' });
     }
   }
 
   validateNonEmptyString(normalized.headline, "headline", errors);
   validateNonEmptyString(normalized.executive_summary, "executive_summary", errors);
-  validateExactStringArrayLength(value.workplace_signals, "workplace_signals", 5, errors);
-
-  const seenDomainCodes = new Set<IpipNeo120HrDomainCode>();
-
-  if (!Array.isArray(value.domains) || value.domains.length !== 5) {
-    errors.push({
-      path: "domains",
-      message: "HR report: Expected exactly 5 domains.",
-    });
-  } else {
-    value.domains.forEach((domain, index) => {
-      validateHrDomain(domain, `domains[${index}]`, seenDomainCodes, errors);
-    });
-
-    const expectedCodes = ["N", "E", "O", "A", "C"] satisfies IpipNeo120HrDomainCode[];
-    const missingCodes = expectedCodes.filter((code) => !seenDomainCodes.has(code));
-
-    if (missingCodes.length > 0) {
-      errors.push({
-        path: "domains",
-        message: `HR report: Missing domain code(s): ${missingCodes.join(", ")}.`,
-      });
-    }
+  if (enforceNarrativeConstraints) {
+    validateWordLimit(normalized.headline, "headline", 22, errors);
+    validateSentenceRange(normalized.headline, "headline", 1, 1, errors);
+    validateSentenceRange(normalized.executive_summary, "executive_summary", 2, 3, errors);
   }
 
-  validateNonEmptyString(normalized.collaboration_style, "collaboration_style", errors);
-  validateNonEmptyString(normalized.communication_style, "communication_style", errors);
-  validateNonEmptyString(normalized.leadership_and_influence, "leadership_and_influence", errors);
-  validateExactStringArrayLength(value.team_watchouts, "team_watchouts", 3, errors);
-  validateExactStringArrayLength(
-    value.onboarding_or_management_recommendations,
-    "onboarding_or_management_recommendations",
-    3,
-    errors,
-  );
+  if (validateExactObjectArrayLength(normalized.key_hr_signals, "key_hr_signals", 3, errors)) {
+    normalized.key_hr_signals.forEach((item, index) => {
+      validateHrKeySignal(item, `key_hr_signals[${index}]`, errors);
+    });
+  }
+
+  if (validateExactObjectArrayLength(normalized.verification_focus, "verification_focus", 3, errors)) {
+    normalized.verification_focus.forEach((item, index) => {
+      validateHrVerificationFocus(item, `verification_focus[${index}]`, errors);
+    });
+  }
+
+  if (validateExactObjectArrayLength(normalized.interview_questions, "interview_questions", 5, errors)) {
+    normalized.interview_questions.forEach((item, index) => {
+      validateHrInterviewQuestion(item, `interview_questions[${index}]`, errors);
+    });
+  }
+
+  if (
+    !Array.isArray(normalized.strengths_and_overuse_risks) ||
+    normalized.strengths_and_overuse_risks.length < 2 ||
+    normalized.strengths_and_overuse_risks.length > 3
+  ) {
+    errors.push({
+      path: "strengths_and_overuse_risks",
+      message: "HR report: Expected 2 to 3 strengths_and_overuse_risks entries.",
+    });
+  } else {
+    normalized.strengths_and_overuse_risks.forEach((item, index) => {
+      validateHrStrengthsAndOveruseRisk(item, `strengths_and_overuse_risks[${index}]`, errors);
+    });
+  }
+
+  if (validateExactObjectArrayLength(normalized.domain_overview, "domain_overview", 5, errors)) {
+    normalized.domain_overview.forEach((item, index) => {
+      validateHrDomainOverview(
+        item,
+        `domain_overview[${index}]`,
+        IPIP_NEO_120_DOMAIN_ORDER[index],
+        enforceNarrativeConstraints,
+        errors,
+      );
+    });
+  }
+
+  if (
+    validateExactObjectArrayLength(
+      normalized.onboarding_and_management_guidance,
+      "onboarding_and_management_guidance",
+      4,
+      errors,
+    )
+  ) {
+    normalized.onboarding_and_management_guidance.forEach((item, index) => {
+      validateHrOnboardingGuidance(item, `onboarding_and_management_guidance[${index}]`, errors);
+    });
+  }
+
+  if (validateExactObjectArrayLength(normalized.team_fit_notes, "team_fit_notes", 3, errors)) {
+    normalized.team_fit_notes.forEach((item, index) => {
+      validateHrTeamFitNote(item, `team_fit_notes[${index}]`, errors);
+    });
+  }
+
+  validateStringArrayRange(normalized.decision_support_note, "decision_support_note", 2, 4, errors);
   validateNonEmptyString(normalized.interpretation_note, "interpretation_note", errors);
+  if (enforceNarrativeConstraints) {
+    validateSentenceRange(normalized.interpretation_note, "interpretation_note", 1, 2, errors);
+  }
+
+  if (enforceGuardrails) {
+    validateHrGuardrails(normalized, errors);
+  }
 
   if (errors.length > 0) {
     return { ok: false, errors: prefixValidationErrors(errors, "HR report: ") };

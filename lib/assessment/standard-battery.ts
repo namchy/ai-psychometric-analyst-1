@@ -1,4 +1,5 @@
 import { normalizeAssessmentLocale, type AssessmentLocale } from "./locale";
+import { resolveAddressingForm, type AddressingForm } from "@/lib/auth/addressing-form";
 
 export const STANDARD_ASSESSMENT_BATTERY_SLUGS = [
   "ipip-neo-120-v1",
@@ -24,6 +25,7 @@ export type StandardBatteryAttemptInsert = {
   participant_id: string;
   test_id: string;
   locale: AssessmentLocale;
+  addressing_form_snapshot: AddressingForm;
   user_id: string | null;
   status: "in_progress";
   started_at: string;
@@ -44,6 +46,7 @@ type PlanStandardAssessmentBatteryCreationInput = {
   organizationId: string;
   participantId: string;
   participantUserId: string | null;
+  participantAddressingForm: unknown;
   locale: string | null | undefined;
   startedAt: string;
 };
@@ -74,6 +77,11 @@ export function planStandardAssessmentBatteryCreation(
   }
 
   const runnableTestIds = new Set(runnableTests.map((test) => test.id));
+  const completedAttemptTestIds = new Set(
+    input.existingAttempts
+      .filter((attempt) => attempt.status === "completed" && runnableTestIds.has(attempt.test_id))
+      .map((attempt) => attempt.test_id),
+  );
   const attemptIdsToAbandon = input.existingAttempts
     .filter(
       (attempt) =>
@@ -81,11 +89,16 @@ export function planStandardAssessmentBatteryCreation(
         runnableTestIds.has(attempt.test_id),
     )
     .map((attempt) => attempt.id);
-  const attemptsToInsert = runnableTests.map((test) => ({
+  // Temporary fallback until every candidate entry path is guaranteed to collect the preference first.
+  const addressingFormSnapshot = resolveAddressingForm(input.participantAddressingForm);
+  const attemptsToInsert = runnableTests
+    .filter((test) => !completedAttemptTestIds.has(test.id))
+    .map((test) => ({
       organization_id: input.organizationId,
       participant_id: input.participantId,
       test_id: test.id,
       locale,
+      addressing_form_snapshot: addressingFormSnapshot,
       user_id: input.participantUserId,
       status: "in_progress" as const,
       started_at: input.startedAt,

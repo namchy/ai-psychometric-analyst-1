@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSafranScoredRunHref } from "@/lib/assessment/attempt-lifecycle";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
+import { getGenericCandidateAttemptForUser } from "@/lib/candidate/attempts";
 
 type CandidateAttemptPreTestPageProps = {
   params: {
@@ -20,7 +20,7 @@ export default async function CandidateAttemptPreTestPage({
   params,
 }: CandidateAttemptPreTestPageProps) {
   const user = await requireAuthenticatedUser();
-  const attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+  const attempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();

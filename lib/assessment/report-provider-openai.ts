@@ -20,6 +20,30 @@ import {
   ipipNeo120ParticipantReportV2OpenAiSchema,
   validateIpipNeo120ParticipantReportV2,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
+import type { MwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-report-contract";
+import {
+  formatMwmsHrReportValidationErrors,
+  mwmsHrReportV1OpenAiSchema,
+  validateMwmsHrReportV1,
+  type MwmsHrReportInput,
+} from "@/lib/assessment/mwms-hr-report-v1";
+import {
+  formatMwmsParticipantReportV1ValidationErrors,
+  mwmsParticipantReportV1OpenAiSchema,
+  validateMwmsParticipantReportV1,
+} from "@/lib/assessment/mwms-participant-report-v1";
+import {
+  formatSafranHrReportValidationErrors,
+  safranHrReportV1OpenAiSchema,
+  validateSafranHrReport,
+  type SafranHrReportInput,
+} from "@/lib/assessment/safran-hr-report-v1";
+import type { SafranAiReportInput } from "@/lib/assessment/safran-participant-ai-report-v1";
+import {
+  formatSafranParticipantAiReportValidationErrors,
+  safranParticipantAiReportV1OpenAiSchema,
+  validateSafranParticipantAiReport,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
   assembleIpipNeo120ParticipantReportV2FromSegments,
   buildIpipNeo120ParticipantDomainSegmentPromptInput,
@@ -61,6 +85,48 @@ function isIpipNeo120ParticipantPromptInput(
   promptInput: ReportPromptInput,
 ): promptInput is Extract<ReportPromptInput, { audience: "participant"; domains: unknown[] }> {
   return "domains" in promptInput && promptInput.audience === "participant";
+}
+
+function isMwmsParticipantPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is MwmsParticipantReportPromptInput {
+  return (
+    "dimensions" in promptInput &&
+    "test_slug" in promptInput &&
+    promptInput.test_slug === "mwms_v1" &&
+    promptInput.audience === "participant"
+  );
+}
+
+function isMwmsHrPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is MwmsHrReportInput {
+  return (
+    "dimensions" in promptInput &&
+    "testSlug" in promptInput &&
+    promptInput.testSlug === "mwms_v1" &&
+    promptInput.audience === "hr"
+  );
+}
+
+function isSafranParticipantPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is SafranAiReportInput {
+  return (
+    "test" in promptInput &&
+    promptInput.test.slug === "safran_v1" &&
+    promptInput.test.audience === "participant"
+  );
+}
+
+function isSafranHrPromptInput(
+  promptInput: ReportPromptInput,
+): promptInput is SafranHrReportInput {
+  return (
+    "test" in promptInput &&
+    promptInput.test.slug === "safran_v1" &&
+    promptInput.test.audience === "hr"
+  );
 }
 
 function shouldUseIpipNeo120ParticipantReportV2(
@@ -151,6 +217,51 @@ function buildDefaultSystemPrompt(input: PreparedReportGenerationInput): string 
   return baseLines.join(" ");
 }
 
+export function buildSafranHrMandatoryPromptGuardrails(): string {
+  return [
+    "SAFRAN HR mandatory guardrails:",
+    "executiveSummary.summary must be a cautious HR hypothesis, not a conclusion, verdict or selection decision.",
+    'executiveSummary.summary must explicitly use hypothesis wording such as "Ovaj rezultat može ukazivati...", "Ovo treba čitati kao hipotezu za provjeru..." or "Signal treba provjeriti kroz intervju, iskustvo i kontekst uloge."',
+    'executiveSummary.summary must already in the first or second sentence use an explicit cautious HR hypothesis frame such as "Ovaj rezultat treba čitati kao opreznu HR hipotezu...", "Ovaj sažetak treba koristiti kao hipotezu za provjeru..." or "Ovi signali mogu pomoći HR-u da formira hipoteze koje treba provjeriti...".',
+    'executiveSummary.summary must clearly say that the signal should be checked through interview, experience and role context, ideally with wording such as "ovaj signal treba provjeriti" and "čitati zajedno sa iskustvom, intervjuom i kontekstom uloge".',
+    'Safe executiveSummary.summary example: "Ovaj rezultat treba čitati kao opreznu HR hipotezu, ne kao zaključak o kandidatu. Profil pokazuje jače verbalne i figuralne signale u ovom setu zadataka, uz slabiji numerički signal koji je korisno provjeriti kroz konkretne radne zadatke, intervju, iskustvo i zahtjeve uloge."',
+    "executiveSummary.summary should have three short functions in separate short sentences: cautious HR hypothesis frame, main result profile, and what HR should verify against the role.",
+    "executiveSummary.summary must not be one long validator-driven sentence and must not list scores without a work implication.",
+    "executiveSummary.summary must not sound final, absolute, diagnostic or hire/no-hire oriented.",
+    'In cognitiveSignals, do not repeat the same opening phrase across all four items; especially do not use "To može ukazivati" as the default start in every item.',
+    'If you use "može ukazivati", use it at most once inside cognitiveSignals and vary the other items with HR-safe alternatives such as "Ovaj rezultat je najkorisnije čitati kao...", "U HR kontekstu, ovaj obrazac može biti relevantan za...", "Ovaj signal vrijedi provjeriti kroz...", "U ovoj procjeni, rezultat sugeriše...", "Za ovu oblast je korisno obratiti pažnju na..." or "Ovaj dio rezultata treba povezati sa iskustvom, intervjuom i zahtjevima uloge."',
+    "Each cognitiveSignals item must include three content elements: a score anchor such as 18/18, 0/18 or 36/54, a short interpretation limited to this assessment, and one practical HR implication or check through interview or work sample.",
+    'In cognitiveSignals, reduce repeated phrases such as "u ovoj procjeni", "u okviru ovog seta zadataka" and "za HR je korisno"; keep caution, but do not make every sentence sound defensive.',
+    'For numeric cognitiveSignals, prefer practical wording like: "Ako uloga uključuje rad sa brojčanim podacima, tabelama, procjenama ili brzim kvantitativnim odlukama, ovaj signal treba dodatno provjeriti kroz kratak praktični zadatak."',
+    "pointsOfCaution must be concrete HR hypotheses for checking, not generic methodological notes.",
+    "pointsOfCaution must contain only real caution points or HR hypotheses for checking; do not place positive signals there just because they are high.",
+    'Do not use positive-signal point titles such as "Vrlo snažan verbalni signal" or "Vrlo snažan figuralni signal" unless they are phrased as a concrete work-context check.',
+    "For uneven profiles, prefer caution topics such as differences between verbal/figural and numeric results, a weaker numeric signal when the role uses numerical data, or total result hiding differences between task types.",
+    'Avoid generic methodological headings in pointsOfCaution such as "Rizik od pogrešne interpretacije ukupnog rezultata", "Pogrešno tumačenje rezultata" or "Ograničenja testa".',
+    "Each pointsOfCaution item must clearly state what the signal is, why it matters for work context, and how HR can check it.",
+    "interviewQuestions must be short, natural to say aloud, open-ended and directly tied to the signal.",
+    "Each interviewQuestions.question should be no more than two sentences and should avoid long administrative phrasing.",
+    "interviewQuestions should sound like HR can ask them aloud without rewriting; avoid grammatically awkward constructions.",
+    "onboardingGuidance must be tied to the concrete profile, not a generic onboarding plan.",
+    "For a profile with stronger verbal/figural signals and weaker numeric signal, use clear instructions, visual examples, process maps, control steps and short accuracy checks when the role includes numerical data.",
+    "Avoid unnatural onboarding wording such as 'način korištenja učinka', 'zadaci koji koriste...' or vague references to 'procjene i tabele' without work context.",
+    "interpretationLimits must include at least one sentence stating that results should be read together with experience, interview and role context.",
+    'interpretationLimits must include the idea: "čitati zajedno sa iskustvom, intervjuom i kontekstom uloge."',
+    "interpretationLimits must state that the report is not a hiring decision.",
+    "interpretationLimits must state that the result should be read only within this set of tasks.",
+    "interpretationLimits must state that the report should not be used for ranking a person against others.",
+    'Ranking statements in interpretationLimits must always be explicitly negative, using wording such as "Nalaze ne treba koristiti za rangiranje osobe u odnosu na druge."',
+    "interpretationLimits must state that the report should not be read as a comparison with a wider population.",
+    'interpretationLimits should use safe replacement wording such as "u okviru ovog seta zadataka", "ne koristiti za rangiranje osobe u odnosu na druge", "ne čitati kao poređenje sa širom populacijom" and "čitajte kao signal iz ove procjene".',
+    "interpretationLimits must state that the cognitive signal is a hypothesis for checking, not a final conclusion.",
+    "Report tone must feel like a professional HR decision-support artifact, not an academic test explanation or generic AI text: shorter sentences, clearer verbs, fewer repeated caveats, more concrete work implications, no selection verdicts and no psychological labeling.",
+    "Forbidden phrases are validation blockers.",
+    "Never output forbidden literal phrases anywhere in the JSON, including negated, quoted or cautionary statements such as 'this is not X'.",
+    "If a restriction would naturally mention a forbidden phrase, rewrite the sentence with the safe replacement wording instead of naming the forbidden phrase.",
+    "Forbidden literal phrases: IQ, kvocijent inteligencije, intelligent, inteligentan, neinteligentan, iznadprosječan, ispodprosječan, percentile, percentil, norma, norme, normativno, normativna poređenja, normativno poređenje, hiring score, hire/no-hire recommendation, red flag, rizičan kandidat, idealni kandidat.",
+  ].join("\n");
+}
+
 function buildDimensionHintText(input: PreparedReportGenerationInput): string {
   if (isIpipNeo120ParticipantPromptInput(input.promptInput)) {
     return input.promptInput.domains
@@ -181,6 +292,46 @@ function buildDimensionHintText(input: PreparedReportGenerationInput): string {
   }
 
   if (!("dimension_scores" in input.promptInput)) {
+    if (isSafranParticipantPromptInput(input.promptInput)) {
+      return input.promptInput.scores.domains
+        .map(
+          (domain) =>
+            `${domain.code} (${domain.label}): raw_score=${domain.rawScore}, score_label=${domain.scoreLabel}, band=${domain.band}, band_label=${domain.bandLabel}`,
+        )
+        .join(" | ");
+    }
+
+    if (isMwmsParticipantPromptInput(input.promptInput)) {
+      return input.promptInput.dimensions
+        .map(
+          (dimension) =>
+            `${dimension.code} (${dimension.label}): raw_score=${dimension.raw_score}, short_description=${dimension.short_description}`,
+        )
+        .join(" | ");
+    }
+
+    if (isMwmsHrPromptInput(input.promptInput)) {
+      return input.promptInput.dimensions
+        .map(
+          (dimension) =>
+            `${dimension.code} (${dimension.label}): raw_score=${dimension.rawScore}, band=${dimension.band}, band_label=${dimension.bandLabel}`,
+        )
+        .join(" | ");
+    }
+
+    if (isSafranHrPromptInput(input.promptInput)) {
+      return [
+        `overall=${input.promptInput.scores.overall.scoreLabel}/${input.promptInput.scores.overall.bandLabel}`,
+        `verbal=${input.promptInput.scores.verbal.scoreLabel}/${input.promptInput.scores.verbal.bandLabel}`,
+        `figural=${input.promptInput.scores.figural.scoreLabel}/${input.promptInput.scores.figural.bandLabel}`,
+        `numeric=${input.promptInput.scores.numeric.scoreLabel}/${input.promptInput.scores.numeric.bandLabel}`,
+      ].join(" | ");
+    }
+
+    if (!("derived" in input.promptInput) || !("rawOctants" in input.promptInput)) {
+      return "";
+    }
+
     return [
       `dominance=${input.promptInput.derived.dominance}`,
       `warmth=${input.promptInput.derived.warmth}`,
@@ -232,7 +383,7 @@ export function buildIpipNeo120ParticipantV2SingleUserPrompt(
   });
 }
 
-function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
+export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
     return buildIpipNeo120ParticipantV2SingleUserPrompt(input);
   }
@@ -272,24 +423,38 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
       instructions: {
         output_contract: "Return one HR report in the exact schema.",
         audience_behavior:
-          "Write in bosanski, ijekavica, latinica, for HR and hiring stakeholders. Keep the tone neutral, operational, workplace-oriented, and non-clinical.",
+          "Write in bosanski, ijekavica, latinica, for HR stakeholders. Keep the tone formal, operational, calm, workplace-oriented, and non-clinical.",
         structure_rules: [
-          "Use 5 workplace_signals.",
-          "Use exactly 5 domains with one entry for each of N, E, O, A, and C.",
-          "Each domain must contain exactly 6 facets.",
-          "Each domain must contain exactly 2 workplace_strengths, 2 workplace_watchouts, and 2 management_notes.",
-          "Use exactly 3 team_watchouts and exactly 3 onboarding_or_management_recommendations.",
+          "headline must be 1 sentence with at most 22 words and must name a practical HR signal plus one implication for interview or work context.",
+          "executive_summary must contain 2 to 3 sentences: dominant work pattern, what HR should verify, and optional use in interview or onboarding.",
+          "Use exactly 3 key_hr_signals. Each item must include title, evidence, and hr_implication.",
+          "Use exactly 3 verification_focus items. Each item must include area, why_it_matters, and how_to_check.",
+          "Use exactly 5 interview_questions. Each item must include question, evaluates, and what_good_answer_may_show.",
+          "Use 2 to 3 strengths_and_overuse_risks items. Each item must include exactly 3 possible_strengths and exactly 3 possible_overuse_risks.",
+          "Use exactly 5 domain_overview items in this order: Ekstraverzija, Ugodnost, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
+          "Each domain_overview item must use exactly 1 sentence for concise_meaning, exactly 1 sentence for hr_relevance, and exactly 1 sentence for check_in_interview.",
+          "Each domain_overview item may include at most 2 top_facets.",
+          "Use exactly 4 onboarding_and_management_guidance items.",
+          "Use exactly 3 team_fit_notes items.",
+          "Use 2 to 4 decision_support_note bullets.",
+          "Use 1 to 2 sentences for interpretation_note.",
         ],
         source_rule:
-          "Use only the provided deterministic scoring input. Do not calculate from raw answers and do not invent extra dimensions, metrics, or hiring decisions.",
+          "Use only the provided deterministic scoring input. Do not calculate from raw answers, do not change bands, and do not invent extra domains, facets, metrics, or hiring decisions.",
         terminology_rule:
-          "Use the provided domain and facet labels and stay within workplace interpretation.",
+          "Use the provided domain and facet labels, stay within workplace interpretation, and make each section answer what HR can do with the finding.",
         guardrails: [
           "Do not diagnose or use clinical language.",
           "Do not give hire/no-hire recommendations.",
+          "Do not say employ, hire, reject, or recommend employment.",
           "Do not infer protected traits.",
           "Do not treat the report as final truth about the person.",
           "Do not use absolute statements such as always, never, or definitely proves.",
+          'Do not use the phrases "najistaknutiji profesionalni signal", "djeluje kao najstabilniji izvor radnog ritma", or "može pomoći finijem razumijevanju".',
+          "Do not use diagnostic, medical, or protected-attribute language.",
+          "Do not reveal or mention candidate scores in interview questions.",
+          "decision_support_note must clearly say the report is not a standalone hiring decision and should be combined with interview, experience, references, and role requirements.",
+          "interpretation_note must say the report is not a diagnosis, is not a hiring decision, does not confirm protected traits, and must be read with role context and other information sources.",
         ],
         dimension_hint_text: buildDimensionHintText(input),
       },
@@ -298,6 +463,239 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
   }
 
   if (!("dimension_scores" in input.promptInput)) {
+    if (isSafranParticipantPromptInput(input.promptInput)) {
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one SAFRAN participant report in reportType safran_participant_ai_report_v1.",
+          audience_behavior:
+            "Write in the locale from input.test.locale. Address the participant directly in a calm, neutral, non-clinical tone.",
+          source_rule:
+            "Use only the provided structured SAFRAN input with already calculated scoreLabel, bandLabel and deterministicMeaning values. Do not calculate scores, do not change scoreLabel, and do not change bandLabel.",
+          narrative_quality_rules: [
+            "deterministicMeaning is a safety/context boundary, not final copy.",
+            "Do not copy deterministicMeaning verbatim or with a trivial paraphrase in any domain interpretation.",
+            "Do not merely restate scoreLabel or bandLabel in summary.interpretation.",
+            "summary.interpretation must explain the pattern across domains, including relation, contrast or difference between areas when visible.",
+            "If there is a clear contrast, name it carefully with terms such as obrazac, odnos, kontrast, razlika, u odnosu na, verbalno-figuralni dio, numerički dio.",
+            "Keep interpretation tied to SAFRAN task performance, not to the whole person.",
+            "Use nextStep.body for one practical candidate-facing reflection about where the format felt clearer and where it required more checking, time or a different approach.",
+          ],
+          single_test_rule:
+            "This is a single-test SAFRAN report. Interpret only SAFRAN results. Do not connect SAFRAN with IPIP or MWMS except in readingGuide where you may say it is useful together with other parts of Deep Profile procjene.",
+          structure_rules: [
+            "Return valid JSON only.",
+            "Keep section order as header, summary, domains, cognitiveSignals, readingGuide, nextStep, safetyChecks.",
+            "Keep domains in exact order verbal, figural, numeric.",
+            'header.title must be exactly "SAFRAN".',
+            "summary.scoreLabel must match input.scores.overall.scoreLabel exactly.",
+            "summary.bandLabel must match input.scores.overall.bandLabel exactly.",
+            "Each domain scoreLabel and bandLabel must match the provided input exactly.",
+            "summary.interpretation must be at most 2 sentences.",
+            "Each domain interpretation must be at most 2 sentences.",
+            "Each cognitiveSignals field must be 1 sentence at most.",
+            "readingGuide.bullets must contain exactly 5 items, one sentence each.",
+            "summary.interpretation or cognitiveSignals must contain at least one explicit pattern term such as obrazac, odnos, kontrast, razlika or u odnosu na.",
+          ],
+          reading_guide_requirements: [
+            "Use exactly these five readingGuide bullets in the same order, adapted only for locale while keeping the same meaning.",
+            "1. The result is not a measure of general intelligence.",
+            "2. The result is not a percentile and does not represent comparison with a local reference group.",
+            "3. Practice questions are only for familiarization and do not enter scoring.",
+            "4. SAFRAN result should not be used as a standalone decision about the candidate.",
+            "5. The result is most useful when read together with other parts of Deep Profile procjene.",
+            "Preferred Bosnian phrasing is acceptable and recommended: 'Ovi rezultati ne predstavljaju mjeru opšte inteligencije.' 'Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.' 'Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.' 'SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.' 'Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.'",
+          ],
+          guardrails: [
+            "Do not use HR or hiring language.",
+            "Do not use hire/no-hire language.",
+            "Do not make IQ, percentile or norm claims.",
+            "Do not diagnose and do not use clinical language.",
+            "Do not make fixed-ability claims.",
+            "Do not call the person smart, capable, incapable, above-average or below-average.",
+            "Do not use V1, Ukupni kognitivni kompozit, or Rezultat ne znači.",
+            "Do not mention raw answers, item banks, other candidates or organizational context.",
+            "Do not mention AI.",
+          ],
+          safety_checks_rule:
+            "All safetyChecks fields must be false.",
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
+    }
+
+    if (isSafranHrPromptInput(input.promptInput)) {
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one SAFRAN HR report in reportType safran_hr_report_v1.",
+          audience_behavior:
+            "Write in the locale from input.test.locale for an HR professional. Keep the tone neutral, workplace-oriented, careful and non-clinical.",
+          decision_support_rule:
+            "This report is decision-support only and must not make or imply a hiring decision.",
+          source_rule:
+            "Use only the provided structured SAFRAN input with already calculated rawScore, maxScore, scoreLabel, band and bandLabel values. Do not calculate scores, do not change scores, and do not change labels or bands.",
+          interpretation_rule:
+            "Frame all conclusions as signals, hypotheses and checks. Use wording such as moze ukazivati, korisno je provjeriti, u ovom setu zadataka, and signal treba citati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
+          field_level_rules: [
+            "executiveSummary.summary must be a cautious HR hypothesis, not a conclusion or verdict.",
+            'executiveSummary.summary must explicitly use at least one hypothesis phrase such as "Ovaj rezultat može ukazivati...", "Ovo treba čitati kao hipotezu za provjeru..." or "Signal treba provjeriti kroz intervju, iskustvo i kontekst uloge."',
+            'executiveSummary.summary must already in the first or second sentence use an explicit cautious HR hypothesis frame such as "Ovaj rezultat treba čitati kao opreznu HR hipotezu...", "Ovaj sažetak treba koristiti kao hipotezu za provjeru..." or "Ovi signali mogu pomoći HR-u da formira hipoteze koje treba provjeriti...".',
+            'executiveSummary.summary must clearly say that the signal should be checked through interview, experience and role context, ideally with wording such as "ovaj signal treba provjeriti" and "čitati zajedno sa iskustvom, intervjuom i kontekstom uloge".',
+            'Safe executiveSummary.summary example: "Ovaj rezultat treba čitati kao opreznu HR hipotezu, ne kao zaključak o kandidatu. Profil pokazuje jače verbalne i figuralne signale u ovom setu zadataka, uz slabiji numerički signal koji je korisno provjeriti kroz konkretne radne zadatke, intervju, iskustvo i zahtjeve uloge."',
+            "executiveSummary.summary should have three short functions in separate short sentences: cautious HR hypothesis frame, main result profile, and what HR should verify against the role.",
+            "executiveSummary.summary must not be one long validator-driven sentence and must not list scores without a work implication.",
+            "executiveSummary.summary must not sound final, absolute or selection-decisive.",
+            'In cognitiveSignals, do not repeat the same opening phrase across overall, verbal, figural and numeric; especially do not use "To može ukazivati" in every item.',
+            'If you use "može ukazivati" inside cognitiveSignals, use it at most once and vary the rest with alternatives such as "Ovaj rezultat je najkorisnije čitati kao...", "U HR kontekstu, ovaj obrazac može biti relevantan za...", "Ovaj signal vrijedi provjeriti kroz...", "U ovoj procjeni, rezultat sugeriše...", "Za ovu oblast je korisno obratiti pažnju na..." or "Ovaj dio rezultata treba povezati sa iskustvom, intervjuom i zahtjevima uloge."',
+            "Each cognitiveSignals item must include the score anchor, a brief interpretation of the signal in this assessment, and one HR implication or check through interview or work sample.",
+            'In cognitiveSignals, reduce repeated phrases such as "u ovoj procjeni", "u okviru ovog seta zadataka" and "za HR je korisno"; each item should still end with a practical work implication or check.',
+            'For numeric cognitiveSignals, prefer practical wording like: "Ako uloga uključuje rad sa brojčanim podacima, tabelama, procjenama ili brzim kvantitativnim odlukama, ovaj signal treba dodatno provjeriti kroz kratak praktični zadatak."',
+            "pointsOfCaution must be concrete HR hypotheses for checking rather than generic methodological warnings.",
+            "pointsOfCaution must contain only real caution points or HR hypotheses for checking; do not place positive signals there just because they are high.",
+            'Do not use positive-signal point titles such as "Vrlo snažan verbalni signal" or "Vrlo snažan figuralni signal" unless they are phrased as a concrete work-context check.',
+            "For uneven profiles, prefer caution topics such as differences between verbal/figural and numeric results, weaker numeric signal when the role uses numerical data, and total result hiding differences between task types.",
+            'Avoid methodological pointsOfCaution labels such as "Rizik od pogrešne interpretacije ukupnog rezultata", "Pogrešno tumačenje rezultata" or "Ograničenja testa". Move those ideas to interpretationLimits instead.',
+            "interviewQuestions must be short, natural to say aloud, open-ended and practical for interview use.",
+            "Each interviewQuestions.question should be no more than two sentences and should avoid long administrative constructions.",
+            "interviewQuestions should sound like HR can ask them aloud without rewriting and must avoid grammatically awkward constructions.",
+            "onboardingGuidance must be tied to the concrete profile, not a generic onboarding plan.",
+            "For stronger verbal/figural signals with weaker numeric signal, onboardingGuidance should use clear instructions, visual examples, process maps, control steps and short accuracy checks when the role includes numerical data.",
+            "Avoid unnatural onboarding wording such as 'način korištenja učinka', 'zadaci koji koriste...' or vague references to 'procjene i tabele' without work context.",
+            "interpretationLimits must include at least one sentence that says the signal must be read together with experience, interview and role context.",
+            'interpretationLimits must include the exact idea: "čitati zajedno sa iskustvom, intervjuom i kontekstom uloge."',
+            "interpretationLimits must also make clear that this report is not a hiring decision, that the result should be read only within this set of tasks, that it should not be used for ranking a person against others, that it should not be read as a comparison with a wider population, and that the cognitive signal is a hypothesis for checking rather than a final conclusion.",
+            'Ranking statements in interpretationLimits must always be explicitly negative, using wording such as "Nalaze ne treba koristiti za rangiranje osobe u odnosu na druge."',
+            'Use safe replacement wording such as "u okviru ovog seta zadataka", "ne koristiti za rangiranje osobe u odnosu na druge", "ne čitati kao poređenje sa širom populacijom" and "čitajte kao signal iz ove procjene".',
+            "Overall tone must feel like a professional HR decision-support artifact, not an academic test explanation or generic AI text: shorter sentences, clearer verbs, fewer repeated caveats and more concrete work implications.",
+          ],
+          structure_rules: [
+            "Return valid JSON only.",
+            "Output sections must be executiveSummary, cognitiveSignals, pointsOfCaution, interviewQuestions, onboardingGuidance, interpretationLimits and safetyChecks.",
+            "Keep identity fields exact: reportType safran_hr_report_v1, testSlug safran_v1, audience hr, sourceType single_test.",
+            "executiveSummary.title must be short and HR-facing.",
+            "executiveSummary.summary must be 3 short sentences or fewer.",
+            "cognitiveSignals must contain exactly overall, verbal, figural and numeric.",
+            'Do not use the exact phrase "To može ukazivati" more than once across cognitiveSignals, and do not use it as the default opening for every item.',
+            "Each cognitiveSignals item must mention the concrete provided score, keep the interpretation tied to this assessment, and end with a practical HR implication or follow-up check.",
+            "pointsOfCaution must contain at least 2 items and each item must have signal, whyItMatters and howToCheck.",
+            "pointsOfCaution must focus on concrete work-context hypotheses, not on generic test limitations.",
+            "pointsOfCaution must not treat high verbal or figural scores as caution points unless phrased as a concrete work-context check.",
+            "interviewQuestions must contain at least 3 items and each item must have category, question and whatToListenFor.",
+            "interviewQuestions.question must be short, natural for spoken interview use and at most 2 sentences.",
+            "onboardingGuidance must contain first30Days, days60 and days90 arrays with at least 1 item each.",
+            "onboardingGuidance must connect recommendations to the observed verbal, figural and numeric pattern.",
+            "interpretationLimits must contain at least 3 items.",
+            "At least one interpretationLimits item must say that the result should be read together with experience, interview and role context.",
+            "At least one interpretationLimits item must say that the report is not a hiring decision.",
+            "At least one interpretationLimits item must say that the result should be read only within this set of tasks.",
+            'At least one interpretationLimits item must say exactly or very closely: "Nalaze ne treba koristiti za rangiranje osobe u odnosu na druge."',
+            "At least one interpretationLimits item must say that the result should not be read as a comparison with a wider population.",
+            "At least one interpretationLimits item must say that the cognitive signal is a hypothesis for checking, not a final conclusion.",
+            "All safetyChecks fields must be true.",
+          ],
+          hard_guardrails: [
+            "Do not calculate or mutate any score.",
+            "Do not change scoreLabel, band or bandLabel.",
+            "Do not invent norms, percentiles, IQ, general intelligence, normative comparisons or population comparisons.",
+            "Forbidden phrases are validation blockers and must never appear literally anywhere in the JSON, even in negated statements, warnings or quotes.",
+            "Do not use IQ, kvocijent inteligencije, inteligentan, neinteligentan, nadaren, iznadprosjecan, ispodprosjecan, prosjecan u populaciji, percentile, percentil, norma, norme, normativno, normativna poredjenja or normativno poredjenje.",
+            'When describing limits, use safe wording such as "u okviru ovog seta zadataka", "ne koristiti za rangiranje osobe u odnosu na druge", "ne citati kao poredjenje sa sirom populacijom" and "citajte kao signal iz ove procjene".',
+            "Do not use hire/no-hire recommendations, hiring score, preporucuje se zaposljavanje, ne preporucuje se zaposljavanje, slab kandidat, idealni kandidat, los fit, red flag or rizican kandidat.",
+            "Do not use diagnostic, clinical or fixed-ability language.",
+            "Do not mention AI.",
+          ],
+          output_validation_rule:
+            "Output must satisfy the provided SAFRAN HR JSON schema exactly.",
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
+    }
+
+    if (isMwmsParticipantPromptInput(input.promptInput)) {
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one MWMS participant report in schema_version mwms_participant_report_v1.",
+          audience_behavior:
+            "Write in Bosnian language, ijekavica, Latin script. Address the participant directly, neutrally, professionally and briefly.",
+          source_rule:
+            "Use only the provided MWMS structured input and dimension_scores already calculated by the application. Do not calculate from raw answers and do not invent scores.",
+          profile_rule:
+            "Interpret the six scales as a profile. Do not create a total score, percentile, pass/fail label, rank, norm comparison or hiring decision.",
+          guardrails: [
+            "Do not diagnose or use clinical language.",
+            "Do not use hire/no-hire language.",
+            "Do not say good candidate, bad candidate, recommend hiring, or do not recommend hiring.",
+            "Do not invent job, organization, performance or personal context not present in the input.",
+            "Do not mention AI.",
+            "Use Radna motivacija as the candidate-facing title and do not mention MWMS in the title.",
+            "Do not claim that the result proves the person's motivation.",
+            "Frame claims as profile insights or hypotheses for reflection.",
+          ],
+          structure_rules: [
+            "summary.headline and summary.paragraph must be short.",
+            "key_observations must contain at most 3 items.",
+            "possible_tensions must contain at most 3 items.",
+            "reflection_questions must contain at most 3 items.",
+            "development_suggestions must contain at most 3 items.",
+            "interpretation_note must be neutral and state that the report is not a standalone basis for hiring decisions.",
+          ],
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
+    }
+
+    if (isMwmsHrPromptInput(input.promptInput)) {
+      return JSON.stringify({
+        instructions: {
+          output_contract:
+            "Return one MWMS HR report in contractVersion and reportType mwms_hr_report_v1.",
+          audience_behavior:
+            "Write in the locale from input.locale for an HR professional. Keep the tone concise, operational and careful.",
+          source_rule:
+            "Use only the provided deterministic MWMS input. Do not use participant report text, raw answers, item-level data, other tests or any profile outside this input.",
+          score_integrity_rule:
+            "Copy every dimension code, label, rawScore, band and bandLabel exactly from input.dimensions into motivation_profile_snapshot.dimensions. Copy derivedProfile exactly from input. Do not calculate, infer, rename, round, reorder or replace those values.",
+          single_test_rule:
+            "This is a single-test MWMS report. Do not connect it with other assessments, composite profiles, role models or organization-specific context not present in the input.",
+          interpretation_rule:
+            "Frame narrative text as cautious HR hypotheses for engagement, interview, onboarding and manager support. Use practical wording such as moze biti korisno provjeriti, vrijedi istraziti, u razgovoru provjeriti and citati kao motivacijski profil.",
+          structure_rules: [
+            "Return valid JSON only.",
+            "Keep identity fields exact: contractVersion mwms_hr_report_v1, reportType mwms_hr_report_v1, testSlug mwms_v1, audience hr, sourceType single_test.",
+            "meta.language must match input.locale.",
+            "motivation_profile_snapshot.scale must be min 1 and max 7.",
+            "motivation_profile_snapshot.dimensions must contain exactly the six input dimensions and must preserve each code, label, rawScore, band and bandLabel exactly.",
+            "motivation_profile_snapshot.derivedProfile must preserve all scores, dominantDimensions, lowerDimensions and cautionFlags exactly.",
+            "key_motivational_drivers must contain exactly 3 items.",
+            "potential_friction_points must contain exactly 3 items.",
+            "work_context_hypotheses must contain exactly 3 items.",
+            "manager_support_guidance must contain exactly 4 items.",
+            "interview_questions must contain exactly 5 items.",
+            "onboarding_recommendations must contain exactly 4 items.",
+            "decision_support_note must contain 2 or 3 short items.",
+            "safety_checks values must all be true.",
+          ],
+          content_rules: [
+            "Focus on engagement, interview checks, onboarding needs, manager support and possible motivation friction.",
+            "Do not make a selection verdict, ranking, fit score or performance forecast.",
+            "Do not use clinical, medical or fixed-trait language.",
+            "Do not claim the result proves motivation or causes future behavior.",
+            "Do not mention other assessment names, composite reporting, protected attributes, AI or model limitations.",
+            "Keep all generated text short and HR-operational.",
+          ],
+          output_validation_rule:
+            "Output must satisfy the provided MWMS HR JSON schema and runtime validator with expected input score and band checks.",
+          dimension_hint_text: buildDimensionHintText(input),
+        },
+        input: input.promptInput,
+      });
+    }
+
     return JSON.stringify({
       instructions: {
         output_contract: "Return one IPC report in the exact schema.",
@@ -365,7 +763,29 @@ function buildDefaultUserPrompt(input: PreparedReportGenerationInput): string {
 }
 
 function buildSystemPrompt(input: PreparedReportGenerationInput): string {
-  return input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input);
+  const basePrompt = input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input);
+
+  if (!isSafranHrPromptInput(input.promptInput)) {
+    return basePrompt;
+  }
+
+  return `${basePrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
+}
+
+function getPromptInputLocale(input: ReportPromptInput): string {
+  if ("locale" in input) {
+    return input.locale;
+  }
+
+  return input.test.locale;
+}
+
+function getPromptInputAudience(input: ReportPromptInput): "participant" | "hr" {
+  if ("audience" in input) {
+    return input.audience;
+  }
+
+  return input.test.audience;
 }
 
 function applyPromptTemplate(
@@ -376,7 +796,7 @@ function applyPromptTemplate(
   const replacements = new Map<string, string>([
     ["{{prompt_version}}", promptTemplate.version],
     ["{{prompt_version_id}}", promptTemplate.id],
-    ["{{locale}}", input.promptInput.locale],
+    ["{{locale}}", getPromptInputLocale(input.promptInput)],
     ["{{test_slug}}", input.testSlug],
     ["{{dimension_hint_text}}", buildDimensionHintText(input)],
     ["{{prompt_input_json}}", JSON.stringify(input.promptInput)],
@@ -391,27 +811,47 @@ function applyPromptTemplate(
   return rendered;
 }
 
-function buildUserPrompt(input: PreparedReportGenerationInput): string {
+export function buildUserPrompt(input: PreparedReportGenerationInput): string {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
     return buildDefaultUserPrompt(input);
   }
 
-  if (!input.promptTemplate) {
-    return buildDefaultUserPrompt(input);
+  const basePrompt = !input.promptTemplate
+    ? buildDefaultUserPrompt(input)
+    : applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
+
+  if (!isSafranHrPromptInput(input.promptInput)) {
+    return basePrompt;
   }
 
-  return applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
+  return `${basePrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
 }
 
 function parseStructuredContent(content: string): unknown {
   return JSON.parse(content) as unknown;
 }
 
-function resolveOpenAiResponseFormatSchemaForInput(
+export function resolveOpenAiResponseFormatSchemaForInput(
   input: PreparedReportGenerationInput,
 ): Record<string, unknown> {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
     return ipipNeo120ParticipantReportV2OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isMwmsParticipantPromptInput(input.promptInput)) {
+    return mwmsParticipantReportV1OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isMwmsHrPromptInput(input.promptInput)) {
+    return mwmsHrReportV1OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isSafranParticipantPromptInput(input.promptInput)) {
+    return safranParticipantAiReportV1OpenAiSchema as Record<string, unknown>;
+  }
+
+  if (isSafranHrPromptInput(input.promptInput)) {
+    return safranHrReportV1OpenAiSchema as Record<string, unknown>;
   }
 
   return input.reportContract.outputSchemaJson;
@@ -748,7 +1188,7 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
   return assembled.value;
 }
 
-function validateStructuredReport(
+export function validateStructuredReport(
   report: unknown,
   input: PreparedReportGenerationInput,
 ): RuntimeCompletedAssessmentReport {
@@ -777,7 +1217,10 @@ function validateStructuredReport(
   }
 
   if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120HrPromptInput(input.promptInput)) {
-    const validationResult = validateIpipNeo120HrReportV1(report);
+    const validationResult = validateIpipNeo120HrReportV1(report, {
+      strictContract: true,
+      enforceGuardrails: true,
+    });
 
     if (!validationResult.ok) {
       throw new Error(
@@ -788,16 +1231,71 @@ function validateStructuredReport(
     return validationResult.value;
   }
 
+  if (input.testSlug === "mwms_v1" && isMwmsParticipantPromptInput(input.promptInput)) {
+    const validationResult = validateMwmsParticipantReportV1(report);
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed MWMS participant report validation: ${formatMwmsParticipantReportV1ValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  if (input.testSlug === "mwms_v1" && isMwmsHrPromptInput(input.promptInput)) {
+    const validationResult = validateMwmsHrReportV1(report, {
+      expectedInput: input.promptInput,
+    });
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed MWMS HR report validation: ${formatMwmsHrReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  if (input.testSlug === "safran_v1" && isSafranParticipantPromptInput(input.promptInput)) {
+    const validationResult = validateSafranParticipantAiReport(report, {
+      expectedInput: input.promptInput,
+    });
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed SAFRAN participant report validation: ${formatSafranParticipantAiReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
+  if (input.testSlug === "safran_v1" && isSafranHrPromptInput(input.promptInput)) {
+    const validationResult = validateSafranHrReport(report, {
+      expectedInput: input.promptInput,
+    });
+
+    if (!validationResult.ok) {
+      throw new Error(
+        `OpenAI response JSON failed SAFRAN HR report validation: ${formatSafranHrReportValidationErrors(validationResult.errors)}`,
+      );
+    }
+
+    return validationResult.value;
+  }
+
   const validationResult = validateRuntimeCompletedAssessmentReport(report, {
     testSlug: input.testSlug,
-    audience: input.promptInput.audience,
+    audience: getPromptInputAudience(input.promptInput),
   });
 
   if (!validationResult.ok) {
     const validationPrefix =
       input.reportContract.family === "ipc"
         ? "OpenAI response JSON failed IPC report validation"
-        : input.testSlug === "ipip-neo-120-v1" && input.promptInput.audience === "participant"
+        : input.testSlug === "ipip-neo-120-v1" &&
+            getPromptInputAudience(input.promptInput) === "participant"
           ? "OpenAI response JSON failed IPIP-NEO-120 participant report validation"
         : "OpenAI response JSON failed detailed report validation";
     throw new Error(`${validationPrefix}: ${validationResult.reason}`);

@@ -33,6 +33,16 @@ import {
   type IpcRawOctantScores,
   type IpcReportPromptInput,
 } from "@/lib/assessment/ipc-report-contract";
+import { buildMwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-participant-ai-input-v1";
+import { buildMwmsHrReportInput } from "@/lib/assessment/mwms-hr-report-v1";
+import { isMwmsTestSlug } from "@/lib/assessment/mwms-report-contract";
+import {
+  buildSafranHrReportInput,
+} from "@/lib/assessment/safran-hr-report-v1";
+import {
+  buildSafranParticipantAiReportInput,
+  isSafranTestSlug,
+} from "@/lib/assessment/safran-participant-ai-report-v1";
 export { formatDimensionLabel } from "@/lib/assessment/result-display";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type {
@@ -438,6 +448,23 @@ export function buildReportPromptInput(
     return input.audience === "participant"
       ? buildIpipNeo120ParticipantPromptInput(input)
       : buildIpipNeo120HrPromptInput(input);
+  }
+
+  if (isMwmsTestSlug(input.testSlug)) {
+    if (input.audience === "participant") {
+      return buildMwmsParticipantReportPromptInput(input);
+    }
+
+    return buildMwmsHrReportInput({
+      ...input,
+      audience: "hr",
+    });
+  }
+
+  if (isSafranTestSlug(input.testSlug)) {
+    return input.audience === "participant"
+      ? buildSafranParticipantAiReportInput(input)
+      : buildSafranHrReportInput(input);
   }
 
   return isIpcTestSlug(input.testSlug)

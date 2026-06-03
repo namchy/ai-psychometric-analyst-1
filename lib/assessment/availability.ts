@@ -1,3 +1,5 @@
+import { isTeamDynamicsTestSlug } from "@/lib/assessment/team-dynamics";
+
 export type CandidateAssessmentCatalogKey = "ipip-neo-120" | "safran" | "mwms" | "riasec";
 
 export type CandidateAssessmentAvailabilityKind =
@@ -35,6 +37,12 @@ function normalizeValue(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
 }
 
+export function shouldHideAssessmentFromCandidateDashboard(
+  input: Pick<CandidateAssessmentAvailabilityInput, "slug">,
+): boolean {
+  return isTeamDynamicsTestSlug(input.slug);
+}
+
 export function getCandidateAssessmentCatalogKey(
   input: Pick<CandidateAssessmentAvailabilityInput, "slug" | "name">,
 ): CandidateAssessmentCatalogKey | null {
@@ -49,7 +57,11 @@ export function getCandidateAssessmentCatalogKey(
     return "safran";
   }
 
-  if (normalizedSlug.includes("mwms") || normalizedName.includes("motivacije")) {
+  if (
+    normalizedSlug.includes("mwms") ||
+    normalizedName.includes("motivacije") ||
+    normalizedName.includes("motivacija")
+  ) {
     return "mwms";
   }
 

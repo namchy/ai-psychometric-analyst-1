@@ -5,7 +5,10 @@ dist
 coverage
 .DS_Store
 *.log
-.env.local
+
+# Environment variables and secrets (Naim, Arman, local, backups)
+.env
+.env.*
 
 tsconfig.tsbuildinfo
 
@@ -15,13 +18,16 @@ tsconfig.tsbuildinfo
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-repomix-output.xml
+repomix-output*.xml
 db_backups/
 
 # Local database backup secrets
-.env.supabase-backup
 backups/
 
 # Local account/env files
 .env.arman
 .env.naim
+
+# Repomix local snapshots
+repomix-team-dynamics-ui.xml
+repomix-team-dynamics-report-lane.xml

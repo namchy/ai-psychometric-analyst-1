@@ -1,0 +1,338 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const Module = require("node:module");
+const React = require("react");
+const ReactDOMServer = require("react-dom/server");
+const ts = require("typescript");
+
+const projectRoot = path.resolve(__dirname, "..");
+const pagePath = path.join(
+  projectRoot,
+  "app",
+  "(protected)",
+  "dashboard",
+  "participants",
+  "[participantId]",
+  "reports",
+  "page.tsx",
+);
+const helperPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-list.ts");
+const componentPath = path.join(projectRoot, "components", "dashboard", "team-fit-report-list.tsx");
+const processActionPath = path.join(
+  projectRoot,
+  "components",
+  "dashboard",
+  "team-fit-report-process-action.tsx",
+);
+const retryActionPath = path.join(
+  projectRoot,
+  "components",
+  "dashboard",
+  "team-fit-report-retry-action.tsx",
+);
+const appProtectedRoot = path.join(projectRoot, "app", "(protected)", "app");
+const emptyModulePath = path.join(__dirname, "empty-module.cjs");
+const nextLinkStubPath = path.join(__dirname, "next-link-stub.cjs");
+const processActionStubPath = path.join(__dirname, "team-fit-process-action-stub.cjs");
+const retryActionStubPath = path.join(__dirname, "team-fit-retry-action-stub.cjs");
+const originalResolveFilename = Module._resolveFilename;
+
+const pageSource = fs.readFileSync(pagePath, "utf8");
+const helperSource = fs.readFileSync(helperPath, "utf8");
+const componentSource = fs.readFileSync(componentPath, "utf8");
+const processActionSource = fs.readFileSync(processActionPath, "utf8");
+const retryActionSource = fs.readFileSync(retryActionPath, "utf8");
+
+assert.match(pageSource, /listTeamFitReportEntries/);
+assert.match(pageSource, /TeamFitReportList/);
+assert.doesNotMatch(pageSource, /team-fit-report-provider|team-fit-report-processor|processTeamFitReportWithMock|processTeamFitReportWithProvider/i);
+assert.doesNotMatch(pageSource, /queueTeamFitReportShell|claimTeamFitReportForProcessing|markTeamFitReportProcessingFailed|resetFailedTeamFitReportToQueued/);
+assert.doesNotMatch(pageSource, /error_message/);
+
+assert.match(helperSource, /export async function listTeamFitReportEntries/);
+assert.match(helperSource, /team_fit_reports/);
+assert.match(helperSource, /safeStatusMessage/);
+assert.doesNotMatch(helperSource, /OpenAI|team-fit-report-provider|team-fit-report-processor|processTeamFitReportWithMock|processTeamFitReportWithProvider/i);
+assert.doesNotMatch(helperSource, /\.insert\(|\.update\(|\.delete\(/);
+assert.doesNotMatch(helperSource, /attempt_reports|assessment_reports|team_assessment_reports/);
+assert.doesNotMatch(helperSource, /error_message/);
+
+assert.match(componentSource, /Team Fit izvještaji/);
+assert.match(
+  componentSource,
+  /Pregled odnosa kandidata i izabranog tima, uključujući izvještaje koji čekaju pripremu, nisu uspješno pripremljeni ili su spremni za otvaranje\./,
+);
+assert.match(componentSource, /Otvori Team Fit izvještaj/);
+assert.match(componentSource, /Priprema u toku/);
+assert.match(componentSource, /TeamFitReportProcessAction/);
+assert.match(componentSource, /TeamFitReportRetryAction/);
+assert.doesNotMatch(componentSource, /OpenAI|team-fit-report-provider|team-fit-report-processor/i);
+assert.doesNotMatch(componentSource, /queueTeamFitReportShell|claimTeamFitReportForProcessing|markTeamFitReportProcessingFailed|resetFailedTeamFitReportToQueued/);
+assert.doesNotMatch(componentSource, /\.from\(|\.insert\(|\.update\(|\.delete\(/);
+assert.doesNotMatch(componentSource, /error_message|candidateVisible|fitScore|hireScore/i);
+assert.doesNotMatch(componentSource, /\bno-hire\b|\bhire\/no-hire\b|\bculture fit\b/i);
+assert.doesNotMatch(componentSource, /Persistirani Team Fit artefakti/);
+assert.doesNotMatch(componentSource, /Trenutno nedostupno/);
+assert.doesNotMatch(componentSource, /Izvještaj trenutno nije uspješno kreiran\./);
+assert.doesNotMatch(componentSource, /Vrsta:\s*<\/span>\s*Team Fit report/);
+assert.doesNotMatch(componentSource, /Verzija:/);
+assert.doesNotMatch(componentSource, />Queued:</);
+assert.match(processActionSource, /processTeamFitReportAction/);
+assert.match(processActionSource, /Pripremi Team Fit izvještaj/);
+assert.match(processActionSource, /Priprema u toku/);
+assert.doesNotMatch(
+  processActionSource,
+  /processTeamFitReportWithMock|processTeamFitReportWithProvider|team-fit-report-provider|OpenAI/i,
+);
+assert.doesNotMatch(processActionSource, /attempt_reports|assessment_reports|team_assessment_reports/);
+assert.match(retryActionSource, /resetTeamFitReportAction/);
+assert.match(retryActionSource, /Pokušaj ponovo/);
+assert.doesNotMatch(
+  retryActionSource,
+  /processTeamFitReportWithMock|processTeamFitReportWithProvider|team-fit-report-provider|OpenAI/i,
+);
+assert.doesNotMatch(retryActionSource, /attempt_reports|assessment_reports|team_assessment_reports/);
+
+function walkFiles(dirPath, output = []) {
+  if (!fs.existsSync(dirPath)) {
+    return output;
+  }
+
+  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      walkFiles(fullPath, output);
+    } else {
+      output.push(fullPath);
+    }
+  }
+
+  return output;
+}
+
+const candidateFacingTeamFitFiles = walkFiles(appProtectedRoot).filter((filePath) =>
+  /team-fit/i.test(path.relative(projectRoot, filePath)),
+);
+
+assert.deepEqual(candidateFacingTeamFitFiles, []);
+
+function resolveWithExtensions(candidatePath) {
+  if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
+    return candidatePath;
+  }
+
+  for (const extension of [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"]) {
+    const withExtension = `${candidatePath}${extension}`;
+    if (fs.existsSync(withExtension)) {
+      return withExtension;
+    }
+  }
+
+  return candidatePath;
+}
+
+Module._resolveFilename = function resolveFilename(request, parent, isMain, options) {
+  if (request === "next/link") {
+    return nextLinkStubPath;
+  }
+
+  if (request === "@/components/dashboard/team-fit-report-process-action") {
+    return processActionStubPath;
+  }
+
+  if (request === "@/components/dashboard/team-fit-report-retry-action") {
+    return retryActionStubPath;
+  }
+
+  if (request.startsWith("@/")) {
+    return originalResolveFilename.call(
+      this,
+      resolveWithExtensions(path.join(projectRoot, request.slice(2))),
+      parent,
+      isMain,
+      options,
+    );
+  }
+
+  return originalResolveFilename.call(this, request, parent, isMain, options);
+};
+
+require.extensions[".ts"] = function compileTypeScript(module, filename) {
+  const source = fs.readFileSync(filename, "utf8");
+  const transpiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      moduleResolution: ts.ModuleResolutionKind.NodeJs,
+      target: ts.ScriptTarget.ES2022,
+      esModuleInterop: true,
+    },
+    fileName: filename,
+  });
+
+  module._compile(transpiled.outputText, filename);
+};
+
+require.cache[nextLinkStubPath] = {
+  id: nextLinkStubPath,
+  filename: nextLinkStubPath,
+  loaded: true,
+  exports: function Link(props) {
+    const { href, children, ...rest } = props;
+    return React.createElement("a", { href, ...rest }, children);
+  },
+};
+
+require.cache[processActionStubPath] = {
+  id: processActionStubPath,
+  filename: processActionStubPath,
+  loaded: true,
+  exports: {
+    TeamFitReportProcessAction({ teamFitReportId, teamId, participantId }) {
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-team-fit-report-id": teamFitReportId,
+          "data-team-id": teamId,
+          "data-participant-id": participantId,
+        },
+        "Pripremi Team Fit izvještaj",
+      );
+    },
+  },
+};
+
+require.cache[retryActionStubPath] = {
+  id: retryActionStubPath,
+  filename: retryActionStubPath,
+  loaded: true,
+  exports: {
+    TeamFitReportRetryAction({ teamFitReportId, teamId, participantId }) {
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-team-fit-retry-report-id": teamFitReportId,
+          "data-team-id": teamId,
+          "data-participant-id": participantId,
+        },
+        "Pokušaj ponovo",
+      );
+    },
+  },
+};
+
+require.extensions[".tsx"] = function compileTsx(module, filename) {
+  const source = fs.readFileSync(filename, "utf8");
+  const transpiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      moduleResolution: ts.ModuleResolutionKind.NodeJs,
+      target: ts.ScriptTarget.ES2022,
+      esModuleInterop: true,
+      jsx: ts.JsxEmit.ReactJSX,
+    },
+    fileName: filename,
+  });
+
+  module._compile(transpiled.outputText, filename);
+};
+
+const { TeamFitReportList } = require(componentPath);
+
+function render(entries) {
+  return ReactDOMServer.renderToStaticMarkup(
+    React.createElement(TeamFitReportList, { entries }),
+  );
+}
+
+function buildEntry(status, overrides = {}) {
+  return {
+    id: `report-${status}`,
+    organizationId: "org-1",
+    teamId: "team-1",
+    participantId: "participant-1",
+    teamName: "Tim A",
+    reportType: "team_fit_report_v1",
+    reportVersion: "v1",
+    status,
+    statusLabel:
+      status === "ready"
+        ? "Spremno"
+        : status === "queued"
+          ? "Čeka obradu"
+          : status === "processing"
+            ? "U obradi"
+            : "Nije pripremljen",
+    safeStatusMessage:
+      status === "ready"
+        ? "Izvještaj je spreman za pregled."
+        : status === "queued"
+          ? "Izvještaj je pripremljen za obradu."
+          : status === "processing"
+            ? "Izvještaj je trenutno u obradi."
+            : "Izvještaj nije pripremljen. Možeš ga vratiti u red za pripremu.",
+    createdAt: "2026-05-30T12:00:00.000Z",
+    updatedAt: "2026-05-30T12:15:00.000Z",
+    queuedAt: "2026-05-30T12:01:00.000Z",
+    startedAt: status === "queued" ? null : "2026-05-30T12:03:00.000Z",
+    completedAt: status === "ready" ? "2026-05-30T12:12:00.000Z" : null,
+    failedAt: status === "failed" ? "2026-05-30T12:12:00.000Z" : null,
+    hasInputSnapshot: true,
+    hasReportSnapshot: status === "ready",
+    href: "/dashboard/teams/team-1/participants/participant-1/team-fit-reports/report-ready",
+    ...overrides,
+  };
+}
+
+function main() {
+  const emptyHtml = render([]);
+  assert.match(emptyHtml, /Još nema dostupnih Team Fit izvještaja/);
+
+  const readyHtml = render([buildEntry("ready")]);
+  assert.match(readyHtml, /Team Fit izvještaji/);
+  assert.match(readyHtml, /Pregled odnosa kandidata i izabranog tima/);
+  assert.match(readyHtml, /Tim A/);
+  assert.match(readyHtml, /Izvještaj je spreman za pregled/);
+  assert.match(readyHtml, /Otvori Team Fit izvještaj/);
+  assert.match(readyHtml, /Kreirano/);
+  assert.match(readyHtml, /Zadnja promjena/);
+  assert.doesNotMatch(readyHtml, /Persistirani Team Fit artefakti/);
+  assert.doesNotMatch(readyHtml, /Vrsta:/);
+  assert.doesNotMatch(readyHtml, /Verzija:/);
+  assert.doesNotMatch(readyHtml, />Queued:</);
+  assert.doesNotMatch(readyHtml, /\bfit score\b|\bfitScore\b|\bhireScore\b/i);
+  assert.doesNotMatch(readyHtml, /\bno-hire\b|\bhire\/no-hire\b|\bculture fit\b/i);
+
+  const failedHtml = render([
+    buildEntry("failed", {
+      safeStatusMessage: "Izvještaj nije pripremljen. Možeš ga vratiti u red za pripremu.",
+    }),
+  ]);
+  assert.match(failedHtml, /Nije pripremljen/);
+  assert.match(failedHtml, /Izvještaj nije pripremljen/);
+  assert.match(failedHtml, /Pokušaj ponovo/);
+  assert.match(failedHtml, /Izvještaj nije pripremljen\. Možeš ga vratiti u red za pripremu\./);
+  assert.doesNotMatch(failedHtml, />Izvještaj nije pripremljen<\/button>/);
+  assert.doesNotMatch(failedHtml, /Trenutno nedostupno/);
+  assert.doesNotMatch(failedHtml, /Izvještaj trenutno nije uspješno kreiran\./);
+  assert.doesNotMatch(failedHtml, /TEAM_FIT_PROVIDER_|error_message|raw error/i);
+  assert.doesNotMatch(failedHtml, /Otvori Team Fit izvještaj/);
+
+  const queuedHtml = render([buildEntry("queued")]);
+  assert.match(queuedHtml, /Pripremi Team Fit izvještaj/);
+  assert.doesNotMatch(queuedHtml, /Pokušaj ponovo/);
+  assert.doesNotMatch(queuedHtml, /Otvori Team Fit izvještaj/);
+  assert.doesNotMatch(queuedHtml, /Priprema u toku/);
+
+  const processingHtml = render([buildEntry("processing")]);
+  assert.match(processingHtml, /Priprema u toku/);
+  assert.doesNotMatch(processingHtml, /Pokušaj ponovo/);
+  assert.doesNotMatch(processingHtml, /Pripremi Team Fit izvještaj/);
+
+  assert.doesNotMatch(readyHtml, /Pokušaj ponovo/);
+}
+
+main();
+console.log("test-team-fit-report-list-entrypoint: ok");

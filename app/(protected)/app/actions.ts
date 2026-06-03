@@ -1,8 +1,10 @@
 "use server";
 
 import { getAppLocaleCookieValue } from "@/lib/auth/app-locale";
+import { resolveAddressingForm } from "@/lib/auth/addressing-form";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 import { getCandidateAssessmentAvailability } from "@/lib/assessment/availability";
+import { canUseGenericCandidateAttemptCreation } from "@/lib/assessment/team-dynamics";
 import { getTestRunReadiness } from "@/lib/assessment/tests";
 import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -25,6 +27,7 @@ type CreatedAttemptRow = {
 
 type ParticipantRow = {
   id: string;
+  addressing_form: unknown;
 };
 
 export async function createAssessmentAttempt(
@@ -80,6 +83,11 @@ export async function createAssessmentAttempt(
   }
 
   const test = testRow as AssessmentAccessTestRow;
+
+  if (!canUseGenericCandidateAttemptCreation(test.slug)) {
+    throw new Error("Team Dynamics assessments must be assigned through a team workflow.");
+  }
+
   const availability = getCandidateAssessmentAvailability({
     slug: test.slug,
     name: test.name,
@@ -91,7 +99,7 @@ export async function createAssessmentAttempt(
 
   const { data: participantRow, error: participantError } = await supabase
     .from("participants")
-    .select("id")
+    .select("id, addressing_form")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -108,6 +116,10 @@ export async function createAssessmentAttempt(
   }
 
   const participantId = (participantRow as ParticipantRow).id;
+  // Temporary fallback until every attempt entry path is gated by the addressing-form modal.
+  const addressingFormSnapshot = resolveAddressingForm(
+    (participantRow as ParticipantRow).addressing_form,
+  );
   const { data: existingAttemptRow, error: existingAttemptError } = await supabase
     .from("attempts")
     .select("id")
@@ -135,6 +147,7 @@ export async function createAssessmentAttempt(
       organization_id: organization.id,
       participant_id: participantId,
       locale: attemptLocale,
+      addressing_form_snapshot: addressingFormSnapshot,
       status: "in_progress",
       started_at: new Date().toISOString(),
     })

@@ -1,0 +1,117 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 52428800
+  },
+  "output": {
+    "filePath": "repomix-output-ai-daily.xml",
+    "style": "xml",
+    "parsableStyle": false,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 10,
+    "showLineNumbers": false,
+    "truncateBase64": true,
+    "copyToClipboard": false,
+    "includeFullDirectoryStructure": false,
+    "tokenCountTree": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100,
+      "includeDiffs": false,
+      "includeLogs": false,
+      "includeLogsCount": 50
+    }
+  },
+  "include": [
+    "AGENTS.md",
+    "README.md",
+
+    "docs/**/*.md",
+
+    "app/**/*.ts",
+    "app/**/*.tsx",
+
+    "components/**/*.ts",
+    "components/**/*.tsx",
+
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+
+    "scripts/**/*.cjs",
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
+
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+
+    "supabase/migrations/**/*.sql",
+
+    "assessment-packages/**/*.json",
+    "assessment-packages/**/*.md",
+
+    "middleware.ts",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json",
+    "next.config.js",
+    "postcss.config.js",
+    "tailwind.config.ts",
+    "playwright.config.ts"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "node_modules/**",
+      ".next/**",
+      ".git/**",
+      ".vercel/**",
+      "coverage/**",
+      "test-results/**",
+      "playwright-report/**",
+      "public/**",
+      "supabase/.temp/**",
+
+      "backups/**",
+      "db_backups/**",
+      "backup_data.sql",
+      "baze1.txt",
+      "IPC Canonical Implementation Spec v1.txt",
+
+      "repomix-output*.xml",
+
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.webp",
+      "**/*.gif",
+      "**/*.svg",
+      "**/*.ico",
+      "**/*.pdf",
+      "**/*.zip",
+      "**/*.mp4",
+      "**/*.mov",
+      "**/*.woff",
+      "**/*.woff2",
+      "**/*.ttf",
+      "**/*.otf",
+
+      ".env",
+      ".env.*",
+      "**/*:Zone.Identifier",
+      "**/*.Zone.Identifier"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

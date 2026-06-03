@@ -72,6 +72,8 @@ assert.deepEqual(STANDARD_ASSESSMENT_BATTERY_SLUGS, [
   "safran_v1",
   "mwms_v1",
 ]);
+assert.equal(STANDARD_ASSESSMENT_BATTERY_SLUGS.includes("team_dynamics_v1_strong"), false);
+assert.equal(STANDARD_ASSESSMENT_BATTERY_SLUGS.includes("team_dynamics_assessment_v1"), false);
 
 const availableTests = [
   {
@@ -95,15 +97,30 @@ const availableTests = [
     is_active: true,
     hasOrganizationAccess: false,
   },
+  {
+    id: "test-team-dynamics",
+    slug: "team_dynamics_v1_strong",
+    status: "active",
+    is_active: true,
+    hasOrganizationAccess: false,
+  },
+  {
+    id: "test-team-dynamics-final",
+    slug: "team_dynamics_assessment_v1",
+    status: "active",
+    is_active: true,
+    hasOrganizationAccess: false,
+  },
 ];
 
 const initialPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [],
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "feminine",
   locale: "de",
   startedAt: STARTED_AT,
 });
@@ -121,6 +138,7 @@ assert.deepEqual(
     participant_id: attempt.participant_id,
     test_id: attempt.test_id,
     locale: attempt.locale,
+    addressing_form_snapshot: attempt.addressing_form_snapshot,
     user_id: attempt.user_id,
     status: attempt.status,
     started_at: attempt.started_at,
@@ -131,6 +149,7 @@ assert.deepEqual(
       participant_id: PARTICIPANT_ID,
       test_id: "test-ipip",
       locale: "bs",
+      addressing_form_snapshot: "feminine",
       user_id: PARTICIPANT_USER_ID,
       status: "in_progress",
       started_at: STARTED_AT,
@@ -140,6 +159,7 @@ assert.deepEqual(
       participant_id: PARTICIPANT_ID,
       test_id: "test-safran",
       locale: "bs",
+      addressing_form_snapshot: "feminine",
       user_id: PARTICIPANT_USER_ID,
       status: "in_progress",
       started_at: STARTED_AT,
@@ -149,6 +169,7 @@ assert.deepEqual(
       participant_id: PARTICIPANT_ID,
       test_id: "test-mwms",
       locale: "bs",
+      addressing_form_snapshot: "feminine",
       user_id: PARTICIPANT_USER_ID,
       status: "in_progress",
       started_at: STARTED_AT,
@@ -158,7 +179,7 @@ assert.deepEqual(
 
 const replacementRoundPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [
     { id: "attempt-ipip-1", test_id: "test-ipip", status: "in_progress" },
     { id: "attempt-safran-completed", test_id: "test-safran", status: "completed" },
@@ -166,6 +187,7 @@ const replacementRoundPlan = planStandardAssessmentBatteryCreation({
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
   locale: "hr",
   startedAt: STARTED_AT,
 });
@@ -175,12 +197,12 @@ assert.equal(replacementRoundPlan.locale, "hr");
 assert.deepEqual(replacementRoundPlan.attemptIdsToAbandon, ["attempt-ipip-1"]);
 assert.deepEqual(
   replacementRoundPlan.attemptsToInsert.map((attempt) => attempt.test_id),
-  ["test-ipip", "test-safran", "test-mwms"],
+  ["test-ipip", "test-mwms"],
 );
 
 const multipleInProgressPlan = planStandardAssessmentBatteryCreation({
   availableTests,
-  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms"],
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
   existingAttempts: [
     { id: "attempt-ipip-1", test_id: "test-ipip", status: "in_progress" },
     { id: "attempt-ipip-2", test_id: "test-ipip", status: "in_progress" },
@@ -190,6 +212,7 @@ const multipleInProgressPlan = planStandardAssessmentBatteryCreation({
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
   locale: "bs",
   startedAt: STARTED_AT,
 });
@@ -201,8 +224,76 @@ assert.deepEqual(multipleInProgressPlan.attemptIdsToAbandon, [
 ]);
 assert.deepEqual(
   multipleInProgressPlan.attemptsToInsert.map((attempt) => attempt.test_id),
-  ["test-ipip", "test-safran", "test-mwms"],
+  ["test-ipip", "test-mwms"],
 );
+
+const completedSafranIsNotReinsertedPlan = planStandardAssessmentBatteryCreation({
+  availableTests,
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
+  existingAttempts: [
+    { id: "attempt-safran-completed", test_id: "test-safran", status: "completed" },
+  ],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+assert.deepEqual(completedSafranIsNotReinsertedPlan.attemptIdsToAbandon, []);
+assert.deepEqual(
+  completedSafranIsNotReinsertedPlan.attemptsToInsert.map((attempt) => attempt.test_id),
+  ["test-ipip", "test-mwms"],
+);
+
+const teamDynamicsOnlyActivePlan = planStandardAssessmentBatteryCreation({
+  availableTests: [
+    {
+      id: "test-team-dynamics",
+      slug: "team_dynamics_v1_strong",
+      status: "active",
+      is_active: true,
+      hasOrganizationAccess: true,
+    },
+  ],
+  activeQuestionTestIds: ["test-team-dynamics"],
+  existingAttempts: [],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+const finalTeamDynamicsOnlyActivePlan = planStandardAssessmentBatteryCreation({
+  availableTests: [
+    {
+      id: "test-team-dynamics-final",
+      slug: "team_dynamics_assessment_v1",
+      status: "active",
+      is_active: true,
+      hasOrganizationAccess: true,
+    },
+  ],
+  activeQuestionTestIds: ["test-team-dynamics-final"],
+  existingAttempts: [],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: "masculine",
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+assert.equal(finalTeamDynamicsOnlyActivePlan.outcome, "battery-no-runnable-tests");
+assert.deepEqual(finalTeamDynamicsOnlyActivePlan.runnableTests, []);
+
+assert.equal(teamDynamicsOnlyActivePlan.outcome, "battery-no-runnable-tests");
+assert.deepEqual(teamDynamicsOnlyActivePlan.runnableTests, []);
+assert.deepEqual(teamDynamicsOnlyActivePlan.attemptIdsToAbandon, []);
+assert.deepEqual(teamDynamicsOnlyActivePlan.attemptsToInsert, []);
 
 const noRunnablePlan = planStandardAssessmentBatteryCreation({
   availableTests,
@@ -211,6 +302,7 @@ const noRunnablePlan = planStandardAssessmentBatteryCreation({
   organizationId: ORGANIZATION_ID,
   participantId: PARTICIPANT_ID,
   participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: undefined,
   locale: "bs",
   startedAt: STARTED_AT,
 });
@@ -219,5 +311,24 @@ assert.equal(noRunnablePlan.outcome, "battery-no-runnable-tests");
 assert.deepEqual(noRunnablePlan.runnableTests, []);
 assert.deepEqual(noRunnablePlan.attemptIdsToAbandon, []);
 assert.deepEqual(noRunnablePlan.attemptsToInsert, []);
+
+const fallbackAddressingFormPlan = planStandardAssessmentBatteryCreation({
+  availableTests,
+  activeQuestionTestIds: ["test-ipip", "test-safran", "test-mwms", "test-team-dynamics"],
+  existingAttempts: [],
+  organizationId: ORGANIZATION_ID,
+  participantId: PARTICIPANT_ID,
+  participantUserId: PARTICIPANT_USER_ID,
+  participantAddressingForm: undefined,
+  locale: "bs",
+  startedAt: STARTED_AT,
+});
+
+assert.equal(
+  fallbackAddressingFormPlan.attemptsToInsert.every(
+    (attempt) => attempt.addressing_form_snapshot === "masculine",
+  ),
+  true,
+);
 
 console.log("Standard assessment battery tests passed.");

@@ -9,19 +9,33 @@ import {
 import {
   getActiveOrganizationForUser,
   getAttemptForOrganization,
+  getAttemptsForParticipantInOrganization,
   getParticipantForOrganization,
 } from "@/lib/b2b/organizations";
 import { getCandidateAttemptForUser } from "@/lib/candidate/attempts";
 import {
   enqueueCompletedAssessmentReports,
+  getPersistedParticipantCompletedAssessmentReportState,
   persistCompletedAssessmentReport,
+  recoverHrAttemptReport,
   type CompletedAssessmentReportState,
 } from "@/lib/assessment/reports";
-import { claimNextReportJob, processClaimedReportJob } from "@/lib/assessment/report-job-worker";
+import {
+  createQueuedCompositeAssessmentReport,
+  retryFailedCompositeAssessmentReport,
+} from "@/lib/assessment/assessment-reports";
+import type { PostCompletionReportLanePlan } from "@/lib/assessment/report-capabilities";
+import { orchestrateReportsAfterAttemptCompletion } from "@/lib/assessment/report-orchestration";
 import {
   normalizeAssessmentLocale,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
+import {
+  shouldBypassIndividualPostCompletionArtifacts,
+} from "@/lib/assessment/team-dynamics";
+import {
+  syncTeamAssessmentParticipantCompletionByAttemptId,
+} from "@/lib/assessment/team-assessments";
 import {
   persistCompletedAssessmentResults,
   type CompletedAssessmentResults,
@@ -34,6 +48,7 @@ import type {
   AttemptStatus,
   QuestionType,
 } from "@/lib/assessment/types";
+import { resolveAddressingForm } from "@/lib/auth/addressing-form";
 import {
   AuthenticationRequiredError,
   requireAuthenticatedUser,
@@ -111,6 +126,10 @@ type ResponseSelectionInsert = {
   answer_option_id: string;
 };
 
+type ParticipantAddressingFormRow = {
+  addressing_form: unknown;
+};
+
 type PersistSelectionsResult =
   | {
       ok: true;
@@ -128,8 +147,65 @@ type PersistAssessmentSelectionsOptions = {
 
 const DEFAULT_B2B_TEST_SLUG = "ipip50-hr-v1";
 
+async function resolveAttemptAddressingFormSnapshot(
+  ownershipContext: AttemptOwnershipContext | undefined,
+): Promise<ReturnType<typeof resolveAddressingForm>> {
+  const participantId = ownershipContext?.participantId?.trim();
+  const userId = ownershipContext?.userId?.trim();
+  const organizationId = ownershipContext?.organizationId?.trim();
+
+  if (!participantId && !userId) {
+    return resolveAddressingForm(null);
+  }
+
+  const supabase = createSupabaseAdminClient();
+  let query = supabase
+    .from("participants")
+    .select("addressing_form")
+    .eq("status", "active")
+    .limit(1);
+
+  if (participantId) {
+    query = query.eq("id", participantId);
+  }
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  if (organizationId) {
+    query = query.eq("organization_id", organizationId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    throw new Error(`Unable to resolve participant addressing form: ${error.message}`);
+  }
+
+  // Temporary fallback until every candidate entry path is guaranteed to collect the preference first.
+  return resolveAddressingForm((data as ParticipantAddressingFormRow | null)?.addressing_form);
+}
+
 function shouldGenerateCompletedAssessmentReport(results: CompletedAssessmentResults | null): boolean {
   return results?.scoringMethod === "likert_sum";
+}
+
+function shouldQueueParticipantReportFromPlan(
+  plan: Awaited<ReturnType<typeof enqueueCompletedAssessmentReports>>["plan"],
+): boolean {
+  if (!plan) {
+    return false;
+  }
+
+  const participantLane = plan.lanes.find(
+    (lane: PostCompletionReportLanePlan) => lane.audience === "participant",
+  );
+  return (
+    participantLane?.shouldEnqueue === true ||
+    participantLane?.existingStatus === "queued" ||
+    participantLane?.existingStatus === "processing"
+  );
 }
 
 function revalidateAttemptRunPaths(attemptId: string) {
@@ -145,26 +221,6 @@ function revalidateAttemptAllPaths(attemptId: string) {
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/attempts/${attemptId}`);
   revalidatePath(`/dashboard/attempts/${attemptId}/run`);
-}
-
-async function triggerQueuedParticipantReportProcessing(attemptId: string): Promise<void> {
-  try {
-    const job = await claimNextReportJob({
-      attemptId,
-      audience: "participant",
-    });
-
-    if (!job) {
-      return;
-    }
-
-    await processClaimedReportJob(job);
-  } catch (error) {
-    console.error("triggerQueuedParticipantReportProcessing failed", {
-      attemptId,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-  }
 }
 
 function isStringArray(value: AssessmentSelectionValue): value is string[] {
@@ -468,6 +524,7 @@ async function persistAssessmentSelections(
       };
     }
 
+    const addressingFormSnapshot = await resolveAttemptAddressingFormSnapshot(input.ownershipContext);
     const { data: createdAttemptData, error: createAttemptError } = await supabase
       .from("attempts")
       .insert({
@@ -476,6 +533,7 @@ async function persistAssessmentSelections(
         user_id: input.ownershipContext?.userId ?? null,
         organization_id: input.ownershipContext?.organizationId ?? null,
         participant_id: input.ownershipContext?.participantId ?? null,
+        addressing_form_snapshot: addressingFormSnapshot,
       })
       .select("id")
       .single();
@@ -624,6 +682,21 @@ async function getTestIdBySlug(testSlug: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+async function getTestSlugById(testId: string): Promise<string | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("tests")
+    .select("slug")
+    .eq("id", testId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to resolve test slug: ${error.message}`);
+  }
+
+  return data?.slug ?? null;
+}
+
 export async function saveAssessmentProgress(
   input: SaveAssessmentSelectionsInput,
 ): Promise<SaveAssessmentSelectionsResult> {
@@ -717,6 +790,7 @@ export async function createB2BAttempt(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const addressingFormSnapshot = resolveAddressingForm(participant.addressing_form);
   const { data, error } = await supabase
     .from("attempts")
     .insert({
@@ -724,6 +798,7 @@ export async function createB2BAttempt(formData: FormData) {
       user_id: user.id,
       organization_id: organization.id,
       participant_id: participant.id,
+      addressing_form_snapshot: addressingFormSnapshot,
     })
     .select("id")
     .single();
@@ -734,6 +809,183 @@ export async function createB2BAttempt(formData: FormData) {
   }
 
   redirect(`/dashboard?success=attempt-created&attemptId=${data.id}`);
+}
+
+export async function recoverHrCandidateAttemptReport(formData: FormData) {
+  const participantId = String(formData.get("participantId") ?? "").trim();
+  const attemptId = String(formData.get("attemptId") ?? "").trim();
+  const returnPath = String(formData.get("returnPath") ?? "").trim();
+  const testSlug = String(formData.get("testSlug") ?? "").trim();
+  const fallbackPath = participantId
+    ? `/dashboard/participants/${participantId}/reports`
+    : "/dashboard";
+
+  try {
+    const user = await requireAuthenticatedUser();
+    const organization = await getActiveOrganizationForUser(user.id);
+
+    if (!organization || !participantId || !attemptId) {
+      redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+    }
+
+    const participant = await getParticipantForOrganization(organization.id, participantId);
+
+    if (!participant) {
+      redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+    }
+
+    const attempts = await getAttemptsForParticipantInOrganization(organization.id, participantId);
+    const attempt = attempts.find((entry: { id: string; tests?: { slug: string } | null }) => entry.id === attemptId);
+
+    if (!attempt) {
+      redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+    }
+
+    const result = await recoverHrAttemptReport(attemptId);
+    revalidateAttemptAllPaths(attemptId);
+    revalidatePath(`/dashboard/participants/${participantId}/reports`);
+
+    const target = encodeURIComponent(testSlug || attempt.tests?.slug || "");
+    redirect(
+      `${returnPath || fallbackPath}?reportRecovery=${encodeURIComponent(result.action)}&target=${target}`,
+    );
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error("recoverHrCandidateAttemptReport failed", {
+      participantId,
+      attemptId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    redirect(`${returnPath || fallbackPath}?reportRecovery=error`);
+  }
+}
+
+export async function generateCompositeHrReportAction(formData: FormData) {
+  const participantId = String(formData.get("participantId") ?? "").trim();
+  const assessmentAssignmentId = String(formData.get("assessmentAssignmentId") ?? "").trim();
+  const fallbackPath = participantId
+    ? `/dashboard/participants/${participantId}/reports`
+    : "/dashboard";
+
+  try {
+    const user = await requireAuthenticatedUser();
+    const organization = await getActiveOrganizationForUser(user.id);
+
+    if (!organization || !participantId || !assessmentAssignmentId) {
+      redirect(`${fallbackPath}?error=composite-create-failed`);
+    }
+
+    const participant = await getParticipantForOrganization(organization.id, participantId);
+
+    if (!participant) {
+      redirect(`${fallbackPath}?error=composite-create-failed`);
+    }
+
+    const canonicalReturnPath = `/dashboard/participants/${participant.id}/reports`;
+
+    const result = await createQueuedCompositeAssessmentReport({
+      organizationId: organization.id,
+      participantId: participant.id,
+      assessmentAssignmentId,
+      requestedByUserId: user.id,
+    });
+
+    revalidatePath(`/dashboard/participants/${participant.id}/reports`);
+
+    if (result.action === "queued") {
+      redirect(`${canonicalReturnPath}?success=composite-queued`);
+    }
+
+    if (result.action === "noop_not_ready") {
+      redirect(`${canonicalReturnPath}?error=composite-not-ready`);
+    }
+
+    if (result.action === "noop_ready") {
+      redirect(`${canonicalReturnPath}?success=composite-already-ready`);
+    }
+
+    if (result.action === "noop_failed") {
+      redirect(`${canonicalReturnPath}?success=composite-retry-required`);
+    }
+
+    redirect(`${canonicalReturnPath}?success=composite-already-queued`);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error("generateCompositeHrReportAction failed", {
+      participantId,
+      assessmentAssignmentId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    redirect(`${fallbackPath}?error=composite-create-failed`);
+  }
+}
+
+export async function retryCompositeHrReportAction(formData: FormData) {
+  const participantId = String(formData.get("participantId") ?? "").trim();
+  const assessmentAssignmentId = String(formData.get("assessmentAssignmentId") ?? "").trim();
+  const assessmentReportId = String(formData.get("assessmentReportId") ?? "").trim();
+  const fallbackPath = participantId
+    ? `/dashboard/participants/${participantId}/reports`
+    : "/dashboard";
+
+  try {
+    const user = await requireAuthenticatedUser();
+    const organization = await getActiveOrganizationForUser(user.id);
+
+    if (!organization || !participantId || !assessmentAssignmentId) {
+      redirect(`${fallbackPath}?error=composite-retry-failed`);
+    }
+
+    const participant = await getParticipantForOrganization(organization.id, participantId);
+
+    if (!participant) {
+      redirect(`${fallbackPath}?error=composite-retry-failed`);
+    }
+
+    const canonicalReturnPath = `/dashboard/participants/${participant.id}/reports`;
+
+    const result = await retryFailedCompositeAssessmentReport({
+      organizationId: organization.id,
+      participantId: participant.id,
+      assessmentAssignmentId,
+      assessmentReportId: assessmentReportId || null,
+      requestedByUserId: user.id,
+    });
+
+    revalidatePath(`/dashboard/participants/${participant.id}/reports`);
+
+    if (result.action === "queued") {
+      redirect(`${canonicalReturnPath}?success=composite-queued`);
+    }
+
+    if (result.action === "noop_not_ready") {
+      redirect(`${canonicalReturnPath}?error=composite-not-ready`);
+    }
+
+    if (result.action === "noop_ready") {
+      redirect(`${canonicalReturnPath}?success=composite-already-ready`);
+    }
+
+    redirect(`${canonicalReturnPath}?success=composite-already-queued`);
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error("retryCompositeHrReportAction failed", {
+      participantId,
+      assessmentAssignmentId,
+      assessmentReportId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    redirect(`${fallbackPath}?error=composite-retry-failed`);
+  }
 }
 
 export async function setProtectedAttemptLocale(formData: FormData) {
@@ -852,6 +1104,12 @@ export async function completeAssessmentAttempt(
       ? await persistCompletedAssessmentReport(input.testId, persistResult.attemptId)
       : null;
 
+    if (results) {
+      await orchestrateReportsAfterAttemptCompletion({
+        attemptId: persistResult.attemptId,
+      });
+    }
+
     cookies().set(ASSESSMENT_ATTEMPT_COOKIE_NAME, persistResult.attemptId, {
       httpOnly: true,
       sameSite: "lax",
@@ -945,19 +1203,54 @@ export async function completeProtectedAssessmentAttempt(
       completedAttempt = existingAttemptData as AttemptRecord;
     }
 
+    const testSlug = await getTestSlugById(input.testId);
+    const shouldBypassPostCompletionArtifacts = shouldBypassIndividualPostCompletionArtifacts(
+      testSlug,
+    );
+
+    if (shouldBypassPostCompletionArtifacts) {
+      try {
+        await syncTeamAssessmentParticipantCompletionByAttemptId({
+          attemptId: persistResult.attemptId,
+          completedAt: completedAttempt.completed_at ?? completedAt,
+        });
+      } catch (syncError) {
+        console.error("Team Dynamics completion sync failed", syncError);
+      }
+
+      revalidateAttemptAllPaths(persistResult.attemptId);
+
+      return {
+        ok: true,
+        attemptId: persistResult.attemptId,
+        completedAt: completedAttempt.completed_at ?? completedAt,
+        message: "Procjena je završena. Vaši odgovori su zaključani.",
+        results: null,
+        report: null,
+      };
+    }
+
     const results = await persistCompletedAssessmentResults(input.testId, persistResult.attemptId);
-    const report: CompletedAssessmentReportState | null = shouldGenerateCompletedAssessmentReport(results)
-      ? {
+    let enqueueSummary: Awaited<ReturnType<typeof enqueueCompletedAssessmentReports>> | null = null;
+    let report: CompletedAssessmentReportState | null = null;
+
+    if (results) {
+      const orchestration = await orchestrateReportsAfterAttemptCompletion({
+        attemptId: persistResult.attemptId,
+      });
+      enqueueSummary = orchestration.enqueueSummary;
+      report = await getPersistedParticipantCompletedAssessmentReportState(
+        persistResult.attemptId,
+      );
+
+      if (!report && shouldQueueParticipantReportFromPlan(enqueueSummary?.plan ?? null)) {
+        report = {
           status: "queued",
           generatorType: null,
           generatedAt: new Date().toISOString(),
           completedAt: null,
-        }
-      : null;
-
-    if (shouldGenerateCompletedAssessmentReport(results)) {
-      await enqueueCompletedAssessmentReports(persistResult.attemptId);
-      await triggerQueuedParticipantReportProcessing(persistResult.attemptId);
+        };
+      }
     }
 
     revalidateAttemptAllPaths(persistResult.attemptId);

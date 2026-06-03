@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-profile.local/schemas/mwms-hr-report-v1.json",
+  "title": "MWMS HR Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "reportType",
+    "testSlug",
+    "audience",
+    "sourceType",
+    "locale",
+    "meta",
+    "motivation_profile_snapshot",
+    "key_motivational_drivers",
+    "potential_friction_points",
+    "work_context_hypotheses",
+    "manager_support_guidance",
+    "interview_questions",
+    "onboarding_recommendations",
+    "decision_support_note",
+    "interpretation_note",
+    "safety_checks"
+  ],
+  "properties": {
+    "contractVersion": { "type": "string", "const": "mwms_hr_report_v1" },
+    "reportType": { "type": "string", "const": "mwms_hr_report_v1" },
+    "testSlug": { "type": "string", "const": "mwms_v1" },
+    "audience": { "type": "string", "const": "hr" },
+    "sourceType": { "type": "string", "const": "single_test" },
+    "locale": { "type": "string", "enum": ["bs", "hr", "sr", "en"] },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "generatedAt"],
+      "properties": {
+        "language": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "generatedAt": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "motivation_profile_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scale",
+        "dimensions",
+        "derivedProfile"
+      ],
+      "properties": {
+        "scale": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "type": "number", "const": 1 },
+            "max": { "type": "number", "const": 7 }
+          }
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/dimensionSnapshot" }
+        },
+        "derivedProfile": { "$ref": "#/$defs/derivedProfile" }
+      }
+    },
+    "key_motivational_drivers": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/hrSignal" }
+    },
+    "potential_friction_points": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/hrFrictionPoint" }
+    },
+    "work_context_hypotheses": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/workContextHypothesis" }
+    },
+    "manager_support_guidance": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/managerGuidance" }
+    },
+    "interview_questions": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/interviewQuestion" }
+    },
+    "onboarding_recommendations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/onboardingRecommendation" }
+    },
+    "decision_support_note": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "interpretation_note": { "$ref": "#/$defs/nonEmptyString" },
+    "safety_checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "noScoreRecalculation",
+        "noScoreMutation",
+        "noHireNoHireDecision",
+        "noDiagnosticLanguage",
+        "hypothesesOnly",
+        "singleTestOnly"
+      ],
+      "properties": {
+        "noScoreRecalculation": { "type": "boolean", "const": true },
+        "noScoreMutation": { "type": "boolean", "const": true },
+        "noHireNoHireDecision": { "type": "boolean", "const": true },
+        "noDiagnosticLanguage": { "type": "boolean", "const": true },
+        "hypothesesOnly": { "type": "boolean", "const": true },
+        "singleTestOnly": { "type": "boolean", "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensionCode": {
+      "type": "string",
+      "enum": [
+        "amotivation",
+        "external_social",
+        "external_material",
+        "introjected",
+        "identified",
+        "intrinsic"
+      ]
+    },
+    "band": {
+      "type": "string",
+      "enum": ["lower", "moderate", "higher"]
+    },
+    "dimensionSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "label", "rawScore", "band", "bandLabel"],
+      "properties": {
+        "code": { "$ref": "#/$defs/dimensionCode" },
+        "label": { "$ref": "#/$defs/nonEmptyString" },
+        "rawScore": { "type": "number", "minimum": 1, "maximum": 7 },
+        "band": { "$ref": "#/$defs/band" },
+        "bandLabel": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "derivedProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "autonomousMotivationScore",
+        "controlledMotivationScore",
+        "amotivationScore",
+        "dominantDimensions",
+        "lowerDimensions",
+        "cautionFlags"
+      ],
+      "properties": {
+        "autonomousMotivationScore": { "type": "number", "minimum": 1, "maximum": 7 },
+        "controlledMotivationScore": { "type": "number", "minimum": 1, "maximum": 7 },
+        "amotivationScore": { "type": "number", "minimum": 1, "maximum": 7 },
+        "dominantDimensions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/dimensionCode" }
+        },
+        "lowerDimensions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/dimensionCode" }
+        },
+        "cautionFlags": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "elevatedAmotivation",
+            "highControlledRelativeToAutonomous",
+            "mixedProfile"
+          ],
+          "properties": {
+            "elevatedAmotivation": { "type": "boolean" },
+            "highControlledRelativeToAutonomous": { "type": "boolean" },
+            "mixedProfile": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "hrSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "evidence", "hrImplication"],
+      "properties": {
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "evidence": { "$ref": "#/$defs/nonEmptyString" },
+        "hrImplication": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "hrFrictionPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal", "whyItMayMatter", "howToCheck"],
+      "properties": {
+        "signal": { "$ref": "#/$defs/nonEmptyString" },
+        "whyItMayMatter": { "$ref": "#/$defs/nonEmptyString" },
+        "howToCheck": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "workContextHypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context", "hypothesis", "verification"],
+      "properties": {
+        "context": { "$ref": "#/$defs/nonEmptyString" },
+        "hypothesis": { "$ref": "#/$defs/nonEmptyString" },
+        "verification": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "managerGuidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["focus", "recommendation", "rationale"],
+      "properties": {
+        "focus": { "$ref": "#/$defs/nonEmptyString" },
+        "recommendation": { "$ref": "#/$defs/nonEmptyString" },
+        "rationale": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "interviewQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "evaluates", "whatToListenFor"],
+      "properties": {
+        "question": { "$ref": "#/$defs/nonEmptyString" },
+        "evaluates": { "$ref": "#/$defs/nonEmptyString" },
+        "whatToListenFor": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "onboardingRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "recommendation", "why"],
+      "properties": {
+        "phase": { "$ref": "#/$defs/nonEmptyString" },
+        "recommendation": { "$ref": "#/$defs/nonEmptyString" },
+        "why": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    }
+  }
+}

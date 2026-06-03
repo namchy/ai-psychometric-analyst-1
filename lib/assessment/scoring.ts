@@ -301,7 +301,7 @@ export function buildMwmsComputedDimensionsFromPersistedScores(
 }
 
 export function normalizeSafranNumericAnswer(value: string): string {
-  return value.trim().replace(",", ".");
+  return value.trim().replace(/,/g, ".");
 }
 
 function parseSafranNumericAnswer(value: string | null): number | null {

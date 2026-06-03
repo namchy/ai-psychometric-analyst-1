@@ -1,0 +1,300 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const projectRoot = path.resolve(__dirname, "..");
+
+const candidateReportsPageSource = fs.readFileSync(
+  path.join(projectRoot, "app/(protected)/dashboard/participants/[participantId]/reports/page.tsx"),
+  "utf8",
+);
+const dashboardPrimitivesSource = fs.readFileSync(
+  path.join(projectRoot, "components/dashboard/primitives.tsx"),
+  "utf8",
+);
+
+assert.equal(
+  candidateReportsPageSource.includes("DpPageHeader"),
+  true,
+  "Expected HR participant detail page to use the shared DP page header wrapper.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('className="-mt-10 pb-12"'),
+  true,
+  "Expected HR participant detail page to use the localized negative top margin that tightens header spacing.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('backLabel="Nazad na HR dashboard"'),
+  true,
+  "Expected HR participant detail page to use the simple HR dashboard back label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('backHref="/dashboard"'),
+  true,
+  "Expected HR participant detail page to point the shared header back action to the HR dashboard.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('backLabel="Dashboard"'),
+  false,
+  "Expected HR participant detail page to remove the breadcrumb Dashboard label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('breadcrumbMiddleLabel={model.participant.full_name}'),
+  false,
+  "Expected HR participant detail page to remove the participant breadcrumb segment.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('breadcrumbCurrentLabel="HR procjena"'),
+  false,
+  "Expected HR participant detail page to remove the breadcrumb current segment.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('contextLabel="HR procjena kandidata"'),
+  false,
+  "Expected HR participant detail page to remove the redundant right-hand context label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Sažetak procjene"),
+  false,
+  "Expected HR participant detail page to remove the redundant summary block below the hero.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('from "@/lib/dashboard/hr-ui-format"'),
+  true,
+  "Expected HR participant detail page to use the shared HR metadata formatting helper.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Attempt:"),
+  false,
+  "Expected HR participant detail page to remove the raw Attempt label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Status testa:"),
+  false,
+  "Expected HR participant detail page to remove the raw test status label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('label="ID procjene"'),
+  true,
+  "Expected HR participant detail page to label the shortened attempt id as assessment id.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('label="Status procjene"'),
+  true,
+  "Expected HR participant detail page to label the lifecycle as assessment status.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('label="Završeno"'),
+  true,
+  "Expected HR participant detail page to label completion metadata with the localized past-tense label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("formatHrShortId(card.attempt?.id)"),
+  true,
+  "Expected HR participant detail page to shorten the attempt id for HR-facing display.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("formatHrLifecycleStatus(card.attempt?.lifecycle)"),
+  true,
+  "Expected HR participant detail page to map raw lifecycle values to HR-facing labels.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("formatHrDateTime(card.attempt?.completed_at)"),
+  true,
+  "Expected HR participant detail page to map ISO completion timestamps to a human-readable format.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("completed_at ??"),
+  false,
+  "Expected HR participant detail page to stop rendering raw completion timestamps directly.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('?? "not_assigned"'),
+  false,
+  "Expected HR participant detail page to stop rendering raw fallback lifecycle codes.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('title="Pojedinačni HR izvještaji"'),
+  true,
+  "Expected HR participant detail page to use the updated single-report section title.",
+);
+assert.equal(
+  candidateReportsPageSource.includes(
+    'description="Pregled statusa i izvještaja za svaku završenu procjenu kandidata."',
+  ),
+  true,
+  "Expected HR participant detail page to use the updated single-report section description.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Pojedinačne procjene nisu dodijeljene"),
+  true,
+  "Expected participant reports page to include the compact empty state heading for missing individual assessments.",
+);
+assert.equal(
+  /Kada kandidat završi IPIP, SAFRAN ili MWMS, ovdje će se prikazati\s+pojedinačni HR izvještaji\./.test(
+    candidateReportsPageSource,
+  ),
+  true,
+  "Expected participant reports page to include the compact empty state body for missing individual assessments.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("{hasTeamFitReports ? teamFitSection : null}"),
+  true,
+  "Expected Team Fit section to move above the individual reports section when Team Fit artefacts exist.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("{!hasTeamFitReports ? teamFitSection : null}"),
+  true,
+  "Expected Team Fit section to keep a stable fallback position when no Team Fit artefacts exist.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Dostupni testovi i statusi"),
+  false,
+  "Expected outdated single-report section title to be removed.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("nalaz"),
+  false,
+  "Expected updated participant report page copy to avoid the word 'nalaz'.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('"HR izvještaji nisu generisani"'),
+  true,
+  "Expected participant reports page to map the top pending-results status to the explicit non-generated HR report copy.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('"Čeka rezultate"'),
+  true,
+  "Expected participant reports page to preserve a local display mapping from the legacy model status copy.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('card.cta.disabled && card.cta.label !== "Nije dostupno"'),
+  true,
+  "Expected participant reports page to suppress disabled button-like rendering for the 'Nije dostupno' single-report CTA label.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("max-w-[920px]"),
+  true,
+  "Expected composite inner card to use a fixed max width on desktop.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("min-[900px]:grid-cols-[minmax(0,1fr)_auto]"),
+  true,
+  "Expected composite inner card to switch to a two-column desktop layout.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("min-[900px]:whitespace-nowrap"),
+  true,
+  "Expected composite CTA to remain nowrap on desktop.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("tone=\"success\""),
+  true,
+  "Expected participant reports page to route positive statuses through the shared success badge tone.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('<DpStatusBadge tone="neutral">{model.organizationName}</DpStatusBadge>'),
+  true,
+  "Expected organization chip to use the shared neutral status badge treatment.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('eyebrowClassName="text-[#118ab2]"'),
+  true,
+  "Expected single-report section eyebrow to use the ocean blue accent.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('eyebrowClassName="text-[#073b4c]"'),
+  true,
+  "Expected composite section eyebrow to use the dark teal accent.",
+);
+assert.equal(
+  candidateReportsPageSource.includes(
+    "shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)]",
+  ),
+  true,
+  "Expected the single-report section shell to use an ocean-blue accent shadow.",
+);
+assert.equal(
+  candidateReportsPageSource.includes(
+    "shadow-[inset_0_3px_0_rgba(7,59,76,0.24),0_28px_60px_rgba(15,23,42,0.12)]",
+  ),
+  true,
+  "Expected the composite section shell to use a dark-teal accent shadow.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("border-l-4 border-l-[#073b4c]"),
+  true,
+  "Expected the composite inner card to use a dark-teal left accent strip.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("bg-[rgba(255,255,255,0.82)]"),
+  true,
+  "Expected the composite inner card to use the specified translucent white background.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("bg-[#079985]"),
+  true,
+  "Expected shared dashboard primary CTA to use the updated default teal.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("hover:bg-[#073b4c]"),
+  true,
+  "Expected shared dashboard primary CTA to darken to dark teal on hover.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("text-white"),
+  true,
+  "Expected shared dashboard primary CTA to keep white default text.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("hover:text-white"),
+  true,
+  "Expected shared dashboard primary CTA to keep white text on hover.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("focus-visible:text-white"),
+  true,
+  "Expected shared dashboard primary CTA to keep white text on focus-visible.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("active:text-white"),
+  true,
+  "Expected shared dashboard primary CTA to keep white text when active.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("focus-visible:ring-[rgba(17,138,178,0.32)]"),
+  true,
+  "Expected shared dashboard primary CTA to use the specified focus ring color.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('title="Kompozitni HR izvještaj"'),
+  false,
+  "Composite section title should continue to come from model content, not be hardcoded in the page header.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("{model.organizationName}"),
+  true,
+  "Expected organization context to remain in hero metadata, not in page navigation.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("export function getDashboardCtaClassName"),
+  true,
+  "Expected dashboard primitives to expose a shared CTA helper.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("hover:text-white"),
+  true,
+  "Expected shared dashboard CTA helper to keep white text on darker hover states.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("<DpButton"),
+  true,
+  "Expected HR participant detail page to route CTAs through the shared DP button primitive.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("disabled>{card.cta.label}</DpButton>"),
+  true,
+  "Expected HR participant detail page to use the shared disabled DP button treatment.",
+);
+
+console.log("HR participant reports renderer hygiene tests passed.");

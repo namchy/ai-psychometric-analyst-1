@@ -4,7 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { createStandardAssessmentBattery } from "@/app/actions/participants";
 import { CreateAssessmentModal } from "@/components/dashboard/create-assessment-modal";
-import { DashboardActionRow, DashboardSectionShell } from "@/components/dashboard/primitives";
+import {
+  DashboardActionRow,
+  DashboardSectionShell,
+  getDashboardCtaClassName,
+} from "@/components/dashboard/primitives";
 import {
   DEFAULT_ASSESSMENT_LOCALE,
   SUPPORTED_ASSESSMENT_LOCALES,
@@ -49,7 +53,7 @@ type HrAssessmentsTableRow = {
       }
     | {
         kind: "link";
-        label: "Pogledaj procjenu";
+        label: "Pregled procjena";
         href: string;
       };
   testItems: Array<{
@@ -189,7 +193,7 @@ export function HrAssessmentsTable({
               </div>
 
               <button
-                className="min-h-0 w-fit rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)]"
+                className={getDashboardCtaClassName({ variant: "primary" })}
                 onClick={() => setIsCreateAssessmentModalOpen(true)}
                 type="button"
               >
@@ -262,6 +266,7 @@ export function HrAssessmentsTable({
               <tbody>
                 {visibleRows.map((row) => {
                   const progressRatio = row.totalTests > 0 ? row.completedTests / row.totalTests : 0;
+                  const participantReportsHref = `/dashboard/participants/${row.participant.id}/reports`;
 
                   return (
                     <tr key={row.participant.id} className="group transition hover:-translate-y-[1px]">
@@ -319,91 +324,103 @@ export function HrAssessmentsTable({
                         </div>
                       </td>
                       <td className="align-middle rounded-r-[1.1rem] border-y border-r border-slate-200/70 bg-[rgba(255,255,255,0.94)] px-5 py-5 transition-colors group-hover:bg-white">
-                        {row.primaryAction.kind === "link" ? (
-                          <Link
-                            className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700"
-                            href={row.primaryAction.href}
-                          >
-                            {row.primaryAction.label}
-                          </Link>
-                        ) : row.primaryAction.kind === "info" ? (
-                          <div className="max-w-[14rem] space-y-1.5">
-                            <p className="text-[14px] font-semibold leading-5 text-slate-700">
-                              {row.primaryAction.label}
-                            </p>
-                            <p className="text-[11px] leading-4 text-slate-400">{row.primaryAction.note}</p>
-                          </div>
-                        ) : (
-                          <details
-                            className="group w-[16rem] rounded-[1.2rem] border border-slate-200 bg-white/85 shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
-                            id={`row-action-${row.participant.id}`}
-                            open={openAttemptFor === row.participant.id}
-                          >
-                            <summary className="cursor-pointer list-none rounded-[1.2rem] px-4 py-3 [&::-webkit-details-marker]:hidden">
-                              <span className="inline-flex min-h-0 rounded-full border border-teal-700 bg-teal-600 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_16px_30px_rgba(13,148,136,0.22)] transition-all duration-200 group-open:bg-teal-700">
-                                {row.primaryAction.label}
-                              </span>
-                            </summary>
-                            <form
-                              action={createStandardAssessmentBattery}
-                              className="space-y-4 border-t border-slate-200/90 px-4 py-4"
+                        <div className="flex max-w-[16rem] flex-col items-start gap-3">
+                          {row.primaryAction.kind === "link" ? (
+                            <Link
+                              className={getDashboardCtaClassName({ variant: "secondary", size: "sm" })}
+                              href={row.primaryAction.href}
                             >
-                              <input name="participantId" type="hidden" value={row.participant.id} />
-                              <div className="rounded-[1rem] border border-slate-200 bg-slate-50/80 px-4 py-3">
-                                <p className="text-sm font-semibold text-slate-900">Standardna baterija</p>
-                                <ul className="mt-2 space-y-2 text-sm text-slate-600">
-                                  {standardBatteryTests.map((test) => (
-                                    <li key={test.id} className="flex items-center justify-between gap-3">
-                                      <span>{getStandardBatteryShortLabel(test.slug)}</span>
-                                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
-                                        Dostupno
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div className="space-y-2">
-                                <label
-                                  className="text-sm font-medium text-slate-700"
-                                  htmlFor={`attempt-locale-${row.participant.id}`}
+                              {row.primaryAction.label}
+                            </Link>
+                          ) : row.primaryAction.kind === "info" ? (
+                            <div className="max-w-[14rem] space-y-1.5">
+                              <p className="text-[14px] font-semibold leading-5 text-slate-700">
+                                {row.primaryAction.label}
+                              </p>
+                              <p className="text-[11px] leading-4 text-slate-400">{row.primaryAction.note}</p>
+                            </div>
+                          ) : (
+                            <details
+                              className="group w-[16rem] rounded-[1.2rem] border border-slate-200 bg-white/85 shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
+                              id={`row-action-${row.participant.id}`}
+                              open={openAttemptFor === row.participant.id}
+                            >
+                              <summary className="cursor-pointer list-none rounded-[1.2rem] px-4 py-3 [&::-webkit-details-marker]:hidden">
+                                <span
+                                  className={`${getDashboardCtaClassName({ variant: "primary", size: "sm" })} group-open:bg-teal-800`}
                                 >
-                                  Jezik
-                                </label>
-                                <select
-                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
-                                  defaultValue={toLegacyAssessmentLocale(DEFAULT_ASSESSMENT_LOCALE)}
-                                  id={`attempt-locale-${row.participant.id}`}
-                                  name="locale"
-                                  required
-                                >
-                                  {SUPPORTED_ASSESSMENT_LOCALES.map((locale) => (
-                                    <option key={locale} value={locale}>
-                                      {getAssessmentLocaleLabel(locale)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              {openAttemptFor === row.participant.id && createActionMessage ? (
-                                <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
-                                  {createAttemptDetails ?? createActionMessage}
-                                </p>
-                              ) : null}
-                              {openAttemptFor === row.participant.id && inlineBatterySuccessMessage ? (
-                                <p className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-700">
-                                  {inlineBatterySuccessMessage}
-                                </p>
-                              ) : null}
-                              <DashboardActionRow>
-                                <button
-                                  className="w-full min-h-0 rounded-full border border-teal-700 bg-teal-600 px-5 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_18px_36px_rgba(13,148,136,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-[0_22px_40px_rgba(13,148,136,0.3)]"
-                                  type="submit"
-                                >
-                                  Kreiraj procjenu
-                                </button>
-                              </DashboardActionRow>
-                            </form>
-                          </details>
-                        )}
+                                  {row.primaryAction.label}
+                                </span>
+                              </summary>
+                              <form
+                                action={createStandardAssessmentBattery}
+                                className="space-y-4 border-t border-slate-200/90 px-4 py-4"
+                              >
+                                <input name="participantId" type="hidden" value={row.participant.id} />
+                                <div className="rounded-[1rem] border border-slate-200 bg-slate-50/80 px-4 py-3">
+                                  <p className="text-sm font-semibold text-slate-900">Standardna baterija</p>
+                                  <ul className="mt-2 space-y-2 text-sm text-slate-600">
+                                    {standardBatteryTests.map((test) => (
+                                      <li key={test.id} className="flex items-center justify-between gap-3">
+                                        <span>{getStandardBatteryShortLabel(test.slug)}</span>
+                                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+                                          Dostupno
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                                <div className="space-y-2">
+                                  <label
+                                    className="text-sm font-medium text-slate-700"
+                                    htmlFor={`attempt-locale-${row.participant.id}`}
+                                  >
+                                    Jezik
+                                  </label>
+                                  <select
+                                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-500/15"
+                                    defaultValue={toLegacyAssessmentLocale(DEFAULT_ASSESSMENT_LOCALE)}
+                                    id={`attempt-locale-${row.participant.id}`}
+                                    name="locale"
+                                    required
+                                  >
+                                    {SUPPORTED_ASSESSMENT_LOCALES.map((locale) => (
+                                      <option key={locale} value={locale}>
+                                        {getAssessmentLocaleLabel(locale)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                {openAttemptFor === row.participant.id && createActionMessage ? (
+                                  <p className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
+                                    {createAttemptDetails ?? createActionMessage}
+                                  </p>
+                                ) : null}
+                                {openAttemptFor === row.participant.id && inlineBatterySuccessMessage ? (
+                                  <p className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-700">
+                                    {inlineBatterySuccessMessage}
+                                  </p>
+                                ) : null}
+                                <DashboardActionRow>
+                                  <button
+                                    className={getDashboardCtaClassName({ variant: "primary", fullWidth: true })}
+                                    type="submit"
+                                  >
+                                    Kreiraj procjenu
+                                  </button>
+                                </DashboardActionRow>
+                              </form>
+                            </details>
+                          )}
+                          {row.primaryAction.kind !== "link" ? (
+                            <Link
+                              className={getDashboardCtaClassName({ variant: "secondary", size: "sm" })}
+                              href={participantReportsHref}
+                            >
+                              Pregled procjena
+                            </Link>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );

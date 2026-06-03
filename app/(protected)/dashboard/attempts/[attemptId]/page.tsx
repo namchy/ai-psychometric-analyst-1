@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import { getAssessmentDisplayName } from "@/lib/assessment/display";
-import { loadProtectedAttemptReportPageData } from "@/lib/assessment/protected-attempts";
+import { loadProtectedHrAttemptReportPageData } from "@/lib/assessment/protected-attempts";
 import {
   getActiveOrganizationForUser,
   getAttemptForOrganization,
@@ -34,20 +34,32 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
     redirect(`/dashboard/attempts/${attempt.id}/run`);
   }
 
-  const reportPageData = await loadProtectedAttemptReportPageData(attempt);
+  const reportPageData = await loadProtectedHrAttemptReportPageData(attempt);
 
   return (
     <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
       <section className="attempt-results-page__content">
-        <CompletedAssessmentSummary
-          completedAt={attempt.completed_at}
-          locale={attempt.locale}
-          organizationName={attempt.organizations?.name ?? organization.name}
-          participantName={attempt.participants?.full_name ?? null}
-          testName={getAssessmentDisplayName(attempt.tests)}
-          results={reportPageData.results}
-          reportState={reportPageData.report}
-        />
+        {reportPageData.report?.status === "ready" ? (
+          <CompletedAssessmentSummary
+            completedAt={attempt.completed_at}
+            locale={attempt.locale}
+            organizationName={attempt.organizations?.name ?? organization.name}
+            participantName={attempt.participants?.full_name ?? null}
+            testName={getAssessmentDisplayName(attempt.tests)}
+            results={reportPageData.results}
+            reportState={reportPageData.report}
+          />
+        ) : (
+          <section className="results-report__section results-report__status results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>HR izvještaj još nije dostupan</h3>
+            </div>
+            <p className="results-report__section-body">
+              Rezultati procjene su sačuvani, ali HR izvještaj za ovaj test još nije generisan ili
+              nije podržan za ovaj instrument.
+            </p>
+          </section>
+        )}
       </section>
     </main>
   );

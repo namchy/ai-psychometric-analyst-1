@@ -1,0 +1,108 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 52428800
+  },
+  "output": {
+    "filePath": "repomix-team-dynamics-ui.xml",
+    "style": "xml",
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 10,
+    "showLineNumbers": false,
+    "truncateBase64": true,
+    "copyToClipboard": false,
+    "includeFullDirectoryStructure": false,
+    "tokenCountTree": false
+  },
+  "include": [
+    "AGENTS.md",
+
+    "docs/deep-profile-todo.md",
+    "docs/team-dynamics-product-tech-spec.md",
+    "docs/deep-profile-ui-system.md",
+
+    "app/actions/team-assessments.ts",
+
+    "app/(protected)/dashboard/**/*.ts",
+    "app/(protected)/dashboard/**/*.tsx",
+    "app/(protected)/app/team-assessments/**/*.ts",
+    "app/(protected)/app/team-assessments/**/*.tsx",
+
+    "components/dashboard/**/*.ts",
+    "components/dashboard/**/*.tsx",
+    "components/ui/**/*.ts",
+    "components/ui/**/*.tsx",
+
+    "lib/b2b/team-dynamics*.ts",
+    "lib/b2b/team-assessment*.ts",
+    "lib/dashboard/**/*.ts",
+
+    "lib/assessment/team-dynamics*.ts",
+
+    "scripts/test-team-dynamics-report-selection-action.cjs",
+    "scripts/test-team-dynamics-report-selection-inclusion-model.cjs",
+    "scripts/test-team-dynamics-report-selection-read-model.cjs",
+    "scripts/test-team-dynamics-assessment-v1-final-aggregation.cjs",
+    "scripts/test-team-dynamics-assessment-v1-final-aggregation-read.cjs",
+    "scripts/test-team-dynamics-assessment-v1-score-read.cjs",
+
+    "supabase/migrations/20260528113000_add_team_assessment_report_selection_drafts.sql",
+
+    "package.json",
+    "tsconfig.json",
+    "next.config.js",
+    "tailwind.config.ts",
+    "postcss.config.js",
+    "playwright.config.ts"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "node_modules/**",
+      ".next/**",
+      ".git/**",
+      ".vercel/**",
+      "coverage/**",
+      "test-results/**",
+      "playwright-report/**",
+      "public/**",
+      "supabase/.temp/**",
+      "repomix-output*.xml",
+      "repomix-team-dynamics-ui.xml",
+      "backups/**",
+      "db_backups/**",
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.jpeg",
+      "**/*.webp",
+      "**/*.gif",
+      "**/*.svg",
+      "**/*.ico",
+      "**/*.pdf",
+      "**/*.zip",
+      "**/*.mp4",
+      "**/*.mov",
+      "**/*.woff",
+      "**/*.woff2",
+      "**/*.ttf",
+      "**/*.otf",
+      ".env",
+      ".env.*",
+      "**/*:Zone.Identifier",
+      "**/*.Zone.Identifier"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

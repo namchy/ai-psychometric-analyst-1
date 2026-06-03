@@ -191,3 +191,108 @@ test("protected resume continues from the first unanswered question without refr
     await fixture.cleanup();
   }
 });
+
+test("protected IPIP back navigation preserves visibly selected answers", async ({
+  page,
+}) => {
+  const fixture = await prepareProtectedResumeAttempt();
+
+  try {
+    await loginForDashboard(page, "candidate");
+    await page.goto(`/app/attempts/${fixture.attemptId}/run`);
+
+    const firstQuestion = fixture.questions[0];
+    const secondQuestion = fixture.questions[1];
+
+    const firstQuestionChoice = page.locator(`input[type="radio"][name="${firstQuestion.id}"]`).nth(2);
+    const secondQuestionChoice = page.locator(`input[type="radio"][name="${secondQuestion.id}"]`).nth(1);
+    const firstQuestionChoiceCard = firstQuestionChoice.locator("..");
+    const secondQuestionChoiceCard = secondQuestionChoice.locator("..");
+
+    await expect(page.getByText("Pitanje 1 od")).toBeVisible();
+    await firstQuestionChoice.check();
+    await expect(page.getByText("Pitanje 2 od")).toBeVisible();
+
+    await secondQuestionChoice.check();
+    await expect(page.getByText("Pitanje 3 od")).toBeVisible();
+
+    await page.getByRole("button", { name: "Nazad" }).click();
+    await expect(page.getByText("Pitanje 2 od")).toBeVisible();
+    await expect(secondQuestionChoice).toBeChecked();
+    await expect(secondQuestionChoiceCard).toHaveClass(/assessment-likert-option--selected/);
+
+    await page.getByRole("button", { name: "Nazad" }).click();
+    await expect(page.getByText("Pitanje 1 od")).toBeVisible();
+    await expect(firstQuestionChoice).toBeChecked();
+    await expect(firstQuestionChoiceCard).toHaveClass(/assessment-likert-option--selected/);
+
+    await firstQuestionChoice.click();
+    await expect(page.getByText("Pitanje 2 od")).toBeVisible();
+    await expect(secondQuestionChoice).toBeChecked();
+
+    await page.getByRole("button", { name: "Nazad na dashboard" }).click();
+    await page.waitForURL("**/app");
+
+    const progressLabel = `2 / ${fixture.totalQuestionCount} pitanja`;
+    const attemptCard = page.locator("article").filter({
+      has: page.getByText(progressLabel),
+      hasText: "Nastavi procjenu",
+    });
+
+    await expect(attemptCard).toHaveCount(1);
+    await attemptCard.getByRole("button", { name: "Nastavi procjenu" }).click();
+    await page.waitForURL(`**/app/attempts/${fixture.attemptId}/run`);
+
+    await expect(page.getByText("Pitanje 3 od")).toBeVisible();
+    await page.getByRole("button", { name: "Nazad" }).click();
+    await expect(page.getByText("Pitanje 2 od")).toBeVisible();
+    await expect(secondQuestionChoice).toBeChecked();
+    await expect(secondQuestionChoiceCard).toHaveClass(/assessment-likert-option--selected/);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("protected candidate run hydrates pending local selections before server resume state", async ({
+  page,
+}) => {
+  const fixture = await prepareProtectedResumeAttempt();
+
+  try {
+    await loginForDashboard(page, "candidate");
+    await page.goto("/app");
+
+    await page.evaluate(
+      ({ attemptId, pendingSelections }) => {
+        window.localStorage.setItem(
+          `assessment-pending:${attemptId}`,
+          JSON.stringify(pendingSelections),
+        );
+      },
+      {
+        attemptId: fixture.attemptId,
+        pendingSelections: fixture.questions.slice(0, 2).reduce<Record<string, string>>(
+          (selections, question, index) => {
+            const optionId = fixture.answerOptionIdsByQuestionId.get(question.id)?.[index + 1];
+
+            if (!optionId) {
+              throw new Error(`Missing answer option fixture for question ${question.id}.`);
+            }
+
+            selections[question.id] = optionId;
+            return selections;
+          },
+          {},
+        ),
+      },
+    );
+
+    await page.goto(`/app/attempts/${fixture.attemptId}/run`);
+    await expect(page.getByText("Pitanje 3 od")).toBeVisible();
+  } finally {
+    await page.evaluate((attemptId) => {
+      window.localStorage.removeItem(`assessment-pending:${attemptId}`);
+    }, fixture.attemptId);
+    await fixture.cleanup();
+  }
+});

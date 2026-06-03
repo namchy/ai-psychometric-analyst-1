@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,12 +8,19 @@ import {
   saveProtectedAssessmentProgress,
   saveAssessmentProgress,
 } from "@/app/actions/assessment";
-import { logout } from "@/app/actions/auth";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
 import { ReportGenerationLoadingScreen } from "@/components/assessment/report-generation-loading-screen";
 import type { AssessmentCompletionState } from "@/lib/assessment/completion";
 import { getAssessmentCompletionState, isQuestionAnswered } from "@/lib/assessment/completion";
-import type { CompletedAssessmentReportState } from "@/lib/assessment/reports";
+import { IPIP_NEO_120_TEST_SLUG } from "@/lib/assessment/ipip-neo-120-labels";
+import type { CompletedAssessmentReportState } from "@/lib/assessment/report-state-types";
+import { MWMS_V1_TEST_SLUG } from "@/lib/assessment/mwms-scoring";
+import {
+  clearPendingSelections,
+  readPendingSelections,
+  removeFlushedSelections,
+  upsertPendingSelection,
+} from "@/lib/assessment/pending-autosave";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import {
   DEFAULT_ASSESSMENT_LOCALE,
@@ -25,16 +31,16 @@ import type {
   AssessmentSelectionValue,
   AttemptStatus,
 } from "@/lib/assessment/types";
-import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/tests";
-
-const RUN_PAGE_PRIMARY_NAV_ITEMS = ["Testovi", "Reports"] as const;
+import type { TestAnswerOption, TestQuestion } from "@/lib/assessment/test-render-types";
 
 type AssessmentFormProps = {
   executionMode?: "public" | "protected";
+  runContext?: "candidate" | "hr" | "public";
   layoutMode?: "classic" | "step";
   completionRedirectPath?: string | null;
   assessmentDisplayName?: string | null;
   participantDisplayName?: string | null;
+  testSlug?: string | null;
   testId: string;
   locale?: AssessmentLocale;
   questions: TestQuestion[];
@@ -50,7 +56,12 @@ type AssessmentFormProps = {
 type SelectionState = Record<string, AssessmentSelectionValue | undefined>;
 type SaveStatus = "idle" | "saving" | "saved" | "completing" | "completed" | "error";
 type ProtectedCompletionUiPhase = "processing" | "redirecting" | null;
+type PendingAutosaveStatus = "idle" | "saving" | "saved" | "error";
 const MANUAL_SAVE_SUCCESS_DURATION_MS = 1600;
+const PENDING_AUTOSAVE_DEBOUNCE_MS = 250;
+const MWMS_SHARED_STEM = "Zašto ulažeš trud u svoj posao?";
+const MWMS_REASON_LABEL = "Mogući razlog";
+const MWMS_SCALE_INSTRUCTION = "U kojoj mjeri se ovaj razlog odnosi na tebe?";
 
 function getSerializableSelections(
   selections: SelectionState,
@@ -63,21 +74,16 @@ function getSerializableSelections(
 }
 
 function getEffectiveSelections(
-  initialSelections: AssessmentSelectionsInput,
   selections: SelectionState,
 ): Record<string, AssessmentSelectionValue> {
-  return {
-    ...initialSelections,
-    ...getSerializableSelections(selections),
-  };
+  return getSerializableSelections(selections);
 }
 
 function getQuestionSelectionDelta(
-  initialSelections: AssessmentSelectionsInput,
   selections: SelectionState,
   questionId: string,
 ): Record<string, AssessmentSelectionValue> {
-  const effectiveSelections = getEffectiveSelections(initialSelections, selections);
+  const effectiveSelections = getEffectiveSelections(selections);
   const selection = effectiveSelections[questionId];
 
   return selection === undefined ? {} : { [questionId]: selection };
@@ -110,7 +116,7 @@ function getInitialQuestionIndex(
   selections: AssessmentSelectionsInput,
 ): number {
   const firstUnansweredIndex = questions.findIndex(
-    (question) => !isQuestionAnswered(question.question_type, selections[question.id]),
+    (question) => !isQuestionAnswered(question, selections[question.id]),
   );
 
   if (firstUnansweredIndex >= 0) {
@@ -175,6 +181,14 @@ function getVisibleQuestionText(question: TestQuestion): string | null {
   return text;
 }
 
+function isIntermediateNumericInputValue(value: string): boolean {
+  return /^-?(?:\d+(?:[.,]\d*)?)?$/.test(value);
+}
+
+function getNextNumericInputValue(rawValue: string): string | null {
+  return isIntermediateNumericInputValue(rawValue) ? rawValue : null;
+}
+
 function getLikertAssessmentCode(assessmentDisplayName?: string | null): string | null {
   const name = assessmentDisplayName?.trim();
 
@@ -189,6 +203,22 @@ function getLikertAssessmentCode(assessmentDisplayName?: string | null): string 
   }
 
   return name;
+}
+
+function isMwmsAssessmentSlug(slug: string | null | undefined): boolean {
+  return slug === MWMS_V1_TEST_SLUG;
+}
+
+function isNonBlockingLikertAutosaveSlug(slug: string | null | undefined): boolean {
+  return slug === IPIP_NEO_120_TEST_SLUG || slug === MWMS_V1_TEST_SLUG;
+}
+
+function getPendingAutosaveMessage(status: PendingAutosaveStatus, hasPendingSelections: boolean): string | null {
+  if (status === "error" && hasPendingSelections) {
+    return "Neki odgovori još nisu sinhronizovani. Nastavi rješavati, pokušat ćemo ponovo automatski.";
+  }
+
+  return null;
 }
 
 function parseNumericSequenceQuestionText(text: string): { prompt: string; tokens: string[] } | null {
@@ -647,6 +677,42 @@ function AssessmentDashboardSkinStyles() {
         color: rgb(15, 23, 42);
       }
 
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-block {
+        display: grid;
+        gap: 0;
+        max-width: 43rem;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-block h3 {
+        margin: 0;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-label {
+        margin: 1.2rem 0 0;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgb(100, 116, 139);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-step-card__mwms-item {
+        margin: 0.45rem 0 0;
+        max-width: 42rem;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: rgb(51, 65, 85);
+        text-wrap: pretty;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert__instruction {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+        line-height: 1.45;
+        color: rgb(51, 65, 85);
+      }
+
       .assessment-run-page--dashboard-skin .assessment-option,
       .assessment-run-page--dashboard-skin .assessment-likert-option {
         border-color: rgba(203, 213, 225, 0.86);
@@ -680,17 +746,17 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option--selected {
-        border-color: color-mix(in srgb, var(--likert-border) 18%, #118ab2 82%);
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--likert-border) 42%, #118ab2 58%);
         background: linear-gradient(
           180deg,
-          color-mix(in srgb, var(--likert-bg) 54%, #118ab2 46%),
-          color-mix(in srgb, white 26%, #118ab2 74%)
+          color-mix(in srgb, var(--likert-bg) 70%, white 30%),
+          color-mix(in srgb, rgba(255, 255, 255, 0.99) 82%, rgba(224, 242, 254, 0.98) 18%)
         );
         box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.34),
-          0 0 0 1px rgba(17, 138, 178, 0.16),
-          0 0 0 6px var(--likert-selected-ring),
-          0 18px 26px -22px var(--likert-selected-shadow);
+          inset 0 1px 0 rgba(255, 255, 255, 0.84),
+          0 0 0 6px color-mix(in srgb, var(--likert-hover-glow) 170%, rgba(17, 138, 178, 0.16) 0%),
+          0 14px 22px -22px rgba(17, 138, 178, 0.22);
       }
 
       .assessment-run-page--dashboard-skin .assessment-options {
@@ -738,11 +804,10 @@ function AssessmentDashboardSkinStyles() {
         --likert-selected-shadow: rgba(17, 138, 178, 0.18);
         width: 100%;
         min-height: 3.4rem;
-        border-color: var(--likert-border);
-        background: linear-gradient(180deg, var(--likert-bg), rgba(255, 255, 255, 0.98));
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 14px 24px -24px rgba(17, 138, 178, 0.14);
+        padding: 0;
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
         transition:
           border-color 180ms ease,
           background-color 180ms ease,
@@ -792,24 +857,37 @@ function AssessmentDashboardSkinStyles() {
         --likert-hover-glow: rgba(17, 138, 178, 0.24);
       }
 
-      .assessment-run-page--dashboard-skin .assessment-likert-option:hover {
-        border-color: color-mix(in srgb, var(--likert-border) 68%, #118ab2 32%);
-        background: linear-gradient(
-          180deg,
-          color-mix(in srgb, var(--likert-bg) 82%, white 18%),
-          rgba(255, 255, 255, 0.99)
-        );
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.84),
-          0 0 0 5px var(--likert-hover-glow),
-          0 14px 22px -24px rgba(17, 138, 178, 0.16);
+      .assessment-run-page--dashboard-skin .assessment-likert-option:not(.assessment-likert-option--selected):hover {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option__value {
+        display: inline-flex;
+        width: 100%;
+        min-height: 3.4rem;
+        align-items: center;
+        justify-content: center;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid var(--likert-border);
+        border-radius: 0.95rem;
+        background: rgba(255, 255, 255, 0.98);
         font-size: 1rem;
         font-weight: 700;
         letter-spacing: -0.02em;
         color: rgb(15, 74, 96);
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease,
+          box-shadow 180ms ease,
+          color 180ms ease;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option:not(.assessment-likert-option--selected):hover .assessment-likert-option__value {
+        border-color: color-mix(in srgb, var(--likert-border) 68%, #118ab2 32%);
+        background: color-mix(in srgb, var(--likert-bg) 78%, white 22%);
+        box-shadow: none;
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option:focus-within,
@@ -822,15 +900,39 @@ function AssessmentDashboardSkinStyles() {
       }
 
       .assessment-run-page--dashboard-skin .assessment-likert-option:focus-within {
-        border-color: rgba(17, 138, 178, 0.72);
-        box-shadow:
-          0 0 0 4px rgba(17, 138, 178, 0.2),
-          inset 0 1px 0 rgba(255, 255, 255, 0.82),
-          0 14px 22px -22px rgba(17, 138, 178, 0.18);
+        border-color: transparent;
+        box-shadow: none;
       }
 
-      .assessment-run-page--dashboard-skin .assessment-likert-option--selected .assessment-likert-option__value {
-        color: rgb(9, 63, 83);
+      .assessment-run-page--dashboard-skin .assessment-likert-option:has(input:focus-visible) .assessment-likert-option__value {
+        outline: 2px solid rgba(17, 138, 178, 0.28);
+        outline-offset: 2px;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected:hover {
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected:has(input:focus-visible) .assessment-likert-option__value {
+        border-color: rgba(17, 138, 178, 0.72);
+        outline-color: rgba(13, 148, 136, 0.32);
+      }
+
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected .assessment-likert-option__value,
+      .assessment-run-page--dashboard-skin .assessment-likert-option--selected:hover .assessment-likert-option__value {
+        border-color: rgb(13, 148, 136);
+        background: rgb(13, 148, 136);
+        box-shadow: none;
+        color: white;
+        font-weight: 800;
       }
 
       .assessment-run-page--dashboard-skin .assessment-option__marker {
@@ -1188,6 +1290,12 @@ function AssessmentDashboardSkinStyles() {
         color: rgb(190, 24, 93);
       }
 
+      .assessment-run-page--dashboard-skin .assessment-inline-message--muted {
+        border-color: rgba(148, 163, 184, 0.24);
+        background: rgba(248, 250, 252, 0.92);
+        color: rgb(71, 85, 105);
+      }
+
       .assessment-run-page--dashboard-skin .button-secondary,
       .assessment-run-page--dashboard-skin .assessment-step-actions__button--ghost,
       .assessment-run-page--dashboard-skin .assessment-step-actions__button--save {
@@ -1510,109 +1618,14 @@ function AssessmentDashboardSkinStyles() {
   );
 }
 
-function getRunPageTopBarInitials(userName?: string | null, userEmail?: string | null) {
-  const source = userName?.trim() || userEmail?.trim() || "Deep Profile";
-
-  return source
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-export function RunPageTopBar({
-  userEmail,
-  userName,
-}: {
-  userEmail: string;
-  userName?: string | null;
-}) {
-  const initials = getRunPageTopBarInitials(userName, userEmail);
-
-  return (
-    <header className="fixed top-0 z-50 w-full border-b border-slate-300/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.94),rgba(243,247,251,0.9))] shadow-[0_16px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-200/70 to-transparent"
-      />
-      <div className="mx-auto flex h-16 w-full max-w-full items-center justify-between px-4 sm:px-6 lg:px-12">
-        <div className="flex min-w-0 items-center gap-6 lg:gap-10">
-          <Link
-            href="/app"
-            className="shrink-0 font-headline text-lg font-bold tracking-[-0.04em] text-slate-900 transition-opacity hover:opacity-90 sm:text-xl"
-          >
-            Deep Profile
-          </Link>
-
-          <nav aria-label="Primary" className="hidden items-center gap-2 lg:flex">
-            {RUN_PAGE_PRIMARY_NAV_ITEMS.map((item) => (
-              <span
-                key={item}
-                className={
-                  item === "Testovi"
-                    ? "rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-                    : "rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors duration-200 hover:bg-white hover:text-slate-900"
-                }
-              >
-                {item}
-              </span>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
-          <button
-            aria-label="Settings"
-            className="min-h-0 rounded-xl border border-transparent bg-transparent p-2 text-slate-500 shadow-none transition-all duration-200 hover:border-slate-200 hover:bg-white hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            type="button"
-          >
-            <svg
-              aria-hidden="true"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.8"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="12" cy="12" r="2.8" />
-              <path d="M12 4.5v1.3" />
-              <path d="M12 18.2v1.3" />
-              <path d="m6.7 6.7.9.9" />
-              <path d="m16.4 16.4.9.9" />
-              <path d="M4.5 12h1.3" />
-              <path d="M18.2 12h1.3" />
-              <path d="m6.7 17.3.9-.9" />
-              <path d="m16.4 7.6.9-.9" />
-            </svg>
-          </button>
-
-          <div className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-teal-500 to-violet-400 text-xs font-bold text-white shadow-[0_10px_24px_rgba(20,184,166,0.22)]">
-            <span>{initials || "DP"}</span>
-          </div>
-
-          <form action={logout} className="hidden md:block">
-            <button
-              className="min-h-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-label font-semibold uppercase tracking-[0.18em] text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:border-teal-200 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-              type="submit"
-            >
-              Odjava
-            </button>
-          </form>
-        </div>
-      </div>
-    </header>
-  );
-}
-
 export function AssessmentForm({
   executionMode = "public",
+  runContext = "public",
   layoutMode = "classic",
   completionRedirectPath = null,
   assessmentDisplayName = null,
   participantDisplayName = null,
+  testSlug = null,
   testId,
   locale = DEFAULT_ASSESSMENT_LOCALE,
   questions,
@@ -1625,7 +1638,7 @@ export function AssessmentForm({
   initialReport,
 }: AssessmentFormProps) {
   const router = useRouter();
-  const [selections, setSelections] = useState<SelectionState>(initialSelections);
+  const [selections, setSelections] = useState<SelectionState>({ ...initialSelections });
   const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<AttemptStatus | null>(initialAttemptStatus);
   const [completedAt, setCompletedAt] = useState<string | null>(initialCompletedAt);
@@ -1648,10 +1661,15 @@ export function AssessmentForm({
     useState<ProtectedCompletionUiPhase>(null);
   const [stepValidationMessage, setStepValidationMessage] = useState<string | null>(null);
   const requestInFlightRef = useRef(false);
+  const pendingFlushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingFlushInFlightRef = useRef(false);
+  const isHydratingPendingSelectionsRef = useRef(false);
   const manualSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const numericInputRef = useRef<HTMLInputElement | null>(null);
-  const effectiveSelections = getEffectiveSelections(initialSelections, selections);
+  const effectiveSelections = getEffectiveSelections(selections);
   const [showManualSaveSuccess, setShowManualSaveSuccess] = useState(false);
+  const [pendingAutosaveStatus, setPendingAutosaveStatus] = useState<PendingAutosaveStatus>("idle");
+  const [hasPendingAutosaveSelections, setHasPendingAutosaveSelections] = useState(false);
 
   const isCompleted = attemptStatus === "completed";
   const isBusy = saveStatus === "saving" || saveStatus === "completing";
@@ -1672,6 +1690,13 @@ export function AssessmentForm({
   const progressPercent =
     questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
   const isInteractionLocked = isBusy || requestInFlightRef.current;
+  const isProtectedCandidateRun = executionMode === "protected" && runContext === "candidate";
+  const isEligibleNonBlockingLikertTest =
+    isProtectedCandidateRun && isNonBlockingLikertAutosaveSlug(testSlug);
+  const pendingAutosaveMessage = getPendingAutosaveMessage(
+    pendingAutosaveStatus,
+    hasPendingAutosaveSelections,
+  );
 
   function clearManualSaveSuccessFeedback() {
     if (manualSaveResetTimeoutRef.current) {
@@ -1692,6 +1717,10 @@ export function AssessmentForm({
   }
 
   useEffect(() => () => {
+    if (pendingFlushTimeoutRef.current) {
+      clearTimeout(pendingFlushTimeoutRef.current);
+    }
+
     if (manualSaveResetTimeoutRef.current) {
       clearTimeout(manualSaveResetTimeoutRef.current);
     }
@@ -1700,6 +1729,47 @@ export function AssessmentForm({
   useEffect(() => {
     clearManualSaveSuccessFeedback();
   }, [currentQuestionIndex, currentQuestion?.id]);
+
+  useEffect(() => {
+    if (!isEligibleNonBlockingLikertTest || !attemptId || isCompleted) {
+      setHasPendingAutosaveSelections(false);
+      setPendingAutosaveStatus("idle");
+      return;
+    }
+
+    const pendingSelections = readPendingSelections(attemptId);
+    const pendingSelectionCount = Object.keys(pendingSelections).length;
+
+    if (pendingSelectionCount === 0) {
+      setHasPendingAutosaveSelections(false);
+      return;
+    }
+
+    isHydratingPendingSelectionsRef.current = true;
+
+    const mergedSelections = {
+      ...initialSelections,
+      ...pendingSelections,
+    };
+
+    setSelections((currentSelections) => ({
+      ...currentSelections,
+      ...pendingSelections,
+    }));
+    setCurrentQuestionIndex(getInitialQuestionIndex(questions, mergedSelections));
+    setHasPendingAutosaveSelections(true);
+    setPendingAutosaveStatus("error");
+
+    const hydrationResetTimer = window.setTimeout(() => {
+      isHydratingPendingSelectionsRef.current = false;
+      void flushPendingSelections();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(hydrationResetTimer);
+      isHydratingPendingSelectionsRef.current = false;
+    };
+  }, [attemptId, initialSelections, isCompleted, isEligibleNonBlockingLikertTest, questions]);
 
   useEffect(() => {
     if (
@@ -1718,6 +1788,116 @@ export function AssessmentForm({
       window.clearTimeout(focusTimer);
     };
   }, [isStepLayout, currentQuestion?.id, currentQuestion?.renderer_type, isInteractionLocked]);
+
+  async function flushPendingSelections(): Promise<boolean> {
+    if (!isEligibleNonBlockingLikertTest || !attemptId || isCompleted) {
+      return true;
+    }
+
+    if (pendingFlushTimeoutRef.current) {
+      clearTimeout(pendingFlushTimeoutRef.current);
+      pendingFlushTimeoutRef.current = null;
+    }
+
+    if (pendingFlushInFlightRef.current) {
+      await new Promise((resolve) => {
+        const waitForFlush = () => {
+          if (!pendingFlushInFlightRef.current) {
+            resolve(undefined);
+            return;
+          }
+
+          window.setTimeout(waitForFlush, 50);
+        };
+
+        waitForFlush();
+      });
+
+      return flushPendingSelections();
+    }
+
+    const pendingSelections = readPendingSelections(attemptId);
+
+    if (Object.keys(pendingSelections).length === 0) {
+      setHasPendingAutosaveSelections(false);
+      if (pendingAutosaveStatus === "saving") {
+        setPendingAutosaveStatus("saved");
+      }
+      return true;
+    }
+
+    pendingFlushInFlightRef.current = true;
+    setPendingAutosaveStatus("saving");
+    setHasPendingAutosaveSelections(true);
+
+    try {
+      const result = await saveAction({
+        attemptId,
+        testId,
+        locale,
+        selections: pendingSelections,
+      });
+
+      if (!result.ok) {
+        setPendingAutosaveStatus("error");
+        return false;
+      }
+
+      setAttemptId(result.attemptId);
+      setAttemptStatus("in_progress");
+      setCompletedAt(null);
+      setResults(null);
+      setReportState(null);
+
+      const remainingSelections = removeFlushedSelections(result.attemptId, pendingSelections);
+      const hasRemainingSelections = Object.keys(remainingSelections).length > 0;
+
+      setHasPendingAutosaveSelections(hasRemainingSelections);
+      setPendingAutosaveStatus(hasRemainingSelections ? "error" : "saved");
+
+      return !hasRemainingSelections;
+    } catch {
+      setPendingAutosaveStatus("error");
+      return false;
+    } finally {
+      pendingFlushInFlightRef.current = false;
+    }
+  }
+
+  function schedulePendingSelectionsFlush() {
+    if (!isEligibleNonBlockingLikertTest || !attemptId || isCompleted) {
+      return;
+    }
+
+    if (pendingFlushTimeoutRef.current) {
+      clearTimeout(pendingFlushTimeoutRef.current);
+    }
+
+    pendingFlushTimeoutRef.current = setTimeout(() => {
+      pendingFlushTimeoutRef.current = null;
+      void flushPendingSelections();
+    }, PENDING_AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  useEffect(() => {
+    if (
+      !isEligibleNonBlockingLikertTest ||
+      !attemptId ||
+      isCompleted ||
+      !hasPendingAutosaveSelections ||
+      isHydratingPendingSelectionsRef.current
+    ) {
+      return;
+    }
+
+    schedulePendingSelectionsFlush();
+  }, [
+    attemptId,
+    hasPendingAutosaveSelections,
+    isCompleted,
+    isEligibleNonBlockingLikertTest,
+    selections,
+  ]);
 
   async function persistSelections(
     nextSelections: SelectionState,
@@ -1740,7 +1920,7 @@ export function AssessmentForm({
         testId,
         locale,
         selections:
-          options?.selections ?? getEffectiveSelections(initialSelections, nextSelections),
+          options?.selections ?? getEffectiveSelections(nextSelections),
       });
 
       if (!result.ok) {
@@ -1771,8 +1951,8 @@ export function AssessmentForm({
     const didSave = await persistSelections(selections, {
       selections:
         isStepLayout && currentQuestion
-          ? getQuestionSelectionDelta(initialSelections, selections, currentQuestion.id)
-          : getEffectiveSelections(initialSelections, selections),
+          ? getQuestionSelectionDelta(selections, currentQuestion.id)
+          : getEffectiveSelections(selections),
     });
 
     if (didSave) {
@@ -1783,6 +1963,18 @@ export function AssessmentForm({
   async function handleComplete() {
     if (isCompleted || !canComplete || requestInFlightRef.current) {
       return;
+    }
+
+    if (isEligibleNonBlockingLikertTest) {
+      const didFlushPendingSelections = await flushPendingSelections();
+
+      if (!didFlushPendingSelections) {
+        setSaveStatus("error");
+        setSaveMessage(
+          "Nismo uspjeli sinhronizovati sve odgovore prije završetka. Pokušajte ponovo za nekoliko trenutaka.",
+        );
+        return;
+      }
     }
 
     requestInFlightRef.current = true;
@@ -1810,6 +2002,9 @@ export function AssessmentForm({
       setCompletedAt(result.completedAt);
       setResults(result.results);
       setReportState(result.report);
+      clearPendingSelections(result.attemptId);
+      setHasPendingAutosaveSelections(false);
+      setPendingAutosaveStatus("idle");
       setSaveStatus("completed");
       setSaveMessage(result.message);
 
@@ -1848,8 +2043,28 @@ export function AssessmentForm({
 
     const nextSelections = updateSelection(currentQuestion.id, optionId);
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
+    const currentQuestionOptions = answerOptionsByQuestionId[currentQuestion.id] ?? [];
+    const shouldUseNonBlockingAutosave =
+      isEligibleNonBlockingLikertTest &&
+      !!attemptId &&
+      isLikertScaleQuestion(currentQuestion, currentQuestionOptions) &&
+      !isLastQuestion;
+
+    if (shouldUseNonBlockingAutosave) {
+      setSelections(nextSelections);
+
+      if (attemptId) {
+        upsertPendingSelection(attemptId, currentQuestion.id, optionId);
+        setHasPendingAutosaveSelections(true);
+        setPendingAutosaveStatus("saving");
+      }
+
+      setCurrentQuestionIndex((currentIndex) => Math.min(currentIndex + 1, questions.length - 1));
+      return;
+    }
+
     const didSave = await persistSelections(nextSelections, {
-      selections: getQuestionSelectionDelta(initialSelections, nextSelections, currentQuestion.id),
+      selections: getQuestionSelectionDelta(nextSelections, currentQuestion.id),
     });
 
     if (!didSave || isLastQuestion) {
@@ -1882,7 +2097,7 @@ export function AssessmentForm({
       return;
     }
 
-    if (!isQuestionAnswered(currentQuestion.question_type, currentSelection)) {
+    if (!isQuestionAnswered(currentQuestion, currentSelection)) {
       setStepValidationMessage(getQuestionValidationMessage(currentQuestion));
       return;
     }
@@ -1899,8 +2114,19 @@ export function AssessmentForm({
       return;
     }
 
+    const currentQuestionOptions = answerOptionsByQuestionId[currentQuestion.id] ?? [];
+    const shouldUseNonBlockingAutosave =
+      isEligibleNonBlockingLikertTest &&
+      !!attemptId &&
+      isLikertScaleQuestion(currentQuestion, currentQuestionOptions);
+
+    if (shouldUseNonBlockingAutosave) {
+      setCurrentQuestionIndex((currentIndex) => Math.min(currentIndex + 1, questions.length - 1));
+      return;
+    }
+
     const didSave = await persistSelections(selections, {
-      selections: getQuestionSelectionDelta(initialSelections, selections, currentQuestion.id),
+      selections: getQuestionSelectionDelta(selections, currentQuestion.id),
     });
 
     if (!didSave) {
@@ -1931,13 +2157,11 @@ export function AssessmentForm({
   if (isStepLayout && !isCompleted && currentQuestion) {
     const options = answerOptionsByQuestionId[currentQuestion.id] ?? [];
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
-    const hasValidCurrentAnswer = isQuestionAnswered(
-      currentQuestion.question_type,
-      currentSelection,
-    );
+    const hasValidCurrentAnswer = isQuestionAnswered(currentQuestion, currentSelection);
     const isLikertQuestion = isLikertScaleQuestion(currentQuestion, options);
     const isImageQuestion = isImageChoiceQuestion(currentQuestion, options);
     const isNumericInputQuestion = currentQuestion.renderer_type === "numeric_input";
+    const isMwmsQuestion = isMwmsAssessmentSlug(testSlug) && isLikertQuestion;
     const numericSequenceQuestion = isNumericInputQuestion
       ? parseNumericSequenceQuestionText(currentQuestion.text)
       : null;
@@ -2090,6 +2314,14 @@ export function AssessmentForm({
                       ))}
                     </div>
                   </div>
+                ) : isMwmsQuestion ? (
+                  <div className="assessment-step-card__mwms-block">
+                    <h3>{MWMS_SHARED_STEM}</h3>
+                    <p className="assessment-step-card__mwms-label">{MWMS_REASON_LABEL}</p>
+                    {visibleQuestionText ? (
+                      <p className="assessment-step-card__mwms-item">{visibleQuestionText}</p>
+                    ) : null}
+                  </div>
                 ) : visibleQuestionText ? (
                   <h3>{visibleQuestionText}</h3>
                 ) : null}
@@ -2112,14 +2344,19 @@ export function AssessmentForm({
                         aria-label="Tvoj odgovor"
                         autoFocus
                         className="assessment-text-input assessment-text-input--numeric"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
+                        inputMode="decimal"
+                        pattern="-?[0-9]+([\\.,][0-9]+)?"
                         ref={numericInputRef}
                         type="text"
                         value={typeof currentSelection === "string" ? currentSelection : ""}
                         onChange={(event) => {
-                          const numericOnlyValue = event.target.value.replace(/\D/g, "");
-                          updateSelection(currentQuestion.id, numericOnlyValue);
+                          const nextValue = getNextNumericInputValue(event.target.value);
+
+                          if (nextValue === null) {
+                            return;
+                          }
+
+                          updateSelection(currentQuestion.id, nextValue);
                         }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter") {
@@ -2143,6 +2380,9 @@ export function AssessmentForm({
               ) : isLikertQuestion ? (
                 <div className="assessment-likert">
                   <div className="assessment-likert__scale">
+                    {isMwmsQuestion ? (
+                      <p className="assessment-likert__instruction">{MWMS_SCALE_INSTRUCTION}</p>
+                    ) : null}
                     <div className="assessment-likert__labels" aria-hidden="true">
                       <span>{options[0]?.label}</span>
                       <span>{options[options.length - 1]?.label}</span>
@@ -2296,6 +2536,11 @@ export function AssessmentForm({
           </section>
 
           <div className="assessment-step-layout__footer">
+            {pendingAutosaveMessage ? (
+              <p className="assessment-inline-message assessment-inline-message--muted">
+                {pendingAutosaveMessage}
+              </p>
+            ) : null}
             <div className="assessment-step-layout__actions-row">
               <div className="assessment-step-layout__actions-secondary">
                 <button
@@ -2368,10 +2613,17 @@ export function AssessmentForm({
                     <input
                       className="assessment-text-input"
                       inputMode="decimal"
+                      pattern="-?[0-9]+([\\.,][0-9]+)?"
                       type="text"
                       value={typeof selection === "string" ? selection : ""}
                       onChange={(event) => {
-                        updateSelection(question.id, event.target.value);
+                        const nextValue = getNextNumericInputValue(event.target.value);
+
+                        if (nextValue === null) {
+                          return;
+                        }
+
+                        updateSelection(question.id, nextValue);
                       }}
                     />
                   ) : (

@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { AssessmentForm, RunPageTopBar } from "@/components/assessment/assessment-form";
+import { AssessmentForm } from "@/components/assessment/assessment-form";
 import { getSafranScoredRunHref } from "@/lib/assessment/attempt-lifecycle";
 import { loadProtectedAttemptRunPageData } from "@/lib/assessment/protected-attempts";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
-import { getCandidateAttemptForUser, markAttemptScoredStarted } from "@/lib/candidate/attempts";
+import {
+  getGenericCandidateAttemptForUser,
+  markAttemptScoredStarted,
+} from "@/lib/candidate/attempts";
 
 type CandidateAttemptRunPageProps = {
   params: {
@@ -24,7 +27,7 @@ export default async function CandidateAttemptRunPage({
   searchParams,
 }: CandidateAttemptRunPageProps) {
   const user = await requireAuthenticatedUser();
-  let attempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+  let attempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
   if (!attempt) {
     notFound();
@@ -56,7 +59,7 @@ export default async function CandidateAttemptRunPage({
 
   if (isSafran && runMode === "scored" && !attempt.scored_started_at) {
     await markAttemptScoredStarted(attempt.id);
-    const refreshedAttempt = await getCandidateAttemptForUser(user.id, params.attemptId);
+    const refreshedAttempt = await getGenericCandidateAttemptForUser(user.id, params.attemptId);
 
     if (!refreshedAttempt) {
       notFound();
@@ -69,12 +72,7 @@ export default async function CandidateAttemptRunPage({
 
   if (runPageData.questions.length === 0) {
     return (
-      <>
-        <RunPageTopBar
-          userEmail={user.email ?? "candidate@example.com"}
-          userName={runPageData.participantName}
-        />
-        <main className="run-page-frame mx-auto w-full max-w-[70rem] px-4 pt-20 pb-6 sm:px-6 lg:px-12">
+      <main className="run-page-frame mx-auto w-full max-w-[70rem] px-4 pb-6 sm:px-6 lg:px-12">
           <section className="card stack-sm">
             <h1>Test trenutno nije dostupan za pokretanje</h1>
             <p>
@@ -88,25 +86,21 @@ export default async function CandidateAttemptRunPage({
               </Link>
             </div>
           </section>
-        </main>
-      </>
+      </main>
     );
   }
 
   return (
-    <>
-      <RunPageTopBar
-        userEmail={user.email ?? "candidate@example.com"}
-        userName={runPageData.participantName}
-      />
-      <main className="run-page-frame mx-auto w-full max-w-[70rem] px-4 pt-20 pb-6 sm:px-6 lg:px-12">
+    <main className="run-page-frame mx-auto w-full max-w-[70rem] px-4 pb-6 sm:px-6 lg:px-12">
         <div className="grid gap-6">
           <AssessmentForm
             executionMode="protected"
+            runContext="candidate"
             layoutMode="step"
             completionRedirectPath={`/app/attempts/${attempt.id}/report`}
             assessmentDisplayName={runPageData.assessmentName}
             participantDisplayName={runPageData.participantName}
+            testSlug={attempt.tests?.slug ?? null}
             testId={attempt.test_id}
             locale={attempt.locale}
             questions={runPageData.questions}
@@ -119,7 +113,6 @@ export default async function CandidateAttemptRunPage({
             initialReport={runPageData.report}
           />
         </div>
-      </main>
-    </>
+    </main>
   );
 }

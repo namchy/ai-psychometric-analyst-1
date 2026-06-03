@@ -4,9 +4,16 @@ import { randomInt } from "node:crypto";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { normalizeAddressingForm, resolveAddressingForm } from "@/lib/auth/addressing-form";
 import { requireAuthenticatedUserForAction } from "@/lib/auth/session";
 import type { CreateAssessmentModalState } from "@/components/dashboard/create-assessment-modal-state";
 import { normalizeAssessmentLocale } from "@/lib/assessment/locale";
+import {
+  abandonActiveStandardAssessmentAssignments,
+  buildAssignmentAttemptLinks,
+  createAssignmentAttemptLinks,
+  createStandardAssessmentAssignment,
+} from "@/lib/assessment/assignments";
 import {
   planStandardAssessmentBatteryCreation,
   STANDARD_ASSESSMENT_BATTERY_SLUGS,
@@ -19,6 +26,33 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 type ParticipantType = "employee" | "candidate";
 type ParticipantStatus = "active" | "inactive";
 const PARTICIPANT_CREDENTIALS_COOKIE = "participant-provisioning-flash";
+
+type InsertedAttemptWithTestSlugRow = {
+  id: string;
+  test_id: string;
+};
+
+export type SaveParticipantAddressingFormResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+async function cancelAssessmentAssignment(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  assignmentId: string | null,
+): Promise<void> {
+  if (!assignmentId) {
+    return;
+  }
+
+  await supabase
+    .from("assessment_assignments")
+    .update({
+      status: "cancelled",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", assignmentId)
+    .eq("status", "active");
+}
 
 function getFieldValue(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -65,6 +99,50 @@ function generateTemporaryPassword(length = 14): string {
   }
 
   return requiredCharacters.join("");
+}
+
+export async function saveParticipantAddressingForm(
+  rawAddressingForm: unknown,
+): Promise<SaveParticipantAddressingFormResult> {
+  const user = await requireAuthenticatedUserForAction();
+  const addressingForm = normalizeAddressingForm(rawAddressingForm);
+
+  if (!addressingForm) {
+    return { ok: false, message: "Odaberi jedan od ponuđenih oblika obraćanja." };
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data: participant, error: participantError } = await supabase
+    .from("participants")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (participantError) {
+    return { ok: false, message: "Nije moguće učitati profil za spremanje izbora." };
+  }
+
+  if (!participant?.id) {
+    return { ok: false, message: "Povezani participant profil nije pronađen." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("participants")
+    .update({ addressing_form: addressingForm })
+    .eq("id", participant.id)
+    .eq("user_id", user.id);
+
+  if (updateError) {
+    return { ok: false, message: "Spremanje izbora nije uspjelo. Pokušaj ponovo." };
+  }
+
+  revalidatePath("/app");
+
+  return { ok: true };
 }
 
 type CreateParticipantResult =
@@ -221,6 +299,7 @@ async function createStandardAssessmentBatteryForParticipant(params: {
   organizationId: string;
   participantId: string;
   locale: string | null | undefined;
+  createdByUserId: string | null;
 }): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const participant = await getParticipantForOrganization(params.organizationId, params.participantId);
@@ -288,6 +367,7 @@ async function createStandardAssessmentBatteryForParticipant(params: {
     organizationId: params.organizationId,
     participantId: participant.id,
     participantUserId: participant.user_id,
+    participantAddressingForm: participant.addressing_form,
     locale: params.locale,
     startedAt: new Date().toISOString(),
   });
@@ -295,6 +375,22 @@ async function createStandardAssessmentBatteryForParticipant(params: {
   if (batteryPlan.outcome === "battery-no-runnable-tests") {
     throw new Error("Trenutno nema aktivnih testova spremnih za standardnu procjenu.");
   }
+
+  const testSlugById = new Map(
+    batteryPlan.runnableTests.map((test) => [test.id, test.slug]),
+  );
+
+  await abandonActiveStandardAssessmentAssignments({
+    organizationId: params.organizationId,
+    participantId: participant.id,
+  });
+
+  const assignment = await createStandardAssessmentAssignment({
+    organizationId: params.organizationId,
+    participantId: participant.id,
+    locale: batteryPlan.locale,
+    createdByUserId: params.createdByUserId,
+  });
 
   if (batteryPlan.attemptIdsToAbandon.length > 0) {
     const { error: abandonError } = await supabase
@@ -306,14 +402,52 @@ async function createStandardAssessmentBatteryForParticipant(params: {
       .eq("status", "in_progress");
 
     if (abandonError) {
+      await cancelAssessmentAssignment(supabase, assignment.id);
       throw new Error(abandonError.message);
     }
   }
 
-  const { error: insertError } = await supabase.from("attempts").insert(batteryPlan.attemptsToInsert);
+  const { data: insertedAttemptsData, error: insertError } = await supabase
+    .from("attempts")
+    .insert(batteryPlan.attemptsToInsert)
+    .select("id, test_id");
 
   if (insertError) {
+    await cancelAssessmentAssignment(supabase, assignment.id);
     throw new Error(insertError.message);
+  }
+
+  try {
+    const insertedAttempts = ((insertedAttemptsData ?? []) as InsertedAttemptWithTestSlugRow[]).map((attempt) => {
+      const testSlug = testSlugById.get(attempt.test_id);
+
+      if (!testSlug) {
+        throw new Error(`Attempt ${attempt.id} is missing a linked test slug.`);
+      }
+
+      return {
+        id: attempt.id,
+        test_id: attempt.test_id,
+        test_slug: testSlug,
+      };
+    });
+
+    await createAssignmentAttemptLinks(
+      buildAssignmentAttemptLinks({
+        assignmentId: assignment.id,
+        attempts: insertedAttempts,
+      }),
+    );
+  } catch (error) {
+    await cancelAssessmentAssignment(supabase, assignment.id);
+    await supabase
+      .from("attempts")
+      .delete()
+      .in(
+        "id",
+        ((insertedAttemptsData ?? []) as InsertedAttemptWithTestSlugRow[]).map((attempt) => attempt.id),
+      );
+    throw error;
   }
 }
 
@@ -371,6 +505,7 @@ export async function createCandidateAssessment(
         organizationId: organization.id,
         participantId: participantResult.participantId,
         locale: getFieldValue(formData, "locale"),
+        createdByUserId: user.id,
       });
     } catch (error) {
       return {
@@ -444,11 +579,14 @@ export async function createAssessmentAttempt(formData: FormData) {
     redirect(`/dashboard?error=attempt-test-not-available&openAttemptFor=${encodeURIComponent(participantId)}`);
   }
 
+  // Temporary fallback until every candidate entry path is guaranteed to collect the preference first.
+  const addressingFormSnapshot = resolveAddressingForm(participant.addressing_form);
   const { error } = await supabase.from("attempts").insert({
     organization_id: organization.id,
     participant_id: participant.id,
     test_id: testId,
     locale,
+    addressing_form_snapshot: addressingFormSnapshot,
     user_id: participant.user_id,
     status: "in_progress",
     started_at: new Date().toISOString(),
@@ -561,12 +699,52 @@ export async function createStandardAssessmentBattery(formData: FormData) {
     organizationId: organization.id,
     participantId: participant.id,
     participantUserId: participant.user_id,
+    participantAddressingForm: participant.addressing_form,
     locale: rawLocale,
     startedAt: new Date().toISOString(),
   });
 
   if (batteryPlan.outcome === "battery-no-runnable-tests") {
     redirect(withOpenAttemptFor("/dashboard?error=battery-no-runnable-tests", participantId));
+  }
+
+  const testSlugById = new Map(
+    batteryPlan.runnableTests.map((test) => [test.id, test.slug]),
+  );
+
+  try {
+    await abandonActiveStandardAssessmentAssignments({
+      organizationId: organization.id,
+      participantId: participant.id,
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "unknown error";
+    redirect(
+      withOpenAttemptFor(
+        `/dashboard?error=battery-create-failed&detail=${encodeURIComponent(detail)}`,
+        participantId,
+      ),
+    );
+  }
+
+  let assignmentId: string | null = null;
+
+  try {
+    const assignment = await createStandardAssessmentAssignment({
+      organizationId: organization.id,
+      participantId: participant.id,
+      locale: batteryPlan.locale,
+      createdByUserId: user.id,
+    });
+    assignmentId = assignment.id;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "unknown error";
+    redirect(
+      withOpenAttemptFor(
+        `/dashboard?error=battery-create-failed&detail=${encodeURIComponent(detail)}`,
+        participantId,
+      ),
+    );
   }
 
   if (batteryPlan.attemptIdsToAbandon.length > 0) {
@@ -579,6 +757,7 @@ export async function createStandardAssessmentBattery(formData: FormData) {
       .eq("status", "in_progress");
 
     if (abandonError) {
+      await cancelAssessmentAssignment(supabase, assignmentId);
       redirect(
         withOpenAttemptFor(
           `/dashboard?error=battery-create-failed&detail=${encodeURIComponent(abandonError.message)}`,
@@ -588,12 +767,57 @@ export async function createStandardAssessmentBattery(formData: FormData) {
     }
   }
 
-  const { error: insertError } = await supabase.from("attempts").insert(batteryPlan.attemptsToInsert);
+  const { data: insertedAttemptsData, error: insertError } = await supabase
+    .from("attempts")
+    .insert(batteryPlan.attemptsToInsert)
+    .select("id, test_id");
 
   if (insertError) {
+    await cancelAssessmentAssignment(supabase, assignmentId);
     redirect(
       withOpenAttemptFor(
         `/dashboard?error=battery-create-failed&detail=${encodeURIComponent(insertError.message)}`,
+        participantId,
+      ),
+    );
+  }
+
+  try {
+    const insertedAttempts = ((insertedAttemptsData ?? []) as InsertedAttemptWithTestSlugRow[]).map((attempt) => {
+      const testSlug = testSlugById.get(attempt.test_id);
+
+      if (!testSlug) {
+        throw new Error(`Attempt ${attempt.id} is missing a linked test slug.`);
+      }
+
+      return {
+        id: attempt.id,
+        test_id: attempt.test_id,
+        test_slug: testSlug,
+      };
+    });
+
+    await createAssignmentAttemptLinks(
+      buildAssignmentAttemptLinks({
+        assignmentId: assignmentId!,
+        attempts: insertedAttempts,
+      }),
+    );
+  } catch (error) {
+    await cancelAssessmentAssignment(supabase, assignmentId);
+
+    const insertedAttemptIds = ((insertedAttemptsData ?? []) as InsertedAttemptWithTestSlugRow[]).map(
+      (attempt) => attempt.id,
+    );
+
+    if (insertedAttemptIds.length > 0) {
+      await supabase.from("attempts").delete().in("id", insertedAttemptIds);
+    }
+
+    const detail = error instanceof Error ? error.message : "unknown error";
+    redirect(
+      withOpenAttemptFor(
+        `/dashboard?error=battery-create-failed&detail=${encodeURIComponent(detail)}`,
         participantId,
       ),
     );

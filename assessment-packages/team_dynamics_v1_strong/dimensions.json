@@ -1,0 +1,50 @@
+[
+  {
+    "code": "PCS",
+    "name": "Perceived Cohesion Scale",
+    "description": "[LICENSED_DIMENSION_PLACEHOLDER_PCS]",
+    "display_order": 1,
+    "is_active": true,
+    "metadata": {
+      "signal_family": "team_dynamics",
+      "instrument_code": "PCS",
+      "placeholder_only": true
+    }
+  },
+  {
+    "code": "JEHN_ICS_8",
+    "name": "Jehn ICS-8",
+    "description": "[LICENSED_DIMENSION_PLACEHOLDER_JEHN_ICS_8]",
+    "display_order": 2,
+    "is_active": true,
+    "metadata": {
+      "signal_family": "team_dynamics",
+      "instrument_code": "JEHN_ICS_8",
+      "placeholder_only": true
+    }
+  },
+  {
+    "code": "TPS_7",
+    "name": "TPS-7",
+    "description": "[LICENSED_DIMENSION_PLACEHOLDER_TPS_7]",
+    "display_order": 3,
+    "is_active": true,
+    "metadata": {
+      "signal_family": "team_dynamics",
+      "instrument_code": "TPS_7",
+      "placeholder_only": true
+    }
+  },
+  {
+    "code": "LEWIS_TMS",
+    "name": "Lewis TMS",
+    "description": "[LICENSED_DIMENSION_PLACEHOLDER_LEWIS_TMS]",
+    "display_order": 4,
+    "is_active": true,
+    "metadata": {
+      "signal_family": "team_dynamics",
+      "instrument_code": "LEWIS_TMS",
+      "placeholder_only": true
+    }
+  }
+]

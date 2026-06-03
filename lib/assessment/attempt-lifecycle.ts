@@ -52,9 +52,9 @@ export function getAssessmentAttemptLifecyclePriority(
   switch (lifecycle) {
     case "in_progress":
       return 0;
-    case "not_started":
-      return 1;
     case "completed":
+      return 1;
+    case "not_started":
       return 2;
     default:
       return 3;
