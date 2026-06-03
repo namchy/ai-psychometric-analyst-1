@@ -52,7 +52,7 @@ Komande:
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
-| P1        | Individualni razvojni profil product/report contract spec | U toku / Spec + contract + input + mock provider + lifecycle + processor + display + renderer + read-only HR route + DB smoke + participant reports entrypoint završeni | Individualni razvojni profil / Product architecture | Odlučiti sljedeći IDP slice: manual prepare/process CTA za postojeći lifecycle ili prvo browser/manual review entrypointa; bez OpenAI-a, bez worker/scheduler-a i bez candidate-facing outputa kao default. |
+| P1        | Individualni razvojni profil product/report contract spec | U toku / Spec + contract + input + mock provider + lifecycle + processor + display + renderer + read-only HR route + DB smoke + participant reports entrypoint + browser review fixture + entrypoint UX polish završeni | Individualni razvojni profil / Product architecture | Odlučiti sljedeći IDP slice: manual prepare/process CTA nad postojećim lifecycleom ili read-only istražiti runtime/migration drift prije nove lifecycle akcije; bez OpenAI-a, bez worker/scheduler-a i bez candidate-facing outputa kao default. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
@@ -4379,12 +4379,49 @@ Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti or
   - `node scripts/test-hr-participant-reports-team-fit-ux.cjs`
   - `npm run typecheck`
 
-### 2026-06-03 — Individual Development Profile participant reports entrypoint potvrđen
+**Completion note — Individual Development Profile browser review fixture + entrypoint UX polish**
 
-- Zatvoren je read-only IDP entrypoint slice na HR participant reports page-u.
-- HR sada može vidjeti postojeće Individual Development Profile artefakte za participanta i otvoriti ready artefakt kroz dedicated read-only route.
-- Entry point ostaje samo navigacijski i statusni sloj: nema generate/process/retry CTA-a, nema provider/OpenAI/worker/scheduler scope-a, nema candidate-facing outputa i nema raw payload/error curenja.
-- Sljedeći IDP korak treba posebno odlučiti: manual prepare/process CTA nad postojećim lifecycleom ili prvo browser/manual review entrypointa.
+- Dodan je DB-backed browser/manual review fixture script `scripts/prepare-individual-development-profile-browser-review-fixture.cjs`.
+- Fixture priprema dedicated HR review organizaciju, HR usera, participanta i persisted IDP `assessment_reports` artefakte za ready, queued, processing, failed i invalid stanja.
+- Ready fixture koristi postojeći IDP mock provider + validator path.
+- Fixture provjerava IDP list helper i display helper path prije ručnog pregleda.
+- Fixture ispisuje HR login, participant reports URL i dedicated IDP route URL.
+- Browser review je potvrdio stvarni HR flow:
+  - participant reports page prikazuje IDP sekciju kada artefakti postoje
+  - ready IDP card otvara dedicated read-only route
+  - non-ready statusi su vidljivi i safe
+  - dedicated IDP report route prikazuje HR-facing razvojni report
+- Browser review je potvrdio da nema raw `input_snapshot`, raw `report_snapshot`, `error_message`, raw JSON/payloada, OpenAI/provider tehničkog copy-ja, numeric fit score-a, hire/no-hire jezika, dijagnoza, candidate-facing outputa, raw answers, raw item texta, scoring keys ili full upstream snapshot dumpa.
+- View route ne generiše novi report i nema process/generate/retry CTA.
+- Nakon browser review-a urađen je uski UX/copy polish IDP participant reports kartica.
+- Samo ready IDP card zadržava aktivni CTA `Otvori individualni razvojni profil`.
+- Queued, processing, failed i invalid kartice više ne prikazuju redundantna disabled CTA dugmad.
+- Queued copy sada jasno kaže: `Izvještaj je u redu čekanja. Obrada još nije pokrenuta.`
+- Processing copy kaže: `Izvještaj je trenutno u obradi.`
+- Failed/invalid copy kaže: `Izvještaj trenutno nije dostupan za pregled.`
+- Naslovi kartica su manje repetitivni i status-aware:
+  - `Razvojni profil — spreman za pregled`
+  - `Razvojni profil — čeka obradu`
+  - `Razvojni profil — u obradi`
+  - `Razvojni profil — nije dostupan`
+- Nisu uvedeni generate/process/retry/reset CTA, provider/OpenAI branch, worker/scheduler, candidate-facing output, Team Fit implementation izmjene, Team Dynamics implementation izmjene, nova schema ili nova migracija.
+- Verifikovano:
+  - `node scripts/prepare-individual-development-profile-browser-review-fixture.cjs`
+  - `node scripts/test-individual-development-profile-participant-reports-entrypoint.cjs`
+  - `node scripts/test-individual-development-profile-route-db-smoke.cjs`
+  - `node scripts/test-individual-development-profile-route-shell.cjs`
+  - `node scripts/test-individual-development-profile-display-helper.cjs`
+  - `node scripts/test-individual-development-profile-renderer.cjs`
+  - `node scripts/test-hr-participant-reports-renderer-hygiene.cjs`
+  - `node scripts/test-hr-participant-reports-team-fit-ux.cjs`
+  - `npm run typecheck`
+
+### 2026-06-03 — Individual Development Profile browser review i entrypoint UX polish potvrđeni
+
+- Zatvoren je IDP browser/manual review fixture i participant reports entrypoint UX/copy polish.
+- Browser review je potvrdio stvarni HR flow od participant reports stranice do dedicated read-only IDP route-a, bez raw payload/error curenja i bez generation side-effecta.
+- IDP entrypoint kartice su očišćene tako da samo ready artefakt ima aktivni CTA, dok queued, processing, failed i invalid stanja ostaju jasna statusna stanja bez redundantnih disabled dugmadi.
+- Sljedeći IDP korak treba posebno odlučiti: manual prepare/process CTA nad postojećim lifecycleom ili prvo read-only istraga runtime/migration drift-a.
 
 ---
 
