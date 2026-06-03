@@ -214,7 +214,13 @@ function main() {
   assert.ok(report.communicationAndFeedbackGuidance);
   assert.ok(report.motivationAndEnergyGuidance);
   assert.ok(report.oneOnOneGuidance);
-  assert.ok(report.onboardingAndDevelopmentPlan);
+  assert.ok(report.onboardingPlan);
+  assert.ok(report.onboardingPlan.first7Days);
+  assert.ok(report.onboardingPlan.first30Days);
+  assert.ok(report.onboardingPlan.days31To60);
+  assert.ok(report.onboardingPlan.days61To90);
+  assert.ok(report.onboardingPlan.managerCheckpoints);
+  assert.ok(report.onboardingPlan.watchouts);
   assert.ok(report.managerWatchpoints);
   assert.ok(report.interpretationLimits);
   assert.equal(report.metadata.generatorType, INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_TYPE);
@@ -279,6 +285,7 @@ function main() {
     ),
     false,
   );
+  assert.match(outputText, /7\s*\/\s*30\s*\/\s*60\s*\/\s*90|prvoj sedmici|prvih 30 dana/i);
   assert.equal(/assessment_reports|attempt_reports/i.test(providerSource), false);
 
   const wrongInput = clone(validInput);

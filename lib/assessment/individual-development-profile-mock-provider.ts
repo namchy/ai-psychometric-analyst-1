@@ -4,6 +4,8 @@ import {
   INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE,
   INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE,
   INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION,
+  type IndividualDevelopmentOnboardingPlan,
+  type IndividualDevelopmentOnboardingPlanStage,
   validateIndividualDevelopmentProfileSnapshot,
   type IndividualDevelopmentManagerWatchpoint,
   type IndividualDevelopmentOneOnOneGuidanceItem,
@@ -333,23 +335,95 @@ function buildOneOnOneGuidance(
   ];
 }
 
-function buildOnboardingPlan(input: IndividualDevelopmentProfileInputSnapshot) {
+function buildOnboardingStage(
+  focus: string,
+  managerActions: string[],
+  feedbackGuidance: string[],
+  riskSignals: string[],
+): IndividualDevelopmentOnboardingPlanStage {
+  return {
+    focus,
+    managerActions,
+    feedbackGuidance,
+    riskSignals,
+  };
+}
+
+function buildOnboardingPlan(
+  input: IndividualDevelopmentProfileInputSnapshot,
+): IndividualDevelopmentOnboardingPlan {
   const hasComposite = input.sourceSignals.composite.sourceStatus === "available";
+  const motivationSignal = getLeadingSignals(input.sourceSignals.motivation, 1)[0]?.signal ?? null;
+  const personalitySignal = getLeadingSignals(input.sourceSignals.personality, 1)[0]?.signal ?? null;
 
   return {
-    first30Days: [
-      "Definisati očekivanja, kriterije uspjeha i ritam kratkih check-in razgovora od samog početka.",
-      hasComposite
-        ? "Koristiti reduced kompozitni signal samo kao pomoć za izbor pitanja i podrške, ne kao zamjenu za direktnu provjeru ponašanja."
-        : "Kako reduced kompozitni signal nije potpuno dostupan, prve sedmice koristiti za prikupljanje konkretnih primjera načina rada i motivacije.",
+    summary:
+      "Onboarding plan prevodi individualne razvojne signale u HR/menadžerski 7 / 30 / 60 / 90 okvir bez dodatnog timskog konteksta kao preduvjeta.",
+    first7Days: buildOnboardingStage(
+      "U prvoj sedmici fokus je na jasnim očekivanjima, ritmu podrške i sigurnom početnom kontekstu rada.",
+      [
+        "Objasniti šta je trenutno prioritet, kako izgleda dobar početni rezultat i kojim kanalom osoba najbrže dobija pojašnjenje.",
+        "Dogovoriti kratak ritam check-in razgovora kako nejasnoće ne bi ostale predugo otvorene.",
+      ],
+      [
+        "Feedback držati kratak, konkretan i operativan, sa jasnim signalom šta već funkcioniše i šta je naredni korak.",
+      ],
+      [
+        "Ako osoba i dalje djeluje nesigurno oko prioriteta ili standarda rada, onboarding okvir treba dodatno precizirati.",
+      ],
+    ),
+    first30Days: buildOnboardingStage(
+      "U prvih 30 dana fokus je na provjeri koliko osobi pomažu struktura, feedback ritam i pregledan osjećaj napretka.",
+      [
+        "Definisati očekivanja, kriterije uspjeha i ritam kratkih check-in razgovora od samog početka.",
+        hasComposite
+          ? "Koristiti reduced kompozitni signal samo kao pomoć za izbor pitanja i podrške, ne kao zamjenu za direktnu provjeru ponašanja."
+          : "Kako reduced kompozitni signal nije potpuno dostupan, prve sedmice koristiti za prikupljanje konkretnih primjera načina rada i motivacije.",
+      ],
+      [
+        "Vrijedi rano provjeriti da li osoba bolje reaguje na detaljniji okvir ili na jasne ciljeve uz više autonomije u izvršenju.",
+      ],
+      [
+        "Ako se napredak vidi samo kada menadžer stalno dodatno objašnjava kontekst, podršku treba strukturirati preglednije.",
+      ],
+    ),
+    days31To60: buildOnboardingStage(
+      "Između 31. i 60. dana fokus je na širenju odgovornosti i provjeri koliko trenutni model podrške ostaje koristan.",
+      [
+        "Provjeriti kako osoba reaguje na veći nivo samostalnosti i da li trenutni model podrške ostaje koristan.",
+        "Pregledati koje vrste zadataka, feedbacka i strukture ubrzavaju razvoj, a koje ga usporavaju.",
+      ],
+      [
+        motivationSignal
+          ? `Tokom ove faze vrijedi vezati feedback i prioritete za motivacijski trag koji treba dalje provjeravati: ${motivationSignal}`
+          : "Tokom ove faze vrijedi posebno pitati koji zadaci daju osjećaj smisla i vidljivog doprinosa.",
+      ],
+      [
+        "Ako osoba održava kvalitet samo kada su zadaci vrlo usko strukturirani, menadžer treba sporije širiti autonomiju.",
+      ],
+    ),
+    days61To90: buildOnboardingStage(
+      "Između 61. i 90. dana fokus je na učvršćivanju vlasništva nad ulogom i sužavanju razvojnih hipoteza na ono što se zaista pokazalo u radu.",
+      [
+        "Revidirati početne razvojne hipoteze i zadržati samo one koje su potvrđene kroz radni kontekst.",
+        "Dogovoriti naredni razvojni fokus na osnovu opaženih obrazaca, ne samo početnog input signala.",
+      ],
+      [
+        personalitySignal
+          ? `Vrijedi dati feedback i o tome kako se u radu vidi ovaj ličnosni obrazac: ${personalitySignal}`
+          : "Tokom ove faze feedback treba povezati sa opaženim obrascima saradnje, ne samo sa početnom procjenom.",
+      ],
+      [
+        "Ako se i dalje vide isti zastoji oko jasnoće, saradnje ili angažmana, onboarding plan treba prevesti u konkretniji razvojni plan.",
+      ],
+    ),
+    managerCheckpoints: [
+      "Na kraju svake faze provjeriti da li su očekivanja, način saradnje i feedback ritam ostali dovoljno jasni i korisni.",
+      "Potvrditi da se preporuke iz izvještaja koriste kao razvojne hipoteze, a ne kao čvrste etikete o osobi.",
     ],
-    days31To60: [
-      "Provjeriti kako osoba reaguje na veći nivo samostalnosti i da li trenutni model podrške ostaje koristan.",
-      "Pregledati koje vrste zadataka, feedbacka i strukture ubrzavaju razvoj, a koje ga usporavaju.",
-    ],
-    days61To90: [
-      "Revidirati početne razvojne hipoteze i zadržati samo one koje su potvrđene kroz radni kontekst.",
-      "Dogovoriti naredni razvojni fokus na osnovu opaženih obrazaca, ne samo početnog input signala.",
+    watchouts: [
+      "Ne pretvarati onboarding plan u procjenu podobnosti, nego u okvir za podršku i provjeru razvoja.",
+      "Ako se razvojni signal ne vidi u stvarnom radu, prilagoditi plan na osnovu opaženog konteksta umjesto insistiranja na početnoj pretpostavci.",
     ],
   };
 }
@@ -430,7 +504,7 @@ export function generateIndividualDevelopmentProfileWithMock(
     communicationAndFeedbackGuidance: buildCommunicationGuidance(inputSnapshot),
     motivationAndEnergyGuidance: buildMotivationGuidance(inputSnapshot),
     oneOnOneGuidance: buildOneOnOneGuidance(inputSnapshot),
-    onboardingAndDevelopmentPlan: buildOnboardingPlan(inputSnapshot),
+    onboardingPlan: buildOnboardingPlan(inputSnapshot),
     managerWatchpoints: buildManagerWatchpoints(inputSnapshot),
     interpretationLimits: buildInterpretationLimits(inputSnapshot),
     metadata: {

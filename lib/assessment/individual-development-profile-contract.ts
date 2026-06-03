@@ -24,6 +24,23 @@ export type IndividualDevelopmentManagerWatchpoint = {
   suggestedManagerResponse: string;
 };
 
+export type IndividualDevelopmentOnboardingPlanStage = {
+  focus: string;
+  managerActions: string[];
+  feedbackGuidance: string[];
+  riskSignals: string[];
+};
+
+export type IndividualDevelopmentOnboardingPlan = {
+  summary: string;
+  first7Days: IndividualDevelopmentOnboardingPlanStage;
+  first30Days: IndividualDevelopmentOnboardingPlanStage;
+  days31To60: IndividualDevelopmentOnboardingPlanStage;
+  days61To90: IndividualDevelopmentOnboardingPlanStage;
+  managerCheckpoints: string[];
+  watchouts: string[];
+};
+
 export type IndividualDevelopmentProfileSnapshot = {
   reportType: typeof INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE;
   reportVersion: typeof INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION;
@@ -56,11 +73,7 @@ export type IndividualDevelopmentProfileSnapshot = {
     whatToValidate: string[];
   };
   oneOnOneGuidance: IndividualDevelopmentOneOnOneGuidanceItem[];
-  onboardingAndDevelopmentPlan: {
-    first30Days: string[];
-    days31To60: string[];
-    days61To90: string[];
-  };
+  onboardingPlan: IndividualDevelopmentOnboardingPlan;
   managerWatchpoints: IndividualDevelopmentManagerWatchpoint[];
   interpretationLimits: string[];
   metadata: {
@@ -299,6 +312,104 @@ function validateManagerWatchpoints(
   return true;
 }
 
+function validateOnboardingPlanStage(
+  value: unknown,
+  path: string,
+  errors: string[],
+): value is IndividualDevelopmentOnboardingPlanStage {
+  if (!isPlainRecord(value)) {
+    errors.push(`${path}: Expected object.`);
+    return false;
+  }
+
+  validateNonEmptyString(value.focus, `${path}.focus`, errors);
+  validateStringArray(value.managerActions, `${path}.managerActions`, errors, { minLength: 1 });
+  validateStringArray(
+    value.feedbackGuidance,
+    `${path}.feedbackGuidance`,
+    errors,
+    { minLength: 1 },
+  );
+  validateStringArray(value.riskSignals, `${path}.riskSignals`, errors, { minLength: 1 });
+
+  return true;
+}
+
+function buildStageFromLegacyItems(
+  items: string[],
+  fallbackFocus: string,
+): IndividualDevelopmentOnboardingPlanStage {
+  const normalizedItems = items.filter(isNonEmptyString);
+  const focus = normalizedItems[0] ?? fallbackFocus;
+  const managerActions = normalizedItems.length > 0 ? normalizedItems : [fallbackFocus];
+
+  return {
+    focus,
+    managerActions,
+    feedbackGuidance: [
+      "Tokom ove faze vrijedi koristiti kratak, konkretan feedback i provjeriti da li osoba razumije prioritet, standard i naredni korak.",
+    ],
+    riskSignals: [
+      "Ako se i dalje traži mnogo dodatnog pojašnjenja ili nema jasnog ritma napretka, plan podrške treba dodatno precizirati.",
+    ],
+  };
+}
+
+function buildOnboardingPlanFromLegacy(value: unknown): IndividualDevelopmentOnboardingPlan | null {
+  if (!isPlainRecord(value)) {
+    return null;
+  }
+
+  const first30Days = Array.isArray(value.first30Days)
+    ? value.first30Days.filter(isNonEmptyString)
+    : [];
+  const days31To60 = Array.isArray(value.days31To60)
+    ? value.days31To60.filter(isNonEmptyString)
+    : [];
+  const days61To90 = Array.isArray(value.days61To90)
+    ? value.days61To90.filter(isNonEmptyString)
+    : [];
+
+  if (first30Days.length === 0 || days31To60.length === 0 || days61To90.length === 0) {
+    return null;
+  }
+
+  return {
+    summary:
+      "Legacy onboarding plan je normalizovan u 7 / 30 / 60 / 90 format kako bi ostao čitljiv u HR razvojnim pregledima.",
+    first7Days: {
+      focus: "U prvoj sedmici fokus je na jasnim očekivanjima, ritmu podrške i sigurnom početnom kontekstu.",
+      managerActions: [
+        "Rano objasniti šta je prioritet, kako izgleda dobar početni rezultat i kada treba tražiti dodatnu podršku.",
+      ],
+      feedbackGuidance: [
+        "Držati feedback kratak, operativan i dovoljno čest da osoba ne ostane sama sa nejasnim očekivanjima.",
+      ],
+      riskSignals: [
+        "Ako osoba i dalje nema jasan osjećaj prioriteta ili standarda rada, onboarding plan treba dodatno precizirati.",
+      ],
+    },
+    first30Days: buildStageFromLegacyItems(
+      first30Days,
+      "U prvih 30 dana treba postaviti pregledan okvir saradnje i razvojne podrške.",
+    ),
+    days31To60: buildStageFromLegacyItems(
+      days31To60,
+      "Između 31. i 60. dana fokus je na provjeri autonomije, saradnje i održivog ritma rada.",
+    ),
+    days61To90: buildStageFromLegacyItems(
+      days61To90,
+      "Između 61. i 90. dana fokus je na učvršćivanju vlasništva nad ulogom i razvojnim prioritetima.",
+    ),
+    managerCheckpoints: [
+      "Provjeriti da li su očekivanja, način saradnje i feedback ritam ostali dovoljno jasni kroz cijeli onboarding period.",
+    ],
+    watchouts: [
+      "Legacy plan ne sadrži punu 7 / 30 / 60 / 90 strukturu, pa ove stavke treba čitati kao operacionalizovan minimum, ne kao bogatiji onboarding model.",
+    ],
+  };
+}
+
 export function validateIndividualDevelopmentProfileSnapshot(
   value: unknown,
 ): IndividualDevelopmentProfileValidationResult {
@@ -308,169 +419,177 @@ export function validateIndividualDevelopmentProfileSnapshot(
     return { ok: false, errors: ["<root>: Expected object."] };
   }
 
-  if (value.reportType !== INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE) {
+  const normalizedValue = { ...value } as Record<string, any>;
+
+  if (!("onboardingPlan" in normalizedValue) || !isPlainRecord(normalizedValue.onboardingPlan)) {
+    const legacyOnboardingPlan = buildOnboardingPlanFromLegacy(
+      normalizedValue.onboardingAndDevelopmentPlan,
+    );
+
+    if (legacyOnboardingPlan) {
+      normalizedValue.onboardingPlan = legacyOnboardingPlan;
+    }
+  }
+
+  if (normalizedValue.reportType !== INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE) {
     errors.push(`reportType: Expected ${INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE}.`);
   }
 
-  if (value.reportVersion !== INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION) {
+  if (normalizedValue.reportVersion !== INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION) {
     errors.push(`reportVersion: Expected ${INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION}.`);
   }
 
-  if (value.audience !== INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE) {
+  if (normalizedValue.audience !== INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE) {
     errors.push(`audience: Expected ${INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE}.`);
   }
 
-  validateNonEmptyString(value.locale, "locale", errors);
+  validateNonEmptyString(normalizedValue.locale, "locale", errors);
 
-  if (!isPlainRecord(value.developmentSummary)) {
+  if (!isPlainRecord(normalizedValue.developmentSummary)) {
     errors.push("developmentSummary: Expected object.");
   } else {
-    validateNonEmptyString(value.developmentSummary.headline, "developmentSummary.headline", errors);
+    validateNonEmptyString(normalizedValue.developmentSummary.headline, "developmentSummary.headline", errors);
     validateNonEmptyString(
-      value.developmentSummary.overallPattern,
+      normalizedValue.developmentSummary.overallPattern,
       "developmentSummary.overallPattern",
       errors,
     );
     validateStringArray(
-      value.developmentSummary.strongestContributionSignals,
+      normalizedValue.developmentSummary.strongestContributionSignals,
       "developmentSummary.strongestContributionSignals",
       errors,
       { minLength: 1 },
     );
     validateNonEmptyString(
-      value.developmentSummary.mainSupportNeed,
+      normalizedValue.developmentSummary.mainSupportNeed,
       "developmentSummary.mainSupportNeed",
       errors,
     );
-    validateNonEmptyString(value.developmentSummary.usageNote, "developmentSummary.usageNote", errors);
+    validateNonEmptyString(normalizedValue.developmentSummary.usageNote, "developmentSummary.usageNote", errors);
   }
 
-  if (!isPlainRecord(value.contributionPattern)) {
+  if (!isPlainRecord(normalizedValue.contributionPattern)) {
     errors.push("contributionPattern: Expected object.");
   } else {
-    validateStringArray(value.contributionPattern.bestConditions, "contributionPattern.bestConditions", errors, {
+    validateStringArray(normalizedValue.contributionPattern.bestConditions, "contributionPattern.bestConditions", errors, {
       minLength: 1,
     });
     validateStringArray(
-      value.contributionPattern.collaborationConditions,
+      normalizedValue.contributionPattern.collaborationConditions,
       "contributionPattern.collaborationConditions",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.contributionPattern.supportPreferences,
+      normalizedValue.contributionPattern.supportPreferences,
       "contributionPattern.supportPreferences",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.contributionPattern.roleShapingImplications,
+      normalizedValue.contributionPattern.roleShapingImplications,
       "contributionPattern.roleShapingImplications",
       errors,
       { minLength: 1 },
     );
   }
 
-  validateDevelopmentRisks(value.developmentRisks, "developmentRisks", errors);
+  validateDevelopmentRisks(normalizedValue.developmentRisks, "developmentRisks", errors);
 
-  if (!isPlainRecord(value.communicationAndFeedbackGuidance)) {
+  if (!isPlainRecord(normalizedValue.communicationAndFeedbackGuidance)) {
     errors.push("communicationAndFeedbackGuidance: Expected object.");
   } else {
     validateStringArray(
-      value.communicationAndFeedbackGuidance.whatHelps,
+      normalizedValue.communicationAndFeedbackGuidance.whatHelps,
       "communicationAndFeedbackGuidance.whatHelps",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.communicationAndFeedbackGuidance.whatToAvoid,
+      normalizedValue.communicationAndFeedbackGuidance.whatToAvoid,
       "communicationAndFeedbackGuidance.whatToAvoid",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.communicationAndFeedbackGuidance.howToPhraseFeedback,
+      normalizedValue.communicationAndFeedbackGuidance.howToPhraseFeedback,
       "communicationAndFeedbackGuidance.howToPhraseFeedback",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.communicationAndFeedbackGuidance.whatToClarify,
+      normalizedValue.communicationAndFeedbackGuidance.whatToClarify,
       "communicationAndFeedbackGuidance.whatToClarify",
       errors,
       { minLength: 1 },
     );
   }
 
-  if (!isPlainRecord(value.motivationAndEnergyGuidance)) {
+  if (!isPlainRecord(normalizedValue.motivationAndEnergyGuidance)) {
     errors.push("motivationAndEnergyGuidance: Expected object.");
   } else {
     validateStringArray(
-      value.motivationAndEnergyGuidance.likelySourcesOfEnergy,
+      normalizedValue.motivationAndEnergyGuidance.likelySourcesOfEnergy,
       "motivationAndEnergyGuidance.likelySourcesOfEnergy",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.motivationAndEnergyGuidance.likelySourcesOfDrain,
+      normalizedValue.motivationAndEnergyGuidance.likelySourcesOfDrain,
       "motivationAndEnergyGuidance.likelySourcesOfDrain",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.motivationAndEnergyGuidance.supportSignals,
+      normalizedValue.motivationAndEnergyGuidance.supportSignals,
       "motivationAndEnergyGuidance.supportSignals",
       errors,
       { minLength: 1 },
     );
     validateStringArray(
-      value.motivationAndEnergyGuidance.whatToValidate,
+      normalizedValue.motivationAndEnergyGuidance.whatToValidate,
       "motivationAndEnergyGuidance.whatToValidate",
       errors,
       { minLength: 1 },
     );
   }
 
-  validateOneOnOneGuidance(value.oneOnOneGuidance, "oneOnOneGuidance", errors);
+  validateOneOnOneGuidance(normalizedValue.oneOnOneGuidance, "oneOnOneGuidance", errors);
 
-  if (!isPlainRecord(value.onboardingAndDevelopmentPlan)) {
-    errors.push("onboardingAndDevelopmentPlan: Expected object.");
+  if (!isPlainRecord(normalizedValue.onboardingPlan)) {
+    errors.push("onboardingPlan: Expected object.");
   } else {
+    validateNonEmptyString(normalizedValue.onboardingPlan.summary, "onboardingPlan.summary", errors);
+    validateOnboardingPlanStage(normalizedValue.onboardingPlan.first7Days, "onboardingPlan.first7Days", errors);
+    validateOnboardingPlanStage(normalizedValue.onboardingPlan.first30Days, "onboardingPlan.first30Days", errors);
+    validateOnboardingPlanStage(normalizedValue.onboardingPlan.days31To60, "onboardingPlan.days31To60", errors);
+    validateOnboardingPlanStage(normalizedValue.onboardingPlan.days61To90, "onboardingPlan.days61To90", errors);
     validateStringArray(
-      value.onboardingAndDevelopmentPlan.first30Days,
-      "onboardingAndDevelopmentPlan.first30Days",
+      normalizedValue.onboardingPlan.managerCheckpoints,
+      "onboardingPlan.managerCheckpoints",
       errors,
       { minLength: 1 },
     );
-    validateStringArray(
-      value.onboardingAndDevelopmentPlan.days31To60,
-      "onboardingAndDevelopmentPlan.days31To60",
-      errors,
-      { minLength: 1 },
-    );
-    validateStringArray(
-      value.onboardingAndDevelopmentPlan.days61To90,
-      "onboardingAndDevelopmentPlan.days61To90",
-      errors,
-      { minLength: 1 },
-    );
+    validateStringArray(normalizedValue.onboardingPlan.watchouts, "onboardingPlan.watchouts", errors, {
+      minLength: 1,
+    });
   }
 
-  validateManagerWatchpoints(value.managerWatchpoints, "managerWatchpoints", errors);
-  validateStringArray(value.interpretationLimits, "interpretationLimits", errors, { minLength: 1 });
+  validateManagerWatchpoints(normalizedValue.managerWatchpoints, "managerWatchpoints", errors);
+  validateStringArray(normalizedValue.interpretationLimits, "interpretationLimits", errors, { minLength: 1 });
 
-  if (!isPlainRecord(value.metadata)) {
+  if (!isPlainRecord(normalizedValue.metadata)) {
     errors.push("metadata: Expected object.");
   } else {
-    validateNonEmptyString(value.metadata.generatedAt, "metadata.generatedAt", errors);
+    validateNonEmptyString(normalizedValue.metadata.generatedAt, "metadata.generatedAt", errors);
   }
 
-  hasForbiddenKeyDeep(value, "", errors);
-  errors.push(...findForbiddenWording(value));
+  hasForbiddenKeyDeep(normalizedValue, "", errors);
+  errors.push(...findForbiddenWording(normalizedValue));
 
   if (errors.length > 0) {
     return { ok: false, errors };
   }
 
-  return { ok: true, value: value as IndividualDevelopmentProfileSnapshot };
+  return { ok: true, value: normalizedValue as IndividualDevelopmentProfileSnapshot };
 }

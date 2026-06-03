@@ -237,6 +237,47 @@ function ManagerWatchpointCard({
   );
 }
 
+function OnboardingStageCard({
+  label,
+  item,
+  tone = "neutral",
+}: {
+  label: string;
+  item: IndividualDevelopmentProfileSnapshot["onboardingPlan"]["first7Days"];
+  tone?: "neutral" | "info" | "warning";
+}) {
+  return (
+    <DashboardInfoCardShell className="h-full rounded-[1.3rem] border-slate-200/80 p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#073b4c]">
+        {label}
+      </p>
+      <div className="mt-4 space-y-3">
+        <InfoPanel label="Fokus" tone={tone}>
+          {item.focus}
+        </InfoPanel>
+        <InfoPanel label="Šta menadžer treba uraditi">
+          <BulletList
+            items={item.managerActions}
+            emptyText="U ovom izvještaju nema dodatnih stavki za ovu fazu."
+          />
+        </InfoPanel>
+        <InfoPanel label="Kako voditi feedback" tone="info">
+          <BulletList
+            items={item.feedbackGuidance}
+            emptyText="U ovom izvještaju nema dodatnih feedback smjernica za ovu fazu."
+          />
+        </InfoPanel>
+        <InfoPanel label="Na šta rano paziti" tone="warning">
+          <BulletList
+            items={item.riskSignals}
+            emptyText="U ovom izvještaju nema dodatnih watchout signala za ovu fazu."
+          />
+        </InfoPanel>
+      </div>
+    </DashboardInfoCardShell>
+  );
+}
+
 export function IndividualDevelopmentProfileReportView(
   props: IndividualDevelopmentProfileReportViewProps,
 ) {
@@ -480,27 +521,45 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Plan rada"
           eyebrowClassName="text-[#073b4c]"
           title="Onboarding i razvojni plan"
-          description="Sekcija pomaže da se razvojni signal pretvori u operativan 30/60/90 okvir."
+          description="Sekcija pomaže da se razvojni signal pretvori u operativan 7 / 30 / 60 / 90 okvir."
         />
-        <div className="mt-5 grid gap-4 xl:grid-cols-3">
-          <InfoPanel label="Prvih 30 dana">
-            <BulletList
-              items={snapshot.onboardingAndDevelopmentPlan.first30Days}
-              emptyText="U ovom izvještaju nema dodatnih stavki za ovu sekciju."
+        <div className="mt-5 space-y-4">
+          <InfoPanel label="Sažetak onboarding plana">{snapshot.onboardingPlan.summary}</InfoPanel>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <OnboardingStageCard
+              label="Prvih 7 dana"
+              item={snapshot.onboardingPlan.first7Days}
             />
-          </InfoPanel>
-          <InfoPanel label="31 do 60 dana" tone="info">
-            <BulletList
-              items={snapshot.onboardingAndDevelopmentPlan.days31To60}
-              emptyText="U ovom izvještaju nema dodatnih stavki za ovu sekciju."
+            <OnboardingStageCard
+              label="Prvih 30 dana"
+              item={snapshot.onboardingPlan.first30Days}
+              tone="info"
             />
-          </InfoPanel>
-          <InfoPanel label="61 do 90 dana" tone="warning">
-            <BulletList
-              items={snapshot.onboardingAndDevelopmentPlan.days61To90}
-              emptyText="U ovom izvještaju nema dodatnih stavki za ovu sekciju."
+            <OnboardingStageCard
+              label="31 do 60 dana"
+              item={snapshot.onboardingPlan.days31To60}
+              tone="info"
             />
-          </InfoPanel>
+            <OnboardingStageCard
+              label="61 do 90 dana"
+              item={snapshot.onboardingPlan.days61To90}
+              tone="warning"
+            />
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <InfoPanel label="Menadžerske checkpoint tačke">
+              <BulletList
+                items={snapshot.onboardingPlan.managerCheckpoints}
+                emptyText="U ovom izvještaju nema dodatnih checkpoint stavki za onboarding plan."
+              />
+            </InfoPanel>
+            <InfoPanel label="Watchout signali" tone="warning">
+              <BulletList
+                items={snapshot.onboardingPlan.watchouts}
+                emptyText="U ovom izvještaju nema dodatnih watchout stavki za onboarding plan."
+              />
+            </InfoPanel>
+          </div>
         </div>
       </DashboardInfoCardShell>
 

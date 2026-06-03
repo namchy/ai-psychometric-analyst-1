@@ -132,10 +132,38 @@ function buildValidSnapshot() {
         possibleFollowUp: "Šta bi vam u prvih nekoliko sedmica najviše pomoglo da radite sigurnije i samostalnije?",
       },
     ],
-    onboardingAndDevelopmentPlan: {
-      first30Days: ["Razjasniti očekivanja, ključne prioritete i ritam check-in razgovora."],
-      days31To60: ["Testirati odnos između autonomije i strukture kroz postepeno širenje odgovornosti."],
-      days61To90: ["Pregledati razvojne signale, potvrditi watchpoint-e i prilagoditi model podrške."],
+    onboardingPlan: {
+      summary: "Onboarding plan prevodi razvojni signal u strukturiran 7 / 30 / 60 / 90 okvir za HR i menadžera.",
+      first7Days: {
+        focus: "U prvoj sedmici fokus je na jasnim očekivanjima, ritmu podrške i sigurnom početnom kontekstu.",
+        managerActions: ["Objasniti prioritete, standard rada i način traženja podrške."],
+        feedbackGuidance: ["Feedback držati kratak, konkretan i dovoljno čest da smanji nejasnoću."],
+        riskSignals: ["Ako osoba i dalje nije sigurna šta je prioritet, onboarding okvir treba dodatno precizirati."],
+      },
+      first30Days: {
+        focus: "U prvih 30 dana fokus je na provjeri koliko pomažu struktura, feedback ritam i pregledan osjećaj napretka.",
+        managerActions: ["Razjasniti očekivanja, ključne prioritete i ritam check-in razgovora."],
+        feedbackGuidance: ["Vrijedi provjeriti da li osoba bolje reaguje na detaljniji okvir ili na jasne ciljeve uz više autonomije."],
+        riskSignals: ["Ako se napredak vidi samo uz stalna dodatna pojašnjenja, podršku treba strukturirati preglednije."],
+      },
+      days31To60: {
+        focus: "Između 31. i 60. dana fokus je na odnosu autonomije, saradnje i održivog ritma rada.",
+        managerActions: ["Testirati odnos između autonomije i strukture kroz postepeno širenje odgovornosti."],
+        feedbackGuidance: ["Feedback povezati sa opaženim obrascima angažmana i kvaliteta rada."],
+        riskSignals: ["Ako kvalitet ostaje stabilan samo uz vrlo usku strukturu, autonomiju treba širiti sporije."],
+      },
+      days61To90: {
+        focus: "Između 61. i 90. dana fokus je na učvršćivanju vlasništva nad ulogom i narednom razvojnom prioritetu.",
+        managerActions: ["Pregledati razvojne signale, potvrditi watchpoint-e i prilagoditi model podrške."],
+        feedbackGuidance: ["Feedback vezati za ono što se stvarno pokazalo u radu, ne samo za početnu hipotezu."],
+        riskSignals: ["Ako isti zastoji ostaju prisutni, onboarding plan treba prevesti u uži razvojni plan."],
+      },
+      managerCheckpoints: [
+        "Na kraju svake faze provjeriti da li su očekivanja, način saradnje i feedback ritam ostali dovoljno jasni.",
+      ],
+      watchouts: [
+        "Ne pretvarati onboarding plan u procjenu podobnosti, nego u okvir za podršku i provjeru razvoja.",
+      ],
     },
     managerWatchpoints: [
       {
@@ -183,9 +211,17 @@ function main() {
   delete missingSection.developmentRisks;
   expectInvalid(missingSection, /developmentRisks/);
 
+  const missingOnboardingPlan = clone(valid);
+  delete missingOnboardingPlan.onboardingPlan;
+  expectInvalid(missingOnboardingPlan, /onboardingPlan/);
+
   const emptyRequiredBlock = clone(valid);
   emptyRequiredBlock.developmentSummary.overallPattern = "   ";
   expectInvalid(emptyRequiredBlock, /developmentSummary\.overallPattern/);
+
+  const emptyOnboardingFocus = clone(valid);
+  emptyOnboardingFocus.onboardingPlan.first7Days.focus = " ";
+  expectInvalid(emptyOnboardingFocus, /onboardingPlan\.first7Days\.focus/);
 
   const forbiddenHireWording = clone(valid);
   forbiddenHireWording.developmentSummary.usageNote = "This should be a hire recommendation for the role.";
@@ -202,6 +238,20 @@ function main() {
   const missingInterpretationLimits = clone(valid);
   missingInterpretationLimits.interpretationLimits = [];
   expectInvalid(missingInterpretationLimits, /interpretationLimits/);
+
+  const legacySnapshot = clone(valid);
+  legacySnapshot.onboardingAndDevelopmentPlan = {
+    first30Days: ["Legacy prvih 30 dana."],
+    days31To60: ["Legacy 31 do 60 dana."],
+    days61To90: ["Legacy 61 do 90 dana."],
+  };
+  delete legacySnapshot.onboardingPlan;
+  const legacyResult = validateIndividualDevelopmentProfileSnapshot(legacySnapshot);
+  assert.equal(legacyResult.ok, true);
+  if (!legacyResult.ok) {
+    throw new Error(legacyResult.errors.join(" | "));
+  }
+  assert.equal(legacyResult.value.onboardingPlan.first30Days.managerActions.length > 0, true);
 
   console.log("test-individual-development-profile-contract: ok");
 }

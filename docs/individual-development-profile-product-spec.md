@@ -167,7 +167,7 @@ Suggested top-level report snapshot shape:
   "communicationAndFeedbackGuidance": {},
   "motivationAndEnergyGuidance": {},
   "oneOnOneGuidance": [],
-  "onboardingAndDevelopmentPlan": {},
+  "onboardingPlan": {},
   "managerWatchpoints": [],
   "interpretationLimits": [],
   "metadata": {}
@@ -317,25 +317,71 @@ Questions should be usable in:
 
 Questions must not be manipulative, leading, or framed as psychological interrogation.
 
-### 6.7 Onboarding and development plan
+### 6.7 Onboarding plan
 
-Purpose: provide a practical 30/60/90-day development support frame.
+Purpose: provide a practical 7 / 30 / 60 / 90 day development support frame.
+
+Product decision:
+
+- onboarding plan is part of the Individual Development Profile
+- the base onboarding plan does not depend on Team Fit
+- Team Fit may later enrich the plan with team-context guidance, but it is not a gatekeeper
+- MVP should not introduce a separate onboarding report lane
 
 Suggested structure:
 
+```json
+{
+  "summary": "string",
+  "first7Days": {
+    "focus": "string",
+    "managerActions": ["string"],
+    "feedbackGuidance": ["string"],
+    "riskSignals": ["string"]
+  },
+  "first30Days": {
+    "focus": "string",
+    "managerActions": ["string"],
+    "feedbackGuidance": ["string"],
+    "riskSignals": ["string"]
+  },
+  "days31To60": {
+    "focus": "string",
+    "managerActions": ["string"],
+    "feedbackGuidance": ["string"],
+    "riskSignals": ["string"]
+  },
+  "days61To90": {
+    "focus": "string",
+    "managerActions": ["string"],
+    "feedbackGuidance": ["string"],
+    "riskSignals": ["string"]
+  },
+  "managerCheckpoints": ["string"],
+  "watchouts": ["string"]
+}
+```
+
+#### First 7 days
+
+- clarify success conditions
+- explain support rhythm
+- surface early uncertainty fast
+- set the tone for feedback and escalation
+
 #### First 30 days
 
-- clarify expectations
 - identify support needs
 - observe early working pattern
-- set feedback rhythm
+- validate communication and motivation hypotheses
+- reinforce a useful feedback rhythm
 
 #### Days 31–60
 
 - expand responsibility
 - test autonomy/structure balance
-- validate motivation and communication signals
 - observe collaboration pattern
+- review what kind of support remains useful
 
 #### Days 61–90
 
@@ -345,6 +391,7 @@ Suggested structure:
 - adjust support model
 
 The plan should be tailored to the input signals, not generic onboarding boilerplate.
+It must remain HR/manager-facing, not candidate-facing.
 
 ### 6.8 Manager watchpoints
 

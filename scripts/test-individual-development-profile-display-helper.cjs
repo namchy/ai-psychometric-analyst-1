@@ -150,10 +150,38 @@ function buildReportSnapshot(overrides = {}) {
         possibleFollowUp: "Koju podršku bi željela u prvih mjesec dana?",
       },
     ],
-    onboardingAndDevelopmentPlan: {
-      first30Days: ["Definisati očekivanja i ritam check-in sastanaka."],
-      days31To60: ["Provjeriti kako se signal prevodi u svakodnevni rad."],
-      days61To90: ["Ažurirati razvojne prioritete prema opaženim obrascima."],
+    onboardingPlan: {
+      summary: "Onboarding plan prevodi razvojni signal u jasan 7 / 30 / 60 / 90 okvir za HR i menadžera.",
+      first7Days: {
+        focus: "U prvoj sedmici fokus je na jasnim očekivanjima i sigurnom početnom kontekstu.",
+        managerActions: ["Definisati očekivanja, standard rada i ritam check-in sastanaka."],
+        feedbackGuidance: ["Feedback držati kratak, konkretan i dovoljno čest."],
+        riskSignals: ["Ako prioritet i dalje nije jasan, onboarding okvir treba dodatno precizirati."],
+      },
+      first30Days: {
+        focus: "U prvih 30 dana fokus je na provjeri kako se signal prevodi u svakodnevni rad.",
+        managerActions: ["Definisati očekivanja i ritam check-in sastanaka."],
+        feedbackGuidance: ["Provjeriti da li osoba bolje reaguje na detaljniji okvir ili na jasne ciljeve uz više autonomije."],
+        riskSignals: ["Ako napredak zavisi od stalnog dodatnog pojašnjenja, podršku treba strukturirati preglednije."],
+      },
+      days31To60: {
+        focus: "Između 31. i 60. dana fokus je na odnosu autonomije, saradnje i održivog ritma rada.",
+        managerActions: ["Provjeriti kako se signal prevodi u svakodnevni rad."],
+        feedbackGuidance: ["Feedback povezati sa opaženim obrascima angažmana i kvaliteta rada."],
+        riskSignals: ["Ako kvalitet ostaje stabilan samo uz vrlo usku strukturu, autonomiju treba širiti sporije."],
+      },
+      days61To90: {
+        focus: "Između 61. i 90. dana fokus je na učvršćivanju vlasništva nad ulogom i razvojnim prioritetima.",
+        managerActions: ["Ažurirati razvojne prioritete prema opaženim obrascima."],
+        feedbackGuidance: ["Feedback vezati za ono što se stvarno pokazalo u radu, ne samo za početnu hipotezu."],
+        riskSignals: ["Ako isti zastoji ostaju prisutni, onboarding plan treba prevesti u uži razvojni plan."],
+      },
+      managerCheckpoints: [
+        "Na kraju svake faze provjeriti da li su očekivanja, način saradnje i feedback ritam ostali dovoljno jasni.",
+      ],
+      watchouts: [
+        "Ne pretvarati onboarding plan u procjenu podobnosti, nego u okvir za podršku i provjeru razvoja.",
+      ],
     },
     managerWatchpoints: [
       {
