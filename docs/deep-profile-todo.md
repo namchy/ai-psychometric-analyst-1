@@ -50,6 +50,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
+| P0        | AI segment-aware report content architecture for individual reports | Planirano | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -58,6 +59,26 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Individualni razvojni profil product/report contract spec | U toku / Spec + contract + input + mock provider + lifecycle + processor + display + renderer + read-only HR route + DB smoke + participant reports entrypoint + browser review fixture + entrypoint UX polish + manual process CTA + real upstream process smoke + onboarding plan contract završeni | Individualni razvojni profil / Product architecture | Odlučiti redoslijed: failed retry/reset flow, IDP Onboarding plan renderer/browser polish, ili OpenAI provider decision. Onboarding plan ostaje dio IDP-a; Team Fit ga može kasnije obogatiti, ali nije preduvjet. |
 | P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Otvoreno / Read-only nalaz potvrđen | Infrastructure / Supabase / Migration history | Kontrolisano riješiti remote-only migration marker 20260530183640 koji je alias za lokalnu Team Fit migraciju 20260530110000_add_team_fit_reports.sql; prije bilo kakvog repair/db push zahvata definisati sigurnu strategiju mirror/repair-a i potvrditi da nema runtime schema razlike. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
+
+### 2026-06-04 — AI segment-aware report content architecture for individual reports
+
+- Product odluka: AI output mora biti UI-segment-aware.
+- Ova odluka se retroaktivno primjenjuje na individualne test reportove, Individual Development Profile, participant/HR reportove i buduće report tipove.
+- Prvi fokus je individual report family, ne Team Fit implementation.
+- P0 fokus: hero/executive segmenti i najvidljiviji interpretativni blokovi.
+- P1 fokus: risks, recommendations, interview/manager guidance i onboarding guidance.
+- P2 fokus: sekundarni detail/evidence blokovi.
+- P3 fokus: interpretation limits, disclaimers i microcopy.
+- Prvi preporučeni implementation slice ostaje `IDP P0 summary mapping cleanup`.
+- Sljedeći slice redoslijed:
+  1. Legacy Big Five/MWMS participant P0 summary/conclusion authority cleanup
+  2. SAFRAN participant display contract cleanup
+  3. validator quality guardrails za duplicate text, generic text i mapping mismatch
+  4. provider prompt updates po single-test reportu
+  5. legacy snapshot / migration / regeneration strategy
+- Guardrail: frontend ne smije biti autor domain interpretacije.
+- Guardrail: provider i contract izmjene ne idu bez eksplicitnog slice-a i legacy snapshot strategije.
+- Supporting spec: `docs/deep-profile-ai-report-content-architecture.md`
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
 - Dodat je read-only Team Fit report list/entrypoint u HR participant reports kontekstu.
