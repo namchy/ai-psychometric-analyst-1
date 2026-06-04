@@ -8,6 +8,12 @@ const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
 const viewPath = path.join(projectRoot, "components", "dashboard", "team-fit-report-view.tsx");
+const primitivesPath = path.join(
+  projectRoot,
+  "components",
+  "dashboard",
+  "team-fit-report-ui-primitives.tsx",
+);
 const displayPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-display.ts");
 const mockPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-mock.ts");
 const inputPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-input.ts");
@@ -15,9 +21,14 @@ const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 const viewSource = fs.readFileSync(viewPath, "utf8");
+const primitivesSource = fs.readFileSync(primitivesPath, "utf8");
 const displaySource = fs.readFileSync(displayPath, "utf8");
 
 assert.match(viewSource, /export function TeamFitReportView/);
+assert.match(primitivesSource, /export function ReportHero/);
+assert.match(primitivesSource, /export function ReportTabNav/);
+assert.match(primitivesSource, /export function ExpandableInsightCard/);
+assert.doesNotMatch(primitivesSource, /TeamFitReportDisplayRecord|TeamFitRelationshipPattern|fitOverview|candidateSignals|frictionRisks/);
 assert.match(viewSource, /Signal poravnanja/);
 assert.match(viewSource, /Signal dopune/);
 assert.match(viewSource, /Miješani signal/);
