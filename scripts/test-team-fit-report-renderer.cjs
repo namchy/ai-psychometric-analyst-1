@@ -205,26 +205,41 @@ function render(record) {
 
 function main() {
   const readyHtml = render(buildRecord("ready"));
+  assert.match(readyHtml, /role="tablist"/);
+  assert.match(readyHtml, /Pregled/);
+  assert.match(readyHtml, /Fit signali/);
+  assert.match(readyHtml, /Rizici i validacija/);
+  assert.match(readyHtml, /Intervju/);
+  assert.match(readyHtml, /Onboarding/);
+  assert.match(readyHtml, /Napomene/);
+  assert.match(readyHtml, /Prikaži detalje/);
+  assert.match(readyHtml, /Sakrij detalje/);
+  assert.match(readyHtml, /Signal kandidata/);
+  assert.match(readyHtml, /Dopuna timu/);
+  assert.match(readyHtml, /Tačka opreza/);
+  assert.match(readyHtml, /Kompaktni pregled za brzo čitanje/);
+  assert.match(readyHtml, /Glavni zaključak/);
+  assert.match(readyHtml, /Preporučeni sljedeći HR korak/);
   assert.match(readyHtml, /Početni pregled odnosa kandidata i tima traži dodatnu provjeru/);
   assert.match(readyHtml, /Potrebna dodatna provjera/);
   assert.match(readyHtml, /Amina Candidate/);
   assert.match(readyHtml, /Tim A/);
-  assert.match(readyHtml, /Brzi HR okvir za čitanje Team Fit izvještaja/);
-  assert.match(readyHtml, /Kako koristiti ovaj izvještaj/);
+  assert.match(readyHtml, /Kompaktni pregled za brzo čitanje/);
   assert.match(readyHtml, /Timski kontekst se čita kroz postojeći snapshot/);
   assert.match(readyHtml, /Kandidatov signal ostaje razvojni ulaz/);
   assert.match(readyHtml, /Moguća dopuna postojećem ritmu rada/);
   assert.match(readyHtml, /Potrebna je rana provjera očekivanja/);
   assert.match(readyHtml, /Saradnja u novom timu/);
   assert.match(readyHtml, /Kako provjeriti signal kroz intervju/);
-  assert.match(readyHtml, /Pitanje/);
-  assert.match(readyHtml, /Šta HR treba slušati/);
-  assert.match(readyHtml, /Koji signal se provjerava/);
+  assert.match(readyHtml, /Kako se može vidjeti u radu/);
+  assert.match(readyHtml, /Dodatna interpretacija/);
+  assert.match(readyHtml, /Zašto je važno/);
+  assert.match(readyHtml, /Pitanja/);
   assert.match(readyHtml, /Onboarding smjernice/);
   assert.match(readyHtml, /Menadžerske smjernice/);
-  assert.match(readyHtml, /Šta još vrijedi provjeriti/);
+  assert.match(readyHtml, /Watchouts/i);
   assert.match(readyHtml, /Kako oprezno čitati ovaj izvještaj/);
-  assert.doesNotMatch(readyHtml, /Support needs|Manager guidance|Watchouts|Interpretation limits|TEAM FIT REPORT/);
+  assert.match(readyHtml, /Interpretation notes i sigurnosne granice/);
 
   const queuedHtml = render(buildRecord("queued"));
   assert.match(queuedHtml, /Izvještaj je pripremljen za obradu/);
