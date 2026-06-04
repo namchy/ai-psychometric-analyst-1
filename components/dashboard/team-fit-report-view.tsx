@@ -65,6 +65,9 @@ const TEAM_FIT_REPORT_MONTH_NAMES = [
   "decembar",
 ] as const;
 
+const TEAM_FIT_HERO_METHODOLOGY_GUARDRAIL =
+  "Zbog reduciranih HR-safe sažetaka, ovo treba tretirati kao relacijsku hipotezu za razgovor i rani onboarding, a ne kao čvrst zaključak.";
+
 const TEAM_FIT_REPORT_DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
   timeZone: "Europe/Sarajevo",
   day: "2-digit",
@@ -131,8 +134,28 @@ function mapRelationshipPatternLabel(value: TeamFitRelationshipPattern): string 
   }
 }
 
+function mapRelationshipPatternGlossary(value: TeamFitRelationshipPattern): string {
+  switch (value) {
+    case "alignment_signal":
+      return "Postoje relevantni signali poravnanja kandidata i tima koje vrijedi čitati kao radnu hipotezu.";
+    case "complementarity_signal":
+      return "Kandidat može donijeti korisnu dopunu postojećem načinu rada tima, bez pretpostavke da sličnost mora biti cilj.";
+    case "mixed_signal":
+      return "Postoje korisni signali dopune ili poravnanja, ali i tačke koje treba dodatno validirati.";
+    case "needs_validation":
+    default:
+      return "Signal je najkorisnije čitati kao opreznu hipotezu koja traži dodatnu provjeru prije zaključka.";
+  }
+}
+
 function buildHeroHeadline(headline: string): string {
   return headline.trim();
+}
+
+function sanitizeHeroFacingText(value: string): string {
+  const normalized = value.replace(TEAM_FIT_HERO_METHODOLOGY_GUARDRAIL, "").trim();
+
+  return normalized.length > 0 ? normalized : value.trim();
 }
 
 function compact<T>(items: Array<T | null | undefined>): T[] {
@@ -141,6 +164,40 @@ function compact<T>(items: Array<T | null | undefined>): T[] {
 
 function firstOrNull<T>(items: readonly T[] | null | undefined): T | null {
   return items && items.length > 0 ? items[0] : null;
+}
+
+function buildHrMeaning(
+  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>,
+): string {
+  const value =
+    firstOrNull(snapshot.candidateSignals)?.relevanceToFit ??
+    firstOrNull(snapshot.complementaritySignals)?.practicalValue ??
+    snapshot.fitOverview.summary;
+
+  return sanitizeHeroFacingText(value);
+}
+
+function buildRelationshipPatternContext(
+  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>,
+): string | null {
+  const firstRisk = firstOrNull(snapshot.frictionRisks);
+
+  const value = firstRisk?.summary ?? firstRisk?.whyItMayMatter ?? null;
+
+  return value ? sanitizeHeroFacingText(value) : null;
+}
+
+function buildValidationFocus(
+  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>,
+): string | null {
+  const value =
+    firstOrNull(snapshot.frictionRisks)?.mitigationFocus ??
+    firstOrNull(snapshot.watchouts) ??
+    firstOrNull(snapshot.interpretationLimits) ??
+    firstOrNull(snapshot.onboardingGuidance.supportNeeds) ??
+    null;
+
+  return value ? sanitizeHeroFacingText(value) : null;
 }
 
 function BulletList({ items }: { items: string[] }) {
@@ -294,11 +351,19 @@ function buildKeyHighlights(snapshot: NonNullable<TeamFitReportDisplayRecord["re
 function OverviewTab({
   snapshot,
   relationshipLabel,
-  recommendedNextHrStep,
+  relationshipGlossary,
+  relationshipContext,
+  relationshipCardLabel,
+  hrMeaning,
+  validationFocus,
 }: {
   snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>;
   relationshipLabel: string;
-  recommendedNextHrStep: string | null;
+  relationshipGlossary: string;
+  relationshipContext: string | null;
+  relationshipCardLabel: string;
+  hrMeaning: string;
+  validationFocus: string | null;
 }) {
   const teamPattern = firstOrNull(snapshot.teamContextSummary.relevantTeamPatterns);
   const candidateSignal = firstOrNull(snapshot.candidateSignals);
@@ -317,10 +382,16 @@ function OverviewTab({
         descriptionClassName="text-sm leading-6 text-slate-600"
       >
         <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-          <CalloutBlock label="Glavni zaključak">{snapshot.fitOverview.summary}</CalloutBlock>
-          <CalloutBlock label="Relationship pattern">{relationshipLabel}</CalloutBlock>
-          <CalloutBlock label="Preporučeni sljedeći HR korak">
-            {recommendedNextHrStep ?? "Nije eksplicitno naveden u snapshotu."}
+          <CalloutBlock label="Šta ovo znači za HR">{hrMeaning}</CalloutBlock>
+          <CalloutBlock label={relationshipCardLabel}>
+            <p className="inline-flex rounded-full border border-[#118ab2]/20 bg-[#118ab2]/10 px-2.5 py-1 text-xs font-semibold text-[#073b4c]">
+              {relationshipLabel}
+            </p>
+            <p className="mt-3">{relationshipGlossary}</p>
+            {relationshipContext ? <p className="mt-3 text-slate-600">{relationshipContext}</p> : null}
+          </CalloutBlock>
+          <CalloutBlock label="Šta provjeriti prije zaključka">
+            {validationFocus ?? "Nije eksplicitno navedeno u snapshotu."}
           </CalloutBlock>
         </div>
 
@@ -740,12 +811,19 @@ function ReadyState({ record }: TeamFitReportViewProps) {
   }
 
   const relationshipLabel = mapRelationshipPatternLabel(snapshot.fitOverview.relationshipPattern);
+  const relationshipGlossary = sanitizeHeroFacingText(
+    mapRelationshipPatternGlossary(snapshot.fitOverview.relationshipPattern),
+  );
+  const relationshipContext = buildRelationshipPatternContext(snapshot);
+  const relationshipCardLabel =
+    snapshot.fitOverview.relationshipPattern === "mixed_signal"
+      ? "Zašto je signal miješan"
+      : "Kako čitati signal";
   const heroHeadline = buildHeroHeadline(snapshot.fitOverview.headline);
   const generatedAtLabel = formatTimestamp(snapshot.generatedAt) ?? snapshot.generatedAt;
-  const recommendedNextHrStep =
-    snapshot.onboardingGuidance.supportNeeds[0] ??
-    snapshot.frictionRisks[0]?.mitigationFocus ??
-    null;
+  const hrMeaning = buildHrMeaning(snapshot);
+  const validationFocus = buildValidationFocus(snapshot);
+  const heroSummary = sanitizeHeroFacingText(snapshot.fitOverview.summary);
   const { signalHighlights, validationHighlights } = buildKeyHighlights(snapshot);
   const [activeTab, setActiveTab] = useState<TeamFitReportTabId>("pregled");
 
@@ -771,15 +849,21 @@ function ReadyState({ record }: TeamFitReportViewProps) {
                 {heroHeadline}
               </h1>
               <p className="max-w-3xl text-base leading-7 text-slate-600">
-                {snapshot.fitOverview.summary}
+                {heroSummary}
               </p>
             </div>
 
             <div className="grid gap-3 pt-1 md:grid-cols-3">
-              <CalloutBlock label="Glavni nalaz">{snapshot.fitOverview.summary}</CalloutBlock>
-              <CalloutBlock label="Relationship pattern">{relationshipLabel}</CalloutBlock>
-              <CalloutBlock label="Sljedeći HR korak">
-                {recommendedNextHrStep ?? "Nije eksplicitno naveden u snapshotu."}
+              <CalloutBlock label="Šta ovo znači za HR">{hrMeaning}</CalloutBlock>
+              <CalloutBlock label={relationshipCardLabel}>
+                <p className="inline-flex rounded-full border border-[#118ab2]/20 bg-[#118ab2]/10 px-2.5 py-1 text-xs font-semibold text-[#073b4c]">
+                  {relationshipLabel}
+                </p>
+                <p className="mt-3">{relationshipGlossary}</p>
+                {relationshipContext ? <p className="mt-3 text-slate-600">{relationshipContext}</p> : null}
+              </CalloutBlock>
+              <CalloutBlock label="Šta provjeriti prije zaključka">
+                {validationFocus ?? "Nije eksplicitno navedeno u snapshotu."}
               </CalloutBlock>
             </div>
           </div>
@@ -846,7 +930,11 @@ function ReadyState({ record }: TeamFitReportViewProps) {
           <OverviewTab
             snapshot={snapshot}
             relationshipLabel={relationshipLabel}
-            recommendedNextHrStep={recommendedNextHrStep}
+            relationshipGlossary={relationshipGlossary}
+            relationshipContext={relationshipContext}
+            relationshipCardLabel={relationshipCardLabel}
+            hrMeaning={hrMeaning}
+            validationFocus={validationFocus}
           />
         </ReportTabPanel>
 

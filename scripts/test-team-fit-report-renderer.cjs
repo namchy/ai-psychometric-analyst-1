@@ -214,8 +214,31 @@ function render(record) {
   );
 }
 
+function createMatchCount(haystack, needle) {
+  const matches = haystack.match(new RegExp(needle, "g"));
+  return matches ? matches.length : 0;
+}
+
+function extractHeroSegment(html) {
+  const start = html.indexOf("Team Fit izvještaj");
+  const end = html.indexOf("Ključni signali");
+
+  if (start === -1 || end === -1 || end <= start) {
+    return html;
+  }
+
+  return html.slice(start, end);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function main() {
+  const methodologyGuardrail =
+    "Zbog reduciranih HR-safe sažetaka, ovo treba tretirati kao relacijsku hipotezu za razgovor i rani onboarding, a ne kao čvrst zaključak.";
   const readyHtml = render(buildRecord("ready"));
+  const readyHeroHtml = extractHeroSegment(readyHtml);
   assert.match(readyHtml, /role="tablist"/);
   assert.match(readyHtml, /Pregled/);
   assert.match(readyHtml, /Fit signali/);
@@ -229,8 +252,10 @@ function main() {
   assert.match(readyHtml, /Dopuna timu/);
   assert.match(readyHtml, /Tačka opreza/);
   assert.match(readyHtml, /Kompaktni pregled za brzo čitanje/);
-  assert.match(readyHtml, /Glavni zaključak/);
-  assert.match(readyHtml, /Preporučeni sljedeći HR korak/);
+  assert.match(readyHtml, /Šta ovo znači za HR/);
+  assert.match(readyHtml, /Kako čitati signal/);
+  assert.match(readyHtml, /Šta provjeriti prije zaključka/);
+  assert.doesNotMatch(readyHtml, /Glavni nalaz/);
   assert.match(readyHtml, /Početni pregled odnosa kandidata i tima traži dodatnu provjeru/);
   assert.match(readyHtml, /Potrebna dodatna provjera/);
   assert.match(readyHtml, /Amina Candidate/);
@@ -251,6 +276,79 @@ function main() {
   assert.match(readyHtml, /Watchouts/i);
   assert.match(readyHtml, /Kako oprezno čitati ovaj izvještaj/);
   assert.match(readyHtml, /Interpretation notes i sigurnosne granice/);
+  assert.match(
+    readyHeroHtml,
+    /Najkorisnije ga je čitati kao temu za provjeru radnog stila i načina saradnje sa timom\./,
+  );
+  assert.match(
+    readyHeroHtml,
+    /Signal je najkorisnije čitati kao opreznu hipotezu koja traži dodatnu provjeru prije zaključka\./,
+  );
+  assert.match(
+    readyHeroHtml,
+    /Vrijedi rano dogovoriti kako tim i kandidat usklađuju prioritete, povratne informacije i odgovornosti\./,
+  );
+  assert.doesNotMatch(
+    readyHeroHtml,
+    /Postaviti jednostavan ritam check-in razgovora kako bi se rana nejasnoća pretvorila u konkretan dogovor\./,
+  );
+
+  assert.equal(
+    createMatchCount(
+      readyHeroHtml,
+      "Ovaj razvojni pregled koristi postojeći input snapshot kao oprezan početni signal. Nalaze vrijedi potvrditi kroz strukturisan razgovor o radu, saradnji i očekivanjima.",
+    ),
+    1,
+  );
+
+  const mixedRecord = buildRecord("ready", {
+    reportSnapshot: {
+      ...buildMockTeamFitReportSnapshot(buildInputSnapshot()),
+      fitOverview: {
+        relationshipPattern: "mixed_signal",
+        headline: "Postoje i korisni signali i tačke opreza koje traže dodatnu provjeru.",
+        summary: "Signal traži pažljivo čitanje kroz kombinaciju dopune i mogućih tačaka trenja.",
+      },
+      frictionRisks: [
+        {
+          title: "Ritam usklađivanja",
+          summary: "Mogu se pojaviti početne nejasnoće oko načina usklađivanja prioriteta.",
+          whyItMayMatter: "To može usporiti rano povezivanje kandidata i tima.",
+          mitigationFocus: "Vrijedi rano razjasniti kako se očekivanja prevode u konkretne radne dogovore.",
+        },
+      ],
+    },
+  });
+  const mixedHtml = render(mixedRecord);
+  assert.match(mixedHtml, /Zašto je signal miješan/);
+  assert.match(mixedHtml, /Miješani signal/);
+  assert.match(
+    mixedHtml,
+    /Postoje korisni signali dopune ili poravnanja, ali i tačke koje treba dodatno validirati\./,
+  );
+  assert.match(mixedHtml, /Mogu se pojaviti početne nejasnoće oko načina usklađivanja prioriteta\./);
+
+  const guardedRecord = buildRecord("ready", {
+    reportSnapshot: {
+      ...buildMockTeamFitReportSnapshot(buildInputSnapshot()),
+      fitOverview: {
+        ...buildMockTeamFitReportSnapshot(buildInputSnapshot()).fitOverview,
+        summary: `Početni signal traži strukturisan razgovor o radu i očekivanjima. ${methodologyGuardrail}`,
+      },
+      interpretationLimits: [
+        methodologyGuardrail,
+        "Ovaj izvještaj je interni razvojni signal za HR i timski kontekst, nije automatska odluka.",
+      ],
+    },
+  });
+  const guardedHtml = render(guardedRecord);
+  const guardedHeroHtml = extractHeroSegment(guardedHtml);
+  assert.match(
+    guardedHeroHtml,
+    /Početni signal traži strukturisan razgovor o radu i očekivanjima\./,
+  );
+  assert.doesNotMatch(guardedHeroHtml, new RegExp(escapeRegExp(methodologyGuardrail)));
+  assert.match(guardedHtml, new RegExp(escapeRegExp(methodologyGuardrail)));
 
   const queuedHtml = render(buildRecord("queued"));
   assert.match(queuedHtml, /Izvještaj je pripremljen za obradu/);
