@@ -45,8 +45,14 @@ assert.match(viewSource, /Menadžerske checkpoint tačke/);
 assert.match(viewSource, /Watchout signali/);
 assert.match(viewSource, /Na šta menadžer treba obratiti pažnju/);
 assert.match(viewSource, /Ograničenja tumačenja/);
+assert.doesNotMatch(viewSource, /radne hipoteze/i);
+assert.doesNotMatch(viewSource, /svaka kartica je hipoteza/i);
+assert.doesNotMatch(viewSource, /ovaj signal može pomoći HR-u/i);
+assert.doesNotMatch(viewSource, /pretvori u operativan|pretvori u operativni/i);
+assert.doesNotMatch(viewSource, /provjeri šta održava angažman/i);
 assert.doesNotMatch(viewSource, /\.from\(|\.insert\(|\.update\(/);
 assert.doesNotMatch(viewSource, /loadIndividualDevelopmentProfileDisplay|buildIndividualDevelopmentProfileInputSnapshot|processIndividualDevelopmentProfileAssessmentReport/);
+assert.doesNotMatch(viewSource, /validateIndividualDevelopmentProfileSnapshot/);
 assert.doesNotMatch(viewSource, /generateIndividualDevelopmentProfileReport|generateIndividualDevelopmentProfileWithMock|OpenAI|openai|external/i);
 assert.doesNotMatch(viewSource, /route|app\/actions|worker|scheduler/i);
 assert.doesNotMatch(
@@ -250,6 +256,28 @@ function countOccurrences(value, searchValue) {
   return value.split(searchValue).length - 1;
 }
 
+function collectVisibleReportText(snapshot) {
+  return [
+    ...Object.values(snapshot.developmentSummary).flat(),
+    ...Object.values(snapshot.contributionPattern).flat(),
+    ...snapshot.developmentRisks.flatMap(Object.values),
+    ...Object.values(snapshot.communicationAndFeedbackGuidance).flat(),
+    ...Object.values(snapshot.motivationAndEnergyGuidance).flat(),
+    ...snapshot.oneOnOneGuidance.flatMap(Object.values),
+    snapshot.onboardingPlan.summary,
+    ...[
+      snapshot.onboardingPlan.first7Days,
+      snapshot.onboardingPlan.first30Days,
+      snapshot.onboardingPlan.days31To60,
+      snapshot.onboardingPlan.days61To90,
+    ].flatMap((stage) => Object.values(stage).flat()),
+    ...snapshot.onboardingPlan.managerCheckpoints,
+    ...snapshot.onboardingPlan.watchouts,
+    ...snapshot.managerWatchpoints.flatMap(Object.values),
+    ...snapshot.interpretationLimits,
+  ];
+}
+
 function main() {
   const snapshot = buildSnapshot();
 
@@ -312,6 +340,16 @@ function main() {
     htmlFromSnapshot,
     /Korištenje[\s\S]{0,500}Namijenjeno strukturiranom HR i menadžerskom pregledu\./,
   );
+  assert.doesNotMatch(
+    htmlFromSnapshot,
+    /radne hipoteze|svaka kartica je hipoteza|pretvori u operativan|pretvori u operativni|provjeri šta održava angažman/i,
+  );
+  collectVisibleReportText(snapshot).forEach((text) => {
+    assert.ok(
+      htmlFromSnapshot.includes(text),
+      `Expected fixture report text to remain unchanged in rendered output: ${text}`,
+    );
+  });
   assert.doesNotMatch(htmlFromSnapshot, /fit score|no-hire|hire\/no-hire|bad fit|rawAnswers|input_snapshot|JSON/i);
 
   const htmlFromRecord = render(

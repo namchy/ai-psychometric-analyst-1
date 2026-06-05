@@ -371,7 +371,7 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Doprinos"
           eyebrowClassName="text-[#073b4c]"
           title="Kako osoba može najbolje doprinijeti"
-          description="Ove smjernice služe HR-u i menadžeru kao radne hipoteze za oblikovanje saradnje i uloge."
+          description="Sekcija prikazuje postojeće elemente doprinosa i podrške iz izvještaja."
         />
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <InfoPanel label="U kojim uslovima se signal najlakše vidi">
@@ -406,7 +406,7 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Tačke opreza"
           eyebrowClassName="text-[#ef476f]"
           title="Šta može blokirati razvoj"
-          description="Svaka kartica je hipoteza za provjeru: šta se može javiti, zašto je važno i kako HR može postaviti podršku."
+          description="Sekcija organizuje postojeće tačke opreza i podrške iz izvještaja."
         />
         {snapshot.developmentRisks.length > 0 ? (
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -430,7 +430,7 @@ export function IndividualDevelopmentProfileReportView(
             eyebrow="Saradnja"
             eyebrowClassName="text-[#118ab2]"
             title="Komunikacija i feedback"
-            description="Korisno je razjasniti kako HR i menadžer strukturiraju feedback i dnevnu saradnju."
+            description="Sekcija prikazuje postojeće smjernice za komunikaciju i feedback iz izvještaja."
           />
           <div className="mt-5 space-y-4">
             <InfoPanel label="Šta pomaže">
@@ -465,7 +465,7 @@ export function IndividualDevelopmentProfileReportView(
             eyebrow="Angažman"
             eyebrowClassName="text-[#073b4c]"
             title="Motivacija i energija"
-            description="Ovaj signal može pomoći HR-u da provjeri šta održava angažman i šta ga može oslabiti."
+            description="Sekcija prikazuje postojeće elemente motivacije, energije i validacije iz izvještaja."
           />
           <div className="mt-5 space-y-4">
             <InfoPanel label="Šta najčešće vraća energiju">
@@ -521,7 +521,7 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Plan rada"
           eyebrowClassName="text-[#073b4c]"
           title="Onboarding i razvojni plan"
-          description="Sekcija pomaže da se razvojni signal pretvori u operativan 7 / 30 / 60 / 90 okvir."
+          description="Sekcija organizuje postojeći onboarding plan iz izvještaja po vremenskim fazama."
         />
         <div className="mt-5 space-y-4">
           <InfoPanel label="Sažetak onboarding plana">{snapshot.onboardingPlan.summary}</InfoPanel>
@@ -568,7 +568,7 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Menadžerske smjernice"
           eyebrowClassName="text-[#073b4c]"
           title="Na šta menadžer treba obratiti pažnju"
-          description="Ove tačke ne služe za presudu, nego za rano prepoznavanje tema koje je korisno razjasniti i pratiti."
+          description="Sekcija prikazuje postojeće menadžerske tačke pažnje iz izvještaja."
         />
         {snapshot.managerWatchpoints.length > 0 ? (
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -591,7 +591,7 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Oprezno čitanje"
           eyebrowClassName="text-[#073b4c]"
           title="Ograničenja tumačenja"
-          description="Nalaz treba koristiti kao razvojni okvir koji HR i menadžer potvrđuju kroz razgovor, opažanje rada i onboarding kontekst."
+          description="Sekcija navodi ograničenja tumačenja sadržana u izvještaju."
         />
         <div className="mt-5 rounded-[1rem] border border-slate-200/80 bg-slate-50/75 px-4 py-4">
           <BulletList
