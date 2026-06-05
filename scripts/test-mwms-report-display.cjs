@@ -288,6 +288,42 @@ assert.doesNotMatch(completedSummarySource, /\.from\(|\.insert\(|\.update\(|\.up
 assert.doesNotMatch(completedSummarySource, /getTopInsights|formatTopInsightSentence/);
 assert.equal(completedSummarySource.includes("Top uvidi"), false);
 assert.equal(completedSummarySource.includes("Sažetak ključnih obrazaca"), false);
+assert.doesNotMatch(
+  completedSummarySource,
+  /getDimensionDetailBlocks|getFallbackDimensionDetailBlocks|getRankContext|getScoreBand/,
+);
+assert.equal(
+  completedSummarySource.includes(
+    "Detaljnije tumačenje za ovu dimenziju nije dostupno u ovom izvještaju.",
+  ),
+  true,
+);
+assert.equal(completedSummarySource.includes("{dimension.shortInterpretation}"), true);
+for (const directDimensionField of [
+  "reportDimension.work_style",
+  "reportDimension.summary",
+  "reportDimension.risks",
+  "reportDimension.development_focus",
+]) {
+  assert.equal(
+    completedSummarySource.includes(directDimensionField),
+    true,
+    `Expected Legacy dimension details to render ${directDimensionField} directly.`,
+  );
+}
+for (const removedDimensionFallbackText of [
+  "Ovo je jedna od izraženijih niti tvog trenutnog obrasca",
+  "Često ti prija kontakt s ljudima",
+  "Vjerovatno ti prijaju struktura, red",
+  "Pritisak možeš osjetiti brže i intenzivnije",
+  "Često te privuku nove ideje",
+]) {
+  assert.equal(
+    completedSummarySource.includes(removedDimensionFallbackText),
+    false,
+    `Expected score-derived Legacy dimension fallback to be absent: ${removedDimensionFallbackText}`,
+  );
+}
 assert.equal(
   completedSummarySource.includes("!isMwmsResults && bigFiveParticipantReport"),
   true,
