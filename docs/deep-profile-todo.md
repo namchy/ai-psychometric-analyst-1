@@ -50,7 +50,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
-| P0        | AI segment-aware report content architecture for individual reports | U toku / renderer authority cleanup and renderer guardrail tests completed for IDP, MWMS participant, Legacy Big Five, and SAFRAN; MWMS and IDP contract quality validators hardened | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: SAFRAN participant contract duplicate/quality validator hardening, then provider prompt updates and legacy snapshot strategy as separate later slices. |
+| P0        | AI segment-aware report content architecture for individual reports | U toku / renderer authority cleanup and renderer guardrail tests completed for IDP, MWMS participant, Legacy Big Five, and SAFRAN; MWMS, IDP, and SAFRAN contract quality validators hardened | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: cross-renderer boundary import scan hardening, then provider prompt updates and legacy snapshot strategy as separate later slices. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -6526,6 +6526,10 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 
 ## 8. Dnevnik završenih odluka
 
+### 2026-06-05 — SAFRAN participant contract quality validator hardened
+
+Added SAFRAN participant contract/validator quality guardrails after ready-AI direct mapping and non-ready fallback cleanup. SAFRAN validator now rejects placeholder, generic, duplicated, unsafe, and malformed narrative content across summary, domains, cognitive signals, reading guide, and next-step fields. Valid distinct SAFRAN participant report fixtures still pass. Public report contract shape was not changed. No renderer/display, provider, OpenAI prompt, scoring, backend, DB, route, lifecycle, worker, scheduler, or report generation behavior was changed. Recommended next focus: cross-renderer boundary import scan hardening before provider prompt updates.
+
 ### 2026-06-05 — MWMS and IDP contract quality validators hardened
 
 Added contract/validator quality guardrails after renderer-authority cleanup work. MWMS participant validator now rejects empty-seeming, placeholder, generic, duplicated, unsafe, and malformed reflection-question content. IDP validator now rejects placeholder/generic/unsafe narrative text, duplicate key fields, duplicate array items, duplicate risk/watchpoint subfields, and non-question 1:1 guidance text. Public report contract shapes were not changed. No renderer, provider, OpenAI prompt, scoring, backend, DB, route, lifecycle, worker, scheduler, or report generation behavior was changed. Recommended next focus: SAFRAN participant contract duplicate/quality validator hardening.
@@ -6632,6 +6636,34 @@ Added test-only regression guardrails for the completed renderer-authority clean
 * Valid distinct IDP narrative arrays still pass.
 * Public contract shape/schema version was not changed.
 * Renderer, provider/OpenAI, scoring, backend, DB, lifecycle, routes, worker, scheduler, report generation, and todo logic were not changed.
+
+### Completion note — SAFRAN participant contract duplicate/quality validator hardening
+
+* SAFRAN participant AI report validator was hardened so persisted/validated narrative fields cannot pass with placeholder, generic, duplicated, unsafe, or malformed narrative content.
+* Updated:
+
+  * `lib/assessment/safran-participant-ai-report-v1.ts`
+  * `scripts/test-safran-participant-ai-report-contract.cjs`
+* Guardrails now reject:
+
+  * empty-seeming required narrative fields
+  * placeholders such as `N/A`, `TBD`, `Lorem ipsum`
+  * controlled generic SAFRAN filler
+  * duplicate `summary.interpretation` and domain interpretation
+  * duplicate domain interpretations
+  * duplicate cognitive signal fields
+  * duplicate `readingGuide.bullets[]`
+  * duplicate `nextStep.body` and reading-guide bullet
+  * unsafe/overclaim language including hire/no-hire, clinical/medical/mental-health claims, “dokazuje”, “garantuje”, “sigurno pokazuje”, “uvijek”, “nikada”, and decision-like wording
+  * generic `nextStep.body`
+* Additional quality checks ensure:
+
+  * domain interpretation cannot reuse domain title or band label
+  * reading-guide bullets cannot become personalized interpretation content
+  * `nextStep.body` cannot duplicate summary, cognitive, or reading-guide text
+* Valid distinct SAFRAN participant AI report fixtures still pass.
+* Public contract shape/schema version was not changed.
+* Renderer/display, provider/OpenAI, scoring, backend, DB, lifecycle, routes, worker, scheduler, report generation, and todo logic were not changed.
 
 ### 2026-06-05 — Individual report segment-authority cleanup: IDP, MWMS, Legacy Big Five
 
