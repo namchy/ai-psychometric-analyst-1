@@ -50,7 +50,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
-| P0        | AI segment-aware report content architecture for individual reports | U toku / renderer authority cleanup completed for IDP, MWMS participant, Legacy Big Five, and SAFRAN participant; MWMS/Legacy/SAFRAN renderer guardrail tests hardened | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: contract/validator quality guardrails, starting with MWMS participant or IDP duplicate/generic validator hardening. Provider prompt updates and legacy snapshot strategy remain separate later slices. |
+| P0        | AI segment-aware report content architecture for individual reports | U toku / renderer authority cleanup and renderer guardrail tests completed for IDP, MWMS participant, Legacy Big Five, and SAFRAN; MWMS and IDP contract quality validators hardened | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: SAFRAN participant contract duplicate/quality validator hardening, then provider prompt updates and legacy snapshot strategy as separate later slices. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -6526,6 +6526,10 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 
 ## 8. Dnevnik završenih odluka
 
+### 2026-06-05 — MWMS and IDP contract quality validators hardened
+
+Added contract/validator quality guardrails after renderer-authority cleanup work. MWMS participant validator now rejects empty-seeming, placeholder, generic, duplicated, unsafe, and malformed reflection-question content. IDP validator now rejects placeholder/generic/unsafe narrative text, duplicate key fields, duplicate array items, duplicate risk/watchpoint subfields, and non-question 1:1 guidance text. Public report contract shapes were not changed. No renderer, provider, OpenAI prompt, scoring, backend, DB, route, lifecycle, worker, scheduler, or report generation behavior was changed. Recommended next focus: SAFRAN participant contract duplicate/quality validator hardening.
+
 ### 2026-06-05 — SAFRAN participant report authority cleanup completed
 
 Completed SAFRAN participant ready-AI direct mapping cleanup and non-ready neutral fallback cleanup. Ready-AI SAFRAN now renders domain interpretations, cognitive signals, reading guide, and next-step content directly from report fields. Non-ready/invalid SAFRAN now shows score-only data with neutral narrative-unavailable messaging instead of a personalized deterministic report. User-facing fallback copy does not mention AI. The core report-authority rule was reinforced: frontend may render, organize, label, and format; it must not generate psychological, HR, cognitive, or domain interpretation. Recommended next focus: validator/test quality guardrails for duplicate text, generic text, mapping mismatch, direct AI field rendering, and score-derived fallback narrative risk.
@@ -6578,9 +6582,56 @@ Added test-only regression guardrails for the completed renderer-authority clean
   * neutral pending/not-ready copy remains present
   * support-oriented failed/invalid copy remains present
   * fallback output does not contain ready-AI marker report texts
-  * fallback output does not expose user-facing technical labels such as `AI generated`, `vještačka inteligencija`, or `vještačke inteligencije`
+* fallback output does not expose user-facing technical labels such as `AI generated`, `vještačka inteligencija`, or `vještačke inteligencije`
   * fallback output does not restore personalized narrative/report-like sections
 * This was a test-only slice. Production code was not changed.
+
+### Completion note — MWMS participant contract quality validator hardening
+
+* MWMS participant report validator was hardened so persisted/validated narrative fields cannot pass with empty-seeming, placeholder, generic, duplicated, or unsafe text.
+* Added focused validator test:
+
+  * `scripts/test-mwms-participant-report-v1.cjs`
+* Updated validator:
+
+  * `lib/assessment/mwms-participant-report-v1.ts`
+* Guardrails now reject:
+
+  * whitespace-only required fields
+  * placeholders such as `N/A`, `TBD`, `Lorem ipsum`, `test`, `todo`
+  * controlled generic MWMS boilerplate/filler
+  * duplicate normalized text within narrative arrays
+  * duplicate content across key narrative fields, including summary and interpretation note
+  * repeated development suggestions
+  * unsafe/overclaim language including hire/no-hire, clinical/medical/mental-health claims, “dokazuje”, “garantuje”, “sigurno pokazuje”, “uvijek”, “nikada”
+  * reflection items that are not question-shaped
+* Valid distinct MWMS narrative arrays still pass.
+* Public contract shape/schema version was not changed.
+* Renderer, provider/OpenAI, scoring, backend, DB, lifecycle, routes, worker, scheduler, report generation, and todo logic were not changed.
+
+### Completion note — IDP contract duplicate/generic validator hardening
+
+* IDP report validator was hardened so persisted/validated narrative fields cannot pass with placeholder, empty-seeming, generic, duplicated, or unsafe text.
+* Updated:
+
+  * `lib/assessment/individual-development-profile-contract.ts`
+  * `scripts/test-individual-development-profile-contract.cjs`
+* Guardrails now reject:
+
+  * whitespace-only required fields
+  * placeholders such as `N/A`, `TBD`, `Lorem ipsum`
+  * controlled generic IDP filler
+  * duplicate `developmentSummary.overallPattern` and `developmentSummary.usageNote`
+  * duplicate `developmentSummary.overallPattern` and `developmentSummary.mainSupportNeed`
+  * duplicate `developmentSummary.usageNote` and `onboardingPlan.summary`
+  * duplicate values inside narrative arrays such as `strongestContributionSignals[]` and `interpretationLimits[]`
+  * duplicate subfields inside `developmentRisks[]`
+  * duplicate subfields inside `managerWatchpoints[]`
+  * unsafe/overclaim language including hire/no-hire, clinical/medical/mental-health claims, “dokazuje”, “garantuje”, “sigurno pokazuje”, “uvijek”, “nikada”, and decision-like wording
+  * one-on-one questions/follow-ups that are statements rather than question-shaped text
+* Valid distinct IDP narrative arrays still pass.
+* Public contract shape/schema version was not changed.
+* Renderer, provider/OpenAI, scoring, backend, DB, lifecycle, routes, worker, scheduler, report generation, and todo logic were not changed.
 
 ### 2026-06-05 — Individual report segment-authority cleanup: IDP, MWMS, Legacy Big Five
 
