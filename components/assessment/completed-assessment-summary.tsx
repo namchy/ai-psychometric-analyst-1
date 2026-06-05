@@ -44,6 +44,7 @@ import {
 import type { SafranScoreKey } from "@/lib/assessment/safran-interpretation";
 import {
   resolveSafranParticipantReportDisplay,
+  type SafranParticipantNarrativeState,
 } from "@/lib/assessment/safran-participant-report-display";
 import {
   resolveSafranHrReportDisplay,
@@ -774,6 +775,7 @@ function SafranV1ResultsSummary({
   testName,
   results,
   aiReport,
+  narrativeState,
 }: {
   completedAt?: string | null;
   organizationName?: string | null;
@@ -781,6 +783,7 @@ function SafranV1ResultsSummary({
   testName?: string | null;
   results: CompletedAssessmentResults | null;
   aiReport?: SafranParticipantAiReport | null;
+  narrativeState?: SafranParticipantNarrativeState;
 }) {
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
   const hasValidAiReport = Boolean(aiReport && validateSafranParticipantAiReport(aiReport).ok);
@@ -788,6 +791,7 @@ function SafranV1ResultsSummary({
     scores: getSafranDisplayScore(results),
     testName,
     aiReport,
+    narrativeState,
   });
   const [summarySection, domainsSection, signalsSection, readingGuideSection, nextStepSection] =
     reportDisplay.sections;
@@ -847,7 +851,9 @@ function SafranV1ResultsSummary({
             </div>
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.9fr)] lg:items-start">
               <article className="rounded-[22px] border border-[rgba(17,138,178,0.14)] bg-[linear-gradient(180deg,rgba(248,252,255,0.96),rgba(255,255,255,0.98))] px-5 py-5 shadow-[0_18px_46px_-40px_rgba(17,138,178,0.42)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Glavni obrazac</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {reportDisplay.narrativeAvailable ? "Glavni obrazac" : "Status tumačenja"}
+                </p>
                 <p className="mt-3 text-[15px] leading-7 text-slate-700">{summarySection.body}</p>
               </article>
 
@@ -908,13 +914,17 @@ function SafranV1ResultsSummary({
                       />
                     </div>
                   </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-700">{row.summary}</p>
+                  {row.summary ? (
+                    <p className="mt-4 text-sm leading-6 text-slate-700">{row.summary}</p>
+                  ) : null}
                 </article>
               ))}
             </div>
           </section>
 
-          <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.16)] bg-[linear-gradient(180deg,rgba(246,251,253,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_18px_42px_-40px_rgba(17,138,178,0.24)] sm:px-6 sm:pt-6 sm:pb-6">
+          {reportDisplay.narrativeAvailable ? (
+            <>
+              <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.16)] bg-[linear-gradient(180deg,rgba(246,251,253,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_18px_42px_-40px_rgba(17,138,178,0.24)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
               <h3>{signalsSection.title}</h3>
             </div>
@@ -948,9 +958,9 @@ function SafranV1ResultsSummary({
                 </div>
               ) : null}
             </article>
-          </section>
+              </section>
 
-          <section className="results-report__section results-report__panel rounded-[22px] border border-[rgba(226,232,240,0.82)] bg-[rgba(248,250,252,0.76)] px-5 pt-5 pb-5 shadow-[0_12px_28px_-32px_rgba(15,23,42,0.24)] sm:px-6">
+              <section className="results-report__section results-report__panel rounded-[22px] border border-[rgba(226,232,240,0.82)] bg-[rgba(248,250,252,0.76)] px-5 pt-5 pb-5 shadow-[0_12px_28px_-32px_rgba(15,23,42,0.24)] sm:px-6">
             <div className="results-report__section-heading">
               <h3>{readingGuideSection.title}</h3>
             </div>
@@ -959,9 +969,9 @@ function SafranV1ResultsSummary({
                 <li key={item}>{item}</li>
               ))}
             </ul>
-          </section>
+              </section>
 
-          <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.16)] bg-[linear-gradient(180deg,rgba(247,251,253,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_22px_48px_-42px_rgba(17,138,178,0.28)] sm:px-6 sm:pt-6 sm:pb-6">
+              <section className="results-report__section results-report__panel rounded-[24px] border border-[rgba(17,138,178,0.16)] bg-[linear-gradient(180deg,rgba(247,251,253,0.98),rgba(255,255,255,1))] px-5 pt-5 pb-5 shadow-[0_22px_48px_-42px_rgba(17,138,178,0.28)] sm:px-6 sm:pt-6 sm:pb-6">
             <div className="results-report__section-heading">
               <h3>{nextStepSection.title}</h3>
             </div>
@@ -985,7 +995,9 @@ function SafranV1ResultsSummary({
                 ) : null}
               </>
             )}
-          </section>
+              </section>
+            </>
+          ) : null}
         </>
       )}
     </div>
@@ -2874,6 +2886,13 @@ export function CompletedAssessmentSummary({
     reportRenderer.kind === "safran_participant_ai_report_v1" ? reportRenderer.report : null;
   const safranHrReport =
     reportRenderer.kind === "safran_hr_report_v1" ? reportRenderer.report : null;
+  const safranNarrativeState: SafranParticipantNarrativeState =
+    reportState?.status === "failed" ||
+    reportState?.status === "unavailable" ||
+    reportRenderer.kind === "shape_mismatch" ||
+    reportRenderer.kind === "unsupported_signal"
+      ? "failed"
+      : "pending";
   const shouldShowBigFiveHrFallbackCard = Boolean(bigFiveHrReport) && !ipipNeo120HrReport;
   const shouldShowRawResultsPreview =
     !ipipNeo120ParticipantReport &&
@@ -2979,6 +2998,7 @@ export function CompletedAssessmentSummary({
         testName={testName}
         results={results}
         aiReport={safranParticipantAiReport}
+        narrativeState={safranNarrativeState}
       />
     );
   }

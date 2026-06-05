@@ -159,6 +159,23 @@ assert.deepEqual(
   display.sections.map((section) => section.id),
   ["summary", "domains", "signals", "reading_guide", "next_step"],
 );
+assert.equal(display.narrativeAvailable, false);
+assert.equal(
+  display.sections[0].body,
+  "Rezultati testa su dostupni, ali detaljan narativni izvještaj još nije spreman za prikaz.",
+);
+assert.equal(display.sections[0].overall.score, 29);
+assert.deepEqual(
+  display.sections[1].rows.map((row) => row.score),
+  [15, 8, 6],
+);
+assert.deepEqual(
+  display.sections[1].rows.map((row) => row.summary),
+  ["", "", ""],
+);
+assert.equal(display.sections[2].body, "");
+assert.deepEqual(display.sections[3].items, []);
+assert.equal(display.sections[4].body, undefined);
 
 const forbiddenPhrases = [
   "V1",
@@ -182,23 +199,16 @@ for (const text of flattenDisplayTexts(display)) {
   }
 }
 
-const practiceMentions = display.sections.flatMap((section) => {
-  if (section.id === "reading_guide") {
-    return [];
-  }
-
-  return flattenDisplayTexts({ header: { eyebrow: "", title: "", subtitle: "" }, sections: [section] });
-}).filter((text) => /practice/i.test(text));
-
-assert.deepEqual(practiceMentions, []);
-assert.equal(
-  display.sections[3].items.some((item) => /probna pitanja/i.test(item)),
-  true,
-);
-assert.equal(
-  display.sections[3].items.some((item) => /ne ulaze u rezultat/i.test(item)),
-  true,
-);
+for (const personalizedFallbackText of [
+  "Rezultat ispod sažima učinak u ovom pokušaju",
+  "Verbalni dio govori o tome kako si",
+  "Figuralni rezultat ukazuje na prepoznavanje obrazaca",
+  "Numerički rezultat se izdvaja kao najizraženiji dio ovog profila",
+  "Pregled po oblastima ovdje daje najkorisniju sliku",
+  "Pogledaj u kojim oblastima si imao ili imala stabilniji ritam",
+]) {
+  assert.equal(flattenDisplayTexts(display).join(" ").includes(personalizedFallbackText), false);
+}
 
 const aiInput = buildSafranParticipantAiReportInput({
   testSlug: "safran_v1",
@@ -240,6 +250,7 @@ const aiDisplay = resolveSafranParticipantReportDisplay({
   aiReport,
 });
 assert.equal(aiDisplay.header.title, "SAFRAN");
+assert.equal(aiDisplay.narrativeAvailable, true);
 assert.equal(aiDisplay.header.statusLabel, "Završeno");
 assert.equal(aiDisplay.sections[0].overall.helper, aiReport.summary.bandLabel);
 assert.equal(aiDisplay.sections[2].title, aiReport.cognitiveSignals.title);
@@ -276,7 +287,145 @@ const fallbackDisplay = resolveSafranParticipantReportDisplay({
   testName: "SAFRAN",
 });
 assert.equal(fallbackDisplay.header.statusLabel, undefined);
-assert.equal(fallbackDisplay.sections[0].title, "Sažetak rezultata");
+assert.equal(fallbackDisplay.narrativeAvailable, false);
+assert.equal(fallbackDisplay.sections[0].title, "Rezultati testa");
+assert.equal(
+  fallbackDisplay.sections[0].body,
+  "Rezultati testa su dostupni, ali detaljan narativni izvještaj još nije spreman za prikaz.",
+);
+const failedFallbackDisplay = resolveSafranParticipantReportDisplay({
+  scores: {
+    verbal_score: 15,
+    figural_score: 8,
+    numerical_series_score: 6,
+    cognitive_composite_v1: 29,
+  },
+  testName: "SAFRAN",
+  narrativeState: "failed",
+});
+assert.equal(
+  failedFallbackDisplay.sections[0].body,
+  "Rezultati testa su dostupni, ali detaljan narativni izvještaj trenutno nije moguće prikazati. Ako se problem ponovi, kontaktiraj support.",
+);
+
+const fallbackResults = {
+  attemptId: "attempt-safran-fallback-render",
+  scoringMethod: "correct_answers",
+  dimensions: [
+    { dimension: "verbal_score", rawScore: 15, scoredQuestionCount: 18 },
+    { dimension: "figural_score", rawScore: 8, scoredQuestionCount: 18 },
+    { dimension: "numerical_series_score", rawScore: 6, scoredQuestionCount: 18 },
+    { dimension: "cognitive_composite_v1", rawScore: 29, scoredQuestionCount: 54 },
+  ],
+  scoredResponseCount: 45,
+  unscoredResponses: [],
+  derived: {
+    safranV1: {
+      verbalScore: 15,
+      figuralScore: 8,
+      numericalRawScore: 3,
+      numericalAdjustedScore: 6,
+      numericalScore: 6,
+      numericalSeriesScore: 6,
+      cognitiveCompositeScore: 29,
+      cognitiveCompositeV1: 29,
+    },
+  },
+};
+
+function renderFallback(reportState) {
+  return renderToStaticMarkup(
+    React.createElement(CompletedAssessmentSummary, {
+      completedAt: "2026-05-05T09:42:07.674Z",
+      locale: "bs",
+      organizationName: "Test organizacija",
+      participantName: "Test kandidat",
+      testSlug: "safran_v1",
+      testName: "SAFRAN",
+      results: fallbackResults,
+      reportState,
+    }),
+  );
+}
+
+const pendingFallbackOutputs = [
+  renderFallback(null),
+  renderFallback({
+    status: "queued",
+    generatorType: null,
+    generatedAt: "2026-05-05T09:42:07.674Z",
+    completedAt: null,
+  }),
+];
+const failedFallbackOutputs = [
+  renderFallback({
+    status: "failed",
+    generatorType: "openai",
+    generatedAt: "2026-05-05T09:42:07.674Z",
+    completedAt: "2026-05-05T09:43:07.674Z",
+    failureCode: "provider_error",
+    failureReason: "Fixture failure",
+  }),
+  renderFallback({
+    status: "ready",
+    reportFamily: "safran",
+    reportAudience: "participant",
+    reportVersion: "v1",
+    reportRenderFormat: "safran_participant_ai_report_v1",
+    report: { reportType: "safran_participant_ai_report_v1" },
+  }),
+];
+
+for (const fallbackRenderOutput of pendingFallbackOutputs) {
+  assert.equal(
+    fallbackRenderOutput.includes(
+      "Dostupni su bodovani rezultati ove procjene.",
+    ),
+    true,
+  );
+  assert.equal(
+    countOccurrences(
+      fallbackRenderOutput,
+      "Rezultati testa su dostupni, ali detaljan narativni izvještaj još nije spreman za prikaz.",
+    ),
+    1,
+  );
+}
+
+for (const fallbackRenderOutput of failedFallbackOutputs) {
+  assert.equal(
+    countOccurrences(
+      fallbackRenderOutput,
+      "Rezultati testa su dostupni, ali detaljan narativni izvještaj trenutno nije moguće prikazati. Ako se problem ponovi, kontaktiraj support.",
+    ),
+    1,
+  );
+}
+
+for (const fallbackRenderOutput of [...pendingFallbackOutputs, ...failedFallbackOutputs]) {
+  const visibleFallbackText = fallbackRenderOutput.replace(/<[^>]*>/g, " ");
+  assert.doesNotMatch(visibleFallbackText, /\bAI\b/i);
+  for (const score of ["29 / 54", "15 / 18", "8 / 18", "6 / 18"]) {
+    assert.equal(fallbackRenderOutput.includes(score), true, `Expected fallback score ${score}.`);
+  }
+  for (const forbiddenFallbackNarrative of [
+    "Rezultat ispod sažima učinak u ovom pokušaju",
+    "Verbalni dio govori o tome kako si",
+    "Figuralni rezultat ukazuje na prepoznavanje obrazaca",
+    "Numerički rezultat se izdvaja kao najizraženiji dio ovog profila",
+    "Pregled po oblastima ovdje daje najkorisniju sliku",
+    "Kognitivni signal",
+    "Kako čitati ovaj rezultat",
+    "Korak za razmišljanje",
+    "Pogledaj u kojim oblastima si imao ili imala stabilniji ritam",
+  ]) {
+    assert.equal(
+      fallbackRenderOutput.includes(forbiddenFallbackNarrative),
+      false,
+      `Non-ready fallback unexpectedly contains narrative: ${forbiddenFallbackNarrative}`,
+    );
+  }
+}
 
 const aiRenderOutput = renderToStaticMarkup(
   React.createElement(CompletedAssessmentSummary, {

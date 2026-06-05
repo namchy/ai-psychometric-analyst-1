@@ -4,7 +4,6 @@ import {
 } from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
   buildSafranCandidateInterpretation,
-  getSafranInterpretationFallbackText,
   type SafranCandidateInterpretationScores,
   type SafranScoreKey,
 } from "@/lib/assessment/safran-interpretation";
@@ -77,6 +76,7 @@ export type SafranParticipantReportNextStepSection = {
 };
 
 export type SafranParticipantReportDisplay = {
+  narrativeAvailable: boolean;
   header: SafranParticipantReportHeader;
   sections: [
     SafranParticipantReportSummarySection,
@@ -87,69 +87,7 @@ export type SafranParticipantReportDisplay = {
   ];
 };
 
-const SAFRAN_READING_GUIDE: SafranParticipantReportReadingGuideSection["items"] = [
-  "Rezultati prikazuju broj tačnih odgovora unutar ove procjene i najkorisnije ih je čitati kao profil po oblastima.",
-  "Verbalni, figuralni i numerički dio vrijedi posmatrati zajedno, jer svaka oblast pokazuje drugačiji tip zadataka.",
-  "Numerički dio u ovoj digitalnoj verziji koristi numeričke nizove, pa rezultat treba čitati u tom formatu zadataka.",
-  "Ako si prije glavnog testa radio ili radila Probna pitanja, ona služe samo za upoznavanje formata i ne ulaze u rezultat.",
-] as const;
-
-const SAFRAN_NEXT_STEPS: SafranParticipantReportNextStepSection["items"] = [
-  "Pogledaj u kojim oblastima si imao ili imala stabilniji ritam rješavanja, a gdje je trebalo više provjere ili vremena.",
-  "Za potpuniju sliku, ove rezultate poveži s iskustvom, interesima i razgovorom o tome kako pristupaš problemskim zadacima.",
-] as const;
-
-function buildSafranParticipantDomainSummary(
-  scoreKey: SafranParticipantReportDomainRow["scoreKey"],
-  scores: SafranCandidateInterpretationScores,
-): string {
-  const verbalScore = scores.verbal_score ?? null;
-  const figuralScore = scores.figural_score ?? null;
-  const numericalScore = scores.numerical_series_score ?? null;
-  const isFiguralLowerThanBoth =
-    isFiniteScore(figuralScore) &&
-    isFiniteScore(verbalScore) &&
-    isFiniteScore(numericalScore) &&
-    figuralScore < verbalScore &&
-    figuralScore < numericalScore;
-  const isNumericalHighest =
-    isFiniteScore(numericalScore) &&
-    isFiniteScore(verbalScore) &&
-    isFiniteScore(figuralScore) &&
-    numericalScore > verbalScore &&
-    numericalScore > figuralScore;
-
-  if (scoreKey === "verbal_score") {
-    return "Verbalni dio govori o tome kako si u ovom setu zadataka pratio ili pratila značenja pojmova i odnose među njima. U praktičnom kontekstu može biti relevantan za razumijevanje pisanih informacija, razlikovanje nijansi u značenju i povezivanje pojmova. Korisno ga je čitati kao signal iz ovih zadataka, zajedno s figuralnim i numeričkim dijelom profila.";
-  }
-
-  if (scoreKey === "figural_score") {
-    return isFiguralLowerThanBoth
-      ? "Figuralni rezultat ukazuje na prepoznavanje obrazaca, odnosa i promjena među oblicima u ovom setu zadataka. U odnosu na verbalni i numerički dio, ovdje se vidi blaži kontrast, što može značiti da su vizuelni odnosi tražili više provjere prije odgovora. Ovaj dio je najbolje čitati kao specifičan signal iz ove vrste zadataka, ne kao opštu procjenu vizuelnog mišljenja."
-      : "Figuralni rezultat ukazuje na prepoznavanje obrazaca, odnosa i promjena među oblicima u ovom setu zadataka. U praktičnom kontekstu može biti relevantan za situacije u kojima treba uočiti pravilo, pratiti promjenu i provjeriti odnos između elemenata. Ovaj dio je najbolje čitati kao specifičan signal iz ove vrste zadataka, ne kao opštu procjenu vizuelnog mišljenja.";
-  }
-
-  return isNumericalHighest
-    ? "Numerički rezultat se izdvaja kao najizraženiji dio ovog profila. U zadacima sa nizovima pokazuje kako si pratio ili pratila pravila i odnose među elementima. Ovakav rezultat može biti relevantan u situacijama gdje je važno brzo uočiti brojčani obrazac, provjeriti logiku niza ili raditi sa strukturisanim kvantitativnim informacijama."
-    : "Numerički dio opisuje kako si u ovom setu zadataka pratio ili pratila pravila u nizovima i odnose među elementima. U praktičnom kontekstu može biti relevantan za rad sa strukturisanim brojčanim informacijama, posebno kada treba provjeriti logiku obrasca prije zaključka. Korisno ga je čitati kao signal iz numeričkih nizova, bez zaključka o opštoj matematičkoj sposobnosti.";
-}
-
-function normalizeSafranDisplayText(value: string): string {
-  return value
-    .replace(/\bjedan slabiji dio\b/gi, "jedan izdvojen rezultat")
-    .replace(/\bpri čitanju nalaza\b/gi, "pri čitanju rezultata")
-    .replace(/\bnalaz\b/gi, "rezultat")
-    .replace(/\bpractice pitanja\b/gi, "Probna pitanja")
-    .replace(/\bne ulaze u scoring\b/gi, "ne ulaze u rezultat");
-}
-
-function normalizedSafranDisplayText(value: string): string {
-  return normalizeSafranDisplayText(value.trim());
-}
-
-function normalizeSafranReadingGuideItems(items: readonly string[]): string[] {
-  return items.map((item) => normalizedSafranDisplayText(item));
-}
+export type SafranParticipantNarrativeState = "pending" | "failed";
 
 function normalizeTitle(testName?: string | null): string {
   const trimmed = testName?.trim();
@@ -189,20 +127,14 @@ function getDomainRow(
   const domain = interpretation.domains.find((item) => item.scoreKey === scoreKey);
   const score = scores[scoreKey] ?? null;
   const isOutOfRange = isFiniteScore(score) && (score < 0 || score > maxPossible);
-  const fallback = getSafranInterpretationFallbackText({
-    scoreKey,
-    reason: isOutOfRange ? "invalid_range" : "missing",
-  });
 
   return {
     scoreKey,
     label,
     score,
     maxPossible,
-    helper: domain?.bandLabelBs ?? fallback,
-    summary: isOutOfRange || !domain
-      ? fallback
-      : buildSafranParticipantDomainSummary(scoreKey, scores),
+    helper: isOutOfRange || !domain ? "Rezultat nije dostupan" : domain.bandLabelBs,
+    summary: "",
   };
 }
 
@@ -212,42 +144,27 @@ function getOverallSummary(
   const interpretation = buildSafranCandidateInterpretation(scores);
   const score = scores.cognitive_composite_v1 ?? null;
   const isOutOfRange = isFiniteScore(score) && (score < 0 || score > 54);
-  const fallback = getSafranInterpretationFallbackText({
-    scoreKey: "cognitive_composite_v1",
-    reason: isOutOfRange ? "invalid_range" : "missing",
-  });
 
   return {
     label: "Ukupni rezultat",
     score,
     maxPossible: 54,
-    helper: interpretation.overall?.bandLabelBs ?? fallback,
-    summary: interpretation.overall?.textBs ?? fallback,
-  };
-}
-
-function getSignalsSection(
-  scores: SafranCandidateInterpretationScores,
-): SafranParticipantReportSignalsSection {
-  const interpretation = buildSafranCandidateInterpretation(scores);
-  const body = interpretation.relativeProfileBs
-    ? normalizedSafranDisplayText(interpretation.relativeProfileBs)
-    : "Pregled po oblastima ovdje daje najkorisniju sliku o tome koji su ti tipovi zadataka djelovali prirodnije i gdje je pristup tražio više prilagođavanja.";
-
-  return {
-    id: "signals",
-    title: "Kognitivni signal",
-    body,
-    items: [],
+    helper:
+      isOutOfRange || !interpretation.overall
+        ? "Rezultat nije dostupan"
+        : interpretation.overall.bandLabelBs,
+    summary: "",
   };
 }
 
 export function buildSafranParticipantReportDisplay({
   scores,
   testName,
+  narrativeState = "pending",
 }: {
   scores: SafranCandidateInterpretationScores;
   testName?: string | null;
+  narrativeState?: SafranParticipantNarrativeState;
 }): SafranParticipantReportDisplay {
   const overall = getOverallSummary(scores);
   const domains: SafranParticipantReportDomainsSection["rows"] = [
@@ -257,18 +174,20 @@ export function buildSafranParticipantReportDisplay({
   ];
 
   return {
+    narrativeAvailable: false,
     header: {
       eyebrow: "Rezultati procjene",
       title: normalizeTitle(testName),
-      subtitle:
-        "Rezultati su prikazani kroz broj tačnih odgovora i kratko tumačenje unutar ove procjene.",
+      subtitle: "Dostupni su bodovani rezultati ove procjene.",
     },
     sections: [
       {
         id: "summary",
-        title: "Sažetak rezultata",
+        title: "Rezultati testa",
         body:
-          "Rezultat ispod sažima učinak u ovom pokušaju, a puni smisao dobija tek zajedno s pregledom po oblastima.",
+          narrativeState === "failed"
+            ? "Rezultati testa su dostupni, ali detaljan narativni izvještaj trenutno nije moguće prikazati. Ako se problem ponovi, kontaktiraj support."
+            : "Rezultati testa su dostupni, ali detaljan narativni izvještaj još nije spreman za prikaz.",
         overall,
       },
       {
@@ -276,16 +195,20 @@ export function buildSafranParticipantReportDisplay({
         title: "Pregled po oblastima",
         rows: domains,
       },
-      getSignalsSection(scores),
+      {
+        id: "signals",
+        title: "",
+        body: "",
+        items: [],
+      },
       {
         id: "reading_guide",
-        title: "Kako čitati ovaj rezultat",
-        items: normalizeSafranReadingGuideItems(SAFRAN_READING_GUIDE),
+        title: "",
+        items: [],
       },
       {
         id: "next_step",
-        title: "Korak za razmišljanje",
-        items: SAFRAN_NEXT_STEPS,
+        title: "",
       },
     ],
   };
@@ -317,6 +240,7 @@ export function buildSafranParticipantReportDisplayFromAiReport(
   ) as SafranParticipantReportDomainsSection["rows"];
 
   return {
+    narrativeAvailable: true,
     header: {
       eyebrow: "AI izvještaj procjene",
       title: report.header.title,
@@ -380,10 +304,12 @@ export function resolveSafranParticipantReportDisplay({
   scores,
   testName,
   aiReport,
+  narrativeState,
 }: {
   scores: SafranCandidateInterpretationScores;
   testName?: string | null;
   aiReport?: SafranParticipantAiReport | null;
+  narrativeState?: SafranParticipantNarrativeState;
 }): SafranParticipantReportDisplay {
   if (aiReport) {
     return buildSafranParticipantReportDisplayFromAiReport(aiReport);
@@ -392,5 +318,6 @@ export function resolveSafranParticipantReportDisplay({
   return buildSafranParticipantReportDisplay({
     scores,
     testName,
+    narrativeState,
   });
 }
