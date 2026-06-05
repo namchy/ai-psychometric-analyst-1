@@ -199,86 +199,6 @@ function getMwmsDimensionMicroDescription(dimensionKey: string): string {
   }
 }
 
-function normalizeMwmsCopy(text: string): string {
-  return text
-    .replaceAll("unutrašnje pritiska", "unutrašnjeg pritiska")
-    .replaceAll("Vaš angažman", "tvoj angažman")
-    .replaceAll("vaš angažman", "tvoj angažman")
-    .replaceAll("Vaš jedini", "tvoj jedini")
-    .replaceAll("vaš jedini", "tvoj jedini")
-    .replaceAll("Vaši jedini", "tvoji jedini")
-    .replaceAll("vaši jedini", "tvoji jedini")
-    .replaceAll("Vašem poslu", "tvom poslu")
-    .replaceAll("vašem poslu", "tvom poslu")
-    .replaceAll("Vašem radnom ponašanju", "tvom radnom ponašanju")
-    .replaceAll("vašem radnom ponašanju", "tvom radnom ponašanju")
-    .replaceAll("Vaš profil", "tvoj profil")
-    .replaceAll("vaš profil", "tvoj profil")
-    .replaceAll("Vaši rezultati", "tvoji rezultati")
-    .replaceAll("vaši rezultati", "tvoji rezultati")
-    .replaceAll("Vašim radnim okolnostima", "tvojim radnim okolnostima")
-    .replaceAll("vašim radnim okolnostima", "tvojim radnim okolnostima")
-    .replaceAll("u tvojem radnom ponašanju", "u tvom radnom ponašanju")
-    .replaceAll("u tvojem poslu", "u tvom poslu")
-    .replaceAll("u tvojem", "u tvom")
-    .replaceAll("tvojem poslu", "tvom poslu")
-    .replaceAll("tvojem radnom ponašanju", "tvom radnom ponašanju")
-    .replaceAll("tebe pojedini zadaci mogu iskreno zanimati", "neki zadaci te mogu iskreno zanimati")
-    .replaceAll("Pokušajte", "Pokušaj")
-    .replaceAll("pokušajte", "pokušaj")
-    .replaceAll("Razmislite", "Razmisli")
-    .replaceAll("razmislite", "razmisli")
-    .replaceAll("Obratite pažnju", "Obrati pažnju")
-    .replaceAll("obratite pažnju", "obrati pažnju")
-    .replaceAll("Prepoznajte", "Prepoznaj")
-    .replaceAll("prepoznajte", "prepoznaj")
-    .replaceAll("Koristite", "Koristi")
-    .replaceAll("koristite", "koristi")
-    .replaceAll("Pratite", "Prati")
-    .replaceAll("pratite", "prati")
-    .replaceAll("Zastanite", "Zastani")
-    .replaceAll("zastanite", "zastani")
-    .replaceAll("Razdvojite", "Razdvoji")
-    .replaceAll("razdvojite", "razdvoji")
-    .replaceAll("Osjećate", "Osjećaš")
-    .replaceAll("osjećate", "osjećaš")
-    .replaceAll("Radite", "Radiš")
-    .replaceAll("radite", "radiš")
-    .replaceAll("Možete", "Možeš")
-    .replaceAll("možete", "možeš")
-    .replaceAll("Morate", "Moraš")
-    .replaceAll("morate", "moraš")
-    .replaceAll("Želite", "Želiš")
-    .replaceAll("želite", "želiš")
-    .replace(/\bKod Vas\b/g, "Kod tebe")
-    .replace(/\bkod Vas\b/g, "kod tebe")
-    .replace(/\bVi\b/g, "Ti")
-    .replace(/\bvi\b/g, "ti")
-    .replace(/\bVama\b/g, "tebi")
-    .replace(/\bvama\b/g, "tebi")
-    .replace(/\bVam\b/g, "ti")
-    .replace(/\bvam\b/g, "ti")
-    .replace(/\bVas\b/g, "tebe")
-    .replace(/\bvas\b/g, "tebe")
-    .replace(/\bVašim\b/g, "tvojim")
-    .replace(/\bvašim\b/g, "tvojim")
-    .replace(/\bVašem\b/g, "tvom")
-    .replace(/\bvašem\b/g, "tvom")
-    .replace(/\bVašeg\b/g, "tvog")
-    .replace(/\bvašeg\b/g, "tvog")
-    .replace(/\bVašoj\b/g, "tvojoj")
-    .replace(/\bvašoj\b/g, "tvojoj")
-    .replace(/\bVaša\b/g, "Tvoja")
-    .replace(/\bvaša\b/g, "tvoja")
-    .replace(/\bVaše\b/g, "Tvoje")
-    .replace(/\bvaše\b/g, "tvoje")
-    .replace(/\bVaši\b/g, "Tvoji")
-    .replace(/\bvaši\b/g, "tvoji")
-    .replace(/\bVaš\b/g, "Tvoj")
-    .replace(/\bvaš\b/g, "tvoj")
-    .trim();
-}
-
 function sanitizeTechnicalReportText(text: string | null | undefined): string | null {
   if (typeof text !== "string") {
     return null;
@@ -3944,9 +3864,9 @@ export function CompletedAssessmentSummary({
               <h3>Šta ovaj obrazac znači u radu</h3>
             </div>
             <div className="space-y-3 text-[14px] leading-[1.76] text-slate-700 sm:text-[14.5px]">
-              <p>{normalizeMwmsCopy(mwmsParticipantReport.motivation_pattern.autonomous)}</p>
-              <p>{normalizeMwmsCopy(mwmsParticipantReport.motivation_pattern.controlled)}</p>
-              <p>{normalizeMwmsCopy(mwmsParticipantReport.motivation_pattern.amotivation)}</p>
+              <p>{mwmsParticipantReport.motivation_pattern.autonomous}</p>
+              <p>{mwmsParticipantReport.motivation_pattern.controlled}</p>
+              <p>{mwmsParticipantReport.motivation_pattern.amotivation}</p>
             </div>
           </section>
 
@@ -3956,7 +3876,7 @@ export function CompletedAssessmentSummary({
             </div>
             <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
               {mwmsParticipantReport.key_observations.map((item) => (
-                <li key={item}>{normalizeMwmsCopy(item)}</li>
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
@@ -3967,7 +3887,7 @@ export function CompletedAssessmentSummary({
             </div>
             <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
               {mwmsParticipantReport.possible_tensions.map((item) => (
-                <li key={item}>{normalizeMwmsCopy(item)}</li>
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
@@ -3980,7 +3900,7 @@ export function CompletedAssessmentSummary({
             </div>
             <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
               {mwmsParticipantReport.development_suggestions.map((item) => (
-                <li key={item}>{normalizeMwmsCopy(item)}</li>
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
@@ -3993,7 +3913,7 @@ export function CompletedAssessmentSummary({
             </div>
             <ul className="results-bullet-list space-y-3 text-[14px] leading-[1.72] text-slate-700">
               {mwmsParticipantReport.reflection_questions.map((item) => (
-                <li key={item}>{normalizeMwmsCopy(item)}</li>
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
@@ -4005,7 +3925,7 @@ export function CompletedAssessmentSummary({
               </h3>
             </div>
             <p className="text-[12px] leading-[1.6] text-slate-500 sm:text-[12.5px]">
-              {normalizeMwmsCopy(mwmsParticipantReport.interpretation_note)}
+              {mwmsParticipantReport.interpretation_note}
             </p>
           </section>
         </div>

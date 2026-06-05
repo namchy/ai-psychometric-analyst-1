@@ -105,6 +105,24 @@ const readyAiSummaryHeadline =
   "AI SUMMARY HEADLINE: Različiti izvori motivacije čine jedinstven obrazac ovog fixturea.";
 const readyAiSummaryParagraph =
   "AI SUMMARY PARAGRAPH: Ovaj jedinstveni fixture pasus mora ostati neizmijenjen u glavnoj summary zoni.";
+const readyAiNarrativeText = {
+  autonomous:
+    "AI AUTONOMOUS: Vaš angažman u tvojem poslu ostaje doslovno zapisan.",
+  controlled:
+    "AI CONTROLLED: Prisutan je izraz unutrašnje pritiska bez renderer korekcije.",
+  amotivation:
+    "AI AMOTIVATION: Vaši rezultati ostaju provider-authored sadržaj.",
+  keyObservation:
+    "AI OBSERVATION: Tebe pojedini zadaci mogu iskreno zanimati.",
+  possibleTension:
+    "AI TENSION: Kod Vas se može pojaviti jedinstvena napetost fixturea.",
+  developmentSuggestion:
+    "AI SUGGESTION: Pokušajte sačuvati ovu provider formulaciju.",
+  reflectionQuestion:
+    "AI QUESTION: Možete li opisati jedinstven primjer iz Vašeg posla?",
+  interpretationNote:
+    "AI NOTE: Vaš profil nije dijagnoza niti samostalna odluka.",
+};
 
 const mwmsRenderOutput = renderToStaticMarkup(
   React.createElement(CompletedAssessmentSummary, {
@@ -170,28 +188,15 @@ const mwmsAiRenderOutput = renderToStaticMarkup(
           paragraph: readyAiSummaryParagraph,
         },
         motivation_pattern: {
-          autonomous:
-            "Autonomni izvori motivacije pokazuju koliko se posao može povezati sa smislom, vrijednostima ili interesom.",
-          controlled:
-            "Kontrolisani izvori motivacije pokazuju koliko napor može dolaziti iz očekivanja, pritiska ili nagrade.",
-          amotivation:
-            "Amotivaciju treba čitati oprezno i povezati je sa konkretnim kontekstom rada.",
+          autonomous: readyAiNarrativeText.autonomous,
+          controlled: readyAiNarrativeText.controlled,
+          amotivation: readyAiNarrativeText.amotivation,
         },
-        key_observations: [
-          "Identificirana i intrinzična motivacija daju važan dio profila.",
-          "Ekstrinzični izvori motivacije ne treba čitati kao jedini zaključak.",
-        ],
-        possible_tensions: [
-          "Moguća napetost je odnos između ličnog smisla i vanjskih očekivanja.",
-        ],
-        reflection_questions: [
-          "Koji aspekti posla ti daju najviše osjećaja smisla i energije?",
-        ],
-        development_suggestions: [
-          "Poveži važne zadatke sa konkretnim vrijednostima i očekivanjima uloge.",
-        ],
-        interpretation_note:
-          "Ovaj rezultat nije dijagnoza, presuda niti samostalna osnova za odluku o zapošljavanju.",
+        key_observations: [readyAiNarrativeText.keyObservation],
+        possible_tensions: [readyAiNarrativeText.possibleTension],
+        reflection_questions: [readyAiNarrativeText.reflectionQuestion],
+        development_suggestions: [readyAiNarrativeText.developmentSuggestion],
+        interpretation_note: readyAiNarrativeText.interpretationNote,
       },
     },
   }),
@@ -274,6 +279,7 @@ assert.doesNotMatch(
   /from\s+["'][^"']*(?:mwms[^"']*(?:provider|openai|lifecycle|worker|scheduler)|app\/actions|supabase)[^"']*["']/i,
 );
 assert.doesNotMatch(completedSummarySource, /validateMwmsParticipantReportV1/);
+assert.doesNotMatch(completedSummarySource, /normalizeMwmsCopy/);
 assert.doesNotMatch(
   completedSummarySource,
   /\b(?:generateMwms|processMwms|enqueueMwms|createSupabaseClient|createSupabaseAdminClient)\s*\(/,
@@ -334,6 +340,7 @@ for (const expectedText of [
   "tvom radnom ponašanju",
   readyAiSummaryHeadline,
   readyAiSummaryParagraph,
+  ...Object.values(readyAiNarrativeText),
 ]) {
   assert.equal(
     mwmsAiRenderOutput.includes(expectedText),
@@ -384,7 +391,6 @@ for (const forbiddenText of [
   "Moguće napetosti",
   "Pitanja za razmišljanje",
   "Kod Vas su",
-  "Vaš profil",
   "Vašem radnom ponašanju",
   "tvojem radnom ponašanju",
 ]) {
@@ -402,35 +408,20 @@ for (const forbiddenText of [
 
 assert.equal(mwmsAiRenderOutput.includes("Napomena o interpretaciji"), false);
 
-for (const forbiddenFormalText of [
-  " Vi ",
-  " Vam ",
-  " Vas ",
-  " Vaš ",
-  " Vaša ",
-  " Vaše ",
-  " Vašem ",
-  " Vašim ",
-  " Vaši ",
-  " kod Vas",
-  "pokušajte",
-  "razmislite",
-  "obratite",
-  "koristite",
-  "prepoznajte",
-  "pratite",
-  "zastanite",
-  "razdvojite",
-  "osjećate",
-  "radite",
-  "želite",
-  "morate",
-  "možete",
+for (const previousRewriteOutput of [
+  "tvoj angažman u tvom poslu ostaje doslovno zapisan",
+  "unutrašnjeg pritiska bez renderer korekcije",
+  "tvoji rezultati ostaju provider-authored sadržaj",
+  "neki zadaci te mogu iskreno zanimati",
+  "Kod tebe se može pojaviti jedinstvena napetost fixturea",
+  "Pokušaj sačuvati ovu provider formulaciju",
+  "Možeš li opisati jedinstven primjer iz tvog posla",
+  "Tvoj profil nije dijagnoza niti samostalna odluka",
 ]) {
   assert.equal(
-    mwmsAiRenderOutput.includes(forbiddenFormalText),
+    mwmsAiRenderOutput.includes(previousRewriteOutput),
     false,
-    `Expected ready MWMS AI render output to exclude formal address fragment: ${forbiddenFormalText}`,
+    `Expected ready MWMS AI output to exclude renderer rewrite: ${previousRewriteOutput}`,
   );
 }
 
