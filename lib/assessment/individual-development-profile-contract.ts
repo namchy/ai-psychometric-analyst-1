@@ -129,6 +129,53 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function normalizeTextForQualityCheck(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.!?;:,\s]+$/u, "");
+}
+
+function isPlaceholderLikeText(value: string): boolean {
+  const normalized = normalizeTextForQualityCheck(value);
+
+  return (
+    normalized.length < 18 ||
+    /^(?:n\/?a|tbd|todo|test|placeholder|-|—)$/i.test(normalized) ||
+    /lorem ipsum/i.test(normalized)
+  );
+}
+
+function isGenericIdpFiller(value: string): boolean {
+  const normalized = normalizeTextForQualityCheck(value);
+
+  return [
+    "ovaj izvještaj prikazuje razvojni profil",
+    "ovaj izvjestaj prikazuje razvojni profil",
+    "ovo je opšti razvojni sažetak",
+    "ovo je opsti razvojni sazetak",
+    "ovo je opći razvojni sažetak",
+    "ovo je opci razvojni sazetak",
+    "osoba ima različite razvojne potrebe",
+    "osoba ima razlicite razvojne potrebe",
+    "važno je uzeti rezultate u obzir",
+    "vazno je uzeti rezultate u obzir",
+    "razvoj može varirati kroz vrijeme",
+    "razvoj moze varirati kroz vrijeme",
+    "ovo su opšte smjernice",
+    "ovo su opste smjernice",
+    "ovo su opće smjernice",
+    "ovo su opce smjernice",
+  ].includes(normalized);
+}
+
+function hasUnsafeIdpClaim(value: string): boolean {
+  return /(?:\bhire\b|\bno-hire\b|treba zaposliti|ne zaposliti|preporu(?:čuje|cuje) se zapošljavanje|preporu(?:čuje|cuje) se zaposljavanje|dijagnosticira|mentaln(?:o|og)? zdravlj|medicinsk|kliničk|klinick|clinical|disorder|poremećaj|poremecaj|dokazuje|garantuje|sigurno pokazuje|\buvijek\b|\bnikada\b|mora se odbiti|mora biti odbijen|nije podoban|nije podobna)/i.test(
+    value,
+  );
+}
+
 function validateNonEmptyString(value: unknown, path: string, errors: string[]): value is string {
   if (!isNonEmptyString(value)) {
     errors.push(`${path}: Expected non-empty string.`);
@@ -138,11 +185,42 @@ function validateNonEmptyString(value: unknown, path: string, errors: string[]):
   return true;
 }
 
+function validateNarrativeString(value: unknown, path: string, errors: string[]): value is string {
+  if (!validateNonEmptyString(value, path, errors)) {
+    return false;
+  }
+
+  if (isPlaceholderLikeText(value)) {
+    errors.push(`${path}: Text is placeholder-like or too short.`);
+  }
+
+  if (isGenericIdpFiller(value)) {
+    errors.push(`${path}: Text is generic IDP filler.`);
+  }
+
+  if (hasUnsafeIdpClaim(value)) {
+    errors.push(`${path}: Text contains an unsafe or overclaiming IDP assertion.`);
+  }
+
+  return true;
+}
+
+function isQuestionLikeText(value: string): boolean {
+  const trimmed = value.trim();
+
+  return (
+    trimmed.endsWith("?") ||
+    /^(?:koji|koja|koje|kako|šta|sta|gdje|kada|koliko|zašto|zasto|u kojim|u kojoj|možeš li|mozes li|da li|šta bi|sta bi)\b/i.test(
+      trimmed,
+    )
+  );
+}
+
 function validateStringArray(
   value: unknown,
   path: string,
   errors: string[],
-  options?: { minLength?: number },
+  options?: { minLength?: number; requireQuestionShape?: boolean },
 ): value is string[] {
   if (!Array.isArray(value)) {
     errors.push(`${path}: Expected array.`);
@@ -154,10 +232,88 @@ function validateStringArray(
   }
 
   value.forEach((entry, index) => {
-    validateNonEmptyString(entry, `${path}[${index}]`, errors);
+    if (validateNarrativeString(entry, `${path}[${index}]`, errors)) {
+      if (options?.requireQuestionShape && !isQuestionLikeText(entry)) {
+        errors.push(`${path}[${index}]: Expected question-shaped text.`);
+      }
+    }
   });
 
+  assertUniqueNarrativeTexts(
+    value.filter((entry): entry is string => typeof entry === "string"),
+    path,
+    errors,
+  );
+
   return true;
+}
+
+function assertUniqueNarrativeTexts(values: string[], path: string, errors: string[]): void {
+  const seen = new Map<string, number>();
+
+  values.forEach((value, index) => {
+    const normalized = normalizeTextForQualityCheck(value);
+
+    if (!normalized) {
+      return;
+    }
+
+    const firstIndex = seen.get(normalized);
+
+    if (firstIndex !== undefined) {
+      errors.push(`${path}[${index}]: Duplicate narrative text also found at ${path}[${firstIndex}].`);
+      return;
+    }
+
+    seen.set(normalized, index);
+  });
+}
+
+function assertUniqueObjectNarrativeTexts(
+  entries: Array<{ path: string; value: unknown }>,
+  errors: string[],
+): void {
+  const seen = new Map<string, string>();
+
+  entries.forEach((entry) => {
+    if (typeof entry.value !== "string") {
+      return;
+    }
+
+    const normalized = normalizeTextForQualityCheck(entry.value);
+
+    if (!normalized) {
+      return;
+    }
+
+    const firstPath = seen.get(normalized);
+
+    if (firstPath) {
+      errors.push(`${entry.path}: Duplicate narrative text also found at ${firstPath}.`);
+      return;
+    }
+
+    seen.set(normalized, entry.path);
+  });
+}
+
+function assertDistinctNarrativePair(
+  leftPath: string,
+  leftValue: unknown,
+  rightPath: string,
+  rightValue: unknown,
+  errors: string[],
+): void {
+  if (typeof leftValue !== "string" || typeof rightValue !== "string") {
+    return;
+  }
+
+  if (
+    normalizeTextForQualityCheck(leftValue) &&
+    normalizeTextForQualityCheck(leftValue) === normalizeTextForQualityCheck(rightValue)
+  ) {
+    errors.push(`${rightPath}: Duplicate narrative text also found at ${leftPath}.`);
+  }
 }
 
 function collectStringLeaves(value: unknown, output: string[] = []): string[] {
@@ -237,10 +393,19 @@ function validateDevelopmentRisks(
       return;
     }
 
-    validateNonEmptyString(entry.possibleBlocker, `${path}[${index}].possibleBlocker`, errors);
-    validateNonEmptyString(entry.whyItMatters, `${path}[${index}].whyItMatters`, errors);
-    validateNonEmptyString(entry.whatToCheck, `${path}[${index}].whatToCheck`, errors);
-    validateNonEmptyString(entry.howToSupport, `${path}[${index}].howToSupport`, errors);
+    validateNarrativeString(entry.possibleBlocker, `${path}[${index}].possibleBlocker`, errors);
+    validateNarrativeString(entry.whyItMatters, `${path}[${index}].whyItMatters`, errors);
+    validateNarrativeString(entry.whatToCheck, `${path}[${index}].whatToCheck`, errors);
+    validateNarrativeString(entry.howToSupport, `${path}[${index}].howToSupport`, errors);
+    assertUniqueObjectNarrativeTexts(
+      [
+        { path: `${path}[${index}].possibleBlocker`, value: entry.possibleBlocker },
+        { path: `${path}[${index}].whyItMatters`, value: entry.whyItMatters },
+        { path: `${path}[${index}].whatToCheck`, value: entry.whatToCheck },
+        { path: `${path}[${index}].howToSupport`, value: entry.howToSupport },
+      ],
+      errors,
+    );
   });
 
   return true;
@@ -266,14 +431,28 @@ function validateOneOnOneGuidance(
       return;
     }
 
-    validateNonEmptyString(entry.question, `${path}[${index}].question`, errors);
-    validateNonEmptyString(entry.whatToListenFor, `${path}[${index}].whatToListenFor`, errors);
-    validateNonEmptyString(
+    if (validateNarrativeString(entry.question, `${path}[${index}].question`, errors)) {
+      if (!isQuestionLikeText(entry.question)) {
+        errors.push(`${path}[${index}].question: Expected question-shaped text.`);
+      }
+    }
+    validateNarrativeString(entry.whatToListenFor, `${path}[${index}].whatToListenFor`, errors);
+    validateNarrativeString(
       entry.signalBeingChecked,
       `${path}[${index}].signalBeingChecked`,
       errors,
     );
-    validateNonEmptyString(entry.possibleFollowUp, `${path}[${index}].possibleFollowUp`, errors);
+    if (
+      validateNarrativeString(
+        entry.possibleFollowUp,
+        `${path}[${index}].possibleFollowUp`,
+        errors,
+      )
+    ) {
+      if (!isQuestionLikeText(entry.possibleFollowUp)) {
+        errors.push(`${path}[${index}].possibleFollowUp: Expected question-shaped text.`);
+      }
+    }
   });
 
   return true;
@@ -299,12 +478,24 @@ function validateManagerWatchpoints(
       return;
     }
 
-    validateNonEmptyString(entry.watchpoint, `${path}[${index}].watchpoint`, errors);
-    validateNonEmptyString(entry.whyItMatters, `${path}[${index}].whyItMatters`, errors);
-    validateNonEmptyString(entry.earlySignal, `${path}[${index}].earlySignal`, errors);
-    validateNonEmptyString(
+    validateNarrativeString(entry.watchpoint, `${path}[${index}].watchpoint`, errors);
+    validateNarrativeString(entry.whyItMatters, `${path}[${index}].whyItMatters`, errors);
+    validateNarrativeString(entry.earlySignal, `${path}[${index}].earlySignal`, errors);
+    validateNarrativeString(
       entry.suggestedManagerResponse,
       `${path}[${index}].suggestedManagerResponse`,
+      errors,
+    );
+    assertUniqueObjectNarrativeTexts(
+      [
+        { path: `${path}[${index}].watchpoint`, value: entry.watchpoint },
+        { path: `${path}[${index}].whyItMatters`, value: entry.whyItMatters },
+        { path: `${path}[${index}].earlySignal`, value: entry.earlySignal },
+        {
+          path: `${path}[${index}].suggestedManagerResponse`,
+          value: entry.suggestedManagerResponse,
+        },
+      ],
       errors,
     );
   });
@@ -322,7 +513,7 @@ function validateOnboardingPlanStage(
     return false;
   }
 
-  validateNonEmptyString(value.focus, `${path}.focus`, errors);
+  validateNarrativeString(value.focus, `${path}.focus`, errors);
   validateStringArray(value.managerActions, `${path}.managerActions`, errors, { minLength: 1 });
   validateStringArray(
     value.feedbackGuidance,
@@ -448,8 +639,8 @@ export function validateIndividualDevelopmentProfileSnapshot(
   if (!isPlainRecord(normalizedValue.developmentSummary)) {
     errors.push("developmentSummary: Expected object.");
   } else {
-    validateNonEmptyString(normalizedValue.developmentSummary.headline, "developmentSummary.headline", errors);
-    validateNonEmptyString(
+    validateNarrativeString(normalizedValue.developmentSummary.headline, "developmentSummary.headline", errors);
+    validateNarrativeString(
       normalizedValue.developmentSummary.overallPattern,
       "developmentSummary.overallPattern",
       errors,
@@ -460,12 +651,26 @@ export function validateIndividualDevelopmentProfileSnapshot(
       errors,
       { minLength: 1 },
     );
-    validateNonEmptyString(
+    validateNarrativeString(
       normalizedValue.developmentSummary.mainSupportNeed,
       "developmentSummary.mainSupportNeed",
       errors,
     );
-    validateNonEmptyString(normalizedValue.developmentSummary.usageNote, "developmentSummary.usageNote", errors);
+    validateNarrativeString(normalizedValue.developmentSummary.usageNote, "developmentSummary.usageNote", errors);
+    assertDistinctNarrativePair(
+      "developmentSummary.overallPattern",
+      normalizedValue.developmentSummary.overallPattern,
+      "developmentSummary.usageNote",
+      normalizedValue.developmentSummary.usageNote,
+      errors,
+    );
+    assertDistinctNarrativePair(
+      "developmentSummary.overallPattern",
+      normalizedValue.developmentSummary.overallPattern,
+      "developmentSummary.mainSupportNeed",
+      normalizedValue.developmentSummary.mainSupportNeed,
+      errors,
+    );
   }
 
   if (!isPlainRecord(normalizedValue.contributionPattern)) {
@@ -559,7 +764,16 @@ export function validateIndividualDevelopmentProfileSnapshot(
   if (!isPlainRecord(normalizedValue.onboardingPlan)) {
     errors.push("onboardingPlan: Expected object.");
   } else {
-    validateNonEmptyString(normalizedValue.onboardingPlan.summary, "onboardingPlan.summary", errors);
+    validateNarrativeString(normalizedValue.onboardingPlan.summary, "onboardingPlan.summary", errors);
+    assertDistinctNarrativePair(
+      "developmentSummary.usageNote",
+      isPlainRecord(normalizedValue.developmentSummary)
+        ? normalizedValue.developmentSummary.usageNote
+        : undefined,
+      "onboardingPlan.summary",
+      normalizedValue.onboardingPlan.summary,
+      errors,
+    );
     validateOnboardingPlanStage(normalizedValue.onboardingPlan.first7Days, "onboardingPlan.first7Days", errors);
     validateOnboardingPlanStage(normalizedValue.onboardingPlan.first30Days, "onboardingPlan.first30Days", errors);
     validateOnboardingPlanStage(normalizedValue.onboardingPlan.days31To60, "onboardingPlan.days31To60", errors);

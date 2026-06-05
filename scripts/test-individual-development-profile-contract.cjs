@@ -219,6 +219,31 @@ function main() {
   emptyRequiredBlock.developmentSummary.overallPattern = "   ";
   expectInvalid(emptyRequiredBlock, /developmentSummary\.overallPattern/);
 
+  for (const placeholder of ["N/A", "TBD", "Lorem ipsum"]) {
+    const placeholderSnapshot = clone(valid);
+    placeholderSnapshot.developmentSummary.mainSupportNeed = placeholder;
+    expectInvalid(placeholderSnapshot, /developmentSummary\.mainSupportNeed/);
+  }
+
+  const genericSummary = clone(valid);
+  genericSummary.developmentSummary.headline = "Ovaj izvještaj prikazuje razvojni profil.";
+  expectInvalid(genericSummary, /developmentSummary\.headline.*generic IDP filler/i);
+
+  const duplicateSummaryFields = clone(valid);
+  duplicateSummaryFields.developmentSummary.usageNote =
+    duplicateSummaryFields.developmentSummary.overallPattern;
+  expectInvalid(duplicateSummaryFields, /developmentSummary\.usageNote.*developmentSummary\.overallPattern/);
+
+  const duplicateContributionSignals = clone(valid);
+  duplicateContributionSignals.developmentSummary.strongestContributionSignals = [
+    "Jasan dogovor o prioritetima pomaže da osoba ranije pokaže stabilan doprinos.",
+    "Jasan dogovor o prioritetima pomaže da osoba ranije pokaže stabilan doprinos.",
+  ];
+  expectInvalid(
+    duplicateContributionSignals,
+    /developmentSummary\.strongestContributionSignals\[1\].*Duplicate narrative text/i,
+  );
+
   const emptyOnboardingFocus = clone(valid);
   emptyOnboardingFocus.onboardingPlan.first7Days.focus = " ";
   expectInvalid(emptyOnboardingFocus, /onboardingPlan\.first7Days\.focus/);
@@ -235,9 +260,52 @@ function main() {
   forbiddenNumericFitScoreWording.developmentSummary.mainSupportNeed = "Overall fit score: 82/100.";
   expectInvalid(forbiddenNumericFitScoreWording, /forbiddenText/);
 
+  const unsafeOverclaim = clone(valid);
+  unsafeOverclaim.managerWatchpoints[0].suggestedManagerResponse =
+    "Ovaj rezultat sigurno pokazuje da osoba uvijek mora raditi samo uz strogu kontrolu.";
+  expectInvalid(unsafeOverclaim, /unsafe or overclaiming IDP assertion/i);
+
   const missingInterpretationLimits = clone(valid);
   missingInterpretationLimits.interpretationLimits = [];
   expectInvalid(missingInterpretationLimits, /interpretationLimits/);
+
+  const duplicateInterpretationLimits = clone(valid);
+  duplicateInterpretationLimits.interpretationLimits = [
+    "Izvještaj je razvojni radni dokument i signale treba validirati kroz razgovor i radni kontekst.",
+    "Izvještaj je razvojni radni dokument i signale treba validirati kroz razgovor i radni kontekst.",
+  ];
+  expectInvalid(duplicateInterpretationLimits, /interpretationLimits\[1\].*Duplicate narrative text/i);
+
+  const duplicateRiskSubfields = clone(valid);
+  duplicateRiskSubfields.developmentRisks[0].whyItMatters =
+    duplicateRiskSubfields.developmentRisks[0].possibleBlocker;
+  expectInvalid(duplicateRiskSubfields, /developmentRisks\[0\]\.whyItMatters.*possibleBlocker/i);
+
+  const statementQuestion = clone(valid);
+  statementQuestion.oneOnOneGuidance[0].question =
+    "Osoba treba opisati kada najlakše održava fokus u novoj ulozi.";
+  expectInvalid(statementQuestion, /oneOnOneGuidance\[0\]\.question.*question-shaped/i);
+
+  const validDistinctArrays = clone(valid);
+  validDistinctArrays.developmentSummary.strongestContributionSignals = [
+    "Rano razjašnjen standard rada pomaže da osoba pokaže stabilan ritam doprinosa.",
+    "Dogovoren feedback ritam pomaže da razvojni signal ne ostane samo početna pretpostavka.",
+  ];
+  validDistinctArrays.contributionPattern.bestConditions = [
+    "Najbolje funkcioniše kada su prioriteti, odgovornosti i kriteriji uspjeha jasno povezani.",
+    "Lakše doprinosi kada postoji prostor za autonomiju uz dovoljno brz pristup kontekstu.",
+  ];
+  validDistinctArrays.interpretationLimits = [
+    "Izvještaj je razvojni radni dokument i signale treba validirati kroz razgovor i radni kontekst.",
+    "Zaključke treba povezati sa stvarnim ponašanjem u ulozi, menadžerskim opažanjem i feedbackom.",
+  ];
+  const validDistinctArraysResult =
+    validateIndividualDevelopmentProfileSnapshot(validDistinctArrays);
+  assert.equal(
+    validDistinctArraysResult.ok,
+    true,
+    validDistinctArraysResult.ok ? undefined : validDistinctArraysResult.errors.join(" | "),
+  );
 
   const legacySnapshot = clone(valid);
   legacySnapshot.onboardingAndDevelopmentPlan = {
