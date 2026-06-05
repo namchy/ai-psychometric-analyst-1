@@ -101,6 +101,10 @@ const completedSummarySource = fs.readFileSync(
   path.join(projectRoot, "components/assessment/completed-assessment-summary.tsx"),
   "utf8",
 );
+const readyAiSummaryHeadline =
+  "AI SUMMARY HEADLINE: Različiti izvori motivacije čine jedinstven obrazac ovog fixturea.";
+const readyAiSummaryParagraph =
+  "AI SUMMARY PARAGRAPH: Ovaj jedinstveni fixture pasus mora ostati neizmijenjen u glavnoj summary zoni.";
 
 const mwmsRenderOutput = renderToStaticMarkup(
   React.createElement(CompletedAssessmentSummary, {
@@ -162,9 +166,8 @@ const mwmsAiRenderOutput = renderToStaticMarkup(
         audience: "participant",
         title: "Radna motivacija",
         summary: {
-          headline: "Tvoj profil pokazuje kombinaciju različitih izvora radne motivacije.",
-          paragraph:
-            "Ovaj izvještaj čita šest već izračunatih skala kao profil, bez ukupnog rezultata ili presude.",
+          headline: readyAiSummaryHeadline,
+          paragraph: readyAiSummaryParagraph,
         },
         motivation_pattern: {
           autonomous:
@@ -266,6 +269,16 @@ assert.equal(completedSummarySource.includes("Profil motivacije"), true);
 assert.equal(completedSummarySource.includes("Kako čitati profil motivacije"), true);
 assert.equal(completedSummarySource.includes("Napomena o interpretaciji"), true);
 assert.equal(completedSummarySource.includes("Naredni korak"), true);
+assert.doesNotMatch(
+  completedSummarySource,
+  /from\s+["'][^"']*(?:mwms[^"']*(?:provider|openai|lifecycle|worker|scheduler)|app\/actions|supabase)[^"']*["']/i,
+);
+assert.doesNotMatch(completedSummarySource, /validateMwmsParticipantReportV1/);
+assert.doesNotMatch(
+  completedSummarySource,
+  /\b(?:generateMwms|processMwms|enqueueMwms|createSupabaseClient|createSupabaseAdminClient)\s*\(/,
+);
+assert.doesNotMatch(completedSummarySource, /\.from\(|\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 assert.equal(
   completedSummarySource.includes("!isMwmsResults && bigFiveReport && topInsights.length > 0"),
   true,
@@ -312,26 +325,38 @@ for (const expectedText of [
 for (const expectedText of [
   "PARTICIPANT INSIGHT",
   "Sažetak motivacijskog profila",
-  "Profil u jednoj rečenici",
-  "Šta te najviše pokreće",
-  "Šta dodatno pomaže",
-  "Mogući rizik",
   "Šta ovaj obrazac znači u radu",
   "Ključni uvidi",
   "Na šta obratiti pažnju",
   "Razvojne smjernice",
   "Pitanja za refleksiju",
   "Interpretacijska napomena",
-  "Tvoji najizraženiji izvori motivacije su",
   "tvom radnom ponašanju",
-  "Odgovornost, lični standardi i želja da ispuniš očekivanja",
-  "Interes za posao i osjećaj da tvoj doprinos drugi prepoznaju",
-  "Dio motivacije može preći u pritisak ako zadaci nemaju dovoljno ličnog smisla",
+  readyAiSummaryHeadline,
+  readyAiSummaryParagraph,
 ]) {
   assert.equal(
     mwmsAiRenderOutput.includes(expectedText),
     true,
     `Expected ready MWMS AI render output to include: ${expectedText}`,
+  );
+}
+
+for (const removedReadyAiSummaryText of [
+  "Tvoji najizraženiji izvori motivacije su",
+  "Tvoj profil motivacije djeluje uravnoteženo",
+  "Profil u jednoj rečenici",
+  "Šta te najviše pokreće",
+  "Šta dodatno pomaže",
+  "Mogući rizik",
+  "Odgovornost, lični standardi i želja da ispuniš očekivanja",
+  "Interes za posao i osjećaj da tvoj doprinos drugi prepoznaju",
+  "Dio motivacije može preći u pritisak ako zadaci nemaju dovoljno ličnog smisla",
+]) {
+  assert.equal(
+    mwmsAiRenderOutput.includes(removedReadyAiSummaryText),
+    false,
+    `Expected ready MWMS AI summary to exclude frontend-authored text: ${removedReadyAiSummaryText}`,
   );
 }
 

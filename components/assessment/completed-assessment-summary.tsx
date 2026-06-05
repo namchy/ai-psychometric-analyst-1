@@ -128,11 +128,6 @@ const TECHNICAL_REPORT_TEXT_MARKERS = new Set(["paragraphs_placeholder_removed"]
 
 type MwmsBandLabel = "Nisko" | "Umjereno" | "Izraženo" | "Vrlo izraženo";
 
-type MwmsSummarySignal = {
-  title: string;
-  value: string;
-};
-
 function getMwmsBandLabel(score: number): MwmsBandLabel {
   if (score < 2.5) {
     return "Nisko";
@@ -202,41 +197,6 @@ function getMwmsDimensionMicroDescription(dimensionKey: string): string {
     default:
       return "";
   }
-}
-
-function formatMwmsDriverPhrase(dimensionKey: string): string {
-  switch (dimensionKey) {
-    case "external_social":
-      return "očekivanja drugih";
-    case "external_material":
-      return "sigurnost i vanjske nagrade";
-    case "introjected":
-      return "unutrašnji standardi";
-    case "identified":
-      return "osjećaj odgovornosti";
-    case "intrinsic":
-      return "lični interes za posao";
-    case "amotivation":
-      return "nizak osjećaj smisla i usmjerenja";
-    default:
-      return formatMwmsShortDimensionLabel(dimensionKey).toLocaleLowerCase("bs");
-  }
-}
-
-function formatBsList(items: string[]): string {
-  if (items.length === 0) {
-    return "";
-  }
-
-  if (items.length === 1) {
-    return items[0] ?? "";
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} i ${items[1]}`;
-  }
-
-  return `${items.slice(0, -1).join(", ")} i ${items[items.length - 1]}`;
 }
 
 function normalizeMwmsCopy(text: string): string {
@@ -335,61 +295,6 @@ function sanitizeTechnicalReportText(text: string | null | undefined): string | 
   }
 
   return trimmed;
-}
-
-function getMwmsSummaryHeadline(dimensionCards: DimensionViewModel[]): string {
-  const leadingDrivers = dimensionCards
-    .slice()
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 3)
-    .map((dimension) => formatMwmsDriverPhrase(dimension.key));
-
-  if (leadingDrivers.length === 0) {
-    return "Tvoj profil motivacije prikazuje više različitih izvora angažmana u radu.";
-  }
-
-  return `Tvoji najizraženiji izvori motivacije su ${formatBsList(leadingDrivers)}.`;
-}
-
-function getMwmsSummaryOneLiner(dimensionCards: DimensionViewModel[]): string {
-  const rankedDimensions = dimensionCards.slice().sort((left, right) => right.score - left.score);
-  const leadingDimensions = rankedDimensions.slice(0, 2).map((dimension) => dimension.key);
-  const hasControlledEmphasis = leadingDimensions.some((dimension) =>
-    ["external_social", "external_material", "introjected"].includes(dimension),
-  );
-  const hasIntrinsicSignal = leadingDimensions.includes("intrinsic");
-  const hasIdentifiedSignal = leadingDimensions.includes("identified");
-
-  if (hasControlledEmphasis && hasIntrinsicSignal) {
-    return "Tvoj profil motivacije djeluje uravnoteženo, uz nešto izraženiji uticaj unutrašnjeg pritiska i društvenih očekivanja.";
-  }
-
-  if (hasControlledEmphasis && hasIdentifiedSignal) {
-    return "Tvoj profil motivacije djeluje uravnoteženo, uz nešto izraženiji uticaj unutrašnjih standarda i osjećaja odgovornosti.";
-  }
-
-  if (hasControlledEmphasis) {
-    return "Tvoj profil motivacije djeluje uravnoteženo, uz nešto izraženiji uticaj unutrašnjih standarda i vanjskih očekivanja.";
-  }
-
-  return "Tvoj profil motivacije djeluje uravnoteženo, uz vidljiv spoj ličnog interesa, odgovornosti i smisla u poslu.";
-}
-
-function getMwmsSummarySignals(dimensionCards: DimensionViewModel[]): MwmsSummarySignal[] {
-  return [
-    {
-      title: "Šta te najviše pokreće",
-      value: "Odgovornost, lični standardi i želja da ispuniš očekivanja",
-    },
-    {
-      title: "Šta dodatno pomaže",
-      value: "Interes za posao i osjećaj da tvoj doprinos drugi prepoznaju",
-    },
-    {
-      title: "Mogući rizik",
-      value: "Dio motivacije može preći u pritisak ako zadaci nemaju dovoljno ličnog smisla",
-    },
-  ];
 }
 
 function isBigFiveReport(report: unknown): report is DetailedReportV1 {
@@ -3542,9 +3447,6 @@ export function CompletedAssessmentSummary({
   const mwmsResultsNote = isMwmsResults
     ? "Ovaj rezultat prikazuje tvoj motivacijski profil u radnom kontekstu i služi kao uvid, ne kao presuda."
     : null;
-  const mwmsSummaryHeadline = isMwmsResults ? getMwmsSummaryHeadline(dimensionCards) : null;
-  const mwmsSummaryOneLiner = isMwmsResults ? getMwmsSummaryOneLiner(dimensionCards) : null;
-  const mwmsSummarySignals = isMwmsResults ? getMwmsSummarySignals(dimensionCards) : [];
   const shouldShowMwmsAiReport = isMwmsResults && hasResults && Boolean(mwmsParticipantReport);
   const shouldShowMwmsGuidance = isMwmsResults && hasResults && !mwmsParticipantReport;
   const primaryMetaCount = [participantName, organizationName].filter(Boolean).length;
@@ -3760,33 +3662,11 @@ export function CompletedAssessmentSummary({
 
           <div className="stack-sm">
             <p className="text-[18px] font-semibold leading-[1.45] text-slate-900 sm:text-[19px]">
-              {mwmsSummaryHeadline}
+              {mwmsParticipantReport.summary.headline}
             </p>
-
-            <div className="grid gap-3.5 sm:grid-cols-3">
-              {mwmsSummarySignals.map((signal) => (
-                <div
-                  key={signal.title}
-                  className="rounded-[18px] border border-[rgba(148,163,184,0.2)] bg-[rgba(255,255,255,0.82)] px-4 py-4"
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    {signal.title}
-                  </p>
-                  <p className="mt-2 text-[14px] leading-[1.62] text-slate-800">
-                    {signal.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-[18px] border border-[rgba(226,232,240,0.88)] bg-[rgba(255,255,255,0.76)] px-4 py-3.5">
-              <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                Profil u jednoj rečenici
-              </p>
-              <p className="mt-2 text-[14px] leading-[1.68] text-slate-600">
-                {mwmsSummaryOneLiner}
-              </p>
-            </div>
+            <p className="max-w-3xl text-[14px] leading-[1.68] text-slate-600">
+              {mwmsParticipantReport.summary.paragraph}
+            </p>
           </div>
         </section>
       ) : null}
