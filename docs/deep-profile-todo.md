@@ -50,7 +50,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
-| P0        | AI segment-aware report content architecture for individual reports | U toku / IDP, MWMS participant, Legacy Big Five, and SAFRAN participant renderer authority cleanup completed | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: validator quality guardrails for duplicate text, generic text, mapping mismatch, frontend-authored interpretation risk, and score-derived fallback narrative risk. Provider prompt updates and legacy snapshot strategy remain separate later slices. |
+| P0        | AI segment-aware report content architecture for individual reports | U toku / renderer authority cleanup completed for IDP, MWMS participant, Legacy Big Five, and SAFRAN participant; MWMS/Legacy/SAFRAN renderer guardrail tests hardened | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: contract/validator quality guardrails, starting with MWMS participant or IDP duplicate/generic validator hardening. Provider prompt updates and legacy snapshot strategy remain separate later slices. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -6529,6 +6529,58 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 ### 2026-06-05 — SAFRAN participant report authority cleanup completed
 
 Completed SAFRAN participant ready-AI direct mapping cleanup and non-ready neutral fallback cleanup. Ready-AI SAFRAN now renders domain interpretations, cognitive signals, reading guide, and next-step content directly from report fields. Non-ready/invalid SAFRAN now shows score-only data with neutral narrative-unavailable messaging instead of a personalized deterministic report. User-facing fallback copy does not mention AI. The core report-authority rule was reinforced: frontend may render, organize, label, and format; it must not generate psychological, HR, cognitive, or domain interpretation. Recommended next focus: validator/test quality guardrails for duplicate text, generic text, mapping mismatch, direct AI field rendering, and score-derived fallback narrative risk.
+
+### 2026-06-05 — Renderer authority guardrail tests hardened for MWMS, Legacy Big Five, and SAFRAN
+
+Added test-only regression guardrails for the completed renderer-authority cleanup work. MWMS and Legacy Big Five renderer tests now assert direct/exact-once field mapping and block return of frontend-authored summaries, rewrites, and score-derived narrative fallbacks. SAFRAN display tests now assert direct/exact-once ready-AI mapping and safe score-only fallback behavior for non-ready/failed states. No production code, provider, OpenAI prompt, contract, validator, scoring, backend, DB, route, lifecycle, worker, scheduler, or report generation behavior was changed. Recommended next focus: contract/validator quality guardrails for duplicate text, generic text, repeated fields, unsafe claims, and mapping-quality risks.
+
+### Completion note — MWMS + Legacy Big Five renderer authority guardrail hardening
+
+* Added test-only renderer authority guardrails in `scripts/test-mwms-report-display.cjs`.
+* MWMS ready-AI fixture now asserts direct/exact-once rendering for provider-authored fields:
+
+  * `summary.headline`
+  * `summary.paragraph`
+  * `motivation_pattern.*`
+  * `key_observations[]`
+  * `possible_tensions[]`
+  * `development_suggestions[]`
+  * `reflection_questions[]`
+  * `interpretation_note`
+* MWMS summary headline and paragraph are asserted in the ready-AI summary zone, not merely anywhere in rendered HTML.
+* Existing negative checks continue to block old score-derived summary text, hardcoded signal cards, and `normalizeMwmsCopy()` rewrite output.
+* Legacy Big Five rendered fixture now uses unique marker texts and asserts:
+
+  * direct/exact-once rendering of `summary.headline` and `summary.overview` in the conclusion zone
+  * direct/exact-once rendering of `dimension_insights` fields
+  * neutral unavailable state for missing dimension insight
+  * separate direct rendering of recommendation `title`, `description`, and `action`
+* Legacy guardrails prevent return of frontend-generated top insights, score-band/rank fallback narrative, and frontend-authored conclusion text.
+* This was a test-only slice. Production code was not changed.
+
+### Completion note — SAFRAN participant renderer/display guardrail hardening
+
+* Added test-only SAFRAN participant display guardrails in `scripts/test-safran-participant-report-display.cjs`.
+* Ready-AI SAFRAN fixture now uses unique marker texts and asserts direct/exact-once rendering for:
+
+  * `domains[].interpretation`
+  * `cognitiveSignals.primarySignal`
+  * `cognitiveSignals.balanceNote`
+  * `cognitiveSignals.cautionSignal`
+  * `readingGuide.title`
+  * `readingGuide.bullets[]`
+  * `nextStep.title`
+  * `nextStep.body`
+* Section-slice assertions ensure `nextStep.body` is rendered only in the dedicated next-step section and is not remapped into signal/caution or reading-guide sections.
+* Score values and score bars remain asserted in ready-AI output.
+* Non-ready and failed/invalid fallback tests now guard score-only behavior:
+
+  * neutral pending/not-ready copy remains present
+  * support-oriented failed/invalid copy remains present
+  * fallback output does not contain ready-AI marker report texts
+  * fallback output does not expose user-facing technical labels such as `AI generated`, `vještačka inteligencija`, or `vještačke inteligencije`
+  * fallback output does not restore personalized narrative/report-like sections
+* This was a test-only slice. Production code was not changed.
 
 ### 2026-06-05 — Individual report segment-authority cleanup: IDP, MWMS, Legacy Big Five
 
