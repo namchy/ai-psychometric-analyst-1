@@ -868,7 +868,11 @@ function SafranV1ResultsSummary({
                     {summarySection.overall.helper}
                   </span>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-slate-600">{summarySection.overall.summary}</p>
+                {summarySection.overall.summary ? (
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    {summarySection.overall.summary}
+                  </p>
+                ) : null}
               </article>
             </div>
           </section>
@@ -915,7 +919,24 @@ function SafranV1ResultsSummary({
               <h3>{signalsSection.title}</h3>
             </div>
             <article className="rounded-[20px] border border-[rgba(148,163,184,0.14)] bg-[rgba(255,255,255,0.84)] px-4 py-4 shadow-[0_16px_34px_-36px_rgba(15,23,42,0.3)] sm:px-5">
-              <p className="text-sm leading-7 text-slate-700">{signalsSection.body}</p>
+              {signalsSection.body ? (
+                <p className="text-sm leading-7 text-slate-700">{signalsSection.body}</p>
+              ) : null}
+              {signalsSection.segments && signalsSection.segments.length > 0 ? (
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {signalsSection.segments.map((segment) => (
+                    <section
+                      key={segment.label}
+                      className="rounded-[16px] border border-[rgba(148,163,184,0.14)] bg-[rgba(248,250,252,0.88)] px-4 py-3"
+                    >
+                      <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        {segment.label}
+                      </h4>
+                      <p className="mt-3 text-sm leading-6 text-slate-700">{segment.body}</p>
+                    </section>
+                  ))}
+                </div>
+              ) : null}
               {signalsSection.items.length > 0 ? (
                 <div className="mt-4 rounded-[16px] border border-[rgba(148,163,184,0.14)] bg-[rgba(248,250,252,0.88)] px-4 py-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Obrati pažnju</p>

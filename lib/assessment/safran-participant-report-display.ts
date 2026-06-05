@@ -1,6 +1,5 @@
 import {
   parseSafranAiScoreLabel,
-  validateSafranParticipantAiReport,
   type SafranParticipantAiReport,
 } from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
@@ -57,6 +56,10 @@ export type SafranParticipantReportSignalsSection = {
   title: string;
   body: string;
   items: string[];
+  segments?: Array<{
+    label: string;
+    body: string;
+  }>;
 };
 
 export type SafranParticipantReportReadingGuideSection = {
@@ -95,9 +98,6 @@ const SAFRAN_NEXT_STEPS: SafranParticipantReportNextStepSection["items"] = [
   "Pogledaj u kojim oblastima si imao ili imala stabilniji ritam rješavanja, a gdje je trebalo više provjere ili vremena.",
   "Za potpuniju sliku, ove rezultate poveži s iskustvom, interesima i razgovorom o tome kako pristupaš problemskim zadacima.",
 ] as const;
-
-const SAFRAN_AI_OVERALL_CARD_SUMMARY =
-  "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.";
 
 function buildSafranParticipantDomainSummary(
   scoreKey: SafranParticipantReportDomainRow["scoreKey"],
@@ -143,83 +143,12 @@ function normalizeSafranDisplayText(value: string): string {
     .replace(/\bne ulaze u scoring\b/gi, "ne ulaze u rezultat");
 }
 
-function uniqueNonEmptyTexts(values: Array<string | null | undefined>): string[] {
-  const seen = new Set<string>();
-  const items: string[] = [];
-
-  for (const value of values) {
-    const normalized = value?.trim();
-
-    if (!normalized) {
-      continue;
-    }
-
-    const key = normalized.toLowerCase();
-
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    items.push(normalizedSafranDisplayText(normalized));
-  }
-
-  return items;
-}
-
 function normalizedSafranDisplayText(value: string): string {
   return normalizeSafranDisplayText(value.trim());
 }
 
-function softenSafranCautionText(value: string): string {
-  return normalizedSafranDisplayText(value).replace(
-    /^glavni oprez je da\s+/i,
-    "",
-  );
-}
-
-function buildSafranCautionSentence(value: string): string {
-  const softened = softenSafranCautionText(value);
-
-  if (!softened) {
-    return "";
-  }
-
-  if (/numerički kontrast/i.test(softened)) {
-    return "Numerički dio treba čitati oprezno jer jedan izdvojen rezultat ne opisuje tvoj ukupni način rješavanja različitih zadataka.";
-  }
-
-  return `Pritom je korisno imati na umu da ${softened.charAt(0).toLowerCase()}${softened.slice(1)}`;
-}
-
-function buildSafranAiSignalParagraph(report: SafranParticipantAiReport): string {
-  const parts = uniqueNonEmptyTexts([
-    report.cognitiveSignals.primarySignal,
-    report.cognitiveSignals.balanceNote,
-  ]);
-  const caution = buildSafranCautionSentence(report.cognitiveSignals.cautionSignal);
-
-  if (caution) {
-    parts.push(caution);
-  }
-
-  return parts.join(" ");
-}
-
-function buildSafranAiSignalReflectionItems(report: SafranParticipantAiReport): string[] {
-  return uniqueNonEmptyTexts([report.nextStep.body]).slice(0, 2);
-}
-
 function normalizeSafranReadingGuideItems(items: readonly string[]): string[] {
   return items.map((item) => normalizedSafranDisplayText(item));
-}
-
-function normalizeSafranCtaLabel(label?: string | null): string | undefined {
-  if (!label?.trim()) {
-    return undefined;
-  }
-
-  return "Nazad na pregled procjene";
 }
 
 function normalizeTitle(testName?: string | null): string {
@@ -366,23 +295,6 @@ export function buildSafranParticipantReportDisplayFromAiReport(
   report: SafranParticipantAiReport,
 ): SafranParticipantReportDisplay {
   const overallScore = parseScoreLabel(report.summary.scoreLabel, 54);
-  const verbalScore = parseScoreLabel(
-    report.domains.find((domain) => domain.code === "verbal")?.scoreLabel ?? "",
-    18,
-  ).score;
-  const figuralScore = parseScoreLabel(
-    report.domains.find((domain) => domain.code === "figural")?.scoreLabel ?? "",
-    18,
-  ).score;
-  const numericalScore = parseScoreLabel(
-    report.domains.find((domain) => domain.code === "numeric")?.scoreLabel ?? "",
-    18,
-  ).score;
-  const domainScores: SafranCandidateInterpretationScores = {
-    verbal_score: verbalScore,
-    figural_score: figuralScore,
-    numerical_series_score: numericalScore,
-  };
   const domainRows: SafranParticipantReportDomainsSection["rows"] = report.domains.map(
     (domain) => {
       const score = parseScoreLabel(domain.scoreLabel, 18);
@@ -399,7 +311,7 @@ export function buildSafranParticipantReportDisplayFromAiReport(
         score: score.score,
         maxPossible: score.maxPossible,
         helper: domain.bandLabel,
-        summary: buildSafranParticipantDomainSummary(scoreKey, domainScores),
+        summary: domain.interpretation,
       };
     },
   ) as SafranParticipantReportDomainsSection["rows"];
@@ -421,7 +333,7 @@ export function buildSafranParticipantReportDisplayFromAiReport(
           score: overallScore.score,
           maxPossible: overallScore.maxPossible,
           helper: report.summary.bandLabel,
-          summary: SAFRAN_AI_OVERALL_CARD_SUMMARY,
+          summary: "",
         },
       },
       {
@@ -431,20 +343,34 @@ export function buildSafranParticipantReportDisplayFromAiReport(
       },
       {
         id: "signals",
-        title: "Kognitivni signal",
-        body: buildSafranAiSignalParagraph(report),
-        items: buildSafranAiSignalReflectionItems(report),
+        title: report.cognitiveSignals.title,
+        body: "",
+        items: [],
+        segments: [
+          {
+            label: "Glavni signal",
+            body: report.cognitiveSignals.primarySignal,
+          },
+          {
+            label: "Balans rezultata",
+            body: report.cognitiveSignals.balanceNote,
+          },
+          {
+            label: "Oprez pri čitanju",
+            body: report.cognitiveSignals.cautionSignal,
+          },
+        ],
       },
       {
         id: "reading_guide",
-        title: "Kako čitati ovaj rezultat",
-        items: normalizeSafranReadingGuideItems(report.readingGuide.bullets),
+        title: report.readingGuide.title,
+        items: report.readingGuide.bullets,
       },
       {
         id: "next_step",
-        title: "Korak za razmišljanje",
+        title: report.nextStep.title,
         body: report.nextStep.body,
-        ctaLabel: normalizeSafranCtaLabel(report.nextStep.ctaLabel),
+        ctaLabel: report.nextStep.ctaLabel,
       },
     ],
   };
@@ -457,14 +383,10 @@ export function resolveSafranParticipantReportDisplay({
 }: {
   scores: SafranCandidateInterpretationScores;
   testName?: string | null;
-  aiReport?: unknown;
+  aiReport?: SafranParticipantAiReport | null;
 }): SafranParticipantReportDisplay {
-  const aiValidation = aiReport
-    ? validateSafranParticipantAiReport(aiReport)
-    : null;
-
-  if (aiValidation?.ok) {
-    return buildSafranParticipantReportDisplayFromAiReport(aiValidation.value);
+  if (aiReport) {
+    return buildSafranParticipantReportDisplayFromAiReport(aiReport);
   }
 
   return buildSafranParticipantReportDisplay({

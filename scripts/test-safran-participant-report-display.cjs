@@ -7,6 +7,14 @@ const { renderToStaticMarkup } = require("react-dom/server");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
+const displaySource = fs.readFileSync(
+  path.join(projectRoot, "lib/assessment/safran-participant-report-display.ts"),
+  "utf8",
+);
+const rendererSource = fs.readFileSync(
+  path.join(projectRoot, "components/assessment/completed-assessment-summary.tsx"),
+  "utf8",
+);
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const nextLinkStubPath = path.join(__dirname, "test-stub-next-link.cjs");
 const nextFontGoogleStubPath = path.join(__dirname, "test-stub-next-font-google.cjs");
@@ -116,7 +124,12 @@ function flattenDisplayTexts(display) {
             ...section.rows.flatMap((row) => [row.label, row.helper, row.summary]),
           ];
         case "signals":
-          return [section.title, section.body, ...section.items];
+          return [
+            section.title,
+            section.body,
+            ...section.items,
+            ...(section.segments ?? []).flatMap((segment) => [segment.label, segment.body]),
+          ];
         case "reading_guide":
           return [section.title, ...section.items];
         case "next_step":
@@ -126,6 +139,10 @@ function flattenDisplayTexts(display) {
       }
     }),
   ].filter(Boolean);
+}
+
+function countOccurrences(value, expected) {
+  return value.split(expected).length - 1;
 }
 
 const display = buildSafranParticipantReportDisplay({
@@ -225,21 +242,29 @@ const aiDisplay = resolveSafranParticipantReportDisplay({
 assert.equal(aiDisplay.header.title, "SAFRAN");
 assert.equal(aiDisplay.header.statusLabel, "Završeno");
 assert.equal(aiDisplay.sections[0].overall.helper, aiReport.summary.bandLabel);
-assert.equal(aiDisplay.sections[2].title, "Kognitivni signal");
-assert.equal(aiDisplay.sections[3].title, "Kako čitati ovaj rezultat");
-assert.equal(aiDisplay.sections[4].title, "Korak za razmišljanje");
+assert.equal(aiDisplay.sections[2].title, aiReport.cognitiveSignals.title);
+assert.equal(aiDisplay.sections[3].title, aiReport.readingGuide.title);
+assert.equal(aiDisplay.sections[4].title, aiReport.nextStep.title);
 assert.equal(
   aiDisplay.sections[0].body,
   aiReport.summary.interpretation,
 );
-assert.notEqual(
-  aiDisplay.sections[0].overall.summary,
-  aiReport.summary.interpretation,
+assert.equal(aiDisplay.sections[0].overall.summary, "");
+assert.deepEqual(
+  aiDisplay.sections[1].rows.map((row) => row.summary),
+  aiReport.domains.map((domain) => domain.interpretation),
 );
-assert.equal(
-  aiDisplay.sections[0].overall.summary,
-  "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.",
+assert.deepEqual(
+  aiDisplay.sections[2].segments.map((segment) => segment.body),
+  [
+    aiReport.cognitiveSignals.primarySignal,
+    aiReport.cognitiveSignals.balanceNote,
+    aiReport.cognitiveSignals.cautionSignal,
+  ],
 );
+assert.deepEqual(aiDisplay.sections[3].items, aiReport.readingGuide.bullets);
+assert.equal(aiDisplay.sections[4].body, aiReport.nextStep.body);
+assert.equal(aiDisplay.sections[4].ctaLabel, aiReport.nextStep.ctaLabel);
 
 const fallbackDisplay = resolveSafranParticipantReportDisplay({
   scores: {
@@ -249,11 +274,6 @@ const fallbackDisplay = resolveSafranParticipantReportDisplay({
     cognitive_composite_v1: 29,
   },
   testName: "SAFRAN",
-  aiReport: {
-    reportType: "safran_participant_ai_report_v1",
-    testSlug: "safran_v1",
-    audience: "participant",
-  },
 });
 assert.equal(fallbackDisplay.header.statusLabel, undefined);
 assert.equal(fallbackDisplay.sections[0].title, "Sažetak rezultata");
@@ -407,52 +427,41 @@ assert.equal(
   aiRenderOutput.includes("umjeren ukupni broj tačnih odgovora"),
   true,
 );
+for (const domainInterpretation of [
+  "Verbalni dio ovdje pokazuje da su pravila u zadacima s riječima i pojmovima bila brzo prepoznatljiva i stabilno praćena.",
+  "Figuralni dio prati sličan obrazac kao verbalni: odnosi među oblicima i prostorna pravila ovdje su bili dosljedno uhvaćeni.",
+  "Numerički dio se ovdje jasno odvaja od verbalno-figuralnog obrasca i traži oprezniju interpretaciju.",
+]) {
+  assert.equal(
+    countOccurrences(aiRenderOutput, domainInterpretation),
+    1,
+    `Expected ready-AI domain interpretation exactly once: ${domainInterpretation}`,
+  );
+}
 assert.equal(
   aiRenderOutput.includes(
-    "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.",
-  ),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes(
-    "Verbalni dio govori o tome kako si u ovom setu zadataka pratio ili pratila značenja pojmova i odnose među njima.",
-  ),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes(
-    "Figuralni rezultat ukazuje na prepoznavanje obrazaca, odnosa i promjena među oblicima u ovom setu zadataka.",
-  ),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes(
-    "Numerički dio opisuje kako si u ovom setu zadataka pratio ili pratila pravila u nizovima i odnose među elementima.",
-  ),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes(
-    "Numerički dio se ovdje jasno odvaja od verbalno-figuralnog obrasca i traži oprezniju interpretaciju.",
+    "Primarni signal je jasan odnos u kojem verbalni i figuralni dio drže stabilniji obrazac tačnosti nego numerički dio. Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao povezan obrazac iz istog pokušaja.",
   ),
   false,
 );
-assert.equal(
-  aiRenderOutput.includes(
-    "Kada čitaš ovaj obrazac, korisno je izdvojiti gdje su pravila bila odmah uočljiva, a gdje je numerički format tražio više provjere, vremena ili drugačiji pristup.",
-  ),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes("Kognitivni signal"),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes(
-    "Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao povezan obrazac iz istog pokušaja.",
-  ),
-  true,
-);
+for (const scoreDerivedDomainText of [
+  "Verbalni dio govori o tome kako si u ovom setu zadataka pratio ili pratila značenja pojmova i odnose među njima.",
+  "Figuralni rezultat ukazuje na prepoznavanje obrazaca, odnosa i promjena među oblicima u ovom setu zadataka.",
+  "Numerički dio opisuje kako si u ovom setu zadataka pratio ili pratila pravila u nizovima i odnose među elementima.",
+]) {
+  assert.equal(aiRenderOutput.includes(scoreDerivedDomainText), false);
+}
+for (const cognitiveSignal of [
+  "Primarni signal je jasan odnos u kojem verbalni i figuralni dio drže stabilniji obrazac tačnosti nego numerički dio.",
+  "Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao povezan obrazac iz istog pokušaja.",
+  "Glavni oprez je da se numerički kontrast ne pretvori u zaključak o osobi, jer je taj format mogao tražiti više provjere i drugačiju strategiju.",
+]) {
+  assert.equal(
+    countOccurrences(aiRenderOutput, cognitiveSignal),
+    1,
+    `Expected ready-AI cognitive signal exactly once: ${cognitiveSignal}`,
+  );
+}
 assert.equal(
   aiRenderOutput.includes(
     "Rezultat ispod sažima učinak u ovom pokušaju, a puni smisao dobija tek zajedno s pregledom po oblastima.",
@@ -462,9 +471,9 @@ assert.equal(
 for (const title of [
   "Sažetak rezultata",
   "Pregled po oblastima",
-  "Kognitivni signal",
-  "Kako čitati ovaj rezultat",
-  "Korak za razmišljanje",
+  "Profil kognitivnih signala",
+  "Kako čitati ove rezultate",
+  "Sljedeći korak",
 ]) {
   assert.equal(
     aiRenderOutput.includes(title),
@@ -472,61 +481,48 @@ for (const title of [
     `Expected SAFRAN AI renderer output to include section title ${title}.`,
   );
 }
-assert.equal(
-  aiRenderOutput.includes("Kognitivni signali"),
-  false,
-);
-assert.equal(
-  aiRenderOutput.includes("Oprez pri čitanju"),
-  false,
-);
-assert.equal(
-  aiRenderOutput.includes("Kako posmatrati obrazac"),
-  false,
-);
-assert.equal(
-  aiRenderOutput.includes("Najizraženiji signal"),
-  false,
-);
-assert.equal(
-  aiRenderOutput.includes("Za razmišljanje"),
-  false,
-);
-assert.equal(
-  aiRenderOutput.includes("Obrati pažnju"),
-  true,
-);
+assert.equal(aiRenderOutput.includes("Glavni signal"), true);
+assert.equal(aiRenderOutput.includes("Balans rezultata"), true);
+assert.equal(aiRenderOutput.includes("Oprez pri čitanju"), true);
+assert.equal(aiRenderOutput.includes("Obrati pažnju"), false);
 assert.equal(
   aiRenderOutput.includes(
     "Numerički dio treba čitati oprezno jer jedan izdvojen rezultat ne opisuje tvoj ukupni način rješavanja različitih zadataka.",
   ),
-  true,
+  false,
 );
+const nextStepBody =
+  "Kada čitaš ovaj obrazac, korisno je izdvojiti gdje su pravila bila odmah uočljiva, a gdje je numerički format tražio više provjere, vremena ili drugačiji pristup.";
+assert.equal(countOccurrences(aiRenderOutput, nextStepBody), 1);
+for (const readingGuideBullet of [
+  "Ovi rezultati ne predstavljaju mjeru opšte inteligencije.",
+  "Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.",
+  "Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.",
+  "SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.",
+  "Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.",
+]) {
+  assert.equal(countOccurrences(aiRenderOutput, readingGuideBullet), 1);
+}
 assert.equal(
   aiRenderOutput.includes(
-    "Kada čitaš ovaj obrazac, korisno je izdvojiti gdje su pravila bila odmah uočljiva, a gdje je numerički format tražio više provjere, vremena ili drugačiji pristup.",
+    "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.",
   ),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes("Practice pitanja"),
   false,
 );
-assert.equal(
-  aiRenderOutput.includes("scoring"),
-  false,
-);
-assert.equal(
-  aiRenderOutput.includes("Probna pitanja"),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes("ne ulaze u rezultat"),
-  true,
-);
-assert.equal(
-  aiRenderOutput.includes("Nazad na pregled procjene"),
-  true,
-);
+assert.equal(aiRenderOutput.includes("Nazad na pregled"), true);
+assert.equal(aiRenderOutput.includes("Nazad na pregled procjene"), false);
+
+assert.doesNotMatch(displaySource, /validateSafranParticipantAiReport/);
+for (const source of [displaySource, rendererSource]) {
+  assert.doesNotMatch(
+    source,
+    /from\s+["'][^"']*(?:provider|openai|lifecycle|worker|scheduler|app\/actions|supabase)[^"']*["']/i,
+  );
+  assert.doesNotMatch(
+    source,
+    /\b(?:generateSafran|processSafran|enqueueSafran|createSupabaseClient|createSupabaseAdminClient)\s*\(/,
+  );
+  assert.doesNotMatch(source, /\.from\(|\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+}
 
 console.log("SAFRAN participant report display tests passed.");
