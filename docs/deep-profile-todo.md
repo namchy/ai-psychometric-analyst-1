@@ -49,7 +49,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
-| P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
+| P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / UI targeting-control audit i foundation prije daljeg redesign-a | UI system / Product quality / Look and feel | Prije novih vizuelnih izmjena uraditi read-only audit postojećih UI standarda, tokena, shared komponenti i paralelnih stilskih slojeva; zatim definisati UI targeting/control layer koji podržava globalne, variant-level i single-instance izmjene kroz postojeći UI system. Ne uvoditi novi paralelni design system i ne raditi redesign-all. |
 | P0        | AI segment-aware report content architecture for individual reports | U toku / renderer authority cleanup and renderer guardrail tests completed for IDP, MWMS participant, Legacy Big Five, and SAFRAN; MWMS, IDP, and SAFRAN contract quality validators hardened | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: cross-renderer boundary import scan hardening, then provider prompt updates and legacy snapshot strategy as separate later slices. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
@@ -6138,6 +6138,36 @@ Razlog za sljedeći prioritet:
   5. Candidate dashboard polish.
   6. Assessment execution UX kasnije, kao high-risk zaseban talas.
 
+* **New decision — UI targeting/control layer prije daljeg redesign-a:**
+  * Prije novih vizuelnih izmjena treba prvo uraditi read-only audit postojećeg UI standarda i onoga što aplikacija već ima na raspolaganju.
+  * Ne uvoditi novi paralelni design system preko postojećeg `docs/deep-profile-ui-system.md`.
+  * Cilj je ojačati postojeći UI system kroz kontrolni sloj koji omogućava:
+    * globalne izmjene istog tipa elementa kroz design tokens i shared komponente
+    * variant-level izmjene kroz kontrolisane component variants
+    * single-instance izmjene kroz screen scope i stabilne target atribute
+  * `data-ui` se prihvata kao preporučeni targeting sloj za dizajnerski relevantne elemente, ali ne za svaki tehnički wrapper/div.
+  * `data-ui` treba koristiti za preciznu komunikaciju, browser inspect, UI smoke testove i buduće Codex targetiranje.
+  * `data-ui` ne smije postati poslovna logika i ne smije se koristiti za runtime business decisions.
+  * Za ponavljajuće report/kartične elemente dozvoljeni su dodatni atributi kao `data-report-slug`, `data-report-tone`, `data-scope` ili slični stabilni target metadata atributi kada smanjuju rizik pogrešnog targetiranja.
+  * UI targeting layer mora podržati oba slučaja:
+    * promjenu jednog element type-a globalno na svim ekranima
+    * promjenu samo jedne konkretne instance elementa na jednom ekranu bez uticaja na ostale instance
+  * Prvi implementation korak ne smije biti redesign, nego audit i mapiranje postojećeg stanja.
+
+* **Preporučeni sljedeći implementation slice: UI system audit + targeting foundation**
+  * Read-only audit postojećih UI standarda, komponenti, tokena i Tailwind patterna.
+  * Mapirati postojeće shared primitive/pattern komponente za button, card, badge, page shell, report card, empty state, navigation/header i status indicator.
+  * Mapirati postojeće paralelne vizuelne slojeve: dashboard primitive layer, legacy candidate/report CSS layer i inline assessment skin.
+  * Identifikovati gdje postoje tokeni/varijable, gdje su stilovi duplirani kroz Tailwind klase, a gdje nedostaje shared component.
+  * Predložiti minimalni `data-ui` naming standard za dizajnerski relevantne elemente.
+  * Predložiti global/variant/instance targeting model:
+    * global token
+    * shared component
+    * component variant
+    * screen scope
+    * single-instance target
+  * Bez code promjena u audit slice-u, osim ako korisnik naknadno eksplicitno odobri implementation slice.
+
 ### 5.20 Team Fit & Dynamics terminologija i MVP smjer
 
 * Zaključana su tri odvojena, ali povezana sloja:
@@ -6525,6 +6555,22 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 * Ne koristi se destruktivan repair bez prethodne potvrde.
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-05 — UI targeting/control layer decision
+
+- Zaključeno je da Deep Profile treba imati jedinstven UI kontrolni sistem za sve ekrane, ne ručno krpljenje pojedinačnih kartica.
+- Sistem treba vrijediti za login, dashboard-e, participant reports, test execution ekrane, report view ekrane, Team Dynamics, Team Fit, IDP i Composite HR report.
+- Odluka nije da svi ekrani izgledaju identično, nego da dijele isti vizuelni jezik, tokene, komponente, varijante i target naming logiku.
+- Zaključena su tri nivoa kontrole:
+  - globalna kontrola kroz design tokens i shared komponente
+  - variant-level kontrola kroz component variants
+  - single-instance kontrola kroz screen scope i stabilne target atribute
+- `data-ui` je prihvaćen kao koristan targeting sloj za semantički i dizajnerski relevantne elemente.
+- Ne treba označavati svaki HTML element; treba označiti elemente koje stvarno mijenjamo, testiramo ili referenciramo.
+- Za ponavljajuće kartice/report elemente mogu se koristiti dodatni stabilni atributi poput `data-report-slug` i `data-report-tone`.
+- `data-ui` ne smije služiti kao business logic layer.
+- Prije implementation refactora treba prvo uraditi audit postojećeg UI sistema jer `docs/deep-profile-ui-system.md` već postoji kao source of truth.
+- Sljedeći zdravi korak je read-only UI system audit + targeting foundation, ne novi veliki redesign.
 
 ### 2026-06-05 — SAFRAN participant contract quality validator hardened
 
