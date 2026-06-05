@@ -32,6 +32,17 @@ function assertNotIncludes(haystack, needle, message) {
   }
 }
 
+function extractConclusionSection(html) {
+  const headingIndex = html.indexOf("<h3>Zaključak</h3>");
+
+  if (headingIndex === -1) {
+    fail("Expected conclusion section heading to render.");
+  }
+
+  const nextSectionIndex = html.indexOf("<section", headingIndex);
+  return html.slice(headingIndex, nextSectionIndex === -1 ? undefined : nextSectionIndex);
+}
+
 async function fetchAssessmentPage(attemptId) {
   const response = await fetch(APP_URL, {
     headers: {
@@ -216,6 +227,39 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
     fail("Expected persisted report snapshot to include report_title.");
   }
 
+  const summaryHeadline = firstReportRow.report_snapshot?.summary?.headline;
+  const summaryOverview = firstReportRow.report_snapshot?.summary?.overview;
+
+  if (typeof summaryHeadline !== "string" || summaryHeadline.trim().length === 0) {
+    fail("Expected persisted report snapshot to include a non-empty summary.headline.");
+  }
+
+  if (typeof summaryOverview !== "string" || summaryOverview.trim().length === 0) {
+    fail("Expected persisted report snapshot to include a non-empty summary.overview.");
+  }
+
+  const conclusionSection = extractConclusionSection(firstHtml);
+  assertIncludes(
+    conclusionSection,
+    summaryHeadline,
+    "Expected conclusion section to render summary.headline without renderer rewriting.",
+  );
+  assertIncludes(
+    conclusionSection,
+    summaryOverview,
+    "Expected conclusion section to render summary.overview without renderer rewriting.",
+  );
+  assertNotIncludes(
+    conclusionSection,
+    "se kod tebe najviše ističe.",
+    "Conclusion section must not add a score-derived highest-dimension sentence.",
+  );
+  assertNotIncludes(
+    conclusionSection,
+    "je suptilnija i daje mirniji ton tvom ukupnom obrascu.",
+    "Conclusion section must not add a score-derived lowest-dimension sentence.",
+  );
+
   if (!Array.isArray(firstReportRow.report_snapshot?.dimension_insights)) {
     fail("Expected persisted report snapshot to include dimension_insights.");
   }
@@ -230,6 +274,17 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
   const secondHtml = await fetchAssessmentPage(validAttemptId);
   assertIncludes(secondHtml, "Izvještaj procjene", "Expected assessment report section to remain on reload.");
   assertIncludes(secondHtml, "Top uvidi", "Expected top insights section to remain on reload.");
+  const reloadedConclusionSection = extractConclusionSection(secondHtml);
+  assertIncludes(
+    reloadedConclusionSection,
+    summaryHeadline,
+    "Expected summary.headline to remain stable on reload.",
+  );
+  assertIncludes(
+    reloadedConclusionSection,
+    summaryOverview,
+    "Expected summary.overview to remain stable on reload.",
+  );
 
   const { data: secondReportRow, error: secondReportError } = await supabase
     .from("attempt_reports")

@@ -1113,32 +1113,6 @@ function getTopInsights(
     .map((item) => formatTopInsightSentence(item));
 }
 
-function getConclusion(
-  report: DetailedReportV1 | null,
-  dimensions: DimensionViewModel[],
-): string[] {
-  if (!report) {
-    return [];
-  }
-
-  const highest = dimensions[0];
-  const lowest = dimensions[dimensions.length - 1];
-  const summaryLead =
-    splitIntoSentences(toSecondPersonSingular(report.summary.headline))[0] ?? null;
-  const firstParagraph = [
-    summaryLead,
-    highest ? `${highest.label} se kod tebe najviše ističe.` : null,
-    lowest
-      ? `${lowest.label} je suptilnija i daje mirniji ton tvom ukupnom obrascu.`
-      : null,
-  ]
-    .filter((sentence): sentence is string => Boolean(sentence))
-    .join(" ");
-  const secondParagraph = toSecondPersonSingular(report.summary.overview);
-
-  return [firstParagraph, secondParagraph].filter(Boolean);
-}
-
 function getRecommendations(
   report: DetailedReportV1 | null,
 ): Array<{ title: string; description: string; action: string }> {
@@ -3361,7 +3335,6 @@ export function CompletedAssessmentSummary({
     }) ?? [];
 
   const topInsights = getTopInsights(bigFiveReport, dimensionCards);
-  const conclusionParagraphs = getConclusion(bigFiveReport, dimensionCards);
   const recommendations = getRecommendations(bigFiveReport);
   const scoreRangeLabel = isMwmsResults ? "Skala 1–7" : maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const mwmsResultsNote = isMwmsResults
@@ -3938,9 +3911,15 @@ export function CompletedAssessmentSummary({
               <h3>Zaključak</h3>
             </div>
             <div className="results-report__section-body stack-xs">
-              {conclusionParagraphs.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+              {bigFiveParticipantReport.summary?.headline &&
+              bigFiveParticipantReport.summary?.overview ? (
+                <>
+                  <p>{bigFiveParticipantReport.summary.headline}</p>
+                  <p>{bigFiveParticipantReport.summary.overview}</p>
+                </>
+              ) : (
+                <p>Zaključak trenutno nije dostupan u ovom izvještaju.</p>
+              )}
             </div>
           </section>
 
