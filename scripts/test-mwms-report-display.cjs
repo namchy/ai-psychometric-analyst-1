@@ -285,10 +285,9 @@ assert.doesNotMatch(
   /\b(?:generateMwms|processMwms|enqueueMwms|createSupabaseClient|createSupabaseAdminClient)\s*\(/,
 );
 assert.doesNotMatch(completedSummarySource, /\.from\(|\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
-assert.equal(
-  completedSummarySource.includes("!isMwmsResults && bigFiveReport && topInsights.length > 0"),
-  true,
-);
+assert.doesNotMatch(completedSummarySource, /getTopInsights|formatTopInsightSentence/);
+assert.equal(completedSummarySource.includes("Top uvidi"), false);
+assert.equal(completedSummarySource.includes("Sažetak ključnih obrazaca"), false);
 assert.equal(
   completedSummarySource.includes("!isMwmsResults && bigFiveParticipantReport"),
   true,

@@ -573,10 +573,6 @@ function getParticipantIpipDomainDisplayState(
   };
 }
 
-function stripInsightLabel(text: string): string {
-  return text.replace(/^[^:]{2,40}:\s*/, "").trim();
-}
-
 function ensureSentence(text: string): string {
   const normalized = text.trim().replace(/\s+/g, " ");
 
@@ -710,92 +706,6 @@ function toSecondPersonSingular(text: string): string {
     .replace(/\bprofil\b/gi, "obrazac")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function formatTopInsightSentence(text: string): string {
-  const cleaned = stripInsightLabel(getLeadSentence(toSecondPersonSingular(text)));
-  const normalized = cleaned.replace(/\s+/g, " ").trim();
-  const rewrites: Array<[RegExp, string]> = [
-    [
-      /^Često djeluje energizirano kroz socijalni kontakt i vidljivo uključivanje\.?$/i,
-      "Kroz kontakt s drugima često se osjećaš energizirano i prirodno se uključuješ u dešavanja.",
-    ],
-    [
-      /^Pokazuje uravnotežen spoj otvorenog angažmana i promišljenijeg tempa\.?$/i,
-      "Pokazuješ dobar balans između otvorenog angažmana i promišljenijeg tempa.",
-    ],
-    [
-      /^Može preferirati mirnije okruženje i odmjereniji interpersonalni ritam\.?$/i,
-      "Često preferiraš mirnije okruženje i odmjereniji ritam u odnosima s drugima.",
-    ],
-    [
-      /^Naglašava saradnju, taktičnost i kvalitet međuljudskih odnosa\.?$/i,
-      "U odnosima s drugima često naglašavaš saradnju, taktičnost i dobar kvalitet odnosa.",
-    ],
-    [
-      /^Može dobro balansirati iskrenost i saradnju, zavisno od konteksta\.?$/i,
-      "Zavisno od situacije, dobro balansiraš iskrenost i saradnju.",
-    ],
-    [
-      /^Može češće birati direktan izazov umjesto prilagođavanja ili konsenzusa\.?$/i,
-      "Često biraš direktan pristup umjesto prilagođavanja ili traženja konsenzusa.",
-    ],
-    [
-      /^Vjerovatno vrednuje strukturu, dosljednost i pouzdanu realizaciju\.?$/i,
-      "Vjerovatno posebno vrednuješ strukturu, dosljednost i pouzdanu realizaciju.",
-    ],
-    [
-      /^Može se prilagođavati između planiranja i fleksibilnosti kako se zahtjevi mijenjaju\.?$/i,
-      "Kako se zahtjevi mijenjaju, znaš dobro prelaziti između planiranja i fleksibilnosti.",
-    ],
-    [
-      /^Može raditi spontanije i imati korist od jasnije vanjske strukture\.?$/i,
-      "Često radiš spontanije, a jasnija vanjska struktura ti može pomoći da lakše održiš ritam.",
-    ],
-    [
-      /^Vjerovatno zadržava stabilnost i pod uobičajenim pritiskom\.?$/i,
-      "U zahtjevnijim situacijama često ostaješ pribran i pod uobičajenim pritiskom.",
-    ],
-    [
-      /^Pokazuje mješovit profil nošenja sa stresom koji može varirati po opterećenju ili kontekstu\.?$/i,
-      "Na stres reaguješ različito, zavisno od opterećenja i konkretnog konteksta.",
-    ],
-    [
-      /^Može intenzivnije doživljavati pritisak i imati korist od stabilnijih navika oporavka\.?$/i,
-      "Pritisak možeš doživjeti intenzivnije, pa ti stabilnije navike oporavka mogu biti posebno korisne.",
-    ],
-    [
-      /^Često je usmjeren prema idejama, istraživanju i konceptualnoj raznolikosti\.?$/i,
-      "Često si usmjeren prema idejama, istraživanju i konceptualnoj raznolikosti.",
-    ],
-    [
-      /^Može prihvatati nove ideje uz zadržavanje vrijednosti poznatih pristupa\.?$/i,
-      "Otvoren si za nove ideje, ali i dalje vidiš vrijednost poznatih pristupa.",
-    ],
-    [
-      /^Može preferirati praktičnu jasnoću umjesto apstraktnog istraživanja\.?$/i,
-      "Češće preferiraš praktičnu jasnoću nego apstraktno istraživanje.",
-    ],
-  ];
-
-  for (const [pattern, replacement] of rewrites) {
-    if (pattern.test(normalized)) {
-      return replacement;
-    }
-  }
-
-  const directAddressPattern =
-    /\b(ti|tvoj|tvom|tvoje|tvojim|pokazuješ|ostaješ|možeš|vrednuješ|preferiraš|naglašavaš|biraš|zadržavaš|reaguješ|pristupaš|prihvataš|radiš|osjećaš|znaš|si)\b/i;
-
-  if (directAddressPattern.test(normalized)) {
-    return ensureSentence(normalized);
-  }
-
-  if (/^u tvom\b/i.test(normalized) || /^tvoji\b/i.test(normalized)) {
-    return ensureSentence(normalized);
-  }
-
-  return ensureSentence(`Kod tebe se posebno vidi da ${normalized.charAt(0).toLowerCase()}${normalized.slice(1)}`);
 }
 
 function joinSentences(...sentences: Array<string | null | undefined>): string {
@@ -1085,32 +995,6 @@ function formatCompletedAt(value?: string | null): string {
   const minutes = String(date.getMinutes()).padStart(2, "0");
 
   return `${day}. ${month} ${year}, ${hours}:${minutes}`;
-}
-
-function getTopInsights(
-  report: DetailedReportV1 | null,
-  dimensions: DimensionViewModel[],
-): string[] {
-  if (!report) {
-    return [];
-  }
-
-  const candidates = [
-    ...report.strengths.map((item) => item.description),
-    ...report.blind_spots.map((item) => item.description),
-    ...report.development_recommendations.map((item) => item.description),
-    ...report.dimension_insights.map((item) => item.work_style),
-    ...dimensions.map((dimension) => dimension.shortInterpretation),
-  ];
-
-  const uniqueItems = candidates.filter((item, index) => {
-    const normalized = item.trim().toLowerCase();
-    return normalized.length > 0 && candidates.findIndex((candidate) => candidate.trim().toLowerCase() === normalized) === index;
-  });
-
-  return uniqueItems
-    .slice(0, 3)
-    .map((item) => formatTopInsightSentence(item));
 }
 
 function getRecommendations(
@@ -3334,7 +3218,6 @@ export function CompletedAssessmentSummary({
       };
     }) ?? [];
 
-  const topInsights = getTopInsights(bigFiveReport, dimensionCards);
   const recommendations = getRecommendations(bigFiveReport);
   const scoreRangeLabel = isMwmsResults ? "Skala 1–7" : maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const mwmsResultsNote = isMwmsResults
@@ -3499,37 +3382,7 @@ export function CompletedAssessmentSummary({
           ) : null}
         </div>
 
-      {!isMwmsResults && bigFiveReport && topInsights.length > 0 ? (
-        <section
-          className="results-report__hero-insights results-report__hero-insights--mobile"
-          aria-label="Top insights"
-          >
-            <p className="results-report__hero-label">Top uvidi</p>
-            <ul className="results-insight-list">
-              {topInsights.map((insight) => (
-                <li key={insight}>{insight}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
       </section>
-
-      {!isMwmsResults && bigFiveReport && topInsights.length > 0 ? (
-        <section
-          className="results-report__section results-report__section--insights results-report__panel card stack-sm"
-          aria-label="Top insights"
-        >
-          <div className="results-report__section-heading">
-            <p className="results-report__section-kicker">Top uvidi</p>
-            <h3>Sažetak ključnih obrazaca</h3>
-          </div>
-          <ul className="results-insight-list">
-            {topInsights.map((insight) => (
-              <li key={insight}>{insight}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {shouldShowMwmsGuidance ? (
         <section className="results-report__section results-report__section--insights results-report__panel card stack-sm">

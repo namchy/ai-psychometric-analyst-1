@@ -199,7 +199,16 @@ async function createAttempt(supabase, testId, status) {
 async function assertSnapshotBehavior(supabase, validAttemptId) {
   const firstHtml = await fetchAssessmentPage(validAttemptId);
   assertIncludes(firstHtml, "Izvještaj procjene", "Expected assessment report section to render.");
-  assertIncludes(firstHtml, "Top uvidi", "Expected top insights section to render.");
+  assertNotIncludes(
+    firstHtml,
+    "Top uvidi",
+    "Legacy Big Five must not render frontend-generated top insights.",
+  );
+  assertNotIncludes(
+    firstHtml,
+    "Sažetak ključnih obrazaca",
+    "Legacy Big Five must not render a synthesized top-insights summary.",
+  );
   assertIncludes(firstHtml, "Zaključak", "Expected conclusion section to render.");
   assertIncludes(
     firstHtml,
@@ -264,6 +273,13 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
     fail("Expected persisted report snapshot to include dimension_insights.");
   }
 
+  assertIncludes(firstHtml, "Dimenzije", "Expected Legacy Big Five dimension cards to remain visible.");
+  assertIncludes(
+    firstHtml,
+    firstReportRow.report_snapshot.disclaimer,
+    "Expected persisted report disclaimer to remain visible.",
+  );
+
   if (firstReportRow.report_snapshot.dimension_insights.length !== 5) {
     fail(
       `Expected persisted report snapshot to include 5 dimension_insights, received ${firstReportRow.report_snapshot.dimension_insights.length}.`,
@@ -273,7 +289,12 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
   const firstGeneratedAt = firstReportRow.generated_at;
   const secondHtml = await fetchAssessmentPage(validAttemptId);
   assertIncludes(secondHtml, "Izvještaj procjene", "Expected assessment report section to remain on reload.");
-  assertIncludes(secondHtml, "Top uvidi", "Expected top insights section to remain on reload.");
+  assertNotIncludes(secondHtml, "Top uvidi", "Top insights must remain absent on reload.");
+  assertNotIncludes(
+    secondHtml,
+    "Sažetak ključnih obrazaca",
+    "Synthesized top-insights summary must remain absent on reload.",
+  );
   const reloadedConclusionSection = extractConclusionSection(secondHtml);
   assertIncludes(
     reloadedConclusionSection,
