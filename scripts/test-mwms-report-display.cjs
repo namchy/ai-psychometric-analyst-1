@@ -324,6 +324,33 @@ for (const removedDimensionFallbackText of [
     `Expected score-derived Legacy dimension fallback to be absent: ${removedDimensionFallbackText}`,
   );
 }
+assert.doesNotMatch(completedSummarySource, /getRecommendations|formatRecommendation/);
+const legacyRecommendationsStart = completedSummarySource.indexOf(
+  '{recommendations.length > 0 ? (',
+);
+const legacyRecommendationsEnd = completedSummarySource.indexOf(
+  "</section>",
+  legacyRecommendationsStart,
+);
+assert.notEqual(legacyRecommendationsStart, -1);
+assert.notEqual(legacyRecommendationsEnd, -1);
+const legacyRecommendationsSource = completedSummarySource.slice(
+  legacyRecommendationsStart,
+  legacyRecommendationsEnd,
+);
+assert.doesNotMatch(legacyRecommendationsSource, /toSecondPersonSingular|\.trim\(|\.replace\(/);
+for (const directRecommendationField of ["item.title", "item.description", "item.action"]) {
+  assert.equal(
+    legacyRecommendationsSource.includes(directRecommendationField),
+    true,
+    `Expected Legacy recommendations to render ${directRecommendationField} directly.`,
+  );
+}
+assert.equal(
+  completedSummarySource.includes("Preporuke nisu dostupne u ovom izvještaju."),
+  true,
+);
+assert.equal(completedSummarySource.includes("Nije dostupno u ovom izvještaju."), true);
 assert.equal(
   completedSummarySource.includes("!isMwmsResults && bigFiveParticipantReport"),
   true,

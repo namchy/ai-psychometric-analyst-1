@@ -679,6 +679,8 @@ function toSecondPersonSingular(text: string): string {
 /* Legacy dimension details must come from the persisted report, never from score bands. */
 const LEGACY_DIMENSION_DETAIL_UNAVAILABLE =
   "Detaljnije tumačenje za ovu dimenziju nije dostupno u ovom izvještaju.";
+const LEGACY_RECOMMENDATION_FIELD_UNAVAILABLE = "Nije dostupno u ovom izvještaju.";
+const LEGACY_RECOMMENDATIONS_UNAVAILABLE = "Preporuke nisu dostupne u ovom izvještaju.";
 
 function formatCompletedAt(value?: string | null): string {
   if (!value) {
@@ -699,27 +701,6 @@ function formatCompletedAt(value?: string | null): string {
   const minutes = String(date.getMinutes()).padStart(2, "0");
 
   return `${day}. ${month} ${year}, ${hours}:${minutes}`;
-}
-
-function getRecommendations(
-  report: DetailedReportV1 | null,
-): Array<{ title: string; description: string; action: string }> {
-  if (!report) {
-    return [];
-  }
-
-  return report.development_recommendations.slice(0, 3);
-}
-
-function formatRecommendation(item: {
-  title: string;
-  description: string;
-  action: string;
-}): { lead: string; body: string | null } {
-  return {
-    lead: item.title.trim().replace(/[.,;:!?]+$/, ""),
-    body: `${item.description.trim()} ${item.action.trim()}`.trim(),
-  };
 }
 
 function formatIpcNumericMetric(value: number): string {
@@ -2916,7 +2897,7 @@ export function CompletedAssessmentSummary({
       };
     }) ?? [];
 
-  const recommendations = getRecommendations(bigFiveReport);
+  const recommendations = bigFiveReport?.development_recommendations ?? [];
   const scoreRangeLabel = isMwmsResults ? "Skala 1–7" : maxRawScore > 0 ? `0–${maxRawScore} bodova` : null;
   const mwmsResultsNote = isMwmsResults
     ? "Ovaj rezultat prikazuje tvoj motivacijski profil u radnom kontekstu i služi kao uvid, ne kao presuda."
@@ -3468,29 +3449,27 @@ export function CompletedAssessmentSummary({
             </div>
           </section>
 
-          {recommendations.length > 0 ? (
-            <section className="results-report__section results-report__section--recommendations results-report__panel card stack-sm">
-              <div className="results-report__section-heading">
-                <h3>Preporuke</h3>
-              </div>
+          <section className="results-report__section results-report__section--recommendations results-report__panel card stack-sm">
+            <div className="results-report__section-heading">
+              <h3>Preporuke</h3>
+            </div>
+            {recommendations.length > 0 ? (
               <ul className="results-bullet-list">
-                {recommendations.map((item) => {
-                  const formatted = formatRecommendation({
-                    title: toSecondPersonSingular(item.title),
-                    description: toSecondPersonSingular(item.description),
-                    action: toSecondPersonSingular(item.action),
-                  });
-
-                  return (
-                    <li key={item.title}>
-                      <strong>{formatted.lead}:</strong>
-                      {formatted.body ? ` ${formatted.body}` : null}
-                    </li>
-                  );
-                })}
+                {recommendations.map((item, index) => (
+                  <li key={`${item.title}-${index}`} className="stack-xs">
+                    <strong>{item.title || LEGACY_RECOMMENDATION_FIELD_UNAVAILABLE}</strong>
+                    <p>{item.description || LEGACY_RECOMMENDATION_FIELD_UNAVAILABLE}</p>
+                    <p>
+                      <strong>Akcija:</strong>{" "}
+                      {item.action || LEGACY_RECOMMENDATION_FIELD_UNAVAILABLE}
+                    </p>
+                  </li>
+                ))}
               </ul>
-            </section>
-          ) : null}
+            ) : (
+              <p>{LEGACY_RECOMMENDATIONS_UNAVAILABLE}</p>
+            )}
+          </section>
         </div>
       ) : null}
 

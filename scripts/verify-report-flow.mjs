@@ -43,6 +43,17 @@ function extractConclusionSection(html) {
   return html.slice(headingIndex, nextSectionIndex === -1 ? undefined : nextSectionIndex);
 }
 
+function extractRecommendationsSection(html) {
+  const headingIndex = html.indexOf("<h3>Preporuke</h3>");
+
+  if (headingIndex === -1) {
+    fail("Expected recommendations section heading to render.");
+  }
+
+  const nextSectionIndex = html.indexOf("<section", headingIndex);
+  return html.slice(headingIndex, nextSectionIndex === -1 ? undefined : nextSectionIndex);
+}
+
 async function fetchAssessmentPage(attemptId) {
   const response = await fetch(APP_URL, {
     headers: {
@@ -273,6 +284,33 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
     fail("Expected persisted report snapshot to include dimension_insights.");
   }
 
+  const firstRecommendation = firstReportRow.report_snapshot?.development_recommendations?.[0];
+
+  if (
+    typeof firstRecommendation?.title !== "string" ||
+    typeof firstRecommendation?.description !== "string" ||
+    typeof firstRecommendation?.action !== "string"
+  ) {
+    fail("Expected persisted report snapshot to include recommendation title, description, and action.");
+  }
+
+  const recommendationsSection = extractRecommendationsSection(firstHtml);
+  assertIncludes(
+    recommendationsSection,
+    firstRecommendation.title,
+    "Expected recommendation title to render directly.",
+  );
+  assertIncludes(
+    recommendationsSection,
+    firstRecommendation.description,
+    "Expected recommendation description to render directly.",
+  );
+  assertIncludes(
+    recommendationsSection,
+    firstRecommendation.action,
+    "Expected recommendation action to render directly.",
+  );
+
   assertIncludes(firstHtml, "Dimenzije", "Expected Legacy Big Five dimension cards to remain visible.");
   assertIncludes(
     firstHtml,
@@ -305,6 +343,17 @@ async function assertSnapshotBehavior(supabase, validAttemptId) {
     reloadedConclusionSection,
     summaryOverview,
     "Expected summary.overview to remain stable on reload.",
+  );
+  const reloadedRecommendationsSection = extractRecommendationsSection(secondHtml);
+  assertIncludes(
+    reloadedRecommendationsSection,
+    firstRecommendation.description,
+    "Expected recommendation description to remain direct on reload.",
+  );
+  assertIncludes(
+    reloadedRecommendationsSection,
+    firstRecommendation.action,
+    "Expected recommendation action to remain direct on reload.",
   );
 
   const { data: secondReportRow, error: secondReportError } = await supabase
