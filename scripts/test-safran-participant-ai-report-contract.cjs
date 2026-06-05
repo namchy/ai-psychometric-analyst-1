@@ -129,6 +129,84 @@ const validReport = buildMockSafranParticipantAiReport(input);
 const validResult = validateSafranParticipantAiReport(validReport, { expectedInput: input });
 assert.equal(validResult.ok, true, validResult.ok ? undefined : validResult.errors.join(" | "));
 
+function assertInvalidReport(mutator, label) {
+  const mutated = clone(validReport);
+  mutator(mutated);
+  const result = validateSafranParticipantAiReport(mutated, { expectedInput: input });
+  assert.equal(
+    result.ok,
+    false,
+    `Expected invalid SAFRAN participant report for ${label}.`,
+  );
+}
+
+const distinctNarrativeFields = clone(validReport);
+distinctNarrativeFields.readingGuide.bullets = [
+  "Ovi rezultati prikazuju učinak u SAFRAN zadacima i ne predstavljaju mjeru opšte inteligencije.",
+  "Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.",
+  "Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.",
+  "SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.",
+  "Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.",
+];
+const distinctNarrativeResult = validateSafranParticipantAiReport(distinctNarrativeFields, {
+  expectedInput: input,
+});
+assert.equal(
+  distinctNarrativeResult.ok,
+  true,
+  distinctNarrativeResult.ok ? undefined : distinctNarrativeResult.errors.join(" | "),
+);
+
+assertInvalidReport((report) => {
+  report.summary.interpretation = "   ";
+}, "whitespace required narrative field");
+
+for (const placeholderText of ["N/A", "TBD", "Lorem ipsum"]) {
+  assertInvalidReport((report) => {
+    report.nextStep.body = placeholderText;
+  }, `placeholder ${placeholderText}`);
+}
+
+assertInvalidReport((report) => {
+  report.summary.interpretation = "Ovaj izvještaj prikazuje rezultate.";
+}, "generic filler summary");
+
+assertInvalidReport((report) => {
+  report.domains[0].interpretation = report.summary.interpretation;
+}, "duplicate summary interpretation and domain interpretation");
+
+assertInvalidReport((report) => {
+  report.domains[1].interpretation = report.domains[0].interpretation;
+}, "duplicate domain interpretations");
+
+assertInvalidReport((report) => {
+  report.cognitiveSignals.balanceNote = report.cognitiveSignals.primarySignal;
+}, "duplicate cognitive signal fields");
+
+assertInvalidReport((report) => {
+  report.readingGuide.bullets = [
+    "Ovi rezultati prikazuju učinak u SAFRAN zadacima i ne predstavljaju mjeru opšte inteligencije.",
+    "Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.",
+    "Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.",
+    "SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.",
+    "Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.",
+    "Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.",
+  ];
+}, "duplicate reading guide bullets");
+
+assertInvalidReport((report) => {
+  report.nextStep.body = report.readingGuide.bullets[0];
+}, "duplicate nextStep body and reading guide bullet");
+
+assertInvalidReport((report) => {
+  report.cognitiveSignals.primarySignal =
+    "Ovaj rezultat sigurno pokazuje da osoba uvijek ima stabilnu sposobnost za svaki sličan zadatak.";
+}, "unsafe absolute overclaim");
+
+assertInvalidReport((report) => {
+  report.nextStep.body = "Razmisli o rezultatima.";
+}, "generic next step body");
+
 const missingSection = clone(validReport);
 delete missingSection.nextStep;
 assert.equal(

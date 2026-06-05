@@ -404,6 +404,114 @@ function normalizeNarrativeText(value: string): string {
     .trim();
 }
 
+function normalizeTextForQualityCheck(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[.!?;:,\s]+$/gu, "")
+    .trim();
+}
+
+function isPlaceholderLikeText(value: string): boolean {
+  const trimmed = value.trim();
+  const normalized = normalizeTextForQualityCheck(trimmed);
+
+  if (!trimmed) {
+    return true;
+  }
+
+  if (/^n\s*\/?\s*a$/i.test(trimmed)) {
+    return true;
+  }
+
+  return (
+    normalized.length < 8 ||
+    normalized === "tbd" ||
+    normalized === "test" ||
+    normalized === "todo" ||
+    normalized.includes("lorem ipsum")
+  );
+}
+
+function isGenericSafranFiller(value: string): boolean {
+  const normalized = normalizeTextForQualityCheck(value);
+
+  return [
+    "ovaj izvještaj prikazuje rezultate",
+    "ovo je opšti sažetak",
+    "rezultati mogu varirati",
+    "važno je uzeti rezultate u obzir",
+    "ovo su opšte smjernice",
+    "kognitivni rezultat treba čitati pažljivo",
+    "razmisli o rezultatima",
+  ].some((genericText) => normalized.includes(genericText));
+}
+
+function hasUnsafeSafranClaim(value: string): boolean {
+  return [
+    /\buvijek\b/i,
+    /\bnikada\b/i,
+    /sigurno pokazuje/i,
+    /dokazuje/i,
+    /garantuje/i,
+    /\bhire\b/i,
+    /\bno-hire\b/i,
+    /zaposliti/i,
+    /ne zaposliti/i,
+    /dijagnoz/i,
+    /poreme[ćc]aj/i,
+    /klini[čc]k/i,
+    /medicinsk/i,
+    /mentalnog zdravlja/i,
+    /mora biti (prihva[ćc]en|odbijen|zaposlen)/i,
+    /treba (prihvatiti|odbiti|zaposliti)/i,
+  ].some((pattern) => pattern.test(value));
+}
+
+function assertQualityText(
+  text: string,
+  path: string,
+  errors: string[],
+  options?: { allowShort?: boolean },
+): void {
+  if (!options?.allowShort && isPlaceholderLikeText(text)) {
+    errors.push(`${path}: Text is empty-seeming or placeholder-like.`);
+  }
+
+  if (isGenericSafranFiller(text)) {
+    errors.push(`${path}: Text is generic SAFRAN filler.`);
+  }
+
+  if (hasUnsafeSafranClaim(text)) {
+    errors.push(`${path}: Text contains unsafe or overclaiming language.`);
+  }
+}
+
+function assertUniqueNarrativeTexts(
+  entries: Array<{ path: string; text: string }>,
+  errors: string[],
+): void {
+  const seen = new Map<string, string>();
+
+  entries.forEach(({ path, text }) => {
+    const normalized = normalizeTextForQualityCheck(text);
+
+    if (!normalized) {
+      return;
+    }
+
+    const previousPath = seen.get(normalized);
+
+    if (previousPath) {
+      errors.push(`${path}: Duplicates narrative text from ${previousPath}.`);
+      return;
+    }
+
+    seen.set(normalized, path);
+  });
+}
+
 function getTokenSet(value: string): Set<string> {
   return new Set(
     normalizeNarrativeText(value)
@@ -817,6 +925,104 @@ function validateNarrativeQuality(
       "summary.interpretation: Must explain the cross-domain SAFRAN pattern, not only restate the overall score.",
     );
   }
+
+  const qualityTexts: Array<{
+    path: string;
+    text: string;
+    allowShort?: boolean;
+  }> = [
+    { path: "header.title", text: report.header.title, allowShort: true },
+    { path: "header.subtitle", text: report.header.subtitle },
+    { path: "summary.title", text: report.summary.title },
+    { path: "summary.bandLabel", text: report.summary.bandLabel },
+    { path: "summary.interpretation", text: report.summary.interpretation },
+    { path: "cognitiveSignals.title", text: report.cognitiveSignals.title },
+    {
+      path: "cognitiveSignals.primarySignal",
+      text: report.cognitiveSignals.primarySignal,
+    },
+    {
+      path: "cognitiveSignals.balanceNote",
+      text: report.cognitiveSignals.balanceNote,
+    },
+    {
+      path: "cognitiveSignals.cautionSignal",
+      text: report.cognitiveSignals.cautionSignal,
+    },
+    { path: "readingGuide.title", text: report.readingGuide.title },
+    { path: "nextStep.title", text: report.nextStep.title },
+    { path: "nextStep.body", text: report.nextStep.body },
+    { path: "nextStep.ctaLabel", text: report.nextStep.ctaLabel },
+  ];
+
+  report.domains.forEach((domain, index) => {
+    qualityTexts.push(
+      { path: `domains[${index}].title`, text: domain.title },
+      { path: `domains[${index}].bandLabel`, text: domain.bandLabel },
+      { path: `domains[${index}].interpretation`, text: domain.interpretation },
+    );
+
+    const normalizedInterpretation = normalizeTextForQualityCheck(
+      domain.interpretation,
+    );
+
+    if (
+      normalizedInterpretation === normalizeTextForQualityCheck(domain.title) ||
+      normalizedInterpretation === normalizeTextForQualityCheck(domain.bandLabel)
+    ) {
+      errors.push(
+        `domains[${index}].interpretation: Must not reuse title or bandLabel as interpretation.`,
+      );
+    }
+  });
+
+  report.readingGuide.bullets.forEach((bullet, index) => {
+    qualityTexts.push({
+      path: `readingGuide.bullets[${index}]`,
+      text: bullet,
+    });
+
+    if (
+      PATTERN_SIGNAL_PATTERN.test(bullet) &&
+      /(tvoj|tvoja|kod tebe|profil pokazuje|rezultat pokazuje)/i.test(bullet)
+    ) {
+      errors.push(
+        `readingGuide.bullets[${index}]: Must stay limits/policy guidance, not personalized interpretation.`,
+      );
+    }
+  });
+
+  qualityTexts.forEach(({ path, text, allowShort }) => {
+    assertQualityText(text, path, errors, { allowShort });
+  });
+
+  assertUniqueNarrativeTexts(
+    [
+      { path: "summary.interpretation", text: report.summary.interpretation },
+      ...report.domains.map((domain, index) => ({
+        path: `domains[${index}].interpretation`,
+        text: domain.interpretation,
+      })),
+      {
+        path: "cognitiveSignals.primarySignal",
+        text: report.cognitiveSignals.primarySignal,
+      },
+      {
+        path: "cognitiveSignals.balanceNote",
+        text: report.cognitiveSignals.balanceNote,
+      },
+      {
+        path: "cognitiveSignals.cautionSignal",
+        text: report.cognitiveSignals.cautionSignal,
+      },
+      ...report.readingGuide.bullets.map((bullet, index) => ({
+        path: `readingGuide.bullets[${index}]`,
+        text: bullet,
+      })),
+      { path: "nextStep.body", text: report.nextStep.body },
+    ],
+    errors,
+  );
 
   if (!expectedInput) {
     return;
