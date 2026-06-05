@@ -50,7 +50,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
-| P0        | AI segment-aware report content architecture for individual reports | U toku / IDP P0 mapping, MWMS participant summary/narrative authority, i Legacy Big Five summary/conclusion/topInsights/dimension fallback/recommendation renderer authority cleanup completed | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. |
+| P0        | AI segment-aware report content architecture for individual reports | U toku / IDP, MWMS participant, Legacy Big Five, and SAFRAN participant renderer authority cleanup completed | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: validator quality guardrails for duplicate text, generic text, mapping mismatch, frontend-authored interpretation risk, and score-derived fallback narrative risk. Provider prompt updates and legacy snapshot strategy remain separate later slices. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -186,6 +186,40 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - TopInsights zone was not restored.
 - Personalized dimension fallback was not restored.
 - MWMS behavior was not changed.
+
+### Completion note — SAFRAN participant P0 ready-AI direct mapping cleanup
+
+- SAFRAN participant ready-AI display now directly renders provider-authored report fields instead of replacing or rewriting them in the frontend.
+- `domains[].interpretation` is now mapped directly to the corresponding domain card.
+- `cognitiveSignals.primarySignal`, `cognitiveSignals.balanceNote`, and `cognitiveSignals.cautionSignal` are rendered as separate direct fields, without synthesized signal paragraph or caution rewrite.
+- `readingGuide.title` and `readingGuide.bullets[]` are rendered directly.
+- `nextStep.title`, `nextStep.body`, and CTA are rendered in the dedicated next-step section.
+- `nextStep.body` is no longer duplicated or remapped into a signal/caution panel.
+- Numeric score values, score labels, and score bars were preserved.
+- Scope was UI/display-only and limited to:
+  - `lib/assessment/safran-participant-report-display.ts`
+  - `components/assessment/completed-assessment-summary.tsx`
+  - `scripts/test-safran-participant-report-display.cjs`
+- No provider, OpenAI prompt, contract, validator, scoring, backend, DB, lifecycle, routes, worker, scheduler, report generation, or todo logic was changed.
+
+### Completion note — SAFRAN participant P0 non-ready neutral fallback cleanup
+
+- SAFRAN participant non-ready/invalid fallback no longer shows a personalized score-derived narrative report.
+- When detailed narrative content is not available, the UI now shows score-only results plus a neutral status message.
+- Pending/missing/queued/processing style states use neutral copy:
+  - `Rezultati testa su dostupni, ali detaljan narativni izvještaj još nije spreman za prikaz.`
+- Failed/unavailable/invalid-ready style states use support-oriented copy:
+  - `Rezultati testa su dostupni, ali detaljan narativni izvještaj trenutno nije moguće prikazati. Ako se problem ponovi, kontaktiraj support.`
+- User-facing fallback copy does not mention AI.
+- Non-ready fallback no longer shows:
+  - score-derived overall interpretation
+  - score-derived domain interpretations
+  - relative-profile/highest-domain narrative
+  - reading guide content
+  - personalized next steps
+- Score values, labels, and bars remain available.
+- Ready-AI direct mapping did not regress.
+- No provider, OpenAI prompt, contract, validator, scoring, backend, DB, lifecycle, routes, worker, scheduler, report generation, or todo logic was changed.
 
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
 - Dodat je read-only Team Fit report list/entrypoint u HR participant reports kontekstu.
@@ -6491,6 +6525,10 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 * Ne koristi se destruktivan repair bez prethodne potvrde.
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-05 — SAFRAN participant report authority cleanup completed
+
+Completed SAFRAN participant ready-AI direct mapping cleanup and non-ready neutral fallback cleanup. Ready-AI SAFRAN now renders domain interpretations, cognitive signals, reading guide, and next-step content directly from report fields. Non-ready/invalid SAFRAN now shows score-only data with neutral narrative-unavailable messaging instead of a personalized deterministic report. User-facing fallback copy does not mention AI. The core report-authority rule was reinforced: frontend may render, organize, label, and format; it must not generate psychological, HR, cognitive, or domain interpretation. Recommended next focus: validator/test quality guardrails for duplicate text, generic text, mapping mismatch, direct AI field rendering, and score-derived fallback narrative risk.
 
 ### 2026-06-05 — Individual report segment-authority cleanup: IDP, MWMS, Legacy Big Five
 
