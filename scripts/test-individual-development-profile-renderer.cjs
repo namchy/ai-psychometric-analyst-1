@@ -49,6 +49,14 @@ assert.doesNotMatch(viewSource, /\.from\(|\.insert\(|\.update\(/);
 assert.doesNotMatch(viewSource, /loadIndividualDevelopmentProfileDisplay|buildIndividualDevelopmentProfileInputSnapshot|processIndividualDevelopmentProfileAssessmentReport/);
 assert.doesNotMatch(viewSource, /generateIndividualDevelopmentProfileReport|generateIndividualDevelopmentProfileWithMock|OpenAI|openai|external/i);
 assert.doesNotMatch(viewSource, /route|app\/actions|worker|scheduler/i);
+assert.doesNotMatch(
+  viewSource,
+  /from\s+["'][^"']*(?:provider|openai|lifecycle|action|worker|scheduler|supabase|database|db-write)[^"']*["']/i,
+);
+assert.doesNotMatch(
+  viewSource,
+  /\b(?:fetch|createClient|createAdminClient|revalidatePath|redirect|enqueue|publish|dispatch)\s*\(/,
+);
 assert.doesNotMatch(viewSource, /team-fit|team_dynamics/i);
 assert.doesNotMatch(viewSource, /\bno-hire\b|\bhire\/no-hire\b|\bfit score\b|\bbad fit\b/i);
 assert.doesNotMatch(viewSource, /\bne zaposliti\b|\bzaposliti\b kao preporuk/i);
@@ -238,6 +246,10 @@ function render(element) {
   return ReactDOMServer.renderToStaticMarkup(element);
 }
 
+function countOccurrences(value, searchValue) {
+  return value.split(searchValue).length - 1;
+}
+
 function main() {
   const snapshot = buildSnapshot();
 
@@ -268,6 +280,38 @@ function main() {
   assert.match(htmlFromSnapshot, /Ograničenja tumačenja/);
   assert.match(htmlFromSnapshot, /Amina Candidate/);
   assert.match(htmlFromSnapshot, /Ovaj razvojni HR izvještaj služi za onboarding, feedback, 1:1 razgovore i razvojni plan/);
+  assert.equal(
+    countOccurrences(htmlFromSnapshot, snapshot.developmentSummary.overallPattern),
+    1,
+    "overallPattern must render exactly once",
+  );
+  assert.equal(
+    countOccurrences(htmlFromSnapshot, snapshot.developmentSummary.usageNote),
+    1,
+    "usageNote must render exactly once",
+  );
+  assert.match(
+    htmlFromSnapshot,
+    new RegExp(
+      `Kako HR može koristiti nalaz[\\s\\S]*${snapshot.developmentSummary.usageNote.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      )}`,
+    ),
+  );
+  assert.doesNotMatch(
+    htmlFromSnapshot,
+    new RegExp(
+      `Korištenje[\\s\\S]{0,500}${snapshot.developmentSummary.usageNote.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      )}`,
+    ),
+  );
+  assert.match(
+    htmlFromSnapshot,
+    /Korištenje[\s\S]{0,500}Namijenjeno strukturiranom HR i menadžerskom pregledu\./,
+  );
   assert.doesNotMatch(htmlFromSnapshot, /fit score|no-hire|hire\/no-hire|bad fit|rawAnswers|input_snapshot|JSON/i);
 
   const htmlFromRecord = render(

@@ -281,7 +281,7 @@ function OnboardingStageCard({
 export function IndividualDevelopmentProfileReportView(
   props: IndividualDevelopmentProfileReportViewProps,
 ) {
-  const { snapshot, participantDisplayName, generatedAt, completedAt, safeStatusMessage } =
+  const { snapshot, participantDisplayName, generatedAt, completedAt } =
     normalizeRendererInput(props);
 
   const generatedAtLabel = formatTimestamp(generatedAt);
@@ -327,7 +327,7 @@ export function IndividualDevelopmentProfileReportView(
             <MetaCard
               label="Korištenje"
               value="Onboarding, feedback i razvoj"
-              helper={safeStatusMessage ?? snapshot.developmentSummary.usageNote}
+              helper="Namijenjeno strukturiranom HR i menadžerskom pregledu."
             />
             <MetaCard label="Generisano" value={generatedAtLabel ?? "Nije dostupno"} />
             <MetaCard label="Zadnja priprema" value={completedAtLabel ?? "Nije dostupno"} />
@@ -340,7 +340,7 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Razvojni sažetak"
           eyebrowClassName="text-[#118ab2]"
           title={snapshot.developmentSummary.headline}
-          description={snapshot.developmentSummary.overallPattern}
+          description="Sažeti pregled ključnih razvojnih nalaza i smjernica iz izvještaja."
           className="gap-2"
           titleClassName="max-w-4xl text-[1.45rem] font-bold tracking-[-0.04em] text-[#073b4c] sm:text-[1.65rem]"
           descriptionClassName="max-w-4xl text-sm leading-6 text-slate-600"
