@@ -124,6 +124,53 @@ const readyAiNarrativeText = {
     "AI NOTE: Vaš profil nije dijagnoza niti samostalna odluka.",
 };
 
+const legacySummaryText = {
+  headline:
+    "LEGACY SUMMARY HEADLINE MARKER: Provider zaključak ostaje izdvojen bez score-derived dopune.",
+  overview:
+    "LEGACY SUMMARY OVERVIEW MARKER: Ovaj overview mora ostati direktan Big Five report field u conclusion zoni.",
+};
+const legacyDimensionInsightText = {
+  summary:
+    "LEGACY DIMENSION SUMMARY MARKER: Savjesnost je ovdje provider-authored sažetak dimenzije.",
+  workStyle:
+    "LEGACY DIMENSION WORK STYLE MARKER: Radni stil ostaje poseban field bez spajanja sa skorom.",
+  risks:
+    "LEGACY DIMENSION RISKS MARKER: Tačke opreza ostaju zaseban report field.",
+  developmentFocus:
+    "LEGACY DIMENSION DEVELOPMENT FOCUS MARKER: Razvojni fokus ostaje zaseban report field.",
+};
+const legacyRecommendationText = {
+  title:
+    "LEGACY RECOMMENDATION TITLE MARKER: Direktan naslov preporuke",
+  description:
+    "LEGACY RECOMMENDATION DESCRIPTION MARKER: Direktan opis preporuke bez prepisivanja.",
+  action:
+    "LEGACY RECOMMENDATION ACTION MARKER: Direktna akcija ostaje odvojena od opisa.",
+};
+
+function countOccurrences(value, searchValue) {
+  return value.split(searchValue).length - 1;
+}
+
+function assertOccursOnce(output, expectedText, label) {
+  assert.equal(
+    countOccurrences(output, expectedText),
+    1,
+    `Expected ${label} to render exactly once: ${expectedText}`,
+  );
+}
+
+function getHtmlSliceBetween(output, startText, endText, label) {
+  const start = output.indexOf(startText);
+  assert.notEqual(start, -1, `Expected ${label} start marker: ${startText}`);
+
+  const end = output.indexOf(endText, start);
+  assert.notEqual(end, -1, `Expected ${label} end marker: ${endText}`);
+
+  return output.slice(start, end);
+}
+
 const mwmsRenderOutput = renderToStaticMarkup(
   React.createElement(CompletedAssessmentSummary, {
     completedAt: "2026-05-04T10:30:00.000Z",
@@ -201,6 +248,95 @@ const mwmsAiRenderOutput = renderToStaticMarkup(
     },
   }),
 );
+
+function buildLegacyBigFiveReport() {
+  return {
+    report_title: "Legacy Big Five fixture report",
+    report_subtitle: "Renderer authority test fixture",
+    summary: {
+      headline: legacySummaryText.headline,
+      overview: legacySummaryText.overview,
+    },
+    strengths: [
+      {
+        title: "Legacy strength fixture",
+        description: "Legacy strength description fixture.",
+      },
+    ],
+    blind_spots: [
+      {
+        title: "Legacy blind spot fixture",
+        description: "Legacy blind spot description fixture.",
+      },
+    ],
+    development_recommendations: [
+      {
+        title: legacyRecommendationText.title,
+        description: legacyRecommendationText.description,
+        action: legacyRecommendationText.action,
+      },
+    ],
+    dimension_insights: [
+      {
+        dimension_code: "CONSCIENTIOUSNESS",
+        dimension_label: "Savjesnost",
+        score_band: "high",
+        summary: legacyDimensionInsightText.summary,
+        work_style: legacyDimensionInsightText.workStyle,
+        risks: legacyDimensionInsightText.risks,
+        development_focus: legacyDimensionInsightText.developmentFocus,
+      },
+    ],
+    disclaimer:
+      "Legacy disclaimer fixture: izvještaj nije samostalna odluka.",
+  };
+}
+
+function renderLegacyBigFiveOutput(expandedDimension = null) {
+  const originalUseState = React.useState;
+
+  if (expandedDimension) {
+    React.useState = function useExpandedDimensionState() {
+      return [expandedDimension, () => {}];
+    };
+  }
+
+  try {
+    return renderToStaticMarkup(
+      React.createElement(CompletedAssessmentSummary, {
+        completedAt: "2026-05-04T10:30:00.000Z",
+        locale: "bs",
+        organizationName: "Test organizacija",
+        participantName: "Test kandidat",
+        testSlug: "big_five_v1",
+        testName: "Big Five",
+        results: {
+          attemptId: "attempt-legacy-big-five-report",
+          scoringMethod: "likert_sum",
+          dimensions: [
+            { dimension: "CONSCIENTIOUSNESS", rawScore: 18, scoredQuestionCount: 5 },
+            { dimension: "AGREEABLENESS", rawScore: 11, scoredQuestionCount: 5 },
+          ],
+          scoredResponseCount: 10,
+          unscoredResponses: [],
+        },
+        reportState: {
+          status: "ready",
+          reportFamily: "big_five",
+          reportAudience: "participant",
+          reportVersion: "v1",
+          reportRenderFormat: "big_five_participant_v1",
+          report: buildLegacyBigFiveReport(),
+        },
+      }),
+    );
+  } finally {
+    React.useState = originalUseState;
+  }
+}
+
+const legacyBigFiveRenderOutput = renderLegacyBigFiveOutput();
+const legacyBigFiveExpandedRenderOutput = renderLegacyBigFiveOutput("CONSCIENTIOUSNESS");
 
 function assertApproxEqual(actual, expected, epsilon = 1e-9) {
   assert.equal(Math.abs(actual - expected) <= epsilon, true, `Expected ${actual} to be within ${epsilon} of ${expected}.`);
@@ -411,6 +547,38 @@ for (const expectedText of [
   );
 }
 
+const mwmsAiSummarySection = getHtmlSliceBetween(
+  mwmsAiRenderOutput,
+  "Sažetak motivacijskog profila",
+  "Šta ovaj obrazac znači u radu",
+  "MWMS ready-AI summary section",
+);
+assert.equal(
+  mwmsAiSummarySection.includes(readyAiSummaryHeadline),
+  true,
+  "Expected MWMS summary.headline in the ready-AI summary zone.",
+);
+assert.equal(
+  mwmsAiSummarySection.includes(readyAiSummaryParagraph),
+  true,
+  "Expected MWMS summary.paragraph in the ready-AI summary zone.",
+);
+
+for (const [fieldLabel, fieldText] of [
+  ["summary.headline", readyAiSummaryHeadline],
+  ["summary.paragraph", readyAiSummaryParagraph],
+  ["motivation_pattern.autonomous", readyAiNarrativeText.autonomous],
+  ["motivation_pattern.controlled", readyAiNarrativeText.controlled],
+  ["motivation_pattern.amotivation", readyAiNarrativeText.amotivation],
+  ["key_observations[0]", readyAiNarrativeText.keyObservation],
+  ["possible_tensions[0]", readyAiNarrativeText.possibleTension],
+  ["development_suggestions[0]", readyAiNarrativeText.developmentSuggestion],
+  ["reflection_questions[0]", readyAiNarrativeText.reflectionQuestion],
+  ["interpretation_note", readyAiNarrativeText.interpretationNote],
+]) {
+  assertOccursOnce(mwmsAiRenderOutput, fieldText, `MWMS ${fieldLabel}`);
+}
+
 for (const removedReadyAiSummaryText of [
   "Tvoji najizraženiji izvori motivacije su",
   "Tvoj profil motivacije djeluje uravnoteženo",
@@ -484,6 +652,106 @@ for (const previousRewriteOutput of [
     mwmsAiRenderOutput.includes(previousRewriteOutput),
     false,
     `Expected ready MWMS AI output to exclude renderer rewrite: ${previousRewriteOutput}`,
+  );
+}
+
+const legacyConclusionSection = getHtmlSliceBetween(
+  legacyBigFiveRenderOutput,
+  "Zaključak",
+  "Preporuke",
+  "Legacy Big Five conclusion section",
+);
+assert.equal(
+  legacyConclusionSection.includes(legacySummaryText.headline),
+  true,
+  "Expected Legacy summary.headline in the conclusion zone.",
+);
+assert.equal(
+  legacyConclusionSection.includes(legacySummaryText.overview),
+  true,
+  "Expected Legacy summary.overview in the conclusion zone.",
+);
+assertOccursOnce(
+  legacyBigFiveRenderOutput,
+  legacySummaryText.headline,
+  "Legacy summary.headline",
+);
+assertOccursOnce(
+  legacyBigFiveRenderOutput,
+  legacySummaryText.overview,
+  "Legacy summary.overview",
+);
+
+for (const [fieldLabel, fieldText] of [
+  ["dimension_insights[0].summary", legacyDimensionInsightText.summary],
+  ["development_recommendations[0].title", legacyRecommendationText.title],
+  ["development_recommendations[0].description", legacyRecommendationText.description],
+  ["development_recommendations[0].action", legacyRecommendationText.action],
+]) {
+  assertOccursOnce(legacyBigFiveRenderOutput, fieldText, `Legacy ${fieldLabel}`);
+}
+
+for (const [fieldLabel, fieldText] of [
+  ["dimension_insights[0].work_style", legacyDimensionInsightText.workStyle],
+  ["dimension_insights[0].risks", legacyDimensionInsightText.risks],
+  ["dimension_insights[0].development_focus", legacyDimensionInsightText.developmentFocus],
+]) {
+  assertOccursOnce(legacyBigFiveExpandedRenderOutput, fieldText, `Legacy ${fieldLabel}`);
+}
+
+const legacyRecommendationSection = getHtmlSliceBetween(
+  legacyBigFiveRenderOutput,
+  "Preporuke",
+  legacyRecommendationText.title,
+  "Legacy Big Five recommendation section heading",
+);
+assert.equal(
+  legacyBigFiveRenderOutput.includes(`<strong>${legacyRecommendationText.title}</strong>`),
+  true,
+  "Expected Legacy recommendation title to remain a direct strong field.",
+);
+assert.equal(
+  legacyBigFiveRenderOutput.includes(`<p>${legacyRecommendationText.description}</p>`),
+  true,
+  "Expected Legacy recommendation description to remain a direct paragraph field.",
+);
+assert.equal(
+  legacyBigFiveRenderOutput.includes(
+    `<strong>Akcija:</strong> ${legacyRecommendationText.action}`,
+  ),
+  true,
+  "Expected Legacy recommendation action to remain separate under the neutral Akcija label.",
+);
+assert.equal(
+  legacyRecommendationSection.includes(legacyRecommendationText.description),
+  false,
+  "Legacy recommendation description must not be merged into the section heading area.",
+);
+
+assert.equal(
+  legacyBigFiveRenderOutput.includes(
+    "Detaljnije tumačenje za ovu dimenziju nije dostupno u ovom izvještaju.",
+  ),
+  true,
+  "Expected missing Legacy dimension insight to use the neutral unavailable state.",
+);
+
+for (const removedLegacyText of [
+  "Top uvidi",
+  "Sažetak ključnih obrazaca",
+  "Ovo je jedna od izraženijih niti tvog trenutnog obrasca",
+  "Često ti prija kontakt s ljudima",
+  "Vjerovatno ti prijaju struktura, red",
+  "Pritisak možeš osjetiti brže i intenzivnije",
+  "Često te privuku nove ideje",
+  "Najizraženija dimenzija u ovom profilu je",
+  "Suptilniji signal u ovom profilu je",
+  "Pokušaj prepoznati gdje ti ovaj obrazac najviše pomaže",
+]) {
+  assert.equal(
+    legacyBigFiveRenderOutput.includes(removedLegacyText),
+    false,
+    `Expected Legacy renderer output to exclude frontend-authored text: ${removedLegacyText}`,
   );
 }
 
