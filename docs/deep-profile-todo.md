@@ -50,7 +50,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završen prvi implementation slice / Browser review i odluka o sljedećem reference screenu ostaju | UI system / Product quality / Look and feel | Prvi HR participant reports premium reference pass završen kroz structural UI/pattern consistency slice i mini status/copy polish. Sljedeće: browser review potvrda i odluka o narednom UI reference screenu ili uskom polish slice-u; bez business logic, DB, provider, lifecycle, report contract ili assessment runtime promjena. |
-| P0        | AI segment-aware report content architecture for individual reports | Planirano | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. |
+| P0        | AI segment-aware report content architecture for individual reports | U toku / IDP P0 mapping, MWMS participant summary/narrative authority, i Legacy Big Five summary/conclusion/topInsights/dimension fallback/recommendation renderer authority cleanup completed | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -80,6 +80,113 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - Guardrail: provider i contract izmjene ne idu bez eksplicitnog slice-a i legacy snapshot strategije.
 - Supporting spec: `docs/deep-profile-ai-report-content-architecture.md`
 
+### Completion note — IDP P0 summary mapping cleanup
+
+- IDP renderer mapping was cleaned so `developmentSummary.overallPattern` is rendered only once as the main developmental signal.
+- `developmentSummary.usageNote` is rendered only once in the dedicated `Kako HR može koristiti nalaz` panel.
+- The renderer no longer uses `usageNote` as hero/meta helper copy.
+- Summary/header description now uses neutral renderer-only structural copy, not duplicated AI interpretation.
+- Scope was UI-only and limited to the IDP renderer and its renderer hygiene test.
+- No provider, OpenAI prompt, contract, validator, backend, DB, lifecycle, route, worker, scheduler, scoring, report generation, or todo logic was changed.
+
+### Completion note — IDP section-description neutrality cleanup
+
+- IDP renderer-authored section descriptions were neutralized so they act as navigation/structure copy, not HR/domain interpretation.
+- Risky renderer-authored phrases such as `radne hipoteze`, `svaka kartica je hipoteza`, and `pretvara razvojni signal u operativan okvir` were replaced with neutral descriptions like `sekcija prikazuje/organizuje postojeće elemente iz izvještaja`.
+- AI/report fields, report mapping, layout, provider content, persisted snapshot contract, and backend behavior were not changed.
+- Guardrail tests were strengthened to keep `overallPattern` and `usageNote` single-mapped and to prevent renderer-authored interpretive section descriptions from returning.
+
+### Completion note — MWMS participant P0 AI summary authority mapping
+
+- MWMS participant ready-AI summary now directly renders:
+  - `mwmsParticipantReport.summary.headline`
+  - `mwmsParticipantReport.summary.paragraph`
+- The ready-AI summary zone no longer uses score-derived frontend summary helpers:
+  - `getMwmsSummaryHeadline(...)`
+  - `getMwmsSummaryOneLiner(...)`
+  - `getMwmsSummarySignals(...)`
+- Hardcoded personalized summary signal cards were removed from the ready-AI summary zone.
+- Numeric score cards, score values, score bands, provider, contract, validator, scoring, backend, DB, lifecycle, routes, worker, scheduler, and todo were not changed.
+
+### Completion note — MWMS participant provider-copy rewrite cleanup
+
+- Ready-AI MWMS narrative fields now render directly without `normalizeMwmsCopy()`.
+- Directly rendered MWMS fields include:
+  - `motivation_pattern.autonomous`
+  - `motivation_pattern.controlled`
+  - `motivation_pattern.amotivation`
+  - `key_observations[]`
+  - `possible_tensions[]`
+  - `development_suggestions[]`
+  - `reflection_questions[]`
+  - `interpretation_note`
+- `normalizeMwmsCopy()` was removed after it no longer had valid usage paths.
+- Score display, band logic, layout, provider, contract, validator, scoring, backend, DB, lifecycle, routes, worker, scheduler, and todo were not changed.
+
+### Completion note — Legacy Big Five P0 conclusion authority cleanup
+
+- Legacy Big Five `Zaključak` no longer uses frontend-generated `getConclusion()` output.
+- The conclusion section now directly renders existing report summary fields:
+  - `bigFiveParticipantReport.summary.headline`
+  - `bigFiveParticipantReport.summary.overview`
+- Removed behavior:
+  - combining AI headline with highest/lowest score dimensions
+  - renderer-generated conclusion sentences about most prominent/subtler dimensions
+  - `toSecondPersonSingular()` rewrite in the conclusion zone
+- MWMS behavior was not changed.
+- Provider, OpenAI prompt, contract, validator, scoring, backend, DB, routes, lifecycle, worker, scheduler, and todo logic were not changed.
+
+### Completion note — Legacy Big Five P0 topInsights authority cleanup
+
+- Legacy Big Five frontend-generated `Top uvidi` / `Sažetak ključnih obrazaca` zones were removed because no dedicated top-insights report field exists.
+- Removed helpers:
+  - `getTopInsights()`
+  - `formatTopInsightSentence()`
+  - dead `stripInsightLabel()`
+- Renderer no longer selects, ranks, paraphrases, or duplicates top insights from strengths, blind spots, recommendations, work style, or dimension summaries.
+- Authoritative summary remains mapped to:
+  - `bigFiveParticipantReport.summary.headline`
+  - `bigFiveParticipantReport.summary.overview`
+- Conclusion mapping did not regress.
+- MWMS behavior was not changed.
+
+### Completion note — Legacy Big Five P0 personalized dimension fallback cleanup
+
+- Legacy Big Five expanded dimension fallback no longer generates personalized psychological interpretation from score bands.
+- Removed score-band/rank fallback helpers and hardcoded work-style, strength, risk, and development narrative fallbacks.
+- Existing `dimension_insights` fields are now rendered directly when available:
+  - `summary`
+  - `work_style`
+  - `risks`
+  - `development_focus`
+- When a dedicated dimension insight is missing, renderer shows a neutral unavailable state:
+  - `Detaljnije tumačenje za ovu dimenziju nije dostupno u ovom izvještaju.`
+- Numeric score cards, score values, score bars, and score display were not changed.
+- TopInsights zone was not restored.
+- MWMS behavior was not changed.
+
+### Completion note — Legacy Big Five P1 recommendations rewrite cleanup
+
+- Legacy Big Five recommendations no longer use frontend rewrite/splicing helpers.
+- Removed behavior:
+  - `getRecommendations()`
+  - limiting recommendations to the first three items
+  - `formatRecommendation()`
+  - `toSecondPersonSingular()` for recommendation narrative fields
+  - joining `description` and `action` into a new renderer-authored sentence
+- Each `development_recommendations[]` item now directly renders:
+  - `item.title`
+  - `item.description`
+  - `item.action` with neutral label `Akcija`
+- Missing individual recommendation fields use neutral fallback:
+  - `Nije dostupno u ovom izvještaju.`
+- Empty recommendation list uses neutral fallback:
+  - `Preporuke nisu dostupne u ovom izvještaju.`
+- Legacy conclusion mapping did not regress.
+- TopInsights zone was not restored.
+- Personalized dimension fallback was not restored.
+- MWMS behavior was not changed.
+
 **Completion note — Team Fit persisted report list entrypoint + DB-backed route smoke**
 - Dodat je read-only Team Fit report list/entrypoint u HR participant reports kontekstu.
 - Ready Team Fit report linkuje na postojeću read-only rutu `/dashboard/teams/[teamId]/participants/[participantId]/team-fit-reports/[teamFitReportId]`.
@@ -87,37 +194,6 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - DB-backed smoke potvrđuje persisted `team_fit_reports` flow na istom `.env.local` Supabase runtime-u, uključujući wrong org/team/participant boundary guardrail.
 - Manual browser review je prošao za persisted Team Fit list entrypoint i read-only report route: HR participant reports page prikazuje Team Fit listu, ready entry otvara persisted report iz `team_fit_reports`, a prikaz nema raw error, OpenAI/provider copy, generation akciju, numeric fit score, hire/no-hire jezik, candidate-facing output ni individualne odgovore/skorove članova tima; privremeni browser-review fixture je očišćen nakon pregleda.
 - Nisu uvedeni OpenAI, provider, generation action, worker, scheduler, candidate-facing output ni DB write iz view/list sloja.
-
-**Completion note — Team Fit manual mock processing action + HR list CTA**
-- Dodan je protected HR-only manual process action za persisted `team_fit_reports` lane.
-- Action `processTeamFitReportAction(...)` koristi authenticated user + active organization boundary i provjerava organization/team/participant ownership bez otkrivanja cross-org report row-a.
-- Action dozvoljava obradu samo za podržani Team Fit report kind (`team_fit_report_v1` / `v1`) i samo kada je `report_status = "queued"`.
-- Non-queued i unsupported stanja vraćaju kontrolisane rezultate, uključujući `already_processing`, `already_ready`, `failed_not_processable`, `unsupported_report_kind`, `unauthorized` i controlled failure rezultat.
-- Happy path koristi postojeći mock-safe seam `processTeamFitReportWithMock(...)`; action ne piše `report_snapshot` direktno.
-- Kontrolisani lifecycle tok za ovaj slice je `queued -> processing -> ready`.
-- Team Fit lista u HR participant reports kontekstu sada prikazuje CTA `Pripremi Team Fit izvještaj` za queued report.
-- Status rendering po statusima:
-  - `queued` -> `Pripremi Team Fit izvještaj`
-  - `processing` -> `Priprema u toku`
-  - `ready` -> `Otvori Team Fit izvještaj`
-  - `failed` -> `Izvještaj nije pripremljen`
-- Failed stanje ne prikazuje raw `error_message` i nema retry/reset UI u ovom slice-u.
-- Nakon uspješne obrade revalidiraju se participant reports route i Team Fit report view route.
-- Jedini dozvoljeni lifecycle write je kontrolisani write u `team_fit_reports`; nema write-a u `attempt_reports`, `assessment_reports` ili `team_assessment_reports`.
-- Nisu uvedeni OpenAI, real provider, worker, scheduler, report generation iz view route-a, candidate-facing output, numeric fit score, hire/no-hire copy, raw error prikaz ni individualni team member odgovori/skorovi u UI-u.
-- Verifikovano:
-  - `node scripts/test-team-fit-manual-process-action.cjs`
-  - `node scripts/test-team-fit-report-list-entrypoint.cjs`
-  - `node scripts/test-team-fit-report-route-shell.cjs`
-  - `node scripts/test-team-fit-report-lifecycle-shell.cjs`
-  - `node scripts/test-team-fit-report-provider-seam.cjs`
-  - `node --env-file=.env.local scripts/test-team-fit-report-db-smoke.cjs`
-  - `npm run typecheck`
-
-**Completion note — Team Fit failed retry/reset recovery flow**
-- Dodan je protected HR-only retry/reset action za persisted `team_fit_reports` lane.
-- Action `resetTeamFitReportAction(...)` koristi authenticated user + active organization boundary i provjerava organization/team/participant ownership bez otkrivanja cross-org report row-a.
-- Retry/reset koristi postojeći server-only lifecycle helper `resetFailedTeamFitReportToQueued(...)`.
 - Ownership boundary za helper je `teamFitReportId + organizationId`.
 - Reset je dozvoljen samo kada je `report_status = "failed"`.
 - Non-resettable statusi vraćaju kontrolisane rezultate:
@@ -6415,6 +6491,10 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 * Ne koristi se destruktivan repair bez prethodne potvrde.
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-05 — Individual report segment-authority cleanup: IDP, MWMS, Legacy Big Five
+
+Završen je niz UI-only renderer authority cleanup slice-ova za workstream AI segment-aware report content architecture for individual reports. IDP duplicate/section-description issues su očišćeni, MWMS participant ready-AI summary i narrative polja sada renderuju provider-authored report fields direktno, a Legacy Big Five više ne generiše conclusion, top insights, dimension fallback interpretaciju ili recommendation narrative u frontend-u. Ponovo je potvrđeno osnovno pravilo: frontend smije renderovati, organizovati, labelirati i formatirati postojeća report polja, ali ne smije generisati psihološku, HR ili domain interpretaciju. Nisu mijenjani provider, OpenAI prompt, contract, validator, scoring, backend, DB, route, lifecycle, worker, scheduler niti report generation ponašanje. Preporučeni sljedeći fokus je SAFRAN participant display contract cleanup audit, a zatim validator quality guardrails.
 
 ### 2026-06-03 — HR participant reports premium reference pass
 
