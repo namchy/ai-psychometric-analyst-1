@@ -145,6 +145,57 @@ function countOccurrences(value, expected) {
   return value.split(expected).length - 1;
 }
 
+function assertOccursOnce(output, expected, label) {
+  assert.equal(
+    countOccurrences(output, expected),
+    1,
+    `Expected ${label} to render exactly once: ${expected}`,
+  );
+}
+
+function getHtmlSliceBetween(output, startText, endText, label) {
+  const start = output.indexOf(startText);
+  assert.notEqual(start, -1, `Expected ${label} start marker: ${startText}`);
+
+  const end = output.indexOf(endText, start);
+  assert.notEqual(end, -1, `Expected ${label} end marker: ${endText}`);
+
+  return output.slice(start, end);
+}
+
+const readyAiMarkerText = {
+  summaryInterpretation:
+    "SAFRAN READY SUMMARY MARKER: Ukupni obrazac pokazuje marker odnos između verbalnog, figuralnog i numeričkog dijela bez renderer dopune.",
+  verbalInterpretation:
+    "SAFRAN READY DOMAIN VERBAL MARKER: Verbalni report field ostaje direktan opis zadataka s pojmovima.",
+  figuralInterpretation:
+    "SAFRAN READY DOMAIN FIGURAL MARKER: Figuralni report field ostaje direktan opis odnosa među oblicima.",
+  numericInterpretation:
+    "SAFRAN READY DOMAIN NUMERIC MARKER: Numerički report field ostaje direktan opis numeričkog kontrasta.",
+  primarySignal:
+    "SAFRAN READY PRIMARY SIGNAL MARKER: Primarni signal opisuje odnos verbalnog, figuralnog i numeričkog dijela.",
+  balanceNote:
+    "SAFRAN READY BALANCE NOTE MARKER: Balance note ostaje odvojeno poređenje tri SAFRAN oblasti.",
+  cautionSignal:
+    "SAFRAN READY CAUTION SIGNAL MARKER: Caution signal ostaje zaseban oprez o numeričkom kontrastu.",
+  readingGuideTitle:
+    "SAFRAN READY READING GUIDE TITLE MARKER",
+  readingGuideIq:
+    "SAFRAN READY READING BULLET INTELLIGENCE MARKER: Ovi rezultati ne predstavljaju mjeru opšte inteligencije.",
+  readingGuidePercentile:
+    "SAFRAN READY READING BULLET LOCAL MARKER: Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.",
+  readingGuidePractice:
+    "SAFRAN READY READING BULLET PRACTICE MARKER: Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.",
+  readingGuideDecision:
+    "SAFRAN READY READING BULLET DECISION MARKER: SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.",
+  readingGuideContext:
+    "SAFRAN READY READING BULLET CONTEXT MARKER: Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.",
+  nextStepTitle:
+    "SAFRAN READY NEXT STEP TITLE MARKER",
+  nextStepBody:
+    "SAFRAN READY NEXT STEP BODY MARKER: Sljedeći korak ostaje praktična refleksija o tome gdje je format bio jasan, a gdje je tražio više provjere.",
+};
+
 const display = buildSafranParticipantReportDisplay({
   testName: "SAFRAN",
   scores: {
@@ -405,8 +456,32 @@ for (const fallbackRenderOutput of failedFallbackOutputs) {
 for (const fallbackRenderOutput of [...pendingFallbackOutputs, ...failedFallbackOutputs]) {
   const visibleFallbackText = fallbackRenderOutput.replace(/<[^>]*>/g, " ");
   assert.doesNotMatch(visibleFallbackText, /\bAI\b/i);
+  assert.doesNotMatch(visibleFallbackText, /AI generated|vještačka inteligencija|vještačke inteligencije/i);
   for (const score of ["29 / 54", "15 / 18", "8 / 18", "6 / 18"]) {
     assert.equal(fallbackRenderOutput.includes(score), true, `Expected fallback score ${score}.`);
+  }
+  for (const readyAiOnlyText of [
+    readyAiMarkerText.summaryInterpretation,
+    readyAiMarkerText.verbalInterpretation,
+    readyAiMarkerText.figuralInterpretation,
+    readyAiMarkerText.numericInterpretation,
+    readyAiMarkerText.primarySignal,
+    readyAiMarkerText.balanceNote,
+    readyAiMarkerText.cautionSignal,
+    readyAiMarkerText.readingGuideTitle,
+    readyAiMarkerText.readingGuideIq,
+    readyAiMarkerText.readingGuidePercentile,
+    readyAiMarkerText.readingGuidePractice,
+    readyAiMarkerText.readingGuideDecision,
+    readyAiMarkerText.readingGuideContext,
+    readyAiMarkerText.nextStepTitle,
+    readyAiMarkerText.nextStepBody,
+  ]) {
+    assert.equal(
+      fallbackRenderOutput.includes(readyAiOnlyText),
+      false,
+      `Non-ready fallback unexpectedly contains ready-AI report text: ${readyAiOnlyText}`,
+    );
   }
   for (const forbiddenFallbackNarrative of [
     "Rezultat ispod sažima učinak u ovom pokušaju",
@@ -480,8 +555,7 @@ const aiRenderOutput = renderToStaticMarkup(
           title: "Sažetak rezultata",
           scoreLabel: "36/54",
           bandLabel: "umjeren ukupni broj tačnih odgovora",
-          interpretation:
-            "Ukupni obrazac pokazuje vrlo stabilan verbalno-figuralni učinak uz izražen kontrast u odnosu na numerički dio. To je korisnije čitati kao razliku između tipova SAFRAN zadataka nego kao jedinstven zaključak o osobi.",
+          interpretation: readyAiMarkerText.summaryInterpretation,
         },
         domains: [
           {
@@ -489,49 +563,42 @@ const aiRenderOutput = renderToStaticMarkup(
             title: "Verbalni rezultat",
             scoreLabel: "18/18",
             bandLabel: "veći broj tačnih odgovora",
-            interpretation:
-              "Verbalni dio ovdje pokazuje da su pravila u zadacima s riječima i pojmovima bila brzo prepoznatljiva i stabilno praćena.",
+            interpretation: readyAiMarkerText.verbalInterpretation,
           },
           {
             code: "figural",
             title: "Figuralni rezultat",
             scoreLabel: "18/18",
             bandLabel: "veći broj tačnih odgovora",
-            interpretation:
-              "Figuralni dio prati sličan obrazac kao verbalni: odnosi među oblicima i prostorna pravila ovdje su bili dosljedno uhvaćeni.",
+            interpretation: readyAiMarkerText.figuralInterpretation,
           },
           {
             code: "numeric",
             title: "Numerički rezultat",
             scoreLabel: "0/18",
             bandLabel: "manji broj tačnih odgovora",
-            interpretation:
-              "Numerički dio se ovdje jasno odvaja od verbalno-figuralnog obrasca i traži oprezniju interpretaciju.",
+            interpretation: readyAiMarkerText.numericInterpretation,
           },
         ],
         cognitiveSignals: {
           title: "Profil kognitivnih signala",
-          primarySignal:
-            "Primarni signal je jasan odnos u kojem verbalni i figuralni dio drže stabilniji obrazac tačnosti nego numerički dio.",
-          cautionSignal:
-            "Glavni oprez je da se numerički kontrast ne pretvori u zaključak o osobi, jer je taj format mogao tražiti više provjere i drugačiju strategiju.",
-          balanceNote:
-            "Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao povezan obrazac iz istog pokušaja.",
+          primarySignal: readyAiMarkerText.primarySignal,
+          cautionSignal: readyAiMarkerText.cautionSignal,
+          balanceNote: readyAiMarkerText.balanceNote,
         },
         readingGuide: {
-          title: "Kako čitati ove rezultate",
+          title: readyAiMarkerText.readingGuideTitle,
           bullets: [
-            "Ovi rezultati ne predstavljaju mjeru opšte inteligencije.",
-            "Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.",
-            "Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.",
-            "SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.",
-            "Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.",
+            readyAiMarkerText.readingGuideIq,
+            readyAiMarkerText.readingGuidePercentile,
+            readyAiMarkerText.readingGuidePractice,
+            readyAiMarkerText.readingGuideDecision,
+            readyAiMarkerText.readingGuideContext,
           ],
         },
         nextStep: {
-          title: "Sljedeći korak",
-          body:
-            "Kada čitaš ovaj obrazac, korisno je izdvojiti gdje su pravila bila odmah uočljiva, a gdje je numerički format tražio više provjere, vremena ili drugačiji pristup.",
+          title: readyAiMarkerText.nextStepTitle,
+          body: readyAiMarkerText.nextStepBody,
           ctaLabel: "Nazad na pregled",
         },
         safetyChecks: {
@@ -549,17 +616,10 @@ const aiRenderOutput = renderToStaticMarkup(
 );
 
 assert.equal(
-  aiRenderOutput.includes(
-    "Ukupni obrazac pokazuje vrlo stabilan verbalno-figuralni učinak uz izražen kontrast u odnosu na numerički dio.",
-  ),
+  aiRenderOutput.includes(readyAiMarkerText.summaryInterpretation),
   true,
 );
-assert.equal(
-  aiRenderOutput.split(
-    "Ukupni obrazac pokazuje vrlo stabilan verbalno-figuralni učinak uz izražen kontrast u odnosu na numerički dio. To je korisnije čitati kao razliku između tipova SAFRAN zadataka nego kao jedinstven zaključak o osobi.",
-  ).length - 1,
-  1,
-);
+assertOccursOnce(aiRenderOutput, readyAiMarkerText.summaryInterpretation, "ready-AI summary.interpretation");
 assert.equal(
   aiRenderOutput.includes("36 / 54"),
   true,
@@ -576,16 +636,22 @@ assert.equal(
   aiRenderOutput.includes("umjeren ukupni broj tačnih odgovora"),
   true,
 );
+assert.equal(
+  aiRenderOutput.includes('style="width:100%"'),
+  true,
+  "Expected SAFRAN score bar for 18 / 18 to remain present.",
+);
+assert.equal(
+  aiRenderOutput.includes('style="width:0%"'),
+  true,
+  "Expected SAFRAN score bar for 0 / 18 to remain present.",
+);
 for (const domainInterpretation of [
-  "Verbalni dio ovdje pokazuje da su pravila u zadacima s riječima i pojmovima bila brzo prepoznatljiva i stabilno praćena.",
-  "Figuralni dio prati sličan obrazac kao verbalni: odnosi među oblicima i prostorna pravila ovdje su bili dosljedno uhvaćeni.",
-  "Numerički dio se ovdje jasno odvaja od verbalno-figuralnog obrasca i traži oprezniju interpretaciju.",
+  readyAiMarkerText.verbalInterpretation,
+  readyAiMarkerText.figuralInterpretation,
+  readyAiMarkerText.numericInterpretation,
 ]) {
-  assert.equal(
-    countOccurrences(aiRenderOutput, domainInterpretation),
-    1,
-    `Expected ready-AI domain interpretation exactly once: ${domainInterpretation}`,
-  );
+  assertOccursOnce(aiRenderOutput, domainInterpretation, "ready-AI domain interpretation");
 }
 assert.equal(
   aiRenderOutput.includes(
@@ -601,15 +667,11 @@ for (const scoreDerivedDomainText of [
   assert.equal(aiRenderOutput.includes(scoreDerivedDomainText), false);
 }
 for (const cognitiveSignal of [
-  "Primarni signal je jasan odnos u kojem verbalni i figuralni dio drže stabilniji obrazac tačnosti nego numerički dio.",
-  "Najviše smisla ima uporediti verbalni, figuralni i numerički dio kao povezan obrazac iz istog pokušaja.",
-  "Glavni oprez je da se numerički kontrast ne pretvori u zaključak o osobi, jer je taj format mogao tražiti više provjere i drugačiju strategiju.",
+  readyAiMarkerText.primarySignal,
+  readyAiMarkerText.balanceNote,
+  readyAiMarkerText.cautionSignal,
 ]) {
-  assert.equal(
-    countOccurrences(aiRenderOutput, cognitiveSignal),
-    1,
-    `Expected ready-AI cognitive signal exactly once: ${cognitiveSignal}`,
-  );
+  assertOccursOnce(aiRenderOutput, cognitiveSignal, "ready-AI cognitive signal");
 }
 assert.equal(
   aiRenderOutput.includes(
@@ -621,8 +683,8 @@ for (const title of [
   "Sažetak rezultata",
   "Pregled po oblastima",
   "Profil kognitivnih signala",
-  "Kako čitati ove rezultate",
-  "Sljedeći korak",
+  readyAiMarkerText.readingGuideTitle,
+  readyAiMarkerText.nextStepTitle,
 ]) {
   assert.equal(
     aiRenderOutput.includes(title),
@@ -640,18 +702,63 @@ assert.equal(
   ),
   false,
 );
-const nextStepBody =
-  "Kada čitaš ovaj obrazac, korisno je izdvojiti gdje su pravila bila odmah uočljiva, a gdje je numerički format tražio više provjere, vremena ili drugačiji pristup.";
-assert.equal(countOccurrences(aiRenderOutput, nextStepBody), 1);
+assertOccursOnce(aiRenderOutput, readyAiMarkerText.readingGuideTitle, "ready-AI readingGuide.title");
+assertOccursOnce(aiRenderOutput, readyAiMarkerText.nextStepTitle, "ready-AI nextStep.title");
+assertOccursOnce(aiRenderOutput, readyAiMarkerText.nextStepBody, "ready-AI nextStep.body");
 for (const readingGuideBullet of [
-  "Ovi rezultati ne predstavljaju mjeru opšte inteligencije.",
-  "Ovaj rezultat nije percentil i ne predstavlja poređenje s lokalnom referentnom grupom.",
-  "Practice pitanja služe samo za upoznavanje s formatom zadataka i ne ulaze u scoring.",
-  "SAFRAN rezultat ne treba koristiti kao samostalnu odluku o kandidatu.",
-  "Najkorisnije ga je čitati zajedno s ostalim dijelovima Deep Profile procjene.",
+  readyAiMarkerText.readingGuideIq,
+  readyAiMarkerText.readingGuidePercentile,
+  readyAiMarkerText.readingGuidePractice,
+  readyAiMarkerText.readingGuideDecision,
+  readyAiMarkerText.readingGuideContext,
 ]) {
-  assert.equal(countOccurrences(aiRenderOutput, readingGuideBullet), 1);
+  assertOccursOnce(aiRenderOutput, readingGuideBullet, "ready-AI readingGuide.bullets[]");
 }
+const readyAiSignalsSection = getHtmlSliceBetween(
+  aiRenderOutput,
+  "Profil kognitivnih signala",
+  readyAiMarkerText.readingGuideTitle,
+  "ready-AI signals section",
+);
+assert.equal(
+  readyAiSignalsSection.includes(readyAiMarkerText.primarySignal),
+  true,
+  "Expected primarySignal inside signals section.",
+);
+assert.equal(
+  readyAiSignalsSection.includes(readyAiMarkerText.balanceNote),
+  true,
+  "Expected balanceNote inside signals section.",
+);
+assert.equal(
+  readyAiSignalsSection.includes(readyAiMarkerText.cautionSignal),
+  true,
+  "Expected cautionSignal inside signals section.",
+);
+assert.equal(
+  readyAiSignalsSection.includes(readyAiMarkerText.nextStepBody),
+  false,
+  "nextStep.body must not be remapped into the signal/caution section.",
+);
+const readyAiReadingGuideSection = getHtmlSliceBetween(
+  aiRenderOutput,
+  readyAiMarkerText.readingGuideTitle,
+  readyAiMarkerText.nextStepTitle,
+  "ready-AI reading guide section",
+);
+assert.equal(
+  readyAiReadingGuideSection.includes(readyAiMarkerText.nextStepBody),
+  false,
+  "nextStep.body must not be remapped into the reading guide section.",
+);
+const readyAiNextStepSection = aiRenderOutput.slice(
+  aiRenderOutput.indexOf(readyAiMarkerText.nextStepTitle),
+);
+assert.equal(
+  readyAiNextStepSection.includes(readyAiMarkerText.nextStepBody),
+  true,
+  "Expected nextStep.body inside next step section.",
+);
 assert.equal(
   aiRenderOutput.includes(
     "Ukupni rezultat sažima učinak kroz verbalni, figuralni i numerički dio i najkorisnije ga je čitati zajedno s pregledom po oblastima.",
@@ -661,6 +768,8 @@ assert.equal(
 assert.equal(aiRenderOutput.includes("Nazad na pregled"), true);
 assert.equal(aiRenderOutput.includes("Nazad na pregled procjene"), false);
 
+assert.doesNotMatch(displaySource, /buildSafranAiSignalParagraph|buildSafranCautionSentence|normalizeSafranDisplayText/);
+assert.doesNotMatch(rendererSource, /buildSafranParticipantDomainSummary|buildSafranAiSignalParagraph|buildSafranCautionSentence|normalizeSafranDisplayText/);
 assert.doesNotMatch(displaySource, /validateSafranParticipantAiReport/);
 for (const source of [displaySource, rendererSource]) {
   assert.doesNotMatch(
