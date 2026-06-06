@@ -50,7 +50,8 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / UI targeting-control audit i foundation prije daljeg redesign-a | UI system / Product quality / Look and feel | Prije novih vizuelnih izmjena uraditi read-only audit postojećih UI standarda, tokena, shared komponenti i paralelnih stilskih slojeva; zatim definisati UI targeting/control layer koji podržava globalne, variant-level i single-instance izmjene kroz postojeći UI system. Ne uvoditi novi paralelni design system i ne raditi redesign-all. |
-| P0        | AI segment-aware report content architecture for individual reports | U toku / renderer authority cleanup and renderer guardrail tests completed for IDP, MWMS participant, Legacy Big Five, and SAFRAN; MWMS, IDP, and SAFRAN contract quality validators hardened | Deep Profile / Report content architecture | Retroaktivno uvesti isti princip koji je otkriven kroz Team Fit UI rad: svaki AI-generisani tekstualni UI segment u individualnim reportima mora imati eksplicitno definisan content contract i provider prompt instrukcije za sadržaj, formu, ton, dužinu i zabrane. Frontend ne smije generisati domain interpretaciju. Next: cross-renderer boundary import scan hardening, then provider prompt updates and legacy snapshot strategy as separate later slices. |
+| P0        | AI segment-aware report content architecture for individual reports | U toku / single-test HR report authority audit otkrio prompt-selection, terminology i renderer-path split; IPIP GPT-5.5 pilot prošao tehnički, ali terminology/prompt authority ostaje P0 blocker | Deep Profile / Report content architecture | Prvo stabilizovati single-test HR report authority layer: global prompt rules + terminology policy + report-family/test-specific prompt selection + dev-only prompt/request dump. Zatim očistiti IPIP terminology source (`Ugodnost`) i regenerisati IPIP. Ne raditi UI redesign prije authority/terminology stabilizacije. |
+| P0        | Single-test HR report authority + prompt policy layer | Otvoreno / authority audit završen, implementation pending | Report architecture / Prompt governance / Terminology | Uvesti centralni authority model za single-test HR reporte: global prompt rules, global terminology rules, report-family rules, test-specific rules, runtime/input facts, prompt selection po lane-u i dev-only prompt/request dump prije OpenAI call-a. Prvi implementation slice: read-safe prompt dump + IPIP terminology authority cleanup; ne dirati Composite/IDP/Team Fit/Team Dynamics. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -6153,6 +6154,65 @@ Razlog za sljedeći prioritet:
     * promjenu jednog element type-a globalno na svim ekranima
     * promjenu samo jedne konkretne instance elementa na jednom ekranu bez uticaja na ostale instance
   * Prvi implementation korak ne smije biti redesign, nego audit i mapiranje postojećeg stanja.
+  * Najnoviji single-test HR report audit pokazuje da se UI polish/redesign ne smije raditi prije report authority stabilizacije. Vizuelni problem na IPIP HR reportu nije izolovan samo u stilu; isti ekran otkriva prompt, terminology, snapshot i renderer-path split. Sljedeći UI rad mora prvo znati koji route/renderer je canonical i koji snapshot/display model je autoritativan.
+
+### Single-test HR report authority / prompt policy split
+
+- Read-only audit je potvrdio da single-test HR report sistem nema jedan autoritativni lanac za route, renderer, provider, prompt, validator i terminologiju.
+- `/dashboard/attempts/[attemptId]` je trenutni HR detail route za single-test HR report i koristi `CompletedAssessmentSummary -> selectReportRenderer -> IpipNeo120HrReportSections`.
+- Participant reports hub `/dashboard/participants/[participantId]/reports` ostaje canonical HR pregledni ulaz, ali detail rendering za single-test report ide kroz attempt route.
+- IPIP HR runtime je koristio DB prompt selection, ne code fallback prompt. Zato promjene u `report-provider-openai.ts` prompt tekstu nisu garantovale promjenu stvarnog live prompta.
+- IPIP HR je ranije padao kroz više simptoma:
+  - GPT-5.5 ne prihvata `temperature: 0.2`
+  - exact sentence-count prose validator je bio krut za GPT-5.5 output
+  - live worker je koristio globalni DB prompt umjesto IPIP-specific prompta
+  - nakon IPIP-specific DB prompt row-a report je postao ready
+- Zaključak: prompt selection mora biti eksplicitan po lane-u; global fallback ne smije tiho zaobilaziti test-specific prompt policy.
+- Terminologija nije centralizovana. Trenutno postoje divergentni izvori:
+  - IPIP HR path može proizvesti `Ugodnost`
+  - participant V2/Composite koriste varijante `Spremnost na saradnju`
+  - generic fallback može koristiti `Kooperativnost`
+  - facet-level label koristi `Saradljivost`
+- `Ugodnost` regresija je potvrđena u Amrinom persisted IPIP `input_snapshot` i `report_snapshot`, ne samo u rendereru.
+- Ne popravljati terminologiju samo u UI rendereru. Source mora biti centralizovan u input/prompt/validator/display policy layer-u.
+- Potrebna je hijerarhija prompt policy slojeva:
+  1. Global prompt rules
+  2. Global terminology rules
+  3. Report-family rules
+  4. Test-specific rules
+  5. Runtime/input facts
+- Global prompt rules treba da pokriju BHS ijekavicu/latinicu, HR ton, zabranu hire/no-hire jezika, zabranu dijagnoza, zabranu tvrdnji izvan inputa, zabranu Title Case-a u BHS prozi i zabranu markdown/bullet artefakata u paragraph fieldovima.
+- Global terminology rules treba da budu shared source of truth, a ne kopirani tekst u pojedinačnim promptovima.
+- Prompt target i validator tolerance moraju ostati razdvojeni:
+  - prompt daje idealnu metu
+  - validator ima širu toleranciju i odbija samo stvarno neupotrebljiv, pogrešan, predug, formatno nevalidan ili safety-risk sadržaj
+  - exact sentence-count nije hard quality gate za AI prose fields
+- Potreban je dev-only prompt/request dump prije OpenAI fetch-a:
+  - env flag npr. `AI_REPORT_DEBUG_DUMP_PROMPTS=true`
+  - dump u `/tmp`, bez API key-a i bez write-a u repo
+  - uključiti model, prompt source, prompt_version_id, system prompt, rendered user prompt i response_format/json_schema
+  - koristiti za debugging stvarnog payload-a umjesto naknadnog pogađanja iz outputa
+
+#### Preporučeni sljedeći implementation slice
+
+- Slice 1: dev-only AI prompt/request dump.
+  - Presresti kompletan OpenAI request body nakon build-a, prije fetch-a.
+  - Uključiti samo kada je env flag uključen.
+  - Snimati sanitized JSON u `/tmp`.
+  - Ne mijenjati provider ponašanje kada flag nije uključen.
+  - Primarno pokriti shared single-test HR OpenAI provider; kasnije proširiti na Composite/Team Fit/Team Dynamics ako treba.
+- Slice 2: IPIP terminology authority cleanup.
+  - Izabrati canonical BHS naziv za Agreeableness.
+  - Preporučeni label: `Saradljivost`; dozvoljeno objašnjenje u prozi: `spremnost na saradnju`.
+  - Ukloniti `Ugodnost` iz IPIP HR input/prompt/schema/display source patha.
+  - Uskladiti DB IPIP-specific prompt sa terminološkim rječnikom.
+  - Regenerisati samo Amrin IPIP HR report i potvrditi da snapshot više ne sadrži `Ugodnost`.
+- Slice 3: prompt selection authority.
+  - Uskladiti single-test HR prompt selection tako da IPIP, SAFRAN i MWMS ne zavise od slučajnog global fallback prompta.
+  - MWMS lane-specific prompt key može služiti kao referentni obrazac.
+  - SAFRAN HR global fallback risk posebno zatvoriti.
+- Slice 4: single-test HR renderer authority.
+  - Tek nakon prompt/terminology stabilizacije odlučiti da li `/dashboard/attempts/[attemptId]` treba ostati canonical detail renderer ili postati wrapper/redirect prema jedinstvenom premium HR report view-u.
 
 * **Preporučeni sljedeći implementation slice: UI system audit + targeting foundation**
   * Read-only audit postojećih UI standarda, komponenti, tokena i Tailwind patterna.
@@ -6555,6 +6615,29 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 * Ne koristi se destruktivan repair bez prethodne potvrde.
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-06 — Single-test HR report authority audit nakon Amra GPT-5.5 regeneracije
+
+- Amrin IPIP, SAFRAN, MWMS i Composite HR report set je doveden do GPT-5.5 ready stanja, uz IPIP kao najproblematičniji lane.
+- IPIP regeneracija je otvorila više slojeva problema:
+  - GPT-5.5 ne prihvata `temperature: 0.2`
+  - exact sentence-count validacija nije dobar hard gate za AI prose fields
+  - IPIP live worker je koristio DB prompt selection, ne code prompt fallback
+  - global DB prompt je zaobilazio IPIP-specific prompt dok nije dodan test-specific DB prompt row
+- Uveden je IPIP pilot smjer za shared prose validation policy:
+  - prompt target je uži
+  - validator tolerance je šira
+  - JSON structure ostaje stroga
+  - exact sentence-count nije glavni kvalitetni kriterij
+- IPIP-specific DB prompt row je omogućio ready IPIP HR report:
+  - `prompt_version_id = 46ba8f80-2a95-4404-8141-a7e74ebbd957`
+  - `version = v1_ipip_hr_focused_20260606`
+- Browser review je otkrio da ready IPIP snapshot i dalje sadrži `Ugodnost` i casing probleme u BHS prozi.
+- Read-only route/renderer/provider/prompt/validator audit je potvrdio da je `Ugodnost` u persisted `input_snapshot` i `report_snapshot`, ne samo u UI rendereru.
+- Odluka: ne popravljati terminologiju kozmetički u rendereru; prvo stabilizovati single-test HR report authority, prompt policy i terminology source.
+- Odluka: ići prema hijerarhiji `global prompt rules -> global terminology rules -> report-family rules -> test-specific rules -> runtime/input facts`.
+- Odluka: uvesti dev-only prompt/request dump kako bi se mogao pregledati kompletan stvarni OpenAI payload prije fetch-a.
+- Odluka: UI redesign single-test HR reporta ne otvarati prije prompt/terminology/render authority cleanup-a.
 
 ### 2026-06-05 — UI targeting/control layer decision
 
