@@ -116,9 +116,10 @@ function buildPromptTemplate() {
     generatorType: "openai",
     promptKey: "completed_assessment_report",
     version: "v1_ipip_hr_focused_20260606",
-    systemPrompt: "DB system prompt with Ugodnost inside system context.",
+    systemPrompt:
+      "DB system prompt with Ugodnost, Saradljivost i handling inside system context.",
     userPromptTemplate:
-      "Koristi tačno 5 domain_overview stavki u ovom redoslijedu: Ekstraverzija, Ugodnost, Savjesnost, Neuroticizam, Otvorenost prema iskustvu. {{prompt_input_json}}",
+      "Koristi tačno 5 domain_overview stavki u ovom redoslijedu: Ekstraverzija, Ugodnost, Savjesnost, Neuroticizam, Otvorenost prema iskustvu. Snage i mogući overuse rizici treba da budu jasno opisani. HR handling tip mora ostati praktičan. {{prompt_input_json}}",
     outputSchemaJson: null,
     notes: null,
     createdAt: "2026-06-08T00:00:00.000Z",
@@ -187,16 +188,34 @@ async function main() {
       requestBody: payload.requestBody,
       authorityMetadata: payload.authorityMetadata,
     });
+    const promptText = `${payload.systemPrompt}\n${payload.userPrompt}`;
 
     assert.equal(payloadText.includes("Spremnost na saradnju"), true);
     assert.equal(payloadText.includes("Ugodnost"), false);
     assert.equal(payloadText.includes("ugodnost"), false);
+    assert.equal(promptText.includes("Saradljivost"), false);
+    assert.equal(promptText.includes("saradljivost"), false);
+    assert.equal(promptText.includes("Kooperativnost"), false);
+    assert.equal(promptText.includes("kooperativnost"), false);
+    assert.equal(promptText.includes("overuse"), false);
+    assert.equal(promptText.includes("Overuse"), false);
+    assert.equal(promptText.includes("handling"), false);
+    assert.equal(promptText.includes("Handling"), false);
+    assert.equal(/prekomjern\w* oslanjanj\w*/i.test(promptText), true);
     assert.equal(
       payload.userPrompt.includes(
         "Use exactly 5 domain_overview items in this order: Ekstraverzija, Spremnost na saradnju, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
       ) || payload.userPrompt.includes(
         "Koristi tačno 5 domain_overview stavki u ovom redoslijedu: Ekstraverzija, Spremnost na saradnju, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
       ),
+      true,
+    );
+    assert.equal(
+      payload.userPrompt.includes("Snage i mogući rizici prekomjernog oslanjanja"),
+      true,
+    );
+    assert.equal(
+      payload.userPrompt.includes("HR smjernica za postupanje"),
       true,
     );
 
@@ -215,10 +234,20 @@ async function main() {
       },
     );
     const dumpText = JSON.stringify(dumpRecord);
+    const dumpPromptText = `${dumpRecord.system_prompt}\n${dumpRecord.rendered_user_prompt}`;
 
     assert.equal(dumpText.includes("Spremnost na saradnju"), true);
     assert.equal(dumpText.includes("Ugodnost"), false);
     assert.equal(dumpText.includes("ugodnost"), false);
+    assert.equal(dumpPromptText.includes("Saradljivost"), false);
+    assert.equal(dumpPromptText.includes("saradljivost"), false);
+    assert.equal(dumpPromptText.includes("Kooperativnost"), false);
+    assert.equal(dumpPromptText.includes("kooperativnost"), false);
+    assert.equal(dumpPromptText.includes("overuse"), false);
+    assert.equal(dumpPromptText.includes("Overuse"), false);
+    assert.equal(dumpPromptText.includes("handling"), false);
+    assert.equal(dumpPromptText.includes("Handling"), false);
+    assert.equal(/prekomjern\w* oslanjanj\w*/i.test(dumpPromptText), true);
     assert.equal(dumpRecord.model, "gpt-4.1");
     assert.equal(dumpRecord.prompt_key, "completed_assessment_report");
     assert.equal(dumpRecord.report_contract_key, "ipip_neo_120_hr_v2");

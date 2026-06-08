@@ -525,7 +525,7 @@ function buildIpipNeo120HrMockReport(
     if (domainCode === "AGREEABLENESS") {
       if (band === "high") {
         return {
-          conciseMeaning: "Pokazuje izraženiji saradnički i obziran stil u odnosima s drugima.",
+          conciseMeaning: "Pokazuje izraženiju spremnost na saradnju i obziran stil u odnosima s drugima.",
           hrRelevance: "Za HR je važno provjeriti kako održava saradnju kada mora postaviti granicu ili dati direktan feedback.",
           checkInInterview: "Tražiti primjer neslaganja, zaštite prioriteta i davanja neugodnog feedbacka.",
         };
@@ -718,7 +718,7 @@ function buildIpipNeo120HrMockReport(
     strengths_and_overuse_risks: topThreeDomains.map((domain) => ({
       trait_or_pattern:
         domain.domain_code === "AGREEABLENESS"
-          ? "Izraženija saradničnost"
+          ? "Izraženija spremnost na saradnju"
           : domain.domain_code === "CONSCIENTIOUSNESS"
             ? "Naglašena savjesnost i usmjerenost na standard"
             : domain.domain_code === "EXTRAVERSION"
@@ -732,7 +732,7 @@ function buildIpipNeo120HrMockReport(
         `Može pomoći boljem uklapanju u dio posla gdje ova osobina nosi stvarnu radnu vrijednost.`,
       ] as [string, string, string],
       possible_overuse_risks: [
-        `U određenim kontekstima ${domain.label.toLowerCase()} može otići u pretjerivanje ako zahtjevi uloge nisu dobro postavljeni.`,
+        `U određenim kontekstima ${domain.label.toLowerCase()} može preći u prekomjerno oslanjanje ako zahtjevi uloge nisu dobro postavljeni.`,
         "Vrijedi provjeriti kako se obrazac mijenja kada poraste pritisak, nejasnoća ili međuzavisnost u timu.",
         "Ako se tumači bez radnog konteksta, nalaz može izgledati šire nego što stvarno jeste.",
       ] as [string, string, string],

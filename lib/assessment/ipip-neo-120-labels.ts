@@ -27,6 +27,28 @@ export const IPIP_NEO_120_HR_DOMAIN_LABELS_BS: Record<IpipNeo120DomainCode, stri
   OPENNESS_TO_EXPERIENCE: "Otvorenost prema iskustvu",
 };
 
+export const IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL =
+  IPIP_NEO_120_HR_DOMAIN_LABELS_BS.AGREEABLENESS;
+export const IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL =
+  "spremnost na saradnju";
+export const IPIP_NEO_120_HR_CANONICAL_STRENGTHS_AND_RISK_TITLE =
+  "Snage i mogući rizici prekomjernog oslanjanja";
+export const IPIP_NEO_120_HR_CANONICAL_RISK_TITLE =
+  "Mogući rizici prekomjernog oslanjanja";
+export const IPIP_NEO_120_HR_CANONICAL_HANDLING_TITLE = "HR smjernica za postupanje";
+
+export const IPIP_NEO_120_HR_FORBIDDEN_AGREEABLENESS_SHORTHANDS = [
+  "ugodnost",
+  "saradljivost",
+  "kooperativnost",
+  "saradnički profil",
+] as const;
+
+export const IPIP_NEO_120_HR_FORBIDDEN_ENGLISH_LEAK_TERMS = [
+  "overuse",
+  "handling",
+] as const;
+
 export const IPIP_NEO_120_FACETS_BY_DOMAIN = {
   EXTRAVERSION: [
     "FRIENDLINESS",
@@ -134,6 +156,28 @@ export function getIpipNeo120HrDomainLabelsInOrder(): string[] {
   return IPIP_NEO_120_DOMAIN_ORDER.map(
     (domainCode) => IPIP_NEO_120_HR_DOMAIN_LABELS_BS[domainCode],
   );
+}
+
+export function buildIpipNeo120HrStrengthsAndRisksInstruction(): string {
+  return "Use 2 to 3 strengths-and-risks items. Each item must include exactly 3 possible strengths and exactly 3 possible risks of prekomjerno oslanjanje.";
+}
+
+export function applyIpipNeo120HrTerminologyCleanup(value: string): string {
+  return value
+    .replace(/\bUgodnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL)
+    .replace(/\bugodnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL)
+    .replace(/\bSaradljivost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL)
+    .replace(/\bsaradljivost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL)
+    .replace(/\bKooperativnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL)
+    .replace(/\bkooperativnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL)
+    .replace(/\bSaradnički profil\b/g, "Profil sa izraženom spremnošću na saradnju")
+    .replace(/\bsaradnički profil\b/g, "profil sa izraženom spremnošću na saradnju")
+    .replace(/\bsaradničnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL)
+    .replace(/\bSaradničnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL)
+    .replace(/\boveruse\b/g, "prekomjerno oslanjanje")
+    .replace(/\bOveruse\b/g, "Prekomjerno oslanjanje")
+    .replace(/\bhandling\b/g, "postupanje")
+    .replace(/\bHandling\b/g, "Postupanje");
 }
 
 export function getIpipNeo120FacetLabel(code: string): string | null {

@@ -210,6 +210,22 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function collectNestedStrings(value) {
+  if (typeof value === "string") {
+    return [value];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectNestedStrings(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.values(value).flatMap((item) => collectNestedStrings(item));
+  }
+
+  return [];
+}
+
 function buildSentence(base, targetLength) {
   let sentence = base.trim();
   if (!/[.!?]$/.test(sentence)) {
@@ -251,8 +267,21 @@ async function main() {
 
   const report = strictValidation.value;
   const reportText = JSON.stringify(report);
-  assert.equal(reportText.includes("Ugodnost"), false);
-  assert.equal(reportText.includes("ugodnost"), false);
+  const reportValueText = collectNestedStrings(report).join("\n");
+  assert.equal(reportValueText.includes("Ugodnost"), false);
+  assert.equal(reportValueText.includes("ugodnost"), false);
+  assert.equal(reportValueText.includes("Saradljivost"), false);
+  assert.equal(reportValueText.includes("saradljivost"), false);
+  assert.equal(reportValueText.includes("Kooperativnost"), false);
+  assert.equal(reportValueText.includes("kooperativnost"), false);
+  assert.equal(reportValueText.includes("Saradnički profil"), false);
+  assert.equal(reportValueText.includes("saradnički profil"), false);
+  assert.equal(reportValueText.includes("overuse"), false);
+  assert.equal(reportValueText.includes("Overuse"), false);
+  assert.equal(reportValueText.includes("handling"), false);
+  assert.equal(reportValueText.includes("Handling"), false);
+  assert.equal(reportValueText.includes("Spremnost na saradnju"), true);
+  assert.equal(/prekomjern\w* oslanjanj\w*/i.test(reportValueText), true);
   assert.equal(report.key_hr_signals.length, 3);
   assert.equal(report.verification_focus.length, 3);
   assert.equal(report.interview_questions.length, 5);
@@ -330,6 +359,24 @@ async function main() {
     }).ok,
     false,
   );
+
+  for (const [fieldPath, forbiddenValue] of [
+    ["headline", "Saradljivost i savjesnost daju prepoznatljiv radni obrazac."],
+    ["headline", "Kooperativnost i savjesnost daju prepoznatljiv radni obrazac."],
+    ["headline", "Saradnički profil daje prepoznatljiv radni obrazac."],
+    ["headline", "Snage i mogući Overuse rizici traže provjeru u radu."],
+    ["headline", "Handling signal traži provjeru u radu."],
+  ]) {
+    const dirtyReport = clone(report);
+    dirtyReport[fieldPath] = forbiddenValue;
+    assert.equal(
+      validateIpipNeo120HrReportV1(dirtyReport, {
+        strictContract: true,
+        enforceGuardrails: true,
+      }).ok,
+      false,
+    );
+  }
 
   const fourSentenceExecutiveSummary = clone(report);
   fourSentenceExecutiveSummary.executive_summary = [

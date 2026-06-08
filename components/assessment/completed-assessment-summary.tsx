@@ -2507,7 +2507,7 @@ function IpipNeo120HrReportSections({
 
       <section className="results-report__section results-report__panel card stack-sm">
         <div className="results-report__section-heading">
-          <h3>Snage i mogući overuse rizici</h3>
+          <h3>Snage i mogući rizici prekomjernog oslanjanja</h3>
         </div>
         <ol className="results-dimension-list">
           {report.strengths_and_overuse_risks.map((item) => (
@@ -2527,7 +2527,7 @@ function IpipNeo120HrReportSections({
                   </ul>
                 </div>
                 <div className="results-dimension-card__detail-block">
-                  <h5>Mogući overuse rizici</h5>
+                  <h5>Mogući rizici prekomjernog oslanjanja</h5>
                   <ul className="results-bullet-list">
                     {item.possible_overuse_risks.map((risk) => (
                       <li key={risk}>{risk}</li>
@@ -2535,7 +2535,7 @@ function IpipNeo120HrReportSections({
                   </ul>
                 </div>
                 <div className="results-dimension-card__detail-block">
-                  <h5>HR handling tip</h5>
+                  <h5>HR smjernica za postupanje</h5>
                   <p>{item.hr_handling_tip}</p>
                 </div>
               </section>

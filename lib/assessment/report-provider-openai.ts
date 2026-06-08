@@ -68,6 +68,8 @@ import {
   validateIpipNeo120ParticipantReportV2SegmentsBundle,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2-segments";
 import {
+  applyIpipNeo120HrTerminologyCleanup,
+  buildIpipNeo120HrStrengthsAndRisksInstruction,
   getIpipNeo120HrDomainLabelsInOrder,
   IPIP_NEO_120_DOMAIN_ORDER,
 } from "@/lib/assessment/ipip-neo-120-labels";
@@ -542,7 +544,7 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
           "Use exactly 3 key_hr_signals. Each item must include title, evidence, and hr_implication.",
           "Use exactly 3 verification_focus items. Each item must include area, why_it_matters, and how_to_check.",
           "Use exactly 5 interview_questions. Each item must include question, evaluates, and what_good_answer_may_show.",
-          "Use 2 to 3 strengths_and_overuse_risks items. Each item must include exactly 3 possible_strengths and exactly 3 possible_overuse_risks.",
+          buildIpipNeo120HrStrengthsAndRisksInstruction(),
           buildIpipNeo120HrDomainOverviewOrderInstruction(),
           "Each domain_overview.concise_meaning must be a single short paragraph with no bullets or line breaks, target up to 180 characters, and hard maximum 300 characters.",
           "Each domain_overview.hr_relevance must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 400 characters.",
@@ -938,13 +940,29 @@ function applyIpipHrPromptAuthorityCleanup(
     return promptText;
   }
 
-  return promptText
+  const cleanedPrompt = promptText
     .replace(
       /Use exactly 5 domain_overview items in this order:[^.]+\./g,
       buildIpipNeo120HrDomainOverviewOrderInstruction(),
     )
-    .replace(/\bUgodnost\b/g, "Spremnost na saradnju")
-    .replace(/\bugodnost\b/g, "spremnost na saradnju");
+    .replace(
+      /Use 2 to 3 strengths_and_overuse_risks items[^.]+\./g,
+      buildIpipNeo120HrStrengthsAndRisksInstruction(),
+    )
+    .replace(
+      /Koristi 2 do 3 strengths_and_overuse_risks stavke[^.]+\./g,
+      "Koristi 2 do 3 stavke za snage i moguće rizike prekomjernog oslanjanja. Svaka stavka treba imati tačno 3 moguće snage i tačno 3 moguća rizika prekomjernog oslanjanja.",
+    )
+    .replace(/Snage i mogući overuse rizici/g, "Snage i mogući rizici prekomjernog oslanjanja")
+    .replace(/Mogući overuse rizici/g, "Mogući rizici prekomjernog oslanjanja")
+    .replace(/HR handling tip/g, "HR smjernica za postupanje")
+    .replace(/HR Handling Tip/g, "HR smjernica za postupanje")
+    .replace(/\bpossible overuse risks\b/gi, "mogući rizici prekomjernog oslanjanja")
+    .replace(/\boveruse risks\b/gi, "rizici prekomjernog oslanjanja")
+    .replace(/\boveruse risk\b/gi, "rizik prekomjernog oslanjanja")
+    .replace(/\bhandling\b/gi, (match) => (match[0] === "H" ? "Postupanje" : "postupanje"));
+
+  return applyIpipNeo120HrTerminologyCleanup(cleanedPrompt);
 }
 
 export function buildUserPrompt(input: PreparedReportGenerationInput): string {

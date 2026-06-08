@@ -4,6 +4,8 @@ import {
   validateAiReportProseField,
 } from "@/lib/assessment/ai-report-prose-validation";
 import {
+  IPIP_NEO_120_HR_FORBIDDEN_AGREEABLENESS_SHORTHANDS,
+  IPIP_NEO_120_HR_FORBIDDEN_ENGLISH_LEAK_TERMS,
   IPIP_NEO_120_DOMAIN_ORDER,
   IPIP_NEO_120_FACETS_BY_DOMAIN,
   getIpipNeo120DomainLabel,
@@ -987,6 +989,46 @@ const FORBIDDEN_HR_REPORT_PHRASES = [
   "hiring odluka",
 ] as const;
 
+const FORBIDDEN_HR_REPORT_TERM_PATTERNS: Array<{
+  label: string;
+  pattern: RegExp;
+  message: string;
+}> = [
+  {
+    label: "Ugodnost",
+    pattern: /\bugodnost\b/u,
+    message: 'Forbidden term detected: "Ugodnost". Use "Spremnost na saradnju" instead.',
+  },
+  {
+    label: "Saradljivost",
+    pattern: /\bsaradljivost\b/u,
+    message: 'Forbidden term detected: "Saradljivost". Use "Spremnost na saradnju" instead.',
+  },
+  {
+    label: "Kooperativnost",
+    pattern: /\bkooperativnost\b/u,
+    message: 'Forbidden term detected: "Kooperativnost". Use "Spremnost na saradnju" instead.',
+  },
+  {
+    label: "Saradnički profil",
+    pattern: /\bsaradnički profil\b/u,
+    message:
+      'Forbidden shorthand detected: "Saradnički profil". Use "Spremnost na saradnju" instead of a shorthand domain summary.',
+  },
+  {
+    label: "overuse",
+    pattern: /\boveruse\b/u,
+    message:
+      'Forbidden English leakage detected: "overuse". Use BHS terminology such as "rizik prekomjernog oslanjanja".',
+  },
+  {
+    label: "handling",
+    pattern: /\bhandling\b/u,
+    message:
+      'Forbidden English leakage detected: "handling". Use BHS terminology such as "postupanje" or "upravljanje".',
+  },
+] as const;
+
 function isLegacyIpipNeo120HrReportShape(value: unknown): value is {
   contract_version: "ipip_neo_120_hr_v1";
   workplace_signals: unknown;
@@ -1169,7 +1211,8 @@ function normalizeLegacyIpipNeo120HrReportV1(
           "Može dati koristan signal o tome kako osoba prirodnije pristupa radu i odnosima.",
         ] as [string, string, string],
         possible_overuse_risks: [
-          normalizeStringList(domain.workplace_watchouts)[0] || "U određenim kontekstima može tražiti dodatnu provjeru kroz konkretne situacije.",
+          normalizeStringList(domain.workplace_watchouts)[0] ||
+            "U određenim kontekstima može preći u prekomjerno oslanjanje i zato traži dodatnu provjeru kroz konkretne situacije.",
           normalizeStringList(domain.workplace_watchouts)[1] || "Vrijedi provjeriti kako se obrazac vidi kada su pritisak i nejasnoća veći.",
           "Ako se čita bez konteksta uloge, može voditi preširokoj interpretaciji.",
         ] as [string, string, string],
@@ -1361,9 +1404,10 @@ function validateHrGuardrails(
     allowLegacyAgreeablenessAlias?: boolean;
   },
 ) {
-  const loweredText = collectNestedStrings(report)
+  const loweredFragments = collectNestedStrings(report)
     .map((item) => normalizeWhitespace(item).toLocaleLowerCase("bs"))
-    .join("\n");
+    .filter(Boolean);
+  const loweredText = loweredFragments.join("\n");
 
   FORBIDDEN_HR_REPORT_PHRASES.forEach((phrase) => {
     if (loweredText.includes(phrase)) {
@@ -1374,10 +1418,28 @@ function validateHrGuardrails(
     }
   });
 
-  if (!options?.allowLegacyAgreeablenessAlias && loweredText.includes("ugodnost")) {
+  FORBIDDEN_HR_REPORT_TERM_PATTERNS.forEach(({ label, pattern, message }) => {
+    if ((label !== "Ugodnost" || !options?.allowLegacyAgreeablenessAlias) && pattern.test(loweredText)) {
+      errors.push({ path: "", message });
+    }
+  });
+
+  if (
+    IPIP_NEO_120_HR_FORBIDDEN_AGREEABLENESS_SHORTHANDS.some((term) => loweredText.includes(term)) &&
+    options?.allowLegacyAgreeablenessAlias
+  ) {
     errors.push({
       path: "",
-      message: 'Forbidden term detected: "Ugodnost". Use "Spremnost na saradnju" instead.',
+      message:
+        'Legacy HR report contains forbidden shorthand beyond the legacy "Ugodnost" alias and cannot be treated as current safe output.',
+    });
+  }
+
+  if (IPIP_NEO_120_HR_FORBIDDEN_ENGLISH_LEAK_TERMS.some((term) => loweredText.includes(term))) {
+    errors.push({
+      path: "",
+      message:
+        'Forbidden English leakage detected in HR report output. Use BHS terminology such as "rizik prekomjernog oslanjanja" and "postupanje".',
     });
   }
 }
