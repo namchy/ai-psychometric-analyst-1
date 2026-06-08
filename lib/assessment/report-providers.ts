@@ -178,6 +178,34 @@ export type PreparedReportGenerationInput = {
   reportContract: ReportContractDescriptor;
 };
 
+export type SingleTestHrPromptAuthorityLayer =
+  | "global_hr_report_rules"
+  | "global_terminology_rules"
+  | "single_test_hr_family_rules"
+  | "test_specific_rules"
+  | "runtime_input_facts";
+
+export type SingleTestHrPromptAuthorityMetadata = {
+  reportFamily: "single_test_hr";
+  reportKind: string;
+  reportLaneId: string;
+  testSlug: string;
+  testId: string | null;
+  audience: "hr";
+  promptKey: string;
+  promptVersionId: string | null;
+  promptVersion: string;
+  promptSource: "db_prompt_version" | "code_default_prompt";
+  promptTemplateId: string | null;
+  promptTemplateVersion: string | null;
+  authorityLayers: SingleTestHrPromptAuthorityLayer[];
+  terminologyAuthority: {
+    key: string;
+    canonicalAgreeablenessLabel: string;
+    canonicalAgreeablenessNarrativeLabel: string;
+  } | null;
+};
+
 export type ReportProviderResult =
   | {
       ok: true;

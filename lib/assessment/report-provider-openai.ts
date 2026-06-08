@@ -23,6 +23,12 @@ import {
   ipipNeo120ParticipantReportV2OpenAiSchema,
   validateIpipNeo120ParticipantReportV2,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2";
+import type {
+  SingleTestHrPromptAuthorityMetadata,
+} from "@/lib/assessment/report-providers";
+import {
+  buildSingleTestHrPromptAuthorityMetadata,
+} from "@/lib/assessment/report-provider-helpers";
 import type { MwmsParticipantReportPromptInput } from "@/lib/assessment/mwms-report-contract";
 import {
   formatMwmsHrReportValidationErrors,
@@ -256,17 +262,20 @@ export function buildOpenAiStructuredRequestPayload(
   systemPrompt: string;
   userPrompt: string;
   requestBody: OpenAiChatCompletionsRequestBody;
+  authorityMetadata: SingleTestHrPromptAuthorityMetadata | null;
 } {
   const schemaName = requestOverride?.schemaName ?? resolveOpenAiSchemaNameForInput(input);
   const schema = requestOverride?.schema ?? resolveOpenAiResponseFormatSchemaForInput(input);
   const systemPrompt = requestOverride?.systemPrompt ?? buildSystemPrompt(input);
   const userPrompt = requestOverride?.userPrompt ?? buildUserPrompt(input);
+  const authorityMetadata = buildSingleTestHrPromptAuthorityMetadata(input);
 
   return {
     schemaName,
     schema,
     systemPrompt,
     userPrompt,
+    authorityMetadata,
     requestBody: buildOpenAiChatCompletionsRequestBody(options, {
       schemaName,
       schema,
@@ -1109,6 +1118,7 @@ async function requestOpenAiStructuredJson(
     schema: Record<string, unknown>;
     systemPrompt: string;
     userPrompt: string;
+    authorityMetadata?: SingleTestHrPromptAuthorityMetadata | null;
   },
 ): Promise<unknown> {
   if (!options.apiKey) {
@@ -1140,6 +1150,7 @@ async function requestOpenAiStructuredJson(
         renderedUserPrompt: payload.userPrompt,
         requestBody,
         model: requestBody.model,
+        authorityMetadata: payload.authorityMetadata,
       },
       {
         redactValues: [options.apiKey],

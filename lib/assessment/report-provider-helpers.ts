@@ -51,6 +51,7 @@ import type {
   CompletedAssessmentReportRequest,
   PreparedReportGenerationInput,
   ReportPromptInput,
+  SingleTestHrPromptAuthorityMetadata,
 } from "@/lib/assessment/report-providers";
 import { resolveReportContract } from "@/lib/assessment/report-providers";
 
@@ -498,5 +499,98 @@ export function buildPreparedReportGenerationInput(
     promptTemplate: options?.promptTemplate ?? null,
     promptInput: buildReportPromptInput(input),
     reportContract: resolveReportContract(input.testSlug, input.audience),
+  };
+}
+
+function getPromptInputAudience(promptInput: ReportPromptInput): "participant" | "hr" {
+  if ("audience" in promptInput) {
+    return promptInput.audience;
+  }
+
+  return promptInput.test.audience;
+}
+
+function getPromptInputTestSlug(promptInput: ReportPromptInput): string {
+  if ("test_slug" in promptInput) {
+    return promptInput.test_slug;
+  }
+
+  if ("testSlug" in promptInput) {
+    return promptInput.testSlug;
+  }
+
+  return promptInput.test.slug;
+}
+
+function getPromptInputTestId(promptInput: ReportPromptInput): string | null {
+  if ("test_id" in promptInput) {
+    return promptInput.test_id;
+  }
+
+  if ("testId" in promptInput && typeof promptInput.testId === "string") {
+    return promptInput.testId;
+  }
+
+  if ("test" in promptInput) {
+    const test = promptInput.test as { id?: unknown };
+
+    if (typeof test.id === "string") {
+      return test.id;
+    }
+  }
+
+  return null;
+}
+
+export function buildSingleTestHrPromptAuthorityMetadata(
+  input: PreparedReportGenerationInput,
+): SingleTestHrPromptAuthorityMetadata | null {
+  const audience = getPromptInputAudience(input.promptInput);
+
+  if (audience !== "hr") {
+    return null;
+  }
+
+  const reportKind =
+    input.reportContract.family === "big_five"
+      ? "ipip_hr"
+      : input.reportContract.family === "mwms"
+        ? "mwms_hr"
+        : input.reportContract.family === "safran"
+          ? "safran_hr"
+          : "single_test_hr";
+  const testSlug = getPromptInputTestSlug(input.promptInput);
+  const promptSource = input.promptTemplate ? "db_prompt_version" : "code_default_prompt";
+  const promptVersionId = input.promptVersionId ?? input.promptTemplate?.id ?? null;
+  const promptVersion = input.promptTemplate?.version ?? input.promptVersion;
+
+  return {
+    reportFamily: "single_test_hr",
+    reportKind,
+    reportLaneId: `${reportKind}:${testSlug}:${audience}`,
+    testSlug,
+    testId: getPromptInputTestId(input.promptInput),
+    audience,
+    promptKey: input.reportContract.promptKey,
+    promptVersionId,
+    promptVersion,
+    promptSource,
+    promptTemplateId: input.promptTemplate?.id ?? null,
+    promptTemplateVersion: input.promptTemplate?.version ?? null,
+    authorityLayers: [
+      "global_hr_report_rules",
+      "global_terminology_rules",
+      "single_test_hr_family_rules",
+      "test_specific_rules",
+      "runtime_input_facts",
+    ],
+    terminologyAuthority:
+      input.testSlug === "ipip-neo-120-v1"
+        ? {
+            key: "ipip_hr_canonical_terminology",
+            canonicalAgreeablenessLabel: "Spremnost na saradnju",
+            canonicalAgreeablenessNarrativeLabel: "spremnost na saradnju",
+          }
+        : null,
   };
 }

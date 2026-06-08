@@ -6,6 +6,8 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 
 import type { PreparedReportGenerationInput } from "@/lib/assessment/report-providers";
+import type { SingleTestHrPromptAuthorityMetadata } from "@/lib/assessment/report-providers";
+import { buildSingleTestHrPromptAuthorityMetadata } from "@/lib/assessment/report-provider-helpers";
 
 export type AiReportDebugDumpRequestBody = {
   model: string;
@@ -39,6 +41,7 @@ export type AiReportDebugDumpContext = {
   testId?: string | null;
   testSlug?: string | null;
   audience?: string | null;
+  authorityMetadata?: SingleTestHrPromptAuthorityMetadata | null;
 };
 
 export type AiReportDebugDumpOptions = {
@@ -193,6 +196,8 @@ export function buildAiReportDebugDumpRecord(
   const redactValues = options?.redactValues ?? [];
   const timestamp = options?.now?.toISOString() ?? new Date().toISOString();
   const promptTemplate = input.promptTemplate;
+  const authorityMetadata =
+    context.authorityMetadata ?? buildSingleTestHrPromptAuthorityMetadata(input);
 
   return {
     timestamp,
@@ -209,6 +214,7 @@ export function buildAiReportDebugDumpRecord(
     test_id: context.testId ?? getPromptTestId(input),
     test_slug: context.testSlug ?? getPromptSlug(input) ?? input.testSlug,
     audience: context.audience ?? getPromptAudience(input),
+    authority_metadata: authorityMetadata,
     model: context.model,
     system_prompt: redactString(context.systemPrompt, redactValues),
     rendered_user_prompt: redactString(context.renderedUserPrompt, redactValues),

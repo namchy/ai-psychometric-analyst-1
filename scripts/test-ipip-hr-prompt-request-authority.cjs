@@ -137,11 +137,31 @@ async function main() {
     assert.equal(typeof payload.userPrompt, "string");
     assert.equal(payload.requestBody.messages[0].content, payload.systemPrompt);
     assert.equal(payload.requestBody.messages[1].content, payload.userPrompt);
+    assert.ok(payload.authorityMetadata);
+    assert.equal(payload.authorityMetadata.reportFamily, "single_test_hr");
+    assert.equal(payload.authorityMetadata.reportKind, "ipip_hr");
+    assert.equal(payload.authorityMetadata.promptSource, "code_default_prompt");
+    assert.equal(payload.authorityMetadata.promptVersionId, null);
+    assert.equal(payload.authorityMetadata.promptVersion, "ipip_neo_120_hr_v2");
+    assert.deepEqual(payload.authorityMetadata.authorityLayers, [
+      "global_hr_report_rules",
+      "global_terminology_rules",
+      "single_test_hr_family_rules",
+      "test_specific_rules",
+      "runtime_input_facts",
+    ]);
+    assert.equal(payload.authorityMetadata.terminologyAuthority?.key, "ipip_hr_canonical_terminology");
+    assert.equal(payload.authorityMetadata.terminologyAuthority?.canonicalAgreeablenessLabel, "Spremnost na saradnju");
+    assert.equal(
+      payload.authorityMetadata.terminologyAuthority?.canonicalAgreeablenessNarrativeLabel,
+      "spremnost na saradnju",
+    );
 
     const payloadText = JSON.stringify({
       systemPrompt: payload.systemPrompt,
       userPrompt: payload.userPrompt,
       requestBody: payload.requestBody,
+      authorityMetadata: payload.authorityMetadata,
     });
 
     assert.equal(payloadText.includes("Spremnost na saradnju"), true);
@@ -171,6 +191,10 @@ async function main() {
     assert.equal(dumpRecord.response_format.type, "json_schema");
     assert.equal(typeof dumpRecord.system_prompt, "string");
     assert.equal(typeof dumpRecord.rendered_user_prompt, "string");
+    assert.equal(dumpRecord.authority_metadata.reportFamily, "single_test_hr");
+    assert.equal(dumpRecord.authority_metadata.reportKind, "ipip_hr");
+    assert.equal(dumpRecord.authority_metadata.promptSource, "code_default_prompt");
+    assert.equal(dumpRecord.authority_metadata.terminologyAuthority.key, "ipip_hr_canonical_terminology");
     assert.equal(fetchCalled, false);
 
     delete process.env.AI_REPORT_DEBUG_DUMP_PROMPTS;

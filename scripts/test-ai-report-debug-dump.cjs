@@ -207,6 +207,16 @@ async function main() {
   assert.equal(dump.test_slug, "ipip-neo-120-v1");
   assert.equal(dump.audience, "hr");
   assert.equal(dump.model, "gpt-4.1");
+  assert.equal(dump.authority_metadata.reportFamily, "single_test_hr");
+  assert.equal(dump.authority_metadata.reportKind, "ipip_hr");
+  assert.equal(dump.authority_metadata.promptSource, "db_prompt_version");
+  assert.deepEqual(dump.authority_metadata.authorityLayers, [
+    "global_hr_report_rules",
+    "global_terminology_rules",
+    "single_test_hr_family_rules",
+    "test_specific_rules",
+    "runtime_input_facts",
+  ]);
   assert.equal(dump.system_prompt.includes("OPENAI_API_KEY"), false);
   assert.equal(dump.system_prompt.includes("Authorization"), false);
   assert.equal(dump.system_prompt.includes("Bearer"), false);
