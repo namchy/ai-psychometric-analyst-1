@@ -136,7 +136,16 @@ function findLatestDumpPath(afterMs) {
 }
 
 function containsForbiddenTerm(text) {
-  return text.includes("Ugodnost") || text.includes("ugodnost");
+  const withoutExplicitPolicyTerms = text
+    .replace(/\\"Ugodnost\\"/g, "")
+    .replace(/\\"ugodnost\\"/g, "")
+    .replace(/"Ugodnost"/g, "")
+    .replace(/"ugodnost"/g, "");
+
+  return (
+    withoutExplicitPolicyTerms.includes("Ugodnost") ||
+    withoutExplicitPolicyTerms.includes("ugodnost")
+  );
 }
 
 function validateDebugDumpAuthorityRecord(dumpRecord) {

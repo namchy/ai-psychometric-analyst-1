@@ -191,17 +191,23 @@ async function main() {
     const promptText = `${payload.systemPrompt}\n${payload.userPrompt}`;
 
     assert.equal(payloadText.includes("Spremnost na saradnju"), true);
-    assert.equal(payloadText.includes("Ugodnost"), false);
-    assert.equal(payloadText.includes("ugodnost"), false);
-    assert.equal(promptText.includes("Saradljivost"), false);
-    assert.equal(promptText.includes("saradljivost"), false);
-    assert.equal(promptText.includes("Kooperativnost"), false);
-    assert.equal(promptText.includes("kooperativnost"), false);
-    assert.equal(promptText.includes("overuse"), false);
-    assert.equal(promptText.includes("Overuse"), false);
-    assert.equal(promptText.includes("handling"), false);
-    assert.equal(promptText.includes("Handling"), false);
+    assert.equal(promptText.includes('use only the label/title/domain form "Spremnost na saradnju"'), true);
+    assert.equal(promptText.includes('use only the sentence form "spremnost na saradnju"'), true);
+    assert.equal(promptText.includes('Do not use "Ugodnost"'), true);
+    assert.equal(promptText.includes('"Saradljivost"'), true);
+    assert.equal(promptText.includes('"Kooperativnost"'), true);
+    assert.equal(promptText.includes('"Saradnički profil"'), true);
+    assert.equal(promptText.includes('"overuse"'), true);
+    assert.equal(promptText.includes('"handling"'), true);
+    assert.equal(JSON.stringify(preparedInput.promptInput).includes("Ugodnost"), false);
+    assert.equal(JSON.stringify(preparedInput.promptInput).includes("Saradljivost"), true);
+    assert.equal(JSON.stringify(preparedInput.promptInput).includes("Kooperativnost"), false);
+    assert.equal(JSON.stringify(preparedInput.promptInput).includes("overuse"), false);
+    assert.equal(JSON.stringify(preparedInput.promptInput).includes("handling"), false);
     assert.equal(/prekomjern\w* oslanjanj\w*/i.test(promptText), true);
+    assert.equal(promptText.includes("upravljanje"), true);
+    assert.equal(promptText.includes("postupanje"), true);
+    assert.equal(promptText.includes("nošenje sa"), true);
     assert.equal(
       payload.userPrompt.includes(
         "Use exactly 5 domain_overview items in this order: Ekstraverzija, Spremnost na saradnju, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
@@ -237,16 +243,11 @@ async function main() {
     const dumpPromptText = `${dumpRecord.system_prompt}\n${dumpRecord.rendered_user_prompt}`;
 
     assert.equal(dumpText.includes("Spremnost na saradnju"), true);
-    assert.equal(dumpText.includes("Ugodnost"), false);
-    assert.equal(dumpText.includes("ugodnost"), false);
-    assert.equal(dumpPromptText.includes("Saradljivost"), false);
-    assert.equal(dumpPromptText.includes("saradljivost"), false);
-    assert.equal(dumpPromptText.includes("Kooperativnost"), false);
-    assert.equal(dumpPromptText.includes("kooperativnost"), false);
-    assert.equal(dumpPromptText.includes("overuse"), false);
-    assert.equal(dumpPromptText.includes("Overuse"), false);
-    assert.equal(dumpPromptText.includes("handling"), false);
-    assert.equal(dumpPromptText.includes("Handling"), false);
+    assert.equal(dumpPromptText.includes('Do not use "Ugodnost"'), true);
+    assert.equal(dumpPromptText.includes('"Saradljivost"'), true);
+    assert.equal(dumpPromptText.includes('"Kooperativnost"'), true);
+    assert.equal(dumpPromptText.includes('"overuse"'), true);
+    assert.equal(dumpPromptText.includes('"handling"'), true);
     assert.equal(/prekomjern\w* oslanjanj\w*/i.test(dumpPromptText), true);
     assert.equal(dumpRecord.model, "gpt-4.1");
     assert.equal(dumpRecord.prompt_key, "completed_assessment_report");

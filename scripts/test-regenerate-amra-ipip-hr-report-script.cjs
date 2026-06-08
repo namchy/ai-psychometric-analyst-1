@@ -115,6 +115,15 @@ function main() {
   assert.equal(validateDebugDumpAuthorityRecord(buildCleanDumpRecord()).ok, true);
   assert.equal(
     validateDebugDumpAuthorityRecord(
+      buildCleanDumpRecord({
+        rendered_user_prompt:
+          'IPIP-NEO-120 HR terminology authority rules: Do not use "Ugodnost" or "ugodnost". Use "Spremnost na saradnju".',
+      }),
+    ).ok,
+    true,
+  );
+  assert.equal(
+    validateDebugDumpAuthorityRecord(
       buildCleanDumpRecord({ rendered_user_prompt: "Legacy Ugodnost should fail." }),
     ).ok,
     false,

@@ -74,6 +74,12 @@ const {
   coerceIpipNeo120HrReportV1ForDisplay,
   ipipNeo120HrReportV1Schema,
 } = require("../lib/assessment/ipip-neo-120-report-v1.ts");
+const {
+  canonicalizeIpipNeo120HrReportTerminology,
+} = require("../lib/assessment/ipip-neo-120-labels.ts");
+const {
+  validateStructuredReport,
+} = require("../lib/assessment/report-provider-openai.ts");
 const { mockReportProvider } = require("../lib/assessment/report-provider-mock.ts");
 const { resolveReportContract } = require("../lib/assessment/report-providers.ts");
 
@@ -377,6 +383,72 @@ async function main() {
       false,
     );
   }
+
+  const aiLikeReport = clone(report);
+  aiLikeReport.headline = "Saradljivost i Kooperativnost traže provjeru kroz intervju.";
+  aiLikeReport.key_hr_signals[0].title = "Saradljivost u timskom radu";
+  aiLikeReport.strengths_and_overuse_risks[0].trait_or_pattern =
+    "Kooperativnost i strengths and possible overuse risks";
+  aiLikeReport.strengths_and_overuse_risks[0].possible_overuse_risks[0] =
+    "Overuse risks treba provjeriti kroz konkretne primjere.";
+  aiLikeReport.strengths_and_overuse_risks[0].hr_handling_tip =
+    "Handling signal povezati s ulogom.";
+  aiLikeReport.domain_overview[1].domain_name = "Saradljivost";
+  aiLikeReport.domain_overview[1].concise_meaning =
+    "Kooperativnost opisuje odnos prema drugima u radu.";
+
+  assert.equal(
+    validateIpipNeo120HrReportV1(aiLikeReport, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    false,
+  );
+
+  const canonicalizedAiLikeReport = canonicalizeIpipNeo120HrReportTerminology(aiLikeReport);
+  const canonicalizedAiLikeText = collectNestedStrings(canonicalizedAiLikeReport).join("\n");
+  assert.equal(canonicalizedAiLikeText.includes("Spremnost na saradnju"), true);
+  assert.equal(canonicalizedAiLikeText.includes("Saradljivost"), false);
+  assert.equal(canonicalizedAiLikeText.includes("saradljivost"), false);
+  assert.equal(canonicalizedAiLikeText.includes("Kooperativnost"), false);
+  assert.equal(canonicalizedAiLikeText.includes("kooperativnost"), false);
+  assert.equal(canonicalizedAiLikeText.includes("Ugodnost"), false);
+  assert.equal(canonicalizedAiLikeText.includes("ugodnost"), false);
+  assert.equal(canonicalizedAiLikeText.includes("overuse"), false);
+  assert.equal(canonicalizedAiLikeText.includes("Overuse"), false);
+  assert.equal(canonicalizedAiLikeText.includes("handling"), false);
+  assert.equal(canonicalizedAiLikeText.includes("Handling"), false);
+  assert.equal(
+    validateIpipNeo120HrReportV1(canonicalizedAiLikeReport, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    true,
+  );
+
+  const providerValidatedCanonicalReport = validateStructuredReport(aiLikeReport, preparedInput);
+  const providerValidatedText = collectNestedStrings(providerValidatedCanonicalReport).join("\n");
+  assert.equal(providerValidatedText.includes("Spremnost na saradnju"), true);
+  assert.equal(providerValidatedText.includes("Saradljivost"), false);
+  assert.equal(providerValidatedText.includes("Kooperativnost"), false);
+  assert.equal(providerValidatedText.includes("overuse"), false);
+  assert.equal(providerValidatedText.includes("handling"), false);
+
+  const mixedCaseDirtyReport = clone(report);
+  mixedCaseDirtyReport.headline = "SARADLJIVOST traži provjeru kroz intervju.";
+  const mixedCaseCanonicalized = canonicalizeIpipNeo120HrReportTerminology(mixedCaseDirtyReport);
+  assert.equal(mixedCaseCanonicalized.headline.includes("SARADLJIVOST"), true);
+  assert.equal(
+    validateIpipNeo120HrReportV1(mixedCaseCanonicalized, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    false,
+  );
+  assert.throws(
+    () => validateStructuredReport(mixedCaseDirtyReport, preparedInput),
+    /Forbidden term detected: "Saradljivost"/,
+  );
 
   const fourSentenceExecutiveSummary = clone(report);
   fourSentenceExecutiveSummary.executive_summary = [

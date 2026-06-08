@@ -164,6 +164,12 @@ export function buildIpipNeo120HrStrengthsAndRisksInstruction(): string {
 
 export function applyIpipNeo120HrTerminologyCleanup(value: string): string {
   return value
+    .replace(/\bstrengths and possible overuse risks\b/g, IPIP_NEO_120_HR_CANONICAL_STRENGTHS_AND_RISK_TITLE)
+    .replace(/\bStrengths and possible overuse risks\b/g, IPIP_NEO_120_HR_CANONICAL_STRENGTHS_AND_RISK_TITLE)
+    .replace(/\boveruse risks\b/g, "rizici prekomjernog oslanjanja")
+    .replace(/\bOveruse risks\b/g, "Rizici prekomjernog oslanjanja")
+    .replace(/\bpossible overuse risks\b/g, "mogući rizici prekomjernog oslanjanja")
+    .replace(/\bPossible overuse risks\b/g, "Mogući rizici prekomjernog oslanjanja")
     .replace(/\bUgodnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL)
     .replace(/\bugodnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL)
     .replace(/\bSaradljivost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL)
@@ -178,6 +184,27 @@ export function applyIpipNeo120HrTerminologyCleanup(value: string): string {
     .replace(/\bOveruse\b/g, "Prekomjerno oslanjanje")
     .replace(/\bhandling\b/g, "postupanje")
     .replace(/\bHandling\b/g, "Postupanje");
+}
+
+export function canonicalizeIpipNeo120HrReportTerminology<T>(value: T): T {
+  if (typeof value === "string") {
+    return applyIpipNeo120HrTerminologyCleanup(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeIpipNeo120HrReportTerminology(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        canonicalizeIpipNeo120HrReportTerminology(item),
+      ]),
+    ) as T;
+  }
+
+  return value;
 }
 
 export function getIpipNeo120FacetLabel(code: string): string | null {

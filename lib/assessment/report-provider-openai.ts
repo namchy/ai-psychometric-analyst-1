@@ -70,6 +70,7 @@ import {
 import {
   applyIpipNeo120HrTerminologyCleanup,
   buildIpipNeo120HrStrengthsAndRisksInstruction,
+  canonicalizeIpipNeo120HrReportTerminology,
   getIpipNeo120HrDomainLabelsInOrder,
   IPIP_NEO_120_DOMAIN_ORDER,
 } from "@/lib/assessment/ipip-neo-120-labels";
@@ -932,6 +933,19 @@ function buildIpipNeo120HrDomainOverviewOrderInstruction(): string {
   return `Use exactly 5 domain_overview items in this order: ${getIpipNeo120HrDomainLabelsInOrder().join(", ")}.`;
 }
 
+function buildIpipNeo120HrTerminologyAuthorityBlock(): string {
+  return [
+    "IPIP-NEO-120 HR terminology authority rules:",
+    'For Big Five Agreeableness, use only the label/title/domain form "Spremnost na saradnju".',
+    'Inside narrative sentences, use only the sentence form "spremnost na saradnju".',
+    'Do not use "Ugodnost", "ugodnost", "Saradljivost", "saradljivost", "Kooperativnost", "kooperativnost", "Saradnički profil" or "saradnički profil" anywhere in user-facing report text.',
+    'Do not use English user-facing terms "overuse", "Overuse", "handling" or "Handling" anywhere in user-facing report text.',
+    'Use BHS-safe wording such as "prekomjerno oslanjanje", "rizici prekomjernog oslanjanja", "upravljanje", "postupanje", "nošenje sa" or "način upravljanja".',
+    'Schema keys such as "strengths_and_overuse_risks", "possible_overuse_risks" and "hr_handling_tip" may remain unchanged because they are contract keys; their string values must use BHS terminology.',
+    'The ordinary word "saradnja" is allowed when discussing cooperation, teamwork and relationships; the forbidden shorthand labels above are not allowed.',
+  ].join("\n");
+}
+
 function applyIpipHrPromptAuthorityCleanup(
   input: PreparedReportGenerationInput,
   promptText: string,
@@ -962,7 +976,10 @@ function applyIpipHrPromptAuthorityCleanup(
     .replace(/\boveruse risk\b/gi, "rizik prekomjernog oslanjanja")
     .replace(/\bhandling\b/gi, (match) => (match[0] === "H" ? "Postupanje" : "postupanje"));
 
-  return applyIpipNeo120HrTerminologyCleanup(cleanedPrompt);
+  return [
+    applyIpipNeo120HrTerminologyCleanup(cleanedPrompt),
+    buildIpipNeo120HrTerminologyAuthorityBlock(),
+  ].join("\n\n");
 }
 
 export function buildUserPrompt(input: PreparedReportGenerationInput): string {
@@ -1370,7 +1387,8 @@ export function validateStructuredReport(
   }
 
   if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120HrPromptInput(input.promptInput)) {
-    const validationResult = validateIpipNeo120HrReportV1(report, {
+    const canonicalizedReport = canonicalizeIpipNeo120HrReportTerminology(report);
+    const validationResult = validateIpipNeo120HrReportV1(canonicalizedReport, {
       strictContract: true,
       enforceGuardrails: true,
     });
