@@ -241,6 +241,41 @@ export function buildOpenAiChatCompletionsRequestBody(
   return body;
 }
 
+export function buildOpenAiStructuredRequestPayload(
+  input: PreparedReportGenerationInput,
+  options: OpenAiProviderOptions,
+  requestOverride?: {
+    schemaName: string;
+    schema: Record<string, unknown>;
+    systemPrompt: string;
+    userPrompt: string;
+  },
+): {
+  schemaName: string;
+  schema: Record<string, unknown>;
+  systemPrompt: string;
+  userPrompt: string;
+  requestBody: OpenAiChatCompletionsRequestBody;
+} {
+  const schemaName = requestOverride?.schemaName ?? resolveOpenAiSchemaNameForInput(input);
+  const schema = requestOverride?.schema ?? resolveOpenAiResponseFormatSchemaForInput(input);
+  const systemPrompt = requestOverride?.systemPrompt ?? buildSystemPrompt(input);
+  const userPrompt = requestOverride?.userPrompt ?? buildUserPrompt(input);
+
+  return {
+    schemaName,
+    schema,
+    systemPrompt,
+    userPrompt,
+    requestBody: buildOpenAiChatCompletionsRequestBody(options, {
+      schemaName,
+      schema,
+      systemPrompt,
+      userPrompt,
+    }),
+  };
+}
+
 function buildIpipNeo120ParticipantSegmentSchemaName(
   segmentType: "overview" | "domain" | "practical",
   domainCode?: string,
@@ -1095,7 +1130,7 @@ async function requestOpenAiStructuredJson(
   );
 
   try {
-    const requestBody = buildOpenAiChatCompletionsRequestBody(options, payload);
+    const { requestBody } = buildOpenAiStructuredRequestPayload(input, options, payload);
 
     await maybeWriteAiReportDebugDump(
       input,
