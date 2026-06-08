@@ -50,8 +50,8 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / UI targeting-control audit i foundation prije daljeg redesign-a | UI system / Product quality / Look and feel | Prije novih vizuelnih izmjena uraditi read-only audit postojećih UI standarda, tokena, shared komponenti i paralelnih stilskih slojeva; zatim definisati UI targeting/control layer koji podržava globalne, variant-level i single-instance izmjene kroz postojeći UI system. Ne uvoditi novi paralelni design system i ne raditi redesign-all. |
-| P0        | AI segment-aware report content architecture for individual reports | U toku / dev-only request dump, IPIP HR terminology authority cleanup i IPIP HR request-payload verification završeni; prompt-selection authority i controlled regeneration odluka ostaju pending | Deep Profile / Report content architecture | Prvo stabilizovati single-test HR report authority layer: global prompt rules + terminology policy + report-family/test-specific prompt selection + dev-only prompt/request dump. Zatim odlučiti između controlled Amra/IPIP HR regeneration provjere i zasebnog single-test HR prompt selection authority slice-a. Ne raditi UI redesign prije završetka authority/prompt/terminology sloja. |
-| P0        | Single-test HR report authority + prompt policy layer | U toku / authority foundation, IPIP HR terminology cleanup, prompt/request metadata, regenerate-ready lifecycle, failed retry recovery, output canonicalization i Amra/IPIP HR controlled regeneration/browser review završeni; sljedeće je eventualni uski content compression/polish slice, ne UI redesign. | Report architecture / Prompt governance / Terminology | Sljedeće: ako se nastavlja IPIP HR lane, otvoriti mali prompt/content polish slice za kraći, konkretniji HR tekst. Authority/terminology/regeneration blocker je zatvoren. UI redesign ostaje kasnije. |
+| P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran samo kroz single-test HR/IPIP HR path. Sljedeće nije UI redesign ni report regeneration, nego eventualni uski content compression/polish slice ili zasebno širenje language-policy routera na druge report lane-ove. | Deep Profile / Report content architecture | Završen je locale-aware BHS user-facing AI language policy foundation za current bs/IPIP HR slice. Sljedeće: po potrebi uski content compression/polish slice za IPIP HR ili zaseban locale-aware language-policy router slice za druge lane-ove. Ne raditi UI redesign. |
+| P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en` trenutno vraćaju controlled no-policy/null path dok se ne implementiraju zasebno. IPIP HR output path ide global/BHS canonicalization -> IPIP terminology canonicalization -> global/BHS validation -> IPIP strict validation. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove dok se eksplicitno ne odobri. Ako se nastavlja lane, otvarati samo uske slice-ove za content compression/polish ili budući locale router work. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -131,6 +131,43 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - `node scripts/test-regenerate-amra-ipip-hr-report-script.cjs`
   - `node scripts/test-retry-amra-ipip-hr-failed-report-script.cjs`
   - `node scripts/test-inspect-amra-ipip-hr-artifact.cjs`
+  - `npm run typecheck`
+
+### Completion note — Locale-aware BHS user-facing AI language policy foundation
+
+- Uveden je shared language policy foundation za user-facing AI report tekst.
+- Policy je locale-aware: BHS pravila nisu hardcodirana kao univerzalna pravila za sve buduće jezike.
+- Dodan je thin router `resolveAiReportLanguagePolicy(locale)`.
+- Trenutno je podržan samo `bs -> bhs_bs_user_facing`.
+- `hr`, `sr` i `en` trenutno ne dobijaju BHS policy i ostaju future extension point, bez lažne višejezične pokrivenosti.
+- Prompt-side policy sada centralizuje BHS pravila za prirodan bosanski jezik, ijekavicu, latinicu, HR advisory ton, zabranu candidate-facing `ti` u HR reportima, zabranu hire/no-hire presuda i zabranu curenja internih termina u user-facing tekst.
+- Output-side helper je odvojen od prompt policy-ja i radi canonicalization/validation nad user-facing string vrijednostima.
+- Canonicalization ne smije mijenjati schema/enum polja kao što je `score_label_or_band`.
+- IPIP HR prompt path sada kombinuje:
+  1. locale-selected BHS policy
+  2. global HR report policy
+  3. single-test HR family policy
+  4. IPIP-specific terminology authority
+  5. runtime input facts
+- IPIP HR output path sada ide:
+  1. AI output
+  2. global/BHS output canonicalization
+  3. IPIP HR terminology canonicalization
+  4. global/BHS output validation
+  5. IPIP HR strict validator
+  6. validated report snapshot
+- IPIP-specific terminologija ostaje test-specific dodatak:
+  - label/domain form: `Spremnost na saradnju`
+  - narrative form: `spremnost na saradnju`
+  - forbidden: `Ugodnost`, `Saradljivost`, `Kooperativnost`, `Saradnički profil`
+- Ovaj slice nije radio DB write, DB prompt row changes, OpenAI fetch, report regeneration, UI redesign, renderer route move, persisted report contract change, Composite/IDP/Team Fit/Team Dynamics implementaciju ili broad refactor svih report lane-ova.
+- Verifikovano:
+  - `node scripts/test-ai-report-bhs-language-policy.cjs`
+  - `node scripts/test-ipip-hr-terminology-guardrails.cjs`
+  - `node scripts/test-ipip-neo-120-hr-report.cjs`
+  - `node scripts/test-ipip-hr-prompt-request-authority.cjs`
+  - `node scripts/test-single-test-hr-prompt-authority.cjs`
+  - `node scripts/test-ai-report-debug-dump.cjs`
   - `npm run typecheck`
 
 ### Completion note — IDP P0 summary mapping cleanup
@@ -6667,6 +6704,13 @@ Kontrolisano riješiti drift tako da lokalni migration history i remote marker v
 * Ne koristi se destruktivan repair bez prethodne potvrde.
 
 ## 8. Dnevnik završenih odluka
+
+### 2026-06-08 — Locale-aware BHS language policy foundation za AI reportove
+
+- Browser review IPIP HR reporta pokazao je da pojedinačne hardcoded zabrane nisu dovoljne.
+- Donesena je odluka da user-facing AI report jezik ide kroz centralni locale-aware language policy sloj.
+- BHS policy je implementiran kao `bs` policy iza routera, ne kao univerzalni all-locale default.
+- IPIP HR je prvi pilot; drugi report lane-ovi se ne refaktorišu automatski nego kroz zasebne, kontrolisane slice-ove.
 
 ### 2026-06-06 — Single-test HR report authority audit nakon Amra GPT-5.5 regeneracije
 
