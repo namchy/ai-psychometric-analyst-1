@@ -10,6 +10,7 @@ import {
   getIpipNeo120DomainLabel,
   getIpipNeo120FacetDomainCode,
   getIpipNeo120FacetLabel,
+  getIpipNeo120HrDomainLabel,
   IPIP_NEO_120_DOMAIN_ORDER,
   IPIP_NEO_120_FACETS_BY_DOMAIN,
   IPIP_NEO_120_TEST_FAMILY,
@@ -212,6 +213,16 @@ function requireIpipNeo120DomainLabel(domainCode: IpipNeo120DomainCode): string 
   return label;
 }
 
+function requireIpipNeo120HrDomainLabel(domainCode: IpipNeo120DomainCode): string {
+  const label = getIpipNeo120HrDomainLabel(domainCode);
+
+  if (!label) {
+    throw new Error(`Missing canonical IPIP-NEO-120 HR domain label for code ${domainCode}`);
+  }
+
+  return label;
+}
+
 function buildIpipNeo120ParticipantPromptInput(
   input: CompletedAssessmentReportRequest,
 ): IpipNeo120ParticipantReportPromptInput {
@@ -400,7 +411,7 @@ function buildIpipNeo120HrPromptInput(
 
     return {
       domain_code: domainCode,
-      label: requireIpipNeo120DomainLabel(domainCode),
+      label: requireIpipNeo120HrDomainLabel(domainCode),
       score: averageScore,
       score_band: getIpipNeo120HrScoreBand(averageScore),
       facets,

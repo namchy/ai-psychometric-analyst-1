@@ -67,6 +67,7 @@ const {
   IPIP_NEO_120_FACETS_BY_DOMAIN,
   getIpipNeo120DomainLabel,
   getIpipNeo120FacetLabel,
+  getIpipNeo120HrDomainLabel,
 } = require("../lib/assessment/ipip-neo-120-labels.ts");
 const {
   validateIpipNeo120HrReportV1,
@@ -95,7 +96,7 @@ function buildPromptInput() {
     },
     domains: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode, domainIndex) => ({
       domain_code: domainCode,
-      label: getIpipNeo120DomainLabel(domainCode),
+      label: getIpipNeo120HrDomainLabel(domainCode),
       score: 4.6 - domainIndex * 0.45,
       score_band:
         domainCode === "AGREEABLENESS" || domainCode === "CONSCIENTIOUSNESS"
@@ -229,6 +230,16 @@ function buildSentence(base, targetLength) {
 
 async function main() {
   const preparedInput = buildPreparedInput();
+  assert.equal(
+    preparedInput.promptInput.domains.find((domain) => domain.domain_code === "AGREEABLENESS").label,
+    "Spremnost na saradnju",
+  );
+  assert.equal(
+    preparedInput.promptInput.domains.some(
+      (domain) => /ugodnost/i.test(domain.label),
+    ),
+    false,
+  );
   const providerResult = await mockReportProvider.generateReport(preparedInput);
   assert.equal(providerResult.ok, true, providerResult.ok ? undefined : providerResult.reason);
 
@@ -239,6 +250,9 @@ async function main() {
   assert.equal(strictValidation.ok, true, strictValidation.ok ? undefined : strictValidation.errors.map((error) => error.message).join(" | "));
 
   const report = strictValidation.value;
+  const reportText = JSON.stringify(report);
+  assert.equal(reportText.includes("Ugodnost"), false);
+  assert.equal(reportText.includes("ugodnost"), false);
   assert.equal(report.key_hr_signals.length, 3);
   assert.equal(report.verification_focus.length, 3);
   assert.equal(report.interview_questions.length, 5);
@@ -249,7 +263,7 @@ async function main() {
   assert.equal(report.domain_overview.length, 5);
   assert.deepEqual(
     report.domain_overview.map((domain) => domain.domain_name),
-    IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => getIpipNeo120DomainLabel(domainCode)),
+    IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => getIpipNeo120HrDomainLabel(domainCode)),
   );
 
   assert.equal(ipipNeo120HrReportV1Schema.additionalProperties, false);
@@ -290,6 +304,16 @@ async function main() {
   forbiddenHeadline.headline = "Ugodnost trenutno daje najistaknutiji profesionalni signal u profilu.";
   assert.equal(
     validateIpipNeo120HrReportV1(forbiddenHeadline, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    false,
+  );
+
+  const forbiddenDomainName = clone(report);
+  forbiddenDomainName.domain_overview[1].domain_name = "Ugodnost";
+  assert.equal(
+    validateIpipNeo120HrReportV1(forbiddenDomainName, {
       strictContract: true,
       enforceGuardrails: true,
     }).ok,

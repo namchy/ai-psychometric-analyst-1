@@ -496,7 +496,7 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
           "Use exactly 3 verification_focus items. Each item must include area, why_it_matters, and how_to_check.",
           "Use exactly 5 interview_questions. Each item must include question, evaluates, and what_good_answer_may_show.",
           "Use 2 to 3 strengths_and_overuse_risks items. Each item must include exactly 3 possible_strengths and exactly 3 possible_overuse_risks.",
-          "Use exactly 5 domain_overview items in this order: Ekstraverzija, Ugodnost, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
+          "Use exactly 5 domain_overview items in this order: Ekstraverzija, Spremnost na saradnju, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
           "Each domain_overview.concise_meaning must be a single short paragraph with no bullets or line breaks, target up to 180 characters, and hard maximum 300 characters.",
           "Each domain_overview.hr_relevance must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 400 characters.",
           "Each domain_overview.check_in_interview must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 400 characters.",

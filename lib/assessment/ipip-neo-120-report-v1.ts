@@ -8,6 +8,7 @@ import {
   IPIP_NEO_120_FACETS_BY_DOMAIN,
   getIpipNeo120DomainLabel,
   getIpipNeo120FacetLabel,
+  getIpipNeo120HrDomainLabel,
   type IpipNeo120DomainCode,
   type IpipNeo120FacetCode,
 } from "@/lib/assessment/ipip-neo-120-labels";
@@ -517,7 +518,7 @@ function validateHrDomainOverview(
     ),
   );
 
-  const expectedLabel = getIpipNeo120DomainLabel(expectedDomainCode) ?? expectedDomainCode;
+  const expectedLabel = getIpipNeo120HrDomainLabel(expectedDomainCode) ?? expectedDomainCode;
   const domainNameOk = validateNonEmptyString(value.domain_name, `${path}.domain_name`, errors);
 
   if (typeof value.domain_name === "string" && normalizeWhitespace(value.domain_name) !== expectedLabel) {
@@ -724,7 +725,7 @@ function validateDomain(
   }
 
   const labelOk = validateNonEmptyString(value.label, `${path}.label`, errors);
-  const expectedLabel = getIpipNeo120DomainLabel(expectedDomainCode);
+  const expectedLabel = getIpipNeo120HrDomainLabel(expectedDomainCode);
 
   if (expectedLabel && typeof value.label === "string" && normalizeWhitespace(value.label) !== expectedLabel) {
     errors.push({
@@ -1157,7 +1158,11 @@ function normalizeLegacyIpipNeo120HrReportV1(
       }
 
       return {
-        trait_or_pattern: normalizeTextField(domain.label) || getIpipNeo120DomainLabel(domainCode) || domainCode,
+        trait_or_pattern:
+          normalizeTextField(domain.label) ||
+          getIpipNeo120HrDomainLabel(domainCode) ||
+          getIpipNeo120DomainLabel(domainCode) ||
+          domainCode,
         possible_strengths: [
           normalizeStringList(domain.workplace_strengths)[0] || "Može podržati stabilniji način rada u kontekstu koji traži ovu osobinu.",
           normalizeStringList(domain.workplace_strengths)[1] || "Može pomoći predvidivijoj saradnji i jasnijem usklađivanju s očekivanjima.",
@@ -1177,7 +1182,7 @@ function normalizeLegacyIpipNeo120HrReportV1(
       .slice(0, 3) as IpipNeo120HrReportV1["strengths_and_overuse_risks"],
     domain_overview: IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => {
       const domain = domainsByCode.get(domainCode);
-      const fallbackLabel = getIpipNeo120DomainLabel(domainCode) ?? domainCode;
+      const fallbackLabel = getIpipNeo120HrDomainLabel(domainCode) ?? getIpipNeo120DomainLabel(domainCode) ?? domainCode;
       const facets = Array.isArray(domain?.facets) ? domain.facets : [];
 
       return {
@@ -1352,6 +1357,9 @@ function collectNestedStrings(value: unknown): string[] {
 function validateHrGuardrails(
   report: IpipNeo120HrReportV1,
   errors: ValidationError[],
+  options?: {
+    allowLegacyAgreeablenessAlias?: boolean;
+  },
 ) {
   const loweredText = collectNestedStrings(report)
     .map((item) => normalizeWhitespace(item).toLocaleLowerCase("bs"))
@@ -1365,6 +1373,13 @@ function validateHrGuardrails(
       });
     }
   });
+
+  if (!options?.allowLegacyAgreeablenessAlias && loweredText.includes("ugodnost")) {
+    errors.push({
+      path: "",
+      message: 'Forbidden term detected: "Ugodnost". Use "Spremnost na saradnju" instead.',
+    });
+  }
 }
 
 export function coerceIpipNeo120HrReportV1ForDisplay(value: unknown): IpipNeo120HrReportV1 | null {
@@ -1562,7 +1577,9 @@ export function validateIpipNeo120HrReportV1(
   }
 
   if (enforceGuardrails) {
-    validateHrGuardrails(normalized, errors);
+    validateHrGuardrails(normalized, errors, {
+      allowLegacyAgreeablenessAlias: isLegacyShape,
+    });
   }
 
   if (errors.length > 0) {

@@ -11,6 +11,7 @@ import {
   IPIP_NEO_120_FACETS_BY_DOMAIN,
   getIpipNeo120DomainLabel,
   getIpipNeo120FacetLabel,
+  getIpipNeo120HrDomainLabel,
   type IpipNeo120DomainCode,
 } from "@/lib/assessment/ipip-neo-120-labels";
 import {
@@ -519,7 +520,7 @@ function buildIpipNeo120HrMockReport(
   );
 
   function buildDomainMeaning(domainCode: IpipNeo120DomainCode, band: "low" | "moderate" | "high") {
-    const label = getIpipNeo120DomainLabel(domainCode) ?? domainCode;
+    const label = getIpipNeo120HrDomainLabel(domainCode) ?? getIpipNeo120DomainLabel(domainCode) ?? domainCode;
 
     if (domainCode === "AGREEABLENESS") {
       if (band === "high") {
@@ -748,12 +749,13 @@ function buildIpipNeo120HrMockReport(
       }
 
       const overview = buildDomainMeaning(domain.domain_code, domain.score_band);
+      const canonicalLabel = getIpipNeo120HrDomainLabel(domainCode) ?? domain.label;
       const topDomainFacets = [...domain.facets]
         .sort((left, right) => right.score - left.score || left.facet_code.localeCompare(right.facet_code))
         .slice(0, 2);
 
       return {
-        domain_name: domain.label,
+        domain_name: canonicalLabel,
         score_label_or_band: domain.score_band,
         concise_meaning: overview.conciseMeaning,
         hr_relevance: overview.hrRelevance,

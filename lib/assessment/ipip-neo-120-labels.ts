@@ -19,6 +19,14 @@ export const IPIP_NEO_120_DOMAIN_LABELS_BS: Record<IpipNeo120DomainCode, string>
   OPENNESS_TO_EXPERIENCE: "Otvorenost prema iskustvu",
 };
 
+export const IPIP_NEO_120_HR_DOMAIN_LABELS_BS: Record<IpipNeo120DomainCode, string> = {
+  EXTRAVERSION: "Ekstraverzija",
+  AGREEABLENESS: "Spremnost na saradnju",
+  CONSCIENTIOUSNESS: "Savjesnost",
+  NEUROTICISM: "Neuroticizam",
+  OPENNESS_TO_EXPERIENCE: "Otvorenost prema iskustvu",
+};
+
 export const IPIP_NEO_120_FACETS_BY_DOMAIN = {
   EXTRAVERSION: [
     "FRIENDLINESS",
@@ -115,6 +123,11 @@ export function isIpipNeo120TestSlug(testSlug: string): boolean {
 export function getIpipNeo120DomainLabel(code: string): string | null {
   const normalized = code.trim().toUpperCase();
   return IPIP_NEO_120_DOMAIN_LABELS_BS[normalized as IpipNeo120DomainCode] ?? null;
+}
+
+export function getIpipNeo120HrDomainLabel(code: string): string | null {
+  const normalized = code.trim().toUpperCase();
+  return IPIP_NEO_120_HR_DOMAIN_LABELS_BS[normalized as IpipNeo120DomainCode] ?? null;
 }
 
 export function getIpipNeo120FacetLabel(code: string): string | null {
