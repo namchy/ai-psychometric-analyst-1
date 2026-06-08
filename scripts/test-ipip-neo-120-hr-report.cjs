@@ -78,6 +78,10 @@ const {
   canonicalizeIpipNeo120HrReportTerminology,
 } = require("../lib/assessment/ipip-neo-120-labels.ts");
 const {
+  canonicalizeGlobalBhsUserFacingOutput,
+  validateGlobalBhsUserFacingOutput,
+} = require("../lib/assessment/ai-report-bhs-language-policy.ts");
+const {
   validateStructuredReport,
 } = require("../lib/assessment/report-provider-openai.ts");
 const { mockReportProvider } = require("../lib/assessment/report-provider-mock.ts");
@@ -396,6 +400,8 @@ async function main() {
   aiLikeReport.domain_overview[1].domain_name = "Saradljivost";
   aiLikeReport.domain_overview[1].concise_meaning =
     "Kooperativnost opisuje odnos prema drugima u radu.";
+  aiLikeReport.executive_summary =
+    "Ovaj snapshot pokazuje high signal. U ovom izvještaju visoka Savjesnost traži dodatnu provjeru.";
 
   assert.equal(
     validateIpipNeo120HrReportV1(aiLikeReport, {
@@ -405,7 +411,33 @@ async function main() {
     false,
   );
 
-  const canonicalizedAiLikeReport = canonicalizeIpipNeo120HrReportTerminology(aiLikeReport);
+  const globallyCanonicalizedAiLikeReport = canonicalizeGlobalBhsUserFacingOutput(aiLikeReport);
+  assert.equal(
+    globallyCanonicalizedAiLikeReport.executive_summary.includes("snapshot"),
+    false,
+  );
+  assert.equal(
+    globallyCanonicalizedAiLikeReport.executive_summary.includes("visoko izraženo"),
+    true,
+  );
+  assert.equal(
+    globallyCanonicalizedAiLikeReport.executive_summary.includes("visoka savjesnost"),
+    true,
+  );
+  assert.equal(
+    globallyCanonicalizedAiLikeReport.domain_overview[1].score_label_or_band,
+    "high",
+  );
+  assert.deepEqual(
+    validateGlobalBhsUserFacingOutput(globallyCanonicalizedAiLikeReport, {
+      audience: "hr",
+    }),
+    [],
+  );
+
+  const canonicalizedAiLikeReport = canonicalizeIpipNeo120HrReportTerminology(
+    globallyCanonicalizedAiLikeReport,
+  );
   const canonicalizedAiLikeText = collectNestedStrings(canonicalizedAiLikeReport).join("\n");
   assert.equal(canonicalizedAiLikeText.includes("Spremnost na saradnju"), true);
   assert.equal(canonicalizedAiLikeText.includes("Saradljivost"), false);
@@ -431,6 +463,8 @@ async function main() {
   assert.equal(providerValidatedText.includes("Spremnost na saradnju"), true);
   assert.equal(providerValidatedText.includes("Saradljivost"), false);
   assert.equal(providerValidatedText.includes("Kooperativnost"), false);
+  assert.equal(providerValidatedCanonicalReport.executive_summary.includes("snapshot"), false);
+  assert.equal(providerValidatedCanonicalReport.executive_summary.includes("high"), false);
   assert.equal(providerValidatedText.includes("overuse"), false);
   assert.equal(providerValidatedText.includes("handling"), false);
 

@@ -169,10 +169,10 @@ async function main() {
     assert.equal(payload.authorityMetadata.reportContractKey, "ipip_neo_120_hr_v2");
     assert.equal(payload.authorityMetadata.reportSchemaName, "ipip-neo-120-hr-v2");
     assert.deepEqual(payload.authorityMetadata.authorityLayers, [
-      "global_hr_report_rules",
-      "global_terminology_rules",
-      "single_test_hr_family_rules",
-      "test_specific_rules",
+      "global_bhs_language_policy",
+      "global_hr_report_policy",
+      "single_test_hr_family_policy",
+      "test_specific_terminology_policy",
       "runtime_input_facts",
     ]);
     assert.equal(payload.authorityMetadata.terminologyAuthority?.key, "ipip_hr_canonical_terminology");
@@ -191,6 +191,15 @@ async function main() {
     const promptText = `${payload.systemPrompt}\n${payload.userPrompt}`;
 
     assert.equal(payloadText.includes("Spremnost na saradnju"), true);
+    assert.equal(promptText.includes("Global BHS user-facing language policy:"), true);
+    assert.equal(promptText.includes("Authority composition order for this request:"), true);
+    assert.equal(promptText.includes("Write in Bosnian language, ijekavica, Latin script."), true);
+    assert.equal(promptText.includes("Write for HR stakeholders in an advisory, calm and workplace-oriented tone."), true);
+    assert.equal(promptText.includes('Do not address the candidate with second-person singular forms such as "ti" in HR reports.'), true);
+    assert.equal(promptText.includes('Do not leak internal schema, JSON, validator, prompt or similar implementation language into user-facing narrative.'), true);
+    assert.equal(promptText.includes('Forbidden user-facing terms include "snapshot", "high", "low", "moderate", "overuse", "handling", "score", "band", "raw score", "schema", "JSON", "validator" and "prompt".'), true);
+    assert.equal(promptText.includes('"high" -> "visoko izraženo" or "u višem rasponu"'), true);
+    assert.equal(promptText.includes('Inside narrative sentences use lowercase forms: "savjesnost", "neuroticizam", "ekstraverzija", "otvorenost prema iskustvu", "spremnost na saradnju".'), true);
     assert.equal(promptText.includes('use only the label/title/domain form "Spremnost na saradnju"'), true);
     assert.equal(promptText.includes('use only the sentence form "spremnost na saradnju"'), true);
     assert.equal(promptText.includes('Do not use "Ugodnost"'), true);
@@ -261,6 +270,13 @@ async function main() {
     assert.equal(dumpRecord.authority_metadata.promptSource, "db_prompt_version");
     assert.equal(dumpRecord.authority_metadata.promptKey, "completed_assessment_report");
     assert.equal(dumpRecord.authority_metadata.reportContractKey, "ipip_neo_120_hr_v2");
+    assert.deepEqual(dumpRecord.authority_metadata.authorityLayers, [
+      "global_bhs_language_policy",
+      "global_hr_report_policy",
+      "single_test_hr_family_policy",
+      "test_specific_terminology_policy",
+      "runtime_input_facts",
+    ]);
     assert.equal(dumpRecord.authority_metadata.terminologyAuthority.key, "ipip_hr_canonical_terminology");
     assert.equal(fetchCalled, false);
 

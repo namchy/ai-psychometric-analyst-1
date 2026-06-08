@@ -216,10 +216,10 @@ async function main() {
   assert.equal(dump.authority_metadata.reportSchemaName, "ipip-neo-120-hr-v1");
   assert.equal(dump.authority_metadata.promptSource, "db_prompt_version");
   assert.deepEqual(dump.authority_metadata.authorityLayers, [
-    "global_hr_report_rules",
-    "global_terminology_rules",
-    "single_test_hr_family_rules",
-    "test_specific_rules",
+    "global_bhs_language_policy",
+    "global_hr_report_policy",
+    "single_test_hr_family_policy",
+    "test_specific_terminology_policy",
     "runtime_input_facts",
   ]);
   assert.equal(dump.system_prompt.includes("OPENAI_API_KEY"), false);

@@ -183,7 +183,11 @@ export function applyIpipNeo120HrTerminologyCleanup(value: string): string {
     .replace(/\boveruse\b/g, "prekomjerno oslanjanje")
     .replace(/\bOveruse\b/g, "Prekomjerno oslanjanje")
     .replace(/\bhandling\b/g, "postupanje")
-    .replace(/\bHandling\b/g, "Postupanje");
+    .replace(/\bHandling\b/g, "Postupanje")
+    .replace(
+      /([a-zčćžšđ])\s+Spremnost na saradnju\b/gu,
+      `$1 ${IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL}`,
+    );
 }
 
 export function canonicalizeIpipNeo120HrReportTerminology<T>(value: T): T {

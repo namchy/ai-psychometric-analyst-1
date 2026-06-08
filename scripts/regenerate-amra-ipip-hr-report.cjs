@@ -161,10 +161,10 @@ function validateDebugDumpAuthorityRecord(dumpRecord) {
   );
   const hasAuthorityLayers =
     Array.isArray(authorityLayers) &&
-    authorityLayers.includes("global_hr_report_rules") &&
-    authorityLayers.includes("global_terminology_rules") &&
-    authorityLayers.includes("single_test_hr_family_rules") &&
-    authorityLayers.includes("test_specific_rules") &&
+    authorityLayers.includes("global_bhs_language_policy") &&
+    authorityLayers.includes("global_hr_report_policy") &&
+    authorityLayers.includes("single_test_hr_family_policy") &&
+    authorityLayers.includes("test_specific_terminology_policy") &&
     authorityLayers.includes("runtime_input_facts");
   const hasPromptSourceMetadata =
     dumpRecord?.prompt_key === TARGET_PROMPT_KEY &&

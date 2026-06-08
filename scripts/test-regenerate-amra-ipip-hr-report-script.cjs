@@ -48,10 +48,10 @@ function buildCleanDumpRecord(overrides = {}) {
       reportContractKey: "ipip_neo_120_hr_v2",
       reportSchemaName: "ipip-neo-120-hr-v2",
       authorityLayers: [
-        "global_hr_report_rules",
-        "global_terminology_rules",
-        "single_test_hr_family_rules",
-        "test_specific_rules",
+        "global_bhs_language_policy",
+        "global_hr_report_policy",
+        "single_test_hr_family_policy",
+        "test_specific_terminology_policy",
         "runtime_input_facts",
       ],
       terminologyAuthority: {

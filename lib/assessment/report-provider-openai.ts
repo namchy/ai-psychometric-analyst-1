@@ -68,6 +68,9 @@ import {
   validateIpipNeo120ParticipantReportV2SegmentsBundle,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2-segments";
 import {
+  resolveAiReportLanguagePolicy,
+} from "@/lib/assessment/ai-report-language-policy";
+import {
   applyIpipNeo120HrTerminologyCleanup,
   buildIpipNeo120HrStrengthsAndRisksInstruction,
   canonicalizeIpipNeo120HrReportTerminology,
@@ -954,6 +957,8 @@ function applyIpipHrPromptAuthorityCleanup(
     return promptText;
   }
 
+  const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
+
   const cleanedPrompt = promptText
     .replace(
       /Use exactly 5 domain_overview items in this order:[^.]+\./g,
@@ -976,10 +981,20 @@ function applyIpipHrPromptAuthorityCleanup(
     .replace(/\boveruse risk\b/gi, "rizik prekomjernog oslanjanja")
     .replace(/\bhandling\b/gi, (match) => (match[0] === "H" ? "Postupanje" : "postupanje"));
 
-  return [
-    applyIpipNeo120HrTerminologyCleanup(cleanedPrompt),
-    buildIpipNeo120HrTerminologyAuthorityBlock(),
-  ].join("\n\n");
+  const blocks = [applyIpipNeo120HrTerminologyCleanup(cleanedPrompt)];
+
+  if (languagePolicy) {
+    blocks.push(
+      languagePolicy.buildPromptPolicyBlock({
+        audience: "hr",
+        includeAuthorityOrder: true,
+      }),
+    );
+  }
+
+  blocks.push(buildIpipNeo120HrTerminologyAuthorityBlock());
+
+  return blocks.join("\n\n");
 }
 
 export function buildUserPrompt(input: PreparedReportGenerationInput): string {
@@ -1387,7 +1402,25 @@ export function validateStructuredReport(
   }
 
   if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120HrPromptInput(input.promptInput)) {
-    const canonicalizedReport = canonicalizeIpipNeo120HrReportTerminology(report);
+    const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
+    const globalCanonicalizedReport = languagePolicy
+      ? languagePolicy.canonicalizeUserFacingOutput(report)
+      : report;
+    const canonicalizedReport = canonicalizeIpipNeo120HrReportTerminology(globalCanonicalizedReport);
+    const globalValidationErrors = languagePolicy
+      ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+          audience: "hr",
+        })
+      : [];
+
+    if (globalValidationErrors.length > 0) {
+      throw new Error(
+        `OpenAI response JSON failed global BHS HR output validation: ${globalValidationErrors
+          .map((error) => `${error.path}: ${error.message}`)
+          .join(" | ")}`,
+      );
+    }
+
     const validationResult = validateIpipNeo120HrReportV1(canonicalizedReport, {
       strictContract: true,
       enforceGuardrails: true,
