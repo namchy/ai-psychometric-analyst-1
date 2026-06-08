@@ -57,6 +57,17 @@ type AttemptReportQueueRow = ExistingAttemptReportArtifact & {
   attempt_id: string;
 };
 
+type ReadySingleTestHrReportRow = {
+  id: string;
+  attempt_id: string;
+  test_slug: string;
+  audience: "participant" | "hr";
+  report_type: string | null;
+  source_type: string | null;
+  report_status: AttemptReportStatus;
+  generator_type: ReportGeneratorType | null;
+};
+
 const PARTICIPANT_REPORT_TYPE = "individual";
 const PARTICIPANT_REPORT_AUDIENCE = "participant";
 const PARTICIPANT_REPORT_SOURCE_TYPE = "single_test";
@@ -125,6 +136,25 @@ export type HrReportRecoveryResult = {
   status: "ready" | "queued" | "processing" | "skipped";
   reason: string | null;
   reportId: string | null;
+};
+
+export type ReadySingleTestHrRegenerationMode = "regenerate_ready";
+
+export type ReadySingleTestHrRegenerationAction =
+  | "regenerate_ready"
+  | "noop_missing_report"
+  | "noop_mode_not_confirmed"
+  | "noop_wrong_status"
+  | "noop_wrong_lane"
+  | "noop_unsupported_test"
+  | "noop_inactive_capability";
+
+export type ReadySingleTestHrRegenerationResult = {
+  action: ReadySingleTestHrRegenerationAction;
+  status: "queued" | "skipped";
+  reason: string | null;
+  reportId: string | null;
+  attemptId: string | null;
 };
 
 export type HrAttemptReportQueueInsertPayload = {
@@ -721,6 +751,164 @@ export function resolveHrReportRecoveryOperation(input: {
   }
 
   return "noop_existing_unavailable";
+}
+
+export function buildRegenerateReadySingleTestHrReportPatch(input: {
+  generatedAt?: string;
+}): {
+  report_status: "queued";
+  generated_at: string;
+  started_at: null;
+  completed_at: null;
+  failure_code: null;
+  failure_reason: null;
+  report_snapshot: null;
+  input_snapshot: null;
+  prompt_version_id: null;
+  model_name: null;
+  generator_version: null;
+} {
+  return {
+    report_status: "queued",
+    generated_at: input.generatedAt ?? new Date().toISOString(),
+    started_at: null,
+    completed_at: null,
+    failure_code: null,
+    failure_reason: null,
+    report_snapshot: null,
+    input_snapshot: null,
+    prompt_version_id: null,
+    model_name: null,
+    generator_version: null,
+  };
+}
+
+export function resolveReadySingleTestHrRegenerationOperation(input: {
+  mode?: ReadySingleTestHrRegenerationMode | null;
+  report: ReadySingleTestHrReportRow | null;
+  capability: {
+    active: boolean;
+    status: "active" | "planned" | "inactive";
+  };
+}): ReadySingleTestHrRegenerationAction {
+  if (input.mode !== "regenerate_ready") {
+    return "noop_mode_not_confirmed";
+  }
+
+  if (!input.report) {
+    return "noop_missing_report";
+  }
+
+  if (
+    input.report.report_type !== HR_REPORT_TYPE ||
+    input.report.audience !== HR_REPORT_AUDIENCE ||
+    input.report.source_type !== HR_REPORT_SOURCE_TYPE
+  ) {
+    return "noop_wrong_lane";
+  }
+
+  if (!input.capability.active) {
+    return "noop_inactive_capability";
+  }
+
+  if (
+    input.report.test_slug !== "ipip-neo-120-v1" &&
+    input.report.test_slug !== "safran_v1" &&
+    input.report.test_slug !== "mwms_v1"
+  ) {
+    return "noop_unsupported_test";
+  }
+
+  if (input.report.report_status !== "ready") {
+    return "noop_wrong_status";
+  }
+
+  return "regenerate_ready";
+}
+
+async function loadReadySingleTestHrReportRow(
+  reportId: string,
+): Promise<ReadySingleTestHrReportRow | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select("id, attempt_id, test_slug, audience, report_type, source_type, report_status, generator_type")
+    .eq("id", reportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load target single-test HR report: ${error.message}`);
+  }
+
+  return (data as ReadySingleTestHrReportRow | null) ?? null;
+}
+
+export async function regenerateReadySingleTestHrReport(
+  reportId: string,
+  options: {
+    mode?: ReadySingleTestHrRegenerationMode | null;
+    generatedAt?: string;
+  } = {},
+): Promise<ReadySingleTestHrRegenerationResult> {
+  const report = await loadReadySingleTestHrReportRow(reportId);
+  const capability = getReportGenerationCapability({
+    testSlug: report?.test_slug ?? "",
+    audience: HR_REPORT_AUDIENCE,
+    reportType: HR_REPORT_TYPE,
+    sourceType: HR_REPORT_SOURCE_TYPE,
+  });
+  const operation = resolveReadySingleTestHrRegenerationOperation({
+    mode: options.mode ?? null,
+    report,
+    capability,
+  });
+
+  if (operation !== "regenerate_ready") {
+    return {
+      action: operation,
+      status: "skipped",
+      reason:
+        operation === "noop_mode_not_confirmed"
+          ? "Regenerate-ready mode nije eksplicitno potvrđen."
+          : operation === "noop_missing_report"
+            ? "Target report nije pronađen."
+            : operation === "noop_wrong_lane"
+              ? "Target report nije HR single-test individual lane."
+              : operation === "noop_inactive_capability"
+                ? "HR single-test lane nije aktivan."
+                : operation === "noop_wrong_status"
+                  ? "Samo ready single-test HR artefakt može u regenerate-ready path."
+                  : "Target report nije podržan za regenerate-ready path.",
+      reportId: report?.id ?? null,
+      attemptId: report?.attempt_id ?? null,
+    };
+  }
+
+  const targetReport = report as ReadySingleTestHrReportRow;
+  const supabase = createSupabaseAdminClient();
+  const patch = buildRegenerateReadySingleTestHrReportPatch({
+    generatedAt: options.generatedAt,
+  });
+  const { error } = await supabase
+    .from("attempt_reports")
+    .update(patch)
+    .eq("id", targetReport.id)
+    .eq("report_status", "ready")
+    .eq("report_type", HR_REPORT_TYPE)
+    .eq("audience", HR_REPORT_AUDIENCE)
+    .eq("source_type", HR_REPORT_SOURCE_TYPE);
+
+  if (error) {
+    throw new Error(`Failed to queue ready single-test HR report for regeneration: ${error.message}`);
+  }
+
+  return {
+    action: "regenerate_ready",
+    status: "queued",
+    reason: null,
+    reportId: targetReport.id,
+    attemptId: targetReport.attempt_id,
+  };
 }
 
 export async function recoverHrAttemptReport(attemptId: string): Promise<HrReportRecoveryResult> {
