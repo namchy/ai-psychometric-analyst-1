@@ -198,6 +198,11 @@ export function buildAiReportDebugDumpRecord(
   const promptTemplate = input.promptTemplate;
   const authorityMetadata =
     context.authorityMetadata ?? buildSingleTestHrPromptAuthorityMetadata(input);
+  const promptKey =
+    context.promptKey ??
+    authorityMetadata?.promptKey ??
+    promptTemplate?.promptKey ??
+    input.reportContract.promptKey;
 
   return {
     timestamp,
@@ -208,7 +213,9 @@ export function buildAiReportDebugDumpRecord(
     prompt_source: context.promptSource ?? promptTemplate?.sourceType ?? input.reportContract.sourceType,
     prompt_version_id: context.promptVersionId ?? input.promptVersionId ?? null,
     prompt_version: context.promptVersion ?? input.promptVersion,
-    prompt_key: context.promptKey ?? input.reportContract.promptKey,
+    prompt_key: promptKey,
+    report_contract_key: authorityMetadata?.reportContractKey ?? input.reportContract.promptKey,
+    report_schema_name: authorityMetadata?.reportSchemaName ?? input.reportContract.schemaName,
     prompt_template_id: context.promptTemplateId ?? promptTemplate?.id ?? null,
     prompt_template_version: context.promptTemplateVersion ?? promptTemplate?.version ?? null,
     test_id: context.testId ?? getPromptTestId(input),
@@ -229,6 +236,11 @@ export function buildAiReportDebugDumpFilePath(
   options?: AiReportDebugDumpOptions,
 ): string {
   const timestamp = options?.now?.toISOString() ?? new Date().toISOString();
+  const promptKey =
+    context.promptKey ??
+    context.authorityMetadata?.promptKey ??
+    input.promptTemplate?.promptKey ??
+    input.reportContract.promptKey;
   const hash = createHash("sha1")
     .update(
       JSON.stringify({
@@ -236,7 +248,7 @@ export function buildAiReportDebugDumpFilePath(
         model: context.model,
         promptSource: context.promptSource ?? input.reportContract.sourceType,
         promptVersionId: context.promptVersionId ?? input.promptVersionId ?? null,
-        promptKey: context.promptKey ?? input.reportContract.promptKey,
+        promptKey,
         timestamp,
         requestBody: context.requestBody,
       }),

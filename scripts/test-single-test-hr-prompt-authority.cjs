@@ -167,6 +167,8 @@ function assertCommonAuthorityMetadata(metadata, expected) {
   assert.equal(metadata.promptVersionId, expected.promptVersionId);
   assert.equal(metadata.promptVersion, "db-v1");
   assert.equal(metadata.promptKey, expected.promptKey);
+  assert.equal(metadata.reportContractKey, expected.reportContractKey);
+  assert.equal(metadata.reportSchemaName, expected.reportSchemaName);
   assert.deepEqual(metadata.authorityLayers, [
     "global_hr_report_rules",
     "global_terminology_rules",
@@ -200,11 +202,13 @@ function main() {
           },
           {
             promptVersionId: "prompt-version-ipip-hr",
-            promptTemplate: buildPromptTemplate("prompt-version-ipip-hr", "ipip_neo_120_hr_v2"),
+            promptTemplate: buildPromptTemplate("prompt-version-ipip-hr", "completed_assessment_report"),
           },
         ),
         reportKind: "ipip_hr",
-        promptKey: "ipip_neo_120_hr_v2",
+        promptKey: "completed_assessment_report",
+        reportContractKey: "ipip_neo_120_hr_v2",
+        reportSchemaName: "ipip-neo-120-hr-v2",
         promptVersionId: "prompt-version-ipip-hr",
       },
       {
@@ -228,6 +232,8 @@ function main() {
         ),
         reportKind: "safran_hr",
         promptKey: "safran_hr_report_v1",
+        reportContractKey: "safran_hr_report_v1",
+        reportSchemaName: "safran-hr-report-v1",
         promptVersionId: "prompt-version-safran-hr",
       },
       {
@@ -251,6 +257,8 @@ function main() {
         ),
         reportKind: "mwms_hr",
         promptKey: "mwms_hr_report_v1",
+        reportContractKey: "mwms_hr_report_v1",
+        reportSchemaName: "mwms-hr-report-v1",
         promptVersionId: "prompt-version-mwms-hr",
       },
     ];
@@ -273,6 +281,8 @@ function main() {
       assert.equal(payload.authorityMetadata.promptSource, "db_prompt_version");
       assert.equal(payload.authorityMetadata.promptVersionId, testCase.promptVersionId);
       assert.equal(payload.authorityMetadata.promptKey, testCase.promptKey);
+      assert.equal(payload.authorityMetadata.reportContractKey, testCase.reportContractKey);
+      assert.equal(payload.authorityMetadata.reportSchemaName, testCase.reportSchemaName);
       assert.equal(payload.requestBody.model, "gpt-4.1");
       assert.equal(typeof payload.systemPrompt, "string");
       assert.equal(typeof payload.userPrompt, "string");

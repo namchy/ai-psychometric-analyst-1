@@ -67,7 +67,10 @@ import {
   validateIpipNeo120ParticipantReportV2PracticalSegment,
   validateIpipNeo120ParticipantReportV2SegmentsBundle,
 } from "@/lib/assessment/ipip-neo-120-participant-report-v2-segments";
-import { IPIP_NEO_120_DOMAIN_ORDER } from "@/lib/assessment/ipip-neo-120-labels";
+import {
+  getIpipNeo120HrDomainLabelsInOrder,
+  IPIP_NEO_120_DOMAIN_ORDER,
+} from "@/lib/assessment/ipip-neo-120-labels";
 import type {
   PreparedReportGenerationInput,
   ReportProvider,
@@ -540,7 +543,7 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
           "Use exactly 3 verification_focus items. Each item must include area, why_it_matters, and how_to_check.",
           "Use exactly 5 interview_questions. Each item must include question, evaluates, and what_good_answer_may_show.",
           "Use 2 to 3 strengths_and_overuse_risks items. Each item must include exactly 3 possible_strengths and exactly 3 possible_overuse_risks.",
-          "Use exactly 5 domain_overview items in this order: Ekstraverzija, Spremnost na saradnju, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
+          buildIpipNeo120HrDomainOverviewOrderInstruction(),
           "Each domain_overview.concise_meaning must be a single short paragraph with no bullets or line breaks, target up to 180 characters, and hard maximum 300 characters.",
           "Each domain_overview.hr_relevance must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 400 characters.",
           "Each domain_overview.check_in_interview must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 400 characters.",
@@ -875,12 +878,13 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
 
 function buildSystemPrompt(input: PreparedReportGenerationInput): string {
   const basePrompt = input.promptTemplate?.systemPrompt ?? buildDefaultSystemPrompt(input);
+  const cleanedPrompt = applyIpipHrPromptAuthorityCleanup(input, basePrompt);
 
   if (!isSafranHrPromptInput(input.promptInput)) {
-    return basePrompt;
+    return cleanedPrompt;
   }
 
-  return `${basePrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
+  return `${cleanedPrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
 }
 
 function getPromptInputLocale(input: ReportPromptInput): string {
@@ -922,6 +926,27 @@ function applyPromptTemplate(
   return rendered;
 }
 
+function buildIpipNeo120HrDomainOverviewOrderInstruction(): string {
+  return `Use exactly 5 domain_overview items in this order: ${getIpipNeo120HrDomainLabelsInOrder().join(", ")}.`;
+}
+
+function applyIpipHrPromptAuthorityCleanup(
+  input: PreparedReportGenerationInput,
+  promptText: string,
+): string {
+  if (!isIpipNeo120HrPromptInput(input.promptInput) || input.testSlug !== "ipip-neo-120-v1") {
+    return promptText;
+  }
+
+  return promptText
+    .replace(
+      /Use exactly 5 domain_overview items in this order:[^.]+\./g,
+      buildIpipNeo120HrDomainOverviewOrderInstruction(),
+    )
+    .replace(/\bUgodnost\b/g, "Spremnost na saradnju")
+    .replace(/\bugodnost\b/g, "spremnost na saradnju");
+}
+
 export function buildUserPrompt(input: PreparedReportGenerationInput): string {
   if (resolveIpipNeo120ParticipantProviderMode(input) === "v2-single") {
     return buildDefaultUserPrompt(input);
@@ -930,12 +955,13 @@ export function buildUserPrompt(input: PreparedReportGenerationInput): string {
   const basePrompt = !input.promptTemplate
     ? buildDefaultUserPrompt(input)
     : applyPromptTemplate(input.promptTemplate.userPromptTemplate, input, input.promptTemplate);
+  const cleanedPrompt = applyIpipHrPromptAuthorityCleanup(input, basePrompt);
 
   if (!isSafranHrPromptInput(input.promptInput)) {
-    return basePrompt;
+    return cleanedPrompt;
   }
 
-  return `${basePrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
+  return `${cleanedPrompt}\n\n${buildSafranHrMandatoryPromptGuardrails()}`;
 }
 
 function parseStructuredContent(content: string): unknown {

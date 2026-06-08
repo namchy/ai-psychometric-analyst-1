@@ -561,6 +561,7 @@ export function buildSingleTestHrPromptAuthorityMetadata(
           : "single_test_hr";
   const testSlug = getPromptInputTestSlug(input.promptInput);
   const promptSource = input.promptTemplate ? "db_prompt_version" : "code_default_prompt";
+  const promptKey = input.promptTemplate?.promptKey ?? input.reportContract.promptKey;
   const promptVersionId = input.promptVersionId ?? input.promptTemplate?.id ?? null;
   const promptVersion = input.promptTemplate?.version ?? input.promptVersion;
 
@@ -571,7 +572,9 @@ export function buildSingleTestHrPromptAuthorityMetadata(
     testSlug,
     testId: getPromptInputTestId(input.promptInput),
     audience,
-    promptKey: input.reportContract.promptKey,
+    promptKey,
+    reportContractKey: input.reportContract.promptKey,
+    reportSchemaName: input.reportContract.schemaName,
     promptVersionId,
     promptVersion,
     promptSource,

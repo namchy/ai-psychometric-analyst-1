@@ -130,6 +130,12 @@ export function getIpipNeo120HrDomainLabel(code: string): string | null {
   return IPIP_NEO_120_HR_DOMAIN_LABELS_BS[normalized as IpipNeo120DomainCode] ?? null;
 }
 
+export function getIpipNeo120HrDomainLabelsInOrder(): string[] {
+  return IPIP_NEO_120_DOMAIN_ORDER.map(
+    (domainCode) => IPIP_NEO_120_HR_DOMAIN_LABELS_BS[domainCode],
+  );
+}
+
 export function getIpipNeo120FacetLabel(code: string): string | null {
   const normalized = code.trim().toUpperCase();
   return IPIP_NEO_120_FACET_LABELS_BS[normalized as IpipNeo120FacetCode] ?? null;

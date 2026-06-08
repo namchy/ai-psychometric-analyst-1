@@ -80,7 +80,7 @@ function buildPreparedInput() {
       audience: "hr",
       sourceType: "single_test",
       generatorType: "openai",
-      promptKey: "ipip_neo_120_hr_report_v1",
+      promptKey: "completed_assessment_report",
       version: "v1",
       systemPrompt: "DB system prompt",
       userPromptTemplate: "DB user prompt",
@@ -200,7 +200,9 @@ async function main() {
   assert.equal(dump.prompt_source, "single_test");
   assert.equal(dump.prompt_version_id, "prompt-version-123");
   assert.equal(dump.prompt_version, "v1");
-  assert.equal(dump.prompt_key, "ipip_neo_120_hr_report_v1");
+  assert.equal(dump.prompt_key, "completed_assessment_report");
+  assert.equal(dump.report_contract_key, "ipip_neo_120_hr_report_v1");
+  assert.equal(dump.report_schema_name, "ipip-neo-120-hr-v1");
   assert.equal(dump.prompt_template_id, "prompt-version-123");
   assert.equal(dump.prompt_template_version, "v1");
   assert.equal(dump.test_id, "test-ipip");
@@ -209,6 +211,9 @@ async function main() {
   assert.equal(dump.model, "gpt-4.1");
   assert.equal(dump.authority_metadata.reportFamily, "single_test_hr");
   assert.equal(dump.authority_metadata.reportKind, "ipip_hr");
+  assert.equal(dump.authority_metadata.promptKey, "completed_assessment_report");
+  assert.equal(dump.authority_metadata.reportContractKey, "ipip_neo_120_hr_report_v1");
+  assert.equal(dump.authority_metadata.reportSchemaName, "ipip-neo-120-hr-v1");
   assert.equal(dump.authority_metadata.promptSource, "db_prompt_version");
   assert.deepEqual(dump.authority_metadata.authorityLayers, [
     "global_hr_report_rules",

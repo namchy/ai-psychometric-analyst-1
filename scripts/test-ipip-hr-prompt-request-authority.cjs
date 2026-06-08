@@ -106,6 +106,27 @@ function buildRequest() {
   };
 }
 
+function buildPromptTemplate() {
+  return {
+    id: "prompt-version-ipip-hr-request-authority",
+    testId: "test-ipip-hr-prompt-request-authority",
+    reportType: "individual",
+    audience: "hr",
+    sourceType: "single_test",
+    generatorType: "openai",
+    promptKey: "completed_assessment_report",
+    version: "v1_ipip_hr_focused_20260606",
+    systemPrompt: "DB system prompt with Ugodnost inside system context.",
+    userPromptTemplate:
+      "Koristi tačno 5 domain_overview stavki u ovom redoslijedu: Ekstraverzija, Ugodnost, Savjesnost, Neuroticizam, Otvorenost prema iskustvu. {{prompt_input_json}}",
+    outputSchemaJson: null,
+    notes: null,
+    createdAt: "2026-06-08T00:00:00.000Z",
+    updatedAt: "2026-06-08T00:00:00.000Z",
+    updatedBy: null,
+  };
+}
+
 async function main() {
   const originalFetch = global.fetch;
   let fetchCalled = false;
@@ -117,8 +138,8 @@ async function main() {
   try {
     const request = buildRequest();
     const preparedInput = buildPreparedReportGenerationInput(request, {
-      promptVersionId: null,
-      promptTemplate: null,
+      promptVersionId: "prompt-version-ipip-hr-request-authority",
+      promptTemplate: buildPromptTemplate(),
     });
     const payload = buildOpenAiStructuredRequestPayload(preparedInput, {
       apiKey: "sk-test-secret-value",
@@ -140,9 +161,12 @@ async function main() {
     assert.ok(payload.authorityMetadata);
     assert.equal(payload.authorityMetadata.reportFamily, "single_test_hr");
     assert.equal(payload.authorityMetadata.reportKind, "ipip_hr");
-    assert.equal(payload.authorityMetadata.promptSource, "code_default_prompt");
-    assert.equal(payload.authorityMetadata.promptVersionId, null);
-    assert.equal(payload.authorityMetadata.promptVersion, "ipip_neo_120_hr_v2");
+    assert.equal(payload.authorityMetadata.promptSource, "db_prompt_version");
+    assert.equal(payload.authorityMetadata.promptVersionId, "prompt-version-ipip-hr-request-authority");
+    assert.equal(payload.authorityMetadata.promptVersion, "v1_ipip_hr_focused_20260606");
+    assert.equal(payload.authorityMetadata.promptKey, "completed_assessment_report");
+    assert.equal(payload.authorityMetadata.reportContractKey, "ipip_neo_120_hr_v2");
+    assert.equal(payload.authorityMetadata.reportSchemaName, "ipip-neo-120-hr-v2");
     assert.deepEqual(payload.authorityMetadata.authorityLayers, [
       "global_hr_report_rules",
       "global_terminology_rules",
@@ -167,6 +191,14 @@ async function main() {
     assert.equal(payloadText.includes("Spremnost na saradnju"), true);
     assert.equal(payloadText.includes("Ugodnost"), false);
     assert.equal(payloadText.includes("ugodnost"), false);
+    assert.equal(
+      payload.userPrompt.includes(
+        "Use exactly 5 domain_overview items in this order: Ekstraverzija, Spremnost na saradnju, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
+      ) || payload.userPrompt.includes(
+        "Koristi tačno 5 domain_overview stavki u ovom redoslijedu: Ekstraverzija, Spremnost na saradnju, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
+      ),
+      true,
+    );
 
     const dumpRecord = buildAiReportDebugDumpRecord(
       preparedInput,
@@ -188,12 +220,17 @@ async function main() {
     assert.equal(dumpText.includes("Ugodnost"), false);
     assert.equal(dumpText.includes("ugodnost"), false);
     assert.equal(dumpRecord.model, "gpt-4.1");
+    assert.equal(dumpRecord.prompt_key, "completed_assessment_report");
+    assert.equal(dumpRecord.report_contract_key, "ipip_neo_120_hr_v2");
+    assert.equal(dumpRecord.report_schema_name, "ipip-neo-120-hr-v2");
     assert.equal(dumpRecord.response_format.type, "json_schema");
     assert.equal(typeof dumpRecord.system_prompt, "string");
     assert.equal(typeof dumpRecord.rendered_user_prompt, "string");
     assert.equal(dumpRecord.authority_metadata.reportFamily, "single_test_hr");
     assert.equal(dumpRecord.authority_metadata.reportKind, "ipip_hr");
-    assert.equal(dumpRecord.authority_metadata.promptSource, "code_default_prompt");
+    assert.equal(dumpRecord.authority_metadata.promptSource, "db_prompt_version");
+    assert.equal(dumpRecord.authority_metadata.promptKey, "completed_assessment_report");
+    assert.equal(dumpRecord.authority_metadata.reportContractKey, "ipip_neo_120_hr_v2");
     assert.equal(dumpRecord.authority_metadata.terminologyAuthority.key, "ipip_hr_canonical_terminology");
     assert.equal(fetchCalled, false);
 

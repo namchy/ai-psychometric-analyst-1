@@ -193,6 +193,8 @@ export type SingleTestHrPromptAuthorityMetadata = {
   testId: string | null;
   audience: "hr";
   promptKey: string;
+  reportContractKey: string;
+  reportSchemaName: string;
   promptVersionId: string | null;
   promptVersion: string;
   promptSource: "db_prompt_version" | "code_default_prompt";
