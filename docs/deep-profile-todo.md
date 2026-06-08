@@ -51,7 +51,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / UI targeting-control audit i foundation prije daljeg redesign-a | UI system / Product quality / Look and feel | Prije novih vizuelnih izmjena uraditi read-only audit postojećih UI standarda, tokena, shared komponenti i paralelnih stilskih slojeva; zatim definisati UI targeting/control layer koji podržava globalne, variant-level i single-instance izmjene kroz postojeći UI system. Ne uvoditi novi paralelni design system i ne raditi redesign-all. |
 | P0        | AI segment-aware report content architecture for individual reports | U toku / dev-only request dump, IPIP HR terminology authority cleanup i IPIP HR request-payload verification završeni; prompt-selection authority i controlled regeneration odluka ostaju pending | Deep Profile / Report content architecture | Prvo stabilizovati single-test HR report authority layer: global prompt rules + terminology policy + report-family/test-specific prompt selection + dev-only prompt/request dump. Zatim odlučiti između controlled Amra/IPIP HR regeneration provjere i zasebnog single-test HR prompt selection authority slice-a. Ne raditi UI redesign prije završetka authority/prompt/terminology sloja. |
-| P0        | Single-test HR report authority + prompt policy layer | U toku / dev-only request dump, IPIP HR terminology authority cleanup, IPIP HR request-payload verification i single-test HR prompt authority metadata foundation završeni; controlled regeneration odluka i eventualni prompt content polish ostaju pending | Report architecture / Prompt governance / Terminology | Uvesti centralni authority model za single-test HR reporte: global prompt rules, global terminology rules, report-family rules, test-specific rules, runtime/input facts, prompt selection po lane-u i dev-only prompt/request dump prije OpenAI call-a. Sljedeće: controlled Amra/IPIP HR regeneration check sa uključenim debug dumpom, bez UI redesign-a. Ako novi report i dalje ima sadržajne slabosti, otvoriti uski prompt content/policy polish slice. |
+| P0        | Single-test HR report authority + prompt policy layer | U toku / authority foundation, IPIP HR terminology cleanup, prompt/request metadata, regenerate-ready lifecycle, failed retry recovery, output canonicalization i Amra/IPIP HR controlled regeneration/browser review završeni; sljedeće je eventualni uski content compression/polish slice, ne UI redesign. | Report architecture / Prompt governance / Terminology | Sljedeće: ako se nastavlja IPIP HR lane, otvoriti mali prompt/content polish slice za kraći, konkretniji HR tekst. Authority/terminology/regeneration blocker je zatvoren. UI redesign ostaje kasnije. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -80,6 +80,58 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - Guardrail: frontend ne smije biti autor domain interpretacije.
 - Guardrail: provider i contract izmjene ne idu bez eksplicitnog slice-a i legacy snapshot strategije.
 - Supporting spec: `docs/deep-profile-ai-report-content-architecture.md`
+
+### Completion note — IPIP HR authority/regeneration/terminology loop closed
+
+- Završeni su single-test HR authority foundation slice-ovi:
+  - dev-only AI request/debug dump
+  - IPIP HR terminology authority cleanup
+  - IPIP HR request-payload verification
+  - single-test HR prompt authority metadata foundation
+  - controlled regenerate-ready lifecycle path
+  - controlled failed retry wrapper za Amra/IPIP HR report
+- IPIP HR canonical terminology je zaključana:
+  - label/domain form: `Spremnost na saradnju`
+  - narrative form: `spremnost na saradnju`
+- Current IPIP HR validator sada blokira:
+  - `Ugodnost/ugodnost`
+  - `Saradljivost/saradljivost`
+  - `Kooperativnost/kooperativnost`
+  - `Saradnički profil/saradnički profil`
+  - `overuse/Overuse`
+  - `handling/Handling`
+- Dodan je prompt terminology rules block za IPIP HR OpenAI prompt path.
+- Dodana je output terminology canonicalization prije HR validatora i prije persistence-a:
+  - AI output → canonicalization → strict validator → persisted canonicalized snapshot
+- Internal schema keys mogu ostati engleski, ali user-facing report tekst ne smije propuštati engleske termine.
+- Amrin IPIP HR report je kontrolisano recover/regenerisan kroz postojeći lifecycle/provider/validator path.
+- Finalni read-only inspect potvrđuje:
+  - `reportStatus = ready`
+  - `validatorOk = true`
+  - `inputSnapshotPresent = true`
+  - `reportSnapshotPresent = true`
+  - `Spremnost na saradnju` prisutna u input/report snapshotu
+  - `Ugodnost/ugodnost` odsutni
+  - candidate-facing `ti` ton odsutan
+- Browser review nakon regeneracije pokazuje da su raniji problemi (`Saradljivost`, `overuse`, `handling`) uklonjeni iz user-facing prikaza.
+- Ocjena browser/content reviewa:
+  - technical/terminology: PASS
+  - content quality: PASS uz polish
+  - UI/readability: PASS uz kasniji polish
+- Preporučeni sljedeći rad, ako se nastavlja ovaj lane:
+  - mali `IPIP HR content compression/polish` slice za kraći, konkretniji i manje generički HR tekst
+  - ne UI redesign
+  - ne novi authority refactor
+- Ključni testovi koji su prošli:
+  - `node scripts/test-ipip-hr-terminology-guardrails.cjs`
+  - `node scripts/test-ipip-neo-120-hr-report.cjs`
+  - `node scripts/test-ipip-hr-prompt-request-authority.cjs`
+  - `node scripts/test-single-test-hr-prompt-authority.cjs`
+  - `node scripts/test-ai-report-debug-dump.cjs`
+  - `node scripts/test-regenerate-amra-ipip-hr-report-script.cjs`
+  - `node scripts/test-retry-amra-ipip-hr-failed-report-script.cjs`
+  - `node scripts/test-inspect-amra-ipip-hr-artifact.cjs`
+  - `npm run typecheck`
 
 ### Completion note — IDP P0 summary mapping cleanup
 
