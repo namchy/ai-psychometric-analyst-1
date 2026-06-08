@@ -139,6 +139,54 @@ function containsForbiddenTerm(text) {
   return text.includes("Ugodnost") || text.includes("ugodnost");
 }
 
+function validateDebugDumpAuthorityRecord(dumpRecord) {
+  const dumpText = JSON.stringify(dumpRecord);
+  const authorityMetadata = dumpRecord?.authority_metadata;
+  const authorityLayers = authorityMetadata?.authorityLayers;
+
+  const hasAuthorityMetadata = Boolean(
+    authorityMetadata &&
+      authorityMetadata.reportFamily === "single_test_hr" &&
+      authorityMetadata.reportKind === "ipip_hr" &&
+      authorityMetadata.reportLaneId === "ipip_hr:ipip-neo-120-v1:hr",
+  );
+  const hasAuthorityLayers =
+    Array.isArray(authorityLayers) &&
+    authorityLayers.includes("global_hr_report_rules") &&
+    authorityLayers.includes("global_terminology_rules") &&
+    authorityLayers.includes("single_test_hr_family_rules") &&
+    authorityLayers.includes("test_specific_rules") &&
+    authorityLayers.includes("runtime_input_facts");
+  const hasPromptSourceMetadata =
+    dumpRecord?.prompt_key === TARGET_PROMPT_KEY &&
+    authorityMetadata?.promptKey === TARGET_PROMPT_KEY &&
+    dumpRecord?.report_contract_key === "ipip_neo_120_hr_v2" &&
+    authorityMetadata?.reportContractKey === "ipip_neo_120_hr_v2" &&
+    dumpRecord?.report_schema_name === "ipip-neo-120-hr-v2" &&
+    authorityMetadata?.reportSchemaName === "ipip-neo-120-hr-v2";
+  const hasTerminology =
+    dumpText.includes("Spremnost na saradnju") &&
+    !containsForbiddenTerm(dumpText);
+  const hasNoSecrets =
+    !dumpText.includes("OPENAI_API_KEY") &&
+    !dumpText.includes("Authorization") &&
+    !dumpText.includes("Bearer");
+
+  return {
+    ok:
+      hasAuthorityMetadata &&
+      hasAuthorityLayers &&
+      hasPromptSourceMetadata &&
+      hasTerminology &&
+      hasNoSecrets,
+    hasAuthorityMetadata,
+    hasAuthorityLayers,
+    hasPromptSourceMetadata,
+    hasTerminology,
+    hasNoSecrets,
+  };
+}
+
 async function loadPreflightSummary() {
   const { createSupabaseAdminClient } = require("../lib/supabase/admin.ts");
   const { getActivePromptVersion } = require("../lib/assessment/prompt-version.ts");
@@ -334,21 +382,14 @@ async function main() {
   }
 
   const dumpText = fs.readFileSync(dumpPath, "utf8");
+  const dumpRecord = JSON.parse(dumpText);
+  const dumpValidation = validateDebugDumpAuthorityRecord(dumpRecord);
 
-  if (
-    !dumpText.includes('"reportFamily":"single_test_hr"') ||
-    !dumpText.includes('"reportKind":"ipip_hr"') ||
-    !dumpText.includes("Spremnost na saradnju") ||
-    containsForbiddenTerm(dumpText)
-  ) {
+  if (!dumpValidation.ok) {
     throw new Error("Debug dump did not satisfy authority metadata or terminology checks.");
   }
 
-  if (
-    dumpText.includes("OPENAI_API_KEY") ||
-    dumpText.includes("Authorization") ||
-    dumpText.includes("Bearer")
-  ) {
+  if (!dumpValidation.hasNoSecrets) {
     throw new Error("Debug dump contains forbidden secret markers.");
   }
 
@@ -387,4 +428,5 @@ module.exports = {
   isExecutionConfirmed,
   isDebugDumpEnabled,
   assertExecutionPreflight,
+  validateDebugDumpAuthorityRecord,
 };
