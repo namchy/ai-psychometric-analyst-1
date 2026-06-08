@@ -627,8 +627,8 @@ function buildIpipNeo120HrMockReport(
       audience: "hr",
     },
     headline: highestDomain
-      ? `Profil ukazuje na ${highestDomain.label.toLowerCase()} kao važan radni signal koji vrijedi provjeriti kroz konkretne situacije saradnje i odlučivanja.`
-      : "Profil ukazuje na više ravnotežnih radnih obrazaca koje vrijedi provjeriti kroz konkretne situacije uloge.",
+      ? `Profil ukazuje na ${highestDomain.label.toLowerCase()} kao važan signal za intervju i radnu saradnju.`
+      : "Profil ukazuje na više radnih obrazaca koje vrijedi provjeriti kroz konkretne situacije uloge.",
     executive_summary: highestDomain
       ? `Profil sugeriše da ${highestDomain.label.toLowerCase()} snažnije oblikuje svakodnevni radni obrazac, posebno kroz ${topFacetLabel} i ${secondFacetLabel}. U intervjuu vrijedi provjeriti kako se taj obrazac vidi kada osoba mora zaštititi prioritet, dati direktan feedback ili reagovati na pritisak. Nalaz je najkorisnije prevesti u strukturirana pitanja i rani onboarding razgovor.`
       : "Profil sugeriše više uravnoteženih obrazaca rada bez jedne potpuno dominantne domene. U intervjuu vrijedi provjeriti kako osoba održava saradnju, ritam rada i reakciju na pritisak kroz konkretne primjere. Nalaz je najkorisnije koristiti kao vodič za strukturirani intervju i rani onboarding razgovor.",

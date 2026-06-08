@@ -1,6 +1,9 @@
 import ipipNeo120HrSchemaJson from "@/lib/assessment/schemas/ipip-neo-120-hr-v1.json";
 import ipipNeo120ParticipantSchemaJson from "@/lib/assessment/schemas/ipip-neo-120-participant-v1.json";
 import {
+  validateAiReportProseField,
+} from "@/lib/assessment/ai-report-prose-validation";
+import {
   IPIP_NEO_120_DOMAIN_ORDER,
   IPIP_NEO_120_FACETS_BY_DOMAIN,
   getIpipNeo120DomainLabel,
@@ -300,11 +303,6 @@ function normalizeStringList(value: unknown): string[] {
   return Array.isArray(value) ? value.map(normalizeTextField).filter(Boolean) : [];
 }
 
-function countWords(value: string): number {
-  const normalized = normalizeWhitespace(value);
-  return normalized.length === 0 ? 0 : normalized.split(" ").length;
-}
-
 function countSentences(value: string): number {
   return normalizeWhitespace(value)
     .split(/[.!?]+/u)
@@ -325,20 +323,6 @@ function validateSentenceRange(
     errors.push({
       path,
       message: `Expected ${minSentences} to ${maxSentences} sentence(s).`,
-    });
-  }
-}
-
-function validateWordLimit(
-  value: string,
-  path: string,
-  maxWords: number,
-  errors: ValidationError[],
-) {
-  if (countWords(value) > maxWords) {
-    errors.push({
-      path,
-      message: `Expected at most ${maxWords} words.`,
     });
   }
 }
@@ -510,7 +494,7 @@ function validateHrDomainOverview(
   value: unknown,
   path: string,
   expectedDomainCode: IpipNeo120DomainCode,
-  enforceSentenceConstraints: boolean,
+  enforceProseProfiles: boolean,
   errors: ValidationError[],
 ): value is HrDomainOverview {
   if (!isNonArrayObject(value)) {
@@ -556,14 +540,23 @@ function validateHrDomainOverview(
     errors,
   );
 
-  if (enforceSentenceConstraints) {
-    validateSentenceRange(normalizeTextField(value.concise_meaning), `${path}.concise_meaning`, 1, 1, errors);
-    validateSentenceRange(normalizeTextField(value.hr_relevance), `${path}.hr_relevance`, 1, 1, errors);
-    validateSentenceRange(
-      normalizeTextField(value.check_in_interview),
+  if (enforceProseProfiles) {
+    validateAiReportProseField(
+      value.concise_meaning,
+      `${path}.concise_meaning`,
+      "ipipDomainMeaning",
+      errors,
+    );
+    validateAiReportProseField(
+      value.hr_relevance,
+      `${path}.hr_relevance`,
+      "ipipDomainHrRelevance",
+      errors,
+    );
+    validateAiReportProseField(
+      value.check_in_interview,
       `${path}.check_in_interview`,
-      1,
-      1,
+      "ipipInterviewCheck",
       errors,
     );
   }
@@ -1484,9 +1477,13 @@ export function validateIpipNeo120HrReportV1(
   validateNonEmptyString(normalized.headline, "headline", errors);
   validateNonEmptyString(normalized.executive_summary, "executive_summary", errors);
   if (enforceNarrativeConstraints) {
-    validateWordLimit(normalized.headline, "headline", 22, errors);
-    validateSentenceRange(normalized.headline, "headline", 1, 1, errors);
-    validateSentenceRange(normalized.executive_summary, "executive_summary", 2, 3, errors);
+    validateAiReportProseField(objectValue.headline, "headline", "ipipHeadline", errors);
+    validateAiReportProseField(
+      objectValue.executive_summary,
+      "executive_summary",
+      "ipipExecutiveSummary",
+      errors,
+    );
   }
 
   if (validateExactObjectArrayLength(normalized.key_hr_signals, "key_hr_signals", 3, errors)) {
@@ -1556,7 +1553,12 @@ export function validateIpipNeo120HrReportV1(
   validateStringArrayRange(normalized.decision_support_note, "decision_support_note", 2, 4, errors);
   validateNonEmptyString(normalized.interpretation_note, "interpretation_note", errors);
   if (enforceNarrativeConstraints) {
-    validateSentenceRange(normalized.interpretation_note, "interpretation_note", 1, 2, errors);
+    validateAiReportProseField(
+      (value as Record<string, unknown>).interpretation_note,
+      "interpretation_note",
+      "ipipInterpretationNote",
+      errors,
+    );
   }
 
   if (enforceGuardrails) {

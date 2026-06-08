@@ -6,6 +6,9 @@ import {
   getIpipNeo120ParticipantReportVersion,
 } from "@/lib/assessment/report-config";
 import {
+  maybeWriteAiReportDebugDump,
+} from "@/lib/assessment/ai-report-debug-dump";
+import {
   formatIpipNeo120ReportValidationErrors,
   validateIpipNeo120HrReportV1,
   validateIpipNeo120ParticipantReportV1,
@@ -80,6 +83,22 @@ type ErrorWithCause = Error & {
 };
 
 export type IpipNeo120ParticipantProviderMode = "v1" | "v2-single" | "v2-segmented";
+type OpenAiChatCompletionsRequestBody = {
+  model: string;
+  response_format: {
+    type: "json_schema";
+    json_schema: {
+      name: string;
+      strict: true;
+      schema: Record<string, unknown>;
+    };
+  };
+  messages: Array<{
+    role: "system" | "user";
+    content: string;
+  }>;
+  temperature?: number;
+};
 
 function isIpipNeo120ParticipantPromptInput(
   promptInput: ReportPromptInput,
@@ -151,6 +170,10 @@ export function resolveIpipNeo120ParticipantProviderMode(
     : "v2-single";
 }
 
+function shouldOmitOpenAiTemperature(model: string): boolean {
+  return model.startsWith("gpt-5.5");
+}
+
 export function buildOpenAiSchemaName(schemaName: string): string {
   const sanitized = schemaName
     .trim()
@@ -174,6 +197,48 @@ export function buildOpenAiSchemaName(schemaName: string): string {
   }
 
   return compact.slice(0, 64) || "schema";
+}
+
+export function buildOpenAiChatCompletionsRequestBody(
+  options: OpenAiProviderOptions,
+  payload: {
+    schemaName: string;
+    schema: Record<string, unknown>;
+    systemPrompt: string;
+    userPrompt: string;
+  },
+): OpenAiChatCompletionsRequestBody {
+  if (!options.model) {
+    throw new Error("Missing required env var: AI_REPORT_MODEL");
+  }
+
+  const body: OpenAiChatCompletionsRequestBody = {
+    model: options.model,
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: buildOpenAiSchemaName(payload.schemaName),
+        strict: true,
+        schema: payload.schema,
+      },
+    },
+    messages: [
+      {
+        role: "system",
+        content: payload.systemPrompt,
+      },
+      {
+        role: "user",
+        content: payload.userPrompt,
+      },
+    ],
+  };
+
+  if (!shouldOmitOpenAiTemperature(options.model)) {
+    body.temperature = 0.2;
+  }
+
+  return body;
 }
 
 function buildIpipNeo120ParticipantSegmentSchemaName(
@@ -425,19 +490,21 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
         audience_behavior:
           "Write in bosanski, ijekavica, latinica, for HR stakeholders. Keep the tone formal, operational, calm, workplace-oriented, and non-clinical.",
         structure_rules: [
-          "headline must be 1 sentence with at most 22 words and must name a practical HR signal plus one implication for interview or work context.",
-          "executive_summary must contain 2 to 3 sentences: dominant work pattern, what HR should verify, and optional use in interview or onboarding.",
+          "headline must be a single short paragraph with no bullets or line breaks, target up to 110 characters, and hard maximum 120 characters. It must name a practical HR signal plus one implication for interview or work context.",
+          "executive_summary must be a single short paragraph with no bullets or line breaks, target up to 320 characters, and hard maximum 600 characters. Cover the dominant work pattern, what HR should verify, and optional use in interview or onboarding.",
           "Use exactly 3 key_hr_signals. Each item must include title, evidence, and hr_implication.",
           "Use exactly 3 verification_focus items. Each item must include area, why_it_matters, and how_to_check.",
           "Use exactly 5 interview_questions. Each item must include question, evaluates, and what_good_answer_may_show.",
           "Use 2 to 3 strengths_and_overuse_risks items. Each item must include exactly 3 possible_strengths and exactly 3 possible_overuse_risks.",
           "Use exactly 5 domain_overview items in this order: Ekstraverzija, Ugodnost, Savjesnost, Neuroticizam, Otvorenost prema iskustvu.",
-          "Each domain_overview item must use exactly 1 sentence for concise_meaning, exactly 1 sentence for hr_relevance, and exactly 1 sentence for check_in_interview.",
+          "Each domain_overview.concise_meaning must be a single short paragraph with no bullets or line breaks, target up to 180 characters, and hard maximum 300 characters.",
+          "Each domain_overview.hr_relevance must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 400 characters.",
+          "Each domain_overview.check_in_interview must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 400 characters.",
           "Each domain_overview item may include at most 2 top_facets.",
           "Use exactly 4 onboarding_and_management_guidance items.",
           "Use exactly 3 team_fit_notes items.",
           "Use 2 to 4 decision_support_note bullets.",
-          "Use 1 to 2 sentences for interpretation_note.",
+          "interpretation_note must be a single short paragraph with no bullets or line breaks, target up to 220 characters, and hard maximum 450 characters.",
         ],
         source_rule:
           "Use only the provided deterministic scoring input. Do not calculate from raw answers, do not change bands, and do not invent extra domains, facets, metrics, or hiring decisions.",
@@ -454,7 +521,7 @@ export function buildDefaultUserPrompt(input: PreparedReportGenerationInput): st
           "Do not use diagnostic, medical, or protected-attribute language.",
           "Do not reveal or mention candidate scores in interview questions.",
           "decision_support_note must clearly say the report is not a standalone hiring decision and should be combined with interview, experience, references, and role requirements.",
-          "interpretation_note must say the report is not a diagnosis, is not a hiring decision, does not confirm protected traits, and must be read with role context and other information sources.",
+          "interpretation_note must say the report is not a diagnosis, is not a hiring decision, does not confirm protected traits, must be read with role context and other information sources, and must only explain how to use or limit the report rather than adding new domain interpretation.",
         ],
         dimension_hint_text: buildDimensionHintText(input),
       },
@@ -999,6 +1066,7 @@ function buildIpipNeo120ParticipantPracticalSegmentUserPrompt(
 }
 
 async function requestOpenAiStructuredJson(
+  input: PreparedReportGenerationInput,
   options: OpenAiProviderOptions,
   payload: {
     label: string;
@@ -1027,34 +1095,29 @@ async function requestOpenAiStructuredJson(
   );
 
   try {
+    const requestBody = buildOpenAiChatCompletionsRequestBody(options, payload);
+
+    await maybeWriteAiReportDebugDump(
+      input,
+      {
+        provider: "openai",
+        systemPrompt: payload.systemPrompt,
+        renderedUserPrompt: payload.userPrompt,
+        requestBody,
+        model: requestBody.model,
+      },
+      {
+        redactValues: [options.apiKey],
+      },
+    );
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${options.apiKey}`,
       },
-      body: JSON.stringify({
-        model: options.model,
-        temperature: 0.2,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: buildOpenAiSchemaName(payload.schemaName),
-            strict: true,
-            schema: payload.schema,
-          },
-        },
-        messages: [
-          {
-            role: "system",
-            content: payload.systemPrompt,
-          },
-          {
-            role: "user",
-            content: payload.userPrompt,
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
       cache: "no-store",
     });
@@ -1098,7 +1161,7 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
   const systemPrompt = buildSystemPrompt(input);
 
   const overviewPromptInput = buildIpipNeo120ParticipantOverviewSegmentPromptInput(v2Input);
-  const overviewSegment = await requestOpenAiStructuredJson(options, {
+  const overviewSegment = await requestOpenAiStructuredJson(input, options, {
     label: "IPIP-NEO-120 participant V2 overview segment",
     schemaName: buildIpipNeo120ParticipantSegmentSchemaName("overview"),
     schema: ipipNeo120ParticipantReportV2OverviewSegmentOpenAiSchema as Record<string, unknown>,
@@ -1119,7 +1182,7 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
 
   for (const domainCode of IPIP_NEO_120_DOMAIN_ORDER) {
     const domainPromptInput = buildIpipNeo120ParticipantDomainSegmentPromptInput(v2Input, domainCode);
-    const domainSegment = await requestOpenAiStructuredJson(options, {
+    const domainSegment = await requestOpenAiStructuredJson(input, options, {
       label: `IPIP-NEO-120 participant V2 domain segment (${domainCode})`,
       schemaName: buildIpipNeo120ParticipantSegmentSchemaName("domain", domainCode),
       schema: ipipNeo120ParticipantReportV2DomainSegmentOpenAiSchema as Record<string, unknown>,
@@ -1143,7 +1206,7 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
   }
 
   const practicalPromptInput = buildIpipNeo120ParticipantPracticalSegmentPromptInput(v2Input);
-  const practicalSegment = await requestOpenAiStructuredJson(options, {
+  const practicalSegment = await requestOpenAiStructuredJson(input, options, {
     label: "IPIP-NEO-120 participant V2 practical segment",
     schemaName: buildIpipNeo120ParticipantSegmentSchemaName("practical"),
     schema: ipipNeo120ParticipantReportV2PracticalSegmentOpenAiSchema as Record<string, unknown>,
@@ -1325,7 +1388,7 @@ async function requestOpenAiReport(
       providerMode === "v2-segmented"
         ? await generateIpipNeo120ParticipantV2SegmentedReport(input, options)
         : validateStructuredReport(
-            await requestOpenAiStructuredJson(options, {
+            await requestOpenAiStructuredJson(input, options, {
               label: "report",
               schemaName: resolveOpenAiSchemaNameForInput(input),
               schema: resolveOpenAiResponseFormatSchemaForInput(input),

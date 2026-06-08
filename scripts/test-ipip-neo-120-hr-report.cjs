@@ -209,6 +209,24 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function buildSentence(base, targetLength) {
+  let sentence = base.trim();
+  if (!/[.!?]$/.test(sentence)) {
+    sentence += ".";
+  }
+
+  if (sentence.length >= targetLength) {
+    return sentence;
+  }
+
+  const filler = " dodatni radni kontekst";
+  while (sentence.length + filler.length + 1 < targetLength) {
+    sentence = `${sentence.slice(0, -1)}${filler}.`;
+  }
+
+  return sentence;
+}
+
 async function main() {
   const preparedInput = buildPreparedInput();
   const providerResult = await mockReportProvider.generateReport(preparedInput);
@@ -289,6 +307,169 @@ async function main() {
     false,
   );
 
+  const fourSentenceExecutiveSummary = clone(report);
+  fourSentenceExecutiveSummary.executive_summary = [
+    buildSentence(
+      "Kandidat djeluje saradljivo i strukturirano kada su očekivanja jasna i kada timski odnosi ostaju predvidivi",
+      145,
+    ),
+    buildSentence(
+      "Vrijedi provjeriti kako čuva standard rada kada se prioriteti naglo promijene i kada treba uskladiti više interesnih strana",
+      145,
+    ),
+    buildSentence(
+      "U intervjuu tražiti primjer gdje je morao spojiti dosljednost, takt i odgovornost prema roku bez gubitka kvaliteta",
+      145,
+    ),
+    buildSentence(
+      "Za onboarding može biti korisno rano razjasniti granice odlučivanja, tempo povratne informacije i način eskalacije neslaganja",
+      120,
+    ),
+  ].join(" ");
+  assert.ok(fourSentenceExecutiveSummary.executive_summary.length < 600);
+  assert.equal(
+    validateIpipNeo120HrReportV1(fourSentenceExecutiveSummary, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    true,
+  );
+
+  const tooLongExecutiveSummary = clone(report);
+  tooLongExecutiveSummary.executive_summary = "A".repeat(601);
+  const tooLongExecutiveSummaryValidation = validateIpipNeo120HrReportV1(tooLongExecutiveSummary, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
+  assert.equal(tooLongExecutiveSummaryValidation.ok, false);
+  assert.ok(
+    tooLongExecutiveSummaryValidation.errors.some(
+      (error) =>
+        error.path === "executive_summary" && error.message.includes("at most 600 characters"),
+    ),
+  );
+
+  const bulletedExecutiveSummary = clone(report);
+  bulletedExecutiveSummary.executive_summary =
+    "- Kandidat djeluje saradljivo u stabilnom timu. - Vrijedi provjeriti kako reaguje pod pritiskom.";
+  const bulletedExecutiveSummaryValidation = validateIpipNeo120HrReportV1(bulletedExecutiveSummary, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
+  assert.equal(bulletedExecutiveSummaryValidation.ok, false);
+  assert.ok(
+    bulletedExecutiveSummaryValidation.errors.some(
+      (error) =>
+        error.path === "executive_summary" &&
+        error.message.includes("Bullet points or list formatting are not allowed"),
+    ),
+  );
+
+  const newlineExecutiveSummary = clone(report);
+  newlineExecutiveSummary.executive_summary =
+    "Kandidat djeluje saradljivo i strukturirano.\nVrijedi provjeriti kako reaguje pod pritiskom i kada mora zaštititi prioritet.";
+  const newlineExecutiveSummaryValidation = validateIpipNeo120HrReportV1(newlineExecutiveSummary, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
+  assert.equal(newlineExecutiveSummaryValidation.ok, false);
+  assert.ok(
+    newlineExecutiveSummaryValidation.errors.some(
+      (error) => error.path === "executive_summary" && error.message.includes("Line breaks are not allowed"),
+    ),
+  );
+
+  const multiSentenceHrRelevance = clone(report);
+  multiSentenceHrRelevance.domain_overview[1].hr_relevance =
+    "Ovaj signal je koristan za procjenu saradnje, granica i načina davanja podrške kolegama. Vrijedi ga čitati uz zahtjev za taktom, pregovaranjem i održavanjem standarda pod pritiskom. U razgovoru ga poveži sa stvarnim primjerima neslaganja i prioritizacije.";
+  assert.ok(multiSentenceHrRelevance.domain_overview[1].hr_relevance.length < 400);
+  assert.equal(
+    validateIpipNeo120HrReportV1(multiSentenceHrRelevance, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    true,
+  );
+
+  const tooLongHrRelevance = clone(report);
+  tooLongHrRelevance.domain_overview[1].hr_relevance = "B".repeat(401);
+  const tooLongHrRelevanceValidation = validateIpipNeo120HrReportV1(tooLongHrRelevance, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
+  assert.equal(tooLongHrRelevanceValidation.ok, false);
+  assert.ok(
+    tooLongHrRelevanceValidation.errors.some(
+      (error) =>
+        error.path === "domain_overview[1].hr_relevance" &&
+        error.message.includes("at most 400 characters"),
+    ),
+  );
+
+  const validInterpretationNote = clone(report);
+  validInterpretationNote.interpretation_note =
+    "Ovaj izvještaj je razvojni uvid. Koristi ga uz intervju i kontekst uloge. Ne donosi odluku samostalno.";
+  assert.equal(
+    validateIpipNeo120HrReportV1(validInterpretationNote, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    true,
+  );
+
+  const longSingleSentence = clone(report);
+  longSingleSentence.interpretation_note =
+    [
+      "Ovaj izvještaj je razvojni uvid i treba ga koristiti uz intervju, reference, radne primjere i kontekst uloge bez samostalne odluke o kandidatu",
+      "Ovaj izvještaj je razvojni uvid i treba ga koristiti uz intervju, reference, radne primjere i kontekst uloge bez samostalne odluke o kandidatu",
+      "Ovaj izvještaj je razvojni uvid i treba ga koristiti uz intervju, reference, radne primjere i kontekst uloge bez samostalne odluke o kandidatu",
+      "Ovaj izvještaj je razvojni uvid i treba ga koristiti uz intervju, reference, radne primjere i kontekst uloge bez samostalne odluke o kandidatu",
+    ].join(" ") + ".";
+  assert.equal(
+    validateIpipNeo120HrReportV1(longSingleSentence, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    false,
+  );
+
+  const tooLongInterpretationNote = clone(report);
+  tooLongInterpretationNote.interpretation_note = "C".repeat(451);
+  const tooLongInterpretationNoteValidation = validateIpipNeo120HrReportV1(tooLongInterpretationNote, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
+  assert.equal(tooLongInterpretationNoteValidation.ok, false);
+  assert.ok(
+    tooLongInterpretationNoteValidation.errors.some(
+      (error) =>
+        error.path === "interpretation_note" &&
+        error.message.includes("at most 450 characters"),
+    ),
+  );
+
+  const fourSentenceNote = clone(report);
+  fourSentenceNote.interpretation_note =
+    "Ovaj izvještaj je razvojni uvid. Koristi ga uz intervju. Ne donosi odluku samostalno. Provjeri ga s drugim izvorima.";
+  assert.equal(
+    validateIpipNeo120HrReportV1(fourSentenceNote, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    true,
+  );
+
+  const bulletListNote = clone(report);
+  bulletListNote.interpretation_note =
+    "Ovaj izvještaj je razvojni uvid.\n- Koristi ga uz intervju.\n- Ne donosi odluku samostalno.";
+  assert.equal(
+    validateIpipNeo120HrReportV1(bulletListNote, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    false,
+  );
+
   const hireLanguage = clone(report);
   hireLanguage.decision_support_note[0] = "Na osnovu ovoga treba zaposliti kandidata.";
   assert.equal(
@@ -303,6 +484,47 @@ async function main() {
   wrongQuestionCount.interview_questions = wrongQuestionCount.interview_questions.slice(0, 4);
   assert.equal(
     validateIpipNeo120HrReportV1(wrongQuestionCount, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    false,
+  );
+
+  const wrongDomainCount = clone(report);
+  wrongDomainCount.domain_overview = wrongDomainCount.domain_overview.slice(0, 4);
+  assert.equal(
+    validateIpipNeo120HrReportV1(wrongDomainCount, {
+      strictContract: true,
+      enforceGuardrails: true,
+    }).ok,
+    false,
+  );
+
+  const wrongDomainOrder = clone(report);
+  [
+    wrongDomainOrder.domain_overview[0],
+    wrongDomainOrder.domain_overview[1],
+  ] = [
+    wrongDomainOrder.domain_overview[1],
+    wrongDomainOrder.domain_overview[0],
+  ];
+  const wrongDomainOrderValidation = validateIpipNeo120HrReportV1(wrongDomainOrder, {
+    strictContract: true,
+    enforceGuardrails: true,
+  });
+  assert.equal(wrongDomainOrderValidation.ok, false);
+  assert.ok(
+    wrongDomainOrderValidation.errors.some(
+      (error) =>
+        error.path === "domain_overview[0].domain_name" &&
+        error.message.includes('Expected canonical label "Ekstraverzija"'),
+    ),
+  );
+
+  const missingDomainField = clone(report);
+  delete missingDomainField.domain_overview[0].check_in_interview;
+  assert.equal(
+    validateIpipNeo120HrReportV1(missingDomainField, {
       strictContract: true,
       enforceGuardrails: true,
     }).ok,
