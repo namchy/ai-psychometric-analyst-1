@@ -59,6 +59,12 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const { createSupabaseAdminClient } = require("../lib/supabase/admin.ts");
 const { validateIpipNeo120HrReportV1 } = require("../lib/assessment/ipip-neo-120-report-v1.ts");
+const {
+  getReportGenerationCapability,
+} = require("../lib/assessment/report-capabilities.ts");
+const {
+  resolveHrReportRecoveryOperation,
+} = require("../lib/assessment/reports.ts");
 
 const TARGET_REPORT_ID = "9ef593a9-ebcf-4606-a16e-f245b47deb0c";
 
@@ -84,7 +90,104 @@ function collectStrings(value, output = []) {
   return output;
 }
 
-async function main() {
+function resolveAttemptLifecycle(attempt) {
+  if (!attempt) {
+    return "unknown";
+  }
+
+  if (attempt.status === "completed" && attempt.completed_at) {
+    return "completed";
+  }
+
+  if (attempt.status === "in_progress") {
+    return "in_progress";
+  }
+
+  if (attempt.status === "abandoned") {
+    return "abandoned";
+  }
+
+  return "unknown";
+}
+
+function inspectArtifactRow(row) {
+  const inputSnapshotPresent = Boolean(row?.input_snapshot);
+  const reportSnapshotPresent = Boolean(row?.report_snapshot);
+  const inputText = JSON.stringify(row?.input_snapshot);
+  const reportText = JSON.stringify(row?.report_snapshot);
+  const validatorSkipped = !reportSnapshotPresent;
+  const validation = validatorSkipped
+    ? null
+    : validateIpipNeo120HrReportV1(row.report_snapshot, {
+        strictContract: true,
+        enforceGuardrails: true,
+      });
+  const missingReasons = [];
+
+  if (!inputSnapshotPresent) {
+    missingReasons.push("input_snapshot_missing");
+  }
+
+  if (!reportSnapshotPresent) {
+    missingReasons.push("report_snapshot_missing");
+  }
+
+  return {
+    reportId: row.id,
+    attemptId: row.attempt_id,
+    testSlug: row.test_slug,
+    audience: row.audience,
+    reportType: row.report_type,
+    sourceType: row.source_type,
+    reportStatus: row.report_status,
+    promptVersionId: row.prompt_version_id,
+    attemptStatus: row.attempts?.status ?? null,
+    attemptCompletedAt: row.attempts?.completed_at ?? null,
+    attemptLifecycle: resolveAttemptLifecycle(row.attempts),
+    inputSnapshotPresent,
+    reportSnapshotPresent,
+    inputSnapshotContainsSpremnostNaSaradnju: inputText.includes("Spremnost na saradnju"),
+    inputSnapshotContainsUgodnost: inputText.includes("Ugodnost"),
+    inputSnapshotContainsugodnost: inputText.includes("ugodnost"),
+    reportSnapshotContainsSpremnostNaSaradnju: reportText.includes("Spremnost na saradnju"),
+    reportSnapshotContainsUgodnost: reportText.includes("Ugodnost"),
+    reportSnapshotContainsugodnost: reportText.includes("ugodnost"),
+    reportSnapshotContainsTiTone: reportSnapshotPresent
+      ? collectStrings(row.report_snapshot).some((item) =>
+          /\bti\b|\btvoj|\btvoja|\btvoje|\btvoji\b/i.test(item),
+        )
+      : false,
+    validatorSkipped,
+    validatorOk: validation ? validation.ok : false,
+    validatorErrors: validation && !validation.ok
+      ? validation.errors.map((entry) => entry.message)
+      : [],
+    missingReasons,
+  };
+}
+
+function buildRecoveryReadout(artifact) {
+  const capability = getReportGenerationCapability({
+    testSlug: artifact.testSlug ?? "",
+    audience: "hr",
+    reportType: "individual",
+    sourceType: "single_test",
+  });
+  const recoveryAction = resolveHrReportRecoveryOperation({
+    attemptLifecycle: artifact.attemptLifecycle,
+    capability,
+    existingStatus: artifact.reportStatus ?? null,
+  });
+
+  return {
+    capabilityActive: capability.active,
+    capabilityStatus: capability.status,
+    recoveryAction,
+    recoveryNeeded: recoveryAction === "retry_failed",
+  };
+}
+
+async function loadTargetRow() {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("attempt_reports")
@@ -98,7 +201,11 @@ async function main() {
       report_status,
       prompt_version_id,
       input_snapshot,
-      report_snapshot
+      report_snapshot,
+      attempts!inner(
+        status,
+        completed_at
+      )
     `)
     .eq("id", TARGET_REPORT_ID)
     .maybeSingle();
@@ -111,35 +218,24 @@ async function main() {
     throw new Error(`Target report ${TARGET_REPORT_ID} was not found.`);
   }
 
-  const inputText = JSON.stringify(data.input_snapshot);
-  const reportText = JSON.stringify(data.report_snapshot);
-  const validation = validateIpipNeo120HrReportV1(data.report_snapshot, {
-    strictContract: true,
-    enforceGuardrails: true,
-  });
+  const attempt = Array.isArray(data.attempts) ? data.attempts[0] : data.attempts;
+
+  return {
+    ...data,
+    attempts: attempt ?? null,
+  };
+}
+
+async function main() {
+  const row = await loadTargetRow();
+  const artifact = inspectArtifactRow(row);
+  const recovery = buildRecoveryReadout(artifact);
 
   console.log(
     JSON.stringify(
       {
-        reportId: data.id,
-        attemptId: data.attempt_id,
-        testSlug: data.test_slug,
-        audience: data.audience,
-        reportType: data.report_type,
-        sourceType: data.source_type,
-        reportStatus: data.report_status,
-        promptVersionId: data.prompt_version_id,
-        inputSnapshotContainsSpremnostNaSaradnju: inputText.includes("Spremnost na saradnju"),
-        inputSnapshotContainsUgodnost: inputText.includes("Ugodnost"),
-        inputSnapshotContainsugodnost: inputText.includes("ugodnost"),
-        reportSnapshotContainsSpremnostNaSaradnju: reportText.includes("Spremnost na saradnju"),
-        reportSnapshotContainsUgodnost: reportText.includes("Ugodnost"),
-        reportSnapshotContainsugodnost: reportText.includes("ugodnost"),
-        reportSnapshotContainsTiTone: collectStrings(data.report_snapshot).some((item) =>
-          /\bti\b|\btvoj|\btvoja|\btvoje|\btvoji\b/i.test(item),
-        ),
-        validatorOk: validation.ok,
-        validatorErrors: validation.ok ? [] : validation.errors.map((entry) => entry.message),
+        ...artifact,
+        ...recovery,
       },
       null,
       2,
@@ -147,7 +243,17 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+module.exports = {
+  TARGET_REPORT_ID,
+  collectStrings,
+  resolveAttemptLifecycle,
+  inspectArtifactRow,
+  buildRecoveryReadout,
+};
+
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}
