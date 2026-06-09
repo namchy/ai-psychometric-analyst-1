@@ -166,6 +166,31 @@ function main() {
     true,
   );
 
+  const participantPromptPolicy = buildGlobalBhsUserFacingPromptPolicyBlock({
+    audience: "participant",
+  });
+  assert.equal(
+    participantPromptPolicy.includes('Do not address the candidate with second-person singular forms such as "ti" in HR reports.'),
+    false,
+  );
+
+  const participantOutput = {
+    summary:
+      "Ti možeš čitati ovaj snapshot kao umjereno izražen signal koji traži provjeru kroz vlastiti radni kontekst.",
+  };
+  const canonicalizedParticipantOutput = canonicalizeGlobalBhsUserFacingOutput(participantOutput);
+  assert.equal(canonicalizedParticipantOutput.summary.includes("snapshot"), false);
+  assert.equal(canonicalizedParticipantOutput.summary.includes("umjereno izražen"), true);
+  assert.equal(canonicalizedParticipantOutput.summary.includes("Ti"), true);
+
+  const participantErrors = validateGlobalBhsUserFacingOutput(canonicalizedParticipantOutput, {
+    audience: "participant",
+  });
+  assert.equal(
+    participantErrors.some((error) => error.message.includes('second-person singular')),
+    false,
+  );
+
   console.log("test-ai-report-bhs-language-policy: ok");
 }
 
