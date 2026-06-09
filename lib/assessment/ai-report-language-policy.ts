@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  isAssessmentLocaleAlias,
   normalizeAssessmentLocale,
   type AssessmentLocale,
 } from "@/lib/assessment/locale";
@@ -30,6 +31,10 @@ export type AiReportLanguagePolicy = {
 export function resolveAiReportLanguagePolicy(
   locale: string | null | undefined,
 ): AiReportLanguagePolicy | null {
+  if (!isAssessmentLocaleAlias(locale)) {
+    return null;
+  }
+
   const normalizedLocale = normalizeAssessmentLocale(locale);
 
   if (normalizedLocale !== "bs") {

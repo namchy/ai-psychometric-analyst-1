@@ -84,6 +84,8 @@ function main() {
   const hrPolicy = resolveAiReportLanguagePolicy("hr");
   const srPolicy = resolveAiReportLanguagePolicy("sr");
   const enPolicy = resolveAiReportLanguagePolicy("en");
+  const unknownPolicy = resolveAiReportLanguagePolicy("unknown");
+  const nullPolicy = resolveAiReportLanguagePolicy(null);
 
   assert.ok(bsPolicy);
   assert.equal(bsPolicy.key, "bhs_bs_user_facing");
@@ -91,6 +93,8 @@ function main() {
   assert.equal(hrPolicy, null);
   assert.equal(srPolicy, null);
   assert.equal(enPolicy, null);
+  assert.equal(unknownPolicy, null);
+  assert.equal(nullPolicy, null);
 
   const aiLikeOutput = {
     headline: "Ovaj snapshot traži dodatnu provjeru.",
