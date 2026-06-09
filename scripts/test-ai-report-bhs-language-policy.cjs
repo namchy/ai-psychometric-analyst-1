@@ -111,6 +111,9 @@ function main() {
       {
         domain_name: "Savjesnost",
         score_label_or_band: "high",
+        participant_display_label: "Spremnost na saradnju",
+        band_label: "Visoko",
+        display_band_label: "Viši raspon",
         concise_meaning: "Ovo je high signal.",
       },
     ],
@@ -126,6 +129,9 @@ function main() {
   assert.match(canonicalized.key_hr_signals[0].title, /prekomjerno oslanjanje/i);
   assert.match(canonicalized.key_hr_signals[0].title, /postupanje/i);
   assert.equal(canonicalized.domain_overview[0].score_label_or_band, "high");
+  assert.equal(canonicalized.domain_overview[0].participant_display_label, "Spremnost na saradnju");
+  assert.equal(canonicalized.domain_overview[0].band_label, "Visoko");
+  assert.equal(canonicalized.domain_overview[0].display_band_label, "Viši raspon");
 
   const blockedOutput = {
     headline: "Score band i raw score ostaju u schema JSON validator prompt tekstu.",

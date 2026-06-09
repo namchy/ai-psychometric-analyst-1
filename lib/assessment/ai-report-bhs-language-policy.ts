@@ -24,6 +24,8 @@ const NON_USER_FACING_STRING_KEYS = new Set([
   "display_mode",
   "displayMode",
   "band",
+  "band_label",
+  "bandLabel",
   "domain_code",
   "domainCode",
   "facet_code",
@@ -47,6 +49,12 @@ const NON_USER_FACING_STRING_KEYS = new Set([
   "generated_at",
   "generatedAt",
   "generatedLanguage",
+  "participant_display_label",
+  "participantDisplayLabel",
+  "display_band",
+  "displayBand",
+  "display_band_label",
+  "displayBandLabel",
 ]);
 
 const LABEL_LIKE_KEYS = new Set([

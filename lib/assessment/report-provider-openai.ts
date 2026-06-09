@@ -185,6 +185,32 @@ export function resolveIpipNeo120ParticipantProviderMode(
     : "v2-single";
 }
 
+function applyIpipNeo120ParticipantV2BhsOutputPolicy<T>(
+  report: T,
+  input: PreparedReportGenerationInput,
+  label: string,
+): T {
+  const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
+  const canonicalizedReport = languagePolicy
+    ? languagePolicy.canonicalizeUserFacingOutput(report)
+    : report;
+  const globalValidationErrors = languagePolicy
+    ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+        audience: "participant",
+      })
+    : [];
+
+  if (globalValidationErrors.length > 0) {
+    throw new Error(
+      `OpenAI response JSON failed global BHS ${label} output validation: ${globalValidationErrors
+        .map((error) => `${error.path}: ${error.message}`)
+        .join(" | ")}`,
+    );
+  }
+
+  return canonicalizedReport;
+}
+
 function shouldOmitOpenAiTemperature(model: string): boolean {
   return model.startsWith("gpt-5.5");
 }
@@ -1290,7 +1316,13 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
     systemPrompt,
     userPrompt: buildIpipNeo120ParticipantOverviewSegmentUserPrompt(overviewPromptInput),
   });
-  const overviewValidation = validateIpipNeo120ParticipantReportV2OverviewSegment(overviewSegment);
+  const canonicalizedOverviewSegment = applyIpipNeo120ParticipantV2BhsOutputPolicy(
+    overviewSegment,
+    input,
+    "IPIP-NEO-120 participant V2 overview segment",
+  );
+  const overviewValidation =
+    validateIpipNeo120ParticipantReportV2OverviewSegment(canonicalizedOverviewSegment);
 
   if (!overviewValidation.ok) {
     throw new Error(
@@ -1311,8 +1343,13 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
       systemPrompt,
       userPrompt: buildIpipNeo120ParticipantDomainSegmentUserPrompt(domainPromptInput, domainCode),
     });
-    const domainValidation = validateIpipNeo120ParticipantReportV2DomainSegment(
+    const canonicalizedDomainSegment = applyIpipNeo120ParticipantV2BhsOutputPolicy(
       domainSegment,
+      input,
+      `IPIP-NEO-120 participant V2 domain segment (${domainCode})`,
+    );
+    const domainValidation = validateIpipNeo120ParticipantReportV2DomainSegment(
+      canonicalizedDomainSegment,
       domainCode,
     );
 
@@ -1335,7 +1372,13 @@ async function generateIpipNeo120ParticipantV2SegmentedReport(
     systemPrompt,
     userPrompt: buildIpipNeo120ParticipantPracticalSegmentUserPrompt(practicalPromptInput),
   });
-  const practicalValidation = validateIpipNeo120ParticipantReportV2PracticalSegment(practicalSegment);
+  const canonicalizedPracticalSegment = applyIpipNeo120ParticipantV2BhsOutputPolicy(
+    practicalSegment,
+    input,
+    "IPIP-NEO-120 participant V2 practical segment",
+  );
+  const practicalValidation =
+    validateIpipNeo120ParticipantReportV2PracticalSegment(canonicalizedPracticalSegment);
 
   if (!practicalValidation.ok) {
     throw new Error(
@@ -1379,7 +1422,12 @@ export function validateStructuredReport(
 ): RuntimeCompletedAssessmentReport {
   if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120ParticipantPromptInput(input.promptInput)) {
     if (shouldUseIpipNeo120ParticipantReportV2(input)) {
-      const validationResult = validateIpipNeo120ParticipantReportV2(report);
+      const canonicalizedReport = applyIpipNeo120ParticipantV2BhsOutputPolicy(
+        report,
+        input,
+        "IPIP-NEO-120 participant V2 report",
+      );
+      const validationResult = validateIpipNeo120ParticipantReportV2(canonicalizedReport);
 
       if (!validationResult.ok) {
         throw new Error(
