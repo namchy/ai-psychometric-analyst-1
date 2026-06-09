@@ -1485,7 +1485,7 @@ function buildMwmsHrMockReport(
       "Nalaze treba citati zajedno sa intervjuom, iskustvom i kontekstom konkretne uloge.",
     ],
     interpretation_note:
-      "MWMS HR izvjestaj koristi vec izracunate rezultate kao motivacijski profil. Score, band i label ostaju deterministic vrijednosti iz inputa.",
+      "MWMS HR izvjestaj koristi vec izracunate rezultate kao motivacijski profil. Vec izracunate vrijednosti ostaju nepromijenjene i sluze samo kao oprezna HR hipoteza za dalji razgovor.",
     safety_checks: {
       noScoreRecalculation: true,
       noScoreMutation: true,

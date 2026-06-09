@@ -264,7 +264,7 @@ async function main() {
   );
   assert.throws(
     () => validateStructuredReport(participantMockResult.report, hrInput),
-    /MWMS HR report validation/i,
+    /global BHS MWMS HR output validation|MWMS HR report validation/i,
   );
 
   assert.deepEqual(

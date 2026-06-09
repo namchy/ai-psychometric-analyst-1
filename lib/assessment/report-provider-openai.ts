@@ -1448,7 +1448,25 @@ export function validateStructuredReport(
   }
 
   if (input.testSlug === "mwms_v1" && isMwmsHrPromptInput(input.promptInput)) {
-    const validationResult = validateMwmsHrReportV1(report, {
+    const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
+    const canonicalizedReport = languagePolicy
+      ? languagePolicy.canonicalizeUserFacingOutput(report)
+      : report;
+    const globalValidationErrors = languagePolicy
+      ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+          audience: "hr",
+        })
+      : [];
+
+    if (globalValidationErrors.length > 0) {
+      throw new Error(
+        `OpenAI response JSON failed global BHS MWMS HR output validation: ${globalValidationErrors
+          .map((error) => `${error.path}: ${error.message}`)
+          .join(" | ")}`,
+      );
+    }
+
+    const validationResult = validateMwmsHrReportV1(canonicalizedReport, {
       expectedInput: input.promptInput,
     });
 

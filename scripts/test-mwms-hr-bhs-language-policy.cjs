@@ -5,6 +5,7 @@ const Module = require("node:module");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
+const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 function resolveWithExtensions(candidatePath) {
@@ -24,6 +25,10 @@ function resolveWithExtensions(candidatePath) {
 }
 
 Module._resolveFilename = function resolveFilename(request, parent, isMain, options) {
+  if (request === "server-only") {
+    return emptyModulePath;
+  }
+
   if (request.startsWith("@/")) {
     return originalResolveFilename.call(
       this,
@@ -54,58 +59,69 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 };
 
 const {
-  MWMS_HR_REPORT_CONTRACT_VERSION,
-  MWMS_HR_REPORT_TYPE,
-  MWMS_HR_REPORT_V1_CONTRACT,
-  buildMwmsHrReportInput,
-  formatMwmsHrReportValidationErrors,
+  buildPreparedReportGenerationInput,
+} = require("../lib/assessment/report-provider-helpers.ts");
+const {
+  validateStructuredReport,
+} = require("../lib/assessment/report-provider-openai.ts");
+const {
+  resolveAiReportLanguagePolicy,
+} = require("../lib/assessment/ai-report-language-policy.ts");
+const {
   validateMwmsHrReportV1,
 } = require("../lib/assessment/mwms-hr-report-v1.ts");
 
-function buildInput() {
-  return buildMwmsHrReportInput({
-    attemptId: "attempt-mwms-hr-contract",
-    testId: "test-mwms",
-    testSlug: "mwms_v1",
-    audience: "hr",
-    locale: "bs",
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function buildMwmsResults() {
+  return {
+    attemptId: "attempt-mwms-hr-bhs-language-policy",
     scoringMethod: "likert_sum",
-    promptVersion: "v1",
-    results: {
-      attemptId: "attempt-mwms-hr-contract",
+    dimensions: [
+      { dimension: "amotivation", rawScore: 4, scoredQuestionCount: 3 },
+      { dimension: "external_social", rawScore: 4, scoredQuestionCount: 3 },
+      { dimension: "external_material", rawScore: 5, scoredQuestionCount: 3 },
+      { dimension: "introjected", rawScore: 3.75, scoredQuestionCount: 4 },
+      { dimension: "identified", rawScore: 4.67, scoredQuestionCount: 3 },
+      { dimension: "intrinsic", rawScore: 5, scoredQuestionCount: 3 },
+    ],
+    scoredResponseCount: 19,
+    unscoredResponses: [],
+  };
+}
+
+function buildPreparedInput(locale) {
+  return buildPreparedReportGenerationInput(
+    {
+      attemptId: `attempt-mwms-hr-bhs-language-policy-${locale ?? "null"}`,
+      testId: "test-mwms",
+      testSlug: "mwms_v1",
+      audience: "hr",
+      locale,
       scoringMethod: "likert_sum",
-      dimensions: [
-        { dimension: "amotivation", rawScore: 4, scoredQuestionCount: 3 },
-        { dimension: "external_social", rawScore: 4, scoredQuestionCount: 3 },
-        { dimension: "external_material", rawScore: 5, scoredQuestionCount: 3 },
-        { dimension: "introjected", rawScore: 3.75, scoredQuestionCount: 4 },
-        { dimension: "identified", rawScore: 4.67, scoredQuestionCount: 3 },
-        { dimension: "intrinsic", rawScore: 5, scoredQuestionCount: 3 },
-      ],
-      scoredResponseCount: 19,
-      unscoredResponses: [],
+      promptVersion: "v1",
+      testName: "Procjena radne motivacije",
+      results: buildMwmsResults(),
     },
-  });
+    {
+      promptVersionId: null,
+      promptTemplate: null,
+    },
+  );
 }
 
 function buildValidReport(input) {
-  const dimensions = input.dimensions.map(({ code, label, rawScore, band, bandLabel }) => ({
-    code,
-    label,
-    rawScore,
-    band,
-    bandLabel,
-  }));
-
   return {
-    contractVersion: MWMS_HR_REPORT_CONTRACT_VERSION,
-    reportType: MWMS_HR_REPORT_TYPE,
+    contractVersion: "mwms_hr_report_v1",
+    reportType: "mwms_hr_report_v1",
     testSlug: "mwms_v1",
     audience: "hr",
     sourceType: "single_test",
-    locale: "bs",
+    locale: input.promptInput.locale,
     meta: {
-      language: "bs",
+      language: input.promptInput.locale,
       generatedAt: "2026-05-11T10:00:00.000Z",
     },
     motivation_profile_snapshot: {
@@ -113,8 +129,14 @@ function buildValidReport(input) {
         min: 1,
         max: 7,
       },
-      dimensions,
-      derivedProfile: input.derivedProfile,
+      dimensions: input.promptInput.dimensions.map(({ code, label, rawScore, band, bandLabel }) => ({
+        code,
+        label,
+        rawScore,
+        band,
+        bandLabel,
+      })),
+      derivedProfile: input.promptInput.derivedProfile,
     },
     key_motivational_drivers: [
       {
@@ -255,72 +277,80 @@ function buildValidReport(input) {
   };
 }
 
-const input = buildInput();
-const report = buildValidReport(input);
-const validation = validateMwmsHrReportV1(report, { expectedInput: input });
+function main() {
+  assert.ok(resolveAiReportLanguagePolicy("bs"));
+  assert.equal(resolveAiReportLanguagePolicy("hr"), null);
+  assert.equal(resolveAiReportLanguagePolicy("sr"), null);
+  assert.equal(resolveAiReportLanguagePolicy("en"), null);
+  assert.equal(resolveAiReportLanguagePolicy("unknown"), null);
+  assert.equal(resolveAiReportLanguagePolicy(null), null);
 
-assert.equal(
-  validation.ok,
-  true,
-  validation.ok ? undefined : formatMwmsHrReportValidationErrors(validation.errors),
-);
-assert.equal(MWMS_HR_REPORT_V1_CONTRACT.promptKey, "mwms_hr_report_v1");
-assert.equal(MWMS_HR_REPORT_V1_CONTRACT.schemaId, "mwms-hr-report-v1");
-assert.equal(report.motivation_profile_snapshot.dimensions.length, 6);
+  const bsInput = buildPreparedInput("bs");
+  const bsReport = buildValidReport(bsInput);
+  bsReport.key_motivational_drivers[0].evidence =
+    "Ovaj snapshot pokazuje moderate signal koji treba citati oprezno.";
+  bsReport.manager_support_guidance[0].recommendation =
+    "Koristi ovaj high signal kao prakticnu temu za razgovor.";
 
-const wrongCardinality = {
-  ...report,
-  key_motivational_drivers: report.key_motivational_drivers.slice(0, 2),
-};
-const wrongCardinalityValidation = validateMwmsHrReportV1(wrongCardinality, { expectedInput: input });
-assert.equal(wrongCardinalityValidation.ok, false);
-assert.match(
-  formatMwmsHrReportValidationErrors(wrongCardinalityValidation.errors),
-  /key_motivational_drivers: Expected exactly 3/,
-);
+  const validatedBsReport = validateStructuredReport(bsReport, bsInput);
+  assert.equal(validatedBsReport.locale, "bs");
+  assert.equal(validatedBsReport.meta.language, "bs");
+  assert.doesNotMatch(validatedBsReport.key_motivational_drivers[0].evidence, /\bsnapshot\b/i);
+  assert.doesNotMatch(validatedBsReport.key_motivational_drivers[0].evidence, /\bmoderate\b/i);
+  assert.match(validatedBsReport.key_motivational_drivers[0].evidence, /izvještaj/i);
+  assert.match(validatedBsReport.key_motivational_drivers[0].evidence, /umjereno izrazeno|umjereno izraženo/i);
+  assert.doesNotMatch(validatedBsReport.manager_support_guidance[0].recommendation, /\bhigh\b/i);
+  assert.match(validatedBsReport.manager_support_guidance[0].recommendation, /visoko izrazeno|visoko izraženo/i);
+  assert.equal(validatedBsReport.contractVersion, "mwms_hr_report_v1");
+  assert.equal(validatedBsReport.reportType, "mwms_hr_report_v1");
+  assert.equal(validatedBsReport.testSlug, "mwms_v1");
+  assert.equal(validatedBsReport.sourceType, "single_test");
+  assert.equal(validatedBsReport.meta.generatedAt, "2026-05-11T10:00:00.000Z");
+  assert.equal(validatedBsReport.motivation_profile_snapshot.dimensions[0].rawScore, bsInput.promptInput.dimensions[0].rawScore);
+  assert.equal(validatedBsReport.motivation_profile_snapshot.dimensions[0].band, bsInput.promptInput.dimensions[0].band);
+  assert.equal(validatedBsReport.motivation_profile_snapshot.dimensions[1].rawScore, bsInput.promptInput.dimensions[1].rawScore);
+  assert.equal(validatedBsReport.motivation_profile_snapshot.scale.min, 1);
+  assert.equal(validatedBsReport.motivation_profile_snapshot.scale.max, 7);
 
-const forbiddenLanguage = {
-  ...report,
-  interpretation_note:
-    "Ovaj tekst kaze da se preporucuje se zaposljavanje i zato mora pasti validaciju.",
-};
-const forbiddenValidation = validateMwmsHrReportV1(forbiddenLanguage, { expectedInput: input });
-assert.equal(forbiddenValidation.ok, false);
-assert.match(
-  formatMwmsHrReportValidationErrors(forbiddenValidation.errors),
-  /Forbidden phrase/,
-);
+  const invalidBsReport = buildValidReport(bsInput);
+  invalidBsReport.interpretation_note =
+    "Ti treba da citas ovaj prompt kao finalnu odluku o kandidatu.";
+  assert.throws(
+    () => validateStructuredReport(invalidBsReport, bsInput),
+    /global BHS MWMS HR output validation.*second-person singular/i,
+  );
 
-const mutatedScore = structuredClone(report);
-mutatedScore.motivation_profile_snapshot.dimensions[0].rawScore = 4.25;
-const mutatedScoreValidation = validateMwmsHrReportV1(mutatedScore, { expectedInput: input });
-assert.equal(mutatedScoreValidation.ok, false);
-assert.match(
-  formatMwmsHrReportValidationErrors(mutatedScoreValidation.errors),
-  /rawScore: Expected 4/,
-);
+  const invalidMwmsReport = buildValidReport(bsInput);
+  invalidMwmsReport.safety_checks.noScoreMutation = false;
+  assert.throws(
+    () => validateStructuredReport(invalidMwmsReport, bsInput),
+    /MWMS HR report validation.*noScoreMutation/i,
+  );
 
-const mutatedBand = structuredClone(report);
-mutatedBand.motivation_profile_snapshot.dimensions[2].band = "lower";
-const mutatedBandValidation = validateMwmsHrReportV1(mutatedBand, { expectedInput: input });
-assert.equal(mutatedBandValidation.ok, false);
-assert.match(
-  formatMwmsHrReportValidationErrors(mutatedBandValidation.errors),
-  /band: Expected higher/,
-);
+  for (const locale of ["hr", "sr", "en"]) {
+    const input = buildPreparedInput(locale);
+    const report = buildValidReport(input);
+    const before = clone(report);
+    report.key_motivational_drivers[0].evidence =
+      "Ovaj snapshot pokazuje moderate signal koji treba citati oprezno.";
 
-const incompleteDimensions = structuredClone(report);
-incompleteDimensions.motivation_profile_snapshot.dimensions[5] = {
-  ...incompleteDimensions.motivation_profile_snapshot.dimensions[5],
-  code: "amotivation",
-};
-const incompleteDimensionsValidation = validateMwmsHrReportV1(incompleteDimensions, {
-  expectedInput: input,
-});
-assert.equal(incompleteDimensionsValidation.ok, false);
-assert.match(
-  formatMwmsHrReportValidationErrors(incompleteDimensionsValidation.errors),
-  /Missing intrinsic|unique canonical MWMS dimension codes/,
-);
+    const directValidation = validateMwmsHrReportV1(report, { expectedInput: input.promptInput });
+    assert.equal(directValidation.ok, true);
 
-console.log("MWMS HR report contract tests passed.");
+    const validated = validateStructuredReport(report, input);
+    assert.equal(validated.locale, locale);
+    assert.equal(validated.meta.language, locale);
+    assert.equal(
+      validated.key_motivational_drivers[0].evidence,
+      "Ovaj snapshot pokazuje moderate signal koji treba citati oprezno.",
+    );
+    assert.match(validated.key_motivational_drivers[0].evidence, /\bsnapshot\b/i);
+    assert.match(validated.key_motivational_drivers[0].evidence, /\bmoderate\b/i);
+    assert.equal(validated.motivation_profile_snapshot.dimensions[0].band, before.motivation_profile_snapshot.dimensions[0].band);
+    assert.equal(validated.motivation_profile_snapshot.dimensions[0].rawScore, before.motivation_profile_snapshot.dimensions[0].rawScore);
+  }
+
+  console.log("test-mwms-hr-bhs-language-policy: ok");
+}
+
+main();

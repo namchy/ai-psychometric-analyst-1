@@ -23,6 +23,7 @@ const NON_USER_FACING_STRING_KEYS = new Set([
   "reportVersion",
   "display_mode",
   "displayMode",
+  "band",
   "domain_code",
   "domainCode",
   "facet_code",
