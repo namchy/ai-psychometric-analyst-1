@@ -1498,7 +1498,29 @@ export function validateStructuredReport(
   }
 
   if (input.testSlug === "safran_v1" && isSafranParticipantPromptInput(input.promptInput)) {
-    const validationResult = validateSafranParticipantAiReport(report, {
+    const languagePolicy = resolveAiReportLanguagePolicy(
+      input.requestedLocale !== undefined
+        ? input.requestedLocale
+        : getPromptInputLocale(input.promptInput),
+    );
+    const canonicalizedReport = languagePolicy
+      ? languagePolicy.canonicalizeUserFacingOutput(report)
+      : report;
+    const globalValidationErrors = languagePolicy
+      ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+          audience: "participant",
+        })
+      : [];
+
+    if (globalValidationErrors.length > 0) {
+      throw new Error(
+        `OpenAI response JSON failed global BHS SAFRAN participant output validation: ${globalValidationErrors
+          .map((error) => `${error.path}: ${error.message}`)
+          .join(" | ")}`,
+      );
+    }
+
+    const validationResult = validateSafranParticipantAiReport(canonicalizedReport, {
       expectedInput: input.promptInput,
     });
 

@@ -494,6 +494,7 @@ export function buildPreparedReportGenerationInput(
   return {
     attemptId: input.attemptId,
     testSlug: input.testSlug,
+    requestedLocale: input.locale,
     promptVersion: input.promptVersion,
     promptVersionId: options?.promptVersionId ?? null,
     promptTemplate: options?.promptTemplate ?? null,

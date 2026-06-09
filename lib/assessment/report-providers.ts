@@ -171,6 +171,7 @@ export type ReportContractDescriptor = {
 export type PreparedReportGenerationInput = {
   attemptId: string;
   testSlug: string;
+  requestedLocale?: string | null;
   promptVersion: string;
   promptVersionId: string | null;
   promptTemplate: ActivePromptVersion | null;
