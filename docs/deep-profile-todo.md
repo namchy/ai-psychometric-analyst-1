@@ -50,7 +50,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / UI targeting-control audit i foundation prije daljeg redesign-a | UI system / Product quality / Look and feel | Prije novih vizuelnih izmjena uraditi read-only audit postojećih UI standarda, tokena, shared komponenti i paralelnih stilskih slojeva; zatim definisati UI targeting/control layer koji podržava globalne, variant-level i single-instance izmjene kroz postojeći UI system. Ne uvoditi novi paralelni design system i ne raditi redesign-all. |
-| P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP participant V2 sada pokriva i v2-single i v2-segmented path, candidate-facing `ti` ostaje dozvoljen, HR-only zabrana drugog lica nije prenesena na participant pathove, a postojeći V2 validator/segment validators ostaju završne kapije. Sljedeće nije UI redesign ni report regeneration, nego eventualni uski content compression/polish slice ili zasebno širenje language-policy routera na druge report lane-ove. | Deep Profile / Report content architecture | Završen je locale-aware BHS user-facing AI language policy foundation za current bs/IPIP HR slice, a adoption se sada proteže kroz SAFRAN HR, MWMS HR i tri candidate-facing participant lanca: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP participant V2 sada pokriva i v2-single i v2-segmented path, candidate-facing `ti` ostaje dozvoljen, HR-only zabrana drugog lica nije prenesena na participant pathove, a postojeći V2 validator/segment validators ostaju završne kapije. Sljedeće: po potrebi uski content compression/polish slice za IPIP HR ili zaseban locale-aware language-policy router slice za druge lane-ove. Ne raditi UI redesign. |
+| P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP participant V2 sada pokriva i v2-single i v2-segmented path, candidate-facing `ti` ostaje dozvoljen, HR-only zabrana drugog lica nije prenesena na participant pathove, a postojeći V2 validator/segment validators ostaju završne kapije. IPIP verifier cleanup repovi nakon V2 gate-a su zatvoreni: V2 candidate_reflection fixture je usklađen sa current V2 contractom, a V1 participant structural label validator je usklađen sa participant V1 contractom. Sljedeće nije UI redesign ni report regeneration, nego eventualni uski content compression/polish slice ili zasebno širenje language-policy routera na druge report lane-ove. | Deep Profile / Report content architecture | Završen je locale-aware BHS user-facing AI language policy foundation za current bs/IPIP HR slice, a adoption se sada proteže kroz SAFRAN HR, MWMS HR i tri candidate-facing participant lanca: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP participant V2 sada pokriva i v2-single i v2-segmented path, candidate-facing `ti` ostaje dozvoljen, HR-only zabrana drugog lica nije prenesena na participant pathove, a postojeći V2 validator/segment validators ostaju završne kapije. IPIP verifier cleanup repovi nakon V2 gate-a su zatvoreni: V2 candidate_reflection fixture je usklađen sa current V2 contractom, a V1 participant structural label validator je usklađen sa participant V1 contractom. Sljedeće: po potrebi uski content compression/polish slice za IPIP HR ili zaseban locale-aware language-policy router slice za druge lane-ove. Ne raditi UI redesign. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. Lane-specific validator ostaje završna kapija. Ne regenerisati postojeće reportove bez eksplicitnog odobrenja. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove dok se eksplicitno ne odobri. Ako se nastavlja lane, otvarati samo uske slice-ove za content compression/polish ili budući locale router work. SAFRAN HR i MWMS HR pilot su output-side only; prompt-side adoption i dalje nije dio ovog slice-a. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
@@ -305,6 +305,33 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - legacy IPIP V1 cleanup
   - širi participant policy hardening
   - ili drugi viši prioritet iz todo-a
+
+### Completion note — IPIP participant verifier cleanup after V2 BHS gate
+
+- Ovaj cleanup je proizašao iz read-only verifier audit-a nakon IPIP participant V2 BHS output policy gate-a.
+- `scripts/verify-ipip-neo-120-participant-v2-candidate-reflection.cjs` nije imao BHS regresiju; fixture je samo nedostajao obavezna `display_*` polja.
+- Valid V2 fixture sada uključuje `display_score`, `display_band`, `display_band_label`.
+- `candidate_reflection` declarative rule nije mijenjan.
+- `scripts/verify-ipip-neo-120-participant-provider-v2-routing.cjs` nije imao V2/BHS regresiju; root cause je bio participant V1 terminology contract mismatch.
+- Participant V1 structural `domains[].label` smije ostati `Ugodnost`.
+- User-facing/display/narrative termin ostaje `Spremnost na saradnju`.
+- V1 validator sada koristi participant/general label helper za structural label expectation.
+- HR validator/runtime nije oslabljen.
+- IPIP participant V2 BHS gate nije diran.
+- BHS policy, provider, UI, DB, OpenAI i regeneration nisu dirani.
+- Testovi koji su prošli:
+  - `node scripts/verify-ipip-neo-120-participant-provider-v2-routing.cjs`
+  - `node scripts/verify-ipip-neo-120-participant-v2-candidate-reflection.cjs`
+  - `node scripts/test-ipip-participant-v2-bhs-language-policy.cjs`
+  - `node scripts/verify-ipip-neo-120-participant-v2-segments.cjs`
+  - `node scripts/verify-ipip-neo-120-participant-v2-neuroticism-display.cjs`
+  - `node scripts/test-ipip-neo-120-hr-report.cjs`
+  - `node scripts/test-ai-report-bhs-language-policy.cjs`
+  - `node scripts/test-single-test-hr-bhs-policy-family.cjs`
+  - `npm run typecheck`
+- Zaključak: IPIP participant V2 BHS gate je sada praćen zelenim verifier cleanup-om.
+- Oba ranije poznata IPIP verifier failure-a su razriješena ili klasifikovana i zatvorena uskim promjenama.
+- Sljedeći smjer ostaje zasebna odluka prema canonical todo-u, npr. legacy IPIP V1 cleanup, širi participant policy hardening, report UI/UX prioritet, ili drugi viši prioritet iz todo-a.
 
 ### Completion note — IDP P0 summary mapping cleanup
 
