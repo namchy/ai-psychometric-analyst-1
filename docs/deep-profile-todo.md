@@ -50,8 +50,8 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / UI targeting-control audit i foundation prije daljeg redesign-a | UI system / Product quality / Look and feel | Prije novih vizuelnih izmjena uraditi read-only audit postojećih UI standarda, tokena, shared komponenti i paralelnih stilskih slojeva; zatim definisati UI targeting/control layer koji podržava globalne, variant-level i single-instance izmjene kroz postojeći UI system. Ne uvoditi novi paralelni design system i ne raditi redesign-all. |
-| P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i sada proširen adoptionom kroz SAFRAN HR i MWMS HR shared BHS output validation/canonicalization. Sljedeće nije UI redesign ni report regeneration, nego eventualni uski content compression/polish slice ili zasebno širenje language-policy routera na druge report lane-ove. | Deep Profile / Report content architecture | Završen je locale-aware BHS user-facing AI language policy foundation za current bs/IPIP HR slice, a adoption se sada proteže kroz SAFRAN HR i MWMS HR shared BHS output canonicalization/validation. Sljedeće: po potrebi uski content compression/polish slice za IPIP HR ili zaseban locale-aware language-policy router slice za druge lane-ove. Ne raditi UI redesign. |
-| P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, dok su SAFRAN HR i MWMS HR adoption output-side only i lane-specific validator ostaje završna kapija. Ne regenerisati postojeće reportove bez eksplicitnog odobrenja. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove dok se eksplicitno ne odobri. Ako se nastavlja lane, otvarati samo uske slice-ove za content compression/polish ili budući locale router work. SAFRAN HR i MWMS HR pilot su output-side only; prompt-side adoption i dalje nije dio ovog slice-a. |
+| P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i sada proširen adoptionom kroz SAFRAN HR i MWMS HR shared BHS output validation/canonicalization. Family smoke je dodatno potvrdio da je single-test HR output-side BHS policy linija implementirana i verifikovana kroz IPIP HR, SAFRAN HR i MWMS HR. Sljedeće nije UI redesign ni report regeneration, nego eventualni uski content compression/polish slice ili zasebno širenje language-policy routera na druge report lane-ove. | Deep Profile / Report content architecture | Završen je locale-aware BHS user-facing AI language policy foundation za current bs/IPIP HR slice, a adoption se sada proteže kroz SAFRAN HR i MWMS HR shared BHS output canonicalization/validation. Family smoke je potvrdio konzistentnost kroz IPIP HR, SAFRAN HR i MWMS HR. Sljedeće: po potrebi uski content compression/polish slice za IPIP HR ili zaseban locale-aware language-policy router slice za druge lane-ove. Ne raditi UI redesign. |
+| P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. Lane-specific validator ostaje završna kapija. Ne regenerisati postojeće reportove bez eksplicitnog odobrenja. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove dok se eksplicitno ne odobri. Ako se nastavlja lane, otvarati samo uske slice-ove za content compression/polish ili budući locale router work. SAFRAN HR i MWMS HR pilot su output-side only; prompt-side adoption i dalje nije dio ovog slice-a. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Planirano | Team module / Product architecture | Definisati konstrukte, format, validacijski status (u validacijskoj fazi), scoring okvir i vezu sa Team Fit reportom prije implementacije; research-informed hibrid bez kopiranja zaštićenih itema/scenarija. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
@@ -226,6 +226,29 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - prompt-side shared policy adoption
   - participant report shared output validation
   - Team Dynamics/Composite/Team Fit language-policy reconciliation
+
+### Completion note — Single-test HR BHS policy family smoke
+
+- Dodan je offline smoke/audit test `scripts/test-single-test-hr-bhs-policy-family.cjs`.
+- Test potvrđuje konzistentnost IPIP HR, SAFRAN HR i MWMS HR shared BHS output policy flowa.
+- Test potvrđuje no-policy ponašanje za `hr/sr/en/unknown/null`.
+- Test potvrđuje da SAFRAN/MWMS nisu dobili prompt-side shared policy adoption.
+- Test potvrđuje zaštitu internal/schema/deterministic polja.
+- Test potvrđuje da IPIP-specific terminologija ostaje lane-specific.
+- Nije bilo runtime promjena, DB write-a, OpenAI fetch-a, report regeneration-a, UI promjena, participant path promjena ili contract promjena.
+- Testovi koji su prošli:
+  - `node scripts/test-single-test-hr-bhs-policy-family.cjs`
+  - `node scripts/test-ai-report-bhs-language-policy.cjs`
+  - `node scripts/test-safran-hr-bhs-language-policy.cjs`
+  - `node scripts/test-mwms-hr-bhs-language-policy.cjs`
+  - `node scripts/test-ipip-neo-120-hr-report.cjs`
+  - `node scripts/test-ipip-hr-prompt-request-authority.cjs`
+  - `node scripts/test-single-test-hr-prompt-authority.cjs`
+  - `node scripts/test-safran-hr-report-openai-provider.cjs`
+  - `node scripts/test-mwms-hr-report-openai-provider.cjs`
+  - `npm run typecheck`
+- Single-test HR output-side BHS policy adoption je sada zatvorena i verifikovana linija.
+- Naredni smjer ostaje zasebna product/architecture odluka.
 
 ### Completion note — IDP P0 summary mapping cleanup
 
