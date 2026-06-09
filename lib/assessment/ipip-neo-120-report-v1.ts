@@ -727,7 +727,7 @@ function validateDomain(
   }
 
   const labelOk = validateNonEmptyString(value.label, `${path}.label`, errors);
-  const expectedLabel = getIpipNeo120HrDomainLabel(expectedDomainCode);
+  const expectedLabel = getIpipNeo120DomainLabel(expectedDomainCode);
 
   if (expectedLabel && typeof value.label === "string" && normalizeWhitespace(value.label) !== expectedLabel) {
     errors.push({
