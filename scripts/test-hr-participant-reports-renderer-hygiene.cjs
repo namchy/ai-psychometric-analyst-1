@@ -193,11 +193,6 @@ assert.equal(
   "Expected HR participant detail page to remove the raw test status label.",
 );
 assert.equal(
-  candidateReportsPageSource.includes('label="ID procjene"'),
-  true,
-  "Expected HR participant detail page to label the shortened attempt id as assessment id.",
-);
-assert.equal(
   candidateReportsPageSource.includes('label="Status procjene"'),
   true,
   "Expected HR participant detail page to label the lifecycle as assessment status.",
@@ -208,14 +203,38 @@ assert.equal(
   "Expected HR participant detail page to label completion metadata with the localized past-tense label.",
 );
 assert.equal(
+  candidateReportsPageSource.includes('label="ID procjene"'),
+  false,
+  "Expected participant reports page to remove the technical assessment id label from report cards.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("Interni skraćeni identifikator"),
+  false,
+  "Expected participant reports page to remove the technical shortened-id helper copy from report cards.",
+);
+assert.equal(
   candidateReportsPageSource.includes("formatHrShortId(card.attempt?.id)"),
-  true,
-  "Expected HR participant detail page to shorten the attempt id for HR-facing display.",
+  false,
+  "Expected participant reports page to stop rendering the shortened attempt id on report cards.",
 );
 assert.equal(
   candidateReportsPageSource.includes("formatHrLifecycleStatus(card.attempt?.lifecycle)"),
   true,
   "Expected HR participant detail page to map raw lifecycle values to HR-facing labels.",
+);
+assert.equal(
+  individualDevelopmentProfileReportListSource.includes(
+    "Interni skraćeni identifikator ciklusa",
+  ),
+  false,
+  "Expected IDP cards to remove the technical cycle-id helper copy.",
+);
+assert.equal(
+  individualDevelopmentProfileReportListSource.includes(
+    "formatHrShortId(entry.assessmentAssignmentId)",
+  ),
+  false,
+  "Expected IDP cards to stop rendering the shortened assessment-assignment id.",
 );
 assert.equal(
   candidateReportsPageSource.includes("formatHrDateTime(card.attempt?.completed_at)"),

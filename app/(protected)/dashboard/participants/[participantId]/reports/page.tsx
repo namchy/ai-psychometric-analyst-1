@@ -42,7 +42,6 @@ import {
 import {
   formatHrDateTime,
   formatHrLifecycleStatus,
-  formatHrShortId,
 } from "@/lib/dashboard/hr-ui-format";
 
 type CandidateReportsPageProps = {
@@ -312,12 +311,7 @@ export default async function CandidateReportsPage({
                   {card.body}
                 </p>
 
-                <DpMetaGrid columns={3}>
-                  <DpMetaItem
-                    helper="Interni skraćeni identifikator"
-                    label="ID procjene"
-                    value={formatHrShortId(card.attempt?.id)}
-                  />
+                <DpMetaGrid columns={2}>
                   <DpMetaItem
                     label="Status procjene"
                     value={formatHrLifecycleStatus(card.attempt?.lifecycle)}

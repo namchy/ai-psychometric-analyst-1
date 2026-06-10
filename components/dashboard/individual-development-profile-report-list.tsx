@@ -10,7 +10,7 @@ import {
   DpStatusBadge,
 } from "@/components/dashboard/primitives";
 import type { IndividualDevelopmentProfileReportListEntry } from "@/lib/assessment/individual-development-profile-report-list";
-import { formatHrDateTime, formatHrShortId } from "@/lib/dashboard/hr-ui-format";
+import { formatHrDateTime } from "@/lib/dashboard/hr-ui-format";
 
 type IndividualDevelopmentProfileReportListProps = {
   entries: IndividualDevelopmentProfileReportListEntry[];
@@ -98,12 +98,7 @@ export function IndividualDevelopmentProfileReportList({
                 {entry.safeStatusMessage}
               </p>
 
-              <DpMetaGrid columns={3}>
-                <DpMetaItem
-                  helper="Interni skraćeni identifikator ciklusa"
-                  label="Ciklus procjene"
-                  value={formatHrShortId(entry.assessmentAssignmentId)}
-                />
+              <DpMetaGrid columns={2}>
                 <DpMetaItem label="Kreirano" value={formatHrDateTime(entry.createdAt)} />
                 <DpMetaItem
                   label="Zadnja promjena"
