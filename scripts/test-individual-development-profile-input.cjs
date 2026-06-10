@@ -361,6 +361,17 @@ async function main() {
   assert.equal(availableResult.inputSnapshot.sourceSignals.composite.sourceStatus, "available");
   assert.ok((availableResult.inputSnapshot.sourceSignals.personality.relevantSignals?.length ?? 0) >= 1);
   assert.ok((availableResult.inputSnapshot.sourceSignals.composite.integratedSignals?.length ?? 0) >= 1);
+  const inputText = JSON.stringify(availableResult.inputSnapshot);
+  assert.equal(/ugodnost/i.test(inputText), false);
+  assert.equal(inputText.includes("Spremnost na saradnju"), true);
+  assert.equal(
+    availableResult.inputSnapshot.sourceSignals.personality.relevantSignals?.some(
+      (entry) =>
+        entry.code === "AGREEABLENESS" &&
+        entry.label === "Spremnost na saradnju",
+    ),
+    true,
+  );
   assertNoForbiddenArtifacts(availableResult.inputSnapshot);
 
   const partialState = buildBaseState();

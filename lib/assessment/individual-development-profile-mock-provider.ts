@@ -20,10 +20,16 @@ import {
   type IndividualDevelopmentProfileInputSourceBlock,
   type IndividualDevelopmentProfileInputSourceStatus,
 } from "@/lib/assessment/individual-development-profile-input";
+import {
+  IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL,
+  IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL,
+} from "@/lib/assessment/ipip-neo-120-labels";
 
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_TYPE = "mock" as const;
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_VERSION =
   "individual_development_profile_mock_v1" as const;
+export const INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATED_AT =
+  "2026-06-02T12:00:00.000Z" as const;
 
 export type IndividualDevelopmentProfileMockProviderResult =
   | {
@@ -40,20 +46,10 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function sanitizeUserFacingInputFragment(value: string): string {
+function canonicalizeFixtureLabel(value: string): string {
   return value
-    .replace(/\bHR-facing\b/gi, "razvojni HR")
-    .replace(/\breduced\b/gi, "sažeti")
-    .replace(/\bAI narativ\b/gi, "razvojna interpretacija")
-    .replace(/\bAI-generated\b/gi, "generisana")
-    .replace(/\bnumeric\b/gi, "brojčani")
-    .replace(/\braw answers\b/gi, "sirovi odgovori")
-    .replace(/\braw item\b/gi, "sirova stavka")
-    .replace(/\bscoring key\b/gi, "ključ bodovanja")
-    .replace(/\bfull upstream\b/gi, "puni prethodni")
-    .replace(/\bsnapshot(?:ove|a|u|om)?\b/gi, "pregled")
-    .replace(/\bsource-a\b/gi, "izvora")
-    .replace(/\bsource\b/gi, "izvor");
+    .replace(/\bUgodnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_LABEL)
+    .replace(/\bugodnost\b/g, IPIP_NEO_120_HR_CANONICAL_AGREEABLENESS_NARRATIVE_LABEL);
 }
 
 function getStatusLabel(status: IndividualDevelopmentProfileInputSourceStatus): string {
@@ -79,16 +75,16 @@ function getSignalEntries(
   return [...relevantSignals, ...integratedSignals];
 }
 
-function getLeadingSignals(
+function getLeadingEntries(
   source: IndividualDevelopmentProfileInputSourceBlock,
   count: number,
 ): Array<IndividualDevelopmentProfileInputSignal | { code: string; label: string; signal: string }> {
   return getSignalEntries(source)
-    .filter((entry) => isNonEmptyString(entry.signal))
+    .filter((entry) => isNonEmptyString(entry.label))
     .slice(0, count)
     .map((entry) => ({
       ...entry,
-      signal: sanitizeUserFacingInputFragment(entry.signal),
+      label: canonicalizeFixtureLabel(entry.label),
     }));
 }
 
@@ -120,43 +116,49 @@ function buildSummaryHeadline(input: IndividualDevelopmentProfileInputSnapshot):
   ].filter((source) => source.sourceStatus === "available").length;
 
   if (availableSources >= 3) {
-    return "Razvojni profil daje dovoljno signala za strukturisan HR i menadžerski rad.";
+    return "Razvojni profil daje dovoljno nalaza za strukturisan HR i menadžerski rad.";
   }
 
   if (availableSources >= 1) {
-    return "Razvojni profil daje početne signale, ali traži oprezno čitanje i dodatnu provjeru.";
+    return "Razvojni profil daje početne razvojne hipoteze, ali traži oprezno čitanje i dodatnu provjeru.";
   }
 
   return "Razvojni profil je trenutno ograničen i treba ga koristiti samo kao okvir za dodatna pitanja.";
 }
 
 function buildOverallPattern(input: IndividualDevelopmentProfileInputSnapshot): string {
-  const strongestSignals = [
-    ...getLeadingSignals(input.sourceSignals.personality, 1).map((entry) => entry.signal),
-    ...getLeadingSignals(input.sourceSignals.motivation, 1).map((entry) => entry.signal),
-    ...getLeadingSignals(input.sourceSignals.problemSolving, 1).map((entry) => entry.signal),
-  ];
+  const availableAreas = [
+    input.sourceSignals.personality.sourceStatus === "available" ? "načina saradnje" : null,
+    input.sourceSignals.motivation.sourceStatus === "available" ? "izvora angažmana" : null,
+    input.sourceSignals.problemSolving.sourceStatus === "available" ? "pristupa rješavanju problema" : null,
+  ].filter(isNonEmptyString);
 
-  if (strongestSignals.length > 0) {
-    return `Najkorisniji razvojni tragovi trenutno dolaze iz ovih sažetih nalaza: ${strongestSignals.join(
-      " ",
-    )}`;
+  if (availableAreas.length > 0) {
+    return `Najkorisniji razvojni obrazac trenutno se gradi kroz povezano čitanje ${availableAreas.join(
+      ", ",
+    )}, uz provjeru u stvarnom radnom kontekstu.`;
   }
 
-  return "Trenutni input ne daje dovoljno stabilnih individualnih signala za širu razvojnu naraciju, pa izvještaj ostaje usmjeren na provjeru konteksta, podrške i načina rada.";
+  return "Trenutni input ne daje dovoljno stabilnih individualnih nalaza za širu razvojnu interpretaciju, pa izvještaj ostaje usmjeren na provjeru konteksta, podrške i načina rada.";
 }
 
 function buildStrongestContributionSignals(
   input: IndividualDevelopmentProfileInputSnapshot,
 ): string[] {
-  const compositeSignals = getLeadingSignals(input.sourceSignals.composite, 2).map((entry) => entry.signal);
-  const fallbackSignals = [
-    ...getLeadingSignals(input.sourceSignals.personality, 1).map((entry) => entry.signal),
-    ...getLeadingSignals(input.sourceSignals.problemSolving, 1).map((entry) => entry.signal),
-    ...getLeadingSignals(input.sourceSignals.motivation, 1).map((entry) => entry.signal),
-  ];
-
-  const values = [...compositeSignals, ...fallbackSignals].filter(isNonEmptyString);
+  const personalityArea = getLeadingEntries(input.sourceSignals.personality, 1)[0]?.label;
+  const motivationArea = getLeadingEntries(input.sourceSignals.motivation, 1)[0]?.label;
+  const problemSolvingArea = getLeadingEntries(input.sourceSignals.problemSolving, 1)[0]?.label;
+  const values = [
+    personalityArea
+      ? `Ličnosni nalaz usmjerava razvojni razgovor na područje "${personalityArea}".`
+      : null,
+    motivationArea
+      ? `Motivacijski nalaz otvara pitanje kako područje "${motivationArea}" utiče na energiju i angažman.`
+      : null,
+    problemSolvingArea
+      ? `Način rješavanja problema vrijedi provjeriti kroz područje "${problemSolvingArea}" i konkretne radne zadatke.`
+      : null,
+  ].filter(isNonEmptyString);
 
   if (values.length > 0) {
     return values.slice(0, 3);
@@ -176,46 +178,44 @@ function buildMainSupportNeed(input: IndividualDevelopmentProfileInputSnapshot):
   ].find((entry) => entry[1] !== "available");
 
   if (nonAvailableSource) {
-    return `Glavna potreba u ovoj fazi je dodatno provjeriti ${nonAvailableSource[0]} signal, jer je trenutno ${getStatusLabel(
+    return `Glavna potreba u ovoj fazi je dodatno provjeriti ${nonAvailableSource[0]} područje, jer je trenutno ${getStatusLabel(
       nonAvailableSource[1] as IndividualDevelopmentProfileInputSourceStatus,
     )}.`;
   }
 
-  return "Glavna potreba u ovoj fazi je rano uskladiti očekivanja, nivo autonomije i ritam povratne informacije kako bi se signal pretvorio u operativnu razvojnu podršku.";
+  return "Glavna potreba u ovoj fazi je rano uskladiti očekivanja, nivo autonomije i ritam povratne informacije kako bi se nalaz pretvorio u operativnu razvojnu podršku.";
 }
 
 function buildContributionPattern(input: IndividualDevelopmentProfileInputSnapshot) {
-  const personalitySignals = getLeadingSignals(input.sourceSignals.personality, 2);
-  const problemSolvingSignals = getLeadingSignals(input.sourceSignals.problemSolving, 1);
-  const motivationSignals = getLeadingSignals(input.sourceSignals.motivation, 2);
+  const personalityAreas = getLeadingEntries(input.sourceSignals.personality, 2);
+  const problemSolvingAreas = getLeadingEntries(input.sourceSignals.problemSolving, 1);
+  const motivationAreas = getLeadingEntries(input.sourceSignals.motivation, 2);
 
   return {
     bestConditions:
-      problemSolvingSignals.length > 0
-        ? problemSolvingSignals.map(
+      problemSolvingAreas.length > 0
+        ? problemSolvingAreas.map(
             (entry) =>
-              `Može doprinijeti najbolje kada se način rada i zadaci testiraju kroz kontekst u kojem vrijedi provjeriti: ${entry.signal}`,
+              `Može doprinijeti najbolje kada su zadaci pregledni i kada se područje "${entry.label}" provjerava kroz konkretne primjere rada.`,
           )
         : [
             "Može doprinijeti najbolje kada su prioriteti, standard uspjeha i naredni koraci pregledni od početka saradnje.",
           ],
     collaborationConditions:
-      personalitySignals.length > 0
-        ? personalitySignals.map(
-            (entry) =>
-              `U saradnji vrijedi provjeriti kako se ovaj signal pokazuje u praksi: ${entry.signal}`,
+      personalityAreas.length > 0
+        ? personalityAreas.map((entry) =>
+            `U saradnji vrijedi provjeriti kako se u praksi vidi područje "${entry.label}".`
           )
         : [
             "Vrijedi rano dogovoriti ritam saradnje, način eskalacije pitanja i očekivani nivo samostalnosti.",
           ],
     supportPreferences:
-      motivationSignals.length > 0
-        ? motivationSignals.map(
-            (entry) =>
-              `Signal sugeriše moguću razvojnu korist od uslova rada povezanih sa ovim obrascem: ${entry.signal}`,
+      motivationAreas.length > 0
+        ? motivationAreas.map((entry) =>
+            `Podršku vrijedi povezati sa motivacijskim područjem "${entry.label}" i potvrditi šta zaista održava angažman.`
           )
         : [
-            "Kako motivacijski signal nije potpuno dostupan, podršku treba graditi kroz kratke provjere šta osobi daje energiju, a šta je usporava.",
+            "Kako motivacijski nalaz nije potpuno dostupan, podršku treba graditi kroz kratke provjere šta osobi daje energiju, a šta je usporava.",
           ],
     roleShapingImplications: [
       "HR i menadžer treba da provjere koliko osobi pomažu jasan okvir, pregled očekivanja i rani radni primjeri prije širenja odgovornosti.",
@@ -239,7 +239,7 @@ function buildDevelopmentRisks(
   risks.push({
     possibleBlocker: "Neusklađen nivo jasnoće i podrške može usporiti rani razvojni zamah.",
     whyItMatters:
-      "Kada očekivanja, autonomija i ritam povratne informacije nisu rano usklađeni, i dobar individualni signal može ostati slabo iskorišten.",
+      "Kada očekivanja, autonomija i ritam povratne informacije nisu rano usklađeni, i koristan razvojni nalaz može ostati slabo iskorišten.",
     whatToCheck:
       "Provjeriti kako osoba reaguje na promjenu prioriteta, koliko traži pojašnjenje i kada se osjeća dovoljno sigurno da samostalno povuče naredni korak.",
     howToSupport:
@@ -256,7 +256,7 @@ function buildDevelopmentRisks(
       whatToCheck:
         "U razgovoru ciljano dopuniti nedostajuće informacije o motivaciji, načinu rada i uslovima u kojima osoba lakše održava fokus i kvalitet.",
       howToSupport:
-        "Zadržati preporuke na nivou razvojnih hipoteza i periodično ih revidirati čim se pojavi kvalitetniji individualni signal.",
+        "Zadržati preporuke na nivou razvojnih hipoteza i periodično ih revidirati čim se pojavi kvalitetniji individualni nalaz.",
     });
   }
 
@@ -264,25 +264,25 @@ function buildDevelopmentRisks(
 }
 
 function buildCommunicationGuidance(input: IndividualDevelopmentProfileInputSnapshot) {
-  const personalitySignal = getLeadingSignals(input.sourceSignals.personality, 1)[0]?.signal ?? null;
-  const problemSolvingSignal = getLeadingSignals(input.sourceSignals.problemSolving, 1)[0]?.signal ?? null;
+  const personalityArea = getLeadingEntries(input.sourceSignals.personality, 1)[0]?.label ?? null;
+  const problemSolvingArea = getLeadingEntries(input.sourceSignals.problemSolving, 1)[0]?.label ?? null;
 
   return {
     whatHelps: [
       "Najviše pomaže konkretan feedback koji jasno odvaja šta funkcioniše, šta traži korekciju i koji je sljedeći korak.",
-      personalitySignal
-        ? `Lično-komunikacijska hipoteza za provjeru: ${personalitySignal}`
-        : "Kada ličnosni signal nije potpun, način komunikacije treba provjeravati kroz kratke iteracije i direktna pitanja.",
+      personalityArea
+        ? `Lično-komunikacijsku hipotezu vrijedi provjeriti kroz područje "${personalityArea}" i konkretne primjere saradnje.`
+        : "Kada ličnosni nalaz nije potpun, način komunikacije treba provjeravati kroz kratke iteracije i direktna pitanja.",
     ],
     whatToAvoid: [
       "Izbjegavati nejasne ili kontradiktorne poruke bez dogovora o tome šta je trenutno prioritet.",
-      "Izbjegavati da se jedan razvojni signal pretvori u čvrstu etiketu ili zaključak o osobi.",
+      "Izbjegavati da se jedan razvojni nalaz pretvori u čvrstu etiketu ili zaključak o osobi.",
     ],
     howToPhraseFeedback: [
       "Feedback je najbolje dati kroz jasan opis ponašanja, uticaja i očekivane naredne prilagodbe.",
-      problemSolvingSignal
-        ? `Vrijedi provjeriti kako osoba prima feedback kada se razgovor naslanja na ovaj problem-solving trag: ${problemSolvingSignal}`
-        : "Ako problem-solving signal nije potpun, feedback treba ostati uz konkretne radne primjere umjesto šire procjene kapaciteta.",
+      problemSolvingArea
+        ? `Vrijedi provjeriti kako osoba prima feedback kada se razgovor naslanja na područje "${problemSolvingArea}".`
+        : "Ako nalaz o rješavanju problema nije potpun, feedback treba ostati uz konkretne radne primjere umjesto šire procjene kapaciteta.",
     ],
     whatToClarify: [
       "Vrijedi razjasniti koliko autonomije osoba trenutno očekuje, kada treba tražiti podršku i kako izgleda dobar standard izvršenja.",
@@ -292,12 +292,12 @@ function buildCommunicationGuidance(input: IndividualDevelopmentProfileInputSnap
 }
 
 function buildMotivationGuidance(input: IndividualDevelopmentProfileInputSnapshot) {
-  const motivationSignals = getLeadingSignals(input.sourceSignals.motivation, 2);
+  const motivationAreas = getLeadingEntries(input.sourceSignals.motivation, 2);
 
-  if (motivationSignals.length > 0) {
+  if (motivationAreas.length > 0) {
     return {
-      likelySourcesOfEnergy: motivationSignals.map(
-        (entry) => `Mogući izvor energije za provjeru: ${entry.signal}`,
+      likelySourcesOfEnergy: motivationAreas.map(
+        (entry) => `Mogući izvor energije za provjeru je područje "${entry.label}".`,
       ),
       likelySourcesOfDrain: [
         "Pad energije vrijedi provjeriti kada su očekivanja nejasna, smisao zadatka slabo objašnjen ili napredak nije vidljiv.",
@@ -306,8 +306,8 @@ function buildMotivationGuidance(input: IndividualDevelopmentProfileInputSnapsho
         "Korisno je povezati zadatke sa jasnim razlogom zašto su važni i kakav se doprinos od osobe očekuje.",
         "Vrijedi periodično provjeriti da li trenutni način podrške pojačava angažman ili više stvara pritisak nego jasnoću.",
       ],
-      whatToValidate: motivationSignals.map(
-        (entry) => `U razvojnom razgovoru provjeriti kako se ovaj motivacijski signal vidi u stvarnim radnim uslovima: ${entry.signal}`,
+      whatToValidate: motivationAreas.map(
+        (entry) => `U razvojnom razgovoru provjeriti kako područje "${entry.label}" utiče na angažman u stvarnim radnim uslovima.`,
       ),
     };
   }
@@ -317,7 +317,7 @@ function buildMotivationGuidance(input: IndividualDevelopmentProfileInputSnapsho
       "Motivacijski input nije dovoljno potpun, pa izvore energije treba otkrivati kroz konkretne primjere zadataka i radnih uslova.",
     ],
     likelySourcesOfDrain: [
-      "Bez stabilnog motivacijskog signala posebno vrijedi paziti na nejasne prioritete, prenaglu promjenu očekivanja i slab osjećaj napretka.",
+      "Bez stabilnog motivacijskog nalaza posebno vrijedi paziti na nejasne prioritete, prenaglu promjenu očekivanja i slab osjećaj napretka.",
     ],
     supportSignals: [
       "Korisno je rano provjeriti šta osobi daje osjećaj smisla, kontrole i mjerljivog napretka.",
@@ -331,9 +331,8 @@ function buildMotivationGuidance(input: IndividualDevelopmentProfileInputSnapsho
 function buildOneOnOneGuidance(
   input: IndividualDevelopmentProfileInputSnapshot,
 ): IndividualDevelopmentOneOnOneGuidanceItem[] {
-  const primarySignal =
-    getLeadingSignals(input.sourceSignals.composite, 1)[0]?.signal ??
-    getLeadingSignals(input.sourceSignals.personality, 1)[0]?.signal ??
+  const primaryArea =
+    getLeadingEntries(input.sourceSignals.personality, 1)[0]?.label ??
     "Kako osoba traži jasnoću, podršku i prostor za samostalnost u radu.";
 
   return [
@@ -341,7 +340,7 @@ function buildOneOnOneGuidance(
       question: "Koji uslovi vam najviše pomažu da uhvatite ritam i osjećaj sigurnog napretka u radu?",
       whatToListenFor:
         "Da li osoba spontano traži strukturu, više autonomije, češći feedback ili jasniju sliku o tome kako izgleda dobar rezultat.",
-      signalBeingChecked: primarySignal,
+      signalBeingChecked: `Radna hipoteza za provjeru: ${primaryArea}`,
       possibleFollowUp:
         "Možete li opisati situaciju u kojoj ste najbrže počeli doprinositi i šta je tada bilo posebno korisno?",
     },
@@ -375,12 +374,12 @@ function buildOnboardingPlan(
   input: IndividualDevelopmentProfileInputSnapshot,
 ): IndividualDevelopmentOnboardingPlan {
   const hasComposite = input.sourceSignals.composite.sourceStatus === "available";
-  const motivationSignal = getLeadingSignals(input.sourceSignals.motivation, 1)[0]?.signal ?? null;
-  const personalitySignal = getLeadingSignals(input.sourceSignals.personality, 1)[0]?.signal ?? null;
+  const motivationArea = getLeadingEntries(input.sourceSignals.motivation, 1)[0]?.label ?? null;
+  const personalityArea = getLeadingEntries(input.sourceSignals.personality, 1)[0]?.label ?? null;
 
   return {
     summary:
-      "Onboarding plan prevodi individualne razvojne signale u HR/menadžerski 7 / 30 / 60 / 90 okvir bez dodatnog timskog konteksta kao preduvjeta.",
+      "Onboarding plan prevodi individualne razvojne nalaze u HR/menadžerski 7 / 30 / 60 / 90 okvir bez dodatnog timskog konteksta kao preduvjeta.",
     first7Days: buildOnboardingStage(
       "U prvoj sedmici fokus je na jasnim očekivanjima, ritmu podrške i sigurnom početnom kontekstu rada.",
       [
@@ -388,7 +387,7 @@ function buildOnboardingPlan(
         "Dogovoriti kratak ritam check-in razgovora kako nejasnoće ne bi ostale predugo otvorene.",
       ],
       [
-        "Feedback držati kratak, konkretan i operativan, sa jasnim signalom šta već funkcioniše i šta je naredni korak.",
+        "Feedback držati kratak, konkretan i operativan, sa jasnim opisom šta već funkcioniše i šta je naredni korak.",
       ],
       [
         "Ako osoba i dalje djeluje nesigurno oko prioriteta ili standarda rada, onboarding okvir treba dodatno precizirati.",
@@ -416,8 +415,8 @@ function buildOnboardingPlan(
         "Pregledati koje vrste zadataka, feedbacka i strukture ubrzavaju razvoj, a koje ga usporavaju.",
       ],
       [
-        motivationSignal
-          ? `Tokom ove faze vrijedi vezati feedback i prioritete za motivacijski trag koji treba dalje provjeravati: ${motivationSignal}`
+        motivationArea
+          ? `Tokom ove faze vrijedi vezati feedback i prioritete za motivacijsko područje "${motivationArea}".`
           : "Tokom ove faze vrijedi posebno pitati koji zadaci daju osjećaj smisla i vidljivog doprinosa.",
       ],
       [
@@ -428,11 +427,11 @@ function buildOnboardingPlan(
       "Između 61. i 90. dana fokus je na učvršćivanju vlasništva nad ulogom i sužavanju razvojnih hipoteza na ono što se zaista pokazalo u radu.",
       [
         "Revidirati početne razvojne hipoteze i zadržati samo one koje su potvrđene kroz radni kontekst.",
-        "Dogovoriti naredni razvojni fokus na osnovu opaženih obrazaca, ne samo početnog input signala.",
+        "Dogovoriti naredni razvojni fokus na osnovu opaženih obrazaca, ne samo početne radne hipoteze.",
       ],
       [
-        personalitySignal
-          ? `Vrijedi dati feedback i o tome kako se u radu vidi ovaj ličnosni obrazac: ${personalitySignal}`
+        personalityArea
+          ? `Vrijedi dati feedback i o tome kako se u radu vidi područje "${personalityArea}".`
           : "Tokom ove faze feedback treba povezati sa opaženim obrascima saradnje, ne samo sa početnom procjenom.",
       ],
       [
@@ -445,7 +444,7 @@ function buildOnboardingPlan(
     ],
     watchouts: [
       "Ne pretvarati onboarding plan u procjenu podobnosti, nego u okvir za podršku i provjeru razvoja.",
-      "Ako se razvojni signal ne vidi u stvarnom radu, prilagoditi plan na osnovu opaženog konteksta umjesto insistiranja na početnoj pretpostavci.",
+      "Ako se razvojna hipoteza ne potvrdi u stvarnom radu, prilagoditi plan na osnovu opaženog konteksta umjesto insistiranja na početnoj pretpostavci.",
     ],
   };
 }
@@ -455,7 +454,7 @@ function buildManagerWatchpoints(
 ): IndividualDevelopmentManagerWatchpoint[] {
   const watchpoints: IndividualDevelopmentManagerWatchpoint[] = [
     {
-      watchpoint: "Rani razvojni signal može ostati nedovoljno iskorišten ako su očekivanja i podrška previše implicitni.",
+      watchpoint: "Rani razvojni nalaz može ostati nedovoljno iskorišten ako su očekivanja i podrška previše implicitni.",
       whyItMatters:
         "Osoba može djelovati tiše ili sporije nego što realno jeste kada standard rada, prioritet i način donošenja odluka nisu dovoljno razjašnjeni.",
       earlySignal:
@@ -467,7 +466,7 @@ function buildManagerWatchpoints(
 
   if (input.sourceSignals.motivation.sourceStatus !== "available") {
     watchpoints.push({
-      watchpoint: "Motivacijski signal nije potpuno stabilan, pa angažman treba pratiti kroz praksu umjesto pretpostavke.",
+      watchpoint: "Motivacijski nalaz nije potpuno stabilan, pa angažman treba pratiti kroz praksu umjesto pretpostavke.",
       whyItMatters:
         "Bez dovoljno dobrog motivacijskog inputa lako je pogrešno pripisati pad energije karakteristici osobe umjesto uslovima rada.",
       earlySignal:
@@ -481,7 +480,10 @@ function buildManagerWatchpoints(
 }
 
 function buildInterpretationLimits(input: IndividualDevelopmentProfileInputSnapshot): string[] {
-  const limits = input.interpretationLimits.map(sanitizeUserFacingInputFragment);
+  const limits = [
+    "Izvještaj koristi sažete razvojne nalaze i ne zamjenjuje razgovor, opažanje rada niti menadžersku procjenu.",
+    "Preporuke treba tretirati kao radne hipoteze koje se potvrđuju kroz onboarding i konkretne situacije.",
+  ];
   const sourceStatusLimits = [
     buildSourceStatusLimit("Ličnosni", input.sourceSignals.personality.sourceStatus),
     buildSourceStatusLimit("Motivacijski", input.sourceSignals.motivation.sourceStatus),
@@ -530,7 +532,7 @@ export function generateIndividualDevelopmentProfileWithMock(
     managerWatchpoints: buildManagerWatchpoints(inputSnapshot),
     interpretationLimits: buildInterpretationLimits(inputSnapshot),
     metadata: {
-      generatedAt: new Date().toISOString(),
+      generatedAt: INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATED_AT,
       generatorType: INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_TYPE,
       generatorVersion: INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_VERSION,
       inputVersion: inputSnapshot.inputVersion,

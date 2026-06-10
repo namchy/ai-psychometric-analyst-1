@@ -9,7 +9,7 @@ import {
   type CompositeInputPreparedAttempt,
 } from "@/lib/assessment/composite-input";
 import {
-  getIpipNeo120DomainLabel,
+  getIpipNeo120HrDomainLabel,
   getIpipNeo120FacetDomainCode,
   IPIP_NEO_120_DOMAIN_ORDER,
   IPIP_NEO_120_TEST_SLUG,
@@ -197,7 +197,7 @@ function getIpipDomainScores(results: CompletedAssessmentResults) {
 
     return {
       code: domainCode,
-      label: getIpipNeo120DomainLabel(domainCode) ?? domainCode,
+      label: getIpipNeo120HrDomainLabel(domainCode) ?? domainCode,
       rawScore: domainRawScore,
     };
   }).sort((left, right) => right.rawScore - left.rawScore);
@@ -591,7 +591,7 @@ function buildCompositeSourceBlock(input: {
       locale: input.locale,
     });
     const highestDomains = compositeSnapshot.summarySignals.personalityHighestDomains
-      .map((code) => getIpipNeo120DomainLabel(code as IpipNeo120DomainCode) ?? code)
+      .map((code) => getIpipNeo120HrDomainLabel(code as IpipNeo120DomainCode) ?? code)
       .slice(0, 2);
     const strongestDomain = compositeSnapshot.summarySignals.cognitiveStrongestDomain;
     const highestDrivers = compositeSnapshot.summarySignals.motivationHighestDrivers.slice(0, 2);

@@ -70,6 +70,7 @@ assert.doesNotMatch(providerSource, /\.from\("/);
 assert.doesNotMatch(providerSource, /OpenAI|openai/i);
 assert.doesNotMatch(providerSource, /team-fit|team_dynamics/i);
 assert.doesNotMatch(providerSource, /renderer|route|assessment_reports|attempt_reports/i);
+assert.doesNotMatch(providerSource, /\.replace\([^)]*signal/i);
 
 const {
   INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_TYPE,
@@ -82,10 +83,18 @@ const {
   validateIndividualDevelopmentProfileSnapshot,
 } = require("../lib/assessment/individual-development-profile-contract.ts");
 const {
+  INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATED_AT,
   INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_TYPE,
   INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_VERSION,
   generateIndividualDevelopmentProfileWithMock,
 } = require(providerPath);
+const {
+  validateGlobalBhsUserFacingOutput,
+} = require("../lib/assessment/ai-report-bhs-language-policy.ts");
+const {
+  formatReportLanguageQualityIssues,
+  validateReportLanguageQuality,
+} = require("../lib/assessment/report-language-quality.ts");
 
 function collectStrings(value) {
   if (typeof value === "string") {
@@ -111,12 +120,45 @@ function assertNoInternalUserFacingTerms(value, label) {
   const outputText = collectStrings(value).join(" ");
 
   assert.equal(
-    /HR-facing|reduced|AI narativ|AI-generated|numeric|ugodnost|full upstream snapshot|raw answers|raw item|scoring key|team fit|team dynamics|fit score|match score|no-hire|top candidate|ranked candidates/i.test(
+    /HR-facing|reduced|AI narativ|AI-generated|numeric|ugodnost|\bsource\b|\bmetadata\b|\bsnapshot\b|full upstream snapshot|raw answers|raw item|scoring key|team fit|team dynamics|fit score|match score|no-hire|top candidate|ranked candidates/i.test(
       outputText,
     ),
     false,
     `${label} should not expose internal/source terms.`,
   );
+  assert.equal(
+    /(^|[^A-Za-zČĆŽŠĐčćžšđ])ti([^A-Za-zČĆŽŠĐčćžšđ]|$)|(^|[^A-Za-zČĆŽŠĐčćžšđ])tvoj(?:a|e|i|ih|im|oj|om|og)?([^A-Za-zČĆŽŠĐčćžšđ]|$)/iu.test(
+      outputText,
+    ),
+    false,
+    `${label} should not address the candidate in second person.`,
+  );
+}
+
+function assertPassesQualityGates(report, label) {
+  const globalErrors = validateGlobalBhsUserFacingOutput(report, {
+    audience: "hr",
+  });
+  assert.deepEqual(globalErrors, [], `${label} should pass global BHS validation.`);
+
+  const qualityResult = validateReportLanguageQuality({
+    snapshot: report,
+    locale: "bs",
+    audience: "hr",
+    reportType: "single_test",
+    context: "individual_development_profile_hr_report",
+  });
+  assert.equal(
+    qualityResult.ok,
+    true,
+    `${label} should pass IDP HR quality review: ${formatReportLanguageQualityIssues(qualityResult.issues)}`,
+  );
+
+  const signalCount =
+    collectStrings(report)
+      .join(" ")
+      .match(/\bsignal(?:a|i|ima|om|u)?\b/giu)?.length ?? 0;
+  assert.ok(signalCount <= 32, `${label} repeats "signal" ${signalCount} times.`);
 }
 
 function buildInputSnapshot(overrides = {}) {
@@ -236,12 +278,43 @@ function main() {
   assert.ok(report.managerWatchpoints);
   assert.ok(report.interpretationLimits);
   assert.equal(report.metadata.generatorType, INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_TYPE);
+  assert.equal(report.metadata.generatedAt, INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATED_AT);
   assert.equal(
     report.metadata.generatorVersion,
     INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_VERSION,
   );
   assert.equal(report.metadata.inputVersion, validInput.inputVersion);
   assertNoInternalUserFacingTerms(report, "valid mock output");
+  assertPassesQualityGates(report, "valid mock output");
+  assert.deepEqual(
+    generateIndividualDevelopmentProfileWithMock(validInput),
+    validResult,
+    "Mock provider should return the same fixture snapshot for the same input.",
+  );
+
+  const noisyInput = clone(validInput);
+  noisyInput.sourceSignals.personality.relevantSignals[0].label = "Ugodnost";
+  noisyInput.sourceSignals.personality.relevantSignals[0].signal =
+    "HR-facing reduced source snapshot metadata numeric AI narativ " +
+    Array.from({ length: 40 }, () => "signal").join(" ");
+  noisyInput.sourceSignals.motivation.relevantSignals[0].signal =
+    "Ovaj upstream fragment se ne smije kopirati u fixture izvještaj.";
+  noisyInput.interpretationLimits = [
+    "HR-facing reduced source snapshot metadata numeric AI narativ.",
+  ];
+
+  const noisyResult = generateIndividualDevelopmentProfileWithMock(noisyInput);
+  assert.equal(noisyResult.ok, true, noisyResult.ok ? undefined : noisyResult.errors.join(" | "));
+
+  if (!noisyResult.ok) {
+    throw new Error("Expected noisy-input mock provider result.");
+  }
+
+  const noisyOutputText = collectStrings(noisyResult.reportSnapshot).join(" ");
+  assert.equal(noisyOutputText.includes("Spremnost na saradnju"), true);
+  assert.equal(noisyOutputText.includes("upstream fragment"), false);
+  assertNoInternalUserFacingTerms(noisyResult.reportSnapshot, "noisy-input mock output");
+  assertPassesQualityGates(noisyResult.reportSnapshot, "noisy-input mock output");
 
   const mixedInput = buildInputSnapshot({
     sourceSignals: {
@@ -293,6 +366,7 @@ function main() {
 
   const outputText = collectStrings(mixedResult.reportSnapshot).join(" ");
   assertNoInternalUserFacingTerms(mixedResult.reportSnapshot, "mixed-status mock output");
+  assertPassesQualityGates(mixedResult.reportSnapshot, "mixed-status mock output");
   assert.match(outputText, /7\s*\/\s*30\s*\/\s*60\s*\/\s*90|prvoj sedmici|prvih 30 dana/i);
   assert.equal(/assessment_reports|attempt_reports/i.test(providerSource), false);
 
