@@ -975,6 +975,22 @@ function buildIpipNeo120HrTerminologyAuthorityBlock(): string {
   ].join("\n");
 }
 
+function buildIpipNeo120HrContentQualityBlock(): string {
+  return [
+    "IPIP-NEO-120 HR content quality rules:",
+    "Write HR interpretation, not score-summary prose. Domains, score bands and facets are evidence; they must not be the main sentence of the insight.",
+    'Do not open executive_summary, key_hr_signals[].evidence, key_hr_signals[].hr_implication or domain_overview[].concise_meaning with domain + band patterns such as "Savjesnost je u višem rasponu", "Spremnost na saradnju je u višem rasponu", "Neuroticizam je u nižem rasponu" or "Ekstraverzija je u umjerenom rasponu".',
+    'Start important insight fields with the likely work behavior or HR-relevant pattern, for example responsibility and execution, collaboration and boundaries, emotional tone under pressure, communication energy, openness to change, decision-making, customer orientation or team dynamics.',
+    "key_hr_signals must be behavioral HR themes, not Big Five domain restatements. Use titles such as pouzdanost i izvršenje, saradnja i postavljanje granica, emocionalni ton pod pritiskom, komunikacijska energija, or odnos prema promjeni i novim idejama when supported by the input.",
+    'Facets are supporting evidence, not a list. Do not write mechanical phrases such as "uz visoke facete" or "uz visoko izražene iskrenost, saosjećajnost, altruizam i povjerenje". Mention facets only when naturally tied to behavior, and do not list more than 2-3 facets in one prose sentence unless the field is explicitly structured.',
+    'Use an authoritative but careful HR tone. Prefer patterns such as "Profil pokazuje...", "Rezultati ukazuju na...", "U radnom kontekstu to se može vidjeti kao...", "Ovaj obrazac je relevantan za..." and "U intervjuu treba provjeriti...".',
+    'Avoid stacked caution markers and timid chains such as "upućuje na osobu koja vjerovatno", "može ukazivati da vjerovatno", "rezultati sugerišu mogućnost da" or "možda može ukazivati". Use at most one caution marker per claim when needed.',
+    'Do not repeat generic modality across items. Avoid making every item start with "Može podržati", "Može ukazivati" or "Provjeriti". Vary sentence rhythm with concrete HR language about ponašanje u radu, način saradnje, postavljanje granica, odnos prema rokovima, reakcija na pritisak, traženje podrške, prihvatanje promjene and donošenje odluka.',
+    "Keep the report careful: no hire/no-hire recommendation, no diagnosis, no certainty language, no personality determinism and no unsupported role-fit claim.",
+    "Keep structural/internal fields intact: do not change schema keys, enum values, domain_name, facet_name or score_label_or_band. The style rules apply to user-facing prose.",
+  ].join("\n");
+}
+
 function applyIpipHrPromptAuthorityCleanup(
   input: PreparedReportGenerationInput,
   promptText: string,
@@ -1019,6 +1035,7 @@ function applyIpipHrPromptAuthorityCleanup(
   }
 
   blocks.push(buildIpipNeo120HrTerminologyAuthorityBlock());
+  blocks.push(buildIpipNeo120HrContentQualityBlock());
 
   return blocks.join("\n\n");
 }

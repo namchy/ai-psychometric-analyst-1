@@ -18,6 +18,7 @@ const TARGET_SOURCE_TYPE = "single_test";
 const TARGET_REPORT_CONTRACT = "ipip_neo_120_hr_v2";
 const TARGET_PROMPT_KEY = "completed_assessment_report";
 const CONFIRM_ENV = "CONFIRM_AMRA_IPIP_HR_OPENAI_DRY_RUN";
+const TIMEOUT_OVERRIDE_ENV = "IPIP_HR_OPENAI_DRY_RUN_TIMEOUT_MS";
 const OUTPUT_PATH = path.join(os.tmpdir(), "amra-ipip-hr-openai-dry-run.json");
 
 const STRUCTURAL_FIELDS = new Set([
@@ -91,7 +92,24 @@ function buildNoCallSummary() {
       `Write diagnostic JSON to ${OUTPUT_PATH}.`,
     ],
     confirmationRequired: `${CONFIRM_ENV}=true`,
+    optionalTimeoutOverride: TIMEOUT_OVERRIDE_ENV,
   };
+}
+
+function resolveDryRunTimeoutMs(config, env = process.env) {
+  const rawOverride = env[TIMEOUT_OVERRIDE_ENV];
+
+  if (rawOverride === undefined || rawOverride === "") {
+    return config.openAiTimeoutMs;
+  }
+
+  const parsed = Number(rawOverride);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${TIMEOUT_OVERRIDE_ENV} must be a positive integer in milliseconds.`);
+  }
+
+  return parsed;
 }
 
 function resolveWithExtensions(candidatePath) {
@@ -312,6 +330,7 @@ async function runConfirmedDryRun() {
 
   const context = await loadDryRunContext();
   const config = getAiReportConfig();
+  const dryRunTimeoutMs = resolveDryRunTimeoutMs(config);
   const model = normalizeAiReportModel(
     context.report.model_name ?? context.runtimeConfig?.modelName ?? config.model,
   );
@@ -354,7 +373,7 @@ async function runConfirmedDryRun() {
   const provider = createOpenAiReportProvider({
     apiKey: config.openAiApiKey,
     model,
-    timeoutMs: config.openAiTimeoutMs,
+    timeoutMs: dryRunTimeoutMs,
   });
   const generationResult = await provider.generateReport(preparedInput);
 
@@ -391,7 +410,7 @@ async function runConfirmedDryRun() {
     generation: {
       provider: provider.type,
       model,
-      timeoutMs: config.openAiTimeoutMs,
+      timeoutMs: dryRunTimeoutMs,
       promptKey: context.activePrompt?.promptKey ?? TARGET_PROMPT_KEY,
       promptVersion,
       promptVersionId,
@@ -428,6 +447,7 @@ async function runConfirmedDryRun() {
         model,
         promptKey: diagnostic.generation.promptKey,
         promptVersion,
+        timeoutMs: dryRunTimeoutMs,
         bhsValidationOk: diagnostic.validation.bhs.ok,
         strictIpipValidationOk: diagnostic.validation.strictIpip.ok,
         warningTermCount: diagnostic.warningTerms.length,
@@ -459,8 +479,10 @@ if (require.main === module) {
 
 module.exports = {
   CONFIRM_ENV,
+  TIMEOUT_OVERRIDE_ENV,
   OUTPUT_PATH,
   isExecutionConfirmed,
   buildNoCallSummary,
+  resolveDryRunTimeoutMs,
   scanProseWarnings,
 };

@@ -233,6 +233,61 @@ async function main() {
       payload.userPrompt.includes("HR smjernica za postupanje"),
       true,
     );
+    assert.equal(promptText.includes("IPIP-NEO-120 HR content quality rules:"), true);
+    assert.equal(
+      promptText.includes("Write HR interpretation, not score-summary prose."),
+      true,
+    );
+    assert.equal(
+      promptText.includes("Domains, score bands and facets are evidence; they must not be the main sentence of the insight."),
+      true,
+    );
+    assert.equal(
+      promptText.includes("Do not open executive_summary, key_hr_signals[].evidence, key_hr_signals[].hr_implication or domain_overview[].concise_meaning with domain + band patterns"),
+      true,
+    );
+    assert.equal(promptText.includes("Savjesnost je u višem rasponu"), true);
+    assert.equal(promptText.includes("Spremnost na saradnju je u višem rasponu"), true);
+    assert.equal(promptText.includes("Neuroticizam je u nižem rasponu"), true);
+    assert.equal(
+      promptText.includes("key_hr_signals must be behavioral HR themes, not Big Five domain restatements."),
+      true,
+    );
+    assert.equal(promptText.includes("pouzdanost i izvršenje"), true);
+    assert.equal(promptText.includes("saradnja i postavljanje granica"), true);
+    assert.equal(promptText.includes("emocionalni ton pod pritiskom"), true);
+    assert.equal(
+      promptText.includes("Facets are supporting evidence, not a list."),
+      true,
+    );
+    assert.equal(promptText.includes("uz visoke facete"), true);
+    assert.equal(
+      promptText.includes("Use an authoritative but careful HR tone."),
+      true,
+    );
+    assert.equal(promptText.includes("Profil pokazuje"), true);
+    assert.equal(promptText.includes("Rezultati ukazuju na"), true);
+    assert.equal(promptText.includes("U intervjuu treba provjeriti"), true);
+    assert.equal(promptText.includes("Avoid stacked caution markers"), true);
+    assert.equal(promptText.includes("upućuje na osobu koja vjerovatno"), true);
+    assert.equal(promptText.includes("može ukazivati da vjerovatno"), true);
+    assert.equal(promptText.includes("rezultati sugerišu mogućnost da"), true);
+    assert.equal(
+      promptText.includes("Use at most one caution marker per claim when needed."),
+      true,
+    );
+    assert.equal(
+      promptText.includes("Do not repeat generic modality across items."),
+      true,
+    );
+    assert.equal(promptText.includes("Može podržati"), true);
+    assert.equal(promptText.includes("Može ukazivati"), true);
+    assert.equal(promptText.includes("postavljanje granica"), true);
+    assert.equal(promptText.includes("reakcija na pritisak"), true);
+    assert.equal(
+      promptText.includes("Keep structural/internal fields intact: do not change schema keys, enum values, domain_name, facet_name or score_label_or_band."),
+      true,
+    );
 
     const dumpRecord = buildAiReportDebugDumpRecord(
       preparedInput,
@@ -257,6 +312,10 @@ async function main() {
     assert.equal(dumpPromptText.includes('"Kooperativnost"'), true);
     assert.equal(dumpPromptText.includes('"overuse"'), true);
     assert.equal(dumpPromptText.includes('"handling"'), true);
+    assert.equal(dumpPromptText.includes("IPIP-NEO-120 HR content quality rules:"), true);
+    assert.equal(dumpPromptText.includes("Write HR interpretation, not score-summary prose."), true);
+    assert.equal(dumpPromptText.includes("key_hr_signals must be behavioral HR themes, not Big Five domain restatements."), true);
+    assert.equal(dumpPromptText.includes("Avoid stacked caution markers"), true);
     assert.equal(/prekomjern\w* oslanjanj\w*/i.test(dumpPromptText), true);
     assert.equal(dumpRecord.model, "gpt-4.1");
     assert.equal(dumpRecord.prompt_key, "completed_assessment_report");
