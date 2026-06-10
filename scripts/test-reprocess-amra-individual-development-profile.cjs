@@ -49,12 +49,25 @@ async function main() {
     ["reportType", "composite", /report_type/i],
     ["audience", "participant", /audience/i],
     ["sourceType", "team", /source_type/i],
-    ["reportStatus", "failed", /must be ready/i],
   ]) {
     assert.throws(() => assertTargetGuards(buildTarget({ [field]: value })), pattern);
   }
 
   assert.doesNotThrow(() => assertTargetGuards(buildTarget()));
+  assert.doesNotThrow(() =>
+    assertTargetGuards(buildTarget({ reportStatus: "failed" })),
+  );
+  assert.doesNotThrow(() =>
+    assertTargetGuards(buildTarget({ reportStatus: "queued" })),
+  );
+  assert.throws(
+    () => assertTargetGuards(buildTarget({ reportStatus: "processing" })),
+    /already processing/i,
+  );
+  assert.throws(
+    () => assertTargetGuards(buildTarget({ reportStatus: "cancelled" })),
+    /unsupported target report status/i,
+  );
 
   let resetCalls = 0;
   let processCalls = 0;
@@ -121,8 +134,114 @@ async function main() {
   });
 
   assert.deepEqual(callOrder, ["reset", "process", "inspect"]);
+  assert.equal(successful.execution.queueAction, "reset_ready_to_queued");
   assert.equal(successful.execution.processorResult.status, "ready");
   assert.equal(successful.execution.finalStatus.reportStatus, "ready");
+
+  const failedCallOrder = [];
+  const failedRetry = await runControlledReprocess({
+    env: {
+      NODE_ENV: "development",
+      [CONFIRM_ENV]: "true",
+    },
+    loadTargetReport: async () => buildTarget({ reportStatus: "failed" }),
+    resetTargetReadyReportToQueued: async () => {
+      failedCallOrder.push("ready-reset");
+      return buildTarget({ reportStatus: "queued" });
+    },
+    resetTargetFailedReportToQueued: async (target) => {
+      failedCallOrder.push("failed-retry");
+      assert.equal(target.reportStatus, "failed");
+      return buildTarget({ reportStatus: "queued" });
+    },
+    processReport: async () => {
+      failedCallOrder.push("process");
+      return {
+        ok: true,
+        reportId: TARGET_REPORT_ID,
+        status: "ready",
+      };
+    },
+    loadFinalStatus: async () => {
+      failedCallOrder.push("inspect");
+      return {
+        reportId: TARGET_REPORT_ID,
+        reportStatus: "ready",
+        failureCode: null,
+        failureReason: null,
+        generatorType: "mock",
+        modelName: null,
+      };
+    },
+  });
+
+  assert.deepEqual(failedCallOrder, ["failed-retry", "process", "inspect"]);
+  assert.equal(failedRetry.execution.queueAction, "retry_failed_to_queued");
+  assert.equal(failedRetry.execution.queued.reportStatus, "queued");
+
+  const queuedCallOrder = [];
+  const queuedRetry = await runControlledReprocess({
+    env: {
+      NODE_ENV: "development",
+      [CONFIRM_ENV]: "true",
+    },
+    loadTargetReport: async () => buildTarget({ reportStatus: "queued" }),
+    resetTargetReadyReportToQueued: async () => {
+      queuedCallOrder.push("ready-reset");
+    },
+    resetTargetFailedReportToQueued: async () => {
+      queuedCallOrder.push("failed-retry");
+    },
+    processReport: async () => {
+      queuedCallOrder.push("process");
+      return {
+        ok: true,
+        reportId: TARGET_REPORT_ID,
+        status: "ready",
+      };
+    },
+    loadFinalStatus: async () => {
+      queuedCallOrder.push("inspect");
+      return {
+        reportId: TARGET_REPORT_ID,
+        reportStatus: "ready",
+        failureCode: null,
+        failureReason: null,
+        generatorType: "mock",
+        modelName: null,
+      };
+    },
+  });
+
+  assert.deepEqual(queuedCallOrder, ["process", "inspect"]);
+  assert.equal(queuedRetry.execution.queueAction, "already_queued");
+
+  const processingCalls = [];
+  await assert.rejects(
+    () =>
+      runControlledReprocess({
+        env: {
+          NODE_ENV: "development",
+          [CONFIRM_ENV]: "true",
+        },
+        loadTargetReport: async () =>
+          buildTarget({ reportStatus: "processing" }),
+        resetTargetReadyReportToQueued: async () => {
+          processingCalls.push("ready-reset");
+        },
+        resetTargetFailedReportToQueued: async () => {
+          processingCalls.push("failed-retry");
+        },
+        processReport: async () => {
+          processingCalls.push("process");
+        },
+        loadFinalStatus: async () => {
+          processingCalls.push("inspect");
+        },
+      }),
+    /already processing/i,
+  );
+  assert.deepEqual(processingCalls, []);
 
   const controlledFailure = await runControlledReprocess({
     env: {
@@ -149,11 +268,23 @@ async function main() {
 
   assert.equal(controlledFailure.execution.processorResult.reason, "validation_failed");
   assert.equal(controlledFailure.execution.finalStatus.reportStatus, "failed");
+  assert.equal(
+    controlledFailure.execution.failure_code,
+    "IDP_REPORT_VALIDATION_FAILED",
+  );
+  assert.equal(
+    controlledFailure.execution.failure_reason,
+    "IDP HR report language quality failed.",
+  );
 
   assert.match(source, new RegExp(TARGET_REPORT_ID));
   assert.match(source, new RegExp(TARGET_PARTICIPANT_ID));
   assert.match(source, new RegExp(TARGET_ASSESSMENT_ASSIGNMENT_ID));
   assert.match(source, /processIndividualDevelopmentProfileAssessmentReport/);
+  assert.match(
+    source,
+    /resetIndividualDevelopmentProfileAssessmentReportToQueued/,
+  );
   assert.match(source, /validateReportLanguageQuality|individual-development-profile-processor/);
   assert.doesNotMatch(source, /process\.argv|argv\[/);
   assert.doesNotMatch(source, /report_snapshot\s*:/);

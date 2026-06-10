@@ -102,8 +102,14 @@ function assertTargetGuards(target) {
     throw new Error(`Unexpected source_type: ${target.sourceType ?? "null"}`);
   }
 
-  if (target.reportStatus !== "ready") {
-    throw new Error(`Target report must be ready, got: ${target.reportStatus ?? "null"}`);
+  if (target.reportStatus === "processing") {
+    throw new Error("Target report is already processing and cannot be reprocessed.");
+  }
+
+  if (!["ready", "failed", "queued"].includes(target.reportStatus)) {
+    throw new Error(
+      `Unsupported target report status: ${target.reportStatus ?? "null"}`,
+    );
   }
 
   if (typeof target.organizationId !== "string" || target.organizationId.length === 0) {
@@ -190,6 +196,38 @@ async function resetTargetReadyReportToQueued(target) {
   };
 }
 
+async function resetTargetFailedReportToQueued(target) {
+  const {
+    resetIndividualDevelopmentProfileAssessmentReportToQueued,
+  } = require("../lib/assessment/individual-development-profile-lifecycle.ts");
+  const result = await resetIndividualDevelopmentProfileAssessmentReportToQueued({
+    assessmentReportId: TARGET_REPORT_ID,
+    organizationId: target.organizationId,
+    participantId: TARGET_PARTICIPANT_ID,
+  });
+
+  if (!result.ok) {
+    throw new Error(
+      `Failed target retry reset was rejected (${result.reason}): ${result.details}`,
+    );
+  }
+
+  if (result.action !== "reset_to_queued" || !result.report) {
+    throw new Error(`Failed target was not reset to queued: ${result.action}`);
+  }
+
+  return {
+    reportId: result.report.id,
+    organizationId: result.report.organization_id,
+    participantId: result.report.participant_id,
+    assessmentAssignmentId: result.report.assessment_assignment_id,
+    reportType: result.report.report_type,
+    audience: result.report.audience,
+    sourceType: result.report.source_type,
+    reportStatus: result.report.report_status,
+  };
+}
+
 async function loadFinalStatus() {
   const { createSupabaseAdminClient } = require("../lib/supabase/admin.ts");
   const supabase = createSupabaseAdminClient();
@@ -226,6 +264,8 @@ async function runControlledReprocess(options = {}) {
     loadTargetReport: options.loadTargetReport ?? loadTargetReport,
     resetTargetReadyReportToQueued:
       options.resetTargetReadyReportToQueued ?? resetTargetReadyReportToQueued,
+    resetTargetFailedReportToQueued:
+      options.resetTargetFailedReportToQueued ?? resetTargetFailedReportToQueued,
     processReport:
       options.processReport ??
       (async (...args) => {
@@ -250,7 +290,19 @@ async function runControlledReprocess(options = {}) {
     return result;
   }
 
-  const queued = await deps.resetTargetReadyReportToQueued(target);
+  let queueAction;
+  let queued;
+
+  if (target.reportStatus === "ready") {
+    queueAction = "reset_ready_to_queued";
+    queued = await deps.resetTargetReadyReportToQueued(target);
+  } else if (target.reportStatus === "failed") {
+    queueAction = "retry_failed_to_queued";
+    queued = await deps.resetTargetFailedReportToQueued(target);
+  } else {
+    queueAction = "already_queued";
+    queued = target;
+  }
 
   if (
     queued.reportId !== TARGET_REPORT_ID ||
@@ -277,9 +329,12 @@ async function runControlledReprocess(options = {}) {
   }
 
   result.execution = {
+    queueAction,
     queued,
     processorResult,
     finalStatus,
+    failure_code: finalStatus.failureCode ?? null,
+    failure_reason: finalStatus.failureReason ?? null,
   };
 
   return result;
