@@ -72,6 +72,10 @@ assert.doesNotMatch(pageSource, /input_snapshot|report_snapshot|error_message|JS
 
 assert.match(helperSource, /export async function listIndividualDevelopmentProfileReportEntries/);
 assert.match(helperSource, /\.from\("assessment_reports"\)/);
+assert.match(helperSource, /\.from\("assessment_assignments"\)/);
+assert.match(helperSource, /assignment_type", "standard_battery"/);
+assert.match(helperSource, /\.in\("status", \["active", "completed"\]\)/);
+assert.match(helperSource, /missing_eligible/);
 assert.match(helperSource, /INDIVIDUAL_DEVELOPMENT_PROFILE_ASSESSMENT_REPORT_TYPE/);
 assert.match(helperSource, /audience/);
 assert.match(helperSource, /source_type/);
@@ -87,10 +91,12 @@ assert.doesNotMatch(helperSource, /attempt_reports|team_fit_reports|team_assessm
 assert.doesNotMatch(helperSource, /failure_reason|error_message/);
 
 assert.match(componentSource, /Individualni razvojni profili/);
+assert.match(componentSource, /queueIndividualDevelopmentProfileReportFormAction/);
 assert.match(componentSource, /Otvori individualni razvojni profil/);
 assert.match(componentSource, /čeka obradu/i);
 assert.match(componentSource, /u obradi/i);
 assert.match(componentSource, /nije dostupan/i);
+assert.match(componentSource, /Razvojni profil — nije pripremljen/);
 assert.match(componentSource, /Razvojni profil — spreman za pregled/);
 assert.match(componentSource, /Razvojni profil — čeka obradu/);
 assert.match(componentSource, /Razvojni profil — u obradi/);
@@ -257,6 +263,20 @@ require.cache[idpActionStubPath] = {
       status: "processed",
       message: "ok",
       reportId: "idp-ready",
+      participantId: "participant-1",
+    }),
+    queueIndividualDevelopmentProfileReportAction: async () => ({
+      ok: true,
+      status: "queued",
+      message: "ok",
+      reportId: "idp-queued",
+      participantId: "participant-1",
+    }),
+    queueIndividualDevelopmentProfileReportFormAction: async () => ({
+      ok: true,
+      status: "queued",
+      message: "ok",
+      reportId: "idp-queued",
       participantId: "participant-1",
     }),
     resetIndividualDevelopmentProfileReportAction: async () => ({
@@ -592,9 +612,48 @@ async function main() {
     );
   }
 
+  stubState.idpEntries = [
+    {
+      id: "missing-idp-assignment-eligible-1234",
+      assessmentAssignmentId: "assignment-eligible-1234",
+      organizationId: "org-1",
+      participantId: "participant-1",
+      status: "missing_eligible",
+      statusLabel: "Nije pripremljeno",
+      safeStatusMessage:
+        "Individualni razvojni profil još nije pripremljen za ovaj procjenski ciklus.",
+      createdAt: "2026-06-03T04:00:00.000Z",
+      updatedAt: "2026-06-03T04:00:00.000Z",
+      queuedAt: null,
+      startedAt: null,
+      completedAt: null,
+      generatedAt: null,
+      hasInputSnapshot: false,
+      hasReportSnapshot: false,
+      href: null,
+    },
+  ];
+
+  const missingEligibleHtml = await renderPage();
+  assert.match(missingEligibleHtml, /Individualni razvojni profili/);
+  assert.match(missingEligibleHtml, /Razvojni profil — nije pripremljen/);
+  assert.match(missingEligibleHtml, /Nije pripremljeno/);
+  assert.match(missingEligibleHtml, /Pripremi individualni razvojni profil/);
+  assert.match(
+    missingEligibleHtml,
+    /Individualni razvojni profil još nije pripremljen za ovaj procjenski ciklus\./,
+  );
+  assert.equal(
+    missingEligibleHtml.includes("/dashboard/individual-development-profile-reports/"),
+    false,
+  );
+  assert.equal(missingEligibleHtml.includes("OpenAI"), false);
+  assert.equal(missingEligibleHtml.includes("AI"), false);
+
   stubState.idpEntries = [];
   const emptyHtml = await renderPage();
   assert.equal(emptyHtml.includes("Individualni razvojni profili"), false);
+  assert.equal(emptyHtml.includes("Pripremi individualni razvojni profil"), false);
   assert.equal(
     emptyHtml.includes("/dashboard/individual-development-profile-reports/"),
     false,

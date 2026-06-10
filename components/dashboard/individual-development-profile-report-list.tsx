@@ -1,5 +1,6 @@
 import {
   processIndividualDevelopmentProfileReportFormAction,
+  queueIndividualDevelopmentProfileReportFormAction,
   resetIndividualDevelopmentProfileReportFormAction,
 } from "@/app/actions/individual-development-profile";
 import {
@@ -22,6 +23,7 @@ function getStatusTone(
   switch (status) {
     case "ready":
       return "success";
+    case "missing_eligible":
     case "queued":
       return "warning";
     case "processing":
@@ -35,6 +37,8 @@ function getStatusTone(
 
 function getCardTitle(status: IndividualDevelopmentProfileReportListEntry["status"]): string {
   switch (status) {
+    case "missing_eligible":
+      return "Razvojni profil — nije pripremljen";
     case "ready":
       return "Razvojni profil — spreman za pregled";
     case "queued":
@@ -116,6 +120,18 @@ export function IndividualDevelopmentProfileReportList({
             </div>
 
             <div className="mt-auto pt-5">
+              {entry.status === "missing_eligible" ? (
+                <form
+                  action={queueIndividualDevelopmentProfileReportFormAction.bind(null, {
+                    assessmentAssignmentId: entry.assessmentAssignmentId,
+                    participantId: entry.participantId,
+                  })}
+                >
+                  <DpButton size="sm" type="submit" variant="primary">
+                    Pripremi individualni razvojni profil
+                  </DpButton>
+                </form>
+              ) : null}
               {entry.status === "queued" ? (
                 <form
                   action={processIndividualDevelopmentProfileReportFormAction.bind(null, {
@@ -128,7 +144,7 @@ export function IndividualDevelopmentProfileReportList({
                   </DpButton>
                 </form>
               ) : null}
-              {entry.status === "ready" ? (
+              {entry.status === "ready" && entry.href ? (
                 <DpButton href={entry.href} size="sm" variant="primary">
                   Otvori individualni razvojni profil
                 </DpButton>

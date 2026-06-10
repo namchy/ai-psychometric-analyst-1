@@ -17,6 +17,15 @@ type IndividualDevelopmentProfileReportListDependencies = {
   validateSnapshot?: typeof validateIndividualDevelopmentProfileSnapshot;
 };
 
+type IndividualDevelopmentProfileEligibleAssignmentRow = {
+  id: string;
+  organization_id: string;
+  participant_id: string;
+  status: "active" | "completed" | string;
+  created_at: string;
+  updated_at: string;
+};
+
 type IndividualDevelopmentProfileReportListRow = {
   id: string;
   assessment_assignment_id: string;
@@ -35,6 +44,7 @@ type IndividualDevelopmentProfileReportListRow = {
 
 export type IndividualDevelopmentProfileReportListStatus =
   | IndividualDevelopmentProfileAssessmentReportStatus
+  | "missing_eligible"
   | "invalid";
 
 export type IndividualDevelopmentProfileReportListEntry = {
@@ -43,7 +53,12 @@ export type IndividualDevelopmentProfileReportListEntry = {
   organizationId: string;
   participantId: string;
   status: IndividualDevelopmentProfileReportListStatus;
-  statusLabel: "Spremno" | "Čeka obradu" | "U obradi" | "Nije dostupno";
+  statusLabel:
+    | "Spremno"
+    | "Čeka obradu"
+    | "U obradi"
+    | "Nije dostupno"
+    | "Nije pripremljeno";
   safeStatusMessage: string;
   createdAt: string;
   updatedAt: string;
@@ -53,7 +68,7 @@ export type IndividualDevelopmentProfileReportListEntry = {
   generatedAt: string | null;
   hasInputSnapshot: boolean;
   hasReportSnapshot: boolean;
-  href: string;
+  href: string | null;
 };
 
 function isNonEmptyString(value: unknown): value is string {
@@ -62,6 +77,8 @@ function isNonEmptyString(value: unknown): value is string {
 
 function getSafeStatusMessage(status: IndividualDevelopmentProfileReportListStatus): string {
   switch (status) {
+    case "missing_eligible":
+      return "Individualni razvojni profil još nije pripremljen za ovaj procjenski ciklus.";
     case "queued":
       return "Izvještaj je u redu čekanja. Obrada još nije pokrenuta.";
     case "processing":
@@ -79,6 +96,8 @@ function getStatusLabel(
   status: IndividualDevelopmentProfileReportListStatus,
 ): IndividualDevelopmentProfileReportListEntry["statusLabel"] {
   switch (status) {
+    case "missing_eligible":
+      return "Nije pripremljeno";
     case "queued":
       return "Čeka obradu";
     case "processing":
@@ -90,6 +109,29 @@ function getStatusLabel(
     default:
       return "Spremno";
   }
+}
+
+function mapMissingEligibleEntry(
+  assignment: IndividualDevelopmentProfileEligibleAssignmentRow,
+): IndividualDevelopmentProfileReportListEntry {
+  return {
+    id: `missing-idp-${assignment.id}`,
+    assessmentAssignmentId: assignment.id,
+    organizationId: assignment.organization_id,
+    participantId: assignment.participant_id,
+    status: "missing_eligible",
+    statusLabel: getStatusLabel("missing_eligible"),
+    safeStatusMessage: getSafeStatusMessage("missing_eligible"),
+    createdAt: assignment.created_at,
+    updatedAt: assignment.updated_at,
+    queuedAt: null,
+    startedAt: null,
+    completedAt: null,
+    generatedAt: null,
+    hasInputSnapshot: false,
+    hasReportSnapshot: false,
+    href: null,
+  };
 }
 
 function buildHref(assessmentReportId: string): string {
@@ -172,7 +214,37 @@ export async function listIndividualDevelopmentProfileReportEntries(
     throw new Error(`Failed to load Individual Development Profile list rows: ${error.message}`);
   }
 
-  return ((data ?? []) as IndividualDevelopmentProfileReportListRow[]).map((row) =>
+  const entries = ((data ?? []) as IndividualDevelopmentProfileReportListRow[]).map((row) =>
     mapEntry({ row, validateSnapshot }),
   );
+
+  if (entries.length > 0) {
+    return entries;
+  }
+
+  const { data: assignmentData, error: assignmentError } = await supabase
+    .from("assessment_assignments")
+    .select("id, organization_id, participant_id, status, created_at, updated_at")
+    .eq("organization_id", input.organizationId)
+    .eq("participant_id", input.participantId)
+    .eq("assignment_type", "standard_battery")
+    .in("status", ["active", "completed"])
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (assignmentError) {
+    throw new Error(
+      `Failed to load Individual Development Profile assignment boundary: ${assignmentError.message}`,
+    );
+  }
+
+  if (!assignmentData) {
+    return [];
+  }
+
+  return [
+    mapMissingEligibleEntry(assignmentData as IndividualDevelopmentProfileEligibleAssignmentRow),
+  ];
 }
