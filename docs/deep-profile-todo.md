@@ -160,6 +160,22 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - `node scripts/test-inspect-amra-ipip-hr-artifact.cjs`
   - confirmed OpenAI dry-run za `scripts/inspect-amra-ipip-hr-openai-dry-run.cjs` sa `300000ms` timeout override-om
   - `npm run typecheck`
+- Završena je i uska offline/dev-only quality linija za IPIP HR:
+  - dodan je offline IPIP HR quality reviewer kroz `validateReportLanguageQuality(...)` sa novim `ipip_hr_report` kontekstom
+  - dodan je golden-example harness/test `scripts/test-ipip-hr-quality-reviewer.cjs`
+  - reviewer je dodatni quality signal/gate helper i ne zamjenjuje strict `validateIpipNeo120HrReportV1(...)` schema validator
+  - reviewer hvata forbidden terminologiju, candidate-facing `ti/tvoj` ton, score-summary prozu u prominentnim poljima, domain-restatement key signale, mehaničke facet liste i osnovnu latinica/bs hygiene provjeru kroz ćirilicu i očite ekavske forme
+  - nije bilo DB poziva, OpenAI poziva, report regeneracije, UI/renderer promjena, scoring/input promjena niti lifecycle/retry/regeneration promjena
+  - ovaj reviewer/golden harness je zaštitni quality sloj, ne novi report regeneration ili UI polish task
+- Testovi koji su prošli za ovu kvalitetnu liniju:
+  - `node scripts/test-ipip-hr-quality-reviewer.cjs`
+  - `node scripts/test-ipip-hr-terminology-guardrails.cjs`
+  - `node scripts/test-ipip-neo-120-hr-report.cjs`
+  - `node scripts/test-ipip-hr-prompt-request-authority.cjs`
+  - `node scripts/test-single-test-hr-prompt-authority.cjs`
+  - `node scripts/test-ai-report-bhs-language-policy.cjs`
+  - `npm run typecheck`
+  - `git diff --check`, uz postojeće CRLF upozorenje za nedirnuti SQL snippet
 
 ### Completion note — Locale-aware BHS user-facing AI language policy foundation
 
