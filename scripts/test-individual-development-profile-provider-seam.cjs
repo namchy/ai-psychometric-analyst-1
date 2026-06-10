@@ -12,6 +12,15 @@ const seamPath = path.join(
   "individual-development-profile-provider.ts",
 );
 const seamSource = fs.readFileSync(seamPath, "utf8");
+const openAiProviderSource = fs.readFileSync(
+  path.join(
+    projectRoot,
+    "lib",
+    "assessment",
+    "individual-development-profile-openai-provider.ts",
+  ),
+  "utf8",
+);
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
@@ -72,6 +81,7 @@ assert.match(seamSource, /getAiReportConfig/);
 assert.doesNotMatch(seamSource, /TEAM_FIT_REPORT_PROVIDER/i);
 assert.doesNotMatch(seamSource, /\.from\("/);
 assert.doesNotMatch(seamSource, /renderer|route|assessment_reports|attempt_reports|team_fit_reports/i);
+assert.doesNotMatch(openAiProviderSource, /temperature:\s*0\.2/);
 
 const {
   INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_TYPE,
@@ -184,6 +194,9 @@ async function main() {
   const validInput = buildInputSnapshot();
   const validResult = await generateIndividualDevelopmentProfileReport(validInput, {
     config: mockConfig,
+    loadRuntimeConfig: async () => {
+      throw new Error("Mock provider must not load OpenAI runtime config.");
+    },
   });
 
   assert.equal(validResult.ok, true, validResult.ok ? undefined : validResult.errors.join(" | "));
@@ -224,6 +237,10 @@ async function main() {
   const openAiOperations = [];
   const openAiResult = await generateIndividualDevelopmentProfileReport(validInput, {
     config: openAiConfig,
+    runtimeConfig: {
+      modelName: "gpt-5.1",
+      temperature: 0.2,
+    },
     openAiOptions: {
       now: () => "2026-06-10T12:00:00.000Z",
       client: {
@@ -292,6 +309,96 @@ async function main() {
     true,
   );
 
+  const gpt55Operations = [];
+  const gpt55Result = await generateIndividualDevelopmentProfileReport(validInput, {
+    config: {
+      ...openAiConfig,
+      model: "gpt-5.5",
+    },
+    runtimeConfig: {
+      modelName: "gpt-5.5",
+      temperature: null,
+    },
+    openAiOptions: {
+      client: {
+        async createChatCompletion(request) {
+          gpt55Operations.push(request);
+          return {
+            content: JSON.stringify(validResult.reportSnapshot),
+          };
+        },
+      },
+    },
+  });
+  assert.equal(gpt55Result.ok, true);
+  assert.equal(gpt55Operations.length, 1);
+  assert.equal(gpt55Operations[0].model, "gpt-5.5");
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(gpt55Operations[0], "temperature"),
+    false,
+  );
+
+  const numericTemperatureOperations = [];
+  const numericTemperatureResult =
+    await generateIndividualDevelopmentProfileReport(validInput, {
+      config: {
+        ...openAiConfig,
+        model: "gpt-4.1",
+      },
+      runtimeConfig: {
+        modelName: "gpt-4.1",
+        temperature: 0.35,
+      },
+      openAiOptions: {
+        client: {
+          async createChatCompletion(request) {
+            numericTemperatureOperations.push(request);
+            return {
+              content: JSON.stringify(validResult.reportSnapshot),
+            };
+          },
+        },
+      },
+    });
+  assert.equal(numericTemperatureResult.ok, true);
+  assert.equal(numericTemperatureOperations.length, 1);
+  assert.equal(numericTemperatureOperations[0].model, "gpt-4.1");
+  assert.equal(numericTemperatureOperations[0].temperature, 0.35);
+
+  const runtimeConfigLoads = [];
+  const forwardedOptions = [];
+  const runtimeConfiguredResult =
+    await generateIndividualDevelopmentProfileReport(validInput, {
+      config: openAiConfig,
+      loadRuntimeConfig: async (selector) => {
+        runtimeConfigLoads.push(selector);
+        return {
+          modelName: "gpt-5.5",
+          temperature: null,
+        };
+      },
+      generateOpenAi: async (_input, options) => {
+        forwardedOptions.push(options);
+        return {
+          ok: true,
+          reportSnapshot: validResult.reportSnapshot,
+          modelName: options.model,
+        };
+      },
+    });
+  assert.equal(runtimeConfiguredResult.ok, true);
+  assert.deepEqual(runtimeConfigLoads, [
+    {
+      reportType: "individual_development_profile",
+      audience: "hr",
+      sourceType: "assessment",
+      generatorType: "openai",
+    },
+  ]);
+  assert.equal(forwardedOptions[0].model, "gpt-5.5");
+  assert.equal(forwardedOptions[0].timeoutMs, 45000);
+  assert.equal(forwardedOptions[0].temperature, null);
+
   const directPrompt = buildIndividualDevelopmentProfileOpenAiSystemPrompt();
   assert.equal(directPrompt, systemPrompt);
   assert.match(
@@ -320,6 +427,10 @@ async function main() {
       config: {
         ...openAiConfig,
         openAiApiKey: null,
+      },
+      runtimeConfig: {
+        modelName: "gpt-5.1",
+        temperature: 0.2,
       },
     },
   );

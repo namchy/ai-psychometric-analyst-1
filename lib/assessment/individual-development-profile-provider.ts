@@ -11,6 +11,10 @@ import {
   generateIndividualDevelopmentProfileWithMock,
 } from "@/lib/assessment/individual-development-profile-mock-provider";
 import { getAiReportConfig, type AiReportConfig } from "@/lib/assessment/report-config";
+import {
+  getActiveReportRuntimeConfig,
+  type ActiveReportRuntimeConfig,
+} from "@/lib/assessment/report-runtime-config";
 
 export { INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI };
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK = "mock" as const;
@@ -49,6 +53,11 @@ type IndividualDevelopmentProfileProviderDependencies = {
   config?: IndividualDevelopmentProfileProviderConfig;
   generateMock?: typeof generateIndividualDevelopmentProfileWithMock;
   generateOpenAi?: typeof generateIndividualDevelopmentProfileWithOpenAi;
+  loadRuntimeConfig?: typeof getActiveReportRuntimeConfig;
+  runtimeConfig?: Pick<
+    ActiveReportRuntimeConfig,
+    "modelName" | "temperature"
+  > | null;
   openAiOptions?: Pick<
     IndividualDevelopmentProfileOpenAiProviderOptions,
     "client" | "fetchImpl" | "now"
@@ -62,12 +71,39 @@ export async function generateIndividualDevelopmentProfileReport(
   const config = deps.config ?? getAiReportConfig();
 
   if (config.provider === INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI) {
+    let runtimeConfig = deps.runtimeConfig;
+
+    if (runtimeConfig === undefined) {
+      try {
+        runtimeConfig = await (
+          deps.loadRuntimeConfig ?? getActiveReportRuntimeConfig
+        )({
+          reportType: "individual_development_profile",
+          audience: "hr",
+          sourceType: "assessment",
+          generatorType: "openai",
+        });
+      } catch (error) {
+        return {
+          ok: false,
+          provider: INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI,
+          reason: "provider_failed",
+          errors: [
+            error instanceof Error
+              ? error.message
+              : "Failed to load IDP OpenAI runtime config.",
+          ],
+        };
+      }
+    }
+
     const result = await (
       deps.generateOpenAi ?? generateIndividualDevelopmentProfileWithOpenAi
     )(inputSnapshot, {
       apiKey: config.openAiApiKey,
-      model: config.model,
+      model: runtimeConfig?.modelName ?? config.model,
       timeoutMs: config.openAiTimeoutMs,
+      temperature: runtimeConfig?.temperature ?? null,
       ...deps.openAiOptions,
     });
 

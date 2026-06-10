@@ -20,7 +20,7 @@ export const INDIVIDUAL_DEVELOPMENT_PROFILE_OPENAI_GENERATOR_VERSION =
 
 type IndividualDevelopmentProfileOpenAiRequest = {
   model: string;
-  temperature: number;
+  temperature?: number;
   response_format: {
     type: "json_schema";
     json_schema: {
@@ -45,6 +45,7 @@ export type IndividualDevelopmentProfileOpenAiProviderOptions = {
   apiKey: string | null;
   model: string | null;
   timeoutMs?: number;
+  temperature?: number | null;
   fetchImpl?: typeof fetch;
   client?: IndividualDevelopmentProfileOpenAiClient;
   now?: () => string;
@@ -449,9 +450,8 @@ export async function generateIndividualDevelopmentProfileWithOpenAi(
   let rawContent: string;
 
   try {
-    const response = await client.createChatCompletion({
+    const request: IndividualDevelopmentProfileOpenAiRequest = {
       model: options.model,
-      temperature: 0.2,
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -470,7 +470,13 @@ export async function generateIndividualDevelopmentProfileWithOpenAi(
           content: buildIndividualDevelopmentProfileOpenAiUserPrompt(inputSnapshot),
         },
       ],
-    });
+    };
+
+    if (typeof options.temperature === "number") {
+      request.temperature = options.temperature;
+    }
+
+    const response = await client.createChatCompletion(request);
     rawContent = response.content;
   } catch (error) {
     return {
