@@ -91,7 +91,7 @@ assert.doesNotMatch(helperSource, /attempt_reports|team_fit_reports|team_assessm
 assert.doesNotMatch(helperSource, /failure_reason|error_message/);
 
 assert.match(componentSource, /Individualni razvojni profili/);
-assert.match(componentSource, /queueIndividualDevelopmentProfileReportFormAction/);
+assert.match(componentSource, /prepareIndividualDevelopmentProfileReportFormAction/);
 assert.match(componentSource, /Otvori individualni razvojni profil/);
 assert.match(componentSource, /čeka obradu/i);
 assert.match(componentSource, /u obradi/i);
@@ -259,6 +259,20 @@ require.cache[idpActionStubPath] = {
       participantId: "participant-1",
     }),
     processIndividualDevelopmentProfileReportFormAction: async () => ({
+      ok: true,
+      status: "processed",
+      message: "ok",
+      reportId: "idp-ready",
+      participantId: "participant-1",
+    }),
+    prepareIndividualDevelopmentProfileReportAction: async () => ({
+      ok: true,
+      status: "processed",
+      message: "ok",
+      reportId: "idp-ready",
+      participantId: "participant-1",
+    }),
+    prepareIndividualDevelopmentProfileReportFormAction: async () => ({
       ok: true,
       status: "processed",
       message: "ok",

@@ -133,6 +133,15 @@ type IndividualDevelopmentProfileQueueActionDependencies = {
   revalidate?: typeof revalidatePath;
 };
 
+type IndividualDevelopmentProfilePrepareActionDependencies =
+  IndividualDevelopmentProfileQueueActionDependencies & {
+    processReport?: typeof processIndividualDevelopmentProfileAssessmentReport;
+  };
+
+export type IndividualDevelopmentProfilePrepareActionResult =
+  | IndividualDevelopmentProfileProcessActionResult
+  | IndividualDevelopmentProfileQueueActionResult;
+
 type IndividualDevelopmentProfileResetActionInput = {
   assessmentReportId: string;
   participantId?: string | null;
@@ -367,6 +376,153 @@ export async function queueIndividualDevelopmentProfileReportAction(
       ok: false,
       status: "error",
       message: "Individualni razvojni profil nije moguće dodati u red za pripremu.",
+      reportId: null,
+      participantId: input.participantId ?? null,
+    };
+  }
+}
+
+export async function prepareIndividualDevelopmentProfileReportAction(
+  input: IndividualDevelopmentProfileQueueActionInput,
+  deps: IndividualDevelopmentProfilePrepareActionDependencies = {},
+): Promise<IndividualDevelopmentProfilePrepareActionResult> {
+  if (!isNonEmptyString(input.assessmentAssignmentId)) {
+    return {
+      ok: false,
+      status: "error",
+      message: "Individualni razvojni profil nije moguće pripremiti bez procjenskog ciklusa.",
+      reportId: null,
+      participantId: input.participantId ?? null,
+      lifecycleReason: "invalid_payload",
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization =
+    deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const queueReport = deps.queueReport ?? queueIndividualDevelopmentProfileAssessmentReport;
+  const processReport =
+    deps.processReport ?? processIndividualDevelopmentProfileAssessmentReport;
+  const revalidate = deps.revalidate ?? revalidatePath;
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+
+    if (!organization) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Individualni razvojni profil nije dostupan u aktivnom HR kontekstu.",
+        reportId: null,
+        participantId: input.participantId ?? null,
+      };
+    }
+
+    const queueResult = await queueReport({
+      assessmentAssignmentId: input.assessmentAssignmentId,
+      organizationId: organization.id,
+      participantId: input.participantId ?? undefined,
+      requestedByUserId: user.id,
+    });
+
+    if (!queueResult.ok) {
+      return {
+        ok: false,
+        status: queueResult.reason === "assignment_not_found" ? "unauthorized" : "error",
+        message: "Individualni razvojni profil nije moguće pripremiti.",
+        reportId: null,
+        participantId: input.participantId ?? null,
+        lifecycleReason: queueResult.reason,
+      };
+    }
+
+    const report = queueResult.report;
+
+    if (!report) {
+      return {
+        ok: false,
+        status: "error",
+        message: "Individualni razvojni profil nije moguće pripremiti.",
+        reportId: null,
+        participantId: input.participantId ?? queueResult.assignment.participant_id,
+        lifecycleReason: "report_insert_failed",
+      };
+    }
+
+    if (queueResult.action === "noop_processing") {
+      return {
+        ok: false,
+        status: "already_processing",
+        message: "Priprema Individualnog razvojnog profila je već u toku.",
+        reportId: report.id,
+        participantId: report.participant_id,
+      };
+    }
+
+    if (queueResult.action === "noop_ready") {
+      revalidateIndividualDevelopmentProfilePaths({
+        participantId: report.participant_id,
+        assessmentReportId: report.id,
+        revalidate,
+      });
+
+      return {
+        ok: false,
+        status: "already_ready",
+        message: "Individualni razvojni profil je već spreman za pregled.",
+        reportId: report.id,
+        participantId: report.participant_id,
+      };
+    }
+
+    if (queueResult.action === "noop_failed") {
+      return {
+        ok: false,
+        status: "failed_not_processable",
+        message:
+          "Neuspješan Individualni razvojni profil se u ovom slice-u ne može ponovo pripremiti.",
+        reportId: report.id,
+        participantId: report.participant_id,
+      };
+    }
+
+    return processIndividualDevelopmentProfileReportAction(
+      {
+        assessmentReportId: report.id,
+        participantId: report.participant_id,
+      },
+      {
+        requireUser: async () => user,
+        getActiveOrganization: async () => organization,
+        loadReportContext: async () => ({
+          id: report.id,
+          organizationId: report.organization_id,
+          participantId: report.participant_id,
+          reportType: report.report_type,
+          audience: report.audience,
+          sourceType: report.source_type,
+          reportStatus: report.report_status,
+        }),
+        processReport,
+        revalidate,
+      },
+    );
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return {
+        ok: false,
+        status: "unauthorized",
+        message: "Authentication required.",
+        reportId: null,
+        participantId: input.participantId ?? null,
+      };
+    }
+
+    return {
+      ok: false,
+      status: "error",
+      message: "Individualni razvojni profil nije moguće pripremiti.",
       reportId: null,
       participantId: input.participantId ?? null,
     };
@@ -815,6 +971,13 @@ export async function queueIndividualDevelopmentProfileReportFormAction(
   _formData: FormData,
 ): Promise<void> {
   await queueIndividualDevelopmentProfileReportAction(input);
+}
+
+export async function prepareIndividualDevelopmentProfileReportFormAction(
+  input: IndividualDevelopmentProfileQueueActionInput,
+  _formData: FormData,
+): Promise<void> {
+  await prepareIndividualDevelopmentProfileReportAction(input);
 }
 
 export async function resetIndividualDevelopmentProfileReportFormAction(

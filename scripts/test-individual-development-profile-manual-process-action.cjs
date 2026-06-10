@@ -16,6 +16,7 @@ const actionSource = fs.readFileSync(actionPath, "utf8");
 
 assert.match(actionSource, /export async function processIndividualDevelopmentProfileReportAction/);
 assert.match(actionSource, /export async function queueIndividualDevelopmentProfileReportAction/);
+assert.match(actionSource, /export async function prepareIndividualDevelopmentProfileReportAction/);
 assert.match(actionSource, /processIndividualDevelopmentProfileAssessmentReport/);
 assert.match(actionSource, /queueIndividualDevelopmentProfileAssessmentReport/);
 assert.match(actionSource, /INDIVIDUAL_DEVELOPMENT_PROFILE_ASSESSMENT_REPORT_TYPE/);
@@ -204,6 +205,7 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 };
 
 const {
+  prepareIndividualDevelopmentProfileReportAction,
   processIndividualDevelopmentProfileReportAction,
   queueIndividualDevelopmentProfileReportAction,
 } = require(actionPath);
@@ -278,6 +280,201 @@ function createHarness(overrides = {}) {
 }
 
 async function main() {
+  {
+    const harness = createHarness();
+    const result = await prepareIndividualDevelopmentProfileReportAction(
+      {
+        assessmentAssignmentId: "assignment-1",
+        participantId: "participant-1",
+      },
+      harness.deps,
+    );
+
+    assert.deepEqual(result, {
+      ok: true,
+      status: "processed",
+      message: "Individualni razvojni profil je pripremljen i spreman za pregled.",
+      reportId: "idp-queued",
+      participantId: "participant-1",
+    });
+    assert.deepEqual(harness.queueCalls, [
+      {
+        assessmentAssignmentId: "assignment-1",
+        organizationId: "org-1",
+        participantId: "participant-1",
+        requestedByUserId: "user-1",
+      },
+    ]);
+    assert.deepEqual(harness.processCalls, [
+      {
+        assessmentReportId: "idp-queued",
+        organizationId: "org-1",
+        participantId: "participant-1",
+      },
+    ]);
+    assert.deepEqual(harness.revalidateCalls, [
+      "/dashboard/participants/participant-1/reports",
+      "/dashboard/individual-development-profile-reports/idp-queued",
+    ]);
+  }
+
+  {
+    const harness = createHarness({
+      queueReport: async (input) => {
+        harness.queueCalls.push(input);
+        return {
+          ok: true,
+          action: "noop_queued",
+          assignment: {
+            id: input.assessmentAssignmentId,
+            organization_id: input.organizationId,
+            participant_id: "participant-1",
+            assignment_type: "standard_battery",
+            status: "completed",
+          },
+          report: {
+            id: "idp-existing-queued",
+            assessment_assignment_id: input.assessmentAssignmentId,
+            organization_id: input.organizationId,
+            participant_id: "participant-1",
+            report_type: "individual_development_profile",
+            audience: "hr",
+            source_type: "assessment",
+            report_status: "queued",
+          },
+        };
+      },
+    });
+    const result = await prepareIndividualDevelopmentProfileReportAction(
+      {
+        assessmentAssignmentId: "assignment-1",
+        participantId: "participant-1",
+      },
+      harness.deps,
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.status, "processed");
+    assert.equal(result.reportId, "idp-existing-queued");
+    assert.deepEqual(harness.processCalls, [
+      {
+        assessmentReportId: "idp-existing-queued",
+        organizationId: "org-1",
+        participantId: "participant-1",
+      },
+    ]);
+  }
+
+  {
+    const harness = createHarness({
+      queueReport: async (input) => {
+        harness.queueCalls.push(input);
+        return {
+          ok: true,
+          action: "noop_ready",
+          assignment: {
+            id: input.assessmentAssignmentId,
+            organization_id: input.organizationId,
+            participant_id: "participant-1",
+            assignment_type: "standard_battery",
+            status: "completed",
+          },
+          report: {
+            id: "idp-ready",
+            assessment_assignment_id: input.assessmentAssignmentId,
+            organization_id: input.organizationId,
+            participant_id: "participant-1",
+            report_type: "individual_development_profile",
+            audience: "hr",
+            source_type: "assessment",
+            report_status: "ready",
+          },
+        };
+      },
+    });
+    const result = await prepareIndividualDevelopmentProfileReportAction(
+      {
+        assessmentAssignmentId: "assignment-1",
+        participantId: "participant-1",
+      },
+      harness.deps,
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "already_ready");
+    assert.equal(result.reportId, "idp-ready");
+    assert.deepEqual(harness.processCalls, []);
+    assert.deepEqual(harness.revalidateCalls, [
+      "/dashboard/participants/participant-1/reports",
+      "/dashboard/individual-development-profile-reports/idp-ready",
+    ]);
+  }
+
+  {
+    const harness = createHarness({
+      queueReport: async (input) => {
+        harness.queueCalls.push(input);
+        return {
+          ok: true,
+          action: "noop_processing",
+          assignment: {
+            id: input.assessmentAssignmentId,
+            organization_id: input.organizationId,
+            participant_id: "participant-1",
+            assignment_type: "standard_battery",
+            status: "completed",
+          },
+          report: {
+            id: "idp-processing",
+            assessment_assignment_id: input.assessmentAssignmentId,
+            organization_id: input.organizationId,
+            participant_id: "participant-1",
+            report_type: "individual_development_profile",
+            audience: "hr",
+            source_type: "assessment",
+            report_status: "processing",
+          },
+        };
+      },
+    });
+    const result = await prepareIndividualDevelopmentProfileReportAction(
+      {
+        assessmentAssignmentId: "assignment-1",
+        participantId: "participant-1",
+      },
+      harness.deps,
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "already_processing");
+    assert.equal(result.reportId, "idp-processing");
+    assert.deepEqual(harness.processCalls, []);
+    assert.deepEqual(harness.revalidateCalls, []);
+  }
+
+  {
+    const harness = createHarness({
+      queueReport: async () => ({
+        ok: false,
+        reason: "assignment_not_found",
+        details: "Assignment not found.",
+      }),
+    });
+    const result = await prepareIndividualDevelopmentProfileReportAction(
+      {
+        assessmentAssignmentId: "assignment-missing",
+        participantId: "participant-1",
+      },
+      harness.deps,
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "unauthorized");
+    assert.equal(result.lifecycleReason, "assignment_not_found");
+    assert.deepEqual(harness.processCalls, []);
+    assert.deepEqual(harness.revalidateCalls, []);
+  }
+
   {
     const harness = createHarness();
     const result = await queueIndividualDevelopmentProfileReportAction(

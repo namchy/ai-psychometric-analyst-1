@@ -1,6 +1,6 @@
 import {
+  prepareIndividualDevelopmentProfileReportFormAction,
   processIndividualDevelopmentProfileReportFormAction,
-  queueIndividualDevelopmentProfileReportFormAction,
   resetIndividualDevelopmentProfileReportFormAction,
 } from "@/app/actions/individual-development-profile";
 import {
@@ -122,7 +122,7 @@ export function IndividualDevelopmentProfileReportList({
             <div className="mt-auto pt-5">
               {entry.status === "missing_eligible" ? (
                 <form
-                  action={queueIndividualDevelopmentProfileReportFormAction.bind(null, {
+                  action={prepareIndividualDevelopmentProfileReportFormAction.bind(null, {
                     assessmentAssignmentId: entry.assessmentAssignmentId,
                     participantId: entry.participantId,
                   })}
