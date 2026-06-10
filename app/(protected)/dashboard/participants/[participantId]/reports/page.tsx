@@ -307,12 +307,14 @@ export default async function CandidateReportsPage({
                   </DpStatusBadge>
                 </div>
 
-                <p
-                  className="rounded-[1rem] border border-[rgba(17,138,178,0.12)] bg-[rgba(17,138,178,0.045)] px-4 py-3.5 text-sm leading-6 text-slate-700"
-                  data-ui="report-state-message"
-                >
-                  {card.body}
-                </p>
+                {card.state !== "ready" || card.body !== card.subtitle ? (
+                  <p
+                    className="rounded-[1rem] border border-[rgba(17,138,178,0.12)] bg-[rgba(17,138,178,0.045)] px-4 py-3.5 text-sm leading-6 text-slate-700"
+                    data-ui="report-state-message"
+                  >
+                    {card.body}
+                  </p>
+                ) : null}
 
                 <DpMetaGrid className="border-t border-slate-200/80 pt-4" columns={2}>
                   <DpMetaItem

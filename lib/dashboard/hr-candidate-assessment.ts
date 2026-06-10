@@ -161,7 +161,7 @@ export type HrCandidateAssessmentCard = {
   report: HrCandidateAttemptReportSummary | null;
   cta:
     | {
-        label: "Otvori HR izvještaj";
+        label: "Otvori izvještaj";
         href: string;
         disabled: false;
       }
@@ -411,11 +411,12 @@ export function resolveHrReportCardState(input: {
   attempt: HrCandidateAssessmentAttempt | null;
   report: HrCandidateAttemptReportSummary | null;
   readyHref: string | null;
+  readyBody: string;
 }): Pick<
   HrCandidateAssessmentCard,
   "state" | "statusLabel" | "body" | "visualVariant" | "cta"
 > {
-  const { attempt, report, readyHref } = input;
+  const { attempt, report, readyHref, readyBody } = input;
 
   if (!attempt) {
     return {
@@ -450,10 +451,10 @@ export function resolveHrReportCardState(input: {
       return {
         state: "ready",
         statusLabel: "Dostupno",
-        body: "HR izvještaj je spreman za pregled.",
+        body: readyBody,
         visualVariant: "success",
         cta: {
-          label: "Otvori HR izvještaj",
+          label: "Otvori izvještaj",
           href: readyHref,
           disabled: false,
         },
@@ -625,6 +626,7 @@ export function buildHrCandidateReportCards(input: {
       attempt,
       report,
       readyHref: attempt ? `/dashboard/attempts/${attempt.id}` : null,
+      readyBody: test.subtitle,
     });
 
     if (attempt) {

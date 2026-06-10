@@ -16,6 +16,10 @@ const teamFitReportListSource = fs.readFileSync(
   path.join(projectRoot, "components/dashboard/team-fit-report-list.tsx"),
   "utf8",
 );
+const hrCandidateAssessmentSource = fs.readFileSync(
+  path.join(projectRoot, "lib/dashboard/hr-candidate-assessment.ts"),
+  "utf8",
+);
 const individualDevelopmentProfileReportListSource = fs.readFileSync(
   path.join(
     projectRoot,
@@ -221,6 +225,66 @@ assert.equal(
   candidateReportsPageSource.includes("formatHrLifecycleStatus(card.attempt?.lifecycle)"),
   true,
   "Expected HR participant detail page to map raw lifecycle values to HR-facing labels.",
+);
+assert.equal(
+  hrCandidateAssessmentSource.includes('label: "Otvori HR izvještaj"'),
+  false,
+  "Expected ready individual report CTA copy to stop repeating the HR context.",
+);
+assert.equal(
+  hrCandidateAssessmentSource.includes('label: "Otvori izvještaj"'),
+  true,
+  "Expected ready individual report CTA copy to use the shorter open-report label.",
+);
+assert.equal(
+  hrCandidateAssessmentSource.includes('body: "HR izvještaj je spreman za pregled."'),
+  false,
+  "Expected ready individual report body copy to stop repeating the ready-state message.",
+);
+assert.equal(
+  hrCandidateAssessmentSource.includes("body: readyBody"),
+  true,
+  "Expected ready individual report body copy to come from the existing test description.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('card.state !== "ready" || card.body !== card.subtitle'),
+  true,
+  "Expected ready individual cards to skip the state-message strip when it would duplicate the subtitle.",
+);
+for (const readyBody of [
+  "Radni obrasci i ponašanje",
+  "Kognitivni signali",
+  "Motivacijski profil",
+]) {
+  assert.equal(
+    hrCandidateAssessmentSource.includes(`subtitle: "${readyBody}"`),
+    true,
+    `Expected the ${readyBody} test description to remain available for ready individual cards.`,
+  );
+}
+assert.equal(
+  hrCandidateAssessmentSource.includes('statusLabel: "Dostupno"'),
+  true,
+  "Expected the available status label to remain unchanged for ready individual cards.",
+);
+assert.equal(
+  hrCandidateAssessmentSource.includes(
+    'body: "HR izvještaj je poslan na generisanje i čeka obradu."',
+  ),
+  true,
+  "Expected queued individual cards to keep their explanatory body copy.",
+);
+assert.equal(
+  hrCandidateAssessmentSource.includes('body: "HR izvještaj se trenutno priprema."'),
+  true,
+  "Expected processing individual cards to keep their explanatory body copy.",
+);
+assert.equal(
+  hrCandidateAssessmentSource.includes(
+    'body: "Rezultati su sačuvani, ali HR izvještaj nije uspješno generisan."',
+  ),
+  true,
+  "Expected failed individual cards to keep their explanatory body copy.",
 );
 assert.equal(
   individualDevelopmentProfileReportListSource.includes(
