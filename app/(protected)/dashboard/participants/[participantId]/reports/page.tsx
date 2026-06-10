@@ -286,49 +286,56 @@ export default async function CandidateReportsPage({
           {model.cards.map((card) => (
             <article
               key={card.slug}
-              className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]"
+              className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6"
               data-report-status={card.state}
               data-report-type={getIndividualReportType(card.slug)}
               data-ui="report-card"
             >
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+              <div className="flex-1 space-y-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="text-[1.05rem] font-semibold leading-6 tracking-[-0.02em] text-[#073b4c]">
                       {card.title}
                     </h3>
-                    <p className="mt-1 text-sm text-slate-600">{card.subtitle}</p>
+                    <p className="mt-1.5 text-sm leading-5 text-slate-600">{card.subtitle}</p>
                   </div>
-                  <DpStatusBadge tone={getCardStatusTone(card.visualVariant)}>
+                  <DpStatusBadge
+                    className="shrink-0 self-start"
+                    tone={getCardStatusTone(card.visualVariant)}
+                  >
                     {card.statusLabel}
                   </DpStatusBadge>
                 </div>
 
                 <p
-                  className="min-h-[3rem] text-sm leading-6 text-slate-600"
+                  className="rounded-[1rem] border border-[rgba(17,138,178,0.12)] bg-[rgba(17,138,178,0.045)] px-4 py-3.5 text-sm leading-6 text-slate-700"
                   data-ui="report-state-message"
                 >
                   {card.body}
                 </p>
 
-                <DpMetaGrid columns={2}>
+                <DpMetaGrid className="border-t border-slate-200/80 pt-4" columns={2}>
                   <DpMetaItem
+                    className="border-0 bg-transparent px-0 py-0 shadow-none"
                     label="Status procjene"
                     value={formatHrLifecycleStatus(card.attempt?.lifecycle)}
                   />
                   <DpMetaItem
+                    className="border-0 bg-transparent px-0 py-0 shadow-none"
                     label="Završeno"
                     value={formatHrDateTime(card.attempt?.completed_at)}
                   />
                 </DpMetaGrid>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-auto pt-5">
                 <div className="flex flex-wrap gap-3">
                   {card.cta.disabled && card.cta.label !== "Nije dostupno" ? (
-                    <DpButton disabled>{card.cta.label}</DpButton>
+                    <DpButton disabled size="sm">
+                      {card.cta.label}
+                    </DpButton>
                   ) : !card.cta.disabled ? (
-                    <DpButton href={card.cta.href} variant="primary">
+                    <DpButton href={card.cta.href} size="sm" variant="primary">
                       {card.cta.label}
                     </DpButton>
                   ) : null}
@@ -343,7 +350,7 @@ export default async function CandidateReportsPage({
                         type="hidden"
                         value={`/dashboard/participants/${participant.id}/reports`}
                       />
-                      <DpButton type="submit" variant="secondary">
+                      <DpButton size="sm" type="submit" variant="secondary">
                         {card.action.label}
                       </DpButton>
                     </form>
@@ -408,17 +415,20 @@ export default async function CandidateReportsPage({
         ) : null}
 
         <div className="flex flex-col gap-[18px] min-[900px]:contents">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+          <div className="space-y-3">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <h3 className="text-[1.05rem] font-semibold leading-6 tracking-[-0.02em] text-[#073b4c]">
                 {model.compositeCard.title}
               </h3>
-              <DpStatusBadge tone={getCardStatusTone(model.compositeCard.visualVariant)}>
+              <DpStatusBadge
+                className="shrink-0"
+                tone={getCardStatusTone(model.compositeCard.visualVariant)}
+              >
                 {model.compositeCard.statusLabel}
               </DpStatusBadge>
             </div>
             <p
-              className="mt-2 max-w-[520px] text-sm leading-6 text-slate-600"
+              className="max-w-[560px] rounded-[1rem] border border-[rgba(7,59,76,0.1)] bg-[rgba(7,59,76,0.035)] px-4 py-3.5 text-sm leading-6 text-slate-700"
               data-ui="report-state-message"
             >
               {model.compositeCard.body}

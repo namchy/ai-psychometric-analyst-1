@@ -430,7 +430,9 @@ assert.equal(
   "Expected HR participant detail page to route CTAs through the shared DP button primitive.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("disabled>{card.cta.label}</DpButton>"),
+  /<DpButton[^>]*disabled[^>]*>\s*\{card\.cta\.label\}\s*<\/DpButton>/.test(
+    candidateReportsPageSource,
+  ),
   true,
   "Expected HR participant detail page to use the shared disabled DP button treatment.",
 );

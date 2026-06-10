@@ -54,40 +54,51 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
           {entries.map((entry) => (
             <article
               key={entry.id}
-              className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]"
+              className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6"
               data-report-status={entry.status}
               data-report-type="team-fit"
               data-ui="report-card"
             >
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">
+              <div className="flex-1 space-y-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="text-[1.05rem] font-semibold leading-6 tracking-[-0.02em] text-[#073b4c]">
                       Team Fit izvještaj
                     </h3>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1.5 text-sm leading-5 text-slate-600">
                       {entry.teamName ?? "Tim nije dostupan"}
                     </p>
                   </div>
-                  <DpStatusBadge tone={getStatusTone(entry.status)}>
+                  <DpStatusBadge
+                    className="shrink-0 self-start"
+                    tone={getStatusTone(entry.status)}
+                  >
                     {entry.statusLabel}
                   </DpStatusBadge>
                 </div>
 
                 <p
-                  className="min-h-[3rem] text-sm leading-6 text-slate-600"
+                  className="rounded-[1rem] border border-[rgba(17,138,178,0.12)] bg-[rgba(17,138,178,0.045)] px-4 py-3.5 text-sm leading-6 text-slate-700"
                   data-ui="report-state-message"
                 >
                   {entry.safeStatusMessage}
                 </p>
 
-                <DpMetaGrid columns={2}>
-                  <DpMetaItem label="Kreirano" value={formatHrDateTime(entry.createdAt)} />
-                  <DpMetaItem label="Zadnja promjena" value={formatHrDateTime(entry.updatedAt)} />
+                <DpMetaGrid className="border-t border-slate-200/80 pt-4" columns={2}>
+                  <DpMetaItem
+                    className="border-0 bg-transparent px-0 py-0 shadow-none"
+                    label="Kreirano"
+                    value={formatHrDateTime(entry.createdAt)}
+                  />
+                  <DpMetaItem
+                    className="border-0 bg-transparent px-0 py-0 shadow-none"
+                    label="Zadnja promjena"
+                    value={formatHrDateTime(entry.updatedAt)}
+                  />
                 </DpMetaGrid>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-auto pt-5">
                 {entry.status === "queued" ? (
                   <TeamFitReportProcessAction
                     teamFitReportId={entry.id}
