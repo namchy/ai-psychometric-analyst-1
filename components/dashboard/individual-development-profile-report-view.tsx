@@ -171,7 +171,7 @@ function RiskCard({
   return (
     <DashboardInfoCardShell className="h-full rounded-[1.3rem] border-[rgba(239,71,111,0.16)] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,71,111,0.05))] p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#ef476f]">
-        Šta može blokirati razvoj
+        Razvojni rizik
       </p>
       <div className="mt-4 space-y-3">
         <InfoPanel label="Mogući blokator">{item.possibleBlocker}</InfoPanel>

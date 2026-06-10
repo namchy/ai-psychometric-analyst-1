@@ -36,6 +36,7 @@ assert.match(viewSource, /Individualni razvojni profil/);
 assert.match(viewSource, /Razvojni sažetak/);
 assert.match(viewSource, /Kako osoba može najbolje doprinijeti/);
 assert.match(viewSource, /Šta može blokirati razvoj/);
+assert.match(viewSource, /Razvojni rizik/);
 assert.match(viewSource, /Komunikacija i feedback/);
 assert.match(viewSource, /Motivacija i energija/);
 assert.match(viewSource, /1:1 razgovori/);
@@ -308,6 +309,12 @@ function main() {
   assert.match(htmlFromSnapshot, /Razvojni sažetak/);
   assert.match(htmlFromSnapshot, /Kako osoba može najbolje doprinijeti/);
   assert.match(htmlFromSnapshot, /Šta može blokirati razvoj/);
+  assert.match(htmlFromSnapshot, /Razvojni rizik/);
+  assert.equal(
+    countOccurrences(htmlFromSnapshot, "Šta može blokirati razvoj"),
+    1,
+    "risk section title must not be duplicated as the card eyebrow",
+  );
   assert.match(htmlFromSnapshot, /Komunikacija i feedback/);
   assert.match(htmlFromSnapshot, /Motivacija i energija/);
   assert.match(htmlFromSnapshot, /1:1 razgovori/);

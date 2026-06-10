@@ -107,6 +107,18 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function assertNoInternalUserFacingTerms(value, label) {
+  const outputText = collectStrings(value).join(" ");
+
+  assert.equal(
+    /HR-facing|reduced|AI narativ|AI-generated|numeric|ugodnost|full upstream snapshot|raw answers|raw item|scoring key|team fit|team dynamics|fit score|match score|no-hire|top candidate|ranked candidates/i.test(
+      outputText,
+    ),
+    false,
+    `${label} should not expose internal/source terms.`,
+  );
+}
+
 function buildInputSnapshot(overrides = {}) {
   return {
     inputType: INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_TYPE,
@@ -229,6 +241,7 @@ function main() {
     INDIVIDUAL_DEVELOPMENT_PROFILE_MOCK_GENERATOR_VERSION,
   );
   assert.equal(report.metadata.inputVersion, validInput.inputVersion);
+  assertNoInternalUserFacingTerms(report, "valid mock output");
 
   const mixedInput = buildInputSnapshot({
     sourceSignals: {
@@ -279,12 +292,7 @@ function main() {
   );
 
   const outputText = collectStrings(mixedResult.reportSnapshot).join(" ");
-  assert.equal(
-    /hire|no-hire|fit score|match score|diagnos|clinical|disorder|top candidate|ranked candidates|team fit|team dynamics|raw answers|raw item|scoring key|full upstream snapshot/i.test(
-      outputText,
-    ),
-    false,
-  );
+  assertNoInternalUserFacingTerms(mixedResult.reportSnapshot, "mixed-status mock output");
   assert.match(outputText, /7\s*\/\s*30\s*\/\s*60\s*\/\s*90|prvoj sedmici|prvih 30 dana/i);
   assert.equal(/assessment_reports|attempt_reports/i.test(providerSource), false);
 

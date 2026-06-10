@@ -40,6 +40,22 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function sanitizeUserFacingInputFragment(value: string): string {
+  return value
+    .replace(/\bHR-facing\b/gi, "razvojni HR")
+    .replace(/\breduced\b/gi, "sažeti")
+    .replace(/\bAI narativ\b/gi, "razvojna interpretacija")
+    .replace(/\bAI-generated\b/gi, "generisana")
+    .replace(/\bnumeric\b/gi, "brojčani")
+    .replace(/\braw answers\b/gi, "sirovi odgovori")
+    .replace(/\braw item\b/gi, "sirova stavka")
+    .replace(/\bscoring key\b/gi, "ključ bodovanja")
+    .replace(/\bfull upstream\b/gi, "puni prethodni")
+    .replace(/\bsnapshot(?:ove|a|u|om)?\b/gi, "pregled")
+    .replace(/\bsource-a\b/gi, "izvora")
+    .replace(/\bsource\b/gi, "izvor");
+}
+
 function getStatusLabel(status: IndividualDevelopmentProfileInputSourceStatus): string {
   switch (status) {
     case "available":
@@ -67,7 +83,13 @@ function getLeadingSignals(
   source: IndividualDevelopmentProfileInputSourceBlock,
   count: number,
 ): Array<IndividualDevelopmentProfileInputSignal | { code: string; label: string; signal: string }> {
-  return getSignalEntries(source).filter((entry) => isNonEmptyString(entry.signal)).slice(0, count);
+  return getSignalEntries(source)
+    .filter((entry) => isNonEmptyString(entry.signal))
+    .slice(0, count)
+    .map((entry) => ({
+      ...entry,
+      signal: sanitizeUserFacingInputFragment(entry.signal),
+    }));
 }
 
 function buildSourceStatusLimit(
@@ -79,14 +101,14 @@ function buildSourceStatusLimit(
   }
 
   if (status === "partial") {
-    return `${sourceName} signal je djelimično dostupan i traži dodatnu provjeru prije praktičnih razvojnih zaključaka.`;
+    return `${sourceName} nalaz je djelimično dostupan i traži dodatnu provjeru prije praktičnih razvojnih zaključaka.`;
   }
 
   if (status === "invalid") {
-    return `${sourceName} signal trenutno nije dovoljno pouzdan za čvršće razvojne zaključke i treba ga tretirati kao ograničenje inputa.`;
+    return `${sourceName} nalaz trenutno nije dovoljno pouzdan za čvršće razvojne zaključke i treba ga tretirati kao ograničenje inputa.`;
   }
 
-  return `${sourceName} signal trenutno nije dostupan, pa se preporuke u toj zoni moraju potvrditi kroz razgovor i radni kontekst.`;
+  return `${sourceName} nalaz trenutno nije dostupan, pa se preporuke u toj zoni moraju potvrditi kroz razgovor i radni kontekst.`;
 }
 
 function buildSummaryHeadline(input: IndividualDevelopmentProfileInputSnapshot): string {
@@ -116,7 +138,7 @@ function buildOverallPattern(input: IndividualDevelopmentProfileInputSnapshot): 
   ];
 
   if (strongestSignals.length > 0) {
-    return `Najkorisniji razvojni tragovi trenutno dolaze iz ovih reduced signala: ${strongestSignals.join(
+    return `Najkorisniji razvojni tragovi trenutno dolaze iz ovih sažetih nalaza: ${strongestSignals.join(
       " ",
     )}`;
   }
@@ -198,8 +220,8 @@ function buildContributionPattern(input: IndividualDevelopmentProfileInputSnapsh
     roleShapingImplications: [
       "HR i menadžer treba da provjere koliko osobi pomažu jasan okvir, pregled očekivanja i rani radni primjeri prije širenja odgovornosti.",
       input.sourceSignals.composite.sourceStatus === "available"
-        ? "Reduced kompozitni signal je dostupan i može pomoći u planiranju razvoja bez oslanjanja na AI narativ."
-        : "Kako reduced kompozitni signal nije potpuno dostupan, implikacije za oblikovanje uloge treba držati užim i više validirati kroz praksu.",
+        ? "Sažeti integrisani nalaz je dostupan i može pomoći u planiranju razvoja uz direktnu provjeru ponašanja."
+        : "Kako sažeti integrisani nalaz nije potpuno dostupan, implikacije za oblikovanje uloge treba držati užim i više validirati kroz praksu.",
     ],
   };
 }
@@ -377,8 +399,8 @@ function buildOnboardingPlan(
       [
         "Definisati očekivanja, kriterije uspjeha i ritam kratkih check-in razgovora od samog početka.",
         hasComposite
-          ? "Koristiti reduced kompozitni signal samo kao pomoć za izbor pitanja i podrške, ne kao zamjenu za direktnu provjeru ponašanja."
-          : "Kako reduced kompozitni signal nije potpuno dostupan, prve sedmice koristiti za prikupljanje konkretnih primjera načina rada i motivacije.",
+          ? "Koristiti sažeti integrisani nalaz samo kao pomoć za izbor pitanja i podrške, ne kao zamjenu za direktnu provjeru ponašanja."
+          : "Kako sažeti integrisani nalaz nije potpuno dostupan, prve sedmice koristiti za prikupljanje konkretnih primjera načina rada i motivacije.",
       ],
       [
         "Vrijedi rano provjeriti da li osoba bolje reaguje na detaljniji okvir ili na jasne ciljeve uz više autonomije u izvršenju.",
@@ -459,7 +481,7 @@ function buildManagerWatchpoints(
 }
 
 function buildInterpretationLimits(input: IndividualDevelopmentProfileInputSnapshot): string[] {
-  const limits = [...input.interpretationLimits];
+  const limits = input.interpretationLimits.map(sanitizeUserFacingInputFragment);
   const sourceStatusLimits = [
     buildSourceStatusLimit("Ličnosni", input.sourceSignals.personality.sourceStatus),
     buildSourceStatusLimit("Motivacijski", input.sourceSignals.motivation.sourceStatus),
@@ -497,7 +519,7 @@ export function generateIndividualDevelopmentProfileWithMock(
       strongestContributionSignals: buildStrongestContributionSignals(inputSnapshot),
       mainSupportNeed: buildMainSupportNeed(inputSnapshot),
       usageNote:
-        "Ovaj izvještaj je HR-facing razvojni radni dokument i signale treba potvrditi kroz razgovor, onboarding i stvarni radni kontekst.",
+        "Ovaj izvještaj je razvojni HR radni dokument i nalaze treba potvrditi kroz razgovor, onboarding i stvarni radni kontekst.",
     },
     contributionPattern: buildContributionPattern(inputSnapshot),
     developmentRisks: buildDevelopmentRisks(inputSnapshot),

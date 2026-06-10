@@ -4,6 +4,7 @@ import {
   validateIndividualDevelopmentProfileSnapshot,
   type IndividualDevelopmentProfileSnapshot,
 } from "@/lib/assessment/individual-development-profile-contract";
+import { resolveAiReportLanguagePolicy } from "@/lib/assessment/ai-report-language-policy";
 import {
   buildIndividualDevelopmentProfileInputSnapshot,
   type IndividualDevelopmentProfileInputBuilderResult,
@@ -19,6 +20,11 @@ import {
   generateIndividualDevelopmentProfileReport,
   type IndividualDevelopmentProfileProviderSeamResult,
 } from "@/lib/assessment/individual-development-profile-provider";
+import { resolveReportLocale } from "@/lib/assessment/locale";
+import {
+  formatReportLanguageQualityIssues,
+  validateReportLanguageQuality,
+} from "@/lib/assessment/report-language-quality";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type IndividualDevelopmentProfileProcessorDependencies = {
@@ -179,6 +185,42 @@ function resolveGeneratorVersion(snapshot: IndividualDevelopmentProfileSnapshot)
     : null;
 }
 
+function prepareIndividualDevelopmentProfileSnapshotForPersistence(
+  snapshot: IndividualDevelopmentProfileSnapshot,
+): { ok: true; snapshot: IndividualDevelopmentProfileSnapshot } | { ok: false; errors: string[] } {
+  const locale = resolveReportLocale(snapshot.locale);
+  const languagePolicy = resolveAiReportLanguagePolicy(locale);
+  const canonicalizedSnapshot = languagePolicy
+    ? languagePolicy.canonicalizeUserFacingOutput(snapshot)
+    : snapshot;
+  const globalLanguageErrors = languagePolicy
+    ? languagePolicy.validateUserFacingOutput(canonicalizedSnapshot, {
+        audience: "hr",
+      })
+    : [];
+  const qualityResult = validateReportLanguageQuality({
+    snapshot: canonicalizedSnapshot,
+    locale,
+    audience: "hr",
+    reportType: "single_test",
+    context: "individual_development_profile_hr_report",
+  });
+  const errors = [
+    ...globalLanguageErrors.map((error) =>
+      error.path ? `${error.path}: ${error.message}` : error.message,
+    ),
+    ...(qualityResult.ok
+      ? []
+      : [`IDP HR report language quality failed: ${formatReportLanguageQualityIssues(qualityResult.issues)}`]),
+  ];
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
+  return { ok: true, snapshot: canonicalizedSnapshot };
+}
+
 export async function processIndividualDevelopmentProfileAssessmentReport(input: {
   assessmentReportId: string;
   organizationId: string;
@@ -287,7 +329,39 @@ export async function processIndividualDevelopmentProfileAssessmentReport(input:
     };
   }
 
-  const validation = getValidateSnapshot(deps)(providerResult.reportSnapshot);
+  const qualityGate = prepareIndividualDevelopmentProfileSnapshotForPersistence(
+    providerResult.reportSnapshot,
+  );
+
+  if (!qualityGate.ok) {
+    const failed = await failClaimedReport(
+      {
+        assessmentReportId: claimResult.report.id,
+        organizationId: claimResult.report.organization_id,
+        failureCode: "IDP_REPORT_VALIDATION_FAILED",
+        failureReason: trimReason(qualityGate.errors.join(" | ")),
+      },
+      deps,
+    );
+
+    if (!failed.ok) {
+      return {
+        ok: false,
+        reason: "fail_transition_failed",
+        reportId: claimResult.report.id,
+        message: failed.reason,
+      };
+    }
+
+    return {
+      ok: false,
+      reason: "validation_failed",
+      reportId: claimResult.report.id,
+      message: trimReason(qualityGate.errors.join(" | ")),
+    };
+  }
+
+  const validation = getValidateSnapshot(deps)(qualityGate.snapshot);
 
   if (!validation.ok) {
     const failed = await failClaimedReport(

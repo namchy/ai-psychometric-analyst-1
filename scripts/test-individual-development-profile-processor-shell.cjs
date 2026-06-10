@@ -69,6 +69,8 @@ assert.match(processorSource, /claimIndividualDevelopmentProfileAssessmentReport
 assert.match(processorSource, /buildIndividualDevelopmentProfileInputSnapshot/);
 assert.match(processorSource, /generateIndividualDevelopmentProfileReport/);
 assert.match(processorSource, /validateIndividualDevelopmentProfileSnapshot/);
+assert.match(processorSource, /validateReportLanguageQuality/);
+assert.match(processorSource, /resolveAiReportLanguagePolicy/);
 assert.doesNotMatch(processorSource, /OpenAI|openai|external/i);
 assert.doesNotMatch(processorSource, /process\.env|renderer|route|action|worker|scheduler/i);
 assert.doesNotMatch(processorSource, /team-fit|team_dynamics/i);
@@ -519,6 +521,44 @@ async function main() {
   assert.equal(
     invalidSnapshotSupabase.state.assessment_reports[0].failure_code,
     "IDP_REPORT_VALIDATION_FAILED",
+  );
+
+  const qualityFailureSupabase = createSupabaseStub({
+    assessment_reports: [buildReportRow()],
+    assessment_assignments: [buildAssignment()],
+  });
+  const languageInvalidSnapshot = clone(happySupabase.state.assessment_reports[0].report_snapshot);
+  languageInvalidSnapshot.developmentSummary.headline =
+    "Ugodnost i HR-facing reduced signal ne smiju proći u HR izvještaju.";
+  const qualityFailureResult = await processIndividualDevelopmentProfileAssessmentReport(
+    {
+      assessmentReportId: "assessment-report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: qualityFailureSupabase,
+      buildInputSnapshot: async () => ({
+        ok: true,
+        inputSnapshot: buildInputSnapshot(),
+      }),
+      generateReport: async () => ({
+        ok: true,
+        provider: "mock",
+        reportSnapshot: languageInvalidSnapshot,
+      }),
+    },
+  );
+  assert.equal(qualityFailureResult.ok, false);
+  assert.equal(qualityFailureResult.reason, "validation_failed");
+  assert.equal(qualityFailureSupabase.state.assessment_reports[0].report_status, "failed");
+  assert.equal(qualityFailureSupabase.state.assessment_reports[0].report_snapshot, null);
+  assert.equal(
+    qualityFailureSupabase.state.assessment_reports[0].failure_code,
+    "IDP_REPORT_VALIDATION_FAILED",
+  );
+  assert.match(
+    qualityFailureSupabase.state.assessment_reports[0].failure_reason,
+    /IDP HR report language quality failed|Ugodnost|HR-facing|reduced/i,
   );
 
   const wrongOrgResult = await processIndividualDevelopmentProfileAssessmentReport(

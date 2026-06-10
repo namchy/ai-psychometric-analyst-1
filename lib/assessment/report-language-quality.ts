@@ -2,7 +2,10 @@ import type { ReportLocale } from "@/lib/assessment/locale";
 
 export type ReportLanguageAudience = "hr" | "participant";
 export type ReportLanguageReportType = "composite" | "single_test";
-export type ReportLanguageQualityContext = "composite_hr_report" | "ipip_hr_report";
+export type ReportLanguageQualityContext =
+  | "composite_hr_report"
+  | "ipip_hr_report"
+  | "individual_development_profile_hr_report";
 
 export type ReportLanguageQualityIssueCode =
   | "FORBIDDEN_PHRASE"
@@ -16,7 +19,8 @@ export type ReportLanguageQualityIssueCode =
   | "SCORE_SUMMARY_PROSE"
   | "MECHANICAL_FACET_LIST"
   | "MISSING_HR_BEHAVIORAL_THEME"
-  | "FORBIDDEN_SCRIPT";
+  | "FORBIDDEN_SCRIPT"
+  | "REPETITIVE_WORDING";
 
 export type ReportLanguageQualityIssue = {
   code: ReportLanguageQualityIssueCode;
@@ -395,6 +399,72 @@ const IPIP_HR_CYRILLIC_PATTERN: PatternRule = {
   appliesToBhsOnly: true,
 };
 
+const IDP_HR_FORBIDDEN_TERMS: PhraseRule[] = [
+  {
+    code: "GLOSSARY_VIOLATION",
+    phrase: "ugodnost",
+    suggestion: "Spremnost na saradnju",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_TERM",
+    phrase: "HR-facing",
+    suggestion: "HR razvojni",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_TERM",
+    phrase: "reduced",
+    suggestion: "sažeti",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_TERM",
+    phrase: "AI narativ",
+    suggestion: "razvojna interpretacija",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_TERM",
+    phrase: "AI-generated",
+    suggestion: "generisani izvještaj",
+    appliesToBhsOnly: true,
+  },
+];
+
+const IDP_HR_INTERNAL_WORDING_PATTERNS: PatternRule[] = [
+  {
+    code: "FORBIDDEN_DEBUG_LANGUAGE",
+    pattern: /\bnumeric\b/iu,
+    phrase: "numeric",
+    suggestion: "Use natural BHS report wording.",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_DEBUG_LANGUAGE",
+    pattern: /\bsource\b/iu,
+    phrase: "source",
+    suggestion: "Use user-facing source labels only when needed.",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_DEBUG_LANGUAGE",
+    pattern: /\bmetadata\b/iu,
+    phrase: "metadata",
+    suggestion: "Do not expose implementation metadata in report copy.",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_DEBUG_LANGUAGE",
+    pattern: /\bsnapshot\b/iu,
+    phrase: "snapshot",
+    suggestion: "Use izvještaj or nalaz in user-facing copy.",
+    appliesToBhsOnly: true,
+  },
+];
+
+const IDP_HR_SIGNAL_REPETITION_THRESHOLD = 32;
+
 const IPIP_HR_DOMAIN_RESTATEMENT_TITLES = new Set([
   "savjesnost",
   "spremnost na saradnju",
@@ -599,6 +669,185 @@ function collectIpipHrUserFacingStrings(snapshot: unknown): string[] {
   return collectIpipHrUserFacingEntries(snapshot).map((entry) => entry.value);
 }
 
+function collectIndividualDevelopmentProfileHrUserFacingEntries(snapshot: unknown): TextEntry[] {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return [];
+  }
+
+  const report = snapshot as {
+    developmentSummary?: {
+      headline?: unknown;
+      overallPattern?: unknown;
+      strongestContributionSignals?: unknown;
+      mainSupportNeed?: unknown;
+      usageNote?: unknown;
+    };
+    contributionPattern?: {
+      bestConditions?: unknown;
+      collaborationConditions?: unknown;
+      supportPreferences?: unknown;
+      roleShapingImplications?: unknown;
+    };
+    developmentRisks?: Array<{
+      possibleBlocker?: unknown;
+      whyItMatters?: unknown;
+      whatToCheck?: unknown;
+      howToSupport?: unknown;
+    }>;
+    communicationAndFeedbackGuidance?: {
+      whatHelps?: unknown;
+      whatToAvoid?: unknown;
+      howToPhraseFeedback?: unknown;
+      whatToClarify?: unknown;
+    };
+    motivationAndEnergyGuidance?: {
+      likelySourcesOfEnergy?: unknown;
+      likelySourcesOfDrain?: unknown;
+      supportSignals?: unknown;
+      whatToValidate?: unknown;
+    };
+    oneOnOneGuidance?: Array<{
+      question?: unknown;
+      whatToListenFor?: unknown;
+      signalBeingChecked?: unknown;
+      possibleFollowUp?: unknown;
+    }>;
+    onboardingPlan?: {
+      summary?: unknown;
+      first7Days?: unknown;
+      first30Days?: unknown;
+      days31To60?: unknown;
+      days61To90?: unknown;
+      managerCheckpoints?: unknown;
+      watchouts?: unknown;
+    };
+    managerWatchpoints?: Array<{
+      watchpoint?: unknown;
+      whyItMatters?: unknown;
+      earlySignal?: unknown;
+      suggestedManagerResponse?: unknown;
+    }>;
+    interpretationLimits?: unknown;
+  };
+  const entries: TextEntry[] = [];
+
+  pushStringEntry(entries, "developmentSummary.headline", report.developmentSummary?.headline);
+  pushStringEntry(entries, "developmentSummary.overallPattern", report.developmentSummary?.overallPattern);
+  collectStringListEntries(
+    entries,
+    "developmentSummary.strongestContributionSignals",
+    report.developmentSummary?.strongestContributionSignals,
+  );
+  pushStringEntry(entries, "developmentSummary.mainSupportNeed", report.developmentSummary?.mainSupportNeed);
+  pushStringEntry(entries, "developmentSummary.usageNote", report.developmentSummary?.usageNote);
+
+  collectStringListEntries(entries, "contributionPattern.bestConditions", report.contributionPattern?.bestConditions);
+  collectStringListEntries(
+    entries,
+    "contributionPattern.collaborationConditions",
+    report.contributionPattern?.collaborationConditions,
+  );
+  collectStringListEntries(entries, "contributionPattern.supportPreferences", report.contributionPattern?.supportPreferences);
+  collectStringListEntries(
+    entries,
+    "contributionPattern.roleShapingImplications",
+    report.contributionPattern?.roleShapingImplications,
+  );
+
+  report.developmentRisks?.forEach((risk, index) => {
+    pushStringEntry(entries, `developmentRisks[${index}].possibleBlocker`, risk?.possibleBlocker);
+    pushStringEntry(entries, `developmentRisks[${index}].whyItMatters`, risk?.whyItMatters);
+    pushStringEntry(entries, `developmentRisks[${index}].whatToCheck`, risk?.whatToCheck);
+    pushStringEntry(entries, `developmentRisks[${index}].howToSupport`, risk?.howToSupport);
+  });
+
+  collectStringListEntries(
+    entries,
+    "communicationAndFeedbackGuidance.whatHelps",
+    report.communicationAndFeedbackGuidance?.whatHelps,
+  );
+  collectStringListEntries(
+    entries,
+    "communicationAndFeedbackGuidance.whatToAvoid",
+    report.communicationAndFeedbackGuidance?.whatToAvoid,
+  );
+  collectStringListEntries(
+    entries,
+    "communicationAndFeedbackGuidance.howToPhraseFeedback",
+    report.communicationAndFeedbackGuidance?.howToPhraseFeedback,
+  );
+  collectStringListEntries(
+    entries,
+    "communicationAndFeedbackGuidance.whatToClarify",
+    report.communicationAndFeedbackGuidance?.whatToClarify,
+  );
+
+  collectStringListEntries(
+    entries,
+    "motivationAndEnergyGuidance.likelySourcesOfEnergy",
+    report.motivationAndEnergyGuidance?.likelySourcesOfEnergy,
+  );
+  collectStringListEntries(
+    entries,
+    "motivationAndEnergyGuidance.likelySourcesOfDrain",
+    report.motivationAndEnergyGuidance?.likelySourcesOfDrain,
+  );
+  collectStringListEntries(
+    entries,
+    "motivationAndEnergyGuidance.supportSignals",
+    report.motivationAndEnergyGuidance?.supportSignals,
+  );
+  collectStringListEntries(
+    entries,
+    "motivationAndEnergyGuidance.whatToValidate",
+    report.motivationAndEnergyGuidance?.whatToValidate,
+  );
+
+  report.oneOnOneGuidance?.forEach((item, index) => {
+    pushStringEntry(entries, `oneOnOneGuidance[${index}].question`, item?.question);
+    pushStringEntry(entries, `oneOnOneGuidance[${index}].whatToListenFor`, item?.whatToListenFor);
+    pushStringEntry(entries, `oneOnOneGuidance[${index}].signalBeingChecked`, item?.signalBeingChecked);
+    pushStringEntry(entries, `oneOnOneGuidance[${index}].possibleFollowUp`, item?.possibleFollowUp);
+  });
+
+  pushStringEntry(entries, "onboardingPlan.summary", report.onboardingPlan?.summary);
+  for (const stageKey of ["first7Days", "first30Days", "days31To60", "days61To90"] as const) {
+    const stage = report.onboardingPlan?.[stageKey] as
+      | {
+          focus?: unknown;
+          managerActions?: unknown;
+          feedbackGuidance?: unknown;
+          riskSignals?: unknown;
+        }
+      | undefined;
+    pushStringEntry(entries, `onboardingPlan.${stageKey}.focus`, stage?.focus);
+    collectStringListEntries(entries, `onboardingPlan.${stageKey}.managerActions`, stage?.managerActions);
+    collectStringListEntries(entries, `onboardingPlan.${stageKey}.feedbackGuidance`, stage?.feedbackGuidance);
+    collectStringListEntries(entries, `onboardingPlan.${stageKey}.riskSignals`, stage?.riskSignals);
+  }
+  collectStringListEntries(entries, "onboardingPlan.managerCheckpoints", report.onboardingPlan?.managerCheckpoints);
+  collectStringListEntries(entries, "onboardingPlan.watchouts", report.onboardingPlan?.watchouts);
+
+  report.managerWatchpoints?.forEach((item, index) => {
+    pushStringEntry(entries, `managerWatchpoints[${index}].watchpoint`, item?.watchpoint);
+    pushStringEntry(entries, `managerWatchpoints[${index}].whyItMatters`, item?.whyItMatters);
+    pushStringEntry(entries, `managerWatchpoints[${index}].earlySignal`, item?.earlySignal);
+    pushStringEntry(
+      entries,
+      `managerWatchpoints[${index}].suggestedManagerResponse`,
+      item?.suggestedManagerResponse,
+    );
+  });
+
+  collectStringListEntries(entries, "interpretationLimits", report.interpretationLimits);
+
+  return entries;
+}
+
+function collectIndividualDevelopmentProfileHrUserFacingStrings(snapshot: unknown): string[] {
+  return collectIndividualDevelopmentProfileHrUserFacingEntries(snapshot).map((entry) => entry.value);
+}
+
 function collectCompositeHrNarrativeStrings(snapshot: unknown): string[] {
   if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
     return [];
@@ -773,6 +1022,14 @@ function buildQualityText(params: ReportLanguageQualityParams): string {
     params.context === "ipip_hr_report"
   ) {
     return collectIpipHrUserFacingStrings(params.snapshot).join("\n");
+  }
+
+  if (
+    params.audience === "hr" &&
+    params.reportType === "single_test" &&
+    params.context === "individual_development_profile_hr_report"
+  ) {
+    return collectIndividualDevelopmentProfileHrUserFacingStrings(params.snapshot).join("\n");
   }
 
   return collectStrings(params.snapshot).join("\n");
@@ -967,6 +1224,42 @@ function validateIpipHrQuality(
   validateIpipHrKeySignalThemes(params.snapshot, params.locale, issues);
 }
 
+function validateIndividualDevelopmentProfileHrSignalRepetition(
+  text: string,
+  locale: ReportLocale,
+  issues: ReportLanguageQualityIssue[],
+): void {
+  if (!isBhsLocale(locale)) {
+    return;
+  }
+
+  const matches = text.match(/\bsignal(?:a|i|ima|om|u)?\b/giu) ?? [];
+
+  if (matches.length > IDP_HR_SIGNAL_REPETITION_THRESHOLD) {
+    pushIssue(issues, {
+      code: "REPETITIVE_WORDING",
+      phrase: "signal",
+      suggestion: "Reduce repeated use of 'signal' and vary the HR wording.",
+    });
+  }
+}
+
+function validateIndividualDevelopmentProfileHrQuality(
+  params: ReportLanguageQualityParams,
+  issues: ReportLanguageQualityIssue[],
+): void {
+  const entries = collectIndividualDevelopmentProfileHrUserFacingEntries(params.snapshot);
+  const text = entries.map((entry) => entry.value).join("\n");
+  const normalizedText = normalizeText(text);
+
+  validatePhraseRules(normalizedText, params.locale, IDP_HR_FORBIDDEN_TERMS, issues);
+  validatePatternRulesForEntries(entries, params.locale, IDP_HR_INTERNAL_WORDING_PATTERNS, issues);
+  validatePatternRulesForEntries(entries, params.locale, IPIP_HR_SECOND_PERSON_PATTERNS, issues);
+  validatePatternRulesForEntries(entries, params.locale, [IPIP_HR_CYRILLIC_PATTERN], issues);
+  validatePatternRulesForEntries(entries, params.locale, IPIP_HR_IJEKAVICA_PATTERNS, issues);
+  validateIndividualDevelopmentProfileHrSignalRepetition(text, params.locale, issues);
+}
+
 export function formatReportLanguageQualityIssues(issues: ReportLanguageQualityIssue[]): string {
   return issues
     .map((issue) =>
@@ -1009,6 +1302,14 @@ export function validateReportLanguageQuality(
     params.context === "ipip_hr_report"
   ) {
     validateIpipHrQuality(params, issues);
+  }
+
+  if (
+    params.audience === "hr" &&
+    params.reportType === "single_test" &&
+    params.context === "individual_development_profile_hr_report"
+  ) {
+    validateIndividualDevelopmentProfileHrQuality(params, issues);
   }
 
   return {
