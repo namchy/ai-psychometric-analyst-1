@@ -12,6 +12,13 @@ const helperPath = path.join(
   "individual-development-profile-contract.ts",
 );
 const helperSource = fs.readFileSync(helperPath, "utf8");
+const safetyPolicyPath = path.join(
+  projectRoot,
+  "lib",
+  "assessment",
+  "hr-report-safety-policy.ts",
+);
+const safetyPolicySource = fs.readFileSync(safetyPolicyPath, "utf8");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
@@ -65,9 +72,13 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 assert.match(helperSource, /INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE/);
 assert.match(helperSource, /validateIndividualDevelopmentProfileSnapshot/);
+assert.match(helperSource, /validateHrReportSafety/);
+assert.doesNotMatch(helperSource, /function hasUnsafeIdpClaim/);
 assert.doesNotMatch(helperSource, /\.from\("/);
 assert.doesNotMatch(helperSource, /OpenAI|provider|renderer|route|worker|scheduler/i);
 assert.doesNotMatch(helperSource, /team-fit|team_dynamics/i);
+assert.match(safetyPolicySource, /individual_development_profile_hr_report/);
+assert.doesNotMatch(safetyPolicySource, /team.fit|team.dynamics|composite|safran|mwms|ipip/i);
 
 const {
   INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE,
@@ -75,6 +86,9 @@ const {
   INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE,
   validateIndividualDevelopmentProfileSnapshot,
 } = require(helperPath);
+const {
+  validateHrReportSafety,
+} = require(safetyPolicyPath);
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -188,6 +202,17 @@ function expectInvalid(snapshot, pattern) {
   assert.equal(validation.errors.some((error) => pattern.test(error)), true);
 }
 
+function expectValidNarrative(snapshot, path, text) {
+  const candidate = clone(snapshot);
+  candidate.developmentRisks[0].possibleBlocker = text;
+  const validation = validateIndividualDevelopmentProfileSnapshot(candidate);
+  assert.equal(
+    validation.ok,
+    true,
+    `${path} should be allowed: ${validation.ok ? "" : validation.errors.join(" | ")}`,
+  );
+}
+
 function main() {
   const valid = buildValidSnapshot();
   const validResult = validateIndividualDevelopmentProfileSnapshot(valid);
@@ -264,6 +289,46 @@ function main() {
   unsafeOverclaim.managerWatchpoints[0].suggestedManagerResponse =
     "Ovaj rezultat sigurno pokazuje da osoba uvijek mora raditi samo uz strogu kontrolu.";
   expectInvalid(unsafeOverclaim, /unsafe or overclaiming IDP assertion/i);
+
+  for (const allowedText of [
+    "Niže izražena ekstraverzija upućuje da Amra možda neće uvijek spontano preuzimati prostor u grupnim diskusijama, pa je korisno dati joj jasan kanal za doprinos.",
+    "U brzim grupnim diskusijama doprinos se možda neće uvijek pojaviti spontano, pa je korisno unaprijed dogovoriti jasan kanal za uključivanje.",
+    "Ovaj obrazac može otežati doprinos u nejasno vođenim diskusijama.",
+    "Vrijedi provjeriti kako se doprinos mijenja kada su očekivanja i format razmjene jasni.",
+  ]) {
+    expectValidNarrative(
+      valid,
+      "developmentRisks[0].possibleBlocker",
+      allowedText,
+    );
+  }
+
+  for (const blockedText of [
+    "Amra će uvijek izbjegavati grupne diskusije.",
+    "Rezultat dokazuje da Amra neće uspjeti u timskom radu.",
+    "Niža ekstraverzija znači da kandidat nije pogodan za timski rad.",
+    "Amra je problematična u grupnim diskusijama.",
+    "Kandidata treba zaposliti.",
+    "Ovo ukazuje na klinički poremećaj.",
+  ]) {
+    const blockedSnapshot = clone(valid);
+    blockedSnapshot.developmentRisks[0].possibleBlocker = blockedText;
+    expectInvalid(blockedSnapshot, /unsafe or overclaiming IDP assertion/i);
+  }
+
+  const directSafetyIssues = validateHrReportSafety(
+    "Amra će uvijek izbjegavati grupne diskusije.",
+    {
+      context: "individual_development_profile_hr_report",
+      path: "developmentRisks[0].possibleBlocker",
+    },
+  );
+  assert.equal(directSafetyIssues.length > 0, true);
+  assert.equal(
+    directSafetyIssues[0].path,
+    "developmentRisks[0].possibleBlocker",
+  );
+  assert.equal(directSafetyIssues[0].code, "CATEGORICAL_PREDICTION");
 
   const missingInterpretationLimits = clone(valid);
   missingInterpretationLimits.interpretationLimits = [];

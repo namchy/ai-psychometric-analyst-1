@@ -1,3 +1,5 @@
+import { validateHrReportSafety } from "@/lib/assessment/hr-report-safety-policy";
+
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE =
   "individual_development_profile_v1" as const;
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_VERSION = "v1" as const;
@@ -170,12 +172,6 @@ function isGenericIdpFiller(value: string): boolean {
   ].includes(normalized);
 }
 
-function hasUnsafeIdpClaim(value: string): boolean {
-  return /(?:\bhire\b|\bno-hire\b|treba zaposliti|ne zaposliti|preporu(?:čuje|cuje) se zapošljavanje|preporu(?:čuje|cuje) se zaposljavanje|dijagnosticira|mentaln(?:o|og)? zdravlj|medicinsk|kliničk|klinick|clinical|disorder|poremećaj|poremecaj|dokazuje|garantuje|sigurno pokazuje|\buvijek\b|\bnikada\b|mora se odbiti|mora biti odbijen|nije podoban|nije podobna)/i.test(
-    value,
-  );
-}
-
 function validateNonEmptyString(value: unknown, path: string, errors: string[]): value is string {
   if (!isNonEmptyString(value)) {
     errors.push(`${path}: Expected non-empty string.`);
@@ -198,7 +194,12 @@ function validateNarrativeString(value: unknown, path: string, errors: string[])
     errors.push(`${path}: Text is generic IDP filler.`);
   }
 
-  if (hasUnsafeIdpClaim(value)) {
+  const safetyIssues = validateHrReportSafety(value, {
+    context: "individual_development_profile_hr_report",
+    path,
+  });
+
+  if (safetyIssues.length > 0) {
     errors.push(`${path}: Text contains an unsafe or overclaiming IDP assertion.`);
   }
 
