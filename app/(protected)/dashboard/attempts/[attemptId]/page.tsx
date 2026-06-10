@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { CompletedAssessmentSummary } from "@/components/assessment/completed-assessment-summary";
+import { PageNavigation } from "@/components/dashboard/primitives";
 import { getAssessmentDisplayName } from "@/lib/assessment/display";
 import { loadProtectedHrAttemptReportPageData } from "@/lib/assessment/protected-attempts";
 import {
@@ -15,6 +16,23 @@ type AttemptDetailPageProps = {
 };
 
 export const dynamic = "force-dynamic";
+
+function buildBackNavigation(input: { participantId: string | null | undefined }): {
+  href: string;
+  label: string;
+} {
+  if (input.participantId) {
+    return {
+      href: `/dashboard/participants/${input.participantId}/reports`,
+      label: "Nazad na pregled procjena",
+    };
+  }
+
+  return {
+    href: "/dashboard",
+    label: "Nazad na HR dashboard",
+  };
+}
 
 export default async function AttemptDetailPage({ params }: AttemptDetailPageProps) {
   const user = await requireAuthenticatedUser();
@@ -35,10 +53,17 @@ export default async function AttemptDetailPage({ params }: AttemptDetailPagePro
   }
 
   const reportPageData = await loadProtectedHrAttemptReportPageData(attempt);
+  const backNavigation = buildBackNavigation({ participantId: attempt.participant_id });
 
   return (
     <main className="attempt-results-page stack-md mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
-      <section className="attempt-results-page__content">
+      <section className="attempt-results-page__content space-y-6">
+        <PageNavigation
+          backHref={backNavigation.href}
+          backLabel={backNavigation.label}
+          contextLabel="HR izvještaj procjene"
+          backLinkVariant="subtle"
+        />
         {reportPageData.report?.status === "ready" ? (
           <CompletedAssessmentSummary
             completedAt={attempt.completed_at}
