@@ -3,18 +3,27 @@ import "server-only";
 import type { IndividualDevelopmentProfileSnapshot } from "@/lib/assessment/individual-development-profile-contract";
 import type { IndividualDevelopmentProfileInputSnapshot } from "@/lib/assessment/individual-development-profile-input";
 import {
+  generateIndividualDevelopmentProfileWithOpenAi,
+  INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI,
+  type IndividualDevelopmentProfileOpenAiProviderOptions,
+} from "@/lib/assessment/individual-development-profile-openai-provider";
+import {
   generateIndividualDevelopmentProfileWithMock,
 } from "@/lib/assessment/individual-development-profile-mock-provider";
+import { getAiReportConfig, type AiReportConfig } from "@/lib/assessment/report-config";
 
+export { INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI };
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK = "mock" as const;
 export const DEFAULT_INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER =
   INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK;
 
 export type IndividualDevelopmentProfileProviderKind =
-  typeof INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK;
+  | typeof INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK
+  | typeof INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI;
 
 export type IndividualDevelopmentProfileProviderFailureReason =
   | "invalid_input"
+  | "provider_failed"
   | "validation_failed";
 
 export type IndividualDevelopmentProfileProviderSeamResult =
@@ -22,6 +31,7 @@ export type IndividualDevelopmentProfileProviderSeamResult =
       ok: true;
       provider: IndividualDevelopmentProfileProviderKind;
       reportSnapshot: IndividualDevelopmentProfileSnapshot;
+      modelName: string | null;
     }
   | {
       ok: false;
@@ -30,10 +40,62 @@ export type IndividualDevelopmentProfileProviderSeamResult =
       errors: string[];
     };
 
+type IndividualDevelopmentProfileProviderConfig = Pick<
+  AiReportConfig,
+  "provider" | "model" | "openAiApiKey" | "openAiTimeoutMs"
+>;
+
+type IndividualDevelopmentProfileProviderDependencies = {
+  config?: IndividualDevelopmentProfileProviderConfig;
+  generateMock?: typeof generateIndividualDevelopmentProfileWithMock;
+  generateOpenAi?: typeof generateIndividualDevelopmentProfileWithOpenAi;
+  openAiOptions?: Pick<
+    IndividualDevelopmentProfileOpenAiProviderOptions,
+    "client" | "fetchImpl" | "now"
+  >;
+};
+
 export async function generateIndividualDevelopmentProfileReport(
   inputSnapshot: IndividualDevelopmentProfileInputSnapshot,
+  deps: IndividualDevelopmentProfileProviderDependencies = {},
 ): Promise<IndividualDevelopmentProfileProviderSeamResult> {
-  const result = generateIndividualDevelopmentProfileWithMock(inputSnapshot);
+  const config = deps.config ?? getAiReportConfig();
+
+  if (config.provider === INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI) {
+    const result = await (
+      deps.generateOpenAi ?? generateIndividualDevelopmentProfileWithOpenAi
+    )(inputSnapshot, {
+      apiKey: config.openAiApiKey,
+      model: config.model,
+      timeoutMs: config.openAiTimeoutMs,
+      ...deps.openAiOptions,
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        provider: INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI,
+        reason:
+          result.reason === "invalid_input"
+            ? "invalid_input"
+            : result.reason === "validation_failed"
+              ? "validation_failed"
+              : "provider_failed",
+        errors: result.errors,
+      };
+    }
+
+    return {
+      ok: true,
+      provider: INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI,
+      reportSnapshot: result.reportSnapshot,
+      modelName: result.modelName,
+    };
+  }
+
+  const result = (deps.generateMock ?? generateIndividualDevelopmentProfileWithMock)(
+    inputSnapshot,
+  );
 
   if (!result.ok) {
     return {
@@ -48,5 +110,6 @@ export async function generateIndividualDevelopmentProfileReport(
     ok: true,
     provider: DEFAULT_INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER,
     reportSnapshot: result.reportSnapshot,
+    modelName: null,
   };
 }

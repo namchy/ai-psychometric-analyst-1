@@ -67,8 +67,9 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 assert.match(seamSource, /DEFAULT_INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER/);
 assert.match(seamSource, /generateIndividualDevelopmentProfileReport/);
 assert.match(seamSource, /generateIndividualDevelopmentProfileWithMock/);
-assert.doesNotMatch(seamSource, /OpenAI|openai|external/i);
-assert.doesNotMatch(seamSource, /process\.env|TEAM_FIT_REPORT_PROVIDER|OPENAI_API_KEY|AI_REPORT_MODEL/i);
+assert.match(seamSource, /generateIndividualDevelopmentProfileWithOpenAi/);
+assert.match(seamSource, /getAiReportConfig/);
+assert.doesNotMatch(seamSource, /TEAM_FIT_REPORT_PROVIDER/i);
 assert.doesNotMatch(seamSource, /\.from\("/);
 assert.doesNotMatch(seamSource, /renderer|route|assessment_reports|attempt_reports|team_fit_reports/i);
 
@@ -84,9 +85,30 @@ const {
 } = require("../lib/assessment/individual-development-profile-contract.ts");
 const {
   INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK,
+  INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI,
   DEFAULT_INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER,
   generateIndividualDevelopmentProfileReport,
 } = require(seamPath);
+const {
+  generateIndividualDevelopmentProfileWithOpenAi,
+  buildIndividualDevelopmentProfileOpenAiSystemPrompt,
+  buildIndividualDevelopmentProfileOpenAiUserPrompt,
+  individualDevelopmentProfileOpenAiSchema,
+} = require("../lib/assessment/individual-development-profile-openai-provider.ts");
+
+const mockConfig = {
+  provider: "mock",
+  model: "gpt-5.1",
+  openAiApiKey: "unused",
+  openAiTimeoutMs: 120000,
+};
+
+const openAiConfig = {
+  provider: "openai",
+  model: "gpt-5.1",
+  openAiApiKey: "test-key",
+  openAiTimeoutMs: 45000,
+};
 
 function buildInputSnapshot(overrides = {}) {
   return {
@@ -156,10 +178,13 @@ function buildInputSnapshot(overrides = {}) {
 
 async function main() {
   assert.equal(INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK, "mock");
+  assert.equal(INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI, "openai");
   assert.equal(DEFAULT_INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER, "mock");
 
   const validInput = buildInputSnapshot();
-  const validResult = await generateIndividualDevelopmentProfileReport(validInput);
+  const validResult = await generateIndividualDevelopmentProfileReport(validInput, {
+    config: mockConfig,
+  });
 
   assert.equal(validResult.ok, true, validResult.ok ? undefined : validResult.errors.join(" | "));
 
@@ -168,6 +193,7 @@ async function main() {
   }
 
   assert.equal(validResult.provider, "mock");
+  assert.equal(validResult.modelName, null);
   assert.equal(validResult.reportSnapshot.reportType, INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE);
   assert.equal(
     validResult.reportSnapshot.reportVersion,
@@ -181,7 +207,9 @@ async function main() {
   const invalidInput = buildInputSnapshot({
     inputType: "team_fit_report_input_v2_enriched",
   });
-  const invalidResult = await generateIndividualDevelopmentProfileReport(invalidInput);
+  const invalidResult = await generateIndividualDevelopmentProfileReport(invalidInput, {
+    config: mockConfig,
+  });
 
   assert.equal(invalidResult.ok, false);
   if (invalidResult.ok) {
@@ -192,6 +220,113 @@ async function main() {
   assert.equal(invalidResult.reason, "invalid_input");
   assert.equal(Array.isArray(invalidResult.errors), true);
   assert.equal(invalidResult.errors.length > 0, true);
+
+  const openAiOperations = [];
+  const openAiResult = await generateIndividualDevelopmentProfileReport(validInput, {
+    config: openAiConfig,
+    openAiOptions: {
+      now: () => "2026-06-10T12:00:00.000Z",
+      client: {
+        async createChatCompletion(request) {
+          openAiOperations.push(request);
+          return {
+            content: JSON.stringify(validResult.reportSnapshot),
+          };
+        },
+      },
+    },
+  });
+
+  assert.equal(openAiResult.ok, true);
+  if (!openAiResult.ok) {
+    throw new Error(openAiResult.errors.join(" | "));
+  }
+
+  assert.equal(openAiResult.provider, "openai");
+  assert.equal(openAiResult.modelName, "gpt-5.1");
+  assert.equal(openAiResult.reportSnapshot.metadata.generatorType, "openai");
+  assert.equal(
+    openAiResult.reportSnapshot.metadata.generatorVersion,
+    "individual_development_profile_openai_v1",
+  );
+  assert.equal(openAiOperations.length, 1);
+  assert.equal(openAiOperations[0].model, "gpt-5.1");
+  assert.equal(openAiOperations[0].temperature, 0.2);
+  assert.equal(openAiOperations[0].response_format.type, "json_schema");
+  assert.equal(openAiOperations[0].response_format.json_schema.strict, true);
+  assert.deepEqual(
+    openAiOperations[0].response_format.json_schema.schema,
+    individualDevelopmentProfileOpenAiSchema,
+  );
+
+  const systemPrompt = openAiOperations[0].messages[0].content;
+  const userPrompt = openAiOperations[0].messages[1].content;
+
+  for (const pattern of [
+    /Bosnian/i,
+    /ijekavica/i,
+    /Latin script/i,
+    /professional.*HR tone/i,
+    /Spremnost na saradnju/i,
+    /ugodnost/i,
+    /HR-facing/i,
+    /reduced/i,
+    /AI narativ/i,
+    /numeric/i,
+    /source/i,
+    /metadata/i,
+    /snapshot/i,
+    /ti.*tvoj/i,
+    /raw\/internal source metadata/i,
+    /signal.*repeated/i,
+    /Every section must serve its own purpose/i,
+  ]) {
+    assert.match(systemPrompt, pattern);
+  }
+
+  assert.match(userPrompt, /sectionDistinctness/);
+  assert.match(userPrompt, /signal sugeriše/);
+  assert.match(userPrompt, /individual_development_profile_input_v1/);
+  assert.equal(
+    validateIndividualDevelopmentProfileSnapshot(openAiResult.reportSnapshot).ok,
+    true,
+  );
+
+  const directPrompt = buildIndividualDevelopmentProfileOpenAiSystemPrompt();
+  assert.equal(directPrompt, systemPrompt);
+  assert.match(
+    buildIndividualDevelopmentProfileOpenAiUserPrompt(validInput),
+    /Spremnost na saradnju/,
+  );
+
+  const invalidJsonResult = await generateIndividualDevelopmentProfileWithOpenAi(
+    validInput,
+    {
+      apiKey: "test-key",
+      model: "gpt-5.1",
+      client: {
+        async createChatCompletion() {
+          return { content: "{not-json" };
+        },
+      },
+    },
+  );
+  assert.equal(invalidJsonResult.ok, false);
+  assert.equal(invalidJsonResult.reason, "parse_failure");
+
+  const missingConfigResult = await generateIndividualDevelopmentProfileReport(
+    validInput,
+    {
+      config: {
+        ...openAiConfig,
+        openAiApiKey: null,
+      },
+    },
+  );
+  assert.equal(missingConfigResult.ok, false);
+  assert.equal(missingConfigResult.provider, "openai");
+  assert.equal(missingConfigResult.reason, "provider_failed");
+  assert.match(missingConfigResult.errors.join(" "), /OPENAI_API_KEY/);
 
   console.log("test-individual-development-profile-provider-seam: ok");
 }

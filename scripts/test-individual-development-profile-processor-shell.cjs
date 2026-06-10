@@ -387,6 +387,7 @@ async function main() {
     true,
   );
   assert.equal(happySupabase.state.assessment_reports[0].generator_type, "mock");
+  assert.equal(happySupabase.state.assessment_reports[0].model_name, null);
   assert.equal(happySupabase.state.attempt_reports.length, 1);
   assert.equal(happySupabase.state.team_assessment_reports.length, 1);
   assert.equal(happySupabase.state.team_fit_reports.length, 1);
@@ -402,6 +403,35 @@ async function main() {
     happySupabase.operations.some((entry) => entry.table === "team_fit_reports"),
     false,
   );
+
+  const openAiSupabase = createSupabaseStub({
+    assessment_reports: [buildReportRow()],
+    assessment_assignments: [buildAssignment()],
+  });
+  const openAiResult = await processIndividualDevelopmentProfileAssessmentReport(
+    {
+      assessmentReportId: "assessment-report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: openAiSupabase,
+      buildInputSnapshot: async () => ({
+        ok: true,
+        inputSnapshot: buildInputSnapshot(),
+      }),
+      generateReport: async () => ({
+        ok: true,
+        provider: "openai",
+        modelName: "gpt-5.1",
+        reportSnapshot: clone(
+          happySupabase.state.assessment_reports[0].report_snapshot,
+        ),
+      }),
+    },
+  );
+  assert.equal(openAiResult.ok, true);
+  assert.equal(openAiSupabase.state.assessment_reports[0].generator_type, "openai");
+  assert.equal(openAiSupabase.state.assessment_reports[0].model_name, "gpt-5.1");
 
   const readySupabase = createSupabaseStub({
     assessment_reports: [buildReportRow({ report_status: "ready" })],

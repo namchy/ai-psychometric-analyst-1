@@ -399,7 +399,7 @@ export async function processIndividualDevelopmentProfileAssessmentReport(input:
       reportSnapshot: validation.value,
       generatorType: providerResult.provider,
       generatorVersion: resolveGeneratorVersion(validation.value),
-      modelName: null,
+      modelName: providerResult.modelName ?? null,
     },
     {
       supabase: deps.supabase,
