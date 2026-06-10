@@ -40,7 +40,16 @@ assert.match(viewSource, /Komunikacija i feedback/);
 assert.match(viewSource, /Motivacija i energija/);
 assert.match(viewSource, /1:1 razgovori/);
 assert.match(viewSource, /Onboarding i razvojni plan/);
+assert.match(viewSource, /Sažetak plana/);
+assert.match(viewSource, /7 \/ 30 \/ 60 \/ 90/);
+assert.match(viewSource, /Plan po fazama/);
 assert.match(viewSource, /Prvih 7 dana/);
+assert.match(viewSource, /Fokus faze/);
+assert.match(viewSource, /Menadžerske akcije/);
+assert.match(viewSource, /Feedback smjernice/);
+assert.match(viewSource, /Rani signali za pažnju/);
+assert.match(viewSource, /Sekundarne provjere/);
+assert.match(viewSource, /Checkpoints i watchout signali/);
 assert.match(viewSource, /Menadžerske checkpoint tačke/);
 assert.match(viewSource, /Watchout signali/);
 assert.match(viewSource, /Na šta menadžer treba obratiti pažnju/);
@@ -69,6 +78,7 @@ assert.doesNotMatch(viewSource, /\bne zaposliti\b|\bzaposliti\b kao preporuk/i);
 assert.doesNotMatch(viewSource, /\bdijagnoz/i);
 assert.doesNotMatch(viewSource, /\brank(?:ing|irati|iranj)/i);
 assert.doesNotMatch(viewSource, /rawAnswers|rawResponses|itemText|rawItemText|input_snapshot|scoringKeys|JSON\.stringify/);
+assert.doesNotMatch(viewSource, /`onboardingPlan`|onboardingPlan bez dodatnog tumačenja/);
 assert.doesNotMatch(viewSource, /\bti\b/);
 assert.doesNotMatch(displaySource, /IndividualDevelopmentProfileReportView/);
 
@@ -256,6 +266,10 @@ function countOccurrences(value, searchValue) {
   return value.split(searchValue).length - 1;
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function collectVisibleReportText(snapshot) {
   return [
     ...Object.values(snapshot.developmentSummary).flat(),
@@ -298,10 +312,19 @@ function main() {
   assert.match(htmlFromSnapshot, /Motivacija i energija/);
   assert.match(htmlFromSnapshot, /1:1 razgovori/);
   assert.match(htmlFromSnapshot, /Onboarding i razvojni plan/);
+  assert.match(htmlFromSnapshot, /Sažetak plana/);
+  assert.match(htmlFromSnapshot, /7 \/ 30 \/ 60 \/ 90/);
+  assert.match(htmlFromSnapshot, /Plan po fazama/);
   assert.match(htmlFromSnapshot, /Prvih 7 dana/);
   assert.match(htmlFromSnapshot, /Prvih 30 dana/);
   assert.match(htmlFromSnapshot, /31 do 60 dana/);
   assert.match(htmlFromSnapshot, /61 do 90 dana/);
+  assert.match(htmlFromSnapshot, /Fokus faze/);
+  assert.match(htmlFromSnapshot, /Menadžerske akcije/);
+  assert.match(htmlFromSnapshot, /Feedback smjernice/);
+  assert.match(htmlFromSnapshot, /Rani signali za pažnju/);
+  assert.match(htmlFromSnapshot, /Sekundarne provjere/);
+  assert.match(htmlFromSnapshot, /Checkpoints i watchout signali/);
   assert.match(htmlFromSnapshot, /Menadžerske checkpoint tačke/);
   assert.match(htmlFromSnapshot, /Watchout signali/);
   assert.match(htmlFromSnapshot, /Na šta menadžer treba obratiti pažnju/);
@@ -318,24 +341,38 @@ function main() {
     1,
     "usageNote must render exactly once",
   );
+  assert.equal(
+    countOccurrences(htmlFromSnapshot, snapshot.onboardingPlan.summary),
+    1,
+    "onboardingPlan.summary must render exactly once",
+  );
   assert.match(
     htmlFromSnapshot,
     new RegExp(
-      `Kako HR može koristiti nalaz[\\s\\S]*${snapshot.developmentSummary.usageNote.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      )}`,
+      `Kako HR može koristiti nalaz[\\s\\S]*${escapeRegExp(snapshot.developmentSummary.usageNote)}`,
     ),
   );
   assert.doesNotMatch(
     htmlFromSnapshot,
     new RegExp(
-      `Korištenje[\\s\\S]{0,500}${snapshot.developmentSummary.usageNote.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      )}`,
+      `Korištenje[\\s\\S]{0,500}${escapeRegExp(snapshot.developmentSummary.usageNote)}`,
     ),
   );
+  assert.doesNotMatch(
+    htmlFromSnapshot,
+    new RegExp(
+      `Onboarding i razvojni plan[\\s\\S]*${escapeRegExp(snapshot.developmentSummary.overallPattern)}`,
+    ),
+    "onboarding section must not repeat overallPattern",
+  );
+  assert.doesNotMatch(
+    htmlFromSnapshot,
+    new RegExp(
+      `Onboarding i razvojni plan[\\s\\S]*${escapeRegExp(snapshot.developmentSummary.usageNote)}`,
+    ),
+    "onboarding section must not repeat usageNote",
+  );
+  assert.doesNotMatch(htmlFromSnapshot, /onboardingPlan bez dodatnog tumačenja|`onboardingPlan`/);
   assert.match(
     htmlFromSnapshot,
     /Korištenje[\s\S]{0,500}Namijenjeno strukturiranom HR i menadžerskom pregledu\./,

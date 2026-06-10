@@ -239,42 +239,92 @@ function ManagerWatchpointCard({
 
 function OnboardingStageCard({
   label,
+  marker,
   item,
   tone = "neutral",
 }: {
   label: string;
+  marker: string;
   item: IndividualDevelopmentProfileSnapshot["onboardingPlan"]["first7Days"];
   tone?: "neutral" | "info" | "warning";
 }) {
+  const markerClassName =
+    tone === "warning"
+      ? "border-[#ffd166]/55 bg-[#fff5d6] text-[#7a5b00]"
+      : tone === "info"
+        ? "border-[#118ab2]/20 bg-[#118ab2]/[0.07] text-[#073b4c]"
+        : "border-[#073b4c]/15 bg-[#073b4c]/[0.04] text-[#073b4c]";
+
   return (
-    <DashboardInfoCardShell className="h-full rounded-[1.3rem] border-slate-200/80 p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#073b4c]">
-        {label}
-      </p>
+    <div className="h-full rounded-[1.15rem] border border-slate-200/80 bg-white/85 p-4 shadow-[0_10px_22px_rgba(15,23,42,0.035)]">
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] border text-sm font-bold ${markerClassName}`}
+        >
+          {marker}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Faza onboarding plana
+          </p>
+          <h3 className="mt-1 text-base font-semibold leading-5 text-[#073b4c]">{label}</h3>
+        </div>
+      </div>
+
       <div className="mt-4 space-y-3">
-        <InfoPanel label="Fokus" tone={tone}>
+        <InfoPanel label="Fokus faze" tone={tone}>
           {item.focus}
         </InfoPanel>
-        <InfoPanel label="Šta menadžer treba uraditi">
-          <BulletList
-            items={item.managerActions}
-            emptyText="U ovom izvještaju nema dodatnih stavki za ovu fazu."
-          />
-        </InfoPanel>
-        <InfoPanel label="Kako voditi feedback" tone="info">
-          <BulletList
-            items={item.feedbackGuidance}
-            emptyText="U ovom izvještaju nema dodatnih feedback smjernica za ovu fazu."
-          />
-        </InfoPanel>
-        <InfoPanel label="Na šta rano paziti" tone="warning">
+        <div className="grid gap-3 lg:grid-cols-2">
+          <InfoPanel label="Menadžerske akcije">
+            <BulletList
+              items={item.managerActions}
+              emptyText="U ovom izvještaju nema dodatnih stavki za ovu fazu."
+            />
+          </InfoPanel>
+          <InfoPanel label="Feedback smjernice" tone="info">
+            <BulletList
+              items={item.feedbackGuidance}
+              emptyText="U ovom izvještaju nema dodatnih feedback smjernica za ovu fazu."
+            />
+          </InfoPanel>
+        </div>
+        <InfoPanel label="Rani signali za pažnju" tone="warning">
           <BulletList
             items={item.riskSignals}
             emptyText="U ovom izvještaju nema dodatnih watchout signala za ovu fazu."
           />
         </InfoPanel>
       </div>
-    </DashboardInfoCardShell>
+    </div>
+  );
+}
+
+function OnboardingSecondaryPanel({
+  label,
+  items,
+  emptyText,
+  tone = "neutral",
+}: {
+  label: string;
+  items: string[];
+  emptyText: string;
+  tone?: "neutral" | "warning";
+}) {
+  const toneClassName =
+    tone === "warning"
+      ? "border-[#ffd166]/35 bg-[#fff9e8]"
+      : "border-slate-200/80 bg-slate-50/80";
+
+  return (
+    <div className={`rounded-[1rem] border px-4 py-4 ${toneClassName}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <div className="mt-3">
+        <BulletList items={items} emptyText={emptyText} />
+      </div>
+    </div>
   );
 }
 
@@ -523,42 +573,80 @@ export function IndividualDevelopmentProfileReportView(
           title="Onboarding i razvojni plan"
           description="Sekcija organizuje postojeći onboarding plan iz izvještaja po vremenskim fazama."
         />
-        <div className="mt-5 space-y-4">
-          <InfoPanel label="Sažetak onboarding plana">{snapshot.onboardingPlan.summary}</InfoPanel>
-          <div className="grid gap-4 xl:grid-cols-2">
-            <OnboardingStageCard
-              label="Prvih 7 dana"
-              item={snapshot.onboardingPlan.first7Days}
-            />
-            <OnboardingStageCard
-              label="Prvih 30 dana"
-              item={snapshot.onboardingPlan.first30Days}
-              tone="info"
-            />
-            <OnboardingStageCard
-              label="31 do 60 dana"
-              item={snapshot.onboardingPlan.days31To60}
-              tone="info"
-            />
-            <OnboardingStageCard
-              label="61 do 90 dana"
-              item={snapshot.onboardingPlan.days61To90}
-              tone="warning"
-            />
+        <div className="mt-5 space-y-5">
+          <div className="rounded-[1.15rem] border border-[#073b4c]/12 bg-[#073b4c]/[0.035] px-4 py-4 sm:px-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Sažetak plana
+            </p>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-700">
+              {snapshot.onboardingPlan.summary}
+            </p>
           </div>
-          <div className="grid gap-4 xl:grid-cols-2">
-            <InfoPanel label="Menadžerske checkpoint tačke">
-              <BulletList
+
+          <div className="space-y-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#073b4c]">
+                  7 / 30 / 60 / 90
+                </p>
+                <h3 className="mt-1 text-lg font-semibold leading-6 text-[#073b4c]">
+                  Plan po fazama
+                </h3>
+              </div>
+              <p className="max-w-xl text-sm leading-6 text-slate-600">
+                Faze ispod prikazuju strukturisani onboarding plan bez dodatnog tumačenja.
+              </p>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <OnboardingStageCard
+                label="Prvih 7 dana"
+                marker="7"
+                item={snapshot.onboardingPlan.first7Days}
+              />
+              <OnboardingStageCard
+                label="Prvih 30 dana"
+                marker="30"
+                item={snapshot.onboardingPlan.first30Days}
+                tone="info"
+              />
+              <OnboardingStageCard
+                label="31 do 60 dana"
+                marker="60"
+                item={snapshot.onboardingPlan.days31To60}
+                tone="info"
+              />
+              <OnboardingStageCard
+                label="61 do 90 dana"
+                marker="90"
+                item={snapshot.onboardingPlan.days61To90}
+                tone="warning"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3 border-t border-slate-200/80 pt-5">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Sekundarne provjere
+              </p>
+              <h3 className="mt-1 text-base font-semibold leading-6 text-[#073b4c]">
+                Checkpoints i watchout signali
+              </h3>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <OnboardingSecondaryPanel
+                label="Menadžerske checkpoint tačke"
                 items={snapshot.onboardingPlan.managerCheckpoints}
                 emptyText="U ovom izvještaju nema dodatnih checkpoint stavki za onboarding plan."
               />
-            </InfoPanel>
-            <InfoPanel label="Watchout signali" tone="warning">
-              <BulletList
+              <OnboardingSecondaryPanel
+                label="Watchout signali"
                 items={snapshot.onboardingPlan.watchouts}
                 emptyText="U ovom izvještaju nema dodatnih watchout stavki za onboarding plan."
+                tone="warning"
               />
-            </InfoPanel>
+            </div>
           </div>
         </div>
       </DashboardInfoCardShell>
