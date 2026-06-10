@@ -49,7 +49,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
-| P1        | Deep Profile premium UI/UX system implementation    | Otvoreno / UI targeting-control audit i foundation prije daljeg redesign-a | UI system / Product quality / Look and feel | Prije novih vizuelnih izmjena uraditi read-only audit postojećih UI standarda, tokena, shared komponenti i paralelnih stilskih slojeva; zatim definisati UI targeting/control layer koji podržava globalne, variant-level i single-instance izmjene kroz postojeći UI system. Ne uvoditi novi paralelni design system i ne raditi redesign-all. |
+| P1        | Deep Profile premium UI/UX system implementation    | Zatvoreno za prvi slice / read-only UI targeting-control audit završen i semantic targeting foundation implementiran za participant reports referentni ekran | UI system / Product quality / Look and feel | Ne raditi redesign-all. Koristiti novi semantic targeting sloj kao osnovu za buduće precizne UI izmjene; sljedeći UI slice treba biti mali product/design polish na referentnom ekranu ili nastavak targeting modela samo ako konkretan novi ekran to zahtijeva. |
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP participant V2 sada pokriva i v2-single i v2-segmented path, candidate-facing `ti` ostaje dozvoljen, HR-only zabrana drugog lica nije prenesena na participant pathove, a postojeći V2 validator/segment validators ostaju završne kapije. IPIP verifier cleanup repovi nakon V2 gate-a su zatvoreni: V2 candidate_reflection fixture je usklađen sa current V2 contractom, a V1 participant structural label validator je usklađen sa participant V1 contractom. Sljedeće nije UI redesign ni report regeneration, nego eventualni uski content compression/polish slice ili zasebno širenje language-policy routera na druge report lane-ove. | Deep Profile / Report content architecture | Završen je locale-aware BHS user-facing AI language policy foundation za current bs/IPIP HR slice, a adoption se sada proteže kroz SAFRAN HR, MWMS HR i tri candidate-facing participant lanca: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP participant V2 sada pokriva i v2-single i v2-segmented path, candidate-facing `ti` ostaje dozvoljen, HR-only zabrana drugog lica nije prenesena na participant pathove, a postojeći V2 validator/segment validators ostaju završne kapije. IPIP verifier cleanup repovi nakon V2 gate-a su zatvoreni: V2 candidate_reflection fixture je usklađen sa current V2 contractom, a V1 participant structural label validator je usklađen sa participant V1 contractom. Sljedeće: po potrebi uski content compression/polish slice za IPIP HR ili zaseban locale-aware language-policy router slice za druge lane-ove. Ne raditi UI redesign. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. Lane-specific validator ostaje završna kapija. Ne regenerisati postojeće reportove bez eksplicitnog odobrenja. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove dok se eksplicitno ne odobri. Ako se nastavlja lane, otvarati samo uske slice-ove za content compression/polish ili budući locale router work. SAFRAN HR i MWMS HR pilot su output-side only; prompt-side adoption i dalje nije dio ovog slice-a. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Spec spreman / Dokumentovati u repo | Team module / Product architecture | Dokumentacioni sync: kreirati `docs/team-dynamics-product-tech-spec.md` kao canonical spec v0.1 u repou. |
@@ -6489,6 +6489,27 @@ Razlog za sljedeći prioritet:
     * promjenu samo jedne konkretne instance elementa na jednom ekranu bez uticaja na ostale instance
   * Prvi implementation korak ne smije biti redesign, nego audit i mapiranje postojećeg stanja.
   * Najnoviji single-test HR report audit pokazuje da se UI polish/redesign ne smije raditi prije report authority stabilizacije. Vizuelni problem na IPIP HR reportu nije izolovan samo u stilu; isti ekran otkriva prompt, terminology, snapshot i renderer-path split. Sljedeći UI rad mora prvo znati koji route/renderer je canonical i koji snapshot/display model je autoritativan.
+
+### Completion note — Participant reports semantic UI targeting foundation
+
+- Referentni ekran: `/dashboard/participants/[participantId]/reports`.
+- Dodani semantic `data-*` targeti:
+  - `data-ui="participant-reports-page"`
+  - `data-ui="candidate-report-hero"`
+  - `data-ui="report-group"`
+  - `data-report-family="individual|composite|idp|team-fit"`
+  - `data-ui="report-card"`
+  - `data-report-type="ipip|safran|mwms|composite|idp|team-fit"`
+  - `data-report-status={existing status/state}`
+  - `data-ui="report-state-message"`
+- Slice je vizuelno neutralan: nije uveden redesign, novi design system niti novi primitive.
+- `data-card-variant` nije uveden.
+- Status atributi koriste postojeće domain vrijednosti iz view modela/komponenti.
+- Nije bilo copy, status logic, DB, OpenAI, API ili report-generation promjena.
+- Testovi koji su prošli:
+  - `node scripts/test-hr-participant-reports-renderer-hygiene.cjs`
+  - `npm run typecheck`
+  - `git diff --check` za promijenjene fajlove
 
 ### Single-test HR report authority / prompt policy split
 
