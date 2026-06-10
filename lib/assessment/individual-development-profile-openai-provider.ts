@@ -69,6 +69,9 @@ export type IndividualDevelopmentProfileOpenAiProviderResult =
       modelName: string | null;
     };
 
+const MAX_VALIDATION_DIAGNOSTICS = 5;
+const MAX_DIAGNOSTIC_VALUE_LENGTH = 500;
+
 const nonEmptyStringSchema = {
   type: "string",
   minLength: 1,
@@ -308,6 +311,63 @@ function isValidInputSnapshot(
   );
 }
 
+function readValueAtValidationPath(value: unknown, path: string): unknown {
+  const segments = path.match(/[^.[\]]+/g);
+
+  if (!segments) {
+    return undefined;
+  }
+
+  return segments.reduce<unknown>((current, segment) => {
+    if (Array.isArray(current)) {
+      const index = Number(segment);
+      return Number.isInteger(index) ? current[index] : undefined;
+    }
+
+    if (current !== null && typeof current === "object") {
+      return (current as Record<string, unknown>)[segment];
+    }
+
+    return undefined;
+  }, value);
+}
+
+function truncateDiagnosticValue(value: unknown): string {
+  let serialized: string;
+
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    serialized = String(value);
+  }
+
+  if (serialized === undefined) {
+    serialized = "undefined";
+  }
+
+  return serialized.length > MAX_DIAGNOSTIC_VALUE_LENGTH
+    ? `${serialized.slice(0, MAX_DIAGNOSTIC_VALUE_LENGTH - 3)}...`
+    : serialized;
+}
+
+function buildDevelopmentValidationDiagnostics(
+  errors: string[],
+  parsed: unknown,
+): string[] {
+  return errors.slice(0, MAX_VALIDATION_DIAGNOSTICS).map((error) => {
+    const separatorIndex = error.indexOf(":");
+    const path =
+      separatorIndex >= 0 ? error.slice(0, separatorIndex).trim() : error.trim();
+    const message =
+      separatorIndex >= 0 ? error.slice(separatorIndex + 1).trim() : error.trim();
+    const offendingValue = truncateDiagnosticValue(
+      readValueAtValidationPath(parsed, path),
+    );
+
+    return `${path}: ${message} Offending value: ${offendingValue}`;
+  });
+}
+
 export function buildIndividualDevelopmentProfileOpenAiSystemPrompt(): string {
   const languagePolicy = resolveAiReportLanguagePolicy("bs");
   const globalPolicy =
@@ -526,10 +586,24 @@ export async function generateIndividualDevelopmentProfileWithOpenAi(
   const validation = validateIndividualDevelopmentProfileSnapshot(parsed);
 
   if (!validation.ok) {
+    const errors =
+      process.env.NODE_ENV === "development"
+        ? buildDevelopmentValidationDiagnostics(validation.errors, parsed)
+        : validation.errors;
+
+    if (process.env.NODE_ENV === "development") {
+      console.error(
+        [
+          "[IDP OpenAI validation diagnostic]",
+          ...errors.map((error, index) => `${index + 1}. ${error}`),
+        ].join("\n"),
+      );
+    }
+
     return {
       ok: false,
       reason: "validation_failed",
-      errors: validation.errors,
+      errors,
       modelName: options.model,
     };
   }

@@ -441,6 +441,81 @@ async function main() {
   assert.equal(invalidJsonResult.ok, false);
   assert.equal(invalidJsonResult.reason, "parse_failure");
 
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalConsoleError = console.error;
+  const diagnosticValue =
+    "Ovaj kandidat sigurno pokazuje da će uvijek biti najbolji izbor za svaku buduću ulogu.";
+  const invalidOpenAiSnapshot = JSON.parse(
+    JSON.stringify(validResult.reportSnapshot),
+  );
+  invalidOpenAiSnapshot.developmentRisks[0].possibleBlocker = diagnosticValue;
+  const developmentDiagnostics = [];
+
+  try {
+    process.env.NODE_ENV = "development";
+    console.error = (...args) => {
+      developmentDiagnostics.push(args.map(String).join(" "));
+    };
+
+    const developmentValidationResult =
+      await generateIndividualDevelopmentProfileWithOpenAi(validInput, {
+        apiKey: "test-key",
+        model: "gpt-5.1",
+        client: {
+          async createChatCompletion() {
+            return { content: JSON.stringify(invalidOpenAiSnapshot) };
+          },
+        },
+      });
+
+    assert.equal(developmentValidationResult.ok, false);
+    assert.equal(developmentValidationResult.reason, "validation_failed");
+    assert.match(
+      developmentValidationResult.errors.join(" "),
+      /developmentRisks\[0\]\.possibleBlocker/,
+    );
+    assert.match(developmentValidationResult.errors.join(" "), /Offending value:/);
+    assert.match(developmentValidationResult.errors.join(" "), new RegExp(diagnosticValue));
+    assert.match(
+      developmentDiagnostics.join(" "),
+      /\[IDP OpenAI validation diagnostic\]/,
+    );
+    assert.match(developmentDiagnostics.join(" "), new RegExp(diagnosticValue));
+
+    process.env.NODE_ENV = "production";
+
+    const productionValidationResult =
+      await generateIndividualDevelopmentProfileWithOpenAi(validInput, {
+        apiKey: "test-key",
+        model: "gpt-5.1",
+        client: {
+          async createChatCompletion() {
+            return { content: JSON.stringify(invalidOpenAiSnapshot) };
+          },
+        },
+      });
+
+    assert.equal(productionValidationResult.ok, false);
+    assert.equal(productionValidationResult.reason, "validation_failed");
+    assert.match(
+      productionValidationResult.errors.join(" "),
+      /developmentRisks\[0\]\.possibleBlocker/,
+    );
+    assert.doesNotMatch(productionValidationResult.errors.join(" "), /Offending value:/);
+    assert.doesNotMatch(
+      productionValidationResult.errors.join(" "),
+      new RegExp(diagnosticValue),
+    );
+  } finally {
+    console.error = originalConsoleError;
+
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  }
+
   const missingConfigResult = await generateIndividualDevelopmentProfileReport(
     validInput,
     {
