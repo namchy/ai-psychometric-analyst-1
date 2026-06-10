@@ -297,13 +297,33 @@ async function main() {
     /raw\/internal source metadata/i,
     /signal.*repeated/i,
     /Every section must serve its own purpose/i,
+    /oneOnOneGuidance\[\]\.possibleFollowUp.*must be an open HR\/manager question/i,
+    /possibleFollowUp must not be a statement, advice, imperative/i,
+    /Koji uslovi rada vam najviše pomažu.*\?/i,
+    /Kako prepoznajete da vam je povratna informacija.*\?/i,
   ]) {
     assert.match(systemPrompt, pattern);
   }
 
   assert.match(userPrompt, /sectionDistinctness/);
   assert.match(userPrompt, /signal sugeriše/);
+  assert.match(userPrompt, /possibleFollowUp must be an open HR\/manager question/i);
+  assert.match(userPrompt, /must end with \\"\?\\"/i);
+  assert.match(userPrompt, /statement, advice, imperative/i);
   assert.match(userPrompt, /individual_development_profile_input_v1/);
+  const possibleFollowUpSchema =
+    individualDevelopmentProfileOpenAiSchema.properties.oneOnOneGuidance.items
+      .properties.possibleFollowUp;
+  assert.match(possibleFollowUpSchema.description, /open HR\/manager question/i);
+  assert.match(possibleFollowUpSchema.description, /must end with "\?"/i);
+  assert.match(
+    possibleFollowUpSchema.description,
+    /must not be a statement, advice, imperative, title or conversation topic/i,
+  );
+  assert.match(
+    possibleFollowUpSchema.description,
+    /Koji uslovi rada vam najviše pomažu.*\?/i,
+  );
   assert.equal(
     validateIndividualDevelopmentProfileSnapshot(openAiResult.reportSnapshot).ok,
     true,

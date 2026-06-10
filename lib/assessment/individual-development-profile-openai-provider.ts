@@ -222,7 +222,11 @@ export const individualDevelopmentProfileOpenAiSchema = {
           question: nonEmptyStringSchema,
           whatToListenFor: nonEmptyStringSchema,
           signalBeingChecked: nonEmptyStringSchema,
-          possibleFollowUp: nonEmptyStringSchema,
+          possibleFollowUp: {
+            ...nonEmptyStringSchema,
+            description:
+              'Must be an open HR/manager question suitable for a one-on-one conversation and must end with "?". It must not be a statement, advice, imperative, title or conversation topic. Good examples: "Koji uslovi rada vam najviše pomažu da održite fokus kada zadatak traži preciznost?" and "Kako prepoznajete da vam je povratna informacija dovoljno jasna za sljedeći korak?"',
+          },
         },
       },
     },
@@ -326,6 +330,9 @@ export function buildIndividualDevelopmentProfileOpenAiSystemPrompt(): string {
     'Do not rely on the word "signal" as a repeated sentence template. Vary professional HR wording with "nalaz", "razvojni obrazac", "radna hipoteza", "područje za provjeru", "preporuka", "pitanje za razgovor" and "onboarding fokus" where natural.',
     "Every section must serve its own purpose. Do not paste or lightly paraphrase the same upstream fragment across multiple sections.",
     "Development summary synthesizes the main pattern; contribution pattern explains work conditions; risks identify blockers and checks; communication and motivation sections give practical guidance; one-on-one items are questions; onboarding stages are time-specific; manager watchpoints describe observable early patterns and responses.",
+    'Every oneOnOneGuidance[].possibleFollowUp value must be an open HR/manager question suitable for a one-on-one conversation and must end with "?".',
+    "A possibleFollowUp must not be a statement, advice, imperative, title or conversation topic.",
+    'Good possibleFollowUp examples: "Koji uslovi rada vam najviše pomažu da održite fokus kada zadatak traži preciznost?" and "Kako prepoznajete da vam je povratna informacija dovoljno jasna za sljedeći korak?"',
     "Use available source summaries and relevant/integrated findings as evidence, but translate them into natural HR language.",
     "When input is partial, unavailable or conflicting, lower certainty and state the limitation without exposing internal status or technical metadata.",
   ]
@@ -351,6 +358,8 @@ export function buildIndividualDevelopmentProfileOpenAiUserPrompt(
         'Do not use candidate-facing second person such as "ti" or "tvoj".',
       wording:
         'Vary wording naturally and do not repeatedly formulate conclusions as "signal sugeriše".',
+      oneOnOneGuidance:
+        'Every possibleFollowUp must be an open HR/manager question for a one-on-one conversation, must end with "?", and must not be a statement, advice, imperative, title or conversation topic.',
     },
     input: inputSnapshot,
   });
