@@ -2,7 +2,7 @@ import type { ReportLocale } from "@/lib/assessment/locale";
 
 export type ReportLanguageAudience = "hr" | "participant";
 export type ReportLanguageReportType = "composite" | "single_test";
-export type ReportLanguageQualityContext = "composite_hr_report";
+export type ReportLanguageQualityContext = "composite_hr_report" | "ipip_hr_report";
 
 export type ReportLanguageQualityIssueCode =
   | "FORBIDDEN_PHRASE"
@@ -11,11 +11,17 @@ export type ReportLanguageQualityIssueCode =
   | "FORBIDDEN_HIRING_DECISION"
   | "FORBIDDEN_DEBUG_LANGUAGE"
   | "NARRATIVE_CASING_VIOLATION"
-  | "SUMMARY_WRITING_QUALITY";
+  | "SUMMARY_WRITING_QUALITY"
+  | "FORBIDDEN_HR_SECOND_PERSON"
+  | "SCORE_SUMMARY_PROSE"
+  | "MECHANICAL_FACET_LIST"
+  | "MISSING_HR_BEHAVIORAL_THEME"
+  | "FORBIDDEN_SCRIPT";
 
 export type ReportLanguageQualityIssue = {
   code: ReportLanguageQualityIssueCode;
   phrase: string;
+  path?: string;
   suggestion?: string;
 };
 
@@ -46,6 +52,11 @@ type PatternRule = {
   phrase: string;
   suggestion?: string;
   appliesToBhsOnly?: boolean;
+};
+
+type TextEntry = {
+  path: string;
+  value: string;
 };
 
 export const COMPOSITE_HR_BHS_LANGUAGE_RULES = [
@@ -233,6 +244,168 @@ const COMPOSITE_HR_SUMMARY_ACTION_PATTERN =
 const COMPOSITE_HR_PASSIVE_SUMMARY_FOCUS_PATTERN =
   /Područje\s+za\s+dodatnu\s+provjeru\s+je|Podrucje\s+za\s+dodatnu\s+provjeru\s+je/iu;
 
+const IPIP_HR_FORBIDDEN_TERMS: PhraseRule[] = [
+  {
+    code: "GLOSSARY_VIOLATION",
+    phrase: "Ugodnost",
+    suggestion: "Spremnost na saradnju",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "GLOSSARY_VIOLATION",
+    phrase: "Saradljivost",
+    suggestion: "Spremnost na saradnju",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "GLOSSARY_VIOLATION",
+    phrase: "Kooperativnost",
+    suggestion: "Spremnost na saradnju",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "GLOSSARY_VIOLATION",
+    phrase: "Saradnički profil",
+    suggestion: "spremnost na saradnju",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_TERM",
+    phrase: "overuse",
+    suggestion: "prekomjerno oslanjanje",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_TERM",
+    phrase: "handling",
+    suggestion: "postupanje",
+    appliesToBhsOnly: true,
+  },
+];
+
+const IPIP_HR_PROMINENT_FIELD_PATHS = new Set([
+  "headline",
+  "executive_summary",
+  "key_hr_signals[0].title",
+  "key_hr_signals[0].evidence",
+  "key_hr_signals[0].hr_implication",
+  "key_hr_signals[1].title",
+  "key_hr_signals[1].evidence",
+  "key_hr_signals[1].hr_implication",
+  "key_hr_signals[2].title",
+  "key_hr_signals[2].evidence",
+  "key_hr_signals[2].hr_implication",
+  "domain_overview[0].concise_meaning",
+  "domain_overview[1].concise_meaning",
+  "domain_overview[2].concise_meaning",
+  "domain_overview[3].concise_meaning",
+  "domain_overview[4].concise_meaning",
+]);
+
+const IPIP_HR_DOMAIN_LABEL_PATTERN =
+  "(?:Savjesnost|Spremnost na saradnju|Neuroticizam|Ekstraverzija|Otvorenost prema iskustvu)";
+
+const IPIP_HR_SCORE_SUMMARY_PATTERNS: PatternRule[] = [
+  {
+    code: "SCORE_SUMMARY_PROSE",
+    pattern: new RegExp(`^\\s*${IPIP_HR_DOMAIN_LABEL_PATTERN}\\s+je\\s+u\\s+[^.!?]{0,40}rasponu`, "iu"),
+    phrase: "domain je u rasponu",
+    suggestion: "Open with the HR behavior pattern, then mention domain/facet evidence if needed.",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "SCORE_SUMMARY_PROSE",
+    pattern: new RegExp(`^\\s*${IPIP_HR_DOMAIN_LABEL_PATTERN}\\s+je\\s+(?:visoko|nisko|niže|umjereno)\\s+izra`, "iu"),
+    phrase: "domain je izrazen",
+    suggestion: "Open with the HR behavior pattern, not the score band translation.",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "SCORE_SUMMARY_PROSE",
+    pattern: /\b(?:high|low|medium|moderate)\b/iu,
+    phrase: "English score band term",
+    suggestion: "Use BHS user-facing wording and keep bands as evidence, not prose lead.",
+    appliesToBhsOnly: true,
+  },
+];
+
+const IPIP_HR_MECHANICAL_FACET_PATTERNS: PatternRule[] = [
+  {
+    code: "MECHANICAL_FACET_LIST",
+    pattern: /\buz\s+(?:visok\w*|nisk\w*|niž\w*|umjeren\w*)\s+facete\b/iu,
+    phrase: "uz visoke facete",
+    suggestion: "Mention at most 2-3 facets only when tied to concrete work behavior.",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "MECHANICAL_FACET_LIST",
+    pattern: /\buz\s+(?:visoko|nisko|niže|umjereno)\s+izražen\w*\s+[^.!?]{0,120}(?:,\s*[^,.!?]+){3,}/iu,
+    phrase: "mechanical facet list",
+    suggestion: "Avoid long facet lists; write the behavioral implication first.",
+    appliesToBhsOnly: true,
+  },
+];
+
+const IPIP_HR_IJEKAVICA_PATTERNS: PatternRule[] = [
+  {
+    code: "FORBIDDEN_PHRASE",
+    pattern: /\bizveštaj\b|\bizvestaj\b/iu,
+    phrase: "izveštaj",
+    suggestion: "izvještaj",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_PHRASE",
+    pattern: /\bprover(?:a|e|i|iti|ite|ava\w*)\b/iu,
+    phrase: "proveriti",
+    suggestion: "provjeriti",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_PHRASE",
+    pattern: /\bsledeć\w*\b|\bsledec\w*\b/iu,
+    phrase: "sledeći",
+    suggestion: "sljedeći",
+    appliesToBhsOnly: true,
+  },
+];
+
+const IPIP_HR_SECOND_PERSON_PATTERNS: PatternRule[] = [
+  {
+    code: "FORBIDDEN_HR_SECOND_PERSON",
+    pattern: /(^|[^A-Za-zČĆŽŠĐčćžšđ])ti([^A-Za-zČĆŽŠĐčćžšđ]|$)/iu,
+    phrase: "ti",
+    suggestion: "HR report must not address the candidate in second person.",
+    appliesToBhsOnly: true,
+  },
+  {
+    code: "FORBIDDEN_HR_SECOND_PERSON",
+    pattern: /(^|[^A-Za-zČĆŽŠĐčćžšđ])tvoj(?:a|e|i|ih|im|oj|om|og)?([^A-Za-zČĆŽŠĐčćžšđ]|$)/iu,
+    phrase: "tvoj",
+    suggestion: "HR report must not address the candidate in second person.",
+    appliesToBhsOnly: true,
+  },
+];
+
+const IPIP_HR_CYRILLIC_PATTERN: PatternRule = {
+  code: "FORBIDDEN_SCRIPT",
+  pattern: /[\u0400-\u04FF]/u,
+  phrase: "Cyrillic script",
+  suggestion: "Use Latin script for bs user-facing report text.",
+  appliesToBhsOnly: true,
+};
+
+const IPIP_HR_DOMAIN_RESTATEMENT_TITLES = new Set([
+  "savjesnost",
+  "spremnost na saradnju",
+  "neuroticizam",
+  "ekstraverzija",
+  "otvorenost prema iskustvu",
+]);
+
+const IPIP_HR_BEHAVIOR_THEME_PATTERN =
+  /\b(?:pouzdanost|izvršenje|izvrsenje|saradnja|granice|pritisak|komunikacij|promjen|rokov|odluk|odgovornost|timsk|podrš|podrsk|prioritet|onboarding|intervju|radn\w*\s+ritam|način\s+rada|nacin\s+rada)\b/iu;
+
 function collectStrings(value: unknown, output: string[] = []): string[] {
   if (typeof value === "string") {
     output.push(value);
@@ -279,6 +452,151 @@ function collectCompositeHrUserFacingStrings(snapshot: unknown): string[] {
     },
     [],
   );
+}
+
+function pushStringEntry(entries: TextEntry[], path: string, value: unknown): void {
+  if (typeof value === "string" && value.trim().length > 0) {
+    entries.push({ path, value });
+  }
+}
+
+function collectStringListEntries(entries: TextEntry[], path: string, value: unknown): void {
+  if (!Array.isArray(value)) {
+    return;
+  }
+
+  value.forEach((item, index) => pushStringEntry(entries, `${path}[${index}]`, item));
+}
+
+function collectIpipHrUserFacingEntries(snapshot: unknown): TextEntry[] {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return [];
+  }
+
+  const report = snapshot as {
+    headline?: unknown;
+    executive_summary?: unknown;
+    key_hr_signals?: Array<{
+      title?: unknown;
+      evidence?: unknown;
+      hr_implication?: unknown;
+    }>;
+    verification_focus?: Array<{
+      area?: unknown;
+      why_it_matters?: unknown;
+      how_to_check?: unknown;
+    }>;
+    interview_questions?: Array<{
+      question?: unknown;
+      evaluates?: unknown;
+      what_good_answer_may_show?: unknown;
+    }>;
+    strengths_and_overuse_risks?: Array<{
+      trait_or_pattern?: unknown;
+      possible_strengths?: unknown;
+      possible_overuse_risks?: unknown;
+      hr_handling_tip?: unknown;
+    }>;
+    domain_overview?: Array<{
+      domain_name?: unknown;
+      concise_meaning?: unknown;
+      hr_relevance?: unknown;
+      check_in_interview?: unknown;
+      top_facets?: Array<{
+        facet_name?: unknown;
+        relevance?: unknown;
+      }>;
+    }>;
+    onboarding_and_management_guidance?: Array<{
+      recommendation?: unknown;
+      why?: unknown;
+      first_30_days_application?: unknown;
+    }>;
+    team_fit_notes?: Array<{
+      fit_condition?: unknown;
+      may_work_well_when?: unknown;
+      watchout?: unknown;
+    }>;
+    decision_support_note?: unknown;
+    interpretation_note?: unknown;
+  };
+  const entries: TextEntry[] = [];
+
+  pushStringEntry(entries, "headline", report.headline);
+  pushStringEntry(entries, "executive_summary", report.executive_summary);
+
+  report.key_hr_signals?.forEach((signal, index) => {
+    pushStringEntry(entries, `key_hr_signals[${index}].title`, signal?.title);
+    pushStringEntry(entries, `key_hr_signals[${index}].evidence`, signal?.evidence);
+    pushStringEntry(entries, `key_hr_signals[${index}].hr_implication`, signal?.hr_implication);
+  });
+
+  report.verification_focus?.forEach((focus, index) => {
+    pushStringEntry(entries, `verification_focus[${index}].area`, focus?.area);
+    pushStringEntry(entries, `verification_focus[${index}].why_it_matters`, focus?.why_it_matters);
+    pushStringEntry(entries, `verification_focus[${index}].how_to_check`, focus?.how_to_check);
+  });
+
+  report.interview_questions?.forEach((question, index) => {
+    pushStringEntry(entries, `interview_questions[${index}].question`, question?.question);
+    pushStringEntry(entries, `interview_questions[${index}].evaluates`, question?.evaluates);
+    pushStringEntry(
+      entries,
+      `interview_questions[${index}].what_good_answer_may_show`,
+      question?.what_good_answer_may_show,
+    );
+  });
+
+  report.strengths_and_overuse_risks?.forEach((item, index) => {
+    pushStringEntry(entries, `strengths_and_overuse_risks[${index}].trait_or_pattern`, item?.trait_or_pattern);
+    collectStringListEntries(entries, `strengths_and_overuse_risks[${index}].possible_strengths`, item?.possible_strengths);
+    collectStringListEntries(entries, `strengths_and_overuse_risks[${index}].possible_overuse_risks`, item?.possible_overuse_risks);
+    pushStringEntry(entries, `strengths_and_overuse_risks[${index}].hr_handling_tip`, item?.hr_handling_tip);
+  });
+
+  report.domain_overview?.forEach((domain, index) => {
+    pushStringEntry(entries, `domain_overview[${index}].domain_name`, domain?.domain_name);
+    pushStringEntry(entries, `domain_overview[${index}].concise_meaning`, domain?.concise_meaning);
+    pushStringEntry(entries, `domain_overview[${index}].hr_relevance`, domain?.hr_relevance);
+    pushStringEntry(entries, `domain_overview[${index}].check_in_interview`, domain?.check_in_interview);
+    domain?.top_facets?.forEach((facet, facetIndex) => {
+      pushStringEntry(
+        entries,
+        `domain_overview[${index}].top_facets[${facetIndex}].facet_name`,
+        facet?.facet_name,
+      );
+      pushStringEntry(
+        entries,
+        `domain_overview[${index}].top_facets[${facetIndex}].relevance`,
+        facet?.relevance,
+      );
+    });
+  });
+
+  report.onboarding_and_management_guidance?.forEach((item, index) => {
+    pushStringEntry(entries, `onboarding_and_management_guidance[${index}].recommendation`, item?.recommendation);
+    pushStringEntry(entries, `onboarding_and_management_guidance[${index}].why`, item?.why);
+    pushStringEntry(
+      entries,
+      `onboarding_and_management_guidance[${index}].first_30_days_application`,
+      item?.first_30_days_application,
+    );
+  });
+
+  report.team_fit_notes?.forEach((item, index) => {
+    pushStringEntry(entries, `team_fit_notes[${index}].fit_condition`, item?.fit_condition);
+    pushStringEntry(entries, `team_fit_notes[${index}].may_work_well_when`, item?.may_work_well_when);
+    pushStringEntry(entries, `team_fit_notes[${index}].watchout`, item?.watchout);
+  });
+
+  collectStringListEntries(entries, "decision_support_note", report.decision_support_note);
+  pushStringEntry(entries, "interpretation_note", report.interpretation_note);
+
+  return entries;
+}
+
+function collectIpipHrUserFacingStrings(snapshot: unknown): string[] {
+  return collectIpipHrUserFacingEntries(snapshot).map((entry) => entry.value);
 }
 
 function collectCompositeHrNarrativeStrings(snapshot: unknown): string[] {
@@ -352,7 +670,10 @@ function pushIssue(
   issue: ReportLanguageQualityIssue,
 ): void {
   const alreadyPresent = issues.some(
-    (entry) => entry.code === issue.code && entry.phrase === issue.phrase,
+    (entry) =>
+      entry.code === issue.code &&
+      entry.phrase === issue.phrase &&
+      entry.path === issue.path,
   );
 
   if (!alreadyPresent) {
@@ -402,6 +723,37 @@ function validatePatternRules(
   }
 }
 
+function validatePatternRulesForEntries(
+  entries: TextEntry[],
+  locale: ReportLocale,
+  rules: PatternRule[],
+  issues: ReportLanguageQualityIssue[],
+  options?: {
+    pathFilter?: (path: string) => boolean;
+  },
+): void {
+  for (const entry of entries) {
+    if (options?.pathFilter && !options.pathFilter(entry.path)) {
+      continue;
+    }
+
+    for (const rule of rules) {
+      if (!shouldApplyBhsRule(locale, rule)) {
+        continue;
+      }
+
+      if (rule.pattern.test(entry.value)) {
+        pushIssue(issues, {
+          code: rule.code,
+          phrase: rule.phrase,
+          path: entry.path,
+          suggestion: rule.suggestion,
+        });
+      }
+    }
+  }
+}
+
 function buildQualityText(params: ReportLanguageQualityParams): string {
   if (typeof params.text === "string" && params.text.trim().length > 0) {
     return params.text;
@@ -413,6 +765,14 @@ function buildQualityText(params: ReportLanguageQualityParams): string {
     params.context === "composite_hr_report"
   ) {
     return collectCompositeHrUserFacingStrings(params.snapshot).join("\n");
+  }
+
+  if (
+    params.audience === "hr" &&
+    params.reportType === "single_test" &&
+    params.context === "ipip_hr_report"
+  ) {
+    return collectIpipHrUserFacingStrings(params.snapshot).join("\n");
   }
 
   return collectStrings(params.snapshot).join("\n");
@@ -537,12 +897,82 @@ function validateCompositeHrSummaryWritingQuality(
   }
 }
 
+function validateIpipHrKeySignalThemes(
+  snapshot: unknown,
+  locale: ReportLocale,
+  issues: ReportLanguageQualityIssue[],
+): void {
+  if (!isBhsLocale(locale) || !snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return;
+  }
+
+  const report = snapshot as {
+    key_hr_signals?: Array<{
+      title?: unknown;
+      evidence?: unknown;
+      hr_implication?: unknown;
+    }>;
+  };
+
+  report.key_hr_signals?.forEach((signal, index) => {
+    const title = typeof signal?.title === "string" ? signal.title.trim() : "";
+    const combinedText = [signal?.title, signal?.evidence, signal?.hr_implication]
+      .filter((value): value is string => typeof value === "string")
+      .join(" ");
+    const normalizedTitle = normalizeLabelLikeValue(title);
+
+    if (IPIP_HR_DOMAIN_RESTATEMENT_TITLES.has(normalizedTitle)) {
+      pushIssue(issues, {
+        code: "MISSING_HR_BEHAVIORAL_THEME",
+        phrase: title,
+        path: `key_hr_signals[${index}].title`,
+        suggestion: "Use a behavioral HR theme such as pouzdanost i izvršenje or saradnja i postavljanje granica.",
+      });
+      return;
+    }
+
+    if (combinedText.trim().length > 0 && !IPIP_HR_BEHAVIOR_THEME_PATTERN.test(combinedText)) {
+      pushIssue(issues, {
+        code: "MISSING_HR_BEHAVIORAL_THEME",
+        phrase: title || `key_hr_signals[${index}]`,
+        path: `key_hr_signals[${index}]`,
+        suggestion: "Make the signal about concrete work behavior, not only a Big Five domain.",
+      });
+    }
+  });
+}
+
+function validateIpipHrQuality(
+  params: ReportLanguageQualityParams,
+  issues: ReportLanguageQualityIssue[],
+): void {
+  const entries = collectIpipHrUserFacingEntries(params.snapshot);
+  const text = entries.map((entry) => entry.value).join("\n");
+  const normalizedText = normalizeText(text);
+
+  validatePhraseRules(normalizedText, params.locale, IPIP_HR_FORBIDDEN_TERMS, issues);
+  validatePatternRulesForEntries(entries, params.locale, IPIP_HR_SECOND_PERSON_PATTERNS, issues);
+  validatePatternRulesForEntries(entries, params.locale, [IPIP_HR_CYRILLIC_PATTERN], issues);
+  validatePatternRulesForEntries(entries, params.locale, IPIP_HR_IJEKAVICA_PATTERNS, issues);
+  validatePatternRulesForEntries(
+    entries,
+    params.locale,
+    IPIP_HR_SCORE_SUMMARY_PATTERNS,
+    issues,
+    {
+      pathFilter: (path) => IPIP_HR_PROMINENT_FIELD_PATHS.has(path),
+    },
+  );
+  validatePatternRulesForEntries(entries, params.locale, IPIP_HR_MECHANICAL_FACET_PATTERNS, issues);
+  validateIpipHrKeySignalThemes(params.snapshot, params.locale, issues);
+}
+
 export function formatReportLanguageQualityIssues(issues: ReportLanguageQualityIssue[]): string {
   return issues
     .map((issue) =>
       issue.suggestion
-        ? `${issue.code}: "${issue.phrase}" -> "${issue.suggestion}"`
-        : `${issue.code}: "${issue.phrase}"`,
+        ? `${issue.path ? `${issue.path}: ` : ""}${issue.code}: "${issue.phrase}" -> "${issue.suggestion}"`
+        : `${issue.path ? `${issue.path}: ` : ""}${issue.code}: "${issue.phrase}"`,
     )
     .join("; ");
 }
@@ -571,6 +1001,14 @@ export function validateReportLanguageQuality(
     );
     validateCompositeHrAgreeablenessLabelLikeValues(params.snapshot, issues);
     validateCompositeHrSummaryWritingQuality(params.snapshot, params.locale, issues);
+  }
+
+  if (
+    params.audience === "hr" &&
+    params.reportType === "single_test" &&
+    params.context === "ipip_hr_report"
+  ) {
+    validateIpipHrQuality(params, issues);
   }
 
   return {
