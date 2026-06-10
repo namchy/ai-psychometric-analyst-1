@@ -12,6 +12,125 @@ const dashboardPrimitivesSource = fs.readFileSync(
   path.join(projectRoot, "components/dashboard/primitives.tsx"),
   "utf8",
 );
+const teamFitReportListSource = fs.readFileSync(
+  path.join(projectRoot, "components/dashboard/team-fit-report-list.tsx"),
+  "utf8",
+);
+const individualDevelopmentProfileReportListSource = fs.readFileSync(
+  path.join(
+    projectRoot,
+    "components/dashboard/individual-development-profile-report-list.tsx",
+  ),
+  "utf8",
+);
+
+assert.equal(
+  candidateReportsPageSource.includes('data-ui="participant-reports-page"'),
+  true,
+  "Expected participant reports page to expose a stable page owner target.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('data-ui="candidate-report-hero"'),
+  true,
+  "Expected participant reports page to expose a stable candidate hero target.",
+);
+for (const reportFamily of ["individual", "composite", "idp", "team-fit"]) {
+  assert.equal(
+    candidateReportsPageSource.includes(`data-report-family="${reportFamily}"`),
+    true,
+    `Expected participant reports page to expose the ${reportFamily} report group target.`,
+  );
+}
+assert.equal(
+  candidateReportsPageSource.includes('data-ui="report-group"'),
+  true,
+  "Expected participant reports page sections to expose stable report group targets.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('data-ui="report-card"'),
+  true,
+  "Expected participant reports page cards to expose stable report card targets.",
+);
+for (const reportType of ["ipip", "safran", "mwms"]) {
+  assert.equal(
+    candidateReportsPageSource.includes(`return "${reportType}";`),
+    true,
+    `Expected participant reports page to map its existing slug to the ${reportType} report type target.`,
+  );
+}
+assert.equal(
+  candidateReportsPageSource.includes('data-report-type="composite"'),
+  true,
+  "Expected composite card to expose the composite report type target.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("data-report-status={card.state}"),
+  true,
+  "Expected individual report cards to expose their existing canonical state.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("data-report-status={model.compositeCard.state}"),
+  true,
+  "Expected composite report card to expose its existing canonical state.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('data-ui="report-state-message"'),
+  true,
+  "Expected participant report card status copy to expose a stable state message target.",
+);
+assert.equal(
+  teamFitReportListSource.includes('data-ui="report-card"'),
+  true,
+  "Expected Team Fit cards to expose stable report card targets.",
+);
+assert.equal(
+  teamFitReportListSource.includes('data-report-type="team-fit"'),
+  true,
+  "Expected Team Fit cards to expose the Team Fit report type target.",
+);
+assert.equal(
+  teamFitReportListSource.includes("data-report-status={entry.status}"),
+  true,
+  "Expected Team Fit cards to expose their existing canonical status.",
+);
+assert.equal(
+  teamFitReportListSource.includes('data-ui="report-state-message"'),
+  true,
+  "Expected Team Fit status copy to expose a stable state message target.",
+);
+assert.equal(
+  individualDevelopmentProfileReportListSource.includes('data-ui="report-card"'),
+  true,
+  "Expected IDP cards to expose stable report card targets.",
+);
+assert.equal(
+  individualDevelopmentProfileReportListSource.includes('data-report-type="idp"'),
+  true,
+  "Expected IDP cards to expose the IDP report type target.",
+);
+assert.equal(
+  individualDevelopmentProfileReportListSource.includes(
+    "data-report-status={entry.status}",
+  ),
+  true,
+  "Expected IDP cards to expose their existing canonical status.",
+);
+assert.equal(
+  individualDevelopmentProfileReportListSource.includes(
+    'data-ui="report-state-message"',
+  ),
+  true,
+  "Expected IDP status copy to expose a stable state message target.",
+);
+assert.equal(
+  [
+    candidateReportsPageSource,
+    teamFitReportListSource,
+    individualDevelopmentProfileReportListSource,
+  ].some((source) => source.includes("data-card-variant")),
+  false,
+  "Expected semantic targeting foundation not to introduce data-card-variant.",
+);
 
 assert.equal(
   candidateReportsPageSource.includes("DpPageHeader"),

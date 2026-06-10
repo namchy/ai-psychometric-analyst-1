@@ -37,6 +37,7 @@ import {
 import {
   buildHrCandidateAssessmentDetailModel,
   type HrCandidateAssessmentCardVisualVariant,
+  type HrCandidateAssessmentTestSlug,
 } from "@/lib/dashboard/hr-candidate-assessment";
 import {
   formatHrDateTime,
@@ -69,6 +70,19 @@ function getCardStatusTone(
     case "info":
     default:
       return "neutral";
+  }
+}
+
+function getIndividualReportType(
+  slug: HrCandidateAssessmentTestSlug,
+): "ipip" | "safran" | "mwms" {
+  switch (slug) {
+    case "ipip-neo-120-v1":
+      return "ipip";
+    case "safran_v1":
+      return "safran";
+    case "mwms_v1":
+      return "mwms";
   }
 }
 
@@ -242,7 +256,11 @@ export default async function CandidateReportsPage({
       : model.availabilityLabel;
 
   const individualReportsSection = (
-    <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+    <DashboardSectionShell
+      className="shadow-[inset_0_3px_0_rgba(17,138,178,0.22),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6"
+      data-report-family="individual"
+      data-ui="report-group"
+    >
       <DashboardSectionHeader
         eyebrow="Pojedinačni HR izvještaji"
         eyebrowClassName="text-[#118ab2]"
@@ -270,6 +288,9 @@ export default async function CandidateReportsPage({
             <article
               key={card.slug}
               className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]"
+              data-report-status={card.state}
+              data-report-type={getIndividualReportType(card.slug)}
+              data-ui="report-card"
             >
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
@@ -284,7 +305,12 @@ export default async function CandidateReportsPage({
                   </DpStatusBadge>
                 </div>
 
-                <p className="min-h-[3rem] text-sm leading-6 text-slate-600">{card.body}</p>
+                <p
+                  className="min-h-[3rem] text-sm leading-6 text-slate-600"
+                  data-ui="report-state-message"
+                >
+                  {card.body}
+                </p>
 
                 <DpMetaGrid columns={3}>
                   <DpMetaItem
@@ -338,19 +364,31 @@ export default async function CandidateReportsPage({
   );
 
   const teamFitSection = (
-    <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.18),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+    <DashboardSectionShell
+      className="shadow-[inset_0_3px_0_rgba(7,59,76,0.18),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6"
+      data-report-family="team-fit"
+      data-ui="report-group"
+    >
       <TeamFitReportList entries={teamFitReports} />
     </DashboardSectionShell>
   );
 
   const individualDevelopmentProfileSection = (
-    <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(17,138,178,0.18),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+    <DashboardSectionShell
+      className="shadow-[inset_0_3px_0_rgba(17,138,178,0.18),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6"
+      data-report-family="idp"
+      data-ui="report-group"
+    >
       <IndividualDevelopmentProfileReportList entries={individualDevelopmentProfileReports} />
     </DashboardSectionShell>
   );
 
   const compositeSection = (
-    <DashboardSectionShell className="shadow-[inset_0_3px_0_rgba(7,59,76,0.24),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6">
+    <DashboardSectionShell
+      className="shadow-[inset_0_3px_0_rgba(7,59,76,0.24),0_28px_60px_rgba(15,23,42,0.12)] lg:p-6"
+      data-report-family="composite"
+      data-ui="report-group"
+    >
       <DashboardSectionHeader
         eyebrow="Kompozitni HR izvještaj"
         eyebrowClassName="text-[#073b4c]"
@@ -360,7 +398,12 @@ export default async function CandidateReportsPage({
         titleClassName="text-[1.35rem]"
       />
 
-      <article className="mt-6 max-w-[920px] rounded-[1.5rem] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6">
+      <article
+        className="mt-6 max-w-[920px] rounded-[1.5rem] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6"
+        data-report-status={model.compositeCard.state}
+        data-report-type="composite"
+        data-ui="report-card"
+      >
         {compositeQueueMessage ? (
           <DpInlineMessage
             className="mb-4 min-[900px]:col-span-2"
@@ -380,7 +423,10 @@ export default async function CandidateReportsPage({
                 {model.compositeCard.statusLabel}
               </DpStatusBadge>
             </div>
-            <p className="mt-2 max-w-[520px] text-sm leading-6 text-slate-600">
+            <p
+              className="mt-2 max-w-[520px] text-sm leading-6 text-slate-600"
+              data-ui="report-state-message"
+            >
               {model.compositeCard.body}
             </p>
           </div>
@@ -445,37 +491,40 @@ export default async function CandidateReportsPage({
   return (
     <AuthenticatedAppMainContent
       className="mx-auto max-w-[92rem] px-4 sm:px-6 lg:px-10"
+      data-ui="participant-reports-page"
       topPaddingClassName="pt-0"
     >
       <div className="-mt-10 pb-12">
-        <DpPageHeader
-          backHref="/dashboard"
-          backLabel="Nazad na HR dashboard"
-          eyebrow="HR procjena kandidata"
-          title={model.participant.full_name}
-          description={model.participant.email}
-          badges={
-            <>
-              <DpStatusBadge emphasized tone="success">
-                {model.completedLabel}
-              </DpStatusBadge>
-              <DpStatusBadge tone={model.readyHrReports > 0 ? "success" : "neutral"}>
-                {model.readyLabel}
-              </DpStatusBadge>
-              <DpStatusBadge tone={model.completedTests > 0 ? "info" : "warning"}>
-                {availabilityStatusLabel}
-              </DpStatusBadge>
-              <DpStatusBadge tone="neutral">{model.organizationName}</DpStatusBadge>
-            </>
-          }
-          meta={
-            <DpMetaGrid columns={3}>
-              <DpMetaItem label="Kandidat" value={model.participant.full_name} />
-              <DpMetaItem label="Email" value={model.participant.email} />
-              <DpMetaItem label="HR workspace" value="Pregled izvještaja i narednih akcija" />
-            </DpMetaGrid>
-          }
-        />
+        <div data-ui="candidate-report-hero">
+          <DpPageHeader
+            backHref="/dashboard"
+            backLabel="Nazad na HR dashboard"
+            eyebrow="HR procjena kandidata"
+            title={model.participant.full_name}
+            description={model.participant.email}
+            badges={
+              <>
+                <DpStatusBadge emphasized tone="success">
+                  {model.completedLabel}
+                </DpStatusBadge>
+                <DpStatusBadge tone={model.readyHrReports > 0 ? "success" : "neutral"}>
+                  {model.readyLabel}
+                </DpStatusBadge>
+                <DpStatusBadge tone={model.completedTests > 0 ? "info" : "warning"}>
+                  {availabilityStatusLabel}
+                </DpStatusBadge>
+                <DpStatusBadge tone="neutral">{model.organizationName}</DpStatusBadge>
+              </>
+            }
+            meta={
+              <DpMetaGrid columns={3}>
+                <DpMetaItem label="Kandidat" value={model.participant.full_name} />
+                <DpMetaItem label="Email" value={model.participant.email} />
+                <DpMetaItem label="HR workspace" value="Pregled izvještaja i narednih akcija" />
+              </DpMetaGrid>
+            }
+          />
+        </div>
 
         <div className="mt-8 space-y-8">
           {hasTeamFitReports ? teamFitSection : null}

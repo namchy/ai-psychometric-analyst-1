@@ -72,6 +72,9 @@ export function IndividualDevelopmentProfileReportList({
           <article
             key={entry.id}
             className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)]"
+            data-report-status={entry.status}
+            data-report-type="idp"
+            data-ui="report-card"
           >
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3">
@@ -88,7 +91,10 @@ export function IndividualDevelopmentProfileReportList({
                 </DpStatusBadge>
               </div>
 
-              <p className="min-h-[3rem] text-sm leading-6 text-slate-600">
+              <p
+                className="min-h-[3rem] text-sm leading-6 text-slate-600"
+                data-ui="report-state-message"
+              >
                 {entry.safeStatusMessage}
               </p>
 
