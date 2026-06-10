@@ -8959,6 +8959,19 @@ Završeno:
   * helper je trenutno primijenjen samo na participant HR reports page
   * širenje na composite HR report view, HR dashboard copy i create assessment modal ostaje mogući kasniji polish
 
+### Completion note — Single-test HR report back navigation polish
+
+- Završen je uski single-test HR report back navigation polish na `app/(protected)/dashboard/attempts/[attemptId]/page.tsx`.
+- Route sada prikazuje jasan back link iznad report sadržaja kroz postojeći `PageNavigation` pattern.
+- Ako `attempt.participant_id` postoji iz `getAttemptForOrganization(...)`, link vodi na `/dashboard/participants/[participantId]/reports` sa labelom `Nazad na pregled procjena`.
+- Ako `participant_id` nije dostupan, koristi se safe fallback `/dashboard` sa labelom `Nazad na HR dashboard`.
+- Dodan je uski route/navigation test `scripts/test-hr-single-test-attempt-route-navigation.cjs`.
+- Route ostaje read-only view i ne generiše report.
+- Nije bilo promjena u report snapshotu, renderer sadržaju, provideru, OpenAI konfiguraciji, DB shemi, scoring/input sloju, lifecycle/generation flowu niti report regeneraciji.
+- Testovi koji su prošli:
+  - `node scripts/test-hr-single-test-attempt-route-navigation.cjs`
+  - `npm run typecheck`
+
 ### 2026-05-15 — Deep Profile UI system i Composite HR renderer polish
 
 Završeno:
