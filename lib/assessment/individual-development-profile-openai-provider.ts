@@ -18,7 +18,7 @@ export const INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI = "openai" as const;
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_OPENAI_GENERATOR_VERSION =
   "individual_development_profile_openai_v1" as const;
 
-type IndividualDevelopmentProfileOpenAiRequest = {
+export type IndividualDevelopmentProfileOpenAiRequest = {
   model: string;
   temperature?: number;
   response_format: {
@@ -425,6 +425,40 @@ export function buildIndividualDevelopmentProfileOpenAiUserPrompt(
   });
 }
 
+export function buildIndividualDevelopmentProfileOpenAiRequest(input: {
+  inputSnapshot: IndividualDevelopmentProfileInputSnapshot;
+  model: string;
+  temperature?: number | null;
+}): IndividualDevelopmentProfileOpenAiRequest {
+  const request: IndividualDevelopmentProfileOpenAiRequest = {
+    model: input.model,
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE,
+        strict: true,
+        schema: individualDevelopmentProfileOpenAiSchema,
+      },
+    },
+    messages: [
+      {
+        role: "system",
+        content: buildIndividualDevelopmentProfileOpenAiSystemPrompt(),
+      },
+      {
+        role: "user",
+        content: buildIndividualDevelopmentProfileOpenAiUserPrompt(input.inputSnapshot),
+      },
+    ],
+  };
+
+  if (typeof input.temperature === "number") {
+    request.temperature = input.temperature;
+  }
+
+  return request;
+}
+
 function createFetchClient(
   options: IndividualDevelopmentProfileOpenAiProviderOptions & {
     apiKey: string;
@@ -519,31 +553,11 @@ export async function generateIndividualDevelopmentProfileWithOpenAi(
   let rawContent: string;
 
   try {
-    const request: IndividualDevelopmentProfileOpenAiRequest = {
+    const request = buildIndividualDevelopmentProfileOpenAiRequest({
+      inputSnapshot,
       model: options.model,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE,
-          strict: true,
-          schema: individualDevelopmentProfileOpenAiSchema,
-        },
-      },
-      messages: [
-        {
-          role: "system",
-          content: buildIndividualDevelopmentProfileOpenAiSystemPrompt(),
-        },
-        {
-          role: "user",
-          content: buildIndividualDevelopmentProfileOpenAiUserPrompt(inputSnapshot),
-        },
-      ],
-    };
-
-    if (typeof options.temperature === "number") {
-      request.temperature = options.temperature;
-    }
+      temperature: options.temperature,
+    });
 
     const response = await client.createChatCompletion(request);
     rawContent = response.content;

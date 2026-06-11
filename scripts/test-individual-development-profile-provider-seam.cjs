@@ -103,6 +103,7 @@ const {
   generateIndividualDevelopmentProfileWithOpenAi,
   buildIndividualDevelopmentProfileOpenAiSystemPrompt,
   buildIndividualDevelopmentProfileOpenAiUserPrompt,
+  buildIndividualDevelopmentProfileOpenAiRequest,
   individualDevelopmentProfileOpenAiSchema,
 } = require("../lib/assessment/individual-development-profile-openai-provider.ts");
 
@@ -275,6 +276,14 @@ async function main() {
     openAiOperations[0].response_format.json_schema.schema,
     individualDevelopmentProfileOpenAiSchema,
   );
+  assert.deepEqual(
+    openAiOperations[0],
+    buildIndividualDevelopmentProfileOpenAiRequest({
+      inputSnapshot: validInput,
+      model: "gpt-5.1",
+      temperature: 0.2,
+    }),
+  );
 
   const systemPrompt = openAiOperations[0].messages[0].content;
   const userPrompt = openAiOperations[0].messages[1].content;
@@ -356,6 +365,14 @@ async function main() {
   assert.equal(
     Object.prototype.hasOwnProperty.call(gpt55Operations[0], "temperature"),
     false,
+  );
+  assert.deepEqual(
+    gpt55Operations[0],
+    buildIndividualDevelopmentProfileOpenAiRequest({
+      inputSnapshot: validInput,
+      model: "gpt-5.5",
+      temperature: null,
+    }),
   );
 
   const numericTemperatureOperations = [];
