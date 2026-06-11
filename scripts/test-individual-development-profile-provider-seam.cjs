@@ -310,9 +310,21 @@ async function main() {
     /possibleFollowUp must not be a statement, advice, imperative/i,
     /Koji uslovi rada vam najviše pomažu.*\?/i,
     /Kako prepoznajete da vam je povratna informacija.*\?/i,
+    /IDP-specific authoring standard/,
+    /assessment evidence → work pattern → managerial implication → concrete action/,
+    /Assessment findings are evidence, not the final narrative structure/,
+    /Do not copy the wording, order, caution pattern or sentence rhythm of the input snapshot/,
+    /postepena izloženost grupnim situacijama/,
+    /Write as a senior HR development advisor/,
+    /The headline and overall summary must not list domains, scores, bands or tests/,
+    /The usage note should be short, calm and secondary/,
   ]) {
     assert.match(systemPrompt, pattern);
   }
+
+  const parsedUserPrompt = JSON.parse(userPrompt);
+  const segmentGuidance =
+    parsedUserPrompt.contentContract.creationStandard.segmentGuidance;
 
   assert.match(userPrompt, /sectionDistinctness/);
   assert.match(userPrompt, /signal sugeriše/);
@@ -320,6 +332,48 @@ async function main() {
   assert.match(userPrompt, /must end with \\"\?\\"/i);
   assert.match(userPrompt, /statement, advice, imperative/i);
   assert.match(userPrompt, /individual_development_profile_input_v1/);
+  assert.equal(segmentGuidance.standard, "IDP segment-level writing standard");
+  assert.match(
+    segmentGuidance.developmentSummary.purpose,
+    /executive HR entry point.*immediate practical value/i,
+  );
+  assert.match(
+    segmentGuidance.onboardingPlan.purpose,
+    /concrete, staged and manager-actionable/i,
+  );
+  assert.match(
+    segmentGuidance.managerWatchpoints.suggestedManagerResponse,
+    /concrete manager action.*Do not diagnose/i,
+  );
+
+  const developmentSummarySchema =
+    individualDevelopmentProfileOpenAiSchema.properties.developmentSummary.properties;
+  const onboardingPlanSchema =
+    individualDevelopmentProfileOpenAiSchema.properties.onboardingPlan.properties;
+  const managerWatchpointSchema =
+    individualDevelopmentProfileOpenAiSchema.properties.managerWatchpoints.items
+      .properties;
+  assert.match(
+    developmentSummarySchema.headline.description,
+    /HR-development angle.*do not list domains, scores, bands or tests/i,
+  );
+  assert.match(
+    developmentSummarySchema.overallPattern.description,
+    /workplace-oriented synthesis.*managerial implication/i,
+  );
+  assert.match(
+    developmentSummarySchema.usageNote.description,
+    /short, calm and secondary.*must not dominate/i,
+  );
+  assert.match(
+    onboardingPlanSchema.summary.description,
+    /person-specific onboarding logic.*manager-actionable/i,
+  );
+  assert.match(
+    managerWatchpointSchema.suggestedManagerResponse.description,
+    /concrete manager action.*without diagnosing/i,
+  );
+
   const possibleFollowUpSchema =
     individualDevelopmentProfileOpenAiSchema.properties.oneOnOneGuidance.items
       .properties.possibleFollowUp;

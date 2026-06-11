@@ -88,10 +88,26 @@ const onboardingStageSchema = {
   additionalProperties: false,
   required: ["focus", "managerActions", "feedbackGuidance", "riskSignals"],
   properties: {
-    focus: nonEmptyStringSchema,
-    managerActions: narrativeArraySchema,
-    feedbackGuidance: narrativeArraySchema,
-    riskSignals: narrativeArraySchema,
+    focus: {
+      ...nonEmptyStringSchema,
+      description:
+        "The stage-specific onboarding focus: clarity, trust, expectations, ownership, collaboration, autonomy or consolidation.",
+    },
+    managerActions: {
+      ...narrativeArraySchema,
+      description:
+        "Concrete manager actions appropriate to this onboarding stage.",
+    },
+    feedbackGuidance: {
+      ...narrativeArraySchema,
+      description:
+        "Stage-specific guidance for feedback cadence, framing and next steps.",
+    },
+    riskSignals: {
+      ...narrativeArraySchema,
+      description:
+        "Observable early workplace patterns that may require an onboarding adjustment.",
+    },
   },
 } as const;
 
@@ -139,11 +155,31 @@ export const individualDevelopmentProfileOpenAiSchema = {
         "usageNote",
       ],
       properties: {
-        headline: nonEmptyStringSchema,
-        overallPattern: nonEmptyStringSchema,
-        strongestContributionSignals: narrativeArraySchema,
-        mainSupportNeed: nonEmptyStringSchema,
-        usageNote: nonEmptyStringSchema,
+        headline: {
+          ...nonEmptyStringSchema,
+          description:
+            "One clear HR-development angle on likely contribution and the primary management need; do not list domains, scores, bands or tests.",
+        },
+        overallPattern: {
+          ...nonEmptyStringSchema,
+          description:
+            "A workplace-oriented synthesis of the main work pattern and its managerial implication.",
+        },
+        strongestContributionSignals: {
+          ...narrativeArraySchema,
+          description:
+            "Practical contribution patterns connecting evidence to work, responsibility, team conditions or contribution channels.",
+        },
+        mainSupportNeed: {
+          ...nonEmptyStringSchema,
+          description:
+            "The most important early support condition in practical manager language, without therapeutic framing.",
+        },
+        usageNote: {
+          ...nonEmptyStringSchema,
+          description:
+            "A short, calm and secondary reminder that the report is a development hypothesis; it must not dominate or weaken the summary.",
+        },
       },
     },
     contributionPattern: {
@@ -156,10 +192,26 @@ export const individualDevelopmentProfileOpenAiSchema = {
         "roleShapingImplications",
       ],
       properties: {
-        bestConditions: narrativeArraySchema,
-        collaborationConditions: narrativeArraySchema,
-        supportPreferences: narrativeArraySchema,
-        roleShapingImplications: narrativeArraySchema,
+        bestConditions: {
+          ...narrativeArraySchema,
+          description:
+            "Work conditions under which the person is likely to contribute well.",
+        },
+        collaborationConditions: {
+          ...narrativeArraySchema,
+          description:
+            "Practical collaboration structure covering rhythm, preparation, channels, decision ownership and role clarity.",
+        },
+        supportPreferences: {
+          ...narrativeArraySchema,
+          description:
+            "Manager behaviors that can support performance without sounding clinical or paternalistic.",
+        },
+        roleShapingImplications: {
+          ...narrativeArraySchema,
+          description:
+            "Early task design, responsibility level, quality standards and practical role setup.",
+        },
       },
     },
     developmentRisks: {
@@ -175,10 +227,26 @@ export const individualDevelopmentProfileOpenAiSchema = {
           "howToSupport",
         ],
         properties: {
-          possibleBlocker: nonEmptyStringSchema,
-          whyItMatters: nonEmptyStringSchema,
-          whatToCheck: nonEmptyStringSchema,
-          howToSupport: nonEmptyStringSchema,
+          possibleBlocker: {
+            ...nonEmptyStringSchema,
+            description:
+              "A concrete, observable work blocker rather than a personality flaw.",
+          },
+          whyItMatters: {
+            ...nonEmptyStringSchema,
+            description:
+              "The business, quality, speed or collaboration impact of the blocker.",
+          },
+          whatToCheck: {
+            ...nonEmptyStringSchema,
+            description:
+              "What HR or the manager should observe or ask about in the work context.",
+          },
+          howToSupport: {
+            ...nonEmptyStringSchema,
+            description:
+              "A concrete HR or manager support action addressing the blocker.",
+          },
         },
       },
     },
@@ -187,10 +255,26 @@ export const individualDevelopmentProfileOpenAiSchema = {
       additionalProperties: false,
       required: ["whatHelps", "whatToAvoid", "howToPhraseFeedback", "whatToClarify"],
       properties: {
-        whatHelps: narrativeArraySchema,
-        whatToAvoid: narrativeArraySchema,
-        howToPhraseFeedback: narrativeArraySchema,
-        whatToClarify: narrativeArraySchema,
+        whatHelps: {
+          ...narrativeArraySchema,
+          description:
+            "Practical communication conditions that support clarity and contribution.",
+        },
+        whatToAvoid: {
+          ...narrativeArraySchema,
+          description:
+            "Avoidable manager behaviors or team conditions, stated without blaming the person.",
+        },
+        howToPhraseFeedback: {
+          ...narrativeArraySchema,
+          description:
+            "Feedback framing that is specific, behavior-based and linked to expectations and next steps.",
+        },
+        whatToClarify: {
+          ...narrativeArraySchema,
+          description:
+            "Role, communication, quality or decision expectations that should be explicit early.",
+        },
       },
     },
     motivationAndEnergyGuidance: {
@@ -203,10 +287,26 @@ export const individualDevelopmentProfileOpenAiSchema = {
         "whatToValidate",
       ],
       properties: {
-        likelySourcesOfEnergy: narrativeArraySchema,
-        likelySourcesOfDrain: narrativeArraySchema,
-        supportSignals: narrativeArraySchema,
-        whatToValidate: narrativeArraySchema,
+        likelySourcesOfEnergy: {
+          ...narrativeArraySchema,
+          description:
+            "Work conditions, task qualities or responsibility patterns likely to support engagement.",
+        },
+        likelySourcesOfDrain: {
+          ...narrativeArraySchema,
+          description:
+            "Work conditions that may reduce energy or create unnecessary pressure.",
+        },
+        supportSignals: {
+          ...narrativeArraySchema,
+          description:
+            "Observable workplace signs that the current setup is supporting engagement.",
+        },
+        whatToValidate: {
+          ...narrativeArraySchema,
+          description:
+            "Practical motivation and energy topics for HR or manager check-ins.",
+        },
       },
     },
     oneOnOneGuidance: {
@@ -246,13 +346,41 @@ export const individualDevelopmentProfileOpenAiSchema = {
         "watchouts",
       ],
       properties: {
-        summary: nonEmptyStringSchema,
-        first7Days: onboardingStageSchema,
-        first30Days: onboardingStageSchema,
-        days31To60: onboardingStageSchema,
-        days61To90: onboardingStageSchema,
-        managerCheckpoints: narrativeArraySchema,
-        watchouts: narrativeArraySchema,
+        summary: {
+          ...nonEmptyStringSchema,
+          description:
+            "The main person-specific onboarding logic; concrete and manager-actionable, not a generic template.",
+        },
+        first7Days: {
+          ...onboardingStageSchema,
+          description:
+            "Orientation, clarity, workplace trust, initial expectations and communication rhythm.",
+        },
+        first30Days: {
+          ...onboardingStageSchema,
+          description:
+            "Early task ownership, quality standards, feedback cadence and first examples of contribution.",
+        },
+        days31To60: {
+          ...onboardingStageSchema,
+          description:
+            "Increasing responsibility, collaboration patterns and calibration of autonomy.",
+        },
+        days61To90: {
+          ...onboardingStageSchema,
+          description:
+            "Consolidation, development priorities, role fit evidence and the next-step growth plan.",
+        },
+        managerCheckpoints: {
+          ...narrativeArraySchema,
+          description:
+            "Concrete moments to check clarity, workload, feedback usefulness, collaboration and contribution.",
+        },
+        watchouts: {
+          ...narrativeArraySchema,
+          description:
+            "Observable early onboarding patterns that may require adjustment.",
+        },
       },
     },
     managerWatchpoints: {
@@ -268,14 +396,34 @@ export const individualDevelopmentProfileOpenAiSchema = {
           "suggestedManagerResponse",
         ],
         properties: {
-          watchpoint: nonEmptyStringSchema,
-          whyItMatters: nonEmptyStringSchema,
-          earlySignal: nonEmptyStringSchema,
-          suggestedManagerResponse: nonEmptyStringSchema,
+          watchpoint: {
+            ...nonEmptyStringSchema,
+            description:
+              "An observable early workplace pattern for the manager to watch.",
+          },
+          whyItMatters: {
+            ...nonEmptyStringSchema,
+            description:
+              "Why the pattern affects contribution, collaboration, quality, speed or onboarding.",
+          },
+          earlySignal: {
+            ...nonEmptyStringSchema,
+            description:
+              "What the manager may actually observe in work behavior or delivery.",
+          },
+          suggestedManagerResponse: {
+            ...nonEmptyStringSchema,
+            description:
+              "A concrete manager action without diagnosing or interpreting the person's inner state.",
+          },
         },
       },
     },
-    interpretationLimits: narrativeArraySchema,
+    interpretationLimits: {
+      ...narrativeArraySchema,
+      description:
+        "Clear, short and non-dominant responsible-use limits without legalistic or defensive language.",
+    },
     metadata: {
       type: "object",
       additionalProperties: false,
@@ -368,6 +516,188 @@ function buildDevelopmentValidationDiagnostics(
   });
 }
 
+export function buildIndividualDevelopmentProfileAuthoringStandard(): string {
+  return [
+    "IDP-specific authoring standard",
+    "",
+    "The Individual Development Profile is an HR-development advisory document.",
+    "",
+    "Its purpose is to help HR and the responsible manager translate assessment evidence into practical decisions about onboarding, feedback, role shaping, collaboration, development support and early management attention.",
+    "",
+    "This report must not read like a score summary, a personality essay, a clinical note, a therapy plan, a hiring recommendation, a legal disclaimer or a generic onboarding template.",
+    "",
+    "Write as a senior HR development advisor: calm, practical, specific and workplace-oriented. The report should help a manager understand what to do differently in the first weeks of work, not merely what the tests measured.",
+    "",
+    "The writing should be decisive in managerial usefulness, but careful in psychological certainty.",
+    "",
+    "Core transformation rule:",
+    "",
+    "assessment evidence → work pattern → managerial implication → concrete action",
+    "",
+    "Assessment findings are evidence, not the final narrative structure. Do not copy the wording, order, caution pattern or sentence rhythm of the input snapshot. If the input contains score-summary, hedging or technical deterministic phrases, treat them as internal evidence and translate them into natural HR-development language.",
+    "",
+    "Do not imitate or repeat phrases such as:",
+    '- "najizraženiji signali"',
+    '- "vrijedi provjeriti"',
+    '- "povišen signal"',
+    '- "niži relativni signal"',
+    '- "ovaj signal može pomagati"',
+    '- "signal sugeriše"',
+    '- "upućuje na potencijal"',
+    '- "deterministic"',
+    '- "reduced"',
+    '- "driveri"',
+    '- "numeric"',
+    '- "source"',
+    '- "snapshot"',
+    "",
+    "The upper part of the report must provide immediate HR value. The headline and overall summary must not list domains, scores, bands or tests. They must present a clear development angle: how this person is likely to contribute, what kind of work structure helps them perform well, and what the manager should pay attention to early.",
+    "",
+    "Use psychological and assessment language sparingly. Prefer workplace language: task clarity, quality standards, collaboration rhythm, feedback format, meeting preparation, decision ownership, workload calibration, check-in cadence, role expectations, contribution channels and observable early patterns.",
+    "",
+    "Use caution without becoming vague. It is acceptable to frame findings as development hypotheses, but every important hypothesis must lead to a practical HR or manager action.",
+    "",
+    "Avoid therapeutic, clinical or awkward formulations. Do not write phrases such as:",
+    '- "postepena izloženost grupnim situacijama"',
+    '- "spontana verbalna prisutnost"',
+    '- "normalizovati pritisak"',
+    '- "raditi na emocionalnoj regulaciji"',
+    '- "tretirati otpor"',
+    '- "ublažavati simptome"',
+    '- "psihološka intervencija"',
+    "",
+    "Prefer concrete HR and managerial formulations, for example:",
+    '- "postepeno uključivati u veće sastanke uz jasnu ulogu i pripremu"',
+    '- "unaprijed dogovoriti temu i očekivani doprinos"',
+    '- "omogućiti pisani kanal za složenije doprinose"',
+    '- "dogovoriti kriterij ‘dovoljno dobro za ovu fazu’"',
+    '- "provjeriti kroz konkretan radni primjer"',
+    '- "dati jasnu ulogu u saradnji"',
+    '- "pratiti opterećenje kroz kratke check-in razgovore"',
+    '- "povezati zadatak sa jasnim standardom kvaliteta i realnim rokom"',
+    '- "razdvojiti očekivanja za brzinu, kvalitet i samostalnost"',
+    '- "dogovoriti kada je potrebna konsultacija, a kada samostalna odluka"',
+    "",
+    "Interpretation limits must be present, but they must not dominate the development summary. The usage note should be short, calm and secondary to the advisory value of the report.",
+    "",
+    "Every section must earn its place. Do not repeat the same finding across sections unless each occurrence adds a new practical use: a work condition, a risk check, a feedback move, a motivation check, a one-on-one question, an onboarding action or a manager watchpoint.",
+  ].join("\n");
+}
+
+export function buildIndividualDevelopmentProfileSegmentGuidance() {
+  return {
+    standard: "IDP segment-level writing standard",
+    developmentSummary: {
+      purpose:
+        "The development summary is the executive HR entry point. It must give immediate practical value. It should not summarize scores, list assessment domains or start with cautious test language.",
+      headline:
+        "Write one clear HR-development angle. The headline should help HR understand the person’s likely contribution and primary management need. Do not list domains, scores, bands or tests.",
+      overallPattern:
+        "Synthesize the main work pattern and its managerial implication. Use assessment evidence silently as grounding, but write the paragraph as workplace guidance. The reader should understand what kind of structure, responsibility, collaboration rhythm or support will help this person contribute well.",
+      strongestContributionSignals:
+        "Each item must connect evidence to a practical contribution. Do not write “X suggests potential”. Write what kind of work, responsibility, team condition or contribution channel may fit the person.",
+      mainSupportNeed:
+        "Name the most important early support condition in practical manager language. Focus on clarity, feedback, workload, role expectations, communication rhythm or decision ownership. Do not use therapeutic language.",
+      usageNote:
+        "Keep this short and secondary. It should remind HR that the report is a development hypothesis, but it must not weaken or dominate the summary.",
+    },
+    contributionPattern: {
+      purpose:
+        "This section explains how to shape work conditions and role expectations. It must not merely describe traits.",
+      bestConditions:
+        "Describe the work conditions under which the person is likely to contribute well.",
+      collaborationConditions:
+        "Describe how collaboration should be structured: meeting rhythm, preparation, written/verbal channels, decision ownership and clarity of roles.",
+      supportPreferences:
+        "Describe manager behaviors that can help performance without sounding clinical or paternalistic.",
+      roleShapingImplications:
+        "Translate the profile into early task design, responsibility level, quality standards and practical role setup.",
+    },
+    developmentRisks: {
+      purpose:
+        "Each risk must be business-relevant and observable. Avoid psychological labels and clinical explanations.",
+      possibleBlocker:
+        "Name a concrete work blocker, not a personality flaw.",
+      whyItMatters:
+        "Explain the business or collaboration impact.",
+      whatToCheck:
+        "Describe what HR or the manager should observe or ask about.",
+      howToSupport:
+        "Give a concrete support action.",
+    },
+    communicationAndFeedbackGuidance: {
+      purpose:
+        "This section should help the manager communicate clearly and respectfully.",
+      whatHelps:
+        "Describe practical communication conditions that support clarity and contribution.",
+      whatToAvoid:
+        "Name avoidable manager behaviors or team conditions, without blaming the person.",
+      howToPhraseFeedback:
+        "Give guidance on how feedback should be framed: specific, behavior-based, linked to expectations and next steps.",
+      whatToClarify:
+        "Name expectations that should be made explicit early.",
+    },
+    motivationAndEnergyGuidance: {
+      purpose:
+        "This section translates motivation evidence into engagement conditions. Do not psychologize motives.",
+      likelySourcesOfEnergy:
+        "Describe work conditions, task qualities or responsibility patterns likely to support engagement.",
+      likelySourcesOfDrain:
+        "Describe conditions that may reduce energy or create unnecessary pressure.",
+      supportSignals:
+        "Name observable signs that the current setup is working.",
+      whatToValidate:
+        "Suggest practical check-in topics for HR or the manager.",
+    },
+    oneOnOneGuidance: {
+      purpose:
+        "Questions must be usable in a real HR or manager one-on-one conversation.",
+      question:
+        "Ask an open, practical question connected to work conditions, feedback, motivation, collaboration or onboarding.",
+      whatToListenFor:
+        "Explain what kind of answer would help HR or the manager adjust support.",
+      signalBeingChecked:
+        "Name the work-related hypothesis being checked, not a raw test result.",
+      possibleFollowUp:
+        "Must be an open follow-up question and must end with a question mark.",
+    },
+    onboardingPlan: {
+      purpose:
+        "The onboarding plan must be concrete, staged and manager-actionable. It must not be a generic onboarding template.",
+      summary:
+        "Describe the main onboarding logic for this person.",
+      first7Days:
+        "Focus on orientation, clarity, workplace trust, initial expectations and communication rhythm.",
+      first30Days:
+        "Focus on early task ownership, quality standards, feedback cadence and first examples of contribution.",
+      days31To60:
+        "Focus on increasing responsibility, collaboration patterns and calibration of autonomy.",
+      days61To90:
+        "Focus on consolidation, development priorities, role fit evidence and next-step growth plan.",
+      managerCheckpoints:
+        "List concrete moments where the manager should check clarity, workload, feedback usefulness, collaboration and contribution.",
+      watchouts:
+        "Name observable early patterns that may require adjustment.",
+    },
+    managerWatchpoints: {
+      purpose:
+        "Manager watchpoints must describe observable workplace patterns and practical responses.",
+      watchpoint:
+        "Name the early pattern to watch.",
+      whyItMatters:
+        "Explain why it affects contribution, collaboration, quality, speed or onboarding.",
+      earlySignal:
+        "Describe what the manager may actually observe.",
+      suggestedManagerResponse:
+        "Give a concrete manager action. Do not diagnose or interpret the person’s inner state.",
+    },
+    interpretationLimits: {
+      purpose:
+        "Limits should be clear, short and non-dominant. They should protect responsible use without making the report feel unusable. Avoid legalistic or defensive language.",
+    },
+  } as const;
+}
+
 export function buildIndividualDevelopmentProfileOpenAiSystemPrompt(): string {
   const languagePolicy = resolveAiReportLanguagePolicy("bs");
   const globalPolicy =
@@ -381,6 +711,7 @@ export function buildIndividualDevelopmentProfileOpenAiSystemPrompt(): string {
     "Return JSON only and match the supplied strict JSON schema exactly.",
     "Use only the supplied canonical IDP input. Do not query or infer hidden data.",
     globalPolicy,
+    buildIndividualDevelopmentProfileAuthoringStandard(),
     "Write in Bosnian, ijekavica, Latin script, with a professional, calm and practical HR tone.",
     "Use cautious developmental hypotheses, not diagnoses, verdicts or hiring recommendations.",
     'For AGREEABLENESS use the canonical term "Spremnost na saradnju"; never use "ugodnost".',
@@ -420,6 +751,9 @@ export function buildIndividualDevelopmentProfileOpenAiUserPrompt(
         'Vary wording naturally and do not repeatedly formulate conclusions as "signal sugeriše".',
       oneOnOneGuidance:
         'Every possibleFollowUp must be an open HR/manager question for a one-on-one conversation, must end with "?", and must not be a statement, advice, imperative, title or conversation topic.',
+      creationStandard: {
+        segmentGuidance: buildIndividualDevelopmentProfileSegmentGuidance(),
+      },
     },
     input: inputSnapshot,
   });
