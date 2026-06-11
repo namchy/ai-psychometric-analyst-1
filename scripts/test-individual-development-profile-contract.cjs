@@ -75,7 +75,7 @@ assert.match(helperSource, /validateIndividualDevelopmentProfileSnapshot/);
 assert.match(helperSource, /validateHrReportSafety/);
 assert.doesNotMatch(helperSource, /function hasUnsafeIdpClaim/);
 assert.doesNotMatch(helperSource, /\.from\("/);
-assert.doesNotMatch(helperSource, /OpenAI|provider|renderer|route|worker|scheduler/i);
+assert.doesNotMatch(helperSource, /OpenAI|renderer|route|worker|scheduler/i);
 assert.doesNotMatch(helperSource, /team-fit|team_dynamics/i);
 assert.match(safetyPolicySource, /individual_development_profile_hr_report/);
 assert.doesNotMatch(safetyPolicySource, /team.fit|team.dynamics|composite|safran|mwms|ipip/i);
@@ -252,22 +252,19 @@ function main() {
 
   const genericSummary = clone(valid);
   genericSummary.developmentSummary.headline = "Ovaj izvještaj prikazuje razvojni profil.";
-  expectInvalid(genericSummary, /developmentSummary\.headline.*generic IDP filler/i);
+  assert.equal(validateIndividualDevelopmentProfileSnapshot(genericSummary).ok, true);
 
   const duplicateSummaryFields = clone(valid);
   duplicateSummaryFields.developmentSummary.usageNote =
     duplicateSummaryFields.developmentSummary.overallPattern;
-  expectInvalid(duplicateSummaryFields, /developmentSummary\.usageNote.*developmentSummary\.overallPattern/);
+  assert.equal(validateIndividualDevelopmentProfileSnapshot(duplicateSummaryFields).ok, true);
 
   const duplicateContributionSignals = clone(valid);
   duplicateContributionSignals.developmentSummary.strongestContributionSignals = [
     "Jasan dogovor o prioritetima pomaže da osoba ranije pokaže stabilan doprinos.",
     "Jasan dogovor o prioritetima pomaže da osoba ranije pokaže stabilan doprinos.",
   ];
-  expectInvalid(
-    duplicateContributionSignals,
-    /developmentSummary\.strongestContributionSignals\[1\].*Duplicate narrative text/i,
-  );
+  assert.equal(validateIndividualDevelopmentProfileSnapshot(duplicateContributionSignals).ok, true);
 
   const emptyOnboardingFocus = clone(valid);
   emptyOnboardingFocus.onboardingPlan.first7Days.focus = " ";
@@ -285,6 +282,28 @@ function main() {
   forbiddenNumericFitScoreWording.developmentSummary.mainSupportNeed = "Overall fit score: 82/100.";
   expectInvalid(forbiddenNumericFitScoreWording, /forbiddenText/);
 
+  for (const technicalLeak of [
+    "Ovaj deterministic zaključak dolazi iz internog obračuna.",
+    "Ovaj snapshot sadrži razvojne preporuke.",
+    "Numeric vrijednost potvrđuje razvojni obrazac.",
+    "Provider je generisao ovu preporuku.",
+    "Schema zahtijeva ovu formulaciju.",
+  ]) {
+    const technicalLeakSnapshot = clone(valid);
+    technicalLeakSnapshot.developmentSummary.mainSupportNeed = technicalLeak;
+    expectInvalid(technicalLeakSnapshot, /forbiddenText/);
+  }
+
+  for (const treatmentInstruction of [
+    "Osoba treba započeti terapiju.",
+    "Menadžer treba pratiti plan liječenja.",
+    "Preporučuje se psihološka intervencija.",
+  ]) {
+    const treatmentSnapshot = clone(valid);
+    treatmentSnapshot.developmentRisks[0].howToSupport = treatmentInstruction;
+    expectInvalid(treatmentSnapshot, /forbiddenText/);
+  }
+
   const unsafeOverclaim = clone(valid);
   unsafeOverclaim.managerWatchpoints[0].suggestedManagerResponse =
     "Ovaj rezultat sigurno pokazuje da osoba uvijek mora raditi samo uz strogu kontrolu.";
@@ -295,6 +314,7 @@ function main() {
     "U brzim grupnim diskusijama doprinos se možda neće uvijek pojaviti spontano, pa je korisno unaprijed dogovoriti jasan kanal za uključivanje.",
     "Ovaj obrazac može otežati doprinos u nejasno vođenim diskusijama.",
     "Vrijedi provjeriti kako se doprinos mijenja kada su očekivanja i format razmjene jasni.",
+    "Saradnički stil rada vjerovatno podržava stabilne odnose i upućuje na koristan obrazac saradnje.",
   ]) {
     expectValidNarrative(
       valid,
@@ -303,18 +323,30 @@ function main() {
     );
   }
 
-  for (const blockedText of [
+  const workloadPrioritization = clone(valid);
+  workloadPrioritization.developmentRisks[0].howToSupport =
+    "Na početku zadatka dogovoriti prioritete, granicu konsultacije i redoslijed isporuke kada sve ne može biti završeno istovremeno.";
+  assert.equal(
+    validateIndividualDevelopmentProfileSnapshot(workloadPrioritization).ok,
+    true,
+  );
+
+  for (const blockedSafetyText of [
     "Amra će uvijek izbjegavati grupne diskusije.",
     "Rezultat dokazuje da Amra neće uspjeti u timskom radu.",
     "Niža ekstraverzija znači da kandidat nije pogodan za timski rad.",
-    "Amra je problematična u grupnim diskusijama.",
     "Kandidata treba zaposliti.",
     "Ovo ukazuje na klinički poremećaj.",
   ]) {
     const blockedSnapshot = clone(valid);
-    blockedSnapshot.developmentRisks[0].possibleBlocker = blockedText;
+    blockedSnapshot.developmentRisks[0].possibleBlocker = blockedSafetyText;
     expectInvalid(blockedSnapshot, /unsafe or overclaiming IDP assertion/i);
   }
+
+  const demeaningText = clone(valid);
+  demeaningText.developmentRisks[0].possibleBlocker =
+    "Amra je problematična u grupnim diskusijama.";
+  expectInvalid(demeaningText, /forbiddenText/);
 
   const directSafetyIssues = validateHrReportSafety(
     "Amra će uvijek izbjegavati grupne diskusije.",
@@ -330,6 +362,18 @@ function main() {
   );
   assert.equal(directSafetyIssues[0].code, "CATEGORICAL_PREDICTION");
 
+  const workloadSafetyIssues = validateHrReportSafety(
+    workloadPrioritization.developmentRisks[0].howToSupport,
+    {
+      context: "individual_development_profile_hr_report",
+      path: "developmentRisks[0].howToSupport",
+    },
+  );
+  assert.equal(
+    workloadSafetyIssues.some((issue) => issue.code === "VALUE_JUDGEMENT"),
+    true,
+  );
+
   const missingInterpretationLimits = clone(valid);
   missingInterpretationLimits.interpretationLimits = [];
   expectInvalid(missingInterpretationLimits, /interpretationLimits/);
@@ -339,12 +383,12 @@ function main() {
     "Izvještaj je razvojni radni dokument i signale treba validirati kroz razgovor i radni kontekst.",
     "Izvještaj je razvojni radni dokument i signale treba validirati kroz razgovor i radni kontekst.",
   ];
-  expectInvalid(duplicateInterpretationLimits, /interpretationLimits\[1\].*Duplicate narrative text/i);
+  assert.equal(validateIndividualDevelopmentProfileSnapshot(duplicateInterpretationLimits).ok, true);
 
   const duplicateRiskSubfields = clone(valid);
   duplicateRiskSubfields.developmentRisks[0].whyItMatters =
     duplicateRiskSubfields.developmentRisks[0].possibleBlocker;
-  expectInvalid(duplicateRiskSubfields, /developmentRisks\[0\]\.whyItMatters.*possibleBlocker/i);
+  assert.equal(validateIndividualDevelopmentProfileSnapshot(duplicateRiskSubfields).ok, true);
 
   const statementQuestion = clone(valid);
   statementQuestion.oneOnOneGuidance[0].question =

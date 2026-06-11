@@ -390,17 +390,12 @@ export function IndividualDevelopmentProfileReportView(
           eyebrow="Razvojni sažetak"
           eyebrowClassName="text-[#118ab2]"
           title={snapshot.developmentSummary.headline}
-          description="Sažeti pregled ključnih razvojnih nalaza i smjernica iz izvještaja."
           className="gap-2"
           titleClassName="max-w-4xl text-[1.45rem] font-bold tracking-[-0.04em] text-[#073b4c] sm:text-[1.65rem]"
-          descriptionClassName="max-w-4xl text-sm leading-6 text-slate-600"
         />
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)]">
           <div className="space-y-4">
             <InfoPanel label="Glavni signal">{snapshot.developmentSummary.overallPattern}</InfoPanel>
-            <InfoPanel label="Kako HR može koristiti nalaz" tone="info">
-              {snapshot.developmentSummary.usageNote}
-            </InfoPanel>
           </div>
           <div className="space-y-4">
             <InfoPanel label="Najjači doprinosi" tone="info">
@@ -631,19 +626,19 @@ export function IndividualDevelopmentProfileReportView(
                 Sekundarne provjere
               </p>
               <h3 className="mt-1 text-base font-semibold leading-6 text-[#073b4c]">
-                Checkpoints i watchout signali
+                Kontrolne tačke i rani signali
               </h3>
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               <OnboardingSecondaryPanel
-                label="Menadžerske checkpoint tačke"
+                label="Menadžerske kontrolne tačke"
                 items={snapshot.onboardingPlan.managerCheckpoints}
-                emptyText="U ovom izvještaju nema dodatnih checkpoint stavki za onboarding plan."
+                emptyText="U ovom izvještaju nema dodatnih kontrolnih tačaka za onboarding plan."
               />
               <OnboardingSecondaryPanel
-                label="Watchout signali"
+                label="Rani signali za prilagodbu"
                 items={snapshot.onboardingPlan.watchouts}
-                emptyText="U ovom izvještaju nema dodatnih watchout stavki za onboarding plan."
+                emptyText="U ovom izvještaju nema dodatnih ranih signala za prilagodbu onboarding plana."
                 tone="warning"
               />
             </div>
@@ -674,20 +669,6 @@ export function IndividualDevelopmentProfileReportView(
         )}
       </DashboardInfoCardShell>
 
-      <DashboardInfoCardShell className="rounded-[1.5rem] border-slate-200/80 p-5 sm:p-6">
-        <DashboardSectionHeader
-          eyebrow="Oprezno čitanje"
-          eyebrowClassName="text-[#073b4c]"
-          title="Ograničenja tumačenja"
-          description="Sekcija navodi ograničenja tumačenja sadržana u izvještaju."
-        />
-        <div className="mt-5 rounded-[1rem] border border-slate-200/80 bg-slate-50/75 px-4 py-4">
-          <BulletList
-            items={snapshot.interpretationLimits}
-            emptyText="U ovom izvještaju nema dodatnih ograničenja za ovu sekciju."
-          />
-        </div>
-      </DashboardInfoCardShell>
     </div>
   );
 }

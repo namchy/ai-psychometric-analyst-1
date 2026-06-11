@@ -34,6 +34,12 @@ const displaySource = fs.readFileSync(displayHelperPath, "utf8");
 assert.match(viewSource, /export function IndividualDevelopmentProfileReportView/);
 assert.match(viewSource, /Individualni razvojni profil/);
 assert.match(viewSource, /Razvojni sažetak/);
+assert.match(viewSource, /Glavni signal/);
+assert.match(viewSource, /Najjači doprinosi/);
+assert.doesNotMatch(
+  viewSource,
+  /Sažeti pregled ključnih razvojnih nalaza i smjernica iz izvještaja\./,
+);
 assert.match(viewSource, /Kako osoba može najbolje doprinijeti/);
 assert.match(viewSource, /Šta može blokirati razvoj/);
 assert.match(viewSource, /Razvojni rizik/);
@@ -50,11 +56,22 @@ assert.match(viewSource, /Menadžerske akcije/);
 assert.match(viewSource, /Feedback smjernice/);
 assert.match(viewSource, /Rani signali za pažnju/);
 assert.match(viewSource, /Sekundarne provjere/);
-assert.match(viewSource, /Checkpoints i watchout signali/);
-assert.match(viewSource, /Menadžerske checkpoint tačke/);
-assert.match(viewSource, /Watchout signali/);
+assert.match(viewSource, /Kontrolne tačke i rani signali/);
+assert.match(viewSource, /Menadžerske kontrolne tačke/);
+assert.match(viewSource, /Rani signali za prilagodbu/);
+assert.doesNotMatch(viewSource, /Checkpoints i watchout signali/);
+assert.doesNotMatch(viewSource, /Menadžerske checkpoint tačke/);
+assert.doesNotMatch(viewSource, /Watchout signali/);
 assert.match(viewSource, /Na šta menadžer treba obratiti pažnju/);
-assert.match(viewSource, /Ograničenja tumačenja/);
+assert.doesNotMatch(viewSource, /Oprezno čitanje/);
+assert.doesNotMatch(viewSource, /Ograničenja tumačenja/);
+assert.doesNotMatch(
+  viewSource,
+  /Sekcija navodi ograničenja tumačenja sadržana u izvještaju/,
+);
+assert.doesNotMatch(viewSource, /snapshot\.interpretationLimits/);
+assert.doesNotMatch(viewSource, /Kako HR može koristiti nalaz/);
+assert.doesNotMatch(viewSource, /developmentSummary\.usageNote/);
 assert.doesNotMatch(viewSource, /radne hipoteze/i);
 assert.doesNotMatch(viewSource, /svaka kartica je hipoteza/i);
 assert.doesNotMatch(viewSource, /ovaj signal može pomoći HR-u/i);
@@ -247,7 +264,7 @@ function buildSnapshot(overrides = {}) {
       },
     ],
     interpretationLimits: [
-      "Izvještaj je razvojni HR okvir i ne zamjenjuje direktno opažanje rada.",
+      "Nalazi predstavljaju razvojne smjernice koje treba povezati sa stvarnim radnim kontekstom.",
     ],
     metadata: {
       generatedAt: "2026-06-02T12:00:00.000Z",
@@ -273,7 +290,10 @@ function escapeRegExp(value) {
 
 function collectVisibleReportText(snapshot) {
   return [
-    ...Object.values(snapshot.developmentSummary).flat(),
+    snapshot.developmentSummary.headline,
+    snapshot.developmentSummary.overallPattern,
+    ...snapshot.developmentSummary.strongestContributionSignals,
+    snapshot.developmentSummary.mainSupportNeed,
     ...Object.values(snapshot.contributionPattern).flat(),
     ...snapshot.developmentRisks.flatMap(Object.values),
     ...Object.values(snapshot.communicationAndFeedbackGuidance).flat(),
@@ -289,7 +309,6 @@ function collectVisibleReportText(snapshot) {
     ...snapshot.onboardingPlan.managerCheckpoints,
     ...snapshot.onboardingPlan.watchouts,
     ...snapshot.managerWatchpoints.flatMap(Object.values),
-    ...snapshot.interpretationLimits,
   ];
 }
 
@@ -307,6 +326,12 @@ function main() {
 
   assert.match(htmlFromSnapshot, /Individualni razvojni profil/);
   assert.match(htmlFromSnapshot, /Razvojni sažetak/);
+  assert.match(htmlFromSnapshot, /Glavni signal/);
+  assert.match(htmlFromSnapshot, /Najjači doprinosi/);
+  assert.doesNotMatch(
+    htmlFromSnapshot,
+    /Sažeti pregled ključnih razvojnih nalaza i smjernica iz izvještaja\./,
+  );
   assert.match(htmlFromSnapshot, /Kako osoba može najbolje doprinijeti/);
   assert.match(htmlFromSnapshot, /Šta može blokirati razvoj/);
   assert.match(htmlFromSnapshot, /Razvojni rizik/);
@@ -331,13 +356,37 @@ function main() {
   assert.match(htmlFromSnapshot, /Feedback smjernice/);
   assert.match(htmlFromSnapshot, /Rani signali za pažnju/);
   assert.match(htmlFromSnapshot, /Sekundarne provjere/);
-  assert.match(htmlFromSnapshot, /Checkpoints i watchout signali/);
-  assert.match(htmlFromSnapshot, /Menadžerske checkpoint tačke/);
-  assert.match(htmlFromSnapshot, /Watchout signali/);
+  assert.match(htmlFromSnapshot, /Kontrolne tačke i rani signali/);
+  assert.match(htmlFromSnapshot, /Menadžerske kontrolne tačke/);
+  assert.match(htmlFromSnapshot, /Rani signali za prilagodbu/);
+  assert.doesNotMatch(htmlFromSnapshot, /Checkpoints i watchout signali/);
+  assert.doesNotMatch(htmlFromSnapshot, /Menadžerske checkpoint tačke/);
+  assert.doesNotMatch(htmlFromSnapshot, /Watchout signali/);
+  assert.equal(
+    countOccurrences(htmlFromSnapshot, snapshot.onboardingPlan.managerCheckpoints[0]),
+    1,
+    "managerCheckpoints content must render exactly once",
+  );
+  assert.equal(
+    countOccurrences(htmlFromSnapshot, snapshot.onboardingPlan.watchouts[0]),
+    1,
+    "watchouts content must render exactly once",
+  );
   assert.match(htmlFromSnapshot, /Na šta menadžer treba obratiti pažnju/);
-  assert.match(htmlFromSnapshot, /Ograničenja tumačenja/);
+  assert.doesNotMatch(htmlFromSnapshot, /Oprezno čitanje/);
+  assert.doesNotMatch(htmlFromSnapshot, /Ograničenja tumačenja/);
+  assert.doesNotMatch(
+    htmlFromSnapshot,
+    /Sekcija navodi ograničenja tumačenja sadržana u izvještaju/,
+  );
+  assert.doesNotMatch(htmlFromSnapshot, /Nalazi predstavljaju razvojne smjernice/);
   assert.match(htmlFromSnapshot, /Amina Candidate/);
   assert.match(htmlFromSnapshot, /Ovaj razvojni HR izvještaj služi za onboarding, feedback, 1:1 razgovore i razvojni plan/);
+  assert.equal(
+    countOccurrences(htmlFromSnapshot, snapshot.developmentSummary.headline),
+    1,
+    "headline must render exactly once",
+  );
   assert.equal(
     countOccurrences(htmlFromSnapshot, snapshot.developmentSummary.overallPattern),
     1,
@@ -345,26 +394,15 @@ function main() {
   );
   assert.equal(
     countOccurrences(htmlFromSnapshot, snapshot.developmentSummary.usageNote),
-    1,
-    "usageNote must render exactly once",
+    0,
+    "usageNote must not render",
   );
   assert.equal(
     countOccurrences(htmlFromSnapshot, snapshot.onboardingPlan.summary),
     1,
     "onboardingPlan.summary must render exactly once",
   );
-  assert.match(
-    htmlFromSnapshot,
-    new RegExp(
-      `Kako HR može koristiti nalaz[\\s\\S]*${escapeRegExp(snapshot.developmentSummary.usageNote)}`,
-    ),
-  );
-  assert.doesNotMatch(
-    htmlFromSnapshot,
-    new RegExp(
-      `Korištenje[\\s\\S]{0,500}${escapeRegExp(snapshot.developmentSummary.usageNote)}`,
-    ),
-  );
+  assert.doesNotMatch(htmlFromSnapshot, /Kako HR može koristiti nalaz/);
   assert.doesNotMatch(
     htmlFromSnapshot,
     new RegExp(
@@ -428,7 +466,7 @@ function main() {
   assert.match(htmlFromRecord, /Lejla Profile/);
   assert.match(htmlFromRecord, /U ovom izvještaju nema dodatnih razvojnih blokatora za ovu sekciju/);
   assert.match(htmlFromRecord, /U ovom izvještaju nema dodatnih pitanja za ovu sekciju/);
-  assert.match(htmlFromRecord, /U ovom izvještaju nema dodatnih ograničenja za ovu sekciju/);
+  assert.doesNotMatch(htmlFromRecord, /Oprezno čitanje|Ograničenja tumačenja/);
 
   console.log("test-individual-development-profile-renderer: ok");
 }

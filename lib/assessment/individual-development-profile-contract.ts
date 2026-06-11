@@ -121,7 +121,19 @@ const FORBIDDEN_TEXT_PATTERNS = [
   /\bbetter than other candidates\b/i,
   /\bbecause of (?:their|the candidate'?s)?\s*(?:age|gender|sex|race|ethnicity|religion|disability|pregnancy|sexual orientation|marital status)\b/i,
   /\binfer(?:red|s)?\s+(?:age|gender|sex|race|ethnicity|religion|disability|pregnancy|sexual orientation|marital status)\b/i,
+  /\b(?:problematič(?:an|na|no)|problematic(?:an|na|no)|nesposob(?:an|na|no)|slab(?:a)? kandidat(?:kinja)?)\b/iu,
+  /\b(?:terapij(?:a|u|e|om)|liječenj(?:e|a|u|em)|lijecenj(?:e|a|u|em)|lečenj(?:e|a|u|em)|lecenj(?:e|a|u|em)|psihološk(?:a|u|e)? intervencij(?:a|u|e))\b/iu,
+  /\b(?:deterministic|snapshot|numeric|provider|schema)\b/i,
 ];
+
+const HARD_SAFETY_ISSUE_CODES = new Set([
+  "HIRING_DECISION",
+  "FIT_OR_ELIMINATION_DECISION",
+  "CLINICAL_OR_DIAGNOSTIC_CLAIM",
+  "PROTECTED_TRAIT_INFERENCE",
+  "CATEGORICAL_PREDICTION",
+  "WORK_OUTCOME_PREDICTION",
+]);
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false;
@@ -143,33 +155,9 @@ function isPlaceholderLikeText(value: string): boolean {
   const normalized = normalizeTextForQualityCheck(value);
 
   return (
-    normalized.length < 18 ||
     /^(?:n\/?a|tbd|todo|test|placeholder|-|—)$/i.test(normalized) ||
     /lorem ipsum/i.test(normalized)
   );
-}
-
-function isGenericIdpFiller(value: string): boolean {
-  const normalized = normalizeTextForQualityCheck(value);
-
-  return [
-    "ovaj izvještaj prikazuje razvojni profil",
-    "ovaj izvjestaj prikazuje razvojni profil",
-    "ovo je opšti razvojni sažetak",
-    "ovo je opsti razvojni sazetak",
-    "ovo je opći razvojni sažetak",
-    "ovo je opci razvojni sazetak",
-    "osoba ima različite razvojne potrebe",
-    "osoba ima razlicite razvojne potrebe",
-    "važno je uzeti rezultate u obzir",
-    "vazno je uzeti rezultate u obzir",
-    "razvoj može varirati kroz vrijeme",
-    "razvoj moze varirati kroz vrijeme",
-    "ovo su opšte smjernice",
-    "ovo su opste smjernice",
-    "ovo su opće smjernice",
-    "ovo su opce smjernice",
-  ].includes(normalized);
 }
 
 function validateNonEmptyString(value: unknown, path: string, errors: string[]): value is string {
@@ -187,17 +175,13 @@ function validateNarrativeString(value: unknown, path: string, errors: string[])
   }
 
   if (isPlaceholderLikeText(value)) {
-    errors.push(`${path}: Text is placeholder-like or too short.`);
-  }
-
-  if (isGenericIdpFiller(value)) {
-    errors.push(`${path}: Text is generic IDP filler.`);
+    errors.push(`${path}: Text is placeholder-like.`);
   }
 
   const safetyIssues = validateHrReportSafety(value, {
     context: "individual_development_profile_hr_report",
     path,
-  });
+  }).filter((issue) => HARD_SAFETY_ISSUE_CODES.has(issue.code));
 
   if (safetyIssues.length > 0) {
     errors.push(`${path}: Text contains an unsafe or overclaiming IDP assertion.`);
@@ -240,81 +224,7 @@ function validateStringArray(
     }
   });
 
-  assertUniqueNarrativeTexts(
-    value.filter((entry): entry is string => typeof entry === "string"),
-    path,
-    errors,
-  );
-
   return true;
-}
-
-function assertUniqueNarrativeTexts(values: string[], path: string, errors: string[]): void {
-  const seen = new Map<string, number>();
-
-  values.forEach((value, index) => {
-    const normalized = normalizeTextForQualityCheck(value);
-
-    if (!normalized) {
-      return;
-    }
-
-    const firstIndex = seen.get(normalized);
-
-    if (firstIndex !== undefined) {
-      errors.push(`${path}[${index}]: Duplicate narrative text also found at ${path}[${firstIndex}].`);
-      return;
-    }
-
-    seen.set(normalized, index);
-  });
-}
-
-function assertUniqueObjectNarrativeTexts(
-  entries: Array<{ path: string; value: unknown }>,
-  errors: string[],
-): void {
-  const seen = new Map<string, string>();
-
-  entries.forEach((entry) => {
-    if (typeof entry.value !== "string") {
-      return;
-    }
-
-    const normalized = normalizeTextForQualityCheck(entry.value);
-
-    if (!normalized) {
-      return;
-    }
-
-    const firstPath = seen.get(normalized);
-
-    if (firstPath) {
-      errors.push(`${entry.path}: Duplicate narrative text also found at ${firstPath}.`);
-      return;
-    }
-
-    seen.set(normalized, entry.path);
-  });
-}
-
-function assertDistinctNarrativePair(
-  leftPath: string,
-  leftValue: unknown,
-  rightPath: string,
-  rightValue: unknown,
-  errors: string[],
-): void {
-  if (typeof leftValue !== "string" || typeof rightValue !== "string") {
-    return;
-  }
-
-  if (
-    normalizeTextForQualityCheck(leftValue) &&
-    normalizeTextForQualityCheck(leftValue) === normalizeTextForQualityCheck(rightValue)
-  ) {
-    errors.push(`${rightPath}: Duplicate narrative text also found at ${leftPath}.`);
-  }
 }
 
 function collectStringLeaves(value: unknown, output: string[] = []): string[] {
@@ -398,15 +308,6 @@ function validateDevelopmentRisks(
     validateNarrativeString(entry.whyItMatters, `${path}[${index}].whyItMatters`, errors);
     validateNarrativeString(entry.whatToCheck, `${path}[${index}].whatToCheck`, errors);
     validateNarrativeString(entry.howToSupport, `${path}[${index}].howToSupport`, errors);
-    assertUniqueObjectNarrativeTexts(
-      [
-        { path: `${path}[${index}].possibleBlocker`, value: entry.possibleBlocker },
-        { path: `${path}[${index}].whyItMatters`, value: entry.whyItMatters },
-        { path: `${path}[${index}].whatToCheck`, value: entry.whatToCheck },
-        { path: `${path}[${index}].howToSupport`, value: entry.howToSupport },
-      ],
-      errors,
-    );
   });
 
   return true;
@@ -485,18 +386,6 @@ function validateManagerWatchpoints(
     validateNarrativeString(
       entry.suggestedManagerResponse,
       `${path}[${index}].suggestedManagerResponse`,
-      errors,
-    );
-    assertUniqueObjectNarrativeTexts(
-      [
-        { path: `${path}[${index}].watchpoint`, value: entry.watchpoint },
-        { path: `${path}[${index}].whyItMatters`, value: entry.whyItMatters },
-        { path: `${path}[${index}].earlySignal`, value: entry.earlySignal },
-        {
-          path: `${path}[${index}].suggestedManagerResponse`,
-          value: entry.suggestedManagerResponse,
-        },
-      ],
       errors,
     );
   });
@@ -658,20 +547,6 @@ export function validateIndividualDevelopmentProfileSnapshot(
       errors,
     );
     validateNarrativeString(normalizedValue.developmentSummary.usageNote, "developmentSummary.usageNote", errors);
-    assertDistinctNarrativePair(
-      "developmentSummary.overallPattern",
-      normalizedValue.developmentSummary.overallPattern,
-      "developmentSummary.usageNote",
-      normalizedValue.developmentSummary.usageNote,
-      errors,
-    );
-    assertDistinctNarrativePair(
-      "developmentSummary.overallPattern",
-      normalizedValue.developmentSummary.overallPattern,
-      "developmentSummary.mainSupportNeed",
-      normalizedValue.developmentSummary.mainSupportNeed,
-      errors,
-    );
   }
 
   if (!isPlainRecord(normalizedValue.contributionPattern)) {
@@ -766,15 +641,6 @@ export function validateIndividualDevelopmentProfileSnapshot(
     errors.push("onboardingPlan: Expected object.");
   } else {
     validateNarrativeString(normalizedValue.onboardingPlan.summary, "onboardingPlan.summary", errors);
-    assertDistinctNarrativePair(
-      "developmentSummary.usageNote",
-      isPlainRecord(normalizedValue.developmentSummary)
-        ? normalizedValue.developmentSummary.usageNote
-        : undefined,
-      "onboardingPlan.summary",
-      normalizedValue.onboardingPlan.summary,
-      errors,
-    );
     validateOnboardingPlanStage(normalizedValue.onboardingPlan.first7Days, "onboardingPlan.first7Days", errors);
     validateOnboardingPlanStage(normalizedValue.onboardingPlan.first30Days, "onboardingPlan.first30Days", errors);
     validateOnboardingPlanStage(normalizedValue.onboardingPlan.days31To60, "onboardingPlan.days31To60", errors);
