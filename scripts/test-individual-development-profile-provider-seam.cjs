@@ -318,6 +318,11 @@ async function main() {
     /Write as a senior HR development advisor/,
     /The headline and overall summary must not list domains, scores, bands or tests/,
     /The usage note should be short, calm and secondary/,
+    /do not rely on “može” as the default hedge/,
+    /perfekcionističko usporavanje/,
+    /usporavanje prve verzije zbog dodatne provjere kvaliteta/,
+    /spontana rasprava/,
+    /brzo uključivanje u grupnu diskusiju/,
   ]) {
     assert.match(systemPrompt, pattern);
   }
