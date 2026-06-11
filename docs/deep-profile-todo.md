@@ -57,7 +57,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
-| P1        | Individualni razvojni profil product/report contract spec | Tehnički pipeline zatvoren do `ready/openai/gpt-5.5`; sadržajni review stvarnog IDP OpenAI outputa pokazao potrebu za `IDP standard za kreiranje HR-development reporta` | Individualni razvojni profil / Product architecture | Uži prompt/content-contract hardening koji definiše creation standard; bez renderer polish-a, bez scoring/input promjena i bez regeneracije prije dev-only dry-run reviewa. |
+| P1        | Individualni razvojni profil product/report contract spec | Zatvoreno za ovaj IDP quality/hardening krug; voice doctrine, validator boundary, raw inspector i kontrolisana Amra regeneracija su završeni | Individualni razvojni profil / Product architecture | Sljedeće: ne regenerisati dalje IDP reportove bez eksplicitne odluke. Ako se nastavlja IDP lane, raditi samo uski golden examples / reviewer / app-level disclaimer slice ili preći na sljedeći prioritet iz canonical todo-a. |
 | P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Otvoreno / Read-only nalaz potvrđen | Infrastructure / Supabase / Migration history | Kontrolisano riješiti remote-only migration marker 20260530183640 koji je alias za lokalnu Team Fit migraciju 20260530110000_add_team_fit_reports.sql; prije bilo kakvog repair/db push zahvata definisati sigurnu strategiju mirror/repair-a i potvrditi da nema runtime schema razlike. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
@@ -7470,6 +7470,37 @@ Read-only istraga je potvrdila da remote-only marker `20260530183640` nije nepoz
 - Ne mijenjati renderer.
 - Ne mijenjati scoring/input builder.
 - Ne regenerisati Amra IDP prije dev-only dry-run reviewa.
+
+### Completion note — IDP HR voice doctrine, validator boundary, raw inspector and Amra regeneration closed
+
+- IDP HR report voice je stabilizovan kroz `IDP HR Development Report Voice Doctrine`.
+- Dodan je dev-only raw OpenAI inspector za Amra IDP koji koristi production request builder, ali preskače app validation gate radi izolovanja AI outputa od validatora.
+- Raw inspector je pokazao da AI output sa novom doktrinom daje dobar HR-development report.
+- IDP contract validator je ograničen na structural/safety hard gate; uklonjen je hard-fail style policing za prose/hedge riječi kao `može`, `vjerovatno`, `upućuje` i normalne workload konstrukcije tipa `ne može`.
+- Standardni no-write OpenAI dry-run nakon validator refactora prošao je sa: provider ok, `rawJsonParse` ok, contract ok, BHS ok i quality ok.
+- Amra IDP report je kontrolisano regenerisan kroz postojeći lifecycle/provider/validator path.
+- Persisted report status je potvrđen: `report_status=ready`, `failure_code=null`, `failure_reason=null`, `generator_type=openai`, `model_name=gpt-5.5`.
+- UI je očišćen: uklonjena je vidljiva `Oprezno čitanje / Ograničenja tumačenja` disclaimer kartica iz IDP report UI-ja; disclaimer/ograničenja ostaju za budući app-level disclaimer, ne kao report section.
+- Hibridne onboarding labele su zamijenjene prirodnim BHS UI copyjem:
+  - `Checkpoints i watchout signali` → `Kontrolne tačke i rani signali`
+  - `Menadžerske checkpoint tačke` → `Menadžerske kontrolne tačke`
+  - `Watchout signali` → `Rani signali za prilagodbu`
+- Arhitektonska odluka je potvrđena: AI generiše person-specific sadržaj; UI posjeduje stabilne BHS section labele; validator čuva strukturu i ozbiljne safety granice, ne glumi urednika proze; style/voice kvalitet ide kroz prompt doctrine, raw/dev inspection i human/product review, ne kroz beskonačan regex rječnik.
+- Ovo zatvara IDP content/quality krug. Ne regenerisati dalje IDP reportove bez eksplicitne nove odluke.
+- Testovi koji su prošli:
+  - `node scripts/test-individual-development-profile-contract.cjs`
+  - `node scripts/test-individual-development-profile-mock-provider.cjs`
+  - `node scripts/test-individual-development-profile-provider-seam.cjs`
+  - `node scripts/test-individual-development-profile-renderer.cjs`
+  - `node scripts/test-individual-development-profile-route-shell.cjs`
+  - `node scripts/test-individual-development-profile-display-helper.cjs`
+  - `node scripts/test-inspect-amra-idp-openai-raw-output.cjs`
+  - `node scripts/test-inspect-amra-idp-openai-request-dump.cjs`
+  - `node scripts/test-dry-run-amra-idp-openai-generation.cjs`
+  - `npm run typecheck`
+  - `git diff --check`
+  - real no-write OpenAI dry-run PASS sa validator gateom
+  - controlled Amra IDP regeneration PASS do `ready/openai/gpt-5.5`
 
 ### 2026-06-02 — Team Fit upstream source decision, DB smoke i resolver fix
 
