@@ -7545,6 +7545,12 @@ Read-only istraga je potvrdila da remote-only marker `20260530183640` nije nepoz
 - Cilj je prvo mapirati stanje i tek onda odlučiti gdje treba minimalan fix.
 - Neki laneovi možda već imaju dobar validator boundary.
 - Ne uvoditi novi broad roadmap item; ovo je horizontalni audit koji primjenjuje IDP lekcije na postojeće report laneove.
+- Tokom audita procijeniti gdje bi jeftin/brz AI reviewer bio bolji od regex/prose validatora. Mogući budući model: premium model generiše report, structural validator provjerava schema/contract/integrity, a cheap/fast AI reviewer daje dodatni content QA signal za očigledne kliničke/medicinske tvrdnje, hire/no-hire zaključke, jezičke/English leak probleme, kontradikcije, generički ili nekoristan report, report koji zvuči kao disclaimer umjesto HR advisory dokument i nedovoljno konkretne menadžerske akcije.
+- Reviewer u prvoj fazi treba biti dev-only ili soft QA diagnostic, ne automatski production hard gate.
+- Reviewer ne prepisuje report i ne postaje drugi autor.
+- Reviewer vraća structured result, npr. `pass | warn | fail`, severity, category, field, evidence, recommendation.
+- Hard blocking kroz reviewer razmatrati tek nakon kalibracije na većem broju reportova.
+- Ne implementirati sada AI reviewer, ne uvoditi novi provider sada i ne mijenjati report generation pipeline sada; ovo je future architecture option koji treba imati na umu tokom cross-report audit-a, uz cilj da se izbjegnu beskonačne regex liste zabranjenih riječi za prozu.
 
 **Predloženi sljedeći task nakon audita:**
 - `Sljedeće: read-only audit validator boundaries and UI/AI content ownership across IPIP HR, SAFRAN HR, MWMS HR and Composite HR report lanes before any cross-report refactor.`
