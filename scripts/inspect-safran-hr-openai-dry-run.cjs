@@ -10,6 +10,7 @@ const originalResolveFilename = Module._resolveFilename;
 
 const CONFIRM_ENV = "CONFIRM_SAFRAN_HR_OPENAI_DRY_RUN";
 const INPUT_PATH_ENV = "SAFRAN_HR_INPUT_SNAPSHOT_PATH";
+const CAPTURE_PATH_ENV = "SAFRAN_HR_INPUT_CAPTURE_PATH";
 const TIMEOUT_ENV = "SAFRAN_HR_OPENAI_DRY_RUN_TIMEOUT_MS";
 const OUTPUT_PREFIX = "safran-hr-openai-dry-run";
 
@@ -48,7 +49,8 @@ function buildNoCallSummary() {
     productionFlowChanged: false,
     artifactWritten: false,
     wouldDo: [
-      `Read SafranHrReportInput JSON from ${INPUT_PATH_ENV} or --input.`,
+      `Prefer a production-equivalent single-test HR AI input capture from ${CAPTURE_PATH_ENV} or --capture.`,
+      `Legacy/dev fallback: read SafranHrReportInput JSON from ${INPUT_PATH_ENV} or --input. This is not audit proof.`,
       "Call the SAFRAN HR OpenAI report request only after explicit confirmation.",
       "Capture raw parsed model output before BHS and SAFRAN validator gates.",
       "Run local BHS policy and SAFRAN validator diagnostics.",
@@ -56,7 +58,9 @@ function buildNoCallSummary() {
       "Write diagnostic JSON only under /tmp.",
     ],
     confirmationRequired: `${CONFIRM_ENV}=true`,
+    preferredCapturePathEnv: CAPTURE_PATH_ENV,
     inputPathEnv: INPUT_PATH_ENV,
+    legacyInputPathNote: "SAFRAN_HR_INPUT_SNAPSHOT_PATH/--input accepts dev JSON input only; use capture path for audit mode.",
     optionalTimeoutOverride: TIMEOUT_ENV,
   };
 }
@@ -120,25 +124,35 @@ function assertDevelopmentOnly(env = process.env) {
 }
 
 function parseCliInputPath(argv = process.argv.slice(2)) {
-  const inputFlag = argv.find((arg) => arg.startsWith("--input="));
+  return parseCliPathValue(argv, "input");
+}
+
+function parseCliCapturePath(argv = process.argv.slice(2)) {
+  return parseCliPathValue(argv, "capture");
+}
+
+function parseCliPathValue(argv, name) {
+  const inputFlag = argv.find((arg) => arg.startsWith(`--${name}=`));
 
   if (inputFlag) {
-    return inputFlag.slice("--input=".length);
+    return inputFlag.slice(`--${name}=`.length);
   }
 
-  const inputFlagIndex = argv.findIndex((arg) => arg === "--input");
+  const inputFlagIndex = argv.findIndex((arg) => arg === `--${name}`);
 
   if (inputFlagIndex >= 0 && argv[inputFlagIndex + 1]) {
     return argv[inputFlagIndex + 1];
   }
 
-  const firstPositional = argv.find((arg) => !arg.startsWith("-"));
-
-  return firstPositional ?? null;
+  return null;
 }
 
 function resolveInputSnapshotPath({ env = process.env, argv = process.argv.slice(2) } = {}) {
-  return env[INPUT_PATH_ENV] || parseCliInputPath(argv);
+  return env[INPUT_PATH_ENV] || parseCliInputPath(argv) || argv.find((arg) => !arg.startsWith("-")) || null;
+}
+
+function resolveInputCapturePath({ env = process.env, argv = process.argv.slice(2) } = {}) {
+  return env[CAPTURE_PATH_ENV] || parseCliCapturePath(argv);
 }
 
 function readInputSnapshot(filePath, readFile = fs.readFileSync) {
@@ -153,6 +167,18 @@ function readInputSnapshot(filePath, readFile = fs.readFileSync) {
   } catch (error) {
     throw new Error(
       `Failed to read SafranHrReportInput JSON from ${filePath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
+function readJsonFile(filePath, label, readFile = fs.readFileSync) {
+  try {
+    return JSON.parse(readFile(filePath, "utf8"));
+  } catch (error) {
+    throw new Error(
+      `Failed to read ${label} JSON from ${filePath}: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
@@ -193,6 +219,151 @@ function summarizeInput(input) {
       : null,
   };
 }
+
+function assertCaptureMetadata(capture, capturePath) {
+  const metadata = capture?.metadata ?? {};
+  const reconstructedInputUsed = metadata.reconstructedInputUsed;
+
+  if (reconstructedInputUsed !== false) {
+    throw new Error(
+      `Invalid SAFRAN HR AI input capture ${capturePath}: SAFRAN input capture must not use reconstructed input. Expected metadata.reconstructedInputUsed=false, received ${JSON.stringify(
+        reconstructedInputUsed,
+      )}. Reconstructed or synthetic input is not acceptable audit evidence.`,
+    );
+  }
+
+  const diagnosticInputSource = metadata.diagnosticInputSource;
+
+  if (
+    typeof diagnosticInputSource !== "string" ||
+    !diagnosticInputSource.includes("buildCompletedAssessmentReportRequest") ||
+    !diagnosticInputSource.includes("buildPreparedReportGenerationInput")
+  ) {
+    throw new Error(
+      `Invalid SAFRAN HR AI input capture ${capturePath}: diagnosticInputSource must reference production-equivalent buildCompletedAssessmentReportRequest + buildPreparedReportGenerationInput path. Reconstructed or synthetic input is not acceptable audit evidence.`,
+    );
+  }
+
+  const checks = [
+    ["metadata.reportFamily", metadata.reportFamily, "safran"],
+    ["metadata.testSlug", metadata.testSlug, "safran_v1"],
+    ["metadata.audience", metadata.audience, "hr"],
+    ["metadata.sourceType", metadata.sourceType, "single_test"],
+    ["metadata.openAiCalled", metadata.openAiCalled, false],
+    ["metadata.databaseWrites", metadata.databaseWrites, false],
+    ["metadata.reportRegenerated", metadata.reportRegenerated, false],
+    ["metadata.productionFlowChanged", metadata.productionFlowChanged, false],
+  ];
+
+  for (const [label, actual, expected] of checks) {
+    if (actual !== expected) {
+      throw new Error(
+        `Invalid SAFRAN HR AI input capture ${capturePath}: expected ${label}=${JSON.stringify(
+          expected,
+        )}, received ${JSON.stringify(actual)}.`,
+      );
+    }
+  }
+
+  if (capture?.reportContract?.promptKey !== "safran_hr_report_v1") {
+    throw new Error(
+      `Invalid SAFRAN HR AI input capture ${capturePath}: expected reportContract.promptKey=safran_hr_report_v1.`,
+    );
+  }
+
+  if (capture?.reportContract?.schemaName !== "safran-hr-report-v1") {
+    throw new Error(
+      `Invalid SAFRAN HR AI input capture ${capturePath}: expected reportContract.schemaName=safran-hr-report-v1.`,
+    );
+  }
+
+  if (!capture?.promptInput?.test) {
+    throw new Error(
+      `Invalid SAFRAN HR AI input capture ${capturePath}: missing production promptInput.`,
+    );
+  }
+
+  if (!capture?.preparedOpenAiRequest?.requestBody) {
+    throw new Error(
+      `Invalid SAFRAN HR AI input capture ${capturePath}: missing preparedOpenAiRequest.requestBody.`,
+    );
+  }
+}
+
+function readInputCapture(capturePath, readFile = fs.readFileSync) {
+  if (!capturePath) {
+    return null;
+  }
+
+  const capture = readJsonFile(capturePath, "SAFRAN HR AI input capture", readFile);
+  assertCaptureMetadata(capture, capturePath);
+
+  return {
+    inputSource: "single_test_hr_ai_input_capture",
+    capturePath,
+    captureMetadata: capture.metadata,
+    inputSnapshot: capture.promptInput,
+    preparedOpenAiRequest: capture.preparedOpenAiRequest,
+    model: capture.metadata?.model ?? capture.preparedOpenAiRequest?.requestBody?.model ?? null,
+    provider: capture.metadata?.provider ?? "openai",
+  };
+}
+
+async function requestOpenAiFromCapturedRequest(capturedRequestBody, options) {
+  if (!options.apiKey) {
+    throw new Error("Missing required env var: OPENAI_API_KEY");
+  }
+
+  if (!capturedRequestBody?.model) {
+    throw new Error("Captured SAFRAN HR OpenAI request body is missing model.");
+  }
+
+  const timeoutMs = options.timeoutMs ?? 120000;
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () =>
+      controller.abort(
+        new Error(`OpenAI SAFRAN HR capture dry-run timed out after ${timeoutMs}ms.`),
+      ),
+    timeoutMs,
+  );
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${options.apiKey}`,
+      },
+      body: JSON.stringify(capturedRequestBody),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI SAFRAN HR capture dry-run request failed with status ${response.status}: ${errorText}`);
+    }
+
+    const responsePayload = await response.json();
+    const content = responsePayload?.choices?.[0]?.message?.content;
+
+    if (typeof content !== "string") {
+      throw new Error("OpenAI SAFRAN HR capture dry-run response did not contain structured content.");
+    }
+
+    return JSON.parse(content);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`OpenAI SAFRAN HR capture dry-run failed: ${error.message}`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 
 function mapErrors(errors) {
   return errors.map((error) => ({
@@ -358,12 +529,15 @@ async function runSafranHrOpenAiDryRun({
 
   assertDevelopmentOnly(env);
 
-  const inputPath = resolveInputSnapshotPath({ env, argv });
-  const inputSnapshot = readInputSnapshot(inputPath, readFile);
+  const capturePath = resolveInputCapturePath({ env, argv });
+  const captureInput = readInputCapture(capturePath, readFile);
+  const inputPath = captureInput ? null : resolveInputSnapshotPath({ env, argv });
+  const inputSnapshot = captureInput?.inputSnapshot ?? readInputSnapshot(inputPath, readFile);
+  const inputSource = captureInput?.inputSource ?? "legacy_safran_hr_input_snapshot";
   const timestamp = now();
   const outputPath = dumpPath ?? buildOutputPath(timestamp.replace(/[:.]/g, "-"));
-  const model = env.AI_REPORT_MODEL || null;
-  const provider = env.AI_REPORT_PROVIDER || "openai";
+  const model = captureInput?.model ?? env.AI_REPORT_MODEL ?? null;
+  const provider = captureInput?.provider ?? env.AI_REPORT_PROVIDER ?? "openai";
 
   if (!requestRawReport || !evaluateDiagnostic) {
     installRuntime();
@@ -372,7 +546,12 @@ async function runSafranHrOpenAiDryRun({
   const providerModule = requestRawReport
     ? null
     : require("../lib/assessment/report-provider-openai.ts");
-  const rawRequester = requestRawReport ?? providerModule.requestOpenAiSafranHrReportRaw;
+  const rawRequester =
+    requestRawReport ??
+    (captureInput
+      ? (_input, options) =>
+          requestOpenAiFromCapturedRequest(captureInput.preparedOpenAiRequest.requestBody, options)
+      : providerModule.requestOpenAiSafranHrReportRaw);
 
   if (!env.OPENAI_API_KEY && !requestRawReport) {
     throw new Error("OPENAI_API_KEY is required for confirmed SAFRAN HR OpenAI dry-run.");
@@ -401,8 +580,14 @@ async function runSafranHrOpenAiDryRun({
       databaseWrites: false,
       reportRegenerated: false,
       productionFlowChanged: false,
+      inputSource,
+      capturePath: captureInput?.capturePath ?? null,
+      captureMetadata: captureInput?.captureMetadata ?? null,
       inputSnapshotPath: inputPath,
     },
+    inputSource,
+    capturePath: captureInput?.capturePath ?? null,
+    captureMetadata: captureInput?.captureMetadata ?? null,
     inputSummary: summarizeInput(inputSnapshot),
     rawParsedOutput,
     parseResult: diagnostic.parseResult,
@@ -472,6 +657,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  CAPTURE_PATH_ENV,
   CONFIRM_ENV,
   INPUT_PATH_ENV,
   TIMEOUT_ENV,
@@ -480,7 +666,9 @@ module.exports = {
   evaluateSafranHrDryRunDiagnostic,
   installTypeScriptRuntime,
   isExecutionConfirmed,
+  readInputCapture,
   readInputSnapshot,
+  resolveInputCapturePath,
   resolveInputSnapshotPath,
   runSafranHrOpenAiDryRun,
 };
