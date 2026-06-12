@@ -15,6 +15,8 @@ import {
   COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
   COMPOSITE_HR_BHS_LANGUAGE_RULES,
   COMPOSITE_HR_BHS_REVIEWER_RULES,
+  validateReportLanguageQuality,
+  type ReportLanguageQualityResult,
 } from "@/lib/assessment/report-language-quality";
 
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER = "openai" as const;
@@ -32,16 +34,36 @@ type ErrorWithCause = Error & {
   cause?: unknown;
 };
 
-type CompositeHrReviewIssue = {
+export type CompositeHrReviewIssue = {
   code: string;
   severity: "blocking" | "warning";
   message: string;
 };
 
-type CompositeHrReviewResult = {
+export type CompositeHrReviewResult = {
   approved: boolean;
   issues: CompositeHrReviewIssue[];
   summary: string;
+};
+
+export type CompositeHrValidatorBoundaryDiagnostic = {
+  rawParsedOutput: unknown;
+  canonicalizedOutput: CompositeHrReportSnapshot | null;
+  contractValidationResult: { ok: true; errors: string[] } | { ok: false; errors: string[] };
+  evidenceLockedValidationResult:
+    | { ok: true; errors: string[] }
+    | { ok: false; errors: string[] }
+    | { ok: false; skipped: true; reason: string; errors: string[] };
+  sourceIntegrityResult: { ok: true; error: null } | { ok: false; error: string } | { skipped: true; reason: string };
+  evidenceIntegrityResult: { ok: true; error: null } | { ok: false; error: string } | { skipped: true; reason: string };
+  languageQualityResult: ReportLanguageQualityResult | { skipped: true; reason: string };
+  addressingFormResult: { ok: true; error: null } | { ok: false; error: string } | { skipped: true; reason: string };
+  normalizedValidationResult:
+    | { ok: true; errors: string[] }
+    | { ok: false; errors: string[] }
+    | { skipped: true; reason: string };
+  validatorOnWouldPersist: boolean;
+  failureReasons: string[];
 };
 
 type LockedCompositeEvidenceEntry = {
@@ -644,6 +666,21 @@ async function reviewCompositeHrOpenAiReport(
   snapshot: CompositeHrReportSnapshot,
   options: OpenAiCompositeHrProviderOptions,
 ): Promise<void> {
+  const review = await reviewOpenAiCompositeHrReportForDiagnostic(input, snapshot, options);
+
+  if (!review.approved) {
+    const details = review.issues.length > 0
+      ? review.issues.map((issue) => `${issue.severity}:${issue.code}:${issue.message}`).join("; ")
+      : review.summary;
+    throw new Error(`Composite HR reviewer rejected report: ${details}`);
+  }
+}
+
+export async function reviewOpenAiCompositeHrReportForDiagnostic(
+  input: CompositeHrInputSnapshot,
+  snapshot: CompositeHrReportSnapshot,
+  options: OpenAiCompositeHrProviderOptions,
+): Promise<CompositeHrReviewResult> {
   const rawReview = await requestOpenAiStructuredJson(options, {
     label: "composite HR report review",
     schemaName: "composite_hr_report_review_v1",
@@ -652,14 +689,7 @@ async function reviewCompositeHrOpenAiReport(
     userPrompt: buildCompositeHrReviewerUserPrompt(input, snapshot),
   });
 
-  const review = validateCompositeHrReviewResult(rawReview);
-
-  if (!review.approved) {
-    const details = review.issues.length > 0
-      ? review.issues.map((issue) => `${issue.severity}:${issue.code}:${issue.message}`).join("; ")
-      : review.summary;
-    throw new Error(`Composite HR reviewer rejected report: ${details}`);
-  }
+  return validateCompositeHrReviewResult(rawReview);
 }
 
 export const compositeHrReportOpenAiSchema = {
@@ -934,13 +964,7 @@ export async function generateOpenAiCompositeHrReport(
   input: CompositeHrInputSnapshot,
   options: OpenAiCompositeHrProviderOptions,
 ): Promise<CompositeHrReportSnapshot> {
-  const rawReport = await requestOpenAiStructuredJson(options, {
-    label: "composite HR report",
-    schemaName: COMPOSITE_HR_REPORT_CONTRACT_VERSION,
-    schema: compositeHrReportOpenAiSchema as Record<string, unknown>,
-    systemPrompt: buildCompositeHrOpenAiSystemPrompt(input),
-    userPrompt: buildCompositeHrOpenAiUserPrompt(input),
-  });
+  const rawReport = await requestOpenAiCompositeHrReportRaw(input, options);
 
   const initialValidation = validateCompositeHrReportSnapshot(rawReport);
 
@@ -989,4 +1013,178 @@ export async function generateOpenAiCompositeHrReport(
   await reviewCompositeHrOpenAiReport(input, normalizedValidation.value, options);
 
   return normalizedValidation.value;
+}
+
+export async function requestOpenAiCompositeHrReportRaw(
+  input: CompositeHrInputSnapshot,
+  options: OpenAiCompositeHrProviderOptions,
+): Promise<unknown> {
+  return requestOpenAiStructuredJson(options, {
+    label: "composite HR report",
+    schemaName: COMPOSITE_HR_REPORT_CONTRACT_VERSION,
+    schema: compositeHrReportOpenAiSchema as Record<string, unknown>,
+    systemPrompt: buildCompositeHrOpenAiSystemPrompt(input),
+    userPrompt: buildCompositeHrOpenAiUserPrompt(input),
+  });
+}
+
+function formatDiagnosticError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export function evaluateCompositeHrReportValidatorBoundary(
+  input: CompositeHrInputSnapshot,
+  rawReport: unknown,
+  options?: {
+    now?: () => string;
+  },
+): CompositeHrValidatorBoundaryDiagnostic {
+  const failureReasons: string[] = [];
+  const initialValidation = validateCompositeHrReportSnapshot(rawReport);
+  const contractValidationResult = initialValidation.ok
+    ? { ok: true as const, errors: [] }
+    : { ok: false as const, errors: initialValidation.errors };
+
+  if (!initialValidation.ok) {
+    failureReasons.push(
+      `contract validation failed: ${formatCompositeHrReportValidationErrors(initialValidation.errors)}`,
+    );
+
+    return {
+      rawParsedOutput: rawReport,
+      canonicalizedOutput: null,
+      contractValidationResult,
+      evidenceLockedValidationResult: {
+        ok: false,
+        skipped: true,
+        reason: "Initial contract validation failed.",
+        errors: [],
+      },
+      sourceIntegrityResult: { skipped: true, reason: "Initial contract validation failed." },
+      evidenceIntegrityResult: { skipped: true, reason: "Initial contract validation failed." },
+      languageQualityResult: { skipped: true, reason: "Initial contract validation failed." },
+      addressingFormResult: { skipped: true, reason: "Initial contract validation failed." },
+      normalizedValidationResult: { skipped: true, reason: "Initial contract validation failed." },
+      validatorOnWouldPersist: false,
+      failureReasons,
+    };
+  }
+
+  const lockedReport = applyLockedCompositeEvidenceValues(initialValidation.value, input);
+  const lockedValidation = validateCompositeHrReportSnapshot(lockedReport);
+  const evidenceLockedValidationResult = lockedValidation.ok
+    ? { ok: true as const, errors: [] }
+    : { ok: false as const, errors: lockedValidation.errors };
+
+  if (!lockedValidation.ok) {
+    failureReasons.push(
+      `evidence-locked validation failed: ${formatCompositeHrReportValidationErrors(lockedValidation.errors)}`,
+    );
+
+    return {
+      rawParsedOutput: rawReport,
+      canonicalizedOutput: null,
+      contractValidationResult,
+      evidenceLockedValidationResult,
+      sourceIntegrityResult: { skipped: true, reason: "Evidence-locked validation failed." },
+      evidenceIntegrityResult: { skipped: true, reason: "Evidence-locked validation failed." },
+      languageQualityResult: { skipped: true, reason: "Evidence-locked validation failed." },
+      addressingFormResult: { skipped: true, reason: "Evidence-locked validation failed." },
+      normalizedValidationResult: { skipped: true, reason: "Evidence-locked validation failed." },
+      validatorOnWouldPersist: false,
+      failureReasons,
+    };
+  }
+
+  let sourceIntegrityResult: CompositeHrValidatorBoundaryDiagnostic["sourceIntegrityResult"] = {
+    ok: true,
+    error: null,
+  };
+
+  try {
+    assertImmutableSource(lockedValidation.value, input);
+  } catch (error) {
+    sourceIntegrityResult = { ok: false, error: formatDiagnosticError(error) };
+    failureReasons.push(`source integrity failed: ${sourceIntegrityResult.error}`);
+  }
+
+  let evidenceIntegrityResult: CompositeHrValidatorBoundaryDiagnostic["evidenceIntegrityResult"] = {
+    ok: true,
+    error: null,
+  };
+
+  try {
+    assertLockedCompositeEvidenceIntegrity(lockedValidation.value, input);
+  } catch (error) {
+    evidenceIntegrityResult = { ok: false, error: formatDiagnosticError(error) };
+    failureReasons.push(`locked evidence integrity failed: ${evidenceIntegrityResult.error}`);
+  }
+
+  const languageQualityResult = validateReportLanguageQuality({
+    snapshot: lockedValidation.value,
+    locale: lockedValidation.value.locale,
+    audience: "hr",
+    reportType: "composite",
+    context: "composite_hr_report",
+  });
+
+  if (!languageQualityResult.ok) {
+    failureReasons.push(
+      `language quality failed: ${languageQualityResult.issues
+        .map((issue) => `${issue.code}:${issue.path ? `${issue.path}:` : ""}${issue.phrase}`)
+        .join("; ")}`,
+    );
+  }
+
+  let addressingFormResult: CompositeHrValidatorBoundaryDiagnostic["addressingFormResult"] = {
+    ok: true,
+    error: null,
+  };
+
+  try {
+    assertAddressingFormConsistency(lockedValidation.value, input);
+  } catch (error) {
+    addressingFormResult = { ok: false, error: formatDiagnosticError(error) };
+    failureReasons.push(`addressing form failed: ${addressingFormResult.error}`);
+  }
+
+  const normalizedReport: CompositeHrReportSnapshot = {
+    ...lockedValidation.value,
+    metadata: {
+      provider: COMPOSITE_HR_REPORT_OPENAI_PROVIDER,
+      providerVersion: COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION,
+      generatedAt: options?.now?.() ?? new Date().toISOString(),
+    },
+  };
+  const normalizedValidation = validateCompositeHrReportSnapshot(normalizedReport);
+  const normalizedValidationResult = normalizedValidation.ok
+    ? { ok: true as const, errors: [] }
+    : { ok: false as const, errors: normalizedValidation.errors };
+
+  if (!normalizedValidation.ok) {
+    failureReasons.push(
+      `normalized validation failed: ${formatCompositeHrReportValidationErrors(normalizedValidation.errors)}`,
+    );
+  }
+
+  const validatorOnWouldPersist =
+    sourceIntegrityResult.ok === true &&
+    evidenceIntegrityResult.ok === true &&
+    languageQualityResult.ok === true &&
+    addressingFormResult.ok === true &&
+    normalizedValidation.ok;
+
+  return {
+    rawParsedOutput: rawReport,
+    canonicalizedOutput: normalizedValidation.ok ? normalizedValidation.value : normalizedReport,
+    contractValidationResult,
+    evidenceLockedValidationResult,
+    sourceIntegrityResult,
+    evidenceIntegrityResult,
+    languageQualityResult,
+    addressingFormResult,
+    normalizedValidationResult,
+    validatorOnWouldPersist,
+    failureReasons,
+  };
 }
