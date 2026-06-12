@@ -66,6 +66,7 @@ const {
 } = require("../lib/assessment/composite-hr-report-provider.ts");
 const {
   generateOpenAiCompositeHrReport,
+  evaluateCompositeHrReportValidatorBoundary,
 } = require("../lib/assessment/composite-hr-report-provider-openai.ts");
 const {
   COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
@@ -515,6 +516,51 @@ async function testOpenAiInvalidOutputFailsValidation() {
   );
 }
 
+async function testOpenAiMissingRequiredTextFailsValidation() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    summary: {
+      headline: "",
+      profileOverview: "U intervjuu provjerite konkretan primjer rada.",
+      keyStrengths: ["Jasna tragljivost izvora."],
+      watchouts: ["Tražite primjer rada pod pritiskom rokova."],
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      generateOpenAiCompositeHrReport(inputSnapshot, {
+        apiKey: "test-key",
+        model: "gpt-5.5",
+        fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
+        now: () => "2026-05-12T10:15:00.000Z",
+      }),
+    /failed validation|summary\.headline/i,
+  );
+}
+
+async function testWrongReportMetadataFailsValidation() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+
+  for (const invalidSnapshot of [
+    buildOpenAiSnapshotFixture(inputSnapshot, { reportType: "single_test" }),
+    buildOpenAiSnapshotFixture(inputSnapshot, { audience: "participant" }),
+    buildOpenAiSnapshotFixture(inputSnapshot, { sourceType: "single_test" }),
+    buildOpenAiSnapshotFixture(inputSnapshot, { locale: "en" }),
+  ]) {
+    await assert.rejects(
+      () =>
+        generateOpenAiCompositeHrReport(inputSnapshot, {
+          apiKey: "test-key",
+          model: "gpt-5.5",
+          fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
+          now: () => "2026-05-12T10:15:00.000Z",
+        }),
+      /failed validation|locale does not match|reportType|audience|sourceType/i,
+    );
+  }
+}
+
 async function testSourceImmutabilityFailsOnMutatedSource() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
   const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
@@ -561,9 +607,9 @@ async function testForbiddenWordingRejected() {
   );
 }
 
-async function testRokoviVisokiRejected() {
+async function testRokoviVisokiIsDiagnosticWarningOnly() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
-  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+  const styleIssueSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
     summary: {
       headline: "Integrisani HR pregled",
       profileOverview: "Glavni rizik zvuci kao rokovi visoki u svim situacijama.",
@@ -572,23 +618,30 @@ async function testRokoviVisokiRejected() {
     },
   });
 
-  await assert.rejects(
-    () =>
-      generateOpenAiCompositeHrReport(inputSnapshot, {
-        apiKey: "test-key",
-        model: "gpt-5.5",
-        fetchImpl: buildFetchResponse(invalidSnapshot),
-        now: () => "2026-05-12T10:15:00.000Z",
-      }),
-    /rokovi visoki/i,
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(styleIssueSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+  const diagnostic = evaluateCompositeHrReportValidatorBoundary(inputSnapshot, styleIssueSnapshot, {
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(result).ok, true);
+  assert.equal(diagnostic.hardGateWouldPersist, true);
+  assert.equal(diagnostic.languageQualityHardIssues.length, 0);
+  assert.equal(
+    diagnostic.languageQualityWarnings.some((issue) => issue.phrase === "rokovi visoki"),
+    true,
   );
 }
 
-async function testAgreeablenessGlossaryViolationsRejected() {
+async function testAgreeablenessGlossaryViolationsAreDiagnosticWarningsOnly() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
 
   for (const forbiddenPhrase of ["Ugodnost", "Saradljivost"]) {
-    const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    const terminologyIssueSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
       summary: {
         headline: "Integrisani HR pregled",
         profileOverview: `${forbiddenPhrase} se navodi kao glavni domen za timski rad.`,
@@ -597,15 +650,22 @@ async function testAgreeablenessGlossaryViolationsRejected() {
       },
     });
 
-    await assert.rejects(
-      () =>
-        generateOpenAiCompositeHrReport(inputSnapshot, {
-          apiKey: "test-key",
-          model: "gpt-5.5",
-          fetchImpl: buildFetchResponse(invalidSnapshot),
-          now: () => "2026-05-12T10:15:00.000Z",
-        }),
-      new RegExp(forbiddenPhrase, "i"),
+    const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+      apiKey: "test-key",
+      model: "gpt-5.5",
+      fetchImpl: buildFetchResponse(terminologyIssueSnapshot, buildReviewerResponseFixture()),
+      now: () => "2026-05-12T10:15:00.000Z",
+    });
+    const diagnostic = evaluateCompositeHrReportValidatorBoundary(inputSnapshot, terminologyIssueSnapshot, {
+      now: () => "2026-05-12T10:15:00.000Z",
+    });
+
+    assert.equal(validateCompositeHrReportSnapshot(result).ok, true);
+    assert.equal(diagnostic.hardGateWouldPersist, true);
+    assert.equal(diagnostic.languageQualityHardIssues.length, 0);
+    assert.equal(
+      diagnostic.languageQualityWarnings.some((issue) => new RegExp(forbiddenPhrase, "i").test(issue.phrase)),
+      true,
     );
   }
 }
@@ -729,9 +789,97 @@ async function testForbiddenHiringTermsRejected() {
   }
 }
 
-async function testNarrativeDomainCasingViolationRejected() {
+async function testHardSafetyBreachesRejected() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
-  const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+
+  for (const forbiddenText of [
+    "Ovaj profil ukazuje na ADHD dijagnozu i treba ga tretirati kao medicinski nalaz.",
+    "Raw answers pokazuju da je na pitanje 12 odabran odgovor 5.",
+    "Ovaj debug snapshot iz OpenAI provider requesta treba prikazati HR-u.",
+    "Raw provider metadata iz structured output procesa treba prikazati HR-u.",
+    "Likert odgovor za pitanje 12 bio je opcija 5.",
+  ]) {
+    const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+      summary: {
+        headline: "Integrisani HR pregled",
+        profileOverview: forbiddenText,
+        keyStrengths: ["Jasna tragljivost izvora."],
+        watchouts: ["U intervjuu provjerite konkretne primjere rada."],
+      },
+    });
+
+    await assert.rejects(
+      () =>
+        generateOpenAiCompositeHrReport(inputSnapshot, {
+          apiKey: "test-key",
+          model: "gpt-5.5",
+          fetchImpl: buildFetchResponse(invalidSnapshot, buildReviewerResponseFixture()),
+          now: () => "2026-05-12T10:15:00.000Z",
+        }),
+      /hard safety validation|hard language\/safety validation|RAW_ANSWER_LEAKAGE|DIAGNOSTIC_LANGUAGE|PROVIDER_DEBUG_LEAKAGE|FORBIDDEN_DEBUG_LANGUAGE/i,
+    );
+  }
+}
+
+async function testBenignTechnicalWordsDoNotHardFail() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const benignSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    summary: {
+      headline: "Integrisani HR pregled",
+      profileOverview:
+        "Ako HR interno poredi ovaj izvještaj sa drugim snapshot prikazom ili renderer pregledom, sadržaj ostaje isti. U intervjuu provjerite konkretan primjer rada.",
+      keyStrengths: [
+        "Provider kontekst ili OpenAI naziv ne mijenjaju interpretaciju kada nisu dio internog request loga.",
+      ],
+      watchouts: [
+        "Likert format procjene može pomoći u objašnjenju skale, ali bez prikaza pojedinačnih stavki.",
+      ],
+    },
+  });
+
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(benignSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(result).ok, true);
+}
+
+async function testMutatedKnownEvidenceValueIsSourceLocked() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const mutatedSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
+    integratedSignals: [
+      {
+        id: "signal-collaboration",
+        title: "Timski signal",
+        body: "U timskoj saradnji vrijedi provjeriti kako osoba gradi povjerenje i ritam rada.",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Spremnost na saradnju",
+            value: "9.99 (Izmisljeno)",
+          },
+        ],
+      },
+    ],
+  });
+
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(mutatedSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(result.integratedSignals[0].evidence[0].label, "Spremnost na saradnju");
+  assert.equal(result.integratedSignals[0].evidence[0].value, "3.00 (Uravnoteženo)");
+}
+
+async function testNarrativeDomainCasingViolationIsDiagnosticWarningOnly() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const casingIssueSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
     summary: {
       headline: "Integrisani HR pregled",
       profileOverview:
@@ -741,15 +889,22 @@ async function testNarrativeDomainCasingViolationRejected() {
     },
   });
 
-  await assert.rejects(
-    () =>
-      generateOpenAiCompositeHrReport(inputSnapshot, {
-        apiKey: "test-key",
-        model: "gpt-5.5",
-        fetchImpl: buildFetchResponse(invalidSnapshot),
-        now: () => "2026-05-12T10:15:00.000Z",
-      }),
-    /NARRATIVE_CASING_VIOLATION|Savjesnosti|Spremnosti na saradnju/i,
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(casingIssueSnapshot, buildReviewerResponseFixture()),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+  const diagnostic = evaluateCompositeHrReportValidatorBoundary(inputSnapshot, casingIssueSnapshot, {
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(result).ok, true);
+  assert.equal(diagnostic.hardGateWouldPersist, true);
+  assert.equal(diagnostic.languageQualityHardIssues.length, 0);
+  assert.equal(
+    diagnostic.languageQualityWarnings.some((issue) => issue.code === "NARRATIVE_CASING_VIOLATION"),
+    true,
   );
 }
 
@@ -805,32 +960,30 @@ async function testReviewerApprovedPathPasses() {
   assert.equal(validateCompositeHrReportSnapshot(snapshot).ok, true);
 }
 
-async function testReviewerRejectedPathFailsProvider() {
+async function testReviewerStyleRejectionDoesNotFailProvider() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
 
-  await assert.rejects(
-    () =>
-      generateOpenAiCompositeHrReport(inputSnapshot, {
-        apiKey: "test-key",
-        model: "gpt-5.5",
-        fetchImpl: buildFetchResponse(
-          buildOpenAiSnapshotFixture(inputSnapshot),
-          buildReviewerResponseFixture({
-            approved: false,
-            issues: [
-              {
-                code: "UNNATURAL_BHS_LANGUAGE",
-                severity: "blocking",
-                message: "Contains awkward phrase that should not pass.",
-              },
-            ],
-            summary: "Output should not be accepted.",
-          }),
-        ),
-        now: () => "2026-05-12T10:15:00.000Z",
+  const result = await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.5",
+    fetchImpl: buildFetchResponse(
+      buildOpenAiSnapshotFixture(inputSnapshot),
+      buildReviewerResponseFixture({
+        approved: false,
+        issues: [
+          {
+            code: "UNNATURAL_BHS_LANGUAGE",
+            severity: "blocking",
+            message: "Contains awkward phrase that should not pass.",
+          },
+        ],
+        summary: "Output should not be accepted.",
       }),
-    /reviewer rejected report|UNNATURAL_BHS_LANGUAGE/i,
-  );
+    ),
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(validateCompositeHrReportSnapshot(result).ok, true);
 }
 
 async function testNeuroticismEvidenceMismatchIsSourceLocked() {
@@ -1348,17 +1501,22 @@ async function main() {
   await testProviderSelectorDefaultUsesMock();
   await testOpenAiPathReturnsValidSnapshot();
   await testOpenAiInvalidOutputFailsValidation();
+  await testOpenAiMissingRequiredTextFailsValidation();
+  await testWrongReportMetadataFailsValidation();
   await testSourceImmutabilityFailsOnMutatedSource();
   await testForbiddenWordingRejected();
-  await testRokoviVisokiRejected();
-  await testAgreeablenessGlossaryViolationsRejected();
+  await testRokoviVisokiIsDiagnosticWarningOnly();
+  await testAgreeablenessGlossaryViolationsAreDiagnosticWarningsOnly();
   await testAgreeablenessLabelReplacementRejectedButNarrativeSaradnjaAllowed();
   await testAgreeablenessLegacyUgodnostEvidenceIsSourceLockedToCanonicalLabel();
   await testForbiddenHiringTermsRejected();
-  await testNarrativeDomainCasingViolationRejected();
+  await testHardSafetyBreachesRejected();
+  await testBenignTechnicalWordsDoNotHardFail();
+  await testMutatedKnownEvidenceValueIsSourceLocked();
+  await testNarrativeDomainCasingViolationIsDiagnosticWarningOnly();
   await testNarrativeDomainCasingPositiveAndEvidenceLabelAllowed();
   await testReviewerApprovedPathPasses();
-  await testReviewerRejectedPathFailsProvider();
+  await testReviewerStyleRejectionDoesNotFailProvider();
   await testNeuroticismEvidenceMismatchIsSourceLocked();
   await testValidNeuroticismEvidencePassesUnchanged();
   await testReviewerCanRejectUserFacingTechnicalLanguage();

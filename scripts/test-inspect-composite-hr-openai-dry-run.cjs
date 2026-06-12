@@ -365,6 +365,7 @@ async function main() {
   installTypeScriptRuntime();
   const {
     evaluateCompositeHrReportValidatorBoundary,
+    classifyCompositeHrReviewerBoundary,
   } = require("../lib/assessment/composite-hr-report-provider-openai.ts");
 
   const inputSnapshot = buildCompositeInputSnapshotFixture();
@@ -411,6 +412,7 @@ async function main() {
       };
     },
     evaluateValidatorBoundary: evaluateCompositeHrReportValidatorBoundary,
+    classifyReviewerBoundary: classifyCompositeHrReviewerBoundary,
   });
 
   assert.equal(openAiCalls, 1);
@@ -428,9 +430,14 @@ async function main() {
   assert.deepEqual(artifact.parseResult, { ok: true, error: null });
   assert.equal(artifact.contractValidationResult.ok, true);
   assert.equal(artifact.languageQualityResult.ok, true);
+  assert.deepEqual(artifact.languageQualityHardIssues, []);
+  assert.deepEqual(artifact.languageQualityWarnings, []);
   assert.equal(artifact.reviewerResult.approved, true);
+  assert.deepEqual(artifact.styleReviewerWarnings, []);
   assert.equal(artifact.validatorOffWouldHaveRawOutput, true);
+  assert.equal(artifact.hardGateWouldPersist, true);
   assert.equal(artifact.validatorOnWouldPersist, true);
+  assert.equal(artifact.productionWouldPersist, true);
   assert.deepEqual(artifact.failureReasons, []);
   assert.deepEqual(artifact.humanReviewHints, [
     "summary",
@@ -445,6 +452,8 @@ async function main() {
   assert.equal(writesList[0].options.mode, 0o600);
   assert.match(writesList[0].data, /"rawParsedOutput"/);
   assert.match(writesList[0].data, /"canonicalizedOutput"/);
+  assert.match(writesList[0].data, /"hardGateWouldPersist": true/);
+  assert.match(writesList[0].data, /"productionWouldPersist": true/);
   assert.match(writesList[0].data, /"validatorOnWouldPersist": true/);
   assert.doesNotMatch(writesList[0].data, /test-key/);
   assert.deepEqual(chmodCalls, [
@@ -453,6 +462,52 @@ async function main() {
       mode: 0o600,
     },
   ]);
+
+  const warningSnapshot = buildOpenAiSnapshotFixture(inputSnapshot);
+  warningSnapshot.summary.profileOverview = "Glavni rizik zvuci kao rokovi visoki u svim situacijama.";
+
+  const warningArtifact = await runCompositeHrOpenAiDryRun({
+    env: {
+      NODE_ENV: "development",
+      [CONFIRM_ENV]: "true",
+      [INPUT_PATH_ENV]: "/tmp/composite-input-test.json",
+      AI_REPORT_MODEL: "gpt-5.5",
+      AI_REPORT_PROVIDER: "openai",
+      OPENAI_API_KEY: "test-key",
+    },
+    now: () => "2026-06-12T10:05:00.000Z",
+    readFile: () => JSON.stringify(inputSnapshot),
+    writeFile: () => {},
+    chmodFile: () => {},
+    requestRawReport: async () => warningSnapshot,
+    requestReviewerResult: async () => ({
+      approved: false,
+      issues: [
+        {
+          code: "UNNATURAL_BHS_LANGUAGE",
+          severity: "blocking",
+          message: "Style reviewer dislikes wording rhythm.",
+        },
+      ],
+      summary: "Style-only rejection.",
+    }),
+    evaluateValidatorBoundary: evaluateCompositeHrReportValidatorBoundary,
+    classifyReviewerBoundary: classifyCompositeHrReviewerBoundary,
+  });
+
+  assert.equal(warningArtifact.languageQualityResult.ok, false);
+  assert.equal(warningArtifact.languageQualityHardIssues.length, 0);
+  assert.equal(
+    warningArtifact.languageQualityWarnings.some((issue) => issue.phrase === "rokovi visoki"),
+    true,
+  );
+  assert.equal(warningArtifact.reviewerResult.approved, false);
+  assert.equal(warningArtifact.reviewerResult.hardIssues.length, 0);
+  assert.equal(warningArtifact.styleReviewerWarnings.length, 1);
+  assert.equal(warningArtifact.hardGateWouldPersist, true);
+  assert.equal(warningArtifact.validatorOnWouldPersist, true);
+  assert.equal(warningArtifact.productionWouldPersist, true);
+  assert.deepEqual(warningArtifact.failureReasons, []);
 
   console.log("test-inspect-composite-hr-openai-dry-run: ok");
 }

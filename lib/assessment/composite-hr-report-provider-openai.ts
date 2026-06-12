@@ -11,11 +11,11 @@ import {
   type CompositeHrReportSnapshot,
 } from "@/lib/assessment/composite-hr-report-contract";
 import {
-  assertReportLanguageQuality,
   COMPOSITE_HR_BHS_GLOSSARY_PROMPT,
   COMPOSITE_HR_BHS_LANGUAGE_RULES,
   COMPOSITE_HR_BHS_REVIEWER_RULES,
   validateReportLanguageQuality,
+  type ReportLanguageQualityIssue,
   type ReportLanguageQualityResult,
 } from "@/lib/assessment/report-language-quality";
 import {
@@ -60,13 +60,32 @@ export type CompositeHrValidatorBoundaryDiagnostic = {
   sourceIntegrityResult: { ok: true; error: null } | { ok: false; error: string } | { skipped: true; reason: string };
   evidenceIntegrityResult: { ok: true; error: null } | { ok: false; error: string } | { skipped: true; reason: string };
   languageQualityResult: ReportLanguageQualityResult | { skipped: true; reason: string };
+  languageQualityHardIssues: ReportLanguageQualityIssue[];
+  languageQualityWarnings: ReportLanguageQualityIssue[];
+  hardSafetyResult:
+    | { ok: true; issues: CompositeHrHardSafetyIssue[] }
+    | { ok: false; issues: CompositeHrHardSafetyIssue[] }
+    | { skipped: true; reason: string };
   addressingFormResult: { ok: true; error: null } | { ok: false; error: string } | { skipped: true; reason: string };
   normalizedValidationResult:
     | { ok: true; errors: string[] }
     | { ok: false; errors: string[] }
     | { skipped: true; reason: string };
+  hardGateWouldPersist: boolean;
   validatorOnWouldPersist: boolean;
   failureReasons: string[];
+};
+
+export type CompositeHrHardSafetyIssue = {
+  code: "RAW_ANSWER_LEAKAGE" | "DIAGNOSTIC_LANGUAGE" | "PROVIDER_DEBUG_LEAKAGE";
+  phrase: string;
+  path: string;
+};
+
+export type CompositeHrReviewerBoundary = {
+  hardIssues: CompositeHrReviewIssue[];
+  warnings: CompositeHrReviewIssue[];
+  hardFailureReasons: string[];
 };
 
 type CompositeHrOpenAiChatCompletionsRequestBody = {
@@ -116,6 +135,187 @@ function collectNarrativeStrings(snapshot: CompositeHrReportSnapshot): string[] 
     ...snapshot.onboardingGuidance.supportNeeds,
     ...snapshot.limitations,
   ];
+}
+
+function collectCompositeHrUserFacingEntries(
+  snapshot: CompositeHrReportSnapshot,
+): Array<{ path: string; value: string }> {
+  const entries: Array<{ path: string; value: string }> = [];
+  const push = (path: string, value: unknown) => {
+    if (typeof value === "string" && value.trim().length > 0) {
+      entries.push({ path, value });
+    }
+  };
+
+  push("summary.headline", snapshot.summary.headline);
+  push("summary.profileOverview", snapshot.summary.profileOverview);
+  snapshot.summary.keyStrengths.forEach((value, index) => push(`summary.keyStrengths[${index}]`, value));
+  snapshot.summary.watchouts.forEach((value, index) => push(`summary.watchouts[${index}]`, value));
+
+  snapshot.integratedSignals.forEach((signal, index) => {
+    push(`integratedSignals[${index}].title`, signal.title);
+    push(`integratedSignals[${index}].body`, signal.body);
+    signal.evidence.forEach((evidence, evidenceIndex) => {
+      push(`integratedSignals[${index}].evidence[${evidenceIndex}].label`, evidence.label);
+      push(`integratedSignals[${index}].evidence[${evidenceIndex}].value`, evidence.value);
+    });
+  });
+
+  snapshot.interviewGuidance.focusAreas.forEach((area, index) => {
+    push(`interviewGuidance.focusAreas[${index}].title`, area.title);
+    push(`interviewGuidance.focusAreas[${index}].rationale`, area.rationale);
+    area.questions.forEach((value, questionIndex) =>
+      push(`interviewGuidance.focusAreas[${index}].questions[${questionIndex}]`, value),
+    );
+  });
+
+  snapshot.onboardingGuidance.managementTips.forEach((value, index) =>
+    push(`onboardingGuidance.managementTips[${index}]`, value),
+  );
+  snapshot.onboardingGuidance.supportNeeds.forEach((value, index) =>
+    push(`onboardingGuidance.supportNeeds[${index}]`, value),
+  );
+  snapshot.limitations.forEach((value, index) => push(`limitations[${index}]`, value));
+
+  return entries;
+}
+
+const COMPOSITE_HR_RAW_ANSWER_PATTERNS = [
+  /\braw answers?\b/iu,
+  /\braw responses?\b/iu,
+  /\bselected option\b/iu,
+  /\bresponse_id\b/iu,
+  /\bquestion\s+\d+\b/iu,
+  /\bpitanje\s+\d+\b/iu,
+  /\bodgovor(?:i|a)?\s+na\s+pitanj/iu,
+  /\blikert\s+(?:odgovor|answer|response|skor|score|opcija|option)\b/iu,
+  /\b(?:odgovor|answer|response|opcija|option)\s+likert\b/iu,
+] as const;
+
+const COMPOSITE_HR_DIAGNOSTIC_PATTERNS = [
+  /\bdijagnoz\w*\b/iu,
+  /\bdijagnostic\w*\b/iu,
+  /\bclinical\b/iu,
+  /\bmedical\b/iu,
+  /\bdepresij\w*\b/iu,
+  /\banksiozn\w*\s+poremec/iu,
+  /\banksiozn\w*\s+poremeć/iu,
+  /\badhd\b/iu,
+  /\bautiz\w*\b/iu,
+] as const;
+
+const COMPOSITE_HR_PROVIDER_DEBUG_PATTERNS = [
+  /\bdebug\b/iu,
+  /\bjson schema\b/iu,
+  /\bstructured output\b/iu,
+  /\bgenerator metadata\b/iu,
+  /\bsource attempts?\b/iu,
+  /\blinked attempts?\b/iu,
+  /\bopenai\s+request\b/iu,
+  /\bprovider\s+request\b/iu,
+  /\bprovider\s+metadata\b/iu,
+  /\braw\s+provider\b/iu,
+] as const;
+
+function collectCompositeHrHardSafetyIssues(
+  snapshot: CompositeHrReportSnapshot,
+): CompositeHrHardSafetyIssue[] {
+  const issues: CompositeHrHardSafetyIssue[] = [];
+
+  for (const entry of collectCompositeHrUserFacingEntries(snapshot)) {
+    for (const pattern of COMPOSITE_HR_RAW_ANSWER_PATTERNS) {
+      const match = entry.value.match(pattern);
+
+      if (match) {
+        issues.push({
+          code: "RAW_ANSWER_LEAKAGE",
+          phrase: match[0],
+          path: entry.path,
+        });
+      }
+    }
+
+    for (const pattern of COMPOSITE_HR_DIAGNOSTIC_PATTERNS) {
+      const match = entry.value.match(pattern);
+
+      if (match) {
+        issues.push({
+          code: "DIAGNOSTIC_LANGUAGE",
+          phrase: match[0],
+          path: entry.path,
+        });
+      }
+    }
+
+    for (const pattern of COMPOSITE_HR_PROVIDER_DEBUG_PATTERNS) {
+      const match = entry.value.match(pattern);
+
+      if (match) {
+        issues.push({
+          code: "PROVIDER_DEBUG_LEAKAGE",
+          phrase: match[0],
+          path: entry.path,
+        });
+      }
+    }
+  }
+
+  return issues;
+}
+
+function isCompositeHrHardLanguageQualityIssue(issue: ReportLanguageQualityIssue): boolean {
+  if (issue.code === "FORBIDDEN_HIRING_DECISION" || issue.code === "FORBIDDEN_DEBUG_LANGUAGE") {
+    return true;
+  }
+
+  if (issue.code !== "FORBIDDEN_TERM") {
+    return false;
+  }
+
+  return /^(fit score|hire|no-hire)$/iu.test(issue.phrase.trim());
+}
+
+function classifyCompositeHrLanguageQualityResult(
+  result: ReportLanguageQualityResult,
+): {
+  hardIssues: ReportLanguageQualityIssue[];
+  warnings: ReportLanguageQualityIssue[];
+  hardFailureReasons: string[];
+} {
+  const hardIssues = result.issues.filter(isCompositeHrHardLanguageQualityIssue);
+  const warnings = result.issues.filter((issue) => !isCompositeHrHardLanguageQualityIssue(issue));
+
+  return {
+    hardIssues,
+    warnings,
+    hardFailureReasons: hardIssues.map((issue) =>
+      issue.suggestion
+        ? `${issue.code}: "${issue.phrase}" -> "${issue.suggestion}"`
+        : `${issue.code}: "${issue.phrase}"`,
+    ),
+  };
+}
+
+function isCompositeHrHardReviewerIssue(issue: CompositeHrReviewIssue): boolean {
+  const text = `${issue.code} ${issue.message}`.toLowerCase();
+
+  return (
+    issue.severity === "blocking" &&
+    /\b(hire|no-hire|zaposl|hiring|safety|source|attempt|score|evidence|identifier|generatedfor|raw answer|raw response|debug|technical|provider|openai|clinical|medical|diagnos|diagnos|dijagnoz|protected|schema|shape|contract)\b/i.test(text)
+  );
+}
+
+export function classifyCompositeHrReviewerBoundary(
+  review: CompositeHrReviewResult,
+): CompositeHrReviewerBoundary {
+  const hardIssues = review.issues.filter(isCompositeHrHardReviewerIssue);
+  const warnings = review.issues.filter((issue) => !isCompositeHrHardReviewerIssue(issue));
+
+  return {
+    hardIssues,
+    warnings,
+    hardFailureReasons: hardIssues.map((issue) => `${issue.severity}:${issue.code}:${issue.message}`),
+  };
 }
 
 function buildOpenAiSchemaName(schemaName: string): string {
@@ -210,6 +410,10 @@ function assertImmutableSource(snapshot: CompositeHrReportSnapshot, input: Compo
 
   if (snapshot.generatedFor.assessmentAssignmentId !== input.generatedFor.assessmentAssignmentId) {
     throw new Error("Composite HR report assessmentAssignmentId does not match CompositeHrInputSnapshot.");
+  }
+
+  if (snapshot.locale !== input.locale) {
+    throw new Error("Composite HR report locale does not match CompositeHrInputSnapshot.");
   }
 }
 
@@ -687,10 +891,11 @@ async function reviewCompositeHrOpenAiReport(
   options: OpenAiCompositeHrProviderOptions,
 ): Promise<void> {
   const review = await reviewOpenAiCompositeHrReportForDiagnostic(input, snapshot, options);
+  const boundary = classifyCompositeHrReviewerBoundary(review);
 
-  if (!review.approved) {
-    const details = review.issues.length > 0
-      ? review.issues.map((issue) => `${issue.severity}:${issue.code}:${issue.message}`).join("; ")
+  if (boundary.hardIssues.length > 0) {
+    const details = boundary.hardFailureReasons.length > 0
+      ? boundary.hardFailureReasons.join("; ")
       : review.summary;
     throw new Error(`Composite HR reviewer rejected report: ${details}`);
   }
@@ -1010,13 +1215,31 @@ export async function generateOpenAiCompositeHrReport(
 
   assertImmutableSource(lockedValidation.value, input);
   assertLockedCompositeEvidenceIntegrity(lockedValidation.value, input);
-  assertReportLanguageQuality({
+  const languageQualityResult = validateReportLanguageQuality({
     snapshot: lockedValidation.value,
     locale: lockedValidation.value.locale,
     audience: "hr",
     reportType: "composite",
     context: "composite_hr_report",
   });
+  const languageQualityBoundary = classifyCompositeHrLanguageQualityResult(languageQualityResult);
+
+  if (languageQualityBoundary.hardIssues.length > 0) {
+    throw new Error(
+      `Composite HR report failed hard language/safety validation: ${languageQualityBoundary.hardFailureReasons.join("; ")}`,
+    );
+  }
+
+  const hardSafetyIssues = collectCompositeHrHardSafetyIssues(lockedValidation.value);
+
+  if (hardSafetyIssues.length > 0) {
+    throw new Error(
+      `Composite HR report failed hard safety validation: ${hardSafetyIssues
+        .map((issue) => `${issue.path}: ${issue.code}: "${issue.phrase}"`)
+        .join("; ")}`,
+    );
+  }
+
   assertAddressingFormConsistency(lockedValidation.value, input);
 
   const normalizedReport: CompositeHrReportSnapshot = {
@@ -1088,8 +1311,12 @@ export function evaluateCompositeHrReportValidatorBoundary(
       sourceIntegrityResult: { skipped: true, reason: "Initial contract validation failed." },
       evidenceIntegrityResult: { skipped: true, reason: "Initial contract validation failed." },
       languageQualityResult: { skipped: true, reason: "Initial contract validation failed." },
+      languageQualityHardIssues: [],
+      languageQualityWarnings: [],
+      hardSafetyResult: { skipped: true, reason: "Initial contract validation failed." },
       addressingFormResult: { skipped: true, reason: "Initial contract validation failed." },
       normalizedValidationResult: { skipped: true, reason: "Initial contract validation failed." },
+      hardGateWouldPersist: false,
       validatorOnWouldPersist: false,
       failureReasons,
     };
@@ -1114,8 +1341,12 @@ export function evaluateCompositeHrReportValidatorBoundary(
       sourceIntegrityResult: { skipped: true, reason: "Evidence-locked validation failed." },
       evidenceIntegrityResult: { skipped: true, reason: "Evidence-locked validation failed." },
       languageQualityResult: { skipped: true, reason: "Evidence-locked validation failed." },
+      languageQualityHardIssues: [],
+      languageQualityWarnings: [],
+      hardSafetyResult: { skipped: true, reason: "Evidence-locked validation failed." },
       addressingFormResult: { skipped: true, reason: "Evidence-locked validation failed." },
       normalizedValidationResult: { skipped: true, reason: "Evidence-locked validation failed." },
+      hardGateWouldPersist: false,
       validatorOnWouldPersist: false,
       failureReasons,
     };
@@ -1152,11 +1383,23 @@ export function evaluateCompositeHrReportValidatorBoundary(
     reportType: "composite",
     context: "composite_hr_report",
   });
+  const languageQualityBoundary = classifyCompositeHrLanguageQualityResult(languageQualityResult);
 
-  if (!languageQualityResult.ok) {
+  if (languageQualityBoundary.hardIssues.length > 0) {
     failureReasons.push(
-      `language quality failed: ${languageQualityResult.issues
-        .map((issue) => `${issue.code}:${issue.path ? `${issue.path}:` : ""}${issue.phrase}`)
+      `hard language/safety validation failed: ${languageQualityBoundary.hardFailureReasons.join("; ")}`,
+    );
+  }
+
+  const hardSafetyIssues = collectCompositeHrHardSafetyIssues(lockedValidation.value);
+  const hardSafetyResult = hardSafetyIssues.length === 0
+    ? { ok: true as const, issues: [] }
+    : { ok: false as const, issues: hardSafetyIssues };
+
+  if (!hardSafetyResult.ok) {
+    failureReasons.push(
+      `hard safety validation failed: ${hardSafetyIssues
+        .map((issue) => `${issue.path}: ${issue.code}: "${issue.phrase}"`)
         .join("; ")}`,
     );
   }
@@ -1192,10 +1435,11 @@ export function evaluateCompositeHrReportValidatorBoundary(
     );
   }
 
-  const validatorOnWouldPersist =
+  const hardGateWouldPersist =
     sourceIntegrityResult.ok === true &&
     evidenceIntegrityResult.ok === true &&
-    languageQualityResult.ok === true &&
+    languageQualityBoundary.hardIssues.length === 0 &&
+    hardSafetyResult.ok === true &&
     addressingFormResult.ok === true &&
     normalizedValidation.ok;
 
@@ -1207,9 +1451,13 @@ export function evaluateCompositeHrReportValidatorBoundary(
     sourceIntegrityResult,
     evidenceIntegrityResult,
     languageQualityResult,
+    languageQualityHardIssues: languageQualityBoundary.hardIssues,
+    languageQualityWarnings: languageQualityBoundary.warnings,
+    hardSafetyResult,
     addressingFormResult,
     normalizedValidationResult,
-    validatorOnWouldPersist,
+    hardGateWouldPersist,
+    validatorOnWouldPersist: hardGateWouldPersist,
     failureReasons,
   };
 }

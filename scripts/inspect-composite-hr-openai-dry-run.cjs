@@ -207,6 +207,7 @@ async function runCompositeHrOpenAiDryRun({
   requestRawReport,
   requestReviewerResult,
   evaluateValidatorBoundary,
+  classifyReviewerBoundary,
   installRuntime = installTypeScriptRuntime,
   dumpPath,
 } = {}) {
@@ -236,6 +237,18 @@ async function runCompositeHrOpenAiDryRun({
     requestReviewerResult ?? providerModule.reviewOpenAiCompositeHrReportForDiagnostic;
   const validatorEvaluator =
     evaluateValidatorBoundary ?? providerModule.evaluateCompositeHrReportValidatorBoundary;
+  const reviewerClassifier =
+    classifyReviewerBoundary ??
+    providerModule?.classifyCompositeHrReviewerBoundary ??
+    ((review) => ({
+      hardIssues: review.approved ? [] : review.issues.filter((issue) => issue.severity === "blocking"),
+      warnings: review.approved ? review.issues : review.issues.filter((issue) => issue.severity !== "blocking"),
+      hardFailureReasons: review.approved
+        ? []
+        : review.issues
+            .filter((issue) => issue.severity === "blocking")
+            .map((issue) => `${issue.severity}:${issue.code}:${issue.message}`),
+    }));
 
   if (!env.OPENAI_API_KEY && !requestRawReport) {
     throw new Error("OPENAI_API_KEY is required for confirmed Composite HR OpenAI dry-run.");
@@ -260,27 +273,29 @@ async function runCompositeHrOpenAiDryRun({
   let reviewerResult = buildReviewerSkipped(
     "Production validator-on gates did not pass before reviewer step.",
   );
+  let reviewerBoundary = {
+    hardIssues: [],
+    warnings: [],
+    hardFailureReasons: [],
+  };
   const failureReasons = [...validation.failureReasons];
 
   if (validation.validatorOnWouldPersist && validation.canonicalizedOutput) {
     try {
       const review = await reviewerRequester(inputSnapshot, validation.canonicalizedOutput, options);
+      reviewerBoundary = reviewerClassifier(review);
       reviewerResult = {
         skipped: false,
         ok: true,
         approved: review.approved,
         issues: review.issues,
         summary: review.summary,
+        hardIssues: reviewerBoundary.hardIssues,
+        warnings: reviewerBoundary.warnings,
       };
 
-      if (!review.approved) {
-        failureReasons.push(
-          review.issues.length > 0
-            ? `reviewer rejected report: ${review.issues
-                .map((issue) => `${issue.severity}:${issue.code}:${issue.message}`)
-                .join("; ")}`
-            : `reviewer rejected report: ${review.summary}`,
-        );
+      if (reviewerBoundary.hardIssues.length > 0) {
+        failureReasons.push(`reviewer hard rejection: ${reviewerBoundary.hardFailureReasons.join("; ")}`);
       }
     } catch (error) {
       reviewerResult = {
@@ -292,12 +307,16 @@ async function runCompositeHrOpenAiDryRun({
     }
   }
 
-  const reviewerAllowsPersist =
-    reviewerResult.skipped === false && reviewerResult.ok === true && reviewerResult.approved === true;
-  const validatorOnWouldPersist = validation.validatorOnWouldPersist && reviewerAllowsPersist;
+  const reviewerHardGateOk =
+    reviewerResult.skipped === false &&
+    reviewerResult.ok === true &&
+    reviewerBoundary.hardIssues.length === 0;
+  const hardGateWouldPersist = validation.hardGateWouldPersist ?? validation.validatorOnWouldPersist;
+  const productionWouldPersist = hardGateWouldPersist && reviewerHardGateOk;
+  const validatorOnWouldPersist = hardGateWouldPersist;
 
-  if (validation.validatorOnWouldPersist && !validatorOnWouldPersist && failureReasons.length === 0) {
-    failureReasons.push("reviewer did not approve report.");
+  if (hardGateWouldPersist && !productionWouldPersist && failureReasons.length === 0) {
+    failureReasons.push("reviewer did not pass hard production boundary.");
   }
 
   const artifact = {
@@ -318,16 +337,22 @@ async function runCompositeHrOpenAiDryRun({
     canonicalizedOutput: validation.canonicalizedOutput,
     contractValidationResult: validation.contractValidationResult,
     languageQualityResult: validation.languageQualityResult,
+    languageQualityHardIssues: validation.languageQualityHardIssues ?? [],
+    languageQualityWarnings: validation.languageQualityWarnings ?? [],
     reviewerResult,
+    styleReviewerWarnings: reviewerBoundary.warnings,
     validatorDiagnostics: {
       evidenceLockedValidationResult: validation.evidenceLockedValidationResult,
       sourceIntegrityResult: validation.sourceIntegrityResult,
       evidenceIntegrityResult: validation.evidenceIntegrityResult,
+      hardSafetyResult: validation.hardSafetyResult,
       addressingFormResult: validation.addressingFormResult,
       normalizedValidationResult: validation.normalizedValidationResult,
     },
     validatorOffWouldHaveRawOutput: parseResult.ok,
+    hardGateWouldPersist,
     validatorOnWouldPersist,
+    productionWouldPersist,
     failureReasons,
     humanReviewHints: [
       "summary",
@@ -360,8 +385,13 @@ async function main() {
             parseResult: result.parseResult,
             contractValidationResult: result.contractValidationResult,
             languageQualityResult: result.languageQualityResult,
+            languageQualityHardIssues: result.languageQualityHardIssues,
+            languageQualityWarnings: result.languageQualityWarnings,
             reviewerResult: result.reviewerResult,
+            styleReviewerWarnings: result.styleReviewerWarnings,
+            hardGateWouldPersist: result.hardGateWouldPersist,
             validatorOnWouldPersist: result.validatorOnWouldPersist,
+            productionWouldPersist: result.productionWouldPersist,
             failureReasons: result.failureReasons,
             dumpPath: result.dumpPath,
           },
