@@ -1120,6 +1120,14 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
     reviewerMessages.find((message) => message.role === "user")?.content ?? "";
   const combinedReviewerPrompt = `${reviewerSystemPrompt}\n${reviewerUserPrompt}`;
 
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(generationRequestBody, "temperature"),
+    false,
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(reviewerRequestBody, "temperature"),
+    false,
+  );
   assert.equal(/addressingForm/i.test(combinedPrompt), true);
   assert.equal(/Use it only for grammatical form|only for grammatical agreement/i.test(combinedPrompt), true);
   assert.equal(/must never change scoring|Do not change, reinterpret or normalize score values/i.test(combinedPrompt), true);
@@ -1247,6 +1255,30 @@ async function testPromptGuidanceEnforcesCompositeHrCopyRules() {
   assert.equal(/lockedEvidenceCatalog|changes a locked deterministic value/i.test(combinedReviewerPrompt), true);
 }
 
+async function testCompositeOpenAiTemperatureBehaviorForNonGpt55Model() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const capture = buildCapturingFetchResponse(
+    buildOpenAiSnapshotFixture(inputSnapshot),
+    buildReviewerResponseFixture(),
+  );
+
+  await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-4.1",
+    fetchImpl: capture.fetchImpl,
+    now: () => "2026-05-12T10:15:00.000Z",
+  });
+
+  assert.equal(capture.calls.length, 2);
+  const generationRequestBody = JSON.parse(capture.calls[0].body);
+  const reviewerRequestBody = JSON.parse(capture.calls[1].body);
+
+  assert.equal(generationRequestBody.model, "gpt-4.1");
+  assert.equal(reviewerRequestBody.model, "gpt-4.1");
+  assert.equal(generationRequestBody.temperature, 0.2);
+  assert.equal(reviewerRequestBody.temperature, 0.2);
+}
+
 async function testFeminineMismatchIsRejected() {
   const inputSnapshot = buildCompositeInputSnapshotFixture({
     addressingForm: "feminine",
@@ -1335,6 +1367,7 @@ async function main() {
   await testAsciiPerformancePressurePasses();
   await testValidOutputHasNoForbiddenWords();
   await testPromptGuidanceEnforcesCompositeHrCopyRules();
+  await testCompositeOpenAiTemperatureBehaviorForNonGpt55Model();
   await testFeminineMismatchIsRejected();
   await testFeminineNarrativePassesAndNeutralEvidenceDoesNotTripGuardrail();
 

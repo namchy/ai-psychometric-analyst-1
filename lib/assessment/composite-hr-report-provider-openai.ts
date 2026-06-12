@@ -18,6 +18,9 @@ import {
   validateReportLanguageQuality,
   type ReportLanguageQualityResult,
 } from "@/lib/assessment/report-language-quality";
+import {
+  shouldOmitOpenAiTemperature,
+} from "@/lib/assessment/report-provider-openai";
 
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER = "openai" as const;
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION = "v1" as const;
@@ -64,6 +67,23 @@ export type CompositeHrValidatorBoundaryDiagnostic = {
     | { skipped: true; reason: string };
   validatorOnWouldPersist: boolean;
   failureReasons: string[];
+};
+
+type CompositeHrOpenAiChatCompletionsRequestBody = {
+  model: string;
+  response_format: {
+    type: "json_schema";
+    json_schema: {
+      name: string;
+      strict: true;
+      schema: Record<string, unknown>;
+    };
+  };
+  messages: Array<{
+    role: "system" | "user";
+    content: string;
+  }>;
+  temperature?: number;
 };
 
 type LockedCompositeEvidenceEntry = {
@@ -896,34 +916,39 @@ async function requestOpenAiStructuredJson(
   );
 
   try {
+    const requestBody: CompositeHrOpenAiChatCompletionsRequestBody = {
+      model: options.model,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: buildOpenAiSchemaName(payload.schemaName),
+          strict: true,
+          schema: payload.schema,
+        },
+      },
+      messages: [
+        {
+          role: "system",
+          content: payload.systemPrompt,
+        },
+        {
+          role: "user",
+          content: payload.userPrompt,
+        },
+      ],
+    };
+
+    if (!shouldOmitOpenAiTemperature(options.model)) {
+      requestBody.temperature = 0.2;
+    }
+
     const response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${options.apiKey}`,
       },
-      body: JSON.stringify({
-        model: options.model,
-        temperature: 0.2,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: buildOpenAiSchemaName(payload.schemaName),
-            strict: true,
-            schema: payload.schema,
-          },
-        },
-        messages: [
-          {
-            role: "system",
-            content: payload.systemPrompt,
-          },
-          {
-            role: "user",
-            content: payload.userPrompt,
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
       cache: "no-store",
     });

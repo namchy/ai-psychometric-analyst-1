@@ -211,7 +211,7 @@ function applyIpipNeo120ParticipantV2BhsOutputPolicy<T>(
   return canonicalizedReport;
 }
 
-function shouldOmitOpenAiTemperature(model: string): boolean {
+export function shouldOmitOpenAiTemperature(model: string): boolean {
   return model.startsWith("gpt-5.5");
 }
 
