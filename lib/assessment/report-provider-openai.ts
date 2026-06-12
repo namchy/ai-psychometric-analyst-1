@@ -42,6 +42,7 @@ import {
   validateMwmsParticipantReportV1,
 } from "@/lib/assessment/mwms-participant-report-v1";
 import {
+  SAFRAN_HR_REPORT_V1_CONTRACT,
   formatSafranHrReportValidationErrors,
   safranHrReportV1OpenAiSchema,
   validateSafranHrReport,
@@ -1316,6 +1317,44 @@ async function requestOpenAiStructuredJson(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function buildSafranHrPreparedOpenAiInput(
+  input: SafranHrReportInput,
+): PreparedReportGenerationInput {
+  return {
+    attemptId: "safran-hr-openai-dry-run",
+    testSlug: "safran_v1",
+    requestedLocale: input.test.locale,
+    promptVersion: "v1",
+    promptVersionId: null,
+    promptTemplate: null,
+    promptInput: input,
+    reportContract: {
+      family: "safran",
+      reportType: SAFRAN_HR_REPORT_V1_CONTRACT.reportType,
+      sourceType: SAFRAN_HR_REPORT_V1_CONTRACT.sourceType,
+      promptKey: SAFRAN_HR_REPORT_V1_CONTRACT.promptKey,
+      schemaName: SAFRAN_HR_REPORT_V1_CONTRACT.schemaId,
+      outputSchemaJson:
+        SAFRAN_HR_REPORT_V1_CONTRACT.outputSchemaJson as Record<string, unknown>,
+    },
+  };
+}
+
+export async function requestOpenAiSafranHrReportRaw(
+  input: SafranHrReportInput,
+  options: OpenAiProviderOptions,
+): Promise<unknown> {
+  const preparedInput = buildSafranHrPreparedOpenAiInput(input);
+
+  return requestOpenAiStructuredJson(preparedInput, options, {
+    label: "SAFRAN HR report dry-run",
+    schemaName: resolveOpenAiSchemaNameForInput(preparedInput),
+    schema: resolveOpenAiResponseFormatSchemaForInput(preparedInput),
+    systemPrompt: buildSystemPrompt(preparedInput),
+    userPrompt: buildUserPrompt(preparedInput),
+  });
 }
 
 async function generateIpipNeo120ParticipantV2SegmentedReport(
