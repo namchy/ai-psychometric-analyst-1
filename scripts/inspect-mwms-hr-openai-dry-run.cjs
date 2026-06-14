@@ -462,6 +462,69 @@ function buildDisagreementMatrix({
   };
 }
 
+function buildLegacyBlockingCategories({
+  bhsLanguagePolicyResult,
+  mwmsValidatorResult,
+}) {
+  const categories = [];
+
+  if (bhsLanguagePolicyResult?.ok === false) {
+    categories.push("bhs_prose_language");
+  }
+
+  if (mwmsValidatorResult?.ok === false) {
+    for (const error of mwmsValidatorResult.errors) {
+      categories.push(`mwms_validator:${error.category}`);
+    }
+  }
+
+  return [...new Set(categories)];
+}
+
+function buildDataOnlyShadowGate({
+  generalEnvelopeValidationResult,
+  contractValidatorWouldPersist,
+  mwmsValidatorWouldPersist,
+  bhsGateWouldPersist,
+  legacyFullGateWouldPersist,
+  legacyBlockingCategories,
+}) {
+  const dataOnlyShadowGateInputs = {
+    generalEnvelopeOk: generalEnvelopeValidationResult.ok,
+    contractValidationOk: contractValidatorWouldPersist,
+    mwmsValidatorOk: mwmsValidatorWouldPersist,
+    bhsLanguagePolicyOk: bhsGateWouldPersist,
+    legacyFullGateWouldPersist,
+  };
+  const dataOnlyShadowGateWouldPersist =
+    dataOnlyShadowGateInputs.generalEnvelopeOk &&
+    dataOnlyShadowGateInputs.contractValidationOk &&
+    dataOnlyShadowGateInputs.mwmsValidatorOk;
+  const proseLanguageCategories = new Set(["bhs_prose_language"]);
+  const legacyBlocksOnlyBecauseOfProseLanguage =
+    dataOnlyShadowGateWouldPersist &&
+    !legacyFullGateWouldPersist &&
+    legacyBlockingCategories.length > 0 &&
+    legacyBlockingCategories.every((category) => proseLanguageCategories.has(category));
+
+  return {
+    dataOnlyShadowGate: {
+      diagnosticOnly: true,
+      includes: [
+        "general_envelope_parse",
+        "contract_validation",
+        "mwms_data_contract_reference_validation",
+      ],
+      excludes: ["bhs_prose_language"],
+      wouldPersist: dataOnlyShadowGateWouldPersist,
+    },
+    dataOnlyShadowGateWouldPersist,
+    dataOnlyShadowGateInputs,
+    legacyBlocksOnlyBecauseOfProseLanguage,
+    legacyBlockingCategories,
+  };
+}
+
 function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependencies, options = {}) {
   const {
     resolveAiReportLanguagePolicy,
@@ -512,6 +575,18 @@ function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependen
   const diagnosticWouldPersistWithoutBhsGate = mwmsValidatorResult.ok;
   const hardGateWouldPersist = mwmsValidatorResult.ok && (skipBhsGateForDiagnostic ? true : !hardFailure);
   const validatorOnWouldPersist = hardGateWouldPersist;
+  const legacyBlockingCategories = buildLegacyBlockingCategories({
+    bhsLanguagePolicyResult,
+    mwmsValidatorResult,
+  });
+  const dataOnlyShadowDecision = buildDataOnlyShadowGate({
+    generalEnvelopeValidationResult,
+    contractValidatorWouldPersist,
+    mwmsValidatorWouldPersist,
+    bhsGateWouldPersist,
+    legacyFullGateWouldPersist,
+    legacyBlockingCategories,
+  });
   const failureReasons = buildFailureReasons({
     bhsLanguagePolicyResult,
     mwmsValidatorResult,
@@ -529,6 +604,7 @@ function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependen
     contractValidatorWouldPersist,
     mwmsValidatorWouldPersist,
     bhsGateWouldPersist,
+    ...dataOnlyShadowDecision,
     disagreementMatrix: buildDisagreementMatrix({
       diagnosticWouldPassGeneralEnvelopeOnly,
       legacyFullGateWouldPersist,
@@ -686,6 +762,12 @@ async function runMwmsHrOpenAiDryRun({
     mwmsValidatorWouldPersist: diagnostic.mwmsValidatorWouldPersist,
     bhsGateWouldPersist: diagnostic.bhsGateWouldPersist,
     disagreementMatrix: diagnostic.disagreementMatrix,
+    dataOnlyShadowGate: diagnostic.dataOnlyShadowGate,
+    dataOnlyShadowGateWouldPersist: diagnostic.dataOnlyShadowGateWouldPersist,
+    dataOnlyShadowGateInputs: diagnostic.dataOnlyShadowGateInputs,
+    legacyBlocksOnlyBecauseOfProseLanguage:
+      diagnostic.legacyBlocksOnlyBecauseOfProseLanguage,
+    legacyBlockingCategories: diagnostic.legacyBlockingCategories,
     canonicalizedOutput: diagnostic.canonicalizedOutput,
     contractValidationResult: diagnostic.contractValidationResult,
     bhsLanguagePolicyResult: diagnostic.bhsLanguagePolicyResult,
@@ -740,6 +822,12 @@ async function main() {
             contractValidatorWouldPersist: result.contractValidatorWouldPersist,
             mwmsValidatorWouldPersist: result.mwmsValidatorWouldPersist,
             bhsGateWouldPersist: result.bhsGateWouldPersist,
+            dataOnlyShadowGate: result.dataOnlyShadowGate,
+            dataOnlyShadowGateWouldPersist: result.dataOnlyShadowGateWouldPersist,
+            dataOnlyShadowGateInputs: result.dataOnlyShadowGateInputs,
+            legacyBlocksOnlyBecauseOfProseLanguage:
+              result.legacyBlocksOnlyBecauseOfProseLanguage,
+            legacyBlockingCategories: result.legacyBlockingCategories,
             disagreementMatrix: result.disagreementMatrix,
             contractValidationResult: result.contractValidationResult,
             bhsLanguagePolicyResult: result.bhsLanguagePolicyResult,

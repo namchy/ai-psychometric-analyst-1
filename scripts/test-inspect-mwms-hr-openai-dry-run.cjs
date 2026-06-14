@@ -520,6 +520,17 @@ async function main() {
   assert.equal(artifact.contractValidatorWouldPersist, true);
   assert.equal(artifact.mwmsValidatorWouldPersist, true);
   assert.equal(artifact.bhsGateWouldPersist, true);
+  assert.equal(artifact.dataOnlyShadowGate.diagnosticOnly, true);
+  assert.equal(artifact.dataOnlyShadowGateWouldPersist, true);
+  assert.deepEqual(artifact.dataOnlyShadowGateInputs, {
+    generalEnvelopeOk: true,
+    contractValidationOk: true,
+    mwmsValidatorOk: true,
+    bhsLanguagePolicyOk: true,
+    legacyFullGateWouldPersist: true,
+  });
+  assert.equal(artifact.legacyBlocksOnlyBecauseOfProseLanguage, false);
+  assert.deepEqual(artifact.legacyBlockingCategories, []);
   assert.equal(artifact.contractValidationResult.ok, true);
   assert.equal(artifact.bhsLanguagePolicyResult.ok, true);
   assert.equal(artifact.mwmsValidatorResult.ok, true);
@@ -540,6 +551,7 @@ async function main() {
   assert.match(writesList[0].data, /"mwmsValidatorResult"/);
   assert.match(writesList[0].data, /"hardGateWouldPersist": true/);
   assert.match(writesList[0].data, /"validatorOnWouldPersist": true/);
+  assert.match(writesList[0].data, /"dataOnlyShadowGateWouldPersist": true/);
   assert.doesNotMatch(writesList[0].data, /test-key/);
   assert.deepEqual(chmodCalls, [
     {
@@ -570,6 +582,18 @@ async function main() {
   assert.equal(bhsDiagnostic.bhsGateWouldPersist, false);
   assert.equal(bhsDiagnostic.disagreementMatrix.generalPassesWhileLegacyBlocks, true);
   assert.equal(bhsDiagnostic.disagreementMatrix.generalPassesWhileBhsBlocks, true);
+  assert.equal(bhsDiagnostic.dataOnlyShadowGateWouldPersist, true);
+  assert.deepEqual(bhsDiagnostic.dataOnlyShadowGateInputs, {
+    generalEnvelopeOk: true,
+    contractValidationOk: true,
+    mwmsValidatorOk: true,
+    bhsLanguagePolicyOk: false,
+    legacyFullGateWouldPersist: false,
+  });
+  assert.equal(bhsDiagnostic.legacyBlocksOnlyBecauseOfProseLanguage, true);
+  assert.deepEqual(bhsDiagnostic.legacyBlockingCategories, ["bhs_prose_language"]);
+  assert.equal(bhsDiagnostic.hardGateWouldPersist, false);
+  assert.equal(bhsDiagnostic.validatorOnWouldPersist, false);
 
   const bhsDiagnosticSkip = evaluateMwmsHrDryRunDiagnostic(
     productionPreparedInput.promptInput,
@@ -587,6 +611,8 @@ async function main() {
   assert.equal(bhsDiagnosticSkip.diagnosticWouldPersistWithoutBhsGate, true);
   assert.equal(bhsDiagnosticSkip.hardGateWouldPersist, true);
   assert.equal(bhsDiagnosticSkip.validatorOnWouldPersist, true);
+  assert.equal(bhsDiagnosticSkip.dataOnlyShadowGateWouldPersist, true);
+  assert.equal(bhsDiagnosticSkip.legacyBlocksOnlyBecauseOfProseLanguage, true);
   assert.match(bhsDiagnosticSkip.diagnosticNotes.join(" "), /diagnostic-only/i);
 
   const skipWritesList = [];
@@ -643,6 +669,15 @@ async function main() {
   assert.equal(mutationDiagnostic.contractValidatorWouldPersist, false);
   assert.equal(mutationDiagnostic.disagreementMatrix.generalPassesWhileMwmsBlocks, true);
   assert.equal(mutationDiagnostic.disagreementMatrix.generalPassesWhileContractBlocks, true);
+  assert.equal(mutationDiagnostic.dataOnlyShadowGateWouldPersist, false);
+  assert.equal(mutationDiagnostic.dataOnlyShadowGateInputs.generalEnvelopeOk, true);
+  assert.equal(mutationDiagnostic.dataOnlyShadowGateInputs.contractValidationOk, false);
+  assert.equal(mutationDiagnostic.dataOnlyShadowGateInputs.mwmsValidatorOk, false);
+  assert.equal(mutationDiagnostic.legacyBlocksOnlyBecauseOfProseLanguage, false);
+  assert.equal(
+    mutationDiagnostic.legacyBlockingCategories.includes("mwms_validator:source_integrity"),
+    true,
+  );
 
   const generalOnlyWrites = [];
   const generalOnlyArtifact = await runMwmsHrOpenAiDryRun({
@@ -673,6 +708,8 @@ async function main() {
   assert.equal(generalOnlyArtifact.contractValidatorWouldPersist, true);
   assert.equal(generalOnlyArtifact.mwmsValidatorWouldPersist, true);
   assert.equal(generalOnlyArtifact.bhsGateWouldPersist, false);
+  assert.equal(generalOnlyArtifact.dataOnlyShadowGateWouldPersist, true);
+  assert.equal(generalOnlyArtifact.legacyBlocksOnlyBecauseOfProseLanguage, true);
   assert.equal(generalOnlyArtifact.disagreementMatrix.generalPassesWhileLegacyBlocks, true);
   assert.match(generalOnlyWrites[0].data, /"generalEnvelopeOnlyDiagnostic": true/);
   assert.match(generalOnlyWrites[0].data, /"diagnosticWouldPassGeneralEnvelopeOnly": true/);
@@ -703,6 +740,8 @@ async function main() {
   assert.equal(invalidComparisonArtifact.contractValidatorWouldPersist, false);
   assert.equal(invalidComparisonArtifact.mwmsValidatorWouldPersist, false);
   assert.equal(invalidComparisonArtifact.bhsGateWouldPersist, false);
+  assert.equal(invalidComparisonArtifact.dataOnlyShadowGateWouldPersist, false);
+  assert.equal(invalidComparisonArtifact.legacyBlocksOnlyBecauseOfProseLanguage, false);
 
   const parseErrorArtifact = await runMwmsHrOpenAiDryRun({
     env: {
@@ -726,6 +765,8 @@ async function main() {
   assert.equal(parseErrorArtifact.generalEnvelopeValidationResult.ok, false);
   assert.equal(parseErrorArtifact.diagnosticWouldPassGeneralEnvelopeOnly, false);
   assert.equal(parseErrorArtifact.diagnosticDecision, false);
+  assert.equal(parseErrorArtifact.dataOnlyShadowGateWouldPersist, false);
+  assert.equal(parseErrorArtifact.dataOnlyShadowGateInputs.generalEnvelopeOk, false);
 
   console.log("test-inspect-mwms-hr-openai-dry-run: ok");
 }
