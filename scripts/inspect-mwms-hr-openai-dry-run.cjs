@@ -10,6 +10,7 @@ const originalResolveFilename = Module._resolveFilename;
 
 const CONFIRM_ENV = "CONFIRM_MWMS_HR_OPENAI_DRY_RUN";
 const CAPTURE_PATH_ENV = "MWMS_HR_INPUT_CAPTURE_PATH";
+const SKIP_BHS_GATE_ENV = "MWMS_HR_DRY_RUN_SKIP_BHS_GATE";
 const TIMEOUT_ENV = "MWMS_HR_OPENAI_DRY_RUN_TIMEOUT_MS";
 const OUTPUT_PREFIX = "mwms-hr-openai-dry-run";
 
@@ -40,12 +41,17 @@ function buildNoCallSummary() {
       "Refuse missing, invalid, reconstructed, or synthetic capture artifacts.",
       "Call the captured OpenAI structured request only after explicit confirmation.",
       "Run local parse, BHS, and MWMS validator diagnostics without DB writes.",
+      `Optional diagnostic-only bypass: ${SKIP_BHS_GATE_ENV}=true ignores BHS as a persistence blocker in this script only.`,
       "Write diagnostic JSON only under /tmp.",
     ],
     confirmationRequired: `${CONFIRM_ENV}=true`,
     requiredCapturePathEnv: CAPTURE_PATH_ENV,
     optionalTimeoutOverride: TIMEOUT_ENV,
   };
+}
+
+function shouldSkipBhsGateForDiagnostic(env = process.env) {
+  return env[SKIP_BHS_GATE_ENV] === "true";
 }
 
 function resolveWithExtensions(candidatePath) {
@@ -363,11 +369,12 @@ function buildFailureReasons({
   return reasons;
 }
 
-function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependencies) {
+function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependencies, options = {}) {
   const {
     resolveAiReportLanguagePolicy,
     validateMwmsHrReportV1,
   } = dependencies;
+  const skipBhsGateForDiagnostic = options.skipBhsGateForDiagnostic === true;
   const languagePolicy = resolveAiReportLanguagePolicy(inputSnapshot?.locale);
   const canonicalizedOutput = languagePolicy
     ? languagePolicy.canonicalizeUserFacingOutput(rawParsedOutput)
@@ -398,7 +405,9 @@ function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependen
         errors: mapMwmsErrors(validation.errors),
       };
   const hardFailure = bhsLanguagePolicyResult.skipped === false && !bhsLanguagePolicyResult.ok;
-  const hardGateWouldPersist = mwmsValidatorResult.ok && !hardFailure;
+  const bhsGateWouldHaveBlocked = hardFailure;
+  const diagnosticWouldPersistWithoutBhsGate = mwmsValidatorResult.ok;
+  const hardGateWouldPersist = mwmsValidatorResult.ok && (skipBhsGateForDiagnostic ? true : !hardFailure);
   const validatorOnWouldPersist = hardGateWouldPersist;
   const failureReasons = buildFailureReasons({
     bhsLanguagePolicyResult,
@@ -415,6 +424,9 @@ function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependen
     contractValidationResult: mwmsValidatorResult,
     bhsLanguagePolicyResult,
     mwmsValidatorResult,
+    bhsGateSkippedForDiagnostic: skipBhsGateForDiagnostic,
+    bhsGateWouldHaveBlocked,
+    diagnosticWouldPersistWithoutBhsGate,
     hardGateWouldPersist,
     validatorOnWouldPersist,
     phraseGateWarnings: [],
@@ -423,7 +435,9 @@ function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependen
     warningReasons: [],
     diagnosticNotes: [
       "MWMS diagnostic is read-only and does not reduce the current MWMS validator boundary.",
-      "hardGateWouldPersist mirrors validatorOnWouldPersist for MWMS because this slice is diagnostic-only.",
+      skipBhsGateForDiagnostic
+        ? `BHS gate skip is diagnostic-only in this script via ${SKIP_BHS_GATE_ENV}=true and does not change production flow.`
+        : "Default mode keeps BHS gate active for MWMS diagnostic persistence decisions.",
     ],
   };
 }
@@ -466,6 +480,7 @@ async function runMwmsHrOpenAiDryRun({
   const outputPath = dumpPath ?? buildOutputPath(timestamp.replace(/[:.]/g, "-"));
   const model = captureInput.model ?? null;
   const provider = captureInput.provider ?? "openai";
+  const skipBhsGateForDiagnostic = shouldSkipBhsGateForDiagnostic(env);
 
   if (!requestRawReport || !evaluateDiagnostic) {
     installRuntime();
@@ -491,8 +506,11 @@ async function runMwmsHrOpenAiDryRun({
   });
   const diagnosticEvaluator =
     evaluateDiagnostic ??
-    ((input, output) => evaluateMwmsHrDryRunDiagnostic(input, output, loadDiagnosticDependencies()));
-  const diagnostic = diagnosticEvaluator(captureInput.inputSnapshot, rawParsedOutput);
+    ((input, output, diagnosticOptions) =>
+      evaluateMwmsHrDryRunDiagnostic(input, output, loadDiagnosticDependencies(), diagnosticOptions));
+  const diagnostic = diagnosticEvaluator(captureInput.inputSnapshot, rawParsedOutput, {
+    skipBhsGateForDiagnostic,
+  });
   const artifact = {
     metadata: {
       timestamp,
@@ -506,6 +524,7 @@ async function runMwmsHrOpenAiDryRun({
       inputSource: captureInput.inputSource,
       capturePath: captureInput.capturePath,
       captureMetadata: captureInput.captureMetadata,
+      bhsGateSkippedForDiagnostic: skipBhsGateForDiagnostic,
     },
     inputSource: captureInput.inputSource,
     capturePath: captureInput.capturePath,
@@ -517,6 +536,9 @@ async function runMwmsHrOpenAiDryRun({
     contractValidationResult: diagnostic.contractValidationResult,
     bhsLanguagePolicyResult: diagnostic.bhsLanguagePolicyResult,
     mwmsValidatorResult: diagnostic.mwmsValidatorResult,
+    bhsGateSkippedForDiagnostic: diagnostic.bhsGateSkippedForDiagnostic,
+    bhsGateWouldHaveBlocked: diagnostic.bhsGateWouldHaveBlocked,
+    diagnosticWouldPersistWithoutBhsGate: diagnostic.diagnosticWouldPersistWithoutBhsGate,
     hardGateWouldPersist: diagnostic.hardGateWouldPersist,
     validatorOnWouldPersist: diagnostic.validatorOnWouldPersist,
     phraseGateWarnings: diagnostic.phraseGateWarnings,
@@ -583,6 +605,7 @@ if (require.main === module) {
 module.exports = {
   CAPTURE_PATH_ENV,
   CONFIRM_ENV,
+  SKIP_BHS_GATE_ENV,
   TIMEOUT_ENV,
   buildNoCallSummary,
   buildOutputPath,
@@ -592,4 +615,5 @@ module.exports = {
   readInputCapture,
   resolveInputCapturePath,
   runMwmsHrOpenAiDryRun,
+  shouldSkipBhsGateForDiagnostic,
 };

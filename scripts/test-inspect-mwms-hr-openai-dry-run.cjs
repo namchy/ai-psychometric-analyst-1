@@ -8,6 +8,7 @@ const scriptSource = fs.readFileSync(scriptPath, "utf8");
 
 assert.match(scriptSource, /CONFIRM_MWMS_HR_OPENAI_DRY_RUN/);
 assert.match(scriptSource, /MWMS_HR_INPUT_CAPTURE_PATH/);
+assert.match(scriptSource, /MWMS_HR_DRY_RUN_SKIP_BHS_GATE/);
 assert.match(scriptSource, /databaseWrites:\s*false/);
 assert.match(scriptSource, /reportRegenerated:\s*false/);
 assert.match(scriptSource, /productionFlowChanged:\s*false/);
@@ -21,6 +22,7 @@ assert.doesNotMatch(scriptSource, /regenerateReadySingleTestHrReport/);
 const {
   CAPTURE_PATH_ENV,
   CONFIRM_ENV,
+  SKIP_BHS_GATE_ENV,
   evaluateMwmsHrDryRunDiagnostic,
   installTypeScriptRuntime,
   readInputCapture,
@@ -433,8 +435,8 @@ async function main() {
       assert.equal(options.model, "gpt-5.5");
       return validReport;
     },
-    evaluateDiagnostic: (input, output) =>
-      evaluateMwmsHrDryRunDiagnostic(input, output, dependencies),
+    evaluateDiagnostic: (input, output, options) =>
+      evaluateMwmsHrDryRunDiagnostic(input, output, dependencies, options),
   });
 
   assert.equal(openAiCalls, 1);
@@ -452,6 +454,9 @@ async function main() {
   assert.equal(artifact.contractValidationResult.ok, true);
   assert.equal(artifact.bhsLanguagePolicyResult.ok, true);
   assert.equal(artifact.mwmsValidatorResult.ok, true);
+  assert.equal(artifact.bhsGateSkippedForDiagnostic, false);
+  assert.equal(artifact.bhsGateWouldHaveBlocked, false);
+  assert.equal(artifact.diagnosticWouldPersistWithoutBhsGate, true);
   assert.equal(artifact.hardGateWouldPersist, true);
   assert.equal(artifact.validatorOnWouldPersist, true);
   assert.deepEqual(artifact.phraseGateFailures, []);
@@ -484,9 +489,63 @@ async function main() {
 
   assert.equal(bhsDiagnostic.bhsLanguagePolicyResult.ok, false);
   assert.equal(bhsDiagnostic.mwmsValidatorResult.ok, true);
+  assert.equal(bhsDiagnostic.bhsGateSkippedForDiagnostic, false);
+  assert.equal(bhsDiagnostic.bhsGateWouldHaveBlocked, true);
+  assert.equal(bhsDiagnostic.diagnosticWouldPersistWithoutBhsGate, true);
   assert.equal(bhsDiagnostic.hardGateWouldPersist, false);
   assert.equal(bhsDiagnostic.validatorOnWouldPersist, false);
   assert.equal(bhsDiagnostic.failureReasons.some((reason) => reason.startsWith("bhs_language:")), true);
+
+  const bhsDiagnosticSkip = evaluateMwmsHrDryRunDiagnostic(
+    productionPreparedInput.promptInput,
+    bhsFailureReport,
+    dependencies,
+    {
+      skipBhsGateForDiagnostic: true,
+    },
+  );
+
+  assert.equal(bhsDiagnosticSkip.bhsLanguagePolicyResult.ok, false);
+  assert.equal(bhsDiagnosticSkip.mwmsValidatorResult.ok, true);
+  assert.equal(bhsDiagnosticSkip.bhsGateSkippedForDiagnostic, true);
+  assert.equal(bhsDiagnosticSkip.bhsGateWouldHaveBlocked, true);
+  assert.equal(bhsDiagnosticSkip.diagnosticWouldPersistWithoutBhsGate, true);
+  assert.equal(bhsDiagnosticSkip.hardGateWouldPersist, true);
+  assert.equal(bhsDiagnosticSkip.validatorOnWouldPersist, true);
+  assert.match(bhsDiagnosticSkip.diagnosticNotes.join(" "), /diagnostic-only/i);
+
+  const skipWritesList = [];
+  const skipArtifact = await runMwmsHrOpenAiDryRun({
+    env: {
+      NODE_ENV: "development",
+      [CONFIRM_ENV]: "true",
+      [CAPTURE_PATH_ENV]: "/tmp/single-test-hr-ai-input-mwms-test.json",
+      [SKIP_BHS_GATE_ENV]: "true",
+      AI_REPORT_PROVIDER: "openai",
+      OPENAI_API_KEY: "test-key",
+    },
+    now: () => "2026-06-14T12:10:00.000Z",
+    readFile: () => JSON.stringify(captureArtifact),
+    writeFile: (filePath, data, options) => {
+      skipWritesList.push({ filePath, data, options });
+    },
+    chmodFile: () => {},
+    requestRawReport: async () => bhsFailureReport,
+    evaluateDiagnostic: (input, output, options) =>
+      evaluateMwmsHrDryRunDiagnostic(input, output, dependencies, options),
+  });
+
+  assert.equal(skipArtifact.metadata.bhsGateSkippedForDiagnostic, true);
+  assert.equal(skipArtifact.bhsGateSkippedForDiagnostic, true);
+  assert.equal(skipArtifact.bhsGateWouldHaveBlocked, true);
+  assert.equal(skipArtifact.diagnosticWouldPersistWithoutBhsGate, true);
+  assert.equal(skipArtifact.hardGateWouldPersist, true);
+  assert.equal(skipArtifact.validatorOnWouldPersist, true);
+  assert.equal(skipArtifact.bhsLanguagePolicyResult.ok, false);
+  assert.match(skipArtifact.diagnosticNotes.join(" "), /diagnostic-only/i);
+  assert.match(skipWritesList[0].data, /"bhsGateSkippedForDiagnostic": true/);
+  assert.match(skipWritesList[0].data, /"bhsGateWouldHaveBlocked": true/);
+  assert.match(skipWritesList[0].data, /"diagnosticWouldPersistWithoutBhsGate": true/);
 
   const mutationReport = clone(validReport);
   mutationReport.motivation_profile_snapshot.dimensions[0].rawScore = 4.25;
