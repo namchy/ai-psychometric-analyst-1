@@ -10,6 +10,7 @@ const originalResolveFilename = Module._resolveFilename;
 
 const CONFIRM_ENV = "CONFIRM_MWMS_HR_OPENAI_DRY_RUN";
 const CAPTURE_PATH_ENV = "MWMS_HR_INPUT_CAPTURE_PATH";
+const GENERAL_ENVELOPE_ONLY_ENV = "MWMS_HR_DRY_RUN_GENERAL_ENVELOPE_ONLY";
 const SKIP_BHS_GATE_ENV = "MWMS_HR_DRY_RUN_SKIP_BHS_GATE";
 const TIMEOUT_ENV = "MWMS_HR_OPENAI_DRY_RUN_TIMEOUT_MS";
 const OUTPUT_PREFIX = "mwms-hr-openai-dry-run";
@@ -41,6 +42,7 @@ function buildNoCallSummary() {
       "Refuse missing, invalid, reconstructed, or synthetic capture artifacts.",
       "Call the captured OpenAI structured request only after explicit confirmation.",
       "Run local parse, BHS, and MWMS validator diagnostics without DB writes.",
+      `Optional diagnostic-only mode: ${GENERAL_ENVELOPE_ONLY_ENV}=true decides pass/fail from provider, parse, and plain-object envelope checks only.`,
       `Optional diagnostic-only bypass: ${SKIP_BHS_GATE_ENV}=true ignores BHS as a persistence blocker in this script only.`,
       "Write diagnostic JSON only under /tmp.",
     ],
@@ -48,6 +50,10 @@ function buildNoCallSummary() {
     requiredCapturePathEnv: CAPTURE_PATH_ENV,
     optionalTimeoutOverride: TIMEOUT_ENV,
   };
+}
+
+function shouldUseGeneralEnvelopeOnlyDiagnostic(env = process.env) {
+  return env[GENERAL_ENVELOPE_ONLY_ENV] === "true";
 }
 
 function shouldSkipBhsGateForDiagnostic(env = process.env) {
@@ -313,10 +319,24 @@ async function requestOpenAiFromCapturedRequest(capturedRequestBody, options) {
       throw new Error("OpenAI MWMS HR capture dry-run response did not contain structured content.");
     }
 
-    return JSON.parse(content);
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      const parseError = new Error(
+        `OpenAI MWMS HR capture dry-run returned invalid JSON: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      parseError.providerResponseReceived = true;
+      parseError.parseFailed = true;
+      throw parseError;
+    }
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`OpenAI MWMS HR capture dry-run failed: ${error.message}`);
+      const wrappedError = new Error(`OpenAI MWMS HR capture dry-run failed: ${error.message}`);
+      wrappedError.providerResponseReceived = error.providerResponseReceived === true;
+      wrappedError.parseFailed = error.parseFailed === true;
+      throw wrappedError;
     }
 
     throw error;
@@ -369,6 +389,79 @@ function buildFailureReasons({
   return reasons;
 }
 
+function validateGeneralEnvelope({
+  providerResponseReceived,
+  parseResult,
+  parsedOutput,
+}) {
+  const errors = [];
+
+  if (providerResponseReceived !== true) {
+    errors.push("OpenAI response was not received.");
+  }
+
+  if (parseResult?.ok !== true) {
+    errors.push(
+      `OpenAI response was not parsed successfully${
+        parseResult?.error ? `: ${parseResult.error}` : "."
+      }`,
+    );
+  }
+
+  if (parsedOutput === undefined) {
+    errors.push("Parsed output is missing.");
+  } else if (parsedOutput === null) {
+    errors.push("Parsed output must not be null.");
+  } else if (Array.isArray(parsedOutput)) {
+    errors.push("Parsed output must not be an array.");
+  } else if (typeof parsedOutput !== "object") {
+    errors.push("Parsed output must be a plain object.");
+  } else {
+    const prototype = Object.getPrototypeOf(parsedOutput);
+
+    if (prototype !== Object.prototype && prototype !== null) {
+      errors.push("Parsed output must be a plain object.");
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    providerResponseReceived: providerResponseReceived === true,
+    parsed: parseResult?.ok === true,
+    parsedOutputPresent: parsedOutput !== undefined,
+    parsedOutputIsPlainObject:
+      parsedOutput !== null &&
+      typeof parsedOutput === "object" &&
+      !Array.isArray(parsedOutput) &&
+      [Object.prototype, null].includes(Object.getPrototypeOf(parsedOutput)),
+    errors,
+  };
+}
+
+function buildDisagreementMatrix({
+  diagnosticWouldPassGeneralEnvelopeOnly,
+  legacyFullGateWouldPersist,
+  contractValidatorWouldPersist,
+  mwmsValidatorWouldPersist,
+  bhsGateWouldPersist,
+}) {
+  return {
+    generalEnvelopeOnly: diagnosticWouldPassGeneralEnvelopeOnly,
+    legacyFullGate: legacyFullGateWouldPersist,
+    contractValidator: contractValidatorWouldPersist,
+    mwmsValidator: mwmsValidatorWouldPersist,
+    bhsGate: bhsGateWouldPersist,
+    generalPassesWhileLegacyBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !legacyFullGateWouldPersist,
+    generalPassesWhileContractBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !contractValidatorWouldPersist,
+    generalPassesWhileMwmsBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !mwmsValidatorWouldPersist,
+    generalPassesWhileBhsBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !bhsGateWouldPersist,
+  };
+}
+
 function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependencies, options = {}) {
   const {
     resolveAiReportLanguagePolicy,
@@ -406,6 +499,16 @@ function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependen
       };
   const hardFailure = bhsLanguagePolicyResult.skipped === false && !bhsLanguagePolicyResult.ok;
   const bhsGateWouldHaveBlocked = hardFailure;
+  const bhsGateWouldPersist = !hardFailure;
+  const contractValidatorWouldPersist = mwmsValidatorResult.ok;
+  const mwmsValidatorWouldPersist = mwmsValidatorResult.ok;
+  const legacyFullGateWouldPersist = mwmsValidatorWouldPersist && bhsGateWouldPersist;
+  const generalEnvelopeValidationResult = validateGeneralEnvelope({
+    providerResponseReceived: options.providerResponseReceived !== false,
+    parseResult: options.parseResult ?? { ok: true, error: null },
+    parsedOutput: rawParsedOutput,
+  });
+  const diagnosticWouldPassGeneralEnvelopeOnly = generalEnvelopeValidationResult.ok;
   const diagnosticWouldPersistWithoutBhsGate = mwmsValidatorResult.ok;
   const hardGateWouldPersist = mwmsValidatorResult.ok && (skipBhsGateForDiagnostic ? true : !hardFailure);
   const validatorOnWouldPersist = hardGateWouldPersist;
@@ -420,6 +523,19 @@ function evaluateMwmsHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependen
       ok: true,
       error: null,
     },
+    generalEnvelopeValidationResult,
+    diagnosticWouldPassGeneralEnvelopeOnly,
+    legacyFullGateWouldPersist,
+    contractValidatorWouldPersist,
+    mwmsValidatorWouldPersist,
+    bhsGateWouldPersist,
+    disagreementMatrix: buildDisagreementMatrix({
+      diagnosticWouldPassGeneralEnvelopeOnly,
+      legacyFullGateWouldPersist,
+      contractValidatorWouldPersist,
+      mwmsValidatorWouldPersist,
+      bhsGateWouldPersist,
+    }),
     canonicalizedOutput,
     contractValidationResult: mwmsValidatorResult,
     bhsLanguagePolicyResult,
@@ -480,6 +596,7 @@ async function runMwmsHrOpenAiDryRun({
   const outputPath = dumpPath ?? buildOutputPath(timestamp.replace(/[:.]/g, "-"));
   const model = captureInput.model ?? null;
   const provider = captureInput.provider ?? "openai";
+  const generalEnvelopeOnlyDiagnostic = shouldUseGeneralEnvelopeOnlyDiagnostic(env);
   const skipBhsGateForDiagnostic = shouldSkipBhsGateForDiagnostic(env);
 
   if (!requestRawReport || !evaluateDiagnostic) {
@@ -499,18 +616,45 @@ async function runMwmsHrOpenAiDryRun({
     throw new Error("Captured MWMS HR request must contain model metadata or requestBody.model.");
   }
 
-  const rawParsedOutput = await rawRequester(captureInput.inputSnapshot, {
-    apiKey: env.OPENAI_API_KEY ?? null,
-    model,
-    timeoutMs: resolveTimeoutMs(env),
-  });
+  let rawParsedOutput;
+  let providerResponseReceived = false;
+  let parseResult = { ok: true, error: null };
+
+  try {
+    rawParsedOutput = await rawRequester(captureInput.inputSnapshot, {
+      apiKey: env.OPENAI_API_KEY ?? null,
+      model,
+      timeoutMs: resolveTimeoutMs(env),
+    });
+    providerResponseReceived = true;
+  } catch (error) {
+    if (!generalEnvelopeOnlyDiagnostic) {
+      throw error;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    providerResponseReceived =
+      error instanceof Error && error.providerResponseReceived === true;
+    parseResult = {
+      ok: false,
+      error: message,
+    };
+  }
+
   const diagnosticEvaluator =
     evaluateDiagnostic ??
     ((input, output, diagnosticOptions) =>
       evaluateMwmsHrDryRunDiagnostic(input, output, loadDiagnosticDependencies(), diagnosticOptions));
   const diagnostic = diagnosticEvaluator(captureInput.inputSnapshot, rawParsedOutput, {
     skipBhsGateForDiagnostic,
+    providerResponseReceived,
+    parseResult,
   });
+  const diagnosticWouldPassGeneralEnvelopeOnly =
+    diagnostic.generalEnvelopeValidationResult?.ok === true;
+  const diagnosticDecision = generalEnvelopeOnlyDiagnostic
+    ? diagnosticWouldPassGeneralEnvelopeOnly
+    : diagnostic.hardGateWouldPersist;
   const artifact = {
     metadata: {
       timestamp,
@@ -524,6 +668,7 @@ async function runMwmsHrOpenAiDryRun({
       inputSource: captureInput.inputSource,
       capturePath: captureInput.capturePath,
       captureMetadata: captureInput.captureMetadata,
+      generalEnvelopeOnlyDiagnostic,
       bhsGateSkippedForDiagnostic: skipBhsGateForDiagnostic,
     },
     inputSource: captureInput.inputSource,
@@ -531,7 +676,16 @@ async function runMwmsHrOpenAiDryRun({
     captureMetadata: captureInput.captureMetadata,
     inputSummary: summarizeInput(captureInput.inputSnapshot),
     rawParsedOutput,
-    parseResult: diagnostic.parseResult,
+    parseResult,
+    generalEnvelopeOnlyDiagnostic,
+    generalEnvelopeValidationResult: diagnostic.generalEnvelopeValidationResult,
+    diagnosticWouldPassGeneralEnvelopeOnly,
+    diagnosticDecision,
+    legacyFullGateWouldPersist: diagnostic.legacyFullGateWouldPersist,
+    contractValidatorWouldPersist: diagnostic.contractValidatorWouldPersist,
+    mwmsValidatorWouldPersist: diagnostic.mwmsValidatorWouldPersist,
+    bhsGateWouldPersist: diagnostic.bhsGateWouldPersist,
+    disagreementMatrix: diagnostic.disagreementMatrix,
     canonicalizedOutput: diagnostic.canonicalizedOutput,
     contractValidationResult: diagnostic.contractValidationResult,
     bhsLanguagePolicyResult: diagnostic.bhsLanguagePolicyResult,
@@ -578,6 +732,15 @@ async function main() {
             metadata: result.metadata,
             inputSummary: result.inputSummary,
             parseResult: result.parseResult,
+            generalEnvelopeOnlyDiagnostic: result.generalEnvelopeOnlyDiagnostic,
+            generalEnvelopeValidationResult: result.generalEnvelopeValidationResult,
+            diagnosticWouldPassGeneralEnvelopeOnly:
+              result.diagnosticWouldPassGeneralEnvelopeOnly,
+            legacyFullGateWouldPersist: result.legacyFullGateWouldPersist,
+            contractValidatorWouldPersist: result.contractValidatorWouldPersist,
+            mwmsValidatorWouldPersist: result.mwmsValidatorWouldPersist,
+            bhsGateWouldPersist: result.bhsGateWouldPersist,
+            disagreementMatrix: result.disagreementMatrix,
             contractValidationResult: result.contractValidationResult,
             bhsLanguagePolicyResult: result.bhsLanguagePolicyResult,
             mwmsValidatorResult: result.mwmsValidatorResult,
@@ -605,6 +768,7 @@ if (require.main === module) {
 module.exports = {
   CAPTURE_PATH_ENV,
   CONFIRM_ENV,
+  GENERAL_ENVELOPE_ONLY_ENV,
   SKIP_BHS_GATE_ENV,
   TIMEOUT_ENV,
   buildNoCallSummary,
@@ -615,5 +779,7 @@ module.exports = {
   readInputCapture,
   resolveInputCapturePath,
   runMwmsHrOpenAiDryRun,
+  shouldUseGeneralEnvelopeOnlyDiagnostic,
   shouldSkipBhsGateForDiagnostic,
+  validateGeneralEnvelope,
 };

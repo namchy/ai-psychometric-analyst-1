@@ -8,6 +8,7 @@ const scriptSource = fs.readFileSync(scriptPath, "utf8");
 
 assert.match(scriptSource, /CONFIRM_MWMS_HR_OPENAI_DRY_RUN/);
 assert.match(scriptSource, /MWMS_HR_INPUT_CAPTURE_PATH/);
+assert.match(scriptSource, /MWMS_HR_DRY_RUN_GENERAL_ENVELOPE_ONLY/);
 assert.match(scriptSource, /MWMS_HR_DRY_RUN_SKIP_BHS_GATE/);
 assert.match(scriptSource, /databaseWrites:\s*false/);
 assert.match(scriptSource, /reportRegenerated:\s*false/);
@@ -22,11 +23,13 @@ assert.doesNotMatch(scriptSource, /regenerateReadySingleTestHrReport/);
 const {
   CAPTURE_PATH_ENV,
   CONFIRM_ENV,
+  GENERAL_ENVELOPE_ONLY_ENV,
   SKIP_BHS_GATE_ENV,
   evaluateMwmsHrDryRunDiagnostic,
   installTypeScriptRuntime,
   readInputCapture,
   runMwmsHrOpenAiDryRun,
+  validateGeneralEnvelope,
 } = require(scriptPath);
 
 function clone(value) {
@@ -308,6 +311,64 @@ async function main() {
   assert.equal(writes, 0);
   assert.equal(openAiCalls, 0);
 
+  const unconfirmedGeneralEnvelopeOnlyResult = await runMwmsHrOpenAiDryRun({
+    env: {
+      NODE_ENV: "development",
+      [GENERAL_ENVELOPE_ONLY_ENV]: "true",
+    },
+    requestRawReport: async () => {
+      openAiCalls += 1;
+      return {};
+    },
+  });
+
+  assert.equal(unconfirmedGeneralEnvelopeOnlyResult.confirmed, false);
+  assert.equal(unconfirmedGeneralEnvelopeOnlyResult.openAiCalled, false);
+  assert.equal(openAiCalls, 0);
+
+  assert.deepEqual(
+    validateGeneralEnvelope({
+      providerResponseReceived: true,
+      parseResult: { ok: true, error: null },
+      parsedOutput: {},
+    }),
+    {
+      ok: true,
+      providerResponseReceived: true,
+      parsed: true,
+      parsedOutputPresent: true,
+      parsedOutputIsPlainObject: true,
+      errors: [],
+    },
+  );
+
+  for (const [label, parsedOutput] of [
+    ["null", null],
+    ["array", []],
+    ["string", "not-an-object"],
+  ]) {
+    const result = validateGeneralEnvelope({
+      providerResponseReceived: true,
+      parseResult: { ok: true, error: null },
+      parsedOutput,
+    });
+
+    assert.equal(result.ok, false, `${label} should fail general envelope validation`);
+    assert.equal(result.parsedOutputIsPlainObject, false);
+  }
+
+  const parseFailureEnvelope = validateGeneralEnvelope({
+    providerResponseReceived: true,
+    parseResult: { ok: false, error: "Unexpected token" },
+    parsedOutput: undefined,
+  });
+  assert.equal(parseFailureEnvelope.ok, false);
+  assert.equal(parseFailureEnvelope.parsed, false);
+  assert.equal(
+    parseFailureEnvelope.errors.some((error) => error.includes("Unexpected token")),
+    true,
+  );
+
   await assert.rejects(
     () =>
       runMwmsHrOpenAiDryRun({
@@ -445,12 +506,20 @@ async function main() {
   assert.equal(artifact.metadata.databaseWrites, false);
   assert.equal(artifact.metadata.reportRegenerated, false);
   assert.equal(artifact.metadata.productionFlowChanged, false);
+  assert.equal(artifact.metadata.generalEnvelopeOnlyDiagnostic, false);
   assert.equal(artifact.metadata.inputSource, "single_test_hr_ai_input_capture");
   assert.equal(artifact.inputSource, "single_test_hr_ai_input_capture");
   assert.equal(artifact.capturePath, "/tmp/single-test-hr-ai-input-mwms-test.json");
   assert.equal(artifact.inputSummary.testSlug, "mwms_v1");
   assert.equal(artifact.inputSummary.locale, "bs");
   assert.deepEqual(artifact.parseResult, { ok: true, error: null });
+  assert.equal(artifact.generalEnvelopeOnlyDiagnostic, false);
+  assert.equal(artifact.generalEnvelopeValidationResult.ok, true);
+  assert.equal(artifact.diagnosticWouldPassGeneralEnvelopeOnly, true);
+  assert.equal(artifact.legacyFullGateWouldPersist, true);
+  assert.equal(artifact.contractValidatorWouldPersist, true);
+  assert.equal(artifact.mwmsValidatorWouldPersist, true);
+  assert.equal(artifact.bhsGateWouldPersist, true);
   assert.equal(artifact.contractValidationResult.ok, true);
   assert.equal(artifact.bhsLanguagePolicyResult.ok, true);
   assert.equal(artifact.mwmsValidatorResult.ok, true);
@@ -495,6 +564,12 @@ async function main() {
   assert.equal(bhsDiagnostic.hardGateWouldPersist, false);
   assert.equal(bhsDiagnostic.validatorOnWouldPersist, false);
   assert.equal(bhsDiagnostic.failureReasons.some((reason) => reason.startsWith("bhs_language:")), true);
+  assert.equal(bhsDiagnostic.generalEnvelopeValidationResult.ok, true);
+  assert.equal(bhsDiagnostic.diagnosticWouldPassGeneralEnvelopeOnly, true);
+  assert.equal(bhsDiagnostic.legacyFullGateWouldPersist, false);
+  assert.equal(bhsDiagnostic.bhsGateWouldPersist, false);
+  assert.equal(bhsDiagnostic.disagreementMatrix.generalPassesWhileLegacyBlocks, true);
+  assert.equal(bhsDiagnostic.disagreementMatrix.generalPassesWhileBhsBlocks, true);
 
   const bhsDiagnosticSkip = evaluateMwmsHrDryRunDiagnostic(
     productionPreparedInput.promptInput,
@@ -562,6 +637,95 @@ async function main() {
     mutationDiagnostic.mwmsValidatorResult.errors.some((error) => error.category === "source_integrity"),
     true,
   );
+  assert.equal(mutationDiagnostic.generalEnvelopeValidationResult.ok, true);
+  assert.equal(mutationDiagnostic.diagnosticWouldPassGeneralEnvelopeOnly, true);
+  assert.equal(mutationDiagnostic.mwmsValidatorWouldPersist, false);
+  assert.equal(mutationDiagnostic.contractValidatorWouldPersist, false);
+  assert.equal(mutationDiagnostic.disagreementMatrix.generalPassesWhileMwmsBlocks, true);
+  assert.equal(mutationDiagnostic.disagreementMatrix.generalPassesWhileContractBlocks, true);
+
+  const generalOnlyWrites = [];
+  const generalOnlyArtifact = await runMwmsHrOpenAiDryRun({
+    env: {
+      NODE_ENV: "development",
+      [CONFIRM_ENV]: "true",
+      [CAPTURE_PATH_ENV]: "/tmp/single-test-hr-ai-input-mwms-test.json",
+      [GENERAL_ENVELOPE_ONLY_ENV]: "true",
+      OPENAI_API_KEY: "test-key",
+    },
+    now: () => "2026-06-14T12:20:00.000Z",
+    readFile: () => JSON.stringify(captureArtifact),
+    writeFile: (filePath, data, options) => {
+      generalOnlyWrites.push({ filePath, data, options });
+    },
+    chmodFile: () => {},
+    requestRawReport: async () => bhsFailureReport,
+    evaluateDiagnostic: (input, output, options) =>
+      evaluateMwmsHrDryRunDiagnostic(input, output, dependencies, options),
+  });
+
+  assert.equal(generalOnlyArtifact.generalEnvelopeOnlyDiagnostic, true);
+  assert.equal(generalOnlyArtifact.metadata.generalEnvelopeOnlyDiagnostic, true);
+  assert.equal(generalOnlyArtifact.generalEnvelopeValidationResult.ok, true);
+  assert.equal(generalOnlyArtifact.diagnosticWouldPassGeneralEnvelopeOnly, true);
+  assert.equal(generalOnlyArtifact.diagnosticDecision, true);
+  assert.equal(generalOnlyArtifact.legacyFullGateWouldPersist, false);
+  assert.equal(generalOnlyArtifact.contractValidatorWouldPersist, true);
+  assert.equal(generalOnlyArtifact.mwmsValidatorWouldPersist, true);
+  assert.equal(generalOnlyArtifact.bhsGateWouldPersist, false);
+  assert.equal(generalOnlyArtifact.disagreementMatrix.generalPassesWhileLegacyBlocks, true);
+  assert.match(generalOnlyWrites[0].data, /"generalEnvelopeOnlyDiagnostic": true/);
+  assert.match(generalOnlyWrites[0].data, /"diagnosticWouldPassGeneralEnvelopeOnly": true/);
+
+  const invalidMwmsPlainObject = {
+    reportType: "not-mwms",
+    narrative: "Ti elementi ostaju namjerno nevalidni za comparison gateove.",
+  };
+  const invalidComparisonArtifact = await runMwmsHrOpenAiDryRun({
+    env: {
+      NODE_ENV: "development",
+      [CONFIRM_ENV]: "true",
+      [CAPTURE_PATH_ENV]: "/tmp/single-test-hr-ai-input-mwms-test.json",
+      [GENERAL_ENVELOPE_ONLY_ENV]: "true",
+      OPENAI_API_KEY: "test-key",
+    },
+    readFile: () => JSON.stringify(captureArtifact),
+    writeFile: () => {},
+    chmodFile: () => {},
+    requestRawReport: async () => invalidMwmsPlainObject,
+    evaluateDiagnostic: (input, output, options) =>
+      evaluateMwmsHrDryRunDiagnostic(input, output, dependencies, options),
+  });
+
+  assert.equal(invalidComparisonArtifact.generalEnvelopeValidationResult.ok, true);
+  assert.equal(invalidComparisonArtifact.diagnosticWouldPassGeneralEnvelopeOnly, true);
+  assert.equal(invalidComparisonArtifact.diagnosticDecision, true);
+  assert.equal(invalidComparisonArtifact.contractValidatorWouldPersist, false);
+  assert.equal(invalidComparisonArtifact.mwmsValidatorWouldPersist, false);
+  assert.equal(invalidComparisonArtifact.bhsGateWouldPersist, false);
+
+  const parseErrorArtifact = await runMwmsHrOpenAiDryRun({
+    env: {
+      NODE_ENV: "development",
+      [CONFIRM_ENV]: "true",
+      [CAPTURE_PATH_ENV]: "/tmp/single-test-hr-ai-input-mwms-test.json",
+      [GENERAL_ENVELOPE_ONLY_ENV]: "true",
+      OPENAI_API_KEY: "test-key",
+    },
+    readFile: () => JSON.stringify(captureArtifact),
+    writeFile: () => {},
+    chmodFile: () => {},
+    requestRawReport: async () => {
+      throw new Error("OpenAI response JSON parse failed: Unexpected token");
+    },
+    evaluateDiagnostic: (input, output, options) =>
+      evaluateMwmsHrDryRunDiagnostic(input, output, dependencies, options),
+  });
+
+  assert.equal(parseErrorArtifact.parseResult.ok, false);
+  assert.equal(parseErrorArtifact.generalEnvelopeValidationResult.ok, false);
+  assert.equal(parseErrorArtifact.diagnosticWouldPassGeneralEnvelopeOnly, false);
+  assert.equal(parseErrorArtifact.diagnosticDecision, false);
 
   console.log("test-inspect-mwms-hr-openai-dry-run: ok");
 }
