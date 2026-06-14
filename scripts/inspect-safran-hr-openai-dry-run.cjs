@@ -378,7 +378,7 @@ function classifySafranValidationError(error) {
   }
 
   if (/Forbidden phrase|safetyChecks|hire|no-hire|IQ|percentile|percentil|norma|diagnos|clinical|medic/i.test(error)) {
-    return "safety";
+    return /safetyChecks/i.test(error) ? "structural" : "safety_heuristic";
   }
 
   if (/Must match deterministic input|sourceType|testSlug|audience|locale|score|mutation|noScoreMutation/i.test(error)) {
@@ -390,6 +390,182 @@ function classifySafranValidationError(error) {
   }
 
   return "unknown";
+}
+
+function validateGeneralEnvelope({
+  providerResponseReceived,
+  parseResult,
+  parsedOutput,
+}) {
+  const errors = [];
+
+  if (providerResponseReceived !== true) {
+    errors.push("OpenAI response was not received.");
+  }
+
+  if (parseResult?.ok !== true) {
+    errors.push(
+      `OpenAI response was not parsed successfully${
+        parseResult?.error ? `: ${parseResult.error}` : "."
+      }`,
+    );
+  }
+
+  if (parsedOutput === undefined) {
+    errors.push("Parsed output is missing.");
+  } else if (parsedOutput === null) {
+    errors.push("Parsed output must not be null.");
+  } else if (Array.isArray(parsedOutput)) {
+    errors.push("Parsed output must not be an array.");
+  } else if (typeof parsedOutput !== "object") {
+    errors.push("Parsed output must be a plain object.");
+  } else {
+    const prototype = Object.getPrototypeOf(parsedOutput);
+
+    if (prototype !== Object.prototype && prototype !== null) {
+      errors.push("Parsed output must be a plain object.");
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    providerResponseReceived: providerResponseReceived === true,
+    parsed: parseResult?.ok === true,
+    parsedOutputPresent: parsedOutput !== undefined,
+    parsedOutputIsPlainObject:
+      parsedOutput !== null &&
+      typeof parsedOutput === "object" &&
+      !Array.isArray(parsedOutput) &&
+      [Object.prototype, null].includes(Object.getPrototypeOf(parsedOutput)),
+    errors,
+  };
+}
+
+function buildDisagreementMatrix({
+  diagnosticWouldPassGeneralEnvelopeOnly,
+  legacyFullGateWouldPersist,
+  contractValidatorWouldPersist,
+  safranValidatorWouldPersist,
+  bhsGateWouldPersist,
+  dataOnlyShadowGateWouldPersist,
+}) {
+  return {
+    generalEnvelopeOnly: diagnosticWouldPassGeneralEnvelopeOnly,
+    legacyFullGate: legacyFullGateWouldPersist,
+    contractValidator: contractValidatorWouldPersist,
+    safranDataReferenceValidator: safranValidatorWouldPersist,
+    bhsGate: bhsGateWouldPersist,
+    dataOnlyShadowGate: dataOnlyShadowGateWouldPersist,
+    generalPassesWhileLegacyBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !legacyFullGateWouldPersist,
+    dataOnlyPassesWhileLegacyBlocks:
+      dataOnlyShadowGateWouldPersist && !legacyFullGateWouldPersist,
+    generalPassesWhileContractBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !contractValidatorWouldPersist,
+    generalPassesWhileSafranDataReferenceBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !safranValidatorWouldPersist,
+    generalPassesWhileBhsBlocks:
+      diagnosticWouldPassGeneralEnvelopeOnly && !bhsGateWouldPersist,
+  };
+}
+
+function buildLegacyBlockingCategories({
+  bhsLanguagePolicyResult,
+  legacySafranValidatorResult,
+}) {
+  const categories = [];
+
+  if (bhsLanguagePolicyResult?.ok === false) {
+    categories.push("bhs_prose_language");
+  }
+
+  if (legacySafranValidatorResult?.ok === false) {
+    for (const error of legacySafranValidatorResult.errors) {
+      categories.push(`safran_validator:${error.category}`);
+    }
+  }
+
+  return [...new Set(categories)];
+}
+
+function buildSafranValidationInventory() {
+  return {
+    currentlyDataReferenceValidated: [
+      "report root and nested object/array shape",
+      "required fields and non-empty required strings",
+      "allowed property names",
+      "reportType, testSlug, audience, sourceType and supported locale constants",
+      "testSlug, audience, sourceType and locale equality with expectedInput",
+      "safetyChecks object shape and required true boolean values",
+    ],
+    legacyOnlyProseLanguageHeuristics: [
+      "global BHS user-facing language policy",
+      "forbidden phrase scan across narrative fields",
+      "required cautious-hypothesis wording in executiveSummary.summary",
+      "required experience/interview/role-context wording in interpretationLimits",
+    ],
+    deterministicReferenceGaps: [
+      "report output has no structured overall/verbal/figural/numeric score fields to compare with expectedInput",
+      "report output has no structured band or band-label references to compare with expectedInput",
+      "cognitiveSignals prose is not deterministically checked against actual score, band or ordering values",
+      "generatedLanguage is required but is not checked for equality with expectedInput locale",
+      "safetyChecks.noScoreMutation is declarative and does not prove that narrative score references were preserved",
+    ],
+    relativeProtectionComparedWithMwms:
+      "weaker: SAFRAN currently protects shape and metadata references, but not structured score, band, label or derived-profile values against deterministic input",
+  };
+}
+
+function buildDataOnlyShadowGate({
+  generalEnvelopeValidationResult,
+  contractValidatorWouldPersist,
+  safranValidatorWouldPersist,
+  bhsGateWouldPersist,
+  legacyFullGateWouldPersist,
+  legacyBlockingCategories,
+}) {
+  const dataOnlyShadowGateInputs = {
+    generalEnvelopeOk: generalEnvelopeValidationResult.ok,
+    contractValidationOk: contractValidatorWouldPersist,
+    safranDataReferenceValidationOk: safranValidatorWouldPersist,
+    bhsLanguagePolicyOk: bhsGateWouldPersist,
+    legacyFullGateWouldPersist,
+  };
+  const dataOnlyShadowGateWouldPersist =
+    dataOnlyShadowGateInputs.generalEnvelopeOk &&
+    dataOnlyShadowGateInputs.contractValidationOk &&
+    dataOnlyShadowGateInputs.safranDataReferenceValidationOk;
+  const proseLanguageCategories = new Set([
+    "bhs_prose_language",
+    "safran_validator:phrase_prose",
+    "safran_validator:safety_heuristic",
+  ]);
+  const legacyBlocksOnlyBecauseOfProseLanguage =
+    dataOnlyShadowGateWouldPersist &&
+    !legacyFullGateWouldPersist &&
+    legacyBlockingCategories.length > 0 &&
+    legacyBlockingCategories.every((category) => proseLanguageCategories.has(category));
+
+  return {
+    dataOnlyShadowGate: {
+      diagnosticOnly: true,
+      includes: [
+        "general_envelope_parse",
+        "safran_contract_shape_validation",
+        "safran_existing_metadata_reference_validation",
+      ],
+      excludes: [
+        "bhs_prose_language",
+        "forbidden_phrase_safety_heuristics",
+        "required_cautious_prose_patterns",
+      ],
+      wouldPersist: dataOnlyShadowGateWouldPersist,
+    },
+    dataOnlyShadowGateWouldPersist,
+    dataOnlyShadowGateInputs,
+    legacyBlocksOnlyBecauseOfProseLanguage,
+    legacyBlockingCategories,
+  };
 }
 
 function buildFailureReasons({
@@ -419,7 +595,12 @@ function buildFailureReasons({
   return reasons;
 }
 
-function evaluateSafranHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, dependencies) {
+function evaluateSafranHrDryRunDiagnostic(
+  inputSnapshot,
+  rawParsedOutput,
+  dependencies,
+  options = {},
+) {
   const {
     resolveAiReportLanguagePolicy,
     validateSafranHrReport,
@@ -441,29 +622,72 @@ function evaluateSafranHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, depend
         skipped: true,
         reason: "No BHS language policy for input locale.",
       };
-  const validation = validateSafranHrReport(canonicalizedOutput, {
+  const legacyValidation = validateSafranHrReport(canonicalizedOutput, {
     expectedInput: inputSnapshot,
   });
-  const safranValidatorResult = validation.ok
+  const safranValidatorResult = legacyValidation.ok
     ? {
         ok: true,
         errors: [],
       }
     : {
         ok: false,
-        errors: mapErrors(validation.errors),
+        errors: mapErrors(legacyValidation.errors),
       };
-  const phraseGateFailures = safranValidatorResult.errors.filter(
-    (error) => error.category === "phrase_prose",
+  const rawValidation = validateSafranHrReport(rawParsedOutput, {
+    expectedInput: inputSnapshot,
+  });
+  const rawValidationErrors = rawValidation.ok ? [] : mapErrors(rawValidation.errors);
+  const contractErrors = rawValidationErrors.filter(
+    (error) => error.category === "structural",
   );
-  const hardSafranFailures = safranValidatorResult.errors.filter(
-    (error) => error.category !== "phrase_prose",
+  const dataReferenceErrors = rawValidationErrors.filter(
+    (error) =>
+      error.category === "source_integrity" || error.category === "unknown",
+  );
+  const contractValidationResult = {
+    ok: contractErrors.length === 0,
+    errors: contractErrors,
+  };
+  const safranDataReferenceValidationResult = {
+    ok: dataReferenceErrors.length === 0,
+    errors: dataReferenceErrors,
+  };
+  const phraseGateFailures = safranValidatorResult.errors.filter(
+    (error) =>
+      error.category === "phrase_prose" ||
+      error.category === "safety_heuristic",
   );
   const bhsHardFailure = bhsLanguagePolicyResult.skipped === false && !bhsLanguagePolicyResult.ok;
-  const hardGateWouldPersist = hardSafranFailures.length === 0 && !bhsHardFailure;
-  const validatorOnWouldPersist =
-    safranValidatorResult.ok &&
-    (bhsLanguagePolicyResult.skipped === true || bhsLanguagePolicyResult.ok);
+  const bhsGateWouldPersist = !bhsHardFailure;
+  const contractValidatorWouldPersist = contractValidationResult.ok;
+  const safranValidatorWouldPersist = safranDataReferenceValidationResult.ok;
+  const legacyFullGateWouldPersist =
+    safranValidatorResult.ok && bhsGateWouldPersist;
+  const generalEnvelopeValidationResult = validateGeneralEnvelope({
+    providerResponseReceived: options.providerResponseReceived !== false,
+    parseResult: options.parseResult ?? { ok: true, error: null },
+    parsedOutput: rawParsedOutput,
+  });
+  const diagnosticWouldPassGeneralEnvelopeOnly =
+    generalEnvelopeValidationResult.ok;
+  const legacyBlockingCategories = buildLegacyBlockingCategories({
+    bhsLanguagePolicyResult,
+    legacySafranValidatorResult: safranValidatorResult,
+  });
+  const dataOnlyShadowDecision = buildDataOnlyShadowGate({
+    generalEnvelopeValidationResult,
+    contractValidatorWouldPersist,
+    safranValidatorWouldPersist,
+    bhsGateWouldPersist,
+    legacyFullGateWouldPersist,
+    legacyBlockingCategories,
+  });
+  const hardGateWouldPersist =
+    contractValidatorWouldPersist &&
+    safranValidatorWouldPersist &&
+    bhsGateWouldPersist;
+  const validatorOnWouldPersist = legacyFullGateWouldPersist;
   const warningReasons = phraseGateFailures.map((error) => error.message);
   const failureReasons = buildFailureReasons({
     bhsLanguagePolicyResult,
@@ -471,15 +695,30 @@ function evaluateSafranHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, depend
     hardGateWouldPersist,
     validatorOnWouldPersist,
   });
+  const disagreementMatrix = buildDisagreementMatrix({
+    diagnosticWouldPassGeneralEnvelopeOnly,
+    legacyFullGateWouldPersist,
+    contractValidatorWouldPersist,
+    safranValidatorWouldPersist,
+    bhsGateWouldPersist,
+    dataOnlyShadowGateWouldPersist:
+      dataOnlyShadowDecision.dataOnlyShadowGateWouldPersist,
+  });
 
   return {
     rawParsedOutput,
-    parseResult: {
-      ok: true,
-      error: null,
-    },
+    parseResult: options.parseResult ?? { ok: true, error: null },
+    generalEnvelopeValidationResult,
+    diagnosticWouldPassGeneralEnvelopeOnly,
+    legacyFullGateWouldPersist,
+    contractValidatorWouldPersist,
+    safranValidatorWouldPersist,
+    bhsGateWouldPersist,
+    ...dataOnlyShadowDecision,
+    disagreementMatrix,
     canonicalizedOutput,
-    contractValidationResult: safranValidatorResult,
+    contractValidationResult,
+    safranDataReferenceValidationResult,
     bhsLanguagePolicyResult,
     safranValidatorResult,
     hardGateWouldPersist,
@@ -490,9 +729,12 @@ function evaluateSafranHrDryRunDiagnostic(inputSnapshot, rawParsedOutput, depend
     phraseGateFailures,
     failureReasons,
     warningReasons,
+    validationInventory: buildSafranValidationInventory(),
     diagnosticNotes: [
-      "hardGateWouldPersist ignores cautious phrase/prose-only failures for diagnostic comparison.",
-      "validatorOnWouldPersist reflects the current SAFRAN production validator result.",
+      "SAFRAN data-only shadow gate evaluates raw parsed output and does not canonicalize or mutate it.",
+      "legacyFullGateWouldPersist reflects current production-equivalent BHS canonicalization/validation plus the full SAFRAN validator.",
+      "SAFRAN deterministic reference protection is currently limited to report metadata equality; score, band, label and derived-profile references are not structured in the report contract.",
+      "All shadow decisions are diagnostic-only and do not change provider, worker, runtime or persistence behavior.",
     ],
   };
 }
@@ -591,8 +833,25 @@ async function runSafranHrOpenAiDryRun({
     inputSummary: summarizeInput(inputSnapshot),
     rawParsedOutput,
     parseResult: diagnostic.parseResult,
+    generalEnvelopeValidationResult: diagnostic.generalEnvelopeValidationResult,
+    diagnosticWouldPassGeneralEnvelopeOnly:
+      diagnostic.diagnosticWouldPassGeneralEnvelopeOnly,
+    legacyFullGateWouldPersist: diagnostic.legacyFullGateWouldPersist,
+    contractValidatorWouldPersist: diagnostic.contractValidatorWouldPersist,
+    safranValidatorWouldPersist: diagnostic.safranValidatorWouldPersist,
+    bhsGateWouldPersist: diagnostic.bhsGateWouldPersist,
+    dataOnlyShadowGate: diagnostic.dataOnlyShadowGate,
+    dataOnlyShadowGateWouldPersist:
+      diagnostic.dataOnlyShadowGateWouldPersist,
+    dataOnlyShadowGateInputs: diagnostic.dataOnlyShadowGateInputs,
+    legacyBlocksOnlyBecauseOfProseLanguage:
+      diagnostic.legacyBlocksOnlyBecauseOfProseLanguage,
+    legacyBlockingCategories: diagnostic.legacyBlockingCategories,
+    disagreementMatrix: diagnostic.disagreementMatrix,
     canonicalizedOutput: diagnostic.canonicalizedOutput,
     contractValidationResult: diagnostic.contractValidationResult,
+    safranDataReferenceValidationResult:
+      diagnostic.safranDataReferenceValidationResult,
     bhsLanguagePolicyResult: diagnostic.bhsLanguagePolicyResult,
     safranValidatorResult: diagnostic.safranValidatorResult,
     hardGateWouldPersist: diagnostic.hardGateWouldPersist,
@@ -601,6 +860,7 @@ async function runSafranHrOpenAiDryRun({
     phraseGateFailures: diagnostic.phraseGateFailures,
     failureReasons: diagnostic.failureReasons,
     warningReasons: diagnostic.warningReasons,
+    validationInventory: diagnostic.validationInventory,
     diagnosticNotes: diagnostic.diagnosticNotes,
     humanReviewHints: [
       "executiveSummary",
@@ -632,7 +892,27 @@ async function main() {
             metadata: result.metadata,
             inputSummary: result.inputSummary,
             parseResult: result.parseResult,
+            generalEnvelopeValidationResult:
+              result.generalEnvelopeValidationResult,
+            diagnosticWouldPassGeneralEnvelopeOnly:
+              result.diagnosticWouldPassGeneralEnvelopeOnly,
+            legacyFullGateWouldPersist: result.legacyFullGateWouldPersist,
+            contractValidatorWouldPersist:
+              result.contractValidatorWouldPersist,
+            safranValidatorWouldPersist:
+              result.safranValidatorWouldPersist,
+            bhsGateWouldPersist: result.bhsGateWouldPersist,
+            dataOnlyShadowGate: result.dataOnlyShadowGate,
+            dataOnlyShadowGateWouldPersist:
+              result.dataOnlyShadowGateWouldPersist,
+            dataOnlyShadowGateInputs: result.dataOnlyShadowGateInputs,
+            legacyBlocksOnlyBecauseOfProseLanguage:
+              result.legacyBlocksOnlyBecauseOfProseLanguage,
+            legacyBlockingCategories: result.legacyBlockingCategories,
+            disagreementMatrix: result.disagreementMatrix,
             contractValidationResult: result.contractValidationResult,
+            safranDataReferenceValidationResult:
+              result.safranDataReferenceValidationResult,
             bhsLanguagePolicyResult: result.bhsLanguagePolicyResult,
             safranValidatorResult: result.safranValidatorResult,
             hardGateWouldPersist: result.hardGateWouldPersist,
@@ -641,6 +921,7 @@ async function main() {
             phraseGateFailures: result.phraseGateFailures,
             failureReasons: result.failureReasons,
             warningReasons: result.warningReasons,
+            validationInventory: result.validationInventory,
             dumpPath: result.dumpPath,
           },
       null,
@@ -671,4 +952,5 @@ module.exports = {
   resolveInputCapturePath,
   resolveInputSnapshotPath,
   runSafranHrOpenAiDryRun,
+  validateGeneralEnvelope,
 };

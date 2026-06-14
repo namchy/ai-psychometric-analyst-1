@@ -31,6 +31,7 @@ const {
   installTypeScriptRuntime,
   readInputCapture,
   runSafranHrOpenAiDryRun,
+  validateGeneralEnvelope,
 } = require(scriptPath);
 
 function clone(value) {
@@ -430,6 +431,24 @@ async function main() {
   assert.equal(artifact.inputSummary.testSlug, "safran_v1");
   assert.equal(artifact.inputSummary.locale, "bs");
   assert.deepEqual(artifact.parseResult, { ok: true, error: null });
+  assert.equal(artifact.generalEnvelopeValidationResult.ok, true);
+  assert.equal(artifact.diagnosticWouldPassGeneralEnvelopeOnly, true);
+  assert.equal(artifact.legacyFullGateWouldPersist, true);
+  assert.equal(artifact.contractValidatorWouldPersist, true);
+  assert.equal(artifact.safranValidatorWouldPersist, true);
+  assert.equal(artifact.bhsGateWouldPersist, true);
+  assert.equal(artifact.dataOnlyShadowGate.diagnosticOnly, true);
+  assert.equal(artifact.dataOnlyShadowGateWouldPersist, true);
+  assert.deepEqual(artifact.dataOnlyShadowGateInputs, {
+    generalEnvelopeOk: true,
+    contractValidationOk: true,
+    safranDataReferenceValidationOk: true,
+    bhsLanguagePolicyOk: true,
+    legacyFullGateWouldPersist: true,
+  });
+  assert.equal(artifact.legacyBlocksOnlyBecauseOfProseLanguage, false);
+  assert.deepEqual(artifact.legacyBlockingCategories, []);
+  assert.equal(artifact.disagreementMatrix.dataOnlyShadowGate, true);
   assert.equal(artifact.bhsLanguagePolicyResult.ok, true);
   assert.equal(artifact.safranValidatorResult.ok, true);
   assert.equal(artifact.hardGateWouldPersist, true);
@@ -443,6 +462,8 @@ async function main() {
   assert.match(writesList[0].data, /"rawParsedOutput"/);
   assert.match(writesList[0].data, /"bhsLanguagePolicyResult"/);
   assert.match(writesList[0].data, /"safranValidatorResult"/);
+  assert.match(writesList[0].data, /"dataOnlyShadowGateWouldPersist": true/);
+  assert.match(writesList[0].data, /"deterministicReferenceGaps"/);
   assert.match(writesList[0].data, /"hardGateWouldPersist": true/);
   assert.match(writesList[0].data, /"validatorOnWouldPersist": true/);
   assert.doesNotMatch(writesList[0].data, /test-key/);
@@ -508,6 +529,8 @@ async function main() {
   assert.equal(captureArtifactResult.captureMetadata.reportRegenerated, false);
   assert.equal(captureArtifactResult.captureMetadata.productionFlowChanged, false);
   assert.deepEqual(captureArtifactResult.parseResult, { ok: true, error: null });
+  assert.equal(captureArtifactResult.generalEnvelopeValidationResult.ok, true);
+  assert.equal(captureArtifactResult.dataOnlyShadowGateWouldPersist, true);
   assert.equal(captureArtifactResult.safranValidatorResult.ok, true);
   assert.equal(captureArtifactResult.hardGateWouldPersist, true);
   assert.equal(captureArtifactResult.validatorOnWouldPersist, true);
@@ -540,11 +563,47 @@ async function main() {
 
   assert.equal(phraseDiagnostic.bhsLanguagePolicyResult.ok, true);
   assert.equal(phraseDiagnostic.safranValidatorResult.ok, false);
+  assert.equal(phraseDiagnostic.legacyFullGateWouldPersist, false);
+  assert.equal(phraseDiagnostic.contractValidatorWouldPersist, true);
+  assert.equal(phraseDiagnostic.safranValidatorWouldPersist, true);
+  assert.equal(phraseDiagnostic.dataOnlyShadowGateWouldPersist, true);
+  assert.equal(phraseDiagnostic.legacyBlocksOnlyBecauseOfProseLanguage, true);
+  assert.deepEqual(phraseDiagnostic.legacyBlockingCategories, [
+    "safran_validator:phrase_prose",
+  ]);
   assert.equal(phraseDiagnostic.hardGateWouldPersist, true);
   assert.equal(phraseDiagnostic.validatorOnWouldPersist, false);
   assert.equal(phraseDiagnostic.phraseGateFailures.length, 1);
   assert.equal(phraseDiagnostic.phraseGateFailures[0].category, "phrase_prose");
   assert.match(phraseDiagnostic.failureReasons.join(" "), /phrase\/prose gate only/);
+
+  const bhsOnlyReport = clone(validReport);
+  bhsOnlyReport.cognitiveSignals.overall =
+    `${bhsOnlyReport.cognitiveSignals.overall} Ti elementi ostaju samo dijagnostički signal.`;
+  const bhsOnlyDiagnostic = evaluateSafranHrDryRunDiagnostic(
+    inputSnapshot,
+    bhsOnlyReport,
+    dependencies,
+  );
+
+  assert.equal(bhsOnlyDiagnostic.generalEnvelopeValidationResult.ok, true);
+  assert.equal(bhsOnlyDiagnostic.contractValidatorWouldPersist, true);
+  assert.equal(bhsOnlyDiagnostic.safranValidatorWouldPersist, true);
+  assert.equal(bhsOnlyDiagnostic.bhsGateWouldPersist, false);
+  assert.equal(bhsOnlyDiagnostic.legacyFullGateWouldPersist, false);
+  assert.equal(bhsOnlyDiagnostic.dataOnlyShadowGateWouldPersist, true);
+  assert.equal(bhsOnlyDiagnostic.legacyBlocksOnlyBecauseOfProseLanguage, true);
+  assert.deepEqual(bhsOnlyDiagnostic.legacyBlockingCategories, [
+    "bhs_prose_language",
+  ]);
+  assert.equal(
+    bhsOnlyDiagnostic.dataOnlyShadowGateInputs.bhsLanguagePolicyOk,
+    false,
+  );
+  assert.equal(
+    bhsOnlyDiagnostic.disagreementMatrix.dataOnlyPassesWhileLegacyBlocks,
+    true,
+  );
 
   const safetyReport = clone(validReport);
   safetyReport.executiveSummary.summary =
@@ -556,9 +615,91 @@ async function main() {
   );
 
   assert.equal(safetyDiagnostic.safranValidatorResult.ok, false);
-  assert.equal(safetyDiagnostic.hardGateWouldPersist, false);
+  assert.equal(safetyDiagnostic.legacyFullGateWouldPersist, false);
+  assert.equal(safetyDiagnostic.contractValidatorWouldPersist, true);
+  assert.equal(safetyDiagnostic.safranValidatorWouldPersist, true);
+  assert.equal(safetyDiagnostic.dataOnlyShadowGateWouldPersist, true);
+  assert.equal(safetyDiagnostic.legacyBlocksOnlyBecauseOfProseLanguage, true);
   assert.equal(
-    safetyDiagnostic.safranValidatorResult.errors.some((error) => error.category === "safety"),
+    safetyDiagnostic.safranValidatorResult.errors.some(
+      (error) => error.category === "safety_heuristic",
+    ),
+    true,
+  );
+
+  const missingContractField = clone(validReport);
+  delete missingContractField.pointsOfCaution;
+  const contractFailureDiagnostic = evaluateSafranHrDryRunDiagnostic(
+    inputSnapshot,
+    missingContractField,
+    dependencies,
+  );
+
+  assert.equal(contractFailureDiagnostic.generalEnvelopeValidationResult.ok, true);
+  assert.equal(contractFailureDiagnostic.contractValidatorWouldPersist, false);
+  assert.equal(contractFailureDiagnostic.dataOnlyShadowGateWouldPersist, false);
+  assert.equal(
+    contractFailureDiagnostic.contractValidationResult.errors.some(
+      (error) => error.category === "structural",
+    ),
+    true,
+  );
+
+  const referenceMismatchReport = clone(validReport);
+  referenceMismatchReport.locale = "en";
+  const referenceMismatchDiagnostic = evaluateSafranHrDryRunDiagnostic(
+    inputSnapshot,
+    referenceMismatchReport,
+    dependencies,
+  );
+
+  assert.equal(referenceMismatchDiagnostic.generalEnvelopeValidationResult.ok, true);
+  assert.equal(referenceMismatchDiagnostic.contractValidatorWouldPersist, true);
+  assert.equal(referenceMismatchDiagnostic.safranValidatorWouldPersist, false);
+  assert.equal(referenceMismatchDiagnostic.dataOnlyShadowGateWouldPersist, false);
+  assert.equal(
+    referenceMismatchDiagnostic.safranDataReferenceValidationResult.errors.some(
+      (error) => error.category === "source_integrity",
+    ),
+    true,
+  );
+
+  const reportAgnosticEnvelope = validateGeneralEnvelope({
+    providerResponseReceived: true,
+    parseResult: { ok: true, error: null },
+    parsedOutput: {},
+  });
+  assert.equal(reportAgnosticEnvelope.ok, true);
+
+  const emptyObjectDiagnostic = evaluateSafranHrDryRunDiagnostic(
+    inputSnapshot,
+    {},
+    dependencies,
+  );
+  assert.equal(emptyObjectDiagnostic.generalEnvelopeValidationResult.ok, true);
+  assert.equal(emptyObjectDiagnostic.contractValidatorWouldPersist, false);
+  assert.equal(emptyObjectDiagnostic.dataOnlyShadowGateWouldPersist, false);
+
+  const parseFailureDiagnostic = evaluateSafranHrDryRunDiagnostic(
+    inputSnapshot,
+    undefined,
+    dependencies,
+    {
+      providerResponseReceived: true,
+      parseResult: { ok: false, error: "invalid JSON" },
+    },
+  );
+  assert.equal(parseFailureDiagnostic.generalEnvelopeValidationResult.ok, false);
+  assert.equal(parseFailureDiagnostic.dataOnlyShadowGateWouldPersist, false);
+
+  assert.match(
+    artifact.validationInventory.relativeProtectionComparedWithMwms,
+    /weaker/i,
+  );
+  assert.equal(
+    artifact.validationInventory.deterministicReferenceGaps.some(
+      (item) => /no structured overall\/verbal\/figural\/numeric score fields/i.test(item),
+    ),
     true,
   );
 
