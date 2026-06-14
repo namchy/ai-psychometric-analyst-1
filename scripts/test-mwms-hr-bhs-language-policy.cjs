@@ -291,16 +291,29 @@ function main() {
     "Ovaj snapshot pokazuje moderate signal koji treba citati oprezno.";
   bsReport.manager_support_guidance[0].recommendation =
     "Koristi ovaj high signal kao prakticnu temu za razgovor.";
+  const bsReportBeforeValidation = clone(bsReport);
+  const originalWarn = console.warn;
+  const warningCalls = [];
+  console.warn = (...args) => {
+    warningCalls.push(args);
+  };
 
-  const validatedBsReport = validateStructuredReport(bsReport, bsInput);
+  let validatedBsReport;
+
+  try {
+    validatedBsReport = validateStructuredReport(bsReport, bsInput);
+  } finally {
+    console.warn = originalWarn;
+  }
+
   assert.equal(validatedBsReport.locale, "bs");
   assert.equal(validatedBsReport.meta.language, "bs");
-  assert.doesNotMatch(validatedBsReport.key_motivational_drivers[0].evidence, /\bsnapshot\b/i);
-  assert.doesNotMatch(validatedBsReport.key_motivational_drivers[0].evidence, /\bmoderate\b/i);
-  assert.match(validatedBsReport.key_motivational_drivers[0].evidence, /izvještaj/i);
-  assert.match(validatedBsReport.key_motivational_drivers[0].evidence, /umjereno izrazeno|umjereno izraženo/i);
-  assert.doesNotMatch(validatedBsReport.manager_support_guidance[0].recommendation, /\bhigh\b/i);
-  assert.match(validatedBsReport.manager_support_guidance[0].recommendation, /visoko izrazeno|visoko izraženo/i);
+  assert.deepEqual(validatedBsReport, bsReportBeforeValidation);
+  assert.match(validatedBsReport.key_motivational_drivers[0].evidence, /\bsnapshot\b/i);
+  assert.match(validatedBsReport.key_motivational_drivers[0].evidence, /\bmoderate\b/i);
+  assert.match(validatedBsReport.manager_support_guidance[0].recommendation, /\bhigh\b/i);
+  assert.equal(warningCalls.length > 0, true);
+  assert.match(String(warningCalls[0][0]), /non-blocking findings/i);
   assert.equal(validatedBsReport.contractVersion, "mwms_hr_report_v1");
   assert.equal(validatedBsReport.reportType, "mwms_hr_report_v1");
   assert.equal(validatedBsReport.testSlug, "mwms_v1");
@@ -315,10 +328,17 @@ function main() {
   const invalidBsReport = buildValidReport(bsInput);
   invalidBsReport.interpretation_note =
     "Ti treba da citas ovaj prompt kao finalnu odluku o kandidatu.";
-  assert.throws(
-    () => validateStructuredReport(invalidBsReport, bsInput),
-    /global BHS MWMS HR output validation.*second-person singular/i,
-  );
+  const invalidBsReportBeforeValidation = clone(invalidBsReport);
+  console.warn = () => {};
+
+  try {
+    assert.deepEqual(
+      validateStructuredReport(invalidBsReport, bsInput),
+      invalidBsReportBeforeValidation,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
 
   const invalidMwmsReport = buildValidReport(bsInput);
   invalidMwmsReport.safety_checks.noScoreMutation = false;

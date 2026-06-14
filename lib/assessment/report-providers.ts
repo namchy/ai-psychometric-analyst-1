@@ -519,7 +519,9 @@ export function validateRuntimeCompletedAssessmentReport(
   }
 
   if (isMwmsTestSlug(context.testSlug) && context.audience === "hr") {
-    const validationResult = validateMwmsHrReportV1(value);
+    const validationResult = validateMwmsHrReportV1(value, {
+      enforceProseGuardrails: false,
+    });
 
     if (!validationResult.ok) {
       return {

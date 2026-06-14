@@ -378,20 +378,18 @@ async function main() {
   assert.equal(validatedMwmsBs.meta.language, originalMwmsLanguage);
   assert.equal(validatedMwmsBs.motivation_profile_snapshot.dimensions[0].rawScore, originalMwmsRawScore);
   assert.equal(validatedMwmsBs.motivation_profile_snapshot.dimensions[0].band, originalMwmsBand);
-  assert.doesNotMatch(validatedMwmsBs.key_motivational_drivers[0].evidence, /\bsnapshot\b/i);
-  assert.doesNotMatch(validatedMwmsBs.key_motivational_drivers[0].evidence, /\bmoderate\b/i);
-  assert.match(validatedMwmsBs.key_motivational_drivers[0].evidence, /izvještaj/i);
-  assert.match(validatedMwmsBs.key_motivational_drivers[0].evidence, /umjereno izrazeno|umjereno izraženo/i);
-  assert.match(validatedMwmsBs.manager_support_guidance[0].recommendation, /visoko izrazeno|visoko izraženo/i);
-  assert.match(validatedMwmsBs.work_context_hypotheses[0].verification, /izvještaj/i);
+  assert.match(validatedMwmsBs.key_motivational_drivers[0].evidence, /\bsnapshot\b/i);
+  assert.match(validatedMwmsBs.key_motivational_drivers[0].evidence, /\bmoderate\b/i);
+  assert.match(validatedMwmsBs.manager_support_guidance[0].recommendation, /\bhigh\b/i);
+  assert.match(validatedMwmsBs.work_context_hypotheses[0].verification, /\bsnapshot\b/i);
 
   const mwmsGlobalGateReport = clone(mwmsBaseResult.report);
   mwmsGlobalGateReport.interpretation_note =
     "Ti treba da citas ovaj prompt kao finalnu odluku o kandidatu.";
-  mwmsGlobalGateReport.safety_checks.noScoreMutation = false;
-  assert.throws(
-    () => validateStructuredReport(mwmsGlobalGateReport, mwmsBsInput),
-    /global BHS MWMS HR output validation.*second-person singular/i,
+  assert.deepEqual(
+    validateStructuredReport(mwmsGlobalGateReport, mwmsBsInput),
+    mwmsGlobalGateReport,
+    "MWMS HR BHS findings must be diagnostic while SAFRAN/IPIP remain blocking.",
   );
 
   console.log("test-single-test-hr-bhs-policy-family: ok");

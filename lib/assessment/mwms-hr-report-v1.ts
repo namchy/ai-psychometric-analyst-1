@@ -812,6 +812,7 @@ export function validateMwmsHrReportV1(
   value: unknown,
   options?: {
     expectedInput?: MwmsHrReportInput;
+    enforceProseGuardrails?: boolean;
   },
 ): { ok: true; value: MwmsHrReportV1 } | { ok: false; errors: string[] } {
   const errors: string[] = [];
@@ -947,7 +948,10 @@ export function validateMwmsHrReportV1(
 
   if (errors.length === 0) {
     const report = value as MwmsHrReportV1;
-    validateForbiddenContent(report, errors);
+
+    if (options?.enforceProseGuardrails !== false) {
+      validateForbiddenContent(report, errors);
+    }
 
     if (options?.expectedInput) {
       validateSnapshotMatchesInput(report, options.expectedInput, errors);

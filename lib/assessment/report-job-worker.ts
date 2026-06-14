@@ -10,7 +10,12 @@ import {
   MWMS_PARTICIPANT_REPORT_CONTRACT,
   isMwmsTestSlug,
 } from "@/lib/assessment/mwms-report-contract";
-import { MWMS_HR_REPORT_V1_CONTRACT } from "@/lib/assessment/mwms-hr-report-v1";
+import {
+  MWMS_HR_REPORT_V1_CONTRACT,
+  formatMwmsHrReportValidationErrors,
+  validateMwmsHrReportV1,
+  type MwmsHrReportInput,
+} from "@/lib/assessment/mwms-hr-report-v1";
 import {
   SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT,
   isSafranTestSlug,
@@ -103,6 +108,19 @@ type ReportJobFailureResult = {
 const REPORT_PROMPT_KEY = "completed_assessment_report";
 
 export type ProcessClaimedReportJobResult = ReportJobSuccess | ReportJobFailureResult;
+
+function isMwmsHrReportInput(value: unknown): value is MwmsHrReportInput {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "testSlug" in value &&
+    value.testSlug === "mwms_v1" &&
+    "audience" in value &&
+    value.audience === "hr" &&
+    "dimensions" in value &&
+    Array.isArray(value.dimensions)
+  );
+}
 
 class ReportJobError extends Error {
   constructor(
@@ -617,10 +635,35 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
         : "big_five",
   });
 
-  const validationResult = validateRuntimeCompletedAssessmentReport(generationResult.report, {
-    testSlug: job.test_slug,
-    audience: job.audience,
-  });
+  const validationResult =
+    isMwmsTestSlug(job.test_slug) && job.audience === "hr"
+      ? (() => {
+          if (!isMwmsHrReportInput(preparedInput.promptInput)) {
+            return {
+              ok: false as const,
+              reason: "MWMS HR prepared input failed data/reference validation.",
+            };
+          }
+
+          const mwmsValidation = validateMwmsHrReportV1(generationResult.report, {
+            expectedInput: preparedInput.promptInput,
+            enforceProseGuardrails: false,
+          });
+
+          return mwmsValidation.ok
+            ? {
+                ok: true as const,
+                value: mwmsValidation.value,
+              }
+            : {
+                ok: false as const,
+                reason: formatMwmsHrReportValidationErrors(mwmsValidation.errors),
+              };
+        })()
+      : validateRuntimeCompletedAssessmentReport(generationResult.report, {
+          testSlug: job.test_slug,
+          audience: job.audience,
+        });
 
   if (!validationResult.ok) {
     throw new ReportJobError(

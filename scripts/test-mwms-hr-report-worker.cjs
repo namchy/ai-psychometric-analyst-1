@@ -66,6 +66,8 @@ const workerSource = fs.readFileSync(
 assert.equal(/MWMS V1 supports participant reports only/i.test(workerSource), false);
 assert.equal(/MWMS_HR_REPORT_V1_CONTRACT\.promptKey/.test(workerSource), true);
 assert.equal(/isMwmsTestSlug\(job\.test_slug\) && job\.audience === "hr"/.test(workerSource), true);
+assert.equal(/expectedInput:\s*preparedInput\.promptInput/.test(workerSource), true);
+assert.equal(/enforceProseGuardrails:\s*false/.test(workerSource), true);
 
 const { buildPreparedReportGenerationInput } = require("../lib/assessment/report-provider-helpers.ts");
 const { mockReportProvider } = require("../lib/assessment/report-provider-mock.ts");
@@ -120,6 +122,7 @@ async function main() {
 
   const contractValidation = validateMwmsHrReportV1(generationResult.report, {
     expectedInput: preparedInput.promptInput,
+    enforceProseGuardrails: false,
   });
   assert.equal(
     contractValidation.ok,
@@ -131,6 +134,59 @@ async function main() {
   assert.equal(generationResult.report.reportType, "mwms_hr_report_v1");
   assert.equal(generationResult.report.audience, "hr");
   assert.equal(generationResult.report.motivation_profile_snapshot.dimensions.length, 6);
+
+  const proseFailure = JSON.parse(JSON.stringify(generationResult.report));
+  proseFailure.interpretation_note =
+    "Ovaj tekst kaze da se preporucuje se zaposljavanje, ali prose heuristika nije production data gate.";
+  const proseDiagnosticValidation = validateMwmsHrReportV1(proseFailure, {
+    expectedInput: preparedInput.promptInput,
+  });
+  assert.equal(proseDiagnosticValidation.ok, false);
+  const proseProductionValidation = validateMwmsHrReportV1(proseFailure, {
+    expectedInput: preparedInput.promptInput,
+    enforceProseGuardrails: false,
+  });
+  assert.equal(
+    proseProductionValidation.ok,
+    true,
+    proseProductionValidation.ok
+      ? undefined
+      : formatMwmsHrReportValidationErrors(proseProductionValidation.errors),
+  );
+  const proseRuntimeValidation = validateRuntimeCompletedAssessmentReport(proseFailure, {
+    testSlug: "mwms_v1",
+    audience: "hr",
+  });
+  assert.equal(
+    proseRuntimeValidation.ok,
+    true,
+    proseRuntimeValidation.ok ? undefined : proseRuntimeValidation.reason,
+  );
+
+  const contractFailure = JSON.parse(JSON.stringify(generationResult.report));
+  delete contractFailure.interpretation_note;
+  const contractFailureValidation = validateMwmsHrReportV1(contractFailure, {
+    expectedInput: preparedInput.promptInput,
+    enforceProseGuardrails: false,
+  });
+  assert.equal(contractFailureValidation.ok, false);
+  const contractFailureRuntimeValidation = validateRuntimeCompletedAssessmentReport(contractFailure, {
+    testSlug: "mwms_v1",
+    audience: "hr",
+  });
+  assert.equal(contractFailureRuntimeValidation.ok, false);
+
+  const referenceFailure = JSON.parse(JSON.stringify(generationResult.report));
+  referenceFailure.motivation_profile_snapshot.dimensions[0].rawScore += 0.25;
+  const referenceFailureValidation = validateMwmsHrReportV1(referenceFailure, {
+    expectedInput: preparedInput.promptInput,
+    enforceProseGuardrails: false,
+  });
+  assert.equal(referenceFailureValidation.ok, false);
+  assert.match(
+    formatMwmsHrReportValidationErrors(referenceFailureValidation.errors),
+    /rawScore/i,
+  );
 
   const simulatedWorkerResult = {
     status: "ready",

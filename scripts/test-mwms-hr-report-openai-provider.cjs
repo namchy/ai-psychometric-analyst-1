@@ -243,9 +243,10 @@ async function main() {
   const forbiddenReport = clone(hrMockResult.report);
   forbiddenReport.interpretation_note =
     "Ovaj tekst kaze da se preporucuje se zaposljavanje i zato mora pasti validaciju.";
-  assert.throws(
-    () => validateStructuredReport(forbiddenReport, hrInput),
-    /MWMS HR report validation.*Forbidden phrase/i,
+  assert.deepEqual(
+    validateStructuredReport(forbiddenReport, hrInput),
+    forbiddenReport,
+    "MWMS prose heuristics must not block the production data-only gate.",
   );
 
   const participantMockResult = await mockReportProvider.generateReport(participantInput);
