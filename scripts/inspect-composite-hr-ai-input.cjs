@@ -237,7 +237,42 @@ async function loadCompositeReportIdentity(reportId, createSupabaseClient) {
   };
 }
 
-async function resolveProductionInputIdentity(identity, deps) {
+async function loadLatestCompositeReportIdentityForAssignment(
+  assessmentAssignmentId,
+  createSupabaseClient,
+) {
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from("assessment_reports")
+    .select("id, assessment_assignment_id, organization_id, participant_id, report_snapshot")
+    .eq("assessment_assignment_id", assessmentAssignmentId)
+    .eq("report_type", "composite")
+    .eq("audience", "hr")
+    .eq("source_type", "assessment")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Failed to load latest Composite HR assessment report for assignment ${assessmentAssignmentId}: ${error.message}`,
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    reportId: data.id,
+    assessmentAssignmentId: data.assessment_assignment_id,
+    organizationId: data.organization_id,
+    participantId: data.participant_id,
+    reportSnapshot: data.report_snapshot ?? null,
+  };
+}
+
+async function resolveProductionInputIdentity(identity, deps, options = {}) {
   if (identity.kind === "assessment_assignment_id") {
     if (identity.reportId) {
       const reportIdentity = await deps.loadReportIdentity(
@@ -250,6 +285,17 @@ async function resolveProductionInputIdentity(identity, deps) {
       }
 
       return reportIdentity;
+    }
+
+    if (options.preferPersistedReportForAssignment === true) {
+      const persistedReport = await deps.loadLatestReportIdentityForAssignment(
+        identity.assessmentAssignmentId,
+        deps.createSupabaseClient,
+      );
+
+      if (persistedReport) {
+        return persistedReport;
+      }
     }
 
     return {
@@ -279,6 +325,9 @@ async function runCompositeHrAiInputCapture({
   getConfig,
   createSupabaseClient,
   loadReportIdentity,
+  loadLatestReportIdentityForAssignment,
+  preferPersistedReportForAssignment = false,
+  persistDump = true,
 } = {}) {
   if (!isExecutionConfirmed(env)) {
     return buildNoCallSummary();
@@ -303,15 +352,26 @@ async function runCompositeHrAiInputCapture({
     getConfig: getConfig ?? configModule.getAiReportConfig,
     createSupabaseClient: createSupabaseClient ?? supabaseModule.createSupabaseAdminClient,
     loadReportIdentity: loadReportIdentity ?? loadReportIdentityDefault,
+    loadLatestReportIdentityForAssignment:
+      loadLatestReportIdentityForAssignment ?? loadLatestReportIdentityForAssignmentDefault,
   };
 
   async function loadReportIdentityDefault(reportId, createClient) {
     return loadCompositeReportIdentity(reportId, createClient);
   }
 
+  async function loadLatestReportIdentityForAssignmentDefault(
+    assessmentAssignmentId,
+    createClient,
+  ) {
+    return loadLatestCompositeReportIdentityForAssignment(assessmentAssignmentId, createClient);
+  }
+
   const timestamp = now();
   const identity = resolveIdentity({ env, argv });
-  const resolvedIdentity = await resolveProductionInputIdentity(identity, deps);
+  const resolvedIdentity = await resolveProductionInputIdentity(identity, deps, {
+    preferPersistedReportForAssignment,
+  });
   const inputSnapshot = await deps.buildInputSnapshot({
     assessmentAssignmentId: resolvedIdentity.assessmentAssignmentId,
     organizationId: resolvedIdentity.organizationId,
@@ -332,7 +392,7 @@ async function runCompositeHrAiInputCapture({
     boundaryDiagnostic,
   );
   const schemaName = requestBody.response_format.json_schema.name;
-  const dumpPath = resolveDumpPath({ env, argv, now });
+  const dumpPath = persistDump ? resolveDumpPath({ env, argv, now }) : null;
   const metadata = {
     timestamp,
     reportFamily: "composite_hr",
@@ -405,8 +465,10 @@ async function runCompositeHrAiInputCapture({
   };
   const sanitizedArtifact = sanitizeForDump(artifact);
 
-  writeFile(dumpPath, `${JSON.stringify(sanitizedArtifact, null, 2)}\n`, { mode: 0o600 });
-  chmodFile(dumpPath, 0o600);
+  if (dumpPath !== null) {
+    writeFile(dumpPath, `${JSON.stringify(sanitizedArtifact, null, 2)}\n`, { mode: 0o600 });
+    chmodFile(dumpPath, 0o600);
+  }
 
   return sanitizedArtifact;
 }
@@ -456,4 +518,5 @@ module.exports = {
   resolveIdentity,
   runCompositeHrAiInputCapture,
   sanitizeForDump,
+  loadLatestCompositeReportIdentityForAssignment,
 };
