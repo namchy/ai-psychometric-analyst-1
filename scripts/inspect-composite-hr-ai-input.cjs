@@ -88,6 +88,7 @@ function buildNoCallSummary() {
     openAiCalled: false,
     reportRegenerated: false,
     productionFlowChanged: false,
+    productionBehaviorChanged: false,
     reconstructedInputUsed: false,
     wouldDo: [
       `Resolve real identity from ${ASSIGNMENT_ID_ENV} or ${REPORT_ID_ENV}.`,
@@ -212,7 +213,7 @@ async function loadCompositeReportIdentity(reportId, createSupabaseClient) {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("assessment_reports")
-    .select("id, assessment_assignment_id, organization_id, participant_id, report_type, audience, source_type")
+    .select("id, assessment_assignment_id, organization_id, participant_id, report_type, audience, source_type, report_snapshot")
     .eq("id", reportId)
     .eq("report_type", "composite")
     .eq("audience", "hr")
@@ -232,16 +233,31 @@ async function loadCompositeReportIdentity(reportId, createSupabaseClient) {
     assessmentAssignmentId: data.assessment_assignment_id,
     organizationId: data.organization_id,
     participantId: data.participant_id,
+    reportSnapshot: data.report_snapshot ?? null,
   };
 }
 
 async function resolveProductionInputIdentity(identity, deps) {
   if (identity.kind === "assessment_assignment_id") {
+    if (identity.reportId) {
+      const reportIdentity = await deps.loadReportIdentity(
+        identity.reportId,
+        deps.createSupabaseClient,
+      );
+
+      if (reportIdentity.assessmentAssignmentId !== identity.assessmentAssignmentId) {
+        throw new Error(`${REPORT_ID_ENV} does not belong to ${ASSIGNMENT_ID_ENV}.`);
+      }
+
+      return reportIdentity;
+    }
+
     return {
       reportId: identity.reportId,
       assessmentAssignmentId: identity.assessmentAssignmentId,
       organizationId: undefined,
       participantId: undefined,
+      reportSnapshot: null,
     };
   }
 
@@ -258,9 +274,10 @@ async function runCompositeHrAiInputCapture({
   buildInputSnapshot,
   buildRequestPayload,
   buildRequestBody,
+  buildBoundaryDiagnostic,
   getConfig,
   createSupabaseClient,
-    loadReportIdentity,
+  loadReportIdentity,
 } = {}) {
   if (!isExecutionConfirmed(env)) {
     return buildNoCallSummary();
@@ -277,6 +294,8 @@ async function runCompositeHrAiInputCapture({
     buildInputSnapshot: buildInputSnapshot ?? inputModule.buildCompositeHrInputSnapshot,
     buildRequestPayload: buildRequestPayload ?? providerModule.buildOpenAiCompositeHrReportRequestPayload,
     buildRequestBody: buildRequestBody ?? providerModule.buildCompositeHrOpenAiChatCompletionsRequestBody,
+    buildBoundaryDiagnostic:
+      buildBoundaryDiagnostic ?? providerModule.buildCompositeHrBoundaryDiagnostic,
     getConfig: getConfig ?? configModule.getAiReportConfig,
     createSupabaseClient: createSupabaseClient ?? supabaseModule.createSupabaseAdminClient,
     loadReportIdentity: loadReportIdentity ?? loadReportIdentityDefault,
@@ -299,6 +318,10 @@ async function runCompositeHrAiInputCapture({
   const provider = config.provider === "openai" || env.AI_REPORT_PROVIDER === "openai" ? "openai" : config.provider;
   const requestPayload = deps.buildRequestPayload(inputSnapshot);
   const requestBody = deps.buildRequestBody(requestPayload, { model });
+  const boundaryDiagnostic = deps.buildBoundaryDiagnostic(
+    inputSnapshot,
+    resolvedIdentity.reportSnapshot,
+  );
   const schemaName = requestBody.response_format.json_schema.name;
   const dumpPath = resolveDumpPath({ env, argv, now });
   const metadata = {
@@ -318,6 +341,7 @@ async function runCompositeHrAiInputCapture({
     openAiCalled: false,
     reportRegenerated: false,
     productionFlowChanged: false,
+    productionBehaviorChanged: false,
     reconstructedInputUsed: false,
   };
   const reportContract = {
@@ -347,6 +371,15 @@ async function runCompositeHrAiInputCapture({
     },
     reportContract,
     requestAuthority,
+    boundaryDiagnostic,
+    validationInventory: boundaryDiagnostic.validationInventory,
+    dataOnlyReadiness: boundaryDiagnostic.dataOnlyReadiness,
+    diagnosticOnlyCategories: boundaryDiagnostic.diagnosticOnlyCategories,
+    mutationRiskInventory: boundaryDiagnostic.mutationRiskInventory,
+    productionBehaviorChanged: false,
+    databaseWrites: false,
+    openAiCalled: false,
+    reportRegenerated: false,
     preparedOpenAiRequest: {
       schemaName,
       requestBody,
@@ -374,6 +407,8 @@ async function main() {
             inputSummary: result.inputSummary,
             reportContract: result.reportContract,
             requestAuthority: result.requestAuthority,
+            boundaryDiagnostic: result.boundaryDiagnostic,
+            dataOnlyReadiness: result.dataOnlyReadiness,
             requestDumpPath: result.requestDumpPath,
           },
       null,

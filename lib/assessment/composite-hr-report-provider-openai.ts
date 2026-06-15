@@ -88,6 +88,46 @@ export type CompositeHrReviewerBoundary = {
   hardFailureReasons: string[];
 };
 
+export type CompositeHrBoundaryCategory =
+  | "data_contract_blocking"
+  | "deterministic_reference_blocking"
+  | "evidence_integrity_blocking"
+  | "prose_style_diagnostic_only"
+  | "bhs_language_diagnostic_only"
+  | "reviewer_quality_diagnostic_only"
+  | "mutation_or_rewrite_risk";
+
+export type CompositeHrBoundaryInventoryItem = {
+  id: string;
+  category: CompositeHrBoundaryCategory;
+  recommendedBlocking: boolean;
+  currentProductionBehavior: string;
+  futureStrictReferenceRequirement: string | null;
+};
+
+export type CompositeHrBoundaryDiagnostic = {
+  mode: "read_only_dev_diagnostic";
+  reportSnapshotStatus:
+    | "evaluated"
+    | "not_evaluated_no_report_snapshot"
+    | "invalid_report_snapshot";
+  productionBehaviorChanged: false;
+  validationInventory: CompositeHrBoundaryInventoryItem[];
+  dataOnlyReadiness: {
+    status: "not_ready";
+    blockingCandidates: CompositeHrBoundaryCategory[];
+    diagnosticOnlyCategories: CompositeHrBoundaryCategory[];
+    reasons: string[];
+  };
+  persistedSnapshotEvaluation: {
+    contract: { status: "pass" | "fail" | "not_evaluated"; findings: string[] };
+    deterministicReference: { status: "pass" | "fail" | "not_evaluated"; findings: string[] };
+    evidenceIntegrity: { status: "pass" | "fail" | "not_evaluated"; findings: string[] };
+  };
+  diagnosticOnlyCategories: CompositeHrBoundaryCategory[];
+  mutationRiskInventory: CompositeHrBoundaryInventoryItem[];
+};
+
 type CompositeHrOpenAiChatCompletionsRequestBody = {
   model: string;
   response_format: {
@@ -1305,6 +1345,144 @@ export async function requestOpenAiCompositeHrReportRaw(
 
 function formatDiagnosticError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+export function buildCompositeHrBoundaryDiagnostic(
+  input: CompositeHrInputSnapshot,
+  persistedReportSnapshot?: unknown | null,
+): CompositeHrBoundaryDiagnostic {
+  const validationInventory: CompositeHrBoundaryInventoryItem[] = [
+    {
+      id: "report_contract_shape",
+      category: "data_contract_blocking",
+      recommendedBlocking: true,
+      currentProductionBehavior: "The production provider validates the Composite HR report contract before persistence.",
+      futureStrictReferenceRequirement: null,
+    },
+    {
+      id: "immutable_source_identity",
+      category: "deterministic_reference_blocking",
+      recommendedBlocking: true,
+      currentProductionBehavior: "The production provider compares source attempts, test slugs, generatedFor identifiers, locale and input contract version.",
+      futureStrictReferenceRequirement: "Keep exact equality against the production CompositeHrInputSnapshot.",
+    },
+    {
+      id: "locked_evidence_integrity",
+      category: "evidence_integrity_blocking",
+      recommendedBlocking: true,
+      currentProductionBehavior: "The production provider validates evidence after applying locked evidence values.",
+      futureStrictReferenceRequirement: "Validate raw AI evidence against deterministic catalog entries before any rewrite.",
+    },
+    {
+      id: "prose_style_heuristics",
+      category: "prose_style_diagnostic_only",
+      recommendedBlocking: false,
+      currentProductionBehavior: "Some prose, addressing-form and hard-safety string heuristics currently block the production provider.",
+      futureStrictReferenceRequirement: null,
+    },
+    {
+      id: "bhs_language_quality",
+      category: "bhs_language_diagnostic_only",
+      recommendedBlocking: false,
+      currentProductionBehavior: "Selected BHS language-quality findings currently block the production provider.",
+      futureStrictReferenceRequirement: null,
+    },
+    {
+      id: "openai_reviewer_quality",
+      category: "reviewer_quality_diagnostic_only",
+      recommendedBlocking: false,
+      currentProductionBehavior: "The production provider calls an AI reviewer and can reject the report.",
+      futureStrictReferenceRequirement: null,
+    },
+    {
+      id: "locked_evidence_value_rewrite",
+      category: "mutation_or_rewrite_risk",
+      recommendedBlocking: false,
+      currentProductionBehavior: "The production provider rewrites matching evidence labels and values from the locked deterministic catalog before persistence.",
+      futureStrictReferenceRequirement: "Define exact allowed evidence references and reject raw mismatches instead of repairing them.",
+    },
+    {
+      id: "provider_metadata_rewrite",
+      category: "mutation_or_rewrite_risk",
+      recommendedBlocking: false,
+      currentProductionBehavior: "The production provider replaces provider metadata and generatedAt before persistence.",
+      futureStrictReferenceRequirement: "Separate provider-owned metadata from AI-owned report content in the strict reference contract.",
+    },
+  ];
+  const diagnosticOnlyCategories: CompositeHrBoundaryCategory[] = [
+    "prose_style_diagnostic_only",
+    "bhs_language_diagnostic_only",
+    "reviewer_quality_diagnostic_only",
+  ];
+  const blockingCandidates: CompositeHrBoundaryCategory[] = [
+    "data_contract_blocking",
+    "deterministic_reference_blocking",
+    "evidence_integrity_blocking",
+  ];
+  const persistedSnapshotEvaluation: CompositeHrBoundaryDiagnostic["persistedSnapshotEvaluation"] = {
+    contract: { status: "not_evaluated", findings: [] },
+    deterministicReference: { status: "not_evaluated", findings: [] },
+    evidenceIntegrity: { status: "not_evaluated", findings: [] },
+  };
+  let reportSnapshotStatus: CompositeHrBoundaryDiagnostic["reportSnapshotStatus"] =
+    "not_evaluated_no_report_snapshot";
+
+  if (persistedReportSnapshot !== undefined && persistedReportSnapshot !== null) {
+    const validation = validateCompositeHrReportSnapshot(persistedReportSnapshot);
+
+    if (!validation.ok) {
+      reportSnapshotStatus = "invalid_report_snapshot";
+      persistedSnapshotEvaluation.contract = {
+        status: "fail",
+        findings: validation.errors,
+      };
+    } else {
+      reportSnapshotStatus = "evaluated";
+      persistedSnapshotEvaluation.contract = { status: "pass", findings: [] };
+
+      try {
+        assertImmutableSource(validation.value, input);
+        persistedSnapshotEvaluation.deterministicReference = { status: "pass", findings: [] };
+      } catch (error) {
+        persistedSnapshotEvaluation.deterministicReference = {
+          status: "fail",
+          findings: [formatDiagnosticError(error)],
+        };
+      }
+
+      try {
+        assertLockedCompositeEvidenceIntegrity(validation.value, input);
+        persistedSnapshotEvaluation.evidenceIntegrity = { status: "pass", findings: [] };
+      } catch (error) {
+        persistedSnapshotEvaluation.evidenceIntegrity = {
+          status: "fail",
+          findings: [formatDiagnosticError(error)],
+        };
+      }
+    }
+  }
+
+  return {
+    mode: "read_only_dev_diagnostic",
+    reportSnapshotStatus,
+    productionBehaviorChanged: false,
+    validationInventory,
+    dataOnlyReadiness: {
+      status: "not_ready",
+      blockingCandidates,
+      diagnosticOnlyCategories,
+      reasons: [
+        "Production still hard-blocks prose, BHS language and AI reviewer heuristics.",
+        "Raw AI evidence is repaired through locked evidence mutation before persistence.",
+        "A future strict boundary must validate raw deterministic references without canonicalization or repair.",
+      ],
+    },
+    persistedSnapshotEvaluation,
+    diagnosticOnlyCategories,
+    mutationRiskInventory: validationInventory.filter(
+      (item) => item.category === "mutation_or_rewrite_risk",
+    ),
+  };
 }
 
 export function evaluateCompositeHrReportValidatorBoundary(

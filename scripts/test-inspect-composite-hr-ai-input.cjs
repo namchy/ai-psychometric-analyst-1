@@ -16,12 +16,14 @@ assert.match(scriptSource, /databaseWrites:\s*false/);
 assert.match(scriptSource, /openAiCalled:\s*false/);
 assert.match(scriptSource, /reportRegenerated:\s*false/);
 assert.match(scriptSource, /productionFlowChanged:\s*false/);
+assert.match(scriptSource, /productionBehaviorChanged:\s*false/);
 assert.match(scriptSource, /reconstructedInputUsed:\s*false/);
 assert.match(scriptSource, /mode:\s*0o600/);
 assert.doesNotMatch(scriptSource, /fetch\(/);
 assert.doesNotMatch(scriptSource, /\.(?:insert|update|upsert|delete)\(/);
 assert.match(providerSource, /export function buildOpenAiCompositeHrReportRequestPayload/);
 assert.match(providerSource, /export function buildCompositeHrOpenAiChatCompletionsRequestBody/);
+assert.match(providerSource, /export function buildCompositeHrBoundaryDiagnostic/);
 
 const {
   ASSIGNMENT_ID_ENV,
@@ -215,6 +217,7 @@ async function main() {
   assert.equal(noCall.openAiCalled, false);
   assert.equal(noCall.reportRegenerated, false);
   assert.equal(noCall.productionFlowChanged, false);
+  assert.equal(noCall.productionBehaviorChanged, false);
   assert.equal(noCall.reconstructedInputUsed, false);
   assert.equal(buildCalls, 0);
   assert.equal(writes, 0);
@@ -261,6 +264,59 @@ async function main() {
   installTypeScriptRuntime();
   const providerModule = require("../lib/assessment/composite-hr-report-provider-openai.ts");
   const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const mismatchedEvidenceSnapshot = {
+    contractVersion: "composite_hr_v1",
+    reportType: "composite",
+    audience: "hr",
+    sourceType: "assessment",
+    locale: "bs",
+    generatedFor: inputSnapshot.generatedFor,
+    source: {
+      inputContractVersion: inputSnapshot.contractVersion,
+      sourceAttemptIds: inputSnapshot.sourceAttempts.map((attempt) => attempt.attemptId),
+      testSlugs: inputSnapshot.coverage.completedTestSlugs,
+    },
+    summary: {
+      headline: "Pouzdan radni profil",
+      profileOverview: "Sazet pregled.",
+      keyStrengths: ["Snaga"],
+      watchouts: ["Provjera"],
+    },
+    integratedSignals: [
+      {
+        id: "signal-1",
+        title: "Signal",
+        body: "Opis",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Spremnost na saradnju",
+            value: "9.99 (Pogresno)",
+          },
+        ],
+      },
+    ],
+    interviewGuidance: { focusAreas: [] },
+    onboardingGuidance: { managementTips: [], supportNeeds: [] },
+    limitations: [],
+    metadata: {
+      provider: "openai",
+      providerVersion: "v1",
+      generatedAt: "2026-06-15T09:10:00.000Z",
+    },
+  };
+  const mismatchedEvidenceBefore = JSON.stringify(mismatchedEvidenceSnapshot);
+  const mismatchedEvidenceDiagnostic = providerModule.buildCompositeHrBoundaryDiagnostic(
+    inputSnapshot,
+    mismatchedEvidenceSnapshot,
+  );
+
+  assert.equal(mismatchedEvidenceDiagnostic.reportSnapshotStatus, "evaluated");
+  assert.equal(
+    mismatchedEvidenceDiagnostic.persistedSnapshotEvaluation.evidenceIntegrity.status,
+    "fail",
+  );
+  assert.equal(JSON.stringify(mismatchedEvidenceSnapshot), mismatchedEvidenceBefore);
   const requestPayload = providerModule.buildOpenAiCompositeHrReportRequestPayload(inputSnapshot);
   const directRequestBody = providerModule.buildCompositeHrOpenAiChatCompletionsRequestBody(
     requestPayload,
@@ -333,6 +389,7 @@ async function main() {
   assert.equal(artifact.metadata.openAiCalled, false);
   assert.equal(artifact.metadata.reportRegenerated, false);
   assert.equal(artifact.metadata.productionFlowChanged, false);
+  assert.equal(artifact.metadata.productionBehaviorChanged, false);
   assert.equal(artifact.metadata.reconstructedInputUsed, false);
   assert.equal(artifact.inputSummary.identity.assessmentAssignmentId, "assignment-1");
   assert.equal(artifact.inputSummary.sourceAttemptCount, 3);
@@ -348,6 +405,50 @@ async function main() {
   assert.equal(artifact.requestAuthority.promptSource, "code_prompt");
   assert.equal(artifact.requestAuthority.promptVersionId, null);
   assert.equal(artifact.requestAuthority.reportContractKey, "composite_hr_v1");
+  assert.equal(artifact.productionBehaviorChanged, false);
+  assert.equal(artifact.databaseWrites, false);
+  assert.equal(artifact.openAiCalled, false);
+  assert.equal(artifact.reportRegenerated, false);
+  assert.equal(artifact.boundaryDiagnostic.mode, "read_only_dev_diagnostic");
+  assert.equal(
+    artifact.boundaryDiagnostic.reportSnapshotStatus,
+    "not_evaluated_no_report_snapshot",
+  );
+  assert.equal(artifact.dataOnlyReadiness.status, "not_ready");
+  assert.deepEqual(artifact.diagnosticOnlyCategories, [
+    "prose_style_diagnostic_only",
+    "bhs_language_diagnostic_only",
+    "reviewer_quality_diagnostic_only",
+  ]);
+  for (const category of artifact.diagnosticOnlyCategories) {
+    assert.equal(
+      artifact.validationInventory
+        .filter((item) => item.category === category)
+        .some((item) => item.recommendedBlocking),
+      false,
+    );
+  }
+  for (const category of [
+    "data_contract_blocking",
+    "deterministic_reference_blocking",
+    "evidence_integrity_blocking",
+  ]) {
+    assert.equal(
+      artifact.validationInventory
+        .filter((item) => item.category === category)
+        .some((item) => item.recommendedBlocking),
+      true,
+    );
+  }
+  assert.equal(artifact.mutationRiskInventory.length >= 1, true);
+  assert.equal(
+    artifact.mutationRiskInventory.some(
+      (item) =>
+        item.id === "locked_evidence_value_rewrite" &&
+        item.futureStrictReferenceRequirement.includes("reject raw mismatches"),
+    ),
+    true,
+  );
   assert.equal(artifact.preparedOpenAiRequest.schemaName, "composite_hr_v1");
   assert.equal(artifact.preparedOpenAiRequest.requestBody.model, "gpt-5.5");
   assert.equal(
@@ -379,6 +480,7 @@ async function main() {
         assessmentAssignmentId: "assignment-1",
         organizationId: "org-1",
         participantId: "participant-1",
+        reportSnapshot: null,
       };
     },
     buildInputSnapshot: async (input) => {
@@ -402,6 +504,81 @@ async function main() {
   assert.equal(loadedReportId, "report-1");
   assert.equal(reportArtifact.inputSummary.identity.inputKind, "report_id");
   assert.equal(reportArtifact.inputSummary.identity.reportId, "report-1");
+  assert.equal(
+    reportArtifact.boundaryDiagnostic.reportSnapshotStatus,
+    "not_evaluated_no_report_snapshot",
+  );
+
+  const persistedSnapshot = {
+    contractVersion: "composite_hr_v1",
+    reportType: "composite",
+    audience: "hr",
+    sourceType: "assessment",
+    locale: "bs",
+    generatedFor: inputSnapshot.generatedFor,
+    source: {
+      inputContractVersion: inputSnapshot.contractVersion,
+      sourceAttemptIds: inputSnapshot.sourceAttempts.map((attempt) => attempt.attemptId),
+      testSlugs: inputSnapshot.coverage.completedTestSlugs,
+    },
+    summary: {
+      headline: "Pouzdan radni profil",
+      profileOverview: "Sažet pregled.",
+      keyStrengths: ["Snaga"],
+      watchouts: ["Provjera"],
+    },
+    integratedSignals: [],
+    interviewGuidance: {
+      focusAreas: [],
+    },
+    onboardingGuidance: {
+      managementTips: [],
+      supportNeeds: [],
+    },
+    limitations: [],
+    metadata: {
+      provider: "openai",
+      providerVersion: "v1",
+      generatedAt: "2026-06-15T09:10:00.000Z",
+    },
+  };
+  const persistedArtifact = await runCompositeHrAiInputCapture({
+    env: {
+      [CONFIRM_ENV]: "true",
+      [REPORT_ID_ENV]: "report-2",
+      AI_REPORT_MODEL: "gpt-5.5",
+    },
+    loadReportIdentity: async () => ({
+      reportId: "report-2",
+      assessmentAssignmentId: "assignment-1",
+      organizationId: "org-1",
+      participantId: "participant-1",
+      reportSnapshot: persistedSnapshot,
+    }),
+    buildInputSnapshot: async () => inputSnapshot,
+    getConfig: () => ({
+      provider: "openai",
+      model: "gpt-5.5",
+      openAiApiKey: null,
+      openAiTimeoutMs: 120000,
+    }),
+    writeFile: () => {},
+    chmodFile: () => {},
+  });
+
+  assert.equal(persistedArtifact.boundaryDiagnostic.reportSnapshotStatus, "evaluated");
+  assert.equal(
+    persistedArtifact.boundaryDiagnostic.persistedSnapshotEvaluation.contract.status,
+    "pass",
+  );
+  assert.equal(
+    persistedArtifact.boundaryDiagnostic.persistedSnapshotEvaluation.deterministicReference.status,
+    "pass",
+  );
+  assert.equal(
+    persistedArtifact.boundaryDiagnostic.persistedSnapshotEvaluation.evidenceIntegrity.status,
+    "pass",
+  );
 
   console.log("test-inspect-composite-hr-ai-input: ok");
 }
