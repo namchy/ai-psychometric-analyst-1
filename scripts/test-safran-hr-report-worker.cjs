@@ -62,6 +62,20 @@ const workerSource = fs.readFileSync(
   path.join(projectRoot, "lib/assessment/report-job-worker.ts"),
   "utf8",
 );
+const promptLookupSource = workerSource.match(
+  /async function loadPromptVersionForJob[\s\S]*?\n}\n\nasync function freezeProcessingReportMetadata/,
+)?.[0];
+
+assert.ok(promptLookupSource, "Expected to find SAFRAN HR worker prompt lookup.");
+assert.match(
+  promptLookupSource,
+  /isSafranTestSlug\(job\.test_slug\) && job\.audience === "hr"\s*\?\s*SAFRAN_HR_REPORT_V1_CONTRACT\.promptKey/,
+);
+assert.ok(
+  promptLookupSource.indexOf("SAFRAN_HR_REPORT_V1_CONTRACT.promptKey") <
+    promptLookupSource.lastIndexOf("REPORT_PROMPT_KEY"),
+  "SAFRAN HR contract prompt key must be selected before the generic fallback.",
+);
 
 assert.match(
   workerSource,
@@ -72,6 +86,7 @@ const {
   buildPreparedReportGenerationInput,
 } = require("../lib/assessment/report-provider-helpers.ts");
 const {
+  SAFRAN_HR_REPORT_V1_CONTRACT,
   buildMockSafranHrReportV1,
   validateSafranHrReport,
 } = require("../lib/assessment/safran-hr-report-v1.ts");
@@ -116,6 +131,12 @@ const preparedInput = buildPreparedReportGenerationInput(
     promptTemplate: null,
   },
 );
+
+assert.equal(
+  preparedInput.reportContract.promptKey,
+  SAFRAN_HR_REPORT_V1_CONTRACT.promptKey,
+);
+assert.notEqual(preparedInput.reportContract.promptKey, "completed_assessment_report");
 
 const report = buildMockSafranHrReportV1(preparedInput.promptInput);
 

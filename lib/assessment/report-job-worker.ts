@@ -17,6 +17,7 @@ import {
   type MwmsHrReportInput,
 } from "@/lib/assessment/mwms-hr-report-v1";
 import {
+  SAFRAN_HR_REPORT_V1_CONTRACT,
   formatSafranHrReportValidationErrors,
   validateSafranHrReport,
   type SafranHrReportInput,
@@ -428,11 +429,13 @@ async function loadPromptVersionForJob(
             ? MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey
             : isMwmsTestSlug(job.test_slug) && job.audience === "hr"
               ? MWMS_HR_REPORT_V1_CONTRACT.promptKey
-              : isSafranTestSlug(job.test_slug) && job.audience === "participant"
-                ? SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey
-                : isIpcTestSlug(job.test_slug)
-                  ? getIpcPromptContract(job.audience).promptKey
-                  : REPORT_PROMPT_KEY,
+              : isSafranTestSlug(job.test_slug) && job.audience === "hr"
+                ? SAFRAN_HR_REPORT_V1_CONTRACT.promptKey
+                : isSafranTestSlug(job.test_slug) && job.audience === "participant"
+                  ? SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey
+                  : isIpcTestSlug(job.test_slug)
+                    ? getIpcPromptContract(job.audience).promptKey
+                    : REPORT_PROMPT_KEY,
     }, {
       locale,
     });
