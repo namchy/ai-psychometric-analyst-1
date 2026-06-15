@@ -58,7 +58,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
 | P1        | Individualni razvojni profil product/report contract spec | Zatvoreno za ovaj IDP quality/hardening krug; voice doctrine, validator boundary, raw inspector i kontrolisana Amra regeneracija su završeni | Individualni razvojni profil / Product architecture | Sljedeće: ne regenerisati dalje IDP reportove bez eksplicitne odluke. Ako se nastavlja IDP lane, raditi samo uski golden examples / reviewer / app-level disclaimer slice ili preći na sljedeći prioritet iz canonical todo-a. |
-| P1        | Cross-report validator boundary and report ownership audit | Završeno za SAFRAN/MWMS/IPIP current boundary krug; single-test HR lanes closed; Composite HR audit completed; Composite production-equivalent request capture inspector completed; shared single-test HR AI input capture inspector dodat za SAFRAN/MWMS/IPIP; SAFRAN production-equivalent capture + confirmed dry-run PASS; SAFRAN data-only shadow diagnostics završeni; SAFRAN HR structured score/reference anchors završen; MWMS production-equivalent capture + confirmed dry-run PASS; potvrđena AI report ownership / validator boundary doctrine; MWMS general-envelope-only i data-only shadow diagnostics završeni; MWMS HR production gate prebačen na data-only blocking validation; SAFRAN HR production gate switched to data-only validation; IPIP HR data-only production validation switch završen; IPIP prompt key authority cleanup završen nakon DB parity + routing switch + request dump smoke; adjacent SAFRAN prompt lookup gap zatvoren | Report architecture / Validator boundary audit | MWMS HR, SAFRAN HR i IPIP HR su sada sva tri single-test HR production lane-a na data-only blocking validation uz diagnostic-only prose/BHS sloj. Composite boundary reduction ostaje future slice nakon observability, uz strogu separaciju data/reference validation od prose/style/reviewer dijagnostike. |
+| P1        | Cross-report validator boundary and report ownership audit | Završeno za SAFRAN/MWMS/IPIP current boundary krug; single-test HR lanes closed na data-only production validation; Composite HR observability audit, request capture inspector, boundary diagnostic, data-only shadow comparator, DB-backed auto-discovery smoke i production provider data-only switch su završeni; post-switch real persisted smoke PASS nad `98e89663-5692-45a6-9ca7-1bc60da51a63`; Composite prose/BHS/reviewer/style nalazi su diagnostic-only, dok deterministic source/reference/evidence/contract integrity ostaje production hard-blocking; mutation/rewrite cleanup i renderer/display sanitization ostaju budući zasebni slice-ovi | Report architecture / Validator boundary audit | MWMS HR, SAFRAN HR i IPIP HR su sada sva tri single-test HR production lane-a na data-only blocking validation. Composite HR je usklađen sa single-test HR validator boundary doktrinom na production blocking nivou; preostali future rizici su renderer rewriting/sanitization, mutation/rewrite cleanup i eventualni prompt authority, ali nisu sljedeći default task bez nove odluke. |
 | P1        | Admin AI prompt/request payload observability | Završeno za dev-only single-test HR request dump foundation za IPIP/SAFRAN/MWMS HR | AI governance / Report quality / Admin tooling | Admin UI/route nije sljedeći default. Composite HR observability ostaje zaseban future adapter jer ne koristi shared request builder. Eventualni admin route zahtijeva posebnu odluku o org-scope autorizaciji i allowed roles. |
 | P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Otvoreno / Read-only nalaz potvrđen | Infrastructure / Supabase / Migration history | Kontrolisano riješiti remote-only migration marker 20260530183640 koji je alias za lokalnu Team Fit migraciju 20260530110000_add_team_fit_reports.sql; prije bilo kakvog repair/db push zahvata definisati sigurnu strategiju mirror/repair-a i potvrditi da nema runtime schema razlike. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
@@ -215,6 +215,65 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - Real smoke je potvrdio `composite_hr_v1`, `gpt-5.5`, `code_prompt`, `databaseWrites: false`, `openAiCalled: false`, `reportRegenerated: false`, `productionFlowChanged: false`, `reconstructedInputUsed: false`, `requestBodyModel: gpt-5.5` i `requestSchema: composite_hr_v1`.
 - Sljedeći slice ne treba biti prompt/content work; treba biti Composite boundary reduction planning koristeći novi capture inspector kao observability podlogu.
 - Composite HR observability capture completed after boundary audit; boundary reduction remains future controlled slice.
+
+### Completion note — Composite HR data-only production validation switch
+
+- Composite HR boundary reduction je završen kontrolisanim redoslijedom:
+  1. production-equivalent no-call/no-write request capture inspector
+  2. read-only boundary diagnostic
+  3. data-only shadow comparator
+  4. DB-backed shadow smoke sa auto-discoveryjem
+  5. production provider switch na data-only blocking validation
+  6. post-switch real persisted smoke
+- Composite HR provider production gate sada hard-blocka samo data/reference/contract/evidence integrity probleme.
+- Production hard-blocking sada uključuje:
+  - raw contract/schema shape validation
+  - reportType/audience/sourceType/locale/required structured fields kroz contract validation
+  - deterministic source immutability
+  - locked deterministic evidence integrity
+  - normalized snapshot validation prije returna
+- Diagnostic-only sada uključuje:
+  - prose/style wording
+  - BHS/glossary/casing signale
+  - reviewer quality signale
+  - hiring/advisory wording heuristike
+  - hard-safety wording scanove nad user-facing tekstom
+  - raw-answer leakage phrases
+  - provider/debug wording
+  - diagnostic/clinical wording
+  - feminine addressing mismatch
+- Mutation/rewrite risk ostaje evidentiran, ali nije riješen u ovom slice-u.
+- Renderer/display view model rewriting/sanitization nije diran i ostaje budući zaseban slice.
+- Prompt content nije mijenjan.
+- JSON schema nije mijenjana.
+- DB prompt version za Composite nije uveden.
+- Nije bilo OpenAI poziva u testovima/smoke validaciji.
+- Nije bilo DB write-a u testovima/smoke validaciji.
+- Nije bilo report regeneration-a.
+- Nije bilo renderer promjene.
+- Nije bilo cross-lane promjene za MWMS, SAFRAN, IPIP, Team Fit, Team Dynamics ili IDP.
+- Real post-switch smoke je prošao nad:
+  - `COMPOSITE_HR_REPORT_ID=98e89663-5692-45a6-9ca7-1bc60da51a63`
+  - `assessmentAssignmentId=16943547-ef84-4fc4-a3d2-11801b1f1869`
+  - `wouldPassDataOnlyBlockingValidation=true`
+  - `blockingFindingCount=0`
+  - `diagnosticOnlyFindingCount=1`
+  - `mutationRiskFindingCount=3`
+  - `openAiCalled=false`
+  - `databaseWrites=false`
+  - `reportRegenerated=false`
+  - `productionBehaviorChanged=false`
+- Testovi koji su prošli:
+  - `node scripts/test-composite-hr-report-provider-openai.cjs`
+  - `node scripts/test-inspect-composite-hr-ai-input.cjs`
+  - `node scripts/test-composite-hr-data-only-shadow-db-smoke-offline.cjs`
+  - `COMPOSITE_HR_REPORT_ID=98e89663-5692-45a6-9ca7-1bc60da51a63 node --env-file=.env.local scripts/test-composite-hr-data-only-shadow-db-smoke.cjs`
+  - `node scripts/inspect-composite-hr-ai-input.cjs`
+  - `npm run typecheck`
+  - `git diff --check`, uz postojeće nedirnuto CRLF upozorenje za `supabase/snippets/Untitled query 205.sql`
+- Zaključak:
+  - Composite HR je sada usklađen sa single-test HR validator boundary doktrinom: production blocking je data/reference/contract/evidence-only, dok su prose/style/BHS/reviewer nalazi diagnostic-only.
+  - Ne otvarati renderer rewriting, mutation cleanup ili Composite DB prompt authority kao dio ovog zatvaranja; to su zasebni budući slice-ovi ako se eksplicitno odobre.
 
 ### Completion note — Locale-aware BHS user-facing AI language policy foundation
 
