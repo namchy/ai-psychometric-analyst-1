@@ -553,7 +553,9 @@ export function validateRuntimeCompletedAssessmentReport(
   }
 
   if (isSafranTestSlug(context.testSlug) && context.audience === "hr") {
-    const validationResult = validateSafranHrReport(value);
+    const validationResult = validateSafranHrReport(value, {
+      enforceProseGuardrails: false,
+    });
 
     if (!validationResult.ok) {
       return {

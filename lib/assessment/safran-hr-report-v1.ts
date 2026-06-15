@@ -615,6 +615,7 @@ export function validateSafranHrReport(
   value: unknown,
   options?: {
     expectedInput?: SafranHrReportInput | null;
+    enforceProseGuardrails?: boolean;
   },
 ): { ok: true; value: SafranHrReportV1 } | { ok: false; errors: string[] } {
   const errors: string[] = [];
@@ -916,12 +917,12 @@ export function validateSafranHrReport(
     }
   }
 
-  if (errors.length === 0) {
+  if (errors.length === 0 && options?.enforceProseGuardrails !== false) {
     validateForbiddenPhrases(value as SafranHrReportV1, errors);
-  }
 
-  if (errors.length === 0) {
-    validateHrNarrativeBoundaries(value as SafranHrReportV1, errors);
+    if (errors.length === 0) {
+      validateHrNarrativeBoundaries(value as SafranHrReportV1, errors);
+    }
   }
 
   if (errors.length > 0) {

@@ -1640,25 +1640,25 @@ export function validateStructuredReport(
 
   if (input.testSlug === "safran_v1" && isSafranHrPromptInput(input.promptInput)) {
     const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
-    const canonicalizedReport = languagePolicy
-      ? languagePolicy.canonicalizeUserFacingOutput(report)
-      : report;
     const globalValidationErrors = languagePolicy
-      ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+      ? languagePolicy.validateUserFacingOutput(report, {
           audience: "hr",
         })
       : [];
 
     if (globalValidationErrors.length > 0) {
-      throw new Error(
-        `OpenAI response JSON failed global BHS SAFRAN HR output validation: ${globalValidationErrors
-          .map((error) => `${error.path}: ${error.message}`)
-          .join(" | ")}`,
-      );
+      console.warn("SAFRAN HR BHS language diagnostics detected non-blocking findings", {
+        attemptId: input.attemptId,
+        findings: globalValidationErrors.map((error) => ({
+          path: error.path,
+          message: error.message,
+        })),
+      });
     }
 
-    const validationResult = validateSafranHrReport(canonicalizedReport, {
+    const validationResult = validateSafranHrReport(report, {
       expectedInput: input.promptInput,
+      enforceProseGuardrails: false,
     });
 
     if (!validationResult.ok) {

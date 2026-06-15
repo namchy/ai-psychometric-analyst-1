@@ -443,28 +443,42 @@ function main() {
     true,
   );
 
-  const invalidHrReport = clone(validHrReport);
-  invalidHrReport.executiveSummary.summary =
-    "IQ i percentil ukazuju da je ovo idealni kandidat i preporučuje se zapošljavanje.";
+  const diagnosticOnlyHrReport = clone(validHrReport);
+  diagnosticOnlyHrReport.executiveSummary.summary =
+    "Snapshot pokazuje high signal bez propisane hipoteza formulacije.";
+  diagnosticOnlyHrReport.cognitiveSignals.overall =
+    "IQ i percentil su prose dijagnostički nalazi, ne data/reference greške.";
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  let validatedDiagnosticOnlyReport;
+
+  try {
+    validatedDiagnosticOnlyReport = validateStructuredReport(
+      diagnosticOnlyHrReport,
+      hrInput,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.strictEqual(validatedDiagnosticOnlyReport, diagnosticOnlyHrReport);
+  assert.deepEqual(validatedDiagnosticOnlyReport, diagnosticOnlyHrReport);
+  assert.equal(warnings.length, 1);
+  assert.match(String(warnings[0][0]), /non-blocking findings/i);
+
+  const referenceMismatchReport = clone(validHrReport);
+  referenceMismatchReport.scoreReferences.numeric.rawScore += 1;
   assert.throws(
-    () => validateStructuredReport(invalidHrReport, hrInput),
-    /SAFRAN HR report validation/i,
+    () => validateStructuredReport(referenceMismatchReport, hrInput),
+    /scoreReferences\.numeric\.rawScore/i,
   );
 
-  const invalidHrSummaryWithoutHypothesis = clone(validHrReport);
-  invalidHrSummaryWithoutHypothesis.executiveSummary.summary =
-    "Profil pokazuje jače verbalne i figuralne signale, uz slabiji numerički signal. To je pregled trenutnog obrasca rezultata po oblastima.";
+  const languageMismatchReport = clone(validHrReport);
+  languageMismatchReport.generatedLanguage = "en";
   assert.throws(
-    () => validateStructuredReport(invalidHrSummaryWithoutHypothesis, hrInput),
-    /executiveSummary\.summary: Must frame the interpretation as a cautious HR hypothesis/i,
-  );
-
-  const invalidHrNormativeReport = clone(validHrReport);
-  invalidHrNormativeReport.interpretationLimits[1] =
-    "SAFRAN rezultat nije mjera opće sposobnosti kroz normativno poređenje i ne treba ga tumačiti kao rangiranje osobe u odnosu na druge.";
-  assert.throws(
-    () => validateStructuredReport(invalidHrNormativeReport, hrInput),
-    /SAFRAN HR report validation/i,
+    () => validateStructuredReport(languageMismatchReport, hrInput),
+    /generatedLanguage/i,
   );
 
   const participantReport = buildMockSafranParticipantAiReport(participantInput.promptInput);

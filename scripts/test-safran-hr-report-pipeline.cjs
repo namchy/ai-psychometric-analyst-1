@@ -201,6 +201,25 @@ async function main() {
   invalidReport.executiveSummary.summary =
     "IQ i percentil sugerišu idealni kandidat i preporučuje se zapošljavanje.";
   assert.equal(validateSafranHrReport(invalidReport, { expectedInput: preparedHrInput.promptInput }).ok, false);
+  const proseRuntimeValidation = validateRuntimeCompletedAssessmentReport(invalidReport, {
+    testSlug: "safran_v1",
+    audience: "hr",
+  });
+  assert.equal(
+    proseRuntimeValidation.ok,
+    true,
+    proseRuntimeValidation.ok ? undefined : proseRuntimeValidation.reason,
+  );
+
+  const structuralRuntimeFailure = JSON.parse(JSON.stringify(mockResult.report));
+  delete structuralRuntimeFailure.scoreReferences;
+  assert.equal(
+    validateRuntimeCompletedAssessmentReport(structuralRuntimeFailure, {
+      testSlug: "safran_v1",
+      audience: "hr",
+    }).ok,
+    false,
+  );
 
   console.log("SAFRAN HR report pipeline tests passed.");
 }

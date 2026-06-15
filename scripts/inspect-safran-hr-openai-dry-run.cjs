@@ -548,7 +548,8 @@ function buildDataOnlyShadowGate({
 
   return {
     dataOnlyShadowGate: {
-      diagnosticOnly: true,
+      diagnosticOnly: false,
+      productionBlocking: true,
       includes: [
         "general_envelope_parse",
         "safran_contract_shape_validation",
@@ -636,6 +637,7 @@ function evaluateSafranHrDryRunDiagnostic(
       };
   const rawValidation = validateSafranHrReport(rawParsedOutput, {
     expectedInput: inputSnapshot,
+    enforceProseGuardrails: false,
   });
   const rawValidationErrors = rawValidation.ok ? [] : mapErrors(rawValidation.errors);
   const contractErrors = rawValidationErrors.filter(
@@ -685,8 +687,7 @@ function evaluateSafranHrDryRunDiagnostic(
   });
   const hardGateWouldPersist =
     contractValidatorWouldPersist &&
-    safranValidatorWouldPersist &&
-    bhsGateWouldPersist;
+    safranValidatorWouldPersist;
   const validatorOnWouldPersist = legacyFullGateWouldPersist;
   const warningReasons = phraseGateFailures.map((error) => error.message);
   const failureReasons = buildFailureReasons({
@@ -731,10 +732,10 @@ function evaluateSafranHrDryRunDiagnostic(
     warningReasons,
     validationInventory: buildSafranValidationInventory(),
     diagnosticNotes: [
-      "SAFRAN data-only shadow gate evaluates raw parsed output and does not canonicalize or mutate it.",
-      "legacyFullGateWouldPersist reflects current production-equivalent BHS canonicalization/validation plus the full SAFRAN validator.",
-      "SAFRAN deterministic reference protection is currently limited to report metadata equality; score, band, label and derived-profile references are not structured in the report contract.",
-      "All shadow decisions are diagnostic-only and do not change provider, worker, runtime or persistence behavior.",
+      "SAFRAN production data-only gate evaluates raw parsed output and does not canonicalize or mutate it.",
+      "legacyFullGateWouldPersist remains a diagnostic comparison of BHS canonicalization/validation plus the full SAFRAN validator.",
+      "Structured scoreReferences protect score, band and label integrity against expectedInput; cognitiveSignals prose remains diagnostic-only.",
+      "This inspector is read-only and does not write reports or change persistence state.",
     ],
   };
 }

@@ -166,6 +166,17 @@ const flattenedText = [
 assert.equal(/iq|percentil|percentile|norma|normativno|hire|no-hire|red flag/i.test(flattenedText), false);
 assert.equal(report.audience, "hr");
 assert.equal(report.sourceType, "single_test");
+
+const proseDiagnosticReport = JSON.parse(JSON.stringify(report));
+proseDiagnosticReport.executiveSummary.summary =
+  "IQ i percentil su diagnostic-only prose nalazi bez propisane hipoteza formulacije.";
+const proseDiagnosticDisplay = resolveSafranHrReportDisplay(proseDiagnosticReport);
+assert.ok(proseDiagnosticDisplay);
+assert.equal(
+  proseDiagnosticDisplay.executiveSummary.summary,
+  proseDiagnosticReport.executiveSummary.summary,
+);
+
 assert.equal(resolveSafranHrReportDisplay({
   reportType: "safran_participant_ai_report_v1",
   audience: "participant",

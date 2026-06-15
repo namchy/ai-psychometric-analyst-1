@@ -337,20 +337,23 @@ async function main() {
   assert.equal(validatedSafranBs.sourceType, originalSafranSourceType);
   assert.equal(validatedSafranBs.generatedLanguage, originalSafranGeneratedLanguage);
   assert.equal(validatedSafranBs.locale, originalSafranLocale);
-  assert.doesNotMatch(validatedSafranBs.executiveSummary.summary, /\bsnapshot\b/i);
-  assert.doesNotMatch(validatedSafranBs.executiveSummary.summary, /\bhigh\b/i);
-  assert.match(validatedSafranBs.executiveSummary.summary, /izvještaj/i);
-  assert.match(validatedSafranBs.executiveSummary.summary, /visoko izraženo/i);
-  assert.match(validatedSafranBs.cognitiveSignals.overall, /visoko izraženo/i);
-  assert.match(validatedSafranBs.pointsOfCaution[0].signal, /izvještaj/i);
+  assert.equal(validatedSafranBs, safranBsReport);
+  assert.match(validatedSafranBs.executiveSummary.summary, /\bsnapshot\b/i);
+  assert.match(validatedSafranBs.executiveSummary.summary, /\bhigh\b/i);
+  assert.match(validatedSafranBs.cognitiveSignals.overall, /\bhigh\b/i);
+  assert.match(validatedSafranBs.pointsOfCaution[0].signal, /\bsnapshot\b/i);
 
   const safranGlobalGateReport = clone(safranBaseResult.report);
   safranGlobalGateReport.executiveSummary.summary =
     "Ti treba da citas ovaj prompt kao finalnu odluku o kandidatu.";
-  safranGlobalGateReport.safetyChecks.noHireNoHireDecision = false;
-  assert.throws(
-    () => validateStructuredReport(safranGlobalGateReport, safranBsInput),
-    /global BHS SAFRAN HR output validation.*second-person singular/i,
+  const validatedSafranGlobalGateReport = validateStructuredReport(
+    safranGlobalGateReport,
+    safranBsInput,
+  );
+  assert.equal(validatedSafranGlobalGateReport, safranGlobalGateReport);
+  assert.match(
+    validatedSafranGlobalGateReport.executiveSummary.summary,
+    /Ti treba da citas ovaj prompt/i,
   );
 
   const mwmsBsReport = clone(mwmsBaseResult.report);

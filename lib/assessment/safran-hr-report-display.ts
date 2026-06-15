@@ -116,7 +116,9 @@ export function buildSafranHrReportDisplay(
 export function resolveSafranHrReportDisplay(
   report: unknown,
 ): SafranHrReportDisplay | null {
-  const validation = validateSafranHrReport(report);
+  const validation = validateSafranHrReport(report, {
+    enforceProseGuardrails: false,
+  });
 
   if (!validation.ok) {
     return null;

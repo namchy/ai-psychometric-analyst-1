@@ -17,6 +17,11 @@ import {
   type MwmsHrReportInput,
 } from "@/lib/assessment/mwms-hr-report-v1";
 import {
+  formatSafranHrReportValidationErrors,
+  validateSafranHrReport,
+  type SafranHrReportInput,
+} from "@/lib/assessment/safran-hr-report-v1";
+import {
   SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT,
   isSafranTestSlug,
 } from "@/lib/assessment/safran-participant-ai-report-v1";
@@ -119,6 +124,21 @@ function isMwmsHrReportInput(value: unknown): value is MwmsHrReportInput {
     value.audience === "hr" &&
     "dimensions" in value &&
     Array.isArray(value.dimensions)
+  );
+}
+
+function isSafranHrReportInput(value: unknown): value is SafranHrReportInput {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "test" in value &&
+    typeof value.test === "object" &&
+    value.test !== null &&
+    "slug" in value.test &&
+    value.test.slug === "safran_v1" &&
+    "audience" in value.test &&
+    value.test.audience === "hr" &&
+    "scores" in value
   );
 }
 
@@ -660,10 +680,34 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
                 reason: formatMwmsHrReportValidationErrors(mwmsValidation.errors),
               };
         })()
-      : validateRuntimeCompletedAssessmentReport(generationResult.report, {
-          testSlug: job.test_slug,
-          audience: job.audience,
-        });
+      : isSafranTestSlug(job.test_slug) && job.audience === "hr"
+        ? (() => {
+            if (!isSafranHrReportInput(preparedInput.promptInput)) {
+              return {
+                ok: false as const,
+                reason: "SAFRAN HR prepared input failed data/reference validation.",
+              };
+            }
+
+            const safranValidation = validateSafranHrReport(generationResult.report, {
+              expectedInput: preparedInput.promptInput,
+              enforceProseGuardrails: false,
+            });
+
+            return safranValidation.ok
+              ? {
+                  ok: true as const,
+                  value: safranValidation.value,
+                }
+              : {
+                  ok: false as const,
+                  reason: formatSafranHrReportValidationErrors(safranValidation.errors),
+                };
+          })()
+        : validateRuntimeCompletedAssessmentReport(generationResult.report, {
+            testSlug: job.test_slug,
+            audience: job.audience,
+          });
 
   if (!validationResult.ok) {
     throw new ReportJobError(

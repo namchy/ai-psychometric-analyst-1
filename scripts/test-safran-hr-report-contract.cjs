@@ -100,6 +100,15 @@ const input = buildSafranHrReportInput({
 const validReport = buildMockSafranHrReportV1(input);
 const validResult = validateSafranHrReport(validReport, { expectedInput: input });
 assert.equal(validResult.ok, true, validResult.ok ? undefined : validResult.errors.join(" | "));
+const validDataOnlyResult = validateSafranHrReport(validReport, {
+  expectedInput: input,
+  enforceProseGuardrails: false,
+});
+assert.equal(
+  validDataOnlyResult.ok,
+  true,
+  validDataOnlyResult.ok ? undefined : validDataOnlyResult.errors.join(" | "),
+);
 assert.deepEqual(validReport.scoreReferences, {
   overall: { key: "overall", ...input.scores.overall },
   verbal: { key: "verbal", ...input.scores.verbal },
@@ -113,10 +122,23 @@ function assertInvalidReport(mutator) {
   assert.equal(validateSafranHrReport(report, { expectedInput: input }).ok, false);
 }
 
+function assertInvalidInBothModes(mutator) {
+  const report = clone(validReport);
+  mutator(report);
+  assert.equal(validateSafranHrReport(report, { expectedInput: input }).ok, false);
+  assert.equal(
+    validateSafranHrReport(report, {
+      expectedInput: input,
+      enforceProseGuardrails: false,
+    }).ok,
+    false,
+  );
+}
+
 assertInvalidReport((report) => {
   delete report.scoreReferences;
 });
-assertInvalidReport((report) => {
+assertInvalidInBothModes((report) => {
   report.scoreReferences.overall.rawScore += 1;
 });
 assertInvalidReport((report) => {
@@ -143,7 +165,7 @@ assertInvalidReport((report) => {
 assertInvalidReport((report) => {
   report.scoreReferences.numeric.extra = true;
 });
-assertInvalidReport((report) => {
+assertInvalidInBothModes((report) => {
   report.generatedLanguage = "en";
 });
 
@@ -154,6 +176,28 @@ assert.equal(validateSafranHrReport(wrongAudience, { expectedInput: input }).ok,
 const iqReport = clone(validReport);
 iqReport.executiveSummary.summary = "IQ rezultat može ukazivati na inteligentan profil.";
 assert.equal(validateSafranHrReport(iqReport, { expectedInput: input }).ok, false);
+assert.equal(
+  validateSafranHrReport(iqReport, {
+    expectedInput: input,
+    enforceProseGuardrails: false,
+  }).ok,
+  true,
+);
+
+const missingHypothesisReport = clone(validReport);
+missingHypothesisReport.executiveSummary.summary =
+  "Profil prikazuje rezultate po oblastima bez zaključka o kandidatu.";
+assert.equal(
+  validateSafranHrReport(missingHypothesisReport, { expectedInput: input }).ok,
+  false,
+);
+assert.equal(
+  validateSafranHrReport(missingHypothesisReport, {
+    expectedInput: input,
+    enforceProseGuardrails: false,
+  }).ok,
+  true,
+);
 
 const percentileReport = clone(validReport);
 percentileReport.cognitiveSignals.overall =

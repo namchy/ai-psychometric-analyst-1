@@ -153,7 +153,16 @@ function main() {
   bsReport.pointsOfCaution[0].signal =
     "Ovaj snapshot može sakriti razlike između tipova zadataka.";
 
-  const validatedBsReport = validateStructuredReport(bsReport, bsInput);
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  let validatedBsReport;
+
+  try {
+    validatedBsReport = validateStructuredReport(bsReport, bsInput);
+  } finally {
+    console.warn = originalWarn;
+  }
 
   assert.equal(validatedBsReport.reportType, "safran_hr_report_v1");
   assert.equal(validatedBsReport.testSlug, "safran_v1");
@@ -161,22 +170,28 @@ function main() {
   assert.equal(validatedBsReport.sourceType, "single_test");
   assert.equal(validatedBsReport.locale, "bs");
   assert.equal(validatedBsReport.generatedLanguage, "bs");
-  assert.doesNotMatch(validatedBsReport.executiveSummary.summary, /\bsnapshot\b/i);
-  assert.doesNotMatch(validatedBsReport.executiveSummary.summary, /\bhigh\b/i);
-  assert.match(validatedBsReport.executiveSummary.summary, /izvještaj/i);
-  assert.match(validatedBsReport.executiveSummary.summary, /visoko izraženo/i);
-  assert.doesNotMatch(validatedBsReport.cognitiveSignals.overall, /\bhigh\b/i);
-  assert.match(validatedBsReport.cognitiveSignals.overall, /visoko izraženo/i);
-  assert.doesNotMatch(validatedBsReport.pointsOfCaution[0].signal, /\bsnapshot\b/i);
-  assert.match(validatedBsReport.pointsOfCaution[0].signal, /izvještaj/i);
+  assert.strictEqual(validatedBsReport, bsReport);
+  assert.match(validatedBsReport.executiveSummary.summary, /\bsnapshot\b/i);
+  assert.match(validatedBsReport.executiveSummary.summary, /\bhigh\b/i);
+  assert.match(validatedBsReport.cognitiveSignals.overall, /\bhigh\b/i);
+  assert.match(validatedBsReport.pointsOfCaution[0].signal, /\bsnapshot\b/i);
+  assert.equal(warnings.length, 1);
+  assert.match(String(warnings[0][0]), /non-blocking findings/i);
 
   const invalidBsReport = buildValidReport(bsInput);
   invalidBsReport.executiveSummary.summary =
     "Ovaj rezultat treba čitati kao opreznu HR hipotezu, ne kao konačan sud o osobi. Ti treba da čitaš ovaj nalaz kroz intervju, iskustvo i kontekst uloge.";
-  assert.throws(
-    () => validateStructuredReport(invalidBsReport, bsInput),
-    /global BHS SAFRAN HR output validation.*second-person singular/i,
-  );
+  console.warn = (...args) => warnings.push(args);
+  let invalidBsValidated;
+
+  try {
+    invalidBsValidated = validateStructuredReport(invalidBsReport, bsInput);
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.strictEqual(invalidBsValidated, invalidBsReport);
+  assert.equal(warnings.length, 2);
 
   const invalidForSafranValidator = buildValidReport(bsInput);
   invalidForSafranValidator.safetyChecks.noHireNoHireDecision = false;

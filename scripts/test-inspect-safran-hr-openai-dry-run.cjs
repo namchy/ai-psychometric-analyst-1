@@ -440,7 +440,8 @@ async function main() {
   assert.equal(artifact.contractValidatorWouldPersist, true);
   assert.equal(artifact.safranValidatorWouldPersist, true);
   assert.equal(artifact.bhsGateWouldPersist, true);
-  assert.equal(artifact.dataOnlyShadowGate.diagnosticOnly, true);
+  assert.equal(artifact.dataOnlyShadowGate.diagnosticOnly, false);
+  assert.equal(artifact.dataOnlyShadowGate.productionBlocking, true);
   assert.equal(artifact.dataOnlyShadowGateWouldPersist, true);
   assert.deepEqual(artifact.dataOnlyShadowGateInputs, {
     generalEnvelopeOk: true,
@@ -570,6 +571,7 @@ async function main() {
   assert.equal(phraseDiagnostic.contractValidatorWouldPersist, true);
   assert.equal(phraseDiagnostic.safranValidatorWouldPersist, true);
   assert.equal(phraseDiagnostic.dataOnlyShadowGateWouldPersist, true);
+  assert.equal(phraseDiagnostic.hardGateWouldPersist, true);
   assert.equal(phraseDiagnostic.legacyBlocksOnlyBecauseOfProseLanguage, true);
   assert.deepEqual(phraseDiagnostic.legacyBlockingCategories, [
     "safran_validator:phrase_prose",
@@ -595,6 +597,7 @@ async function main() {
   assert.equal(bhsOnlyDiagnostic.bhsGateWouldPersist, false);
   assert.equal(bhsOnlyDiagnostic.legacyFullGateWouldPersist, false);
   assert.equal(bhsOnlyDiagnostic.dataOnlyShadowGateWouldPersist, true);
+  assert.equal(bhsOnlyDiagnostic.hardGateWouldPersist, true);
   assert.equal(bhsOnlyDiagnostic.legacyBlocksOnlyBecauseOfProseLanguage, true);
   assert.deepEqual(bhsOnlyDiagnostic.legacyBlockingCategories, [
     "bhs_prose_language",
@@ -702,6 +705,18 @@ async function main() {
   assert.equal(
     artifact.validationInventory.deterministicReferenceGaps.some(
       (item) => /no structured overall\/verbal\/figural\/numeric score fields/i.test(item),
+    ),
+    false,
+  );
+  assert.equal(
+    artifact.diagnosticNotes.some((item) =>
+      /Structured scoreReferences protect score, band and label integrity/i.test(item),
+    ),
+    true,
+  );
+  assert.equal(
+    artifact.diagnosticNotes.some((item) =>
+      /references are not structured in the report contract/i.test(item),
     ),
     false,
   );
