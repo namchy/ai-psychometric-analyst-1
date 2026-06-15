@@ -627,6 +627,22 @@ function buildIpipNeo120HrMockReport(
       language: "bs",
       audience: "hr",
     },
+    score_references: {
+      test_slug: neoPromptInput.test_slug,
+      locale: neoPromptInput.locale,
+      domains: neoPromptInput.domains.map((domain) => ({
+        domain_code: domain.domain_code,
+        domain_name: domain.label,
+        score: domain.score,
+        score_label_or_band: domain.score_band,
+        facets: domain.facets.map((facet) => ({
+          facet_code: facet.facet_code,
+          facet_name: facet.label,
+          score: facet.score,
+          score_label_or_band: facet.score_band,
+        })),
+      })),
+    },
     headline: highestDomain
       ? `Profil ukazuje na ${highestDomain.label.toLowerCase()} kao važan signal za intervju i radnu saradnju.`
       : "Profil ukazuje na više radnih obrazaca koje vrijedi provjeriti kroz konkretne situacije uloge.",
@@ -833,6 +849,7 @@ function buildIpipNeo120HrMockReport(
   const validationResult = validateIpipNeo120HrReportV1(report, {
     strictContract: true,
     enforceGuardrails: true,
+    expectedInput: neoPromptInput,
   });
 
   if (!validationResult.ok) {

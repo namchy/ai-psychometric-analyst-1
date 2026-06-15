@@ -14,6 +14,9 @@ import {
   type IpipNeo120DomainCode,
   type IpipNeo120FacetCode,
 } from "@/lib/assessment/ipip-neo-120-labels";
+import type {
+  IpipNeo120HrReportPromptInput,
+} from "@/lib/assessment/ipip-neo-120-report-contract";
 
 type ValidationError = {
   path: string;
@@ -101,6 +104,27 @@ type HrTeamFitNote = {
   watchout: string;
 };
 
+type HrFacetScoreReference = {
+  facet_code: IpipNeo120FacetCode;
+  facet_name: string;
+  score: number;
+  score_label_or_band: HrBand;
+};
+
+type HrDomainScoreReference = {
+  domain_code: IpipNeo120DomainCode;
+  domain_name: string;
+  score: number;
+  score_label_or_band: HrBand;
+  facets: HrFacetScoreReference[];
+};
+
+type HrScoreReferences = {
+  test_slug: "ipip-neo-120-v1";
+  locale: string;
+  domains: HrDomainScoreReference[];
+};
+
 type LegacyIpipNeo120HrDomainCode = "N" | "E" | "O" | "A" | "C";
 
 type LegacyHrFacet = {
@@ -159,6 +183,7 @@ export type IpipNeo120HrReportV1 = {
     language: "bs";
     audience: "hr";
   };
+  score_references?: HrScoreReferences;
   headline: string;
   executive_summary: string;
   key_hr_signals: [HrKeySignal, HrKeySignal, HrKeySignal];
@@ -223,6 +248,146 @@ function validateExactKeys(
   }
 
   return errors;
+}
+
+function normalizeHrScoreReferences(value: unknown): HrScoreReferences | undefined {
+  if (!isNonArrayObject(value)) {
+    return undefined;
+  }
+
+  return {
+    test_slug: value.test_slug as "ipip-neo-120-v1",
+    locale: typeof value.locale === "string" ? value.locale : "",
+    domains: (Array.isArray(value.domains) ? value.domains : []).map((domain) => {
+      const domainValue = isNonArrayObject(domain) ? domain : {};
+
+      return {
+        domain_code: domainValue.domain_code as IpipNeo120DomainCode,
+        domain_name: typeof domainValue.domain_name === "string" ? domainValue.domain_name : "",
+        score: domainValue.score as number,
+        score_label_or_band: domainValue.score_label_or_band as HrBand,
+        facets: (Array.isArray(domainValue.facets) ? domainValue.facets : []).map((facet) => {
+          const facetValue = isNonArrayObject(facet) ? facet : {};
+
+          return {
+            facet_code: facetValue.facet_code as IpipNeo120FacetCode,
+            facet_name: typeof facetValue.facet_name === "string" ? facetValue.facet_name : "",
+            score: facetValue.score as number,
+            score_label_or_band: facetValue.score_label_or_band as HrBand,
+          };
+        }),
+      };
+    }),
+  };
+}
+
+function validateHrScoreReferences(
+  value: unknown,
+  expectedInput: IpipNeo120HrReportPromptInput,
+  errors: ValidationError[],
+) {
+  const path = "score_references";
+
+  if (!isNonArrayObject(value)) {
+    errors.push({ path, message: "Expected an object." });
+    return;
+  }
+
+  errors.push(...validateExactKeys(value, ["test_slug", "locale", "domains"], path));
+
+  if (value.test_slug !== expectedInput.test_slug) {
+    errors.push({
+      path: `${path}.test_slug`,
+      message: `Expected ${JSON.stringify(expectedInput.test_slug)}.`,
+    });
+  }
+
+  if (value.locale !== expectedInput.locale) {
+    errors.push({
+      path: `${path}.locale`,
+      message: `Expected ${JSON.stringify(expectedInput.locale)}.`,
+    });
+  }
+
+  if (!Array.isArray(value.domains) || value.domains.length !== expectedInput.domains.length) {
+    errors.push({
+      path: `${path}.domains`,
+      message: `Expected exactly ${expectedInput.domains.length} domain references.`,
+    });
+    return;
+  }
+
+  value.domains.forEach((domain, domainIndex) => {
+    const domainPath = `${path}.domains[${domainIndex}]`;
+    const expectedDomain = expectedInput.domains[domainIndex];
+
+    if (!isNonArrayObject(domain)) {
+      errors.push({ path: domainPath, message: "Expected an object." });
+      return;
+    }
+
+    errors.push(
+      ...validateExactKeys(
+        domain,
+        ["domain_code", "domain_name", "score", "score_label_or_band", "facets"],
+        domainPath,
+      ),
+    );
+
+    for (const [key, expectedValue] of [
+      ["domain_code", expectedDomain.domain_code],
+      ["domain_name", expectedDomain.label],
+      ["score", expectedDomain.score],
+      ["score_label_or_band", expectedDomain.score_band],
+    ] as const) {
+      if (domain[key] !== expectedValue) {
+        errors.push({
+          path: `${domainPath}.${key}`,
+          message: `Expected ${JSON.stringify(expectedValue)}.`,
+        });
+      }
+    }
+
+    if (!Array.isArray(domain.facets) || domain.facets.length !== expectedDomain.facets.length) {
+      errors.push({
+        path: `${domainPath}.facets`,
+        message: `Expected exactly ${expectedDomain.facets.length} facet references.`,
+      });
+      return;
+    }
+
+    domain.facets.forEach((facet, facetIndex) => {
+      const facetPath = `${domainPath}.facets[${facetIndex}]`;
+      const expectedFacet = expectedDomain.facets[facetIndex];
+
+      if (!isNonArrayObject(facet)) {
+        errors.push({ path: facetPath, message: "Expected an object." });
+        return;
+      }
+
+      errors.push(
+        ...validateExactKeys(
+          facet,
+          ["facet_code", "facet_name", "score", "score_label_or_band"],
+          facetPath,
+        ),
+      );
+
+      for (const [key, expectedValue] of [
+        ["facet_code", expectedFacet.facet_code],
+        ["facet_name", expectedFacet.label],
+        ["score", expectedFacet.score],
+        ["score_label_or_band", expectedFacet.score_band],
+      ] as const) {
+        if (facet[key] !== expectedValue) {
+          errors.push({
+            path: `${facetPath}.${key}`,
+            message: `Expected ${JSON.stringify(expectedValue)}.`,
+          });
+        }
+      }
+    });
+  });
 }
 
 function validateNonEmptyString(
@@ -1331,6 +1496,7 @@ export function normalizeIpipNeo120HrReportV1(value: unknown): IpipNeo120HrRepor
       language: "bs",
       audience: "hr",
     },
+    score_references: normalizeHrScoreReferences(report.score_references),
     headline: normalizeTextField(report.headline),
     executive_summary: normalizeTextField(report.executive_summary),
     key_hr_signals: (Array.isArray(report.key_hr_signals) ? report.key_hr_signals : []).map((item) => ({
@@ -1404,7 +1570,8 @@ function validateHrGuardrails(
     allowLegacyAgreeablenessAlias?: boolean;
   },
 ) {
-  const loweredFragments = collectNestedStrings(report)
+  const { score_references: _scoreReferences, ...narrativeReport } = report;
+  const loweredFragments = collectNestedStrings(narrativeReport)
     .map((item) => normalizeWhitespace(item).toLocaleLowerCase("bs"))
     .filter(Boolean);
   const loweredText = loweredFragments.join("\n");
@@ -1461,6 +1628,7 @@ export function validateIpipNeo120HrReportV1(
   options?: {
     strictContract?: boolean;
     enforceGuardrails?: boolean;
+    expectedInput?: IpipNeo120HrReportPromptInput;
   },
 ):
   | { ok: true; value: IpipNeo120HrReportV1 }
@@ -1496,6 +1664,7 @@ export function validateIpipNeo120HrReportV1(
           "contract_version",
           "test",
           "meta",
+          "score_references",
           "headline",
           "executive_summary",
           "key_hr_signals",
@@ -1521,6 +1690,10 @@ export function validateIpipNeo120HrReportV1(
       path: "contract_version",
       message: 'HR report: Expected "ipip_neo_120_hr_v2" or supported legacy "ipip_neo_120_hr_v1".',
     });
+  }
+
+  if (isCurrentShape && options?.expectedInput) {
+    validateHrScoreReferences(objectValue.score_references, options.expectedInput, errors);
   }
 
   if (!isNonArrayObject(objectValue.test)) {

@@ -8,6 +8,7 @@
     "contract_version",
     "test",
     "meta",
+    "score_references",
     "headline",
     "executive_summary",
     "key_hr_signals",
@@ -52,6 +53,98 @@
         "audience": {
           "type": "string",
           "const": "hr"
+        }
+      }
+    },
+    "score_references": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test_slug", "locale", "domains"],
+      "properties": {
+        "test_slug": {
+          "type": "string",
+          "const": "ipip-neo-120-v1"
+        },
+        "locale": {
+          "type": "string",
+          "const": "bs"
+        },
+        "domains": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "domain_code",
+              "domain_name",
+              "score",
+              "score_label_or_band",
+              "facets"
+            ],
+            "properties": {
+              "domain_code": {
+                "type": "string",
+                "enum": [
+                  "EXTRAVERSION",
+                  "AGREEABLENESS",
+                  "CONSCIENTIOUSNESS",
+                  "NEUROTICISM",
+                  "OPENNESS_TO_EXPERIENCE"
+                ]
+              },
+              "domain_name": {
+                "type": "string",
+                "enum": [
+                  "Ekstraverzija",
+                  "Spremnost na saradnju",
+                  "Savjesnost",
+                  "Neuroticizam",
+                  "Otvorenost prema iskustvu"
+                ]
+              },
+              "score": {
+                "type": "number"
+              },
+              "score_label_or_band": {
+                "type": "string",
+                "enum": ["low", "moderate", "high"]
+              },
+              "facets": {
+                "type": "array",
+                "minItems": 6,
+                "maxItems": 6,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "facet_code",
+                    "facet_name",
+                    "score",
+                    "score_label_or_band"
+                  ],
+                  "properties": {
+                    "facet_code": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "facet_name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "score": {
+                      "type": "number"
+                    },
+                    "score_label_or_band": {
+                      "type": "string",
+                      "enum": ["low", "moderate", "high"]
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

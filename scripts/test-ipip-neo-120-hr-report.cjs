@@ -236,6 +236,11 @@ function collectNestedStrings(value) {
   return [];
 }
 
+function collectNarrativeStrings(report) {
+  const { score_references: _scoreReferences, ...narrativeReport } = report;
+  return collectNestedStrings(narrativeReport);
+}
+
 function buildSentence(base, targetLength) {
   let sentence = base.trim();
   if (!/[.!?]$/.test(sentence)) {
@@ -272,12 +277,13 @@ async function main() {
   const strictValidation = validateIpipNeo120HrReportV1(providerResult.report, {
     strictContract: true,
     enforceGuardrails: true,
+    expectedInput: preparedInput.promptInput,
   });
   assert.equal(strictValidation.ok, true, strictValidation.ok ? undefined : strictValidation.errors.map((error) => error.message).join(" | "));
 
   const report = strictValidation.value;
-  const reportText = JSON.stringify(report);
-  const reportValueText = collectNestedStrings(report).join("\n");
+  const scoreReferences = report.score_references;
+  const reportValueText = collectNarrativeStrings(report).join("\n");
   assert.equal(reportValueText.includes("Ugodnost"), false);
   assert.equal(reportValueText.includes("ugodnost"), false);
   assert.equal(reportValueText.includes("Saradljivost"), false);
@@ -291,6 +297,12 @@ async function main() {
   assert.equal(reportValueText.includes("handling"), false);
   assert.equal(reportValueText.includes("Handling"), false);
   assert.equal(reportValueText.includes("Spremnost na saradnju"), true);
+  assert.equal(
+    scoreReferences.domains
+      .flatMap((domain) => domain.facets)
+      .some((facet) => facet.facet_name === "Saradljivost"),
+    true,
+  );
   assert.equal(/prekomjern\w* oslanjanj\w*/i.test(reportValueText), true);
   assert.equal(report.key_hr_signals.length, 3);
   assert.equal(report.verification_focus.length, 3);
@@ -300,6 +312,25 @@ async function main() {
   assert.equal(report.team_fit_notes.length, 3);
   assert.ok(report.decision_support_note.length >= 2 && report.decision_support_note.length <= 4);
   assert.equal(report.domain_overview.length, 5);
+  assert.deepEqual(
+    report.score_references,
+    {
+      test_slug: preparedInput.promptInput.test_slug,
+      locale: preparedInput.promptInput.locale,
+      domains: preparedInput.promptInput.domains.map((domain) => ({
+        domain_code: domain.domain_code,
+        domain_name: domain.label,
+        score: domain.score,
+        score_label_or_band: domain.score_band,
+        facets: domain.facets.map((facet) => ({
+          facet_code: facet.facet_code,
+          facet_name: facet.label,
+          score: facet.score,
+          score_label_or_band: facet.score_band,
+        })),
+      })),
+    },
+  );
   assert.deepEqual(
     report.domain_overview.map((domain) => domain.domain_name),
     IPIP_NEO_120_DOMAIN_ORDER.map((domainCode) => getIpipNeo120HrDomainLabel(domainCode)),
@@ -326,6 +357,16 @@ async function main() {
     ipipNeo120HrReportV1Schema.properties.team_fit_notes.maxItems,
     3,
   );
+  assert.equal(ipipNeo120HrReportV1Schema.required.includes("score_references"), true);
+  assert.equal(ipipNeo120HrReportV1Schema.properties.score_references.additionalProperties, false);
+  assert.equal(
+    ipipNeo120HrReportV1Schema.properties.score_references.properties.domains.items.additionalProperties,
+    false,
+  );
+  assert.equal(
+    ipipNeo120HrReportV1Schema.properties.score_references.properties.domains.items.properties.facets.items.additionalProperties,
+    false,
+  );
   assert.equal(resolveReportContract("ipip-neo-120-v1", "hr").schemaName, "ipip-neo-120-hr-v2");
   assert.equal(resolveReportContract("ipip-neo-120-v1", "hr").promptKey, "ipip_neo_120_hr_v2");
   assert.equal(report.contract_version, "ipip_neo_120_hr_v2");
@@ -338,6 +379,74 @@ async function main() {
   assert.equal(legacyDisplayReport.interview_questions.length, 5);
   assert.equal(legacyDisplayReport.key_hr_signals.length, 3);
   assert.equal(legacyDisplayReport.domain_overview.length, 5);
+
+  function assertInvalidScoreReferences(mutate) {
+    const candidate = clone(report);
+    mutate(candidate);
+    const validation = validateIpipNeo120HrReportV1(candidate, {
+      strictContract: true,
+      enforceGuardrails: true,
+      expectedInput: preparedInput.promptInput,
+    });
+    assert.equal(validation.ok, false);
+  }
+
+  assertInvalidScoreReferences((candidate) => {
+    delete candidate.score_references;
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.test_slug = "other-test";
+  });
+  assertInvalidScoreReferences((candidate) => {
+    [
+      candidate.score_references.domains[0],
+      candidate.score_references.domains[1],
+    ] = [
+      candidate.score_references.domains[1],
+      candidate.score_references.domains[0],
+    ];
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].domain_code = "AGREEABLENESS";
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].score += 0.01;
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].score_label_or_band =
+      preparedInput.promptInput.domains[0].score_band === "high" ? "low" : "high";
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[1].domain_name = "Ugodnost";
+  });
+  assertInvalidScoreReferences((candidate) => {
+    [
+      candidate.score_references.domains[0].facets[0],
+      candidate.score_references.domains[0].facets[1],
+    ] = [
+      candidate.score_references.domains[0].facets[1],
+      candidate.score_references.domains[0].facets[0],
+    ];
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].facets[0].score += 0.01;
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].facets[0].facet_name = "Pogrešna faceta";
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].facets[0].score_label_or_band =
+      preparedInput.promptInput.domains[0].facets[0].score_band === "high" ? "low" : "high";
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.locale = "en";
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].unexpected = true;
+  });
+  assertInvalidScoreReferences((candidate) => {
+    candidate.score_references.domains[0].facets[0].unexpected = true;
+  });
 
   const forbiddenHeadline = clone(report);
   forbiddenHeadline.headline = "Ugodnost trenutno daje najistaknutiji profesionalni signal u profilu.";
@@ -438,7 +547,7 @@ async function main() {
   const canonicalizedAiLikeReport = canonicalizeIpipNeo120HrReportTerminology(
     globallyCanonicalizedAiLikeReport,
   );
-  const canonicalizedAiLikeText = collectNestedStrings(canonicalizedAiLikeReport).join("\n");
+  const canonicalizedAiLikeText = collectNarrativeStrings(canonicalizedAiLikeReport).join("\n");
   assert.equal(canonicalizedAiLikeText.includes("Spremnost na saradnju"), true);
   assert.equal(canonicalizedAiLikeText.includes("Saradljivost"), false);
   assert.equal(canonicalizedAiLikeText.includes("saradljivost"), false);
@@ -459,7 +568,7 @@ async function main() {
   );
 
   const providerValidatedCanonicalReport = validateStructuredReport(aiLikeReport, preparedInput);
-  const providerValidatedText = collectNestedStrings(providerValidatedCanonicalReport).join("\n");
+  const providerValidatedText = collectNarrativeStrings(providerValidatedCanonicalReport).join("\n");
   assert.equal(providerValidatedText.includes("Spremnost na saradnju"), true);
   assert.equal(providerValidatedText.includes("Saradljivost"), false);
   assert.equal(providerValidatedText.includes("Kooperativnost"), false);
@@ -712,6 +821,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(error instanceof Error ? error.stack : String(error));
   process.exitCode = 1;
 });

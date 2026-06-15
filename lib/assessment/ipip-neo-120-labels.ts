@@ -203,7 +203,9 @@ export function canonicalizeIpipNeo120HrReportTerminology<T>(value: T): T {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        canonicalizeIpipNeo120HrReportTerminology(item),
+        key === "score_references"
+          ? item
+          : canonicalizeIpipNeo120HrReportTerminology(item),
       ]),
     ) as T;
   }

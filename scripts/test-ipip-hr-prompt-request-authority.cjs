@@ -155,6 +155,18 @@ async function main() {
     assert.equal(agreeablenessDomain?.label, "Spremnost na saradnju");
     assert.equal(payload.requestBody.model, "gpt-4.1");
     assert.equal(payload.requestBody.response_format.type, "json_schema");
+    assert.equal(
+      payload.requestBody.response_format.json_schema.schema.required.includes("score_references"),
+      true,
+    );
+    assert.equal(
+      payload.requestBody.response_format.json_schema.schema.properties.score_references.additionalProperties,
+      false,
+    );
+    assert.equal(
+      payload.requestBody.response_format.json_schema.schema.properties.score_references.properties.domains.items.properties.facets.items.additionalProperties,
+      false,
+    );
     assert.equal(typeof payload.systemPrompt, "string");
     assert.equal(typeof payload.userPrompt, "string");
     assert.equal(payload.requestBody.messages[0].content, payload.systemPrompt);
@@ -234,6 +246,19 @@ async function main() {
       true,
     );
     assert.equal(promptText.includes("IPIP-NEO-120 HR content quality rules:"), true);
+    assert.equal(promptText.includes("IPIP-NEO-120 HR structured score reference rules:"), true);
+    assert.equal(
+      promptText.includes(
+        "score_references must copy input.test_slug, input.locale and input.domains exactly without recalculation, translation, reordering or rewriting.",
+      ),
+      true,
+    );
+    assert.equal(
+      promptText.includes(
+        "For every facet, copy facet_code, label as facet_name, score and score_band as score_label_or_band.",
+      ),
+      true,
+    );
     assert.equal(
       promptText.includes("Write HR interpretation, not score-summary prose."),
       true,

@@ -993,6 +993,16 @@ function buildIpipNeo120HrContentQualityBlock(): string {
   ].join("\n");
 }
 
+function buildIpipNeo120HrScoreReferenceBlock(): string {
+  return [
+    "IPIP-NEO-120 HR structured score reference rules:",
+    "score_references must copy input.test_slug, input.locale and input.domains exactly without recalculation, translation, reordering or rewriting.",
+    "For every domain, copy domain_code, label as domain_name, score and score_band as score_label_or_band.",
+    "For every facet, copy facet_code, label as facet_name, score and score_band as score_label_or_band.",
+    "Keep domains and facets in the exact input order.",
+  ].join("\n");
+}
+
 function applyIpipHrPromptAuthorityCleanup(
   input: PreparedReportGenerationInput,
   promptText: string,
@@ -1038,6 +1048,7 @@ function applyIpipHrPromptAuthorityCleanup(
 
   blocks.push(buildIpipNeo120HrTerminologyAuthorityBlock());
   blocks.push(buildIpipNeo120HrContentQualityBlock());
+  blocks.push(buildIpipNeo120HrScoreReferenceBlock());
 
   return blocks.join("\n\n");
 }
@@ -1529,6 +1540,7 @@ export function validateStructuredReport(
     const validationResult = validateIpipNeo120HrReportV1(canonicalizedReport, {
       strictContract: true,
       enforceGuardrails: true,
+      expectedInput: input.promptInput,
     });
 
     if (!validationResult.ok) {
