@@ -202,11 +202,11 @@ function main() {
           },
           {
             promptVersionId: "prompt-version-ipip-hr",
-            promptTemplate: buildPromptTemplate("prompt-version-ipip-hr", "completed_assessment_report"),
+            promptTemplate: buildPromptTemplate("prompt-version-ipip-hr", "ipip_neo_120_hr_v2"),
           },
         ),
         reportKind: "ipip_hr",
-        promptKey: "completed_assessment_report",
+        promptKey: "ipip_neo_120_hr_v2",
         reportContractKey: "ipip_neo_120_hr_v2",
         reportSchemaName: "ipip-neo-120-hr-v2",
         promptVersionId: "prompt-version-ipip-hr",

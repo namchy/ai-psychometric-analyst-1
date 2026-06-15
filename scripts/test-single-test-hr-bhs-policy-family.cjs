@@ -212,7 +212,7 @@ async function main() {
       scoringMethod: "likert_mean",
       promptVersion: "ipip_neo_120_hr_v2",
       promptVersionId: "prompt-version-ipip-family",
-      promptKey: "completed_assessment_report",
+      promptKey: "ipip_neo_120_hr_v2",
       testName: "IPIP-NEO-120",
       reportKind: "ipip_hr",
       results: buildIpipResults(),
@@ -305,18 +305,24 @@ async function main() {
   assert.equal(validatedIpipBs.contract_version, originalIpipContractVersion);
   assert.equal(validatedIpipBs.meta.language, originalIpipLanguage);
   assert.equal(validatedIpipBs.domain_overview[0].score_label_or_band, originalIpipBand);
-  assert.match(validatedIpipBs.headline, /Spremnost na saradnju/i);
-  assert.doesNotMatch(validatedIpipBs.headline, /\bSaradljivost\b/i);
-  assert.doesNotMatch(validatedIpipBs.executive_summary, /\bsnapshot\b/i);
-  assert.doesNotMatch(validatedIpipBs.executive_summary, /\bhigh\b/i);
-  assert.match(validatedIpipBs.executive_summary, /izvještaj/i);
-  assert.match(validatedIpipBs.executive_summary, /visoka savjesnost/i);
+  assert.equal(validatedIpipBs, ipipBsReport);
+  assert.match(validatedIpipBs.headline, /\bSaradljivost\b/i);
+  assert.match(validatedIpipBs.headline, /\bKooperativnost\b/i);
+  assert.match(validatedIpipBs.executive_summary, /\bsnapshot\b/i);
+  assert.match(validatedIpipBs.executive_summary, /\bhigh\b/i);
+  assert.match(validatedIpipBs.executive_summary, /visoka Savjesnost/i);
+  assert.equal(validatedIpipBs.domain_overview[1].domain_name, "Saradljivost");
 
   const ipipGlobalGateReport = clone(ipipBaseResult.report);
   ipipGlobalGateReport.executive_summary = "Ti treba da citas ovaj prompt kao finalnu odluku.";
-  assert.throws(
-    () => validateStructuredReport(ipipGlobalGateReport, ipipBsInput),
-    /global BHS HR output validation.*second-person singular/i,
+  const validatedIpipGlobalGateReport = validateStructuredReport(
+    ipipGlobalGateReport,
+    ipipBsInput,
+  );
+  assert.equal(validatedIpipGlobalGateReport, ipipGlobalGateReport);
+  assert.match(
+    validatedIpipGlobalGateReport.executive_summary,
+    /Ti treba da citas ovaj prompt/i,
   );
 
   const safranBsReport = clone(safranBaseResult.report);

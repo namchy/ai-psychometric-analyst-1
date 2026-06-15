@@ -2,6 +2,7 @@ import "server-only";
 
 import { isIpipNeo120TestSlug } from "@/lib/assessment/ipip-neo-120-labels";
 import {
+  IPIP_NEO_120_HR_REPORT_CONTRACT,
   IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT,
   type IpipNeo120HrReportPromptInput,
 } from "@/lib/assessment/ipip-neo-120-report-contract";
@@ -435,6 +436,23 @@ async function loadPromptVersionForJob(
     return null;
   }
 
+  const promptKey =
+    isIpipNeo120TestSlug(job.test_slug) && job.audience === "participant"
+      ? IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.promptKey
+      : isIpipNeo120TestSlug(job.test_slug) && job.audience === "hr"
+        ? IPIP_NEO_120_HR_REPORT_CONTRACT.promptKey
+        : isMwmsTestSlug(job.test_slug) && job.audience === "participant"
+          ? MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey
+          : isMwmsTestSlug(job.test_slug) && job.audience === "hr"
+            ? MWMS_HR_REPORT_V1_CONTRACT.promptKey
+            : isSafranTestSlug(job.test_slug) && job.audience === "hr"
+              ? SAFRAN_HR_REPORT_V1_CONTRACT.promptKey
+              : isSafranTestSlug(job.test_slug) && job.audience === "participant"
+                ? SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey
+                : isIpcTestSlug(job.test_slug)
+                  ? getIpcPromptContract(job.audience).promptKey
+                  : REPORT_PROMPT_KEY;
+
   try {
     return await getActivePromptVersion({
       testId,
@@ -442,20 +460,7 @@ async function loadPromptVersionForJob(
       audience: job.audience,
       sourceType: job.source_type,
       generatorType: job.generator_type,
-      promptKey:
-        isIpipNeo120TestSlug(job.test_slug) && job.audience === "participant"
-          ? IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT.promptKey
-          : isMwmsTestSlug(job.test_slug) && job.audience === "participant"
-            ? MWMS_PARTICIPANT_REPORT_CONTRACT.promptKey
-            : isMwmsTestSlug(job.test_slug) && job.audience === "hr"
-              ? MWMS_HR_REPORT_V1_CONTRACT.promptKey
-              : isSafranTestSlug(job.test_slug) && job.audience === "hr"
-                ? SAFRAN_HR_REPORT_V1_CONTRACT.promptKey
-                : isSafranTestSlug(job.test_slug) && job.audience === "participant"
-                  ? SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT.promptKey
-                  : isIpcTestSlug(job.test_slug)
-                    ? getIpcPromptContract(job.audience).promptKey
-                    : REPORT_PROMPT_KEY,
+      promptKey,
     }, {
       locale,
     });

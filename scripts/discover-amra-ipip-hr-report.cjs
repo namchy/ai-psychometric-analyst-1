@@ -121,7 +121,7 @@ async function main() {
         audience: "hr",
         sourceType: "single_test",
         generatorType: "openai",
-        promptKey: "completed_assessment_report",
+        promptKey: "ipip_neo_120_hr_v2",
       },
       {
         locale: row.locale ?? "bs",

@@ -114,7 +114,7 @@ function buildPromptTemplate() {
     audience: "hr",
     sourceType: "single_test",
     generatorType: "openai",
-    promptKey: "completed_assessment_report",
+    promptKey: "ipip_neo_120_hr_v2",
     version: "v1_ipip_hr_focused_20260606",
     systemPrompt:
       "DB system prompt with Ugodnost, Saradljivost i handling inside system context.",
@@ -177,7 +177,7 @@ async function main() {
     assert.equal(payload.authorityMetadata.promptSource, "db_prompt_version");
     assert.equal(payload.authorityMetadata.promptVersionId, "prompt-version-ipip-hr-request-authority");
     assert.equal(payload.authorityMetadata.promptVersion, "v1_ipip_hr_focused_20260606");
-    assert.equal(payload.authorityMetadata.promptKey, "completed_assessment_report");
+    assert.equal(payload.authorityMetadata.promptKey, "ipip_neo_120_hr_v2");
     assert.equal(payload.authorityMetadata.reportContractKey, "ipip_neo_120_hr_v2");
     assert.equal(payload.authorityMetadata.reportSchemaName, "ipip-neo-120-hr-v2");
     assert.deepEqual(payload.authorityMetadata.authorityLayers, [
@@ -343,7 +343,7 @@ async function main() {
     assert.equal(dumpPromptText.includes("Avoid stacked caution markers"), true);
     assert.equal(/prekomjern\w* oslanjanj\w*/i.test(dumpPromptText), true);
     assert.equal(dumpRecord.model, "gpt-4.1");
-    assert.equal(dumpRecord.prompt_key, "completed_assessment_report");
+    assert.equal(dumpRecord.prompt_key, "ipip_neo_120_hr_v2");
     assert.equal(dumpRecord.report_contract_key, "ipip_neo_120_hr_v2");
     assert.equal(dumpRecord.report_schema_name, "ipip-neo-120-hr-v2");
     assert.equal(dumpRecord.response_format.type, "json_schema");
@@ -352,7 +352,7 @@ async function main() {
     assert.equal(dumpRecord.authority_metadata.reportFamily, "single_test_hr");
     assert.equal(dumpRecord.authority_metadata.reportKind, "ipip_hr");
     assert.equal(dumpRecord.authority_metadata.promptSource, "db_prompt_version");
-    assert.equal(dumpRecord.authority_metadata.promptKey, "completed_assessment_report");
+    assert.equal(dumpRecord.authority_metadata.promptKey, "ipip_neo_120_hr_v2");
     assert.equal(dumpRecord.authority_metadata.reportContractKey, "ipip_neo_120_hr_v2");
     assert.deepEqual(dumpRecord.authority_metadata.authorityLayers, [
       "global_bhs_language_policy",

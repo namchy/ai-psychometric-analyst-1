@@ -199,7 +199,7 @@ async function main() {
 
   assert.equal(getPromptKeyForSingleTestHrJob({ family: "safran" }), "safran_hr_report_v1");
   assert.equal(getPromptKeyForSingleTestHrJob({ family: "mwms" }), "mwms_hr_report_v1");
-  assert.equal(getPromptKeyForSingleTestHrJob({ family: "ipip" }), "completed_assessment_report");
+  assert.equal(getPromptKeyForSingleTestHrJob({ family: "ipip" }), "ipip_neo_120_hr_v2");
 
   installTypeScriptRuntime();
   const {

@@ -17,7 +17,7 @@ const TARGET_PARTICIPANT_EMAIL = "amrafagan@nestox.com";
 const TARGET_AUDIENCE = "hr";
 const TARGET_REPORT_TYPE = "individual";
 const TARGET_SOURCE_TYPE = "single_test";
-const TARGET_PROMPT_KEY = "completed_assessment_report";
+const TARGET_PROMPT_KEY = "ipip_neo_120_hr_v2";
 const CONFIRM_ENV = "CONFIRM_AMRA_IPIP_HR_FAILED_RETRY";
 const DUMP_ENV = "AI_REPORT_DEBUG_DUMP_PROMPTS";
 

@@ -143,10 +143,10 @@ function main() {
   assert.equal(
     validateDebugDumpAuthorityRecord(
       buildCleanDumpRecord({
-        prompt_key: "ipip_neo_120_hr_v2",
+        prompt_key: "completed_assessment_report",
         authority_metadata: {
           ...buildCleanDumpRecord().authority_metadata,
-          promptKey: "ipip_neo_120_hr_v2",
+          promptKey: "completed_assessment_report",
         },
       }),
     ).ok,

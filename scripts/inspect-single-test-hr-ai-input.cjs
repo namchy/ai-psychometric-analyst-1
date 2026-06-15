@@ -26,6 +26,7 @@ const FAMILY_TO_TEST_SLUG = {
 const SINGLE_TEST_HR_REPORT_TYPE = "individual";
 const SINGLE_TEST_HR_AUDIENCE = "hr";
 const SINGLE_TEST_HR_SOURCE_TYPE = "single_test";
+const IPIP_HR_PROMPT_KEY = "ipip_neo_120_hr_v2";
 
 function isExecutionConfirmed(env = process.env) {
   return env[CONFIRM_ENV] === "true";
@@ -214,8 +215,7 @@ function getPromptKeyForSingleTestHrJob(context) {
     return "safran_hr_report_v1";
   }
 
-  // Mirrors report-job-worker.ts for IPIP HR, which falls back to completed_assessment_report.
-  return "completed_assessment_report";
+  return IPIP_HR_PROMPT_KEY;
 }
 
 function getPromptInputIdentity(promptInput) {
@@ -664,6 +664,7 @@ module.exports = {
   buildOutputPath,
   buildSingleTestHrAiInputArtifact,
   getPromptKeyForSingleTestHrJob,
+  IPIP_HR_PROMPT_KEY,
   installTypeScriptRuntime,
   isExecutionConfirmed,
   loadProductionDiagnosticContext,

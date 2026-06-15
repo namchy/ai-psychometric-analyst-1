@@ -12,9 +12,9 @@ const TARGET_REPORT_ID = "9ef593a9-ebcf-4606-a16e-f245b47deb0c";
 const TARGET_ATTEMPT_ID = "2432eb12-2b54-4881-bef2-2ac687b59e0b";
 const TARGET_TEST_ID = "38cdeedc-c123-4fa8-b566-bae5389a1407";
 const TARGET_TEST_SLUG = "ipip-neo-120-v1";
-const TARGET_PROMPT_VERSION_ID = "46ba8f80-2a95-4404-8141-a7e74ebbd957";
+const TARGET_PROMPT_VERSION_ID = "ca910d21-a5ac-4f23-9025-c4e047cc4779";
 const TARGET_PROMPT_VERSION = "v1_ipip_hr_focused_20260606";
-const TARGET_PROMPT_KEY = "completed_assessment_report";
+const TARGET_PROMPT_KEY = "ipip_neo_120_hr_v2";
 const CONFIRM_ENV = "CONFIRM_AMRA_IPIP_HR_REGENERATION";
 const DUMP_ENV = "AI_REPORT_DEBUG_DUMP_PROMPTS";
 

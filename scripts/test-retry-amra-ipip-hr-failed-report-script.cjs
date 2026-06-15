@@ -59,8 +59,8 @@ function buildPreflight(overrides = {}) {
       ...overrides.recovery,
     },
     promptSource: {
-      promptVersionId: "46ba8f80-2a95-4404-8141-a7e74ebbd957",
-      promptKey: "completed_assessment_report",
+      promptVersionId: "ca910d21-a5ac-4f23-9025-c4e047cc4779",
+      promptKey: "ipip_neo_120_hr_v2",
       testId: TARGET_TEST_ID,
       ...overrides.promptSource,
     },
@@ -213,14 +213,14 @@ async function main() {
     findLatestDumpPath: () => "/tmp/amra-ipip-debug-dump.json",
     readFileSync: () =>
       JSON.stringify({
-        prompt_key: "completed_assessment_report",
+        prompt_key: "ipip_neo_120_hr_v2",
         report_contract_key: "ipip_neo_120_hr_v2",
         report_schema_name: "ipip-neo-120-hr-v2",
         authority_metadata: {
           reportFamily: "single_test_hr",
           reportKind: "ipip_hr",
           reportLaneId: "ipip_hr:ipip-neo-120-v1:hr",
-          promptKey: "completed_assessment_report",
+          promptKey: "ipip_neo_120_hr_v2",
           reportContractKey: "ipip_neo_120_hr_v2",
           reportSchemaName: "ipip-neo-120-hr-v2",
           authorityLayers: [
