@@ -65,6 +65,7 @@ const {
 const {
   buildAiReportDebugDumpFilePath,
   maybeWriteAiReportDebugDump,
+  sanitizeAiReportDebugValue,
 } = require("../lib/assessment/ai-report-debug-dump.ts");
 
 function buildPreparedInput() {
@@ -107,6 +108,33 @@ function buildPreparedInput() {
 }
 
 async function main() {
+  assert.deepEqual(
+    sanitizeAiReportDebugValue(
+      {
+        visible: "sk-test-secret",
+        nested: {
+          cookieValue: "cookie-test-secret",
+          serviceRoleValue: "service-role-test-secret",
+          tokenValue: "token-test-secret",
+        },
+      },
+      [
+        "sk-test-secret",
+        "cookie-test-secret",
+        "service-role-test-secret",
+        "token-test-secret",
+      ],
+    ),
+    {
+      visible: "[REDACTED]",
+      nested: {
+        cookieValue: "[REDACTED]",
+        serviceRoleValue: "[REDACTED]",
+        tokenValue: "[REDACTED]",
+      },
+    },
+  );
+
   const preparedInput = buildPreparedInput();
   const requestBody = buildOpenAiChatCompletionsRequestBody(
     {
@@ -118,16 +146,23 @@ async function main() {
       schemaName: "ipip-neo-120-hr-v1",
       schema: { type: "object" },
       systemPrompt:
-        "system prompt with OPENAI_API_KEY, Authorization, Bearer and sk-test-secret-value",
+        "system prompt with OPENAI_API_KEY, Authorization, Bearer, sk-test-secret, cookie-test-secret and service-role-test-secret",
       userPrompt:
-        "user prompt with OPENAI_API_KEY, Authorization, Bearer and sk-test-secret-value",
+        "user prompt with OPENAI_API_KEY, Authorization, Bearer, token-test-secret and password-test-secret",
     },
   );
   const dumpOptions = {
     tmpDir: fs.mkdtempSync(path.join(os.tmpdir(), "ai-report-debug-dump-test-")),
     now: new Date("2026-06-08T12:34:56.000Z"),
     randomSuffix: "abc123",
-    redactValues: ["sk-test-secret-value"],
+    redactValues: [
+      "sk-test-secret",
+      "cookie-test-secret",
+      "service-role-test-secret",
+      "token-test-secret",
+      "password-test-secret",
+      "Bearer",
+    ],
   };
 
   delete process.env.AI_REPORT_DEBUG_DUMP_PROMPTS;
@@ -225,19 +260,35 @@ async function main() {
   assert.equal(dump.system_prompt.includes("OPENAI_API_KEY"), false);
   assert.equal(dump.system_prompt.includes("Authorization"), false);
   assert.equal(dump.system_prompt.includes("Bearer"), false);
-  assert.equal(dump.system_prompt.includes("sk-test-secret-value"), false);
+  assert.equal(dump.system_prompt.includes("sk-test-secret"), false);
   assert.equal(dump.rendered_user_prompt.includes("OPENAI_API_KEY"), false);
   assert.equal(dump.rendered_user_prompt.includes("Authorization"), false);
   assert.equal(dump.rendered_user_prompt.includes("Bearer"), false);
-  assert.equal(dump.rendered_user_prompt.includes("sk-test-secret-value"), false);
+  assert.equal(dump.rendered_user_prompt.includes("token-test-secret"), false);
   assert.equal(dump.request_body.model, "gpt-4.1");
   assert.equal(dump.request_body.response_format.type, "json_schema");
   assert.equal(dump.response_format.type, "json_schema");
   assert.equal(dump.response_format.json_schema.name, "ipip-neo-120-hr-v1");
-  assert.equal(dumpText.includes("OPENAI_API_KEY"), false);
-  assert.equal(dumpText.includes("Authorization"), false);
-  assert.equal(dumpText.includes("Bearer"), false);
-  assert.equal(dumpText.includes("sk-test-secret-value"), false);
+  for (const forbiddenValue of [
+    "apiKey",
+    "authorization",
+    "cookie",
+    "service_role",
+    "token",
+    "secret",
+    "password",
+    "Bearer",
+    "sk-test-secret",
+    "cookie-test-secret",
+    "service-role-test-secret",
+    "token-test-secret",
+  ]) {
+    assert.equal(
+      dumpText.toLowerCase().includes(forbiddenValue.toLowerCase()),
+      false,
+      `Serialized debug dump must not contain ${forbiddenValue}.`,
+    );
+  }
   assert.equal(path.isAbsolute(capturedPath), true);
   assert.equal(capturedPath.startsWith(dumpOptions.tmpDir), true);
   assert.equal(capturedPath.includes("ai-report-debug-dumps"), true);

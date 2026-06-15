@@ -152,6 +152,13 @@ function sanitizeValue(value: unknown, redactValues: Array<string | null | undef
   return value;
 }
 
+export function sanitizeAiReportDebugValue(
+  value: unknown,
+  redactValues: Array<string | null | undefined> = [],
+): unknown {
+  return sanitizeValue(value, redactValues);
+}
+
 function getPromptAudience(input: PreparedReportGenerationInput): "hr" | "participant" | null {
   const directAudience = readStringField(input.promptInput, ["audience"]);
 

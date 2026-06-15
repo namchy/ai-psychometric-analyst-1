@@ -12,7 +12,10 @@ const CONFIRM_ENV = "CONFIRM_SINGLE_TEST_HR_INPUT_INSPECT";
 const FAMILY_ENV = "SINGLE_TEST_HR_FAMILY";
 const ATTEMPT_ID_ENV = "SINGLE_TEST_HR_ATTEMPT_ID";
 const REPORT_ID_ENV = "SINGLE_TEST_HR_REPORT_ID";
+const REQUEST_DUMP_PATH_ENV = "SINGLE_TEST_HR_AI_REQUEST_DUMP_PATH";
 const OUTPUT_PREFIX = "single-test-hr-ai-input";
+const SENSITIVE_ENV_KEY_PATTERN =
+  /(api[_-]?key|authorization|token|secret|password|cookie|session|private[_-]?key|client[_-]?secret|refresh[_-]?token|service[_-]?role|database[_-]?url)/i;
 
 const FAMILY_TO_TEST_SLUG = {
   safran: "safran_v1",
@@ -50,15 +53,48 @@ function buildNoCallSummary() {
       `Read a real completed single-test HR attempt/report context after ${CONFIRM_ENV}=true.`,
       "Build the production-equivalent CompletedAssessmentReportRequest.",
       "Build the production PreparedReportGenerationInput and OpenAI structured request body.",
-      "Write diagnostic JSON only under /tmp.",
+      `Optionally write a sanitized AI request observability JSON under /tmp when ${REQUEST_DUMP_PATH_ENV} is set.`,
     ],
     usage: [
-      `${FAMILY_ENV}=safran ${ATTEMPT_ID_ENV}=<attempt-id> ${CONFIRM_ENV}=true node --env-file=.env.local scripts/inspect-single-test-hr-ai-input.cjs`,
-      `${FAMILY_ENV}=mwms ${REPORT_ID_ENV}=<attempt-report-id> ${CONFIRM_ENV}=true node --env-file=.env.local scripts/inspect-single-test-hr-ai-input.cjs`,
-      `${FAMILY_ENV}=ipip ${ATTEMPT_ID_ENV}=<attempt-id> ${CONFIRM_ENV}=true node --env-file=.env.local scripts/inspect-single-test-hr-ai-input.cjs`,
+      `${FAMILY_ENV}=safran ${ATTEMPT_ID_ENV}=<attempt-id> ${REQUEST_DUMP_PATH_ENV}=/tmp/safran-hr-ai-request.json ${CONFIRM_ENV}=true node --env-file=.env.local scripts/inspect-single-test-hr-ai-input.cjs`,
+      `${FAMILY_ENV}=mwms ${REPORT_ID_ENV}=<attempt-report-id> ${REQUEST_DUMP_PATH_ENV}=/tmp/mwms-hr-ai-request.json ${CONFIRM_ENV}=true node --env-file=.env.local scripts/inspect-single-test-hr-ai-input.cjs`,
+      `${FAMILY_ENV}=ipip ${ATTEMPT_ID_ENV}=<attempt-id> ${REQUEST_DUMP_PATH_ENV}=/tmp/ipip-hr-ai-request.json ${CONFIRM_ENV}=true node --env-file=.env.local scripts/inspect-single-test-hr-ai-input.cjs`,
     ],
     supportedFamilies: Object.keys(FAMILY_TO_TEST_SLUG),
   };
+}
+
+function resolveRequestDumpPath(env = process.env) {
+  const requestedPath = env[REQUEST_DUMP_PATH_ENV]?.trim();
+
+  if (!requestedPath) {
+    return null;
+  }
+
+  if (!path.isAbsolute(requestedPath)) {
+    throw new Error(`${REQUEST_DUMP_PATH_ENV} must be an absolute path inside /tmp.`);
+  }
+
+  const resolvedPath = path.resolve(requestedPath);
+  const tmpRoot = fs.realpathSync(os.tmpdir());
+  const resolvedParent = fs.realpathSync(path.dirname(resolvedPath));
+
+  if (!resolvedParent.startsWith(`${tmpRoot}${path.sep}`) && resolvedParent !== tmpRoot) {
+    throw new Error(`${REQUEST_DUMP_PATH_ENV} must resolve inside ${tmpRoot}.`);
+  }
+
+  if (path.extname(resolvedPath).toLowerCase() !== ".json") {
+    throw new Error(`${REQUEST_DUMP_PATH_ENV} must point to a JSON file.`);
+  }
+
+  return resolvedPath;
+}
+
+function collectSensitiveEnvValues(env = process.env) {
+  return Object.entries(env)
+    .filter(([key, value]) => SENSITIVE_ENV_KEY_PATTERN.test(key) && typeof value === "string")
+    .map(([, value]) => value)
+    .filter((value) => value.length > 0);
 }
 
 function resolveWithExtensions(candidatePath) {
@@ -212,6 +248,48 @@ function assertFamilyMatches(family, testSlug) {
   }
 }
 
+function buildSingleTestHrAiRequestObservabilityRecord({
+  preparedInput,
+  openAiPayload,
+  locale,
+  timestamp,
+  redactValues = [],
+  buildDebugRecord,
+  sanitizeDebugValue,
+}) {
+  const debugContext = {
+    provider: "openai",
+    model: openAiPayload.requestBody.model,
+    systemPrompt: openAiPayload.systemPrompt,
+    renderedUserPrompt: openAiPayload.userPrompt,
+    requestBody: openAiPayload.requestBody,
+    promptVersionId: preparedInput.promptVersionId,
+    promptVersion: preparedInput.promptVersion,
+    promptSource: preparedInput.promptTemplate ? "db_prompt_version" : "code_default_prompt",
+    promptKey:
+      openAiPayload.authorityMetadata?.promptKey ?? preparedInput.reportContract.promptKey,
+    promptTemplateId: preparedInput.promptTemplate?.id ?? null,
+    promptTemplateVersion: preparedInput.promptTemplate?.version ?? null,
+    authorityMetadata: openAiPayload.authorityMetadata,
+  };
+  const debugOptions = {
+    now: new Date(timestamp),
+    redactValues,
+  };
+
+  return {
+    ...buildDebugRecord(preparedInput, debugContext, debugOptions),
+    locale,
+    structured_output_schema: sanitizeDebugValue(openAiPayload.schema, redactValues),
+    deterministic_prompt_input: sanitizeDebugValue(preparedInput.promptInput, redactValues),
+    report_contract: sanitizeDebugValue(preparedInput.reportContract, redactValues),
+    database_writes: false,
+    openai_called: false,
+    report_regenerated: false,
+    production_flow_changed: false,
+  };
+}
+
 async function loadReportRowById(supabase, reportId) {
   const { data, error } = await supabase
     .from("attempt_reports")
@@ -309,12 +387,14 @@ async function loadProductionDiagnosticContext(input, dependencies) {
 async function buildSingleTestHrAiInputArtifact(context, dependencies, options = {}) {
   const {
     buildCompletedAssessmentReportRequest,
+    buildAiReportDebugDumpRecord,
     buildOpenAiStructuredRequestPayload,
     buildPreparedReportGenerationInput,
     getActivePromptVersion,
     getActiveReportRuntimeConfig,
     getAiReportConfig,
     normalizeAiReportModel,
+    sanitizeAiReportDebugValue,
   } = dependencies;
   const aiConfig = getAiReportConfig();
   const runtimeConfig = await getActiveReportRuntimeConfig({
@@ -365,10 +445,20 @@ async function buildSingleTestHrAiInputArtifact(context, dependencies, options =
     timeoutMs: aiConfig.openAiTimeoutMs,
   });
   const promptInputIdentity = getPromptInputIdentity(preparedInput.promptInput);
+  const timestamp = options.timestamp ?? new Date().toISOString();
+  const aiRequestObservability = buildSingleTestHrAiRequestObservabilityRecord({
+    preparedInput,
+    openAiPayload,
+    locale: request.locale,
+    timestamp,
+    redactValues: options.redactValues,
+    buildDebugRecord: buildAiReportDebugDumpRecord,
+    sanitizeDebugValue: sanitizeAiReportDebugValue,
+  });
 
   return {
     metadata: {
-      timestamp: options.timestamp ?? new Date().toISOString(),
+      timestamp,
       reportFamily: context.family,
       testSlug: context.testSlug,
       reportType: preparedInput.reportContract.reportType,
@@ -423,10 +513,15 @@ async function buildSingleTestHrAiInputArtifact(context, dependencies, options =
       userPrompt: openAiPayload.userPrompt,
       requestBody: openAiPayload.requestBody,
     },
+    aiRequestObservability,
   };
 }
 
 function loadRuntimeDependencies() {
+  const {
+    buildAiReportDebugDumpRecord,
+    sanitizeAiReportDebugValue,
+  } = require("../lib/assessment/ai-report-debug-dump.ts");
   const {
     buildCompletedAssessmentReportRequest,
   } = require("../lib/assessment/reports.ts");
@@ -454,6 +549,7 @@ function loadRuntimeDependencies() {
   } = require("../lib/supabase/admin.ts");
 
   return {
+    buildAiReportDebugDumpRecord,
     buildCompletedAssessmentReportRequest,
     buildOpenAiStructuredRequestPayload,
     buildPreparedReportGenerationInput,
@@ -463,6 +559,7 @@ function loadRuntimeDependencies() {
     getAiReportConfig,
     normalizeAiReportModel,
     resolveReportLocale,
+    sanitizeAiReportDebugValue,
   };
 }
 
@@ -485,6 +582,7 @@ async function runSingleTestHrAiInputInspect({
   assertDevelopmentOnly(env);
 
   const input = resolveRunInput({ env, argv });
+  const requestDumpPath = resolveRequestDumpPath(env);
 
   if (!dependencies) {
     installRuntime();
@@ -495,15 +593,28 @@ async function runSingleTestHrAiInputInspect({
   const contextLoader = loadContext ?? loadProductionDiagnosticContext;
   const artifactBuilder = buildArtifact ?? buildSingleTestHrAiInputArtifact;
   const context = await contextLoader(input, runtimeDependencies);
-  const artifact = await artifactBuilder(context, runtimeDependencies, { timestamp });
+  const artifact = await artifactBuilder(context, runtimeDependencies, {
+    timestamp,
+    redactValues: collectSensitiveEnvValues(env),
+  });
   const outputPath = dumpPath ?? buildOutputPath(input.family, timestamp.replace(/[:.]/g, "-"));
 
   writeFile(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, { mode: 0o600 });
   chmodFile(outputPath, 0o600);
 
+  if (requestDumpPath) {
+    writeFile(
+      requestDumpPath,
+      `${JSON.stringify(artifact.aiRequestObservability, null, 2)}\n`,
+      { mode: 0o600 },
+    );
+    chmodFile(requestDumpPath, 0o600);
+  }
+
   return {
     ...artifact,
     dumpPath: outputPath,
+    requestDumpPath,
   };
 }
 
@@ -527,6 +638,7 @@ async function main() {
               requestBody: result.preparedOpenAiRequest.requestBody,
             },
             dumpPath: result.dumpPath,
+            requestDumpPath: result.requestDumpPath,
           },
       null,
       2,
@@ -546,6 +658,8 @@ module.exports = {
   CONFIRM_ENV,
   FAMILY_ENV,
   REPORT_ID_ENV,
+  REQUEST_DUMP_PATH_ENV,
+  buildSingleTestHrAiRequestObservabilityRecord,
   buildNoCallSummary,
   buildOutputPath,
   buildSingleTestHrAiInputArtifact,
@@ -553,6 +667,7 @@ module.exports = {
   installTypeScriptRuntime,
   isExecutionConfirmed,
   loadProductionDiagnosticContext,
+  resolveRequestDumpPath,
   resolveRunInput,
   runSingleTestHrAiInputInspect,
 };

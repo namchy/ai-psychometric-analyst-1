@@ -8,6 +8,7 @@ const scriptSource = fs.readFileSync(scriptPath, "utf8");
 
 assert.match(scriptSource, /CONFIRM_SINGLE_TEST_HR_INPUT_INSPECT/);
 assert.match(scriptSource, /SINGLE_TEST_HR_FAMILY/);
+assert.match(scriptSource, /SINGLE_TEST_HR_AI_REQUEST_DUMP_PATH/);
 assert.match(scriptSource, /databaseWrites:\s*false/);
 assert.match(scriptSource, /openAiCalled:\s*false/);
 assert.match(scriptSource, /reportRegenerated:\s*false/);
@@ -19,6 +20,8 @@ assert.match(scriptSource, /buildOpenAiStructuredRequestPayload/);
 assert.doesNotMatch(scriptSource, /\.(?:insert|update|upsert|delete)\(/);
 assert.doesNotMatch(scriptSource, /fetch\(/);
 assert.doesNotMatch(scriptSource, /generateCompletedAssessmentReport\(/);
+assert.doesNotMatch(scriptSource, /generateOpenAiReport\(/);
+assert.doesNotMatch(scriptSource, /processAssessmentReport/);
 assert.doesNotMatch(scriptSource, /regenerateReadySingleTestHrReport\(/);
 
 const {
@@ -26,11 +29,40 @@ const {
   CONFIRM_ENV,
   FAMILY_ENV,
   REPORT_ID_ENV,
+  REQUEST_DUMP_PATH_ENV,
+  buildSingleTestHrAiRequestObservabilityRecord,
   buildSingleTestHrAiInputArtifact,
   getPromptKeyForSingleTestHrJob,
   installTypeScriptRuntime,
+  resolveRequestDumpPath,
   runSingleTestHrAiInputInspect,
 } = require(scriptPath);
+
+function buildIpipResults() {
+  const {
+    IPIP_NEO_120_DOMAIN_ORDER,
+    IPIP_NEO_120_FACETS_BY_DOMAIN,
+  } = require("../lib/assessment/ipip-neo-120-labels.ts");
+  const dimensions = [];
+
+  for (const [domainIndex, domainCode] of IPIP_NEO_120_DOMAIN_ORDER.entries()) {
+    for (const [facetIndex, facetCode] of IPIP_NEO_120_FACETS_BY_DOMAIN[domainCode].entries()) {
+      dimensions.push({
+        dimension: facetCode,
+        rawScore: 4.5 - domainIndex * 0.2 - facetIndex * 0.05,
+        scoredQuestionCount: 4,
+      });
+    }
+  }
+
+  return {
+    attemptId: "attempt-ipip-single-test-hr-input-capture",
+    scoringMethod: "likert_mean",
+    dimensions,
+    scoredResponseCount: 120,
+    unscoredResponses: [],
+  };
+}
 
 function buildSafranResults() {
   return {
@@ -56,6 +88,23 @@ function buildSafranResults() {
         cognitiveCompositeV1: 26,
       },
     },
+  };
+}
+
+function buildMwmsResults() {
+  return {
+    attemptId: "attempt-mwms-single-test-hr-input-capture",
+    scoringMethod: "likert_sum",
+    dimensions: [
+      { dimension: "amotivation", rawScore: 4, scoredQuestionCount: 3 },
+      { dimension: "external_social", rawScore: 4.25, scoredQuestionCount: 3 },
+      { dimension: "external_material", rawScore: 4.5, scoredQuestionCount: 3 },
+      { dimension: "introjected", rawScore: 3.75, scoredQuestionCount: 4 },
+      { dimension: "identified", rawScore: 4.75, scoredQuestionCount: 3 },
+      { dimension: "intrinsic", rawScore: 5, scoredQuestionCount: 3 },
+    ],
+    scoredResponseCount: 19,
+    unscoredResponses: [],
   };
 }
 
@@ -129,6 +178,25 @@ async function main() {
     new RegExp(`${ATTEMPT_ID_ENV}|${REPORT_ID_ENV}`),
   );
 
+  assert.equal(
+    resolveRequestDumpPath({
+      [REQUEST_DUMP_PATH_ENV]: "/tmp/single-test-hr-ai-request-test.json",
+    }),
+    "/tmp/single-test-hr-ai-request-test.json",
+  );
+  for (const invalidPath of [
+    "./request-dump.json",
+    "/etc/request-dump.json",
+    "/tmp/request-dump.txt",
+    "/tmpx/request-dump.json",
+  ]) {
+    assert.throws(() =>
+      resolveRequestDumpPath({
+        [REQUEST_DUMP_PATH_ENV]: invalidPath,
+      }),
+    );
+  }
+
   assert.equal(getPromptKeyForSingleTestHrJob({ family: "safran" }), "safran_hr_report_v1");
   assert.equal(getPromptKeyForSingleTestHrJob({ family: "mwms" }), "mwms_hr_report_v1");
   assert.equal(getPromptKeyForSingleTestHrJob({ family: "ipip" }), "completed_assessment_report");
@@ -140,6 +208,10 @@ async function main() {
   const {
     buildOpenAiStructuredRequestPayload,
   } = require("../lib/assessment/report-provider-openai.ts");
+  const {
+    buildAiReportDebugDumpRecord,
+    sanitizeAiReportDebugValue,
+  } = require("../lib/assessment/ai-report-debug-dump.ts");
   const {
     SAFRAN_HR_REPORT_V1_CONTRACT,
   } = require("../lib/assessment/safran-hr-report-v1.ts");
@@ -172,6 +244,7 @@ async function main() {
     persistedInputSnapshotPresent: false,
   };
   const dependencies = {
+    buildAiReportDebugDumpRecord,
     buildCompletedAssessmentReportRequest: async (testId, attemptId, options) => {
       assert.equal(testId, completedRequest.testId);
       assert.equal(attemptId, completedRequest.attemptId);
@@ -210,6 +283,7 @@ async function main() {
       openAiTimeoutMs: 120000,
     }),
     normalizeAiReportModel: (model) => model,
+    sanitizeAiReportDebugValue,
   };
 
   const directArtifact = await buildSingleTestHrAiInputArtifact(context, dependencies, {
@@ -246,6 +320,122 @@ async function main() {
   );
   assert.doesNotMatch(JSON.stringify(directArtifact), /test-api-key/);
 
+  const familyFixtures = [
+    {
+      family: "ipip",
+      request: {
+        attemptId: "attempt-ipip-single-test-hr-input-capture",
+        testId: "test-ipip",
+        testSlug: "ipip-neo-120-v1",
+        audience: "hr",
+        locale: "bs",
+        scoringMethod: "likert_mean",
+        promptVersion: "v1",
+        testName: "IPIP-NEO-120",
+        results: buildIpipResults(),
+      },
+      promptKey: "ipip_neo_120_hr_v2",
+    },
+    {
+      family: "safran",
+      request: completedRequest,
+      promptKey: "safran_hr_report_v1",
+    },
+    {
+      family: "mwms",
+      request: {
+        attemptId: "attempt-mwms-single-test-hr-input-capture",
+        testId: "test-mwms",
+        testSlug: "mwms_v1",
+        audience: "hr",
+        locale: "bs",
+        scoringMethod: "likert_sum",
+        promptVersion: "v1",
+        testName: "Procjena radne motivacije",
+        results: buildMwmsResults(),
+      },
+      promptKey: "mwms_hr_report_v1",
+    },
+  ];
+
+  for (const fixture of familyFixtures) {
+    const preparedInput = buildPreparedReportGenerationInput(fixture.request, {
+      promptVersionId: null,
+      promptTemplate: null,
+    });
+    const payload = buildOpenAiStructuredRequestPayload(preparedInput, {
+      apiKey: null,
+      model: "gpt-5.5",
+      timeoutMs: 120000,
+    });
+    const record = buildSingleTestHrAiRequestObservabilityRecord({
+      preparedInput,
+      openAiPayload: payload,
+      locale: fixture.request.locale,
+      timestamp: "2026-06-12T12:15:00.000Z",
+      buildDebugRecord: buildAiReportDebugDumpRecord,
+      sanitizeDebugValue: sanitizeAiReportDebugValue,
+    });
+
+    assert.equal(record.provider, "openai");
+    assert.equal(record.model, "gpt-5.5");
+    assert.equal(record.report_family, preparedInput.reportContract.family);
+    assert.equal(record.report_type, preparedInput.reportContract.reportType);
+    assert.equal(record.audience, "hr");
+    assert.equal(record.locale, "bs");
+    assert.equal(record.prompt_key, fixture.promptKey);
+    assert.equal(record.prompt_version, "v1");
+    assert.equal(record.report_schema_name, preparedInput.reportContract.schemaName);
+    assert.deepEqual(record.authority_metadata, payload.authorityMetadata);
+    assert.deepEqual(record.structured_output_schema, payload.schema);
+    assert.deepEqual(record.request_body, payload.requestBody);
+    assert.deepEqual(record.deterministic_prompt_input, preparedInput.promptInput);
+    assert.deepEqual(record.report_contract, preparedInput.reportContract);
+  }
+
+  const sensitivePreparedInput = structuredClone(expectedPreparedInput);
+  sensitivePreparedInput.promptInput.visibleValue = "sk-test-secret";
+  const sensitivePayload = buildOpenAiStructuredRequestPayload(sensitivePreparedInput, {
+    apiKey: null,
+    model: "gpt-5.5",
+    timeoutMs: 120000,
+  });
+  const sensitiveRecord = buildSingleTestHrAiRequestObservabilityRecord({
+    preparedInput: sensitivePreparedInput,
+    openAiPayload: sensitivePayload,
+    locale: "bs",
+    timestamp: "2026-06-12T12:20:00.000Z",
+    redactValues: [
+      "sk-test-secret",
+      "cookie-test-secret",
+      "service-role-test-secret",
+      "token-test-secret",
+    ],
+    buildDebugRecord: buildAiReportDebugDumpRecord,
+    sanitizeDebugValue: sanitizeAiReportDebugValue,
+  });
+  const sensitiveRecordText = JSON.stringify(sensitiveRecord);
+  for (const forbiddenValue of [
+    "apiKey",
+    "authorization",
+    "cookie",
+    "service_role",
+    "token",
+    "secret",
+    "password",
+    "Bearer",
+    "sk-test-secret",
+    "cookie-test-secret",
+    "service-role-test-secret",
+    "token-test-secret",
+  ]) {
+    assert.equal(
+      sensitiveRecordText.toLowerCase().includes(forbiddenValue.toLowerCase()),
+      false,
+      `Serialized observability dump must not contain ${forbiddenValue}.`,
+    );
+  }
+
   const writesList = [];
   const chmodCalls = [];
   const runArtifact = await runSingleTestHrAiInputInspect({
@@ -254,7 +444,12 @@ async function main() {
       [CONFIRM_ENV]: "true",
       [FAMILY_ENV]: "safran",
       [ATTEMPT_ID_ENV]: completedRequest.attemptId,
-      OPENAI_API_KEY: "test-api-key",
+      [REQUEST_DUMP_PATH_ENV]: "/tmp/single-test-hr-ai-request-safran-test.json",
+      OPENAI_API_KEY: "sk-test-secret",
+      SESSION_COOKIE: "cookie-test-secret",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-test-secret",
+      INTERNAL_TOKEN: "token-test-secret",
+      TEST_PASSWORD: "password-test-secret",
     },
     now: () => "2026-06-12T12:30:00.000Z",
     dependencies,
@@ -275,19 +470,54 @@ async function main() {
   });
 
   assert.match(runArtifact.dumpPath, /^\/tmp\/single-test-hr-ai-input-safran-/);
+  assert.equal(
+    runArtifact.requestDumpPath,
+    "/tmp/single-test-hr-ai-request-safran-test.json",
+  );
   assert.equal(runArtifact.metadata.openAiCalled, false);
   assert.equal(runArtifact.metadata.databaseWrites, false);
   assert.equal(runArtifact.metadata.reportRegenerated, false);
   assert.equal(runArtifact.metadata.productionFlowChanged, false);
-  assert.equal(writesList.length, 1);
+  assert.equal(writesList.length, 2);
   assert.equal(writesList[0].filePath, runArtifact.dumpPath);
   assert.equal(writesList[0].options.mode, 0o600);
   assert.match(writesList[0].data, /"preparedOpenAiRequest"/);
   assert.match(writesList[0].data, /"promptInput"/);
-  assert.doesNotMatch(writesList[0].data, /test-api-key/);
+  assert.doesNotMatch(writesList[0].data, /sk-test-secret/);
+  assert.equal(writesList[1].filePath, runArtifact.requestDumpPath);
+  assert.equal(writesList[1].options.mode, 0o600);
+  assert.match(writesList[1].data, /"deterministic_prompt_input"/);
+  assert.match(writesList[1].data, /"report_contract"/);
+  assert.match(writesList[1].data, /"request_body"/);
+  for (const forbiddenValue of [
+    "apiKey",
+    "authorization",
+    "cookie",
+    "service_role",
+    "token",
+    "secret",
+    "password",
+    "Bearer",
+    "sk-test-secret",
+    "cookie-test-secret",
+    "service-role-test-secret",
+    "token-test-secret",
+  ]) {
+    assert.equal(
+      writesList[1].data.toLowerCase().includes(forbiddenValue.toLowerCase()),
+      false,
+      `Serialized request dump must not contain ${forbiddenValue}.`,
+    );
+  }
+  assert.doesNotMatch(writesList[1].data, /response_headers/i);
+  assert.doesNotMatch(writesList[1].data, /stack_trace|stackTrace/i);
   assert.deepEqual(chmodCalls, [
     {
       filePath: runArtifact.dumpPath,
+      mode: 0o600,
+    },
+    {
+      filePath: runArtifact.requestDumpPath,
       mode: 0o600,
     },
   ]);
