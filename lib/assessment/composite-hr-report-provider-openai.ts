@@ -128,6 +128,29 @@ export type CompositeHrBoundaryDiagnostic = {
   mutationRiskInventory: CompositeHrBoundaryInventoryItem[];
 };
 
+export type CompositeHrDataOnlyShadowFinding = {
+  code: string;
+  category: CompositeHrBoundaryCategory | "renderer_display_rewrite_risk";
+  message: string;
+  path?: string;
+};
+
+export type CompositeHrDataOnlyShadowResult = {
+  shadowMode: true;
+  productionBehaviorChanged: false;
+  wouldPassDataOnlyBlockingValidation: boolean | "not_evaluated";
+  dataOnlyBlockingCategories: CompositeHrBoundaryCategory[];
+  diagnosticOnlyCategories: CompositeHrBoundaryCategory[];
+  blockingFindings: CompositeHrDataOnlyShadowFinding[];
+  diagnosticOnlyFindings: CompositeHrDataOnlyShadowFinding[];
+  mutationRiskFindings: CompositeHrDataOnlyShadowFinding[];
+  referenceIntegrityFindings: CompositeHrDataOnlyShadowFinding[];
+  proseStyleFindings: CompositeHrDataOnlyShadowFinding[];
+  bhsLanguageFindings: CompositeHrDataOnlyShadowFinding[];
+  reviewerQualityFindings: CompositeHrDataOnlyShadowFinding[];
+  notEvaluatedReasons: string[];
+};
+
 type CompositeHrOpenAiChatCompletionsRequestBody = {
   model: string;
   response_format: {
@@ -1482,6 +1505,218 @@ export function buildCompositeHrBoundaryDiagnostic(
     mutationRiskInventory: validationInventory.filter(
       (item) => item.category === "mutation_or_rewrite_risk",
     ),
+  };
+}
+
+function buildCompositeHrDataOnlyReferenceFindings(
+  input: CompositeHrInputSnapshot,
+  snapshot: CompositeHrReportSnapshot,
+): CompositeHrDataOnlyShadowFinding[] {
+  const findings: CompositeHrDataOnlyShadowFinding[] = [];
+  const catalog = buildLockedCompositeEvidenceCatalog(input);
+  const catalogByKey = new Map(
+    catalog.map((entry) => [normalizeEvidenceKey(entry.testSlug, entry.label), entry]),
+  );
+
+  if (snapshot.integratedSignals.length === 0) {
+    findings.push({
+      code: "MISSING_REQUIRED_INTEGRATED_SIGNALS",
+      category: "data_contract_blocking",
+      message: "Composite HR report has no integrated signals with deterministic evidence references.",
+      path: "integratedSignals",
+    });
+  }
+
+  snapshot.integratedSignals.forEach((signal, signalIndex) => {
+    if (signal.evidence.length === 0) {
+      findings.push({
+        code: "MISSING_DETERMINISTIC_EVIDENCE_REFERENCE",
+        category: "evidence_integrity_blocking",
+        message: "Integrated signal has no deterministic evidence reference.",
+        path: `integratedSignals[${signalIndex}].evidence`,
+      });
+    }
+
+    signal.evidence.forEach((evidence, evidenceIndex) => {
+      const path = `integratedSignals[${signalIndex}].evidence[${evidenceIndex}]`;
+      const expected = catalogByKey.get(normalizeEvidenceKey(evidence.testSlug, evidence.label));
+
+      if (!expected) {
+        findings.push({
+          code: "INVENTED_OR_UNKNOWN_EVIDENCE_REFERENCE",
+          category: "evidence_integrity_blocking",
+          message: `Evidence ${evidence.testSlug}/${evidence.label} does not match a deterministic reference anchor.`,
+          path,
+        });
+        return;
+      }
+
+      if (evidence.value !== expected.value) {
+        findings.push({
+          code: "DETERMINISTIC_EVIDENCE_VALUE_MISMATCH",
+          category: "evidence_integrity_blocking",
+          message: `Expected "${expected.value}" from ${expected.sourcePath}, received "${evidence.value}".`,
+          path: `${path}.value`,
+        });
+      }
+    });
+  });
+
+  return findings;
+}
+
+export function compareCompositeHrDataOnlyValidationShadow(
+  input: CompositeHrInputSnapshot,
+  persistedReportSnapshot?: unknown | null,
+  boundaryDiagnostic?: CompositeHrBoundaryDiagnostic,
+): CompositeHrDataOnlyShadowResult {
+  const diagnostic =
+    boundaryDiagnostic ?? buildCompositeHrBoundaryDiagnostic(input, persistedReportSnapshot);
+  const dataOnlyBlockingCategories: CompositeHrBoundaryCategory[] = [
+    "data_contract_blocking",
+    "deterministic_reference_blocking",
+    "evidence_integrity_blocking",
+  ];
+  const diagnosticOnlyCategories: CompositeHrBoundaryCategory[] = [
+    "prose_style_diagnostic_only",
+    "bhs_language_diagnostic_only",
+    "reviewer_quality_diagnostic_only",
+  ];
+  const blockingFindings: CompositeHrDataOnlyShadowFinding[] = [];
+  const referenceIntegrityFindings: CompositeHrDataOnlyShadowFinding[] = [];
+  const proseStyleFindings: CompositeHrDataOnlyShadowFinding[] = [];
+  const bhsLanguageFindings: CompositeHrDataOnlyShadowFinding[] = [];
+  const reviewerQualityFindings: CompositeHrDataOnlyShadowFinding[] = [
+    {
+      code: "AI_REVIEWER_NOT_RUN_IN_SHADOW",
+      category: "reviewer_quality_diagnostic_only",
+      message: "Reviewer quality is diagnostic-only and was not evaluated because this shadow comparator makes no OpenAI call.",
+    },
+  ];
+  const mutationRiskFindings: CompositeHrDataOnlyShadowFinding[] =
+    diagnostic.mutationRiskInventory.map((item) => ({
+      code: item.id.toUpperCase(),
+      category: "mutation_or_rewrite_risk",
+      message: `${item.currentProductionBehavior} Future plan: ${item.futureStrictReferenceRequirement ?? "Document ownership before a production switch."}`,
+    }));
+  mutationRiskFindings.push({
+    code: "RENDERER_DISPLAY_STRING_SANITIZATION",
+    category: "renderer_display_rewrite_risk",
+    message: "Composite HR display view model sanitizes selected visible strings before rendering; this comparator does not call or change that layer.",
+  });
+
+  const notEvaluatedReasons: string[] = [];
+
+  if (persistedReportSnapshot === undefined || persistedReportSnapshot === null) {
+    notEvaluatedReasons.push("No persisted/current Composite HR report snapshot was provided.");
+  } else {
+    const validation = validateCompositeHrReportSnapshot(persistedReportSnapshot);
+
+    if (!validation.ok) {
+      blockingFindings.push(
+        ...validation.errors.map((message) => ({
+          code: "REPORT_CONTRACT_INVALID",
+          category: "data_contract_blocking" as const,
+          message,
+        })),
+      );
+    } else {
+      try {
+        assertImmutableSource(validation.value, input);
+      } catch (error) {
+        const findings = [
+          {
+            code: "DETERMINISTIC_SOURCE_MISMATCH",
+            category: "deterministic_reference_blocking" as const,
+            message: formatDiagnosticError(error),
+          },
+        ];
+        blockingFindings.push(...findings);
+        referenceIntegrityFindings.push(...findings);
+      }
+
+      const evidenceFindings = buildCompositeHrDataOnlyReferenceFindings(input, validation.value);
+      blockingFindings.push(...evidenceFindings);
+      referenceIntegrityFindings.push(...evidenceFindings);
+
+      const languageQuality = validateReportLanguageQuality({
+        snapshot: validation.value,
+        locale: validation.value.locale,
+        audience: "hr",
+        reportType: "composite",
+        context: "composite_hr_report",
+      });
+      const bhsCodes = new Set<ReportLanguageQualityIssue["code"]>([
+        "FORBIDDEN_TERM",
+        "GLOSSARY_VIOLATION",
+        "NARRATIVE_CASING_VIOLATION",
+        "FORBIDDEN_SCRIPT",
+      ]);
+
+      for (const issue of languageQuality.issues) {
+        const finding: CompositeHrDataOnlyShadowFinding = {
+          code: issue.code,
+          category: bhsCodes.has(issue.code)
+            ? "bhs_language_diagnostic_only"
+            : "prose_style_diagnostic_only",
+          message: issue.suggestion
+            ? `${issue.phrase} -> ${issue.suggestion}`
+            : issue.phrase,
+          path: issue.path,
+        };
+
+        if (finding.category === "bhs_language_diagnostic_only") {
+          bhsLanguageFindings.push(finding);
+        } else {
+          proseStyleFindings.push(finding);
+        }
+      }
+
+      for (const issue of collectCompositeHrHardSafetyIssues(validation.value)) {
+        proseStyleFindings.push({
+          code: issue.code,
+          category: "prose_style_diagnostic_only",
+          message: issue.phrase,
+          path: issue.path,
+        });
+      }
+
+      try {
+        assertAddressingFormConsistency(validation.value, input);
+      } catch (error) {
+        proseStyleFindings.push({
+          code: "ADDRESSING_FORM_WORDING",
+          category: "prose_style_diagnostic_only",
+          message: formatDiagnosticError(error),
+        });
+      }
+    }
+  }
+
+  const diagnosticOnlyFindings = [
+    ...proseStyleFindings,
+    ...bhsLanguageFindings,
+    ...reviewerQualityFindings,
+  ];
+  const wouldPassDataOnlyBlockingValidation =
+    notEvaluatedReasons.length > 0
+      ? "not_evaluated"
+      : blockingFindings.length === 0;
+
+  return {
+    shadowMode: true,
+    productionBehaviorChanged: false,
+    wouldPassDataOnlyBlockingValidation,
+    dataOnlyBlockingCategories,
+    diagnosticOnlyCategories,
+    blockingFindings,
+    diagnosticOnlyFindings,
+    mutationRiskFindings,
+    referenceIntegrityFindings,
+    proseStyleFindings,
+    bhsLanguageFindings,
+    reviewerQualityFindings,
+    notEvaluatedReasons,
   };
 }
 

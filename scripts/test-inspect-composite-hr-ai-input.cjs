@@ -24,6 +24,7 @@ assert.doesNotMatch(scriptSource, /\.(?:insert|update|upsert|delete)\(/);
 assert.match(providerSource, /export function buildOpenAiCompositeHrReportRequestPayload/);
 assert.match(providerSource, /export function buildCompositeHrOpenAiChatCompletionsRequestBody/);
 assert.match(providerSource, /export function buildCompositeHrBoundaryDiagnostic/);
+assert.match(providerSource, /export function compareCompositeHrDataOnlyValidationShadow/);
 
 const {
   ASSIGNMENT_ID_ENV,
@@ -317,6 +318,27 @@ async function main() {
     "fail",
   );
   assert.equal(JSON.stringify(mismatchedEvidenceSnapshot), mismatchedEvidenceBefore);
+  const mismatchedEvidenceShadow = providerModule.compareCompositeHrDataOnlyValidationShadow(
+    inputSnapshot,
+    mismatchedEvidenceSnapshot,
+    mismatchedEvidenceDiagnostic,
+  );
+  assert.equal(mismatchedEvidenceShadow.shadowMode, true);
+  assert.equal(mismatchedEvidenceShadow.productionBehaviorChanged, false);
+  assert.equal(mismatchedEvidenceShadow.wouldPassDataOnlyBlockingValidation, false);
+  assert.equal(
+    mismatchedEvidenceShadow.blockingFindings.some(
+      (finding) => finding.code === "DETERMINISTIC_EVIDENCE_VALUE_MISMATCH",
+    ),
+    true,
+  );
+  assert.equal(
+    mismatchedEvidenceShadow.blockingFindings.every((finding) =>
+      mismatchedEvidenceShadow.dataOnlyBlockingCategories.includes(finding.category),
+    ),
+    true,
+  );
+  assert.equal(JSON.stringify(mismatchedEvidenceSnapshot), mismatchedEvidenceBefore);
   const requestPayload = providerModule.buildOpenAiCompositeHrReportRequestPayload(inputSnapshot);
   const directRequestBody = providerModule.buildCompositeHrOpenAiChatCompletionsRequestBody(
     requestPayload,
@@ -410,6 +432,21 @@ async function main() {
   assert.equal(artifact.openAiCalled, false);
   assert.equal(artifact.reportRegenerated, false);
   assert.equal(artifact.boundaryDiagnostic.mode, "read_only_dev_diagnostic");
+  assert.deepEqual(artifact.dataOnlyShadowComparator, {
+    shadowMode: true,
+    productionBehaviorChanged: false,
+  });
+  assert.equal(artifact.dataOnlyShadowResult.shadowMode, true);
+  assert.equal(artifact.dataOnlyShadowResult.productionBehaviorChanged, false);
+  assert.equal(
+    artifact.dataOnlyShadowResult.wouldPassDataOnlyBlockingValidation,
+    "not_evaluated",
+  );
+  assert.deepEqual(artifact.dataOnlyBlockingCategories, [
+    "data_contract_blocking",
+    "deterministic_reference_blocking",
+    "evidence_integrity_blocking",
+  ]);
   assert.equal(
     artifact.boundaryDiagnostic.reportSnapshotStatus,
     "not_evaluated_no_report_snapshot",
@@ -441,6 +478,28 @@ async function main() {
     );
   }
   assert.equal(artifact.mutationRiskInventory.length >= 1, true);
+  assert.equal(
+    artifact.mutationRiskFindings.some(
+      (finding) => finding.code === "LOCKED_EVIDENCE_VALUE_REWRITE",
+    ),
+    true,
+  );
+  assert.equal(
+    artifact.mutationRiskFindings.some(
+      (finding) => finding.code === "RENDERER_DISPLAY_STRING_SANITIZATION",
+    ),
+    true,
+  );
+  assert.deepEqual(
+    artifact.dataOnlyShadowResult.diagnosticOnlyCategories,
+    artifact.diagnosticOnlyCategories,
+  );
+  assert.equal(
+    artifact.dataOnlyShadowResult.reviewerQualityFindings.every(
+      (finding) => finding.category === "reviewer_quality_diagnostic_only",
+    ),
+    true,
+  );
   assert.equal(
     artifact.mutationRiskInventory.some(
       (item) =>
@@ -527,7 +586,20 @@ async function main() {
       keyStrengths: ["Snaga"],
       watchouts: ["Provjera"],
     },
-    integratedSignals: [],
+    integratedSignals: [
+      {
+        id: "signal-1",
+        title: "Signal",
+        body: "Opis",
+        evidence: [
+          {
+            testSlug: "ipip-neo-120-v1",
+            label: "Spremnost na saradnju",
+            value: "3.00 (Uravnotezeno)",
+          },
+        ],
+      },
+    ],
     interviewGuidance: {
       focusAreas: [],
     },
@@ -567,6 +639,41 @@ async function main() {
   });
 
   assert.equal(persistedArtifact.boundaryDiagnostic.reportSnapshotStatus, "evaluated");
+  assert.equal(
+    persistedArtifact.dataOnlyShadowResult.wouldPassDataOnlyBlockingValidation,
+    true,
+  );
+  const bhsDiagnosticSnapshot = {
+    ...persistedSnapshot,
+    summary: {
+      ...persistedSnapshot.summary,
+      headline: "Ugodnost kao radni signal",
+    },
+  };
+  const bhsDiagnosticBoundary = providerModule.buildCompositeHrBoundaryDiagnostic(
+    inputSnapshot,
+    bhsDiagnosticSnapshot,
+  );
+  const bhsDiagnosticShadow = providerModule.compareCompositeHrDataOnlyValidationShadow(
+    inputSnapshot,
+    bhsDiagnosticSnapshot,
+    bhsDiagnosticBoundary,
+  );
+
+  assert.equal(bhsDiagnosticShadow.wouldPassDataOnlyBlockingValidation, true);
+  assert.equal(bhsDiagnosticShadow.bhsLanguageFindings.length > 0, true);
+  assert.equal(
+    bhsDiagnosticShadow.bhsLanguageFindings.every(
+      (finding) => finding.category === "bhs_language_diagnostic_only",
+    ),
+    true,
+  );
+  assert.equal(
+    bhsDiagnosticShadow.diagnosticOnlyFindings.every((finding) =>
+      bhsDiagnosticShadow.diagnosticOnlyCategories.includes(finding.category),
+    ),
+    true,
+  );
   assert.equal(
     persistedArtifact.boundaryDiagnostic.persistedSnapshotEvaluation.contract.status,
     "pass",

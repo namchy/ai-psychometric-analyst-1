@@ -275,6 +275,7 @@ async function runCompositeHrAiInputCapture({
   buildRequestPayload,
   buildRequestBody,
   buildBoundaryDiagnostic,
+  compareDataOnlyValidationShadow,
   getConfig,
   createSupabaseClient,
   loadReportIdentity,
@@ -296,6 +297,9 @@ async function runCompositeHrAiInputCapture({
     buildRequestBody: buildRequestBody ?? providerModule.buildCompositeHrOpenAiChatCompletionsRequestBody,
     buildBoundaryDiagnostic:
       buildBoundaryDiagnostic ?? providerModule.buildCompositeHrBoundaryDiagnostic,
+    compareDataOnlyValidationShadow:
+      compareDataOnlyValidationShadow ??
+      providerModule.compareCompositeHrDataOnlyValidationShadow,
     getConfig: getConfig ?? configModule.getAiReportConfig,
     createSupabaseClient: createSupabaseClient ?? supabaseModule.createSupabaseAdminClient,
     loadReportIdentity: loadReportIdentity ?? loadReportIdentityDefault,
@@ -321,6 +325,11 @@ async function runCompositeHrAiInputCapture({
   const boundaryDiagnostic = deps.buildBoundaryDiagnostic(
     inputSnapshot,
     resolvedIdentity.reportSnapshot,
+  );
+  const dataOnlyShadowResult = deps.compareDataOnlyValidationShadow(
+    inputSnapshot,
+    resolvedIdentity.reportSnapshot,
+    boundaryDiagnostic,
   );
   const schemaName = requestBody.response_format.json_schema.name;
   const dumpPath = resolveDumpPath({ env, argv, now });
@@ -372,10 +381,17 @@ async function runCompositeHrAiInputCapture({
     reportContract,
     requestAuthority,
     boundaryDiagnostic,
+    dataOnlyShadowComparator: {
+      shadowMode: true,
+      productionBehaviorChanged: false,
+    },
+    dataOnlyShadowResult,
+    dataOnlyBlockingCategories: dataOnlyShadowResult.dataOnlyBlockingCategories,
     validationInventory: boundaryDiagnostic.validationInventory,
     dataOnlyReadiness: boundaryDiagnostic.dataOnlyReadiness,
-    diagnosticOnlyCategories: boundaryDiagnostic.diagnosticOnlyCategories,
+    diagnosticOnlyCategories: dataOnlyShadowResult.diagnosticOnlyCategories,
     mutationRiskInventory: boundaryDiagnostic.mutationRiskInventory,
+    mutationRiskFindings: dataOnlyShadowResult.mutationRiskFindings,
     productionBehaviorChanged: false,
     databaseWrites: false,
     openAiCalled: false,
@@ -408,6 +424,8 @@ async function main() {
             reportContract: result.reportContract,
             requestAuthority: result.requestAuthority,
             boundaryDiagnostic: result.boundaryDiagnostic,
+            dataOnlyShadowComparator: result.dataOnlyShadowComparator,
+            dataOnlyShadowResult: result.dataOnlyShadowResult,
             dataOnlyReadiness: result.dataOnlyReadiness,
             requestDumpPath: result.requestDumpPath,
           },
