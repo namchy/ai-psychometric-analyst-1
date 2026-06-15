@@ -105,6 +105,14 @@ type CompositeHrOpenAiChatCompletionsRequestBody = {
   temperature?: number;
 };
 
+export type CompositeHrOpenAiRequestPayload = {
+  label: string;
+  schemaName: string;
+  schema: Record<string, unknown>;
+  systemPrompt: string;
+  userPrompt: string;
+};
+
 type LockedCompositeEvidenceEntry = {
   testSlug: string;
   label: string;
@@ -831,6 +839,55 @@ const compositeHrReviewOpenAiSchema = {
   },
 } as const satisfies Record<string, unknown>;
 
+export function buildOpenAiCompositeHrReportRequestPayload(
+  input: CompositeHrInputSnapshot,
+): CompositeHrOpenAiRequestPayload {
+  return {
+    label: "composite HR report",
+    schemaName: COMPOSITE_HR_REPORT_CONTRACT_VERSION,
+    schema: compositeHrReportOpenAiSchema as Record<string, unknown>,
+    systemPrompt: buildCompositeHrOpenAiSystemPrompt(input),
+    userPrompt: buildCompositeHrOpenAiUserPrompt(input),
+  };
+}
+
+export function buildCompositeHrOpenAiChatCompletionsRequestBody(
+  payload: CompositeHrOpenAiRequestPayload,
+  options: Pick<OpenAiCompositeHrProviderOptions, "model">,
+): CompositeHrOpenAiChatCompletionsRequestBody {
+  if (!options.model) {
+    throw new Error("Missing required env var: AI_REPORT_MODEL");
+  }
+
+  const requestBody: CompositeHrOpenAiChatCompletionsRequestBody = {
+    model: options.model,
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: buildOpenAiSchemaName(payload.schemaName),
+        strict: true,
+        schema: payload.schema,
+      },
+    },
+    messages: [
+      {
+        role: "system",
+        content: payload.systemPrompt,
+      },
+      {
+        role: "user",
+        content: payload.userPrompt,
+      },
+    ],
+  };
+
+  if (!shouldOmitOpenAiTemperature(options.model)) {
+    requestBody.temperature = 0.2;
+  }
+
+  return requestBody;
+}
+
 function validateCompositeHrReviewResult(value: unknown): CompositeHrReviewResult {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Composite HR reviewer returned invalid payload root.");
@@ -1121,31 +1178,7 @@ async function requestOpenAiStructuredJson(
   );
 
   try {
-    const requestBody: CompositeHrOpenAiChatCompletionsRequestBody = {
-      model: options.model,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: buildOpenAiSchemaName(payload.schemaName),
-          strict: true,
-          schema: payload.schema,
-        },
-      },
-      messages: [
-        {
-          role: "system",
-          content: payload.systemPrompt,
-        },
-        {
-          role: "user",
-          content: payload.userPrompt,
-        },
-      ],
-    };
-
-    if (!shouldOmitOpenAiTemperature(options.model)) {
-      requestBody.temperature = 0.2;
-    }
+    const requestBody = buildCompositeHrOpenAiChatCompletionsRequestBody(payload, options);
 
     const response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -1267,13 +1300,7 @@ export async function requestOpenAiCompositeHrReportRaw(
   input: CompositeHrInputSnapshot,
   options: OpenAiCompositeHrProviderOptions,
 ): Promise<unknown> {
-  return requestOpenAiStructuredJson(options, {
-    label: "composite HR report",
-    schemaName: COMPOSITE_HR_REPORT_CONTRACT_VERSION,
-    schema: compositeHrReportOpenAiSchema as Record<string, unknown>,
-    systemPrompt: buildCompositeHrOpenAiSystemPrompt(input),
-    userPrompt: buildCompositeHrOpenAiUserPrompt(input),
-  });
+  return requestOpenAiStructuredJson(options, buildOpenAiCompositeHrReportRequestPayload(input));
 }
 
 function formatDiagnosticError(error: unknown): string {
