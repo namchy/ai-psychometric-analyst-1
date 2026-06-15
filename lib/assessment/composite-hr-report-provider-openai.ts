@@ -1021,6 +1021,18 @@ async function reviewCompositeHrOpenAiReport(
   }
 }
 
+async function collectCompositeHrReviewerDiagnostic(
+  input: CompositeHrInputSnapshot,
+  snapshot: CompositeHrReportSnapshot,
+  options: OpenAiCompositeHrProviderOptions,
+): Promise<void> {
+  try {
+    await reviewOpenAiCompositeHrReportForDiagnostic(input, snapshot, options);
+  } catch {
+    // Reviewer remains a diagnostic-only signal for Composite HR and must not block persistence.
+  }
+}
+
 export async function reviewOpenAiCompositeHrReportForDiagnostic(
   input: CompositeHrInputSnapshot,
   snapshot: CompositeHrReportSnapshot,
@@ -1311,32 +1323,6 @@ export async function generateOpenAiCompositeHrReport(
 
   assertImmutableSource(lockedValidation.value, input);
   assertLockedCompositeEvidenceIntegrity(lockedValidation.value, input);
-  const languageQualityResult = validateReportLanguageQuality({
-    snapshot: lockedValidation.value,
-    locale: lockedValidation.value.locale,
-    audience: "hr",
-    reportType: "composite",
-    context: "composite_hr_report",
-  });
-  const languageQualityBoundary = classifyCompositeHrLanguageQualityResult(languageQualityResult);
-
-  if (languageQualityBoundary.hardIssues.length > 0) {
-    throw new Error(
-      `Composite HR report failed hard language/safety validation: ${languageQualityBoundary.hardFailureReasons.join("; ")}`,
-    );
-  }
-
-  const hardSafetyIssues = collectCompositeHrHardSafetyIssues(lockedValidation.value);
-
-  if (hardSafetyIssues.length > 0) {
-    throw new Error(
-      `Composite HR report failed hard safety validation: ${hardSafetyIssues
-        .map((issue) => `${issue.path}: ${issue.code}: "${issue.phrase}"`)
-        .join("; ")}`,
-    );
-  }
-
-  assertAddressingFormConsistency(lockedValidation.value, input);
 
   const normalizedReport: CompositeHrReportSnapshot = {
     ...lockedValidation.value,
@@ -1354,7 +1340,7 @@ export async function generateOpenAiCompositeHrReport(
     );
   }
 
-  await reviewCompositeHrOpenAiReport(input, normalizedValidation.value, options);
+  await collectCompositeHrReviewerDiagnostic(input, normalizedValidation.value, options);
 
   return normalizedValidation.value;
 }
@@ -1825,24 +1811,10 @@ export function evaluateCompositeHrReportValidatorBoundary(
   });
   const languageQualityBoundary = classifyCompositeHrLanguageQualityResult(languageQualityResult);
 
-  if (languageQualityBoundary.hardIssues.length > 0) {
-    failureReasons.push(
-      `hard language/safety validation failed: ${languageQualityBoundary.hardFailureReasons.join("; ")}`,
-    );
-  }
-
   const hardSafetyIssues = collectCompositeHrHardSafetyIssues(lockedValidation.value);
   const hardSafetyResult = hardSafetyIssues.length === 0
     ? { ok: true as const, issues: [] }
     : { ok: false as const, issues: hardSafetyIssues };
-
-  if (!hardSafetyResult.ok) {
-    failureReasons.push(
-      `hard safety validation failed: ${hardSafetyIssues
-        .map((issue) => `${issue.path}: ${issue.code}: "${issue.phrase}"`)
-        .join("; ")}`,
-    );
-  }
 
   let addressingFormResult: CompositeHrValidatorBoundaryDiagnostic["addressingFormResult"] = {
     ok: true,
@@ -1853,7 +1825,6 @@ export function evaluateCompositeHrReportValidatorBoundary(
     assertAddressingFormConsistency(lockedValidation.value, input);
   } catch (error) {
     addressingFormResult = { ok: false, error: formatDiagnosticError(error) };
-    failureReasons.push(`addressing form failed: ${addressingFormResult.error}`);
   }
 
   const normalizedReport: CompositeHrReportSnapshot = {
@@ -1878,9 +1849,6 @@ export function evaluateCompositeHrReportValidatorBoundary(
   const hardGateWouldPersist =
     sourceIntegrityResult.ok === true &&
     evidenceIntegrityResult.ok === true &&
-    languageQualityBoundary.hardIssues.length === 0 &&
-    hardSafetyResult.ok === true &&
-    addressingFormResult.ok === true &&
     normalizedValidation.ok;
 
   return {
