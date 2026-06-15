@@ -170,6 +170,14 @@ function main() {
   assert.equal(hrPrompt.input.test.slug, "safran_v1");
   assert.equal(hrPrompt.input.scores.overall.rawScore, 26);
   assert.equal(hrPrompt.input.scores.verbal.rawScore, 12);
+  assert.equal(hrSchema.required.includes("scoreReferences"), true);
+  assert.equal(hrSchema.properties.scoreReferences.additionalProperties, false);
+  assert.deepEqual(hrSchema.properties.scoreReferences.required, [
+    "overall",
+    "verbal",
+    "figural",
+    "numeric",
+  ]);
   assert.match(hrPrompt.instructions.output_contract, /safran_hr_report_v1/);
   assert.match(hrPrompt.instructions.decision_support_rule, /decision-support/i);
   assert.match(hrPrompt.instructions.source_rule, /Do not calculate scores/i);
@@ -222,6 +230,10 @@ function main() {
     /experience|interview|role context|iskustvom, intervjuom i kontekstom uloge/i,
   );
   assert.match(hrFinalPrompt, /SAFRAN HR mandatory guardrails/);
+  assert.match(
+    mandatoryGuardrails,
+    /scoreReferences must copy input\.scores exactly.*rawScore.*bandLabel/i,
+  );
   assert.match(mandatoryGuardrails, /executiveSummary\.summary/);
   assert.match(mandatoryGuardrails, /opreznu HR hipotezu/i);
   assert.match(
@@ -305,6 +317,10 @@ function main() {
   assert.equal(validatedHrReport.audience, "hr");
   assert.equal(validatedHrReport.sourceType, "single_test");
   assert.equal(validatedHrReport.testSlug, "safran_v1");
+  assert.deepEqual(validatedHrReport.scoreReferences.overall, {
+    key: "overall",
+    ...hrInput.promptInput.scores.overall,
+  });
   assert.deepEqual(hrInput.promptInput, hrPromptInputBefore);
   assert.equal(
     hrPrompt.instructions.field_level_rules.some((item) =>

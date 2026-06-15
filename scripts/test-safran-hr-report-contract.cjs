@@ -100,6 +100,52 @@ const input = buildSafranHrReportInput({
 const validReport = buildMockSafranHrReportV1(input);
 const validResult = validateSafranHrReport(validReport, { expectedInput: input });
 assert.equal(validResult.ok, true, validResult.ok ? undefined : validResult.errors.join(" | "));
+assert.deepEqual(validReport.scoreReferences, {
+  overall: { key: "overall", ...input.scores.overall },
+  verbal: { key: "verbal", ...input.scores.verbal },
+  figural: { key: "figural", ...input.scores.figural },
+  numeric: { key: "numeric", ...input.scores.numeric },
+});
+
+function assertInvalidReport(mutator) {
+  const report = clone(validReport);
+  mutator(report);
+  assert.equal(validateSafranHrReport(report, { expectedInput: input }).ok, false);
+}
+
+assertInvalidReport((report) => {
+  delete report.scoreReferences;
+});
+assertInvalidReport((report) => {
+  report.scoreReferences.overall.rawScore += 1;
+});
+assertInvalidReport((report) => {
+  report.scoreReferences.verbal.maxScore += 1;
+});
+assertInvalidReport((report) => {
+  report.scoreReferences.figural.scoreLabel = "wrong";
+});
+assertInvalidReport((report) => {
+  report.scoreReferences.numeric.band =
+    input.scores.numeric.band === "moderate" ? "higher" : "moderate";
+});
+assertInvalidReport((report) => {
+  report.scoreReferences.overall.bandLabel = "Wrong band label";
+});
+assertInvalidReport((report) => {
+  const overall = report.scoreReferences.overall;
+  report.scoreReferences.overall = report.scoreReferences.verbal;
+  report.scoreReferences.verbal = overall;
+});
+assertInvalidReport((report) => {
+  report.scoreReferences.figural.key = "numeric";
+});
+assertInvalidReport((report) => {
+  report.scoreReferences.numeric.extra = true;
+});
+assertInvalidReport((report) => {
+  report.generatedLanguage = "en";
+});
 
 const wrongAudience = clone(validReport);
 wrongAudience.audience = "participant";

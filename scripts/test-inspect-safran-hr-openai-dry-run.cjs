@@ -259,6 +259,9 @@ async function main() {
   ];
 
   const productionPreparedInput = buildProductionPreparedSafranHrInput();
+  const productionValidReport = buildMockSafranHrReportV1(
+    productionPreparedInput.promptInput,
+  );
   const diagnosticPreparedInput = buildSafranHrPreparedOpenAiInput(
     productionPreparedInput.promptInput,
   );
@@ -503,7 +506,7 @@ async function main() {
         Object.prototype.hasOwnProperty.call(captureArtifact.preparedOpenAiRequest.requestBody, "temperature"),
         false,
       );
-      return validReport;
+      return productionValidReport;
     },
     evaluateDiagnostic: (input, output) =>
       evaluateSafranHrDryRunDiagnostic(input, output, dependencies),
@@ -646,7 +649,7 @@ async function main() {
   );
 
   const referenceMismatchReport = clone(validReport);
-  referenceMismatchReport.locale = "en";
+  referenceMismatchReport.scoreReferences.numeric.rawScore += 1;
   const referenceMismatchDiagnostic = evaluateSafranHrDryRunDiagnostic(
     inputSnapshot,
     referenceMismatchReport,
@@ -694,13 +697,13 @@ async function main() {
 
   assert.match(
     artifact.validationInventory.relativeProtectionComparedWithMwms,
-    /weaker/i,
+    /structured score, band and label references are now checked/i,
   );
   assert.equal(
     artifact.validationInventory.deterministicReferenceGaps.some(
       (item) => /no structured overall\/verbal\/figural\/numeric score fields/i.test(item),
     ),
-    true,
+    false,
   );
 
   console.log("test-inspect-safran-hr-openai-dry-run: ok");

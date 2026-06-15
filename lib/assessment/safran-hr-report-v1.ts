@@ -18,6 +18,7 @@ export type SafranHrReportLocale = Extract<
   "bs" | "hr" | "sr" | "en"
 >;
 export type SafranHrBand = "lower" | "moderate" | "higher";
+export type SafranHrScoreKey = "overall" | "verbal" | "figural" | "numeric";
 
 export type SafranHrScoreSnapshot = {
   rawScore: number;
@@ -25,6 +26,10 @@ export type SafranHrScoreSnapshot = {
   scoreLabel: string;
   band: SafranHrBand;
   bandLabel: string;
+};
+
+export type SafranHrScoreReference = SafranHrScoreSnapshot & {
+  key: SafranHrScoreKey;
 };
 
 export type SafranHrReportInput = {
@@ -78,6 +83,12 @@ export type SafranHrReportV1 = {
   sourceType: typeof SAFRAN_HR_REPORT_SOURCE_TYPE;
   locale: SafranHrReportLocale;
   generatedLanguage: string;
+  scoreReferences: {
+    overall: SafranHrScoreReference;
+    verbal: SafranHrScoreReference;
+    figural: SafranHrScoreReference;
+    numeric: SafranHrScoreReference;
+  };
   executiveSummary: {
     title: string;
     summary: string;
@@ -115,6 +126,7 @@ export const safranHrReportV1OpenAiSchema = {
     "sourceType",
     "locale",
     "generatedLanguage",
+    "scoreReferences",
     "executiveSummary",
     "cognitiveSignals",
     "pointsOfCaution",
@@ -148,6 +160,65 @@ export const safranHrReportV1OpenAiSchema = {
       type: "string",
       minLength: 2,
       maxLength: 40,
+    },
+    scoreReferences: {
+      type: "object",
+      additionalProperties: false,
+      required: ["overall", "verbal", "figural", "numeric"],
+      properties: {
+        overall: {
+          type: "object",
+          additionalProperties: false,
+          required: ["key", "rawScore", "maxScore", "scoreLabel", "band", "bandLabel"],
+          properties: {
+            key: { type: "string", const: "overall" },
+            rawScore: { type: "number" },
+            maxScore: { type: "number" },
+            scoreLabel: { type: "string", minLength: 1 },
+            band: { type: "string", enum: ["lower", "moderate", "higher"] },
+            bandLabel: { type: "string", minLength: 1 },
+          },
+        },
+        verbal: {
+          type: "object",
+          additionalProperties: false,
+          required: ["key", "rawScore", "maxScore", "scoreLabel", "band", "bandLabel"],
+          properties: {
+            key: { type: "string", const: "verbal" },
+            rawScore: { type: "number" },
+            maxScore: { type: "number" },
+            scoreLabel: { type: "string", minLength: 1 },
+            band: { type: "string", enum: ["lower", "moderate", "higher"] },
+            bandLabel: { type: "string", minLength: 1 },
+          },
+        },
+        figural: {
+          type: "object",
+          additionalProperties: false,
+          required: ["key", "rawScore", "maxScore", "scoreLabel", "band", "bandLabel"],
+          properties: {
+            key: { type: "string", const: "figural" },
+            rawScore: { type: "number" },
+            maxScore: { type: "number" },
+            scoreLabel: { type: "string", minLength: 1 },
+            band: { type: "string", enum: ["lower", "moderate", "higher"] },
+            bandLabel: { type: "string", minLength: 1 },
+          },
+        },
+        numeric: {
+          type: "object",
+          additionalProperties: false,
+          required: ["key", "rawScore", "maxScore", "scoreLabel", "band", "bandLabel"],
+          properties: {
+            key: { type: "string", const: "numeric" },
+            rawScore: { type: "number" },
+            maxScore: { type: "number" },
+            scoreLabel: { type: "string", minLength: 1 },
+            band: { type: "string", enum: ["lower", "moderate", "higher"] },
+            bandLabel: { type: "string", minLength: 1 },
+          },
+        },
+      },
     },
     executiveSummary: {
       type: "object",
@@ -324,6 +395,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isValidLocale(value: unknown): value is SafranHrReportLocale {
   return value === "bs" || value === "hr" || value === "sr" || value === "en";
+}
+
+function isValidBand(value: unknown): value is SafranHrBand {
+  return value === "lower" || value === "moderate" || value === "higher";
 }
 
 function mapSafranBandKeyToHrBand(bandKey: SafranBandKey): SafranHrBand {
@@ -558,6 +633,7 @@ export function validateSafranHrReport(
       "sourceType",
       "locale",
       "generatedLanguage",
+      "scoreReferences",
       "executiveSummary",
       "cognitiveSignals",
       "pointsOfCaution",
@@ -591,6 +667,59 @@ export function validateSafranHrReport(
 
   if (!isNonEmptyString(value.generatedLanguage)) {
     errors.push("generatedLanguage: Expected non-empty string.");
+  }
+
+  if (!isRecord(value.scoreReferences)) {
+    errors.push("scoreReferences: Expected object.");
+  } else {
+    validateAdditionalProperties(
+      value.scoreReferences,
+      "scoreReferences",
+      ["overall", "verbal", "figural", "numeric"],
+      errors,
+    );
+
+    for (const key of ["overall", "verbal", "figural", "numeric"] as const) {
+      const reference = value.scoreReferences[key];
+
+      if (!isRecord(reference)) {
+        errors.push(`scoreReferences.${key}: Expected object.`);
+        continue;
+      }
+
+      validateAdditionalProperties(
+        reference,
+        `scoreReferences.${key}`,
+        ["key", "rawScore", "maxScore", "scoreLabel", "band", "bandLabel"],
+        errors,
+      );
+
+      if (reference.key !== key) {
+        errors.push(`scoreReferences.${key}.key: Expected ${key}.`);
+      }
+
+      if (!isFiniteNumber(reference.rawScore)) {
+        errors.push(`scoreReferences.${key}.rawScore: Expected finite number.`);
+      }
+
+      if (!isFiniteNumber(reference.maxScore)) {
+        errors.push(`scoreReferences.${key}.maxScore: Expected finite number.`);
+      }
+
+      if (!isNonEmptyString(reference.scoreLabel)) {
+        errors.push(`scoreReferences.${key}.scoreLabel: Expected non-empty string.`);
+      }
+
+      if (!isValidBand(reference.band)) {
+        errors.push(
+          `scoreReferences.${key}.band: Expected lower, moderate or higher.`,
+        );
+      }
+
+      if (!isNonEmptyString(reference.bandLabel)) {
+        errors.push(`scoreReferences.${key}.bandLabel: Expected non-empty string.`);
+      }
+    }
   }
 
   if (!isRecord(value.executiveSummary)) {
@@ -760,6 +889,31 @@ export function validateSafranHrReport(
     if (value.locale !== expectedInput.test.locale) {
       errors.push("locale: Must match deterministic input.");
     }
+
+    if (value.generatedLanguage !== expectedInput.test.locale) {
+      errors.push("generatedLanguage: Must match deterministic input test locale.");
+    }
+
+    const scoreReferences = value.scoreReferences as SafranHrReportV1["scoreReferences"];
+
+    for (const key of ["overall", "verbal", "figural", "numeric"] as const) {
+      const expectedScore = expectedInput.scores[key];
+      const reference = scoreReferences[key];
+
+      for (const field of [
+        "rawScore",
+        "maxScore",
+        "scoreLabel",
+        "band",
+        "bandLabel",
+      ] as const) {
+        if (reference[field] !== expectedScore[field]) {
+          errors.push(
+            `scoreReferences.${key}.${field}: Must match deterministic input scores.${key}.${field}.`,
+          );
+        }
+      }
+    }
   }
 
   if (errors.length === 0) {
@@ -794,6 +948,12 @@ export function buildMockSafranHrReportV1(
     sourceType: SAFRAN_HR_REPORT_SOURCE_TYPE,
     locale: input.test.locale,
     generatedLanguage: input.test.locale,
+    scoreReferences: {
+      overall: { key: "overall", ...input.scores.overall },
+      verbal: { key: "verbal", ...input.scores.verbal },
+      figural: { key: "figural", ...input.scores.figural },
+      numeric: { key: "numeric", ...input.scores.numeric },
+    },
     executiveSummary: {
       title: "Sažetak za HR čitanje",
       summary:

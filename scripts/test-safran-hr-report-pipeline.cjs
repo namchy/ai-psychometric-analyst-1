@@ -158,6 +158,12 @@ async function main() {
   assert.equal(mockResult.report.reportType, "safran_hr_report_v1");
   assert.equal(mockResult.report.audience, "hr");
   assert.equal(mockResult.report.sourceType, "single_test");
+  assert.deepEqual(mockResult.report.scoreReferences, {
+    overall: { key: "overall", ...preparedHrInput.promptInput.scores.overall },
+    verbal: { key: "verbal", ...preparedHrInput.promptInput.scores.verbal },
+    figural: { key: "figural", ...preparedHrInput.promptInput.scores.figural },
+    numeric: { key: "numeric", ...preparedHrInput.promptInput.scores.numeric },
+  });
 
   const allTexts = [
     mockResult.report.executiveSummary.summary,

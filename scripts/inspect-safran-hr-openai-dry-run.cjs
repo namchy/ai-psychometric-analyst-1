@@ -496,6 +496,9 @@ function buildSafranValidationInventory() {
       "allowed property names",
       "reportType, testSlug, audience, sourceType and supported locale constants",
       "testSlug, audience, sourceType and locale equality with expectedInput",
+      "generatedLanguage equality with expectedInput.test.locale",
+      "structured overall/verbal/figural/numeric score references",
+      "score reference key, rawScore, maxScore, scoreLabel, band and bandLabel equality with expectedInput.scores",
       "safetyChecks object shape and required true boolean values",
     ],
     legacyOnlyProseLanguageHeuristics: [
@@ -505,14 +508,11 @@ function buildSafranValidationInventory() {
       "required experience/interview/role-context wording in interpretationLimits",
     ],
     deterministicReferenceGaps: [
-      "report output has no structured overall/verbal/figural/numeric score fields to compare with expectedInput",
-      "report output has no structured band or band-label references to compare with expectedInput",
       "cognitiveSignals prose is not deterministically checked against actual score, band or ordering values",
-      "generatedLanguage is required but is not checked for equality with expectedInput locale",
-      "safetyChecks.noScoreMutation is declarative and does not prove that narrative score references were preserved",
+      "safetyChecks.noScoreMutation remains declarative; score integrity proof comes from structured scoreReferences equality",
     ],
     relativeProtectionComparedWithMwms:
-      "weaker: SAFRAN currently protects shape and metadata references, but not structured score, band, label or derived-profile values against deterministic input",
+      "stronger than the previous SAFRAN boundary: structured score, band and label references are now checked against deterministic input; cognitiveSignals prose remains diagnostic-only",
   };
 }
 
@@ -552,7 +552,7 @@ function buildDataOnlyShadowGate({
       includes: [
         "general_envelope_parse",
         "safran_contract_shape_validation",
-        "safran_existing_metadata_reference_validation",
+        "safran_metadata_and_structured_score_reference_validation",
       ],
       excludes: [
         "bhs_prose_language",
