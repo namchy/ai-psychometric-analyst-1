@@ -74,7 +74,6 @@ import {
 import {
   applyIpipNeo120HrTerminologyCleanup,
   buildIpipNeo120HrStrengthsAndRisksInstruction,
-  canonicalizeIpipNeo120HrReportTerminology,
   getIpipNeo120HrDomainLabelsInOrder,
   IPIP_NEO_120_DOMAIN_ORDER,
 } from "@/lib/assessment/ipip-neo-120-labels";
@@ -1519,27 +1518,25 @@ export function validateStructuredReport(
 
   if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120HrPromptInput(input.promptInput)) {
     const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
-    const globalCanonicalizedReport = languagePolicy
-      ? languagePolicy.canonicalizeUserFacingOutput(report)
-      : report;
-    const canonicalizedReport = canonicalizeIpipNeo120HrReportTerminology(globalCanonicalizedReport);
     const globalValidationErrors = languagePolicy
-      ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+      ? languagePolicy.validateUserFacingOutput(report, {
           audience: "hr",
         })
       : [];
 
     if (globalValidationErrors.length > 0) {
-      throw new Error(
-        `OpenAI response JSON failed global BHS HR output validation: ${globalValidationErrors
-          .map((error) => `${error.path}: ${error.message}`)
-          .join(" | ")}`,
-      );
+      console.warn("IPIP HR BHS language diagnostics detected non-blocking findings", {
+        attemptId: input.attemptId,
+        findings: globalValidationErrors.map((error) => ({
+          path: error.path,
+          message: error.message,
+        })),
+      });
     }
 
-    const validationResult = validateIpipNeo120HrReportV1(canonicalizedReport, {
+    const validationResult = validateIpipNeo120HrReportV1(report, {
       strictContract: true,
-      enforceGuardrails: true,
+      enforceGuardrails: false,
       expectedInput: input.promptInput,
     });
 
@@ -1547,6 +1544,22 @@ export function validateStructuredReport(
       throw new Error(
         `OpenAI response JSON failed IPIP-NEO-120 HR report validation: ${formatIpipNeo120ReportValidationErrors(validationResult.errors)}`,
       );
+    }
+
+    const legacyGuardrailDiagnostics = validateIpipNeo120HrReportV1(report, {
+      strictContract: true,
+      enforceGuardrails: true,
+      expectedInput: input.promptInput,
+    });
+
+    if (!legacyGuardrailDiagnostics.ok) {
+      console.warn("IPIP HR prose guardrail diagnostics detected non-blocking findings", {
+        attemptId: input.attemptId,
+        findings: legacyGuardrailDiagnostics.errors.map((error) => ({
+          path: error.path,
+          message: error.message,
+        })),
+      });
     }
 
     return validationResult.value;

@@ -1,7 +1,14 @@
 import "server-only";
 
 import { isIpipNeo120TestSlug } from "@/lib/assessment/ipip-neo-120-labels";
-import { IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT } from "@/lib/assessment/ipip-neo-120-report-contract";
+import {
+  IPIP_NEO_120_PARTICIPANT_REPORT_CONTRACT,
+  type IpipNeo120HrReportPromptInput,
+} from "@/lib/assessment/ipip-neo-120-report-contract";
+import {
+  formatIpipNeo120ReportValidationErrors,
+  validateIpipNeo120HrReportV1,
+} from "@/lib/assessment/ipip-neo-120-report-v1";
 import {
   getIpcPromptContract,
   isIpcTestSlug,
@@ -140,6 +147,19 @@ function isSafranHrReportInput(value: unknown): value is SafranHrReportInput {
     "audience" in value.test &&
     value.test.audience === "hr" &&
     "scores" in value
+  );
+}
+
+function isIpipNeo120HrReportInput(value: unknown): value is IpipNeo120HrReportPromptInput {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "test_slug" in value &&
+    value.test_slug === "ipip-neo-120-v1" &&
+    "audience" in value &&
+    value.audience === "hr" &&
+    "domains" in value &&
+    Array.isArray(value.domains)
   );
 }
 
@@ -659,7 +679,32 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   });
 
   const validationResult =
-    isMwmsTestSlug(job.test_slug) && job.audience === "hr"
+    isIpipNeo120TestSlug(job.test_slug) && job.audience === "hr"
+      ? (() => {
+          if (!isIpipNeo120HrReportInput(preparedInput.promptInput)) {
+            return {
+              ok: false as const,
+              reason: "IPIP HR prepared input failed data/reference validation.",
+            };
+          }
+
+          const ipipHrValidation = validateIpipNeo120HrReportV1(generationResult.report, {
+            strictContract: true,
+            enforceGuardrails: false,
+            expectedInput: preparedInput.promptInput,
+          });
+
+          return ipipHrValidation.ok
+            ? {
+                ok: true as const,
+                value: ipipHrValidation.value,
+              }
+            : {
+                ok: false as const,
+                reason: formatIpipNeo120ReportValidationErrors(ipipHrValidation.errors),
+              };
+        })()
+      : isMwmsTestSlug(job.test_slug) && job.audience === "hr"
       ? (() => {
           if (!isMwmsHrReportInput(preparedInput.promptInput)) {
             return {

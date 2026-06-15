@@ -468,7 +468,9 @@ export function validateRuntimeCompletedAssessmentReport(
   }
 
   if (isIpipNeo120TestSlug(context.testSlug) && context.audience === "hr") {
-    const validationResult = validateIpipNeo120HrReportV1(value);
+    const validationResult = validateIpipNeo120HrReportV1(value, {
+      enforceGuardrails: false,
+    });
 
     if (!validationResult.ok) {
       return {

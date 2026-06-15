@@ -85,7 +85,10 @@ const {
   validateStructuredReport,
 } = require("../lib/assessment/report-provider-openai.ts");
 const { mockReportProvider } = require("../lib/assessment/report-provider-mock.ts");
-const { resolveReportContract } = require("../lib/assessment/report-providers.ts");
+const {
+  resolveReportContract,
+  validateRuntimeCompletedAssessmentReport,
+} = require("../lib/assessment/report-providers.ts");
 
 function buildPromptInput() {
   return {
@@ -282,6 +285,20 @@ async function main() {
   assert.equal(strictValidation.ok, true, strictValidation.ok ? undefined : strictValidation.errors.map((error) => error.message).join(" | "));
 
   const report = strictValidation.value;
+  const dataOnlyValidation = validateIpipNeo120HrReportV1(providerResult.report, {
+    strictContract: true,
+    enforceGuardrails: false,
+    expectedInput: preparedInput.promptInput,
+  });
+  assert.equal(
+    dataOnlyValidation.ok,
+    true,
+    dataOnlyValidation.ok
+      ? undefined
+      : dataOnlyValidation.errors.map((error) => error.message).join(" | "),
+  );
+  assert.deepEqual(dataOnlyValidation.value, providerResult.report);
+
   const scoreReferences = report.score_references;
   const reportValueText = collectNarrativeStrings(report).join("\n");
   assert.equal(reportValueText.includes("Ugodnost"), false);
@@ -383,12 +400,19 @@ async function main() {
   function assertInvalidScoreReferences(mutate) {
     const candidate = clone(report);
     mutate(candidate);
-    const validation = validateIpipNeo120HrReportV1(candidate, {
+    const legacyValidation = validateIpipNeo120HrReportV1(candidate, {
       strictContract: true,
       enforceGuardrails: true,
       expectedInput: preparedInput.promptInput,
     });
-    assert.equal(validation.ok, false);
+    assert.equal(legacyValidation.ok, false);
+
+    const dataOnlyValidation = validateIpipNeo120HrReportV1(candidate, {
+      strictContract: true,
+      enforceGuardrails: false,
+      expectedInput: preparedInput.promptInput,
+    });
+    assert.equal(dataOnlyValidation.ok, false);
   }
 
   assertInvalidScoreReferences((candidate) => {
@@ -448,6 +472,17 @@ async function main() {
     candidate.score_references.domains[0].facets[0].unexpected = true;
   });
 
+  const extraTopLevel = clone(report);
+  extraTopLevel.unexpected = true;
+  assert.equal(
+    validateIpipNeo120HrReportV1(extraTopLevel, {
+      strictContract: true,
+      enforceGuardrails: false,
+      expectedInput: preparedInput.promptInput,
+    }).ok,
+    false,
+  );
+
   const forbiddenHeadline = clone(report);
   forbiddenHeadline.headline = "Ugodnost trenutno daje najistaknutiji profesionalni signal u profilu.";
   assert.equal(
@@ -456,6 +491,14 @@ async function main() {
       enforceGuardrails: true,
     }).ok,
     false,
+  );
+  assert.equal(
+    validateIpipNeo120HrReportV1(forbiddenHeadline, {
+      strictContract: true,
+      enforceGuardrails: false,
+      expectedInput: preparedInput.promptInput,
+    }).ok,
+    true,
   );
 
   const forbiddenDomainName = clone(report);
@@ -467,6 +510,14 @@ async function main() {
     }).ok,
     false,
   );
+  assert.equal(
+    validateIpipNeo120HrReportV1(forbiddenDomainName, {
+      strictContract: true,
+      enforceGuardrails: false,
+      expectedInput: preparedInput.promptInput,
+    }).ok,
+    true,
+  );
 
   const forbiddenSummary = clone(report);
   forbiddenSummary.executive_summary =
@@ -477,6 +528,14 @@ async function main() {
       enforceGuardrails: true,
     }).ok,
     false,
+  );
+  assert.equal(
+    validateIpipNeo120HrReportV1(forbiddenSummary, {
+      strictContract: true,
+      enforceGuardrails: false,
+      expectedInput: preparedInput.promptInput,
+    }).ok,
+    true,
   );
 
   for (const [fieldPath, forbiddenValue] of [
@@ -568,14 +627,21 @@ async function main() {
   );
 
   const providerValidatedCanonicalReport = validateStructuredReport(aiLikeReport, preparedInput);
+  assert.deepEqual(providerValidatedCanonicalReport, aiLikeReport);
   const providerValidatedText = collectNarrativeStrings(providerValidatedCanonicalReport).join("\n");
-  assert.equal(providerValidatedText.includes("Spremnost na saradnju"), true);
-  assert.equal(providerValidatedText.includes("Saradljivost"), false);
-  assert.equal(providerValidatedText.includes("Kooperativnost"), false);
-  assert.equal(providerValidatedCanonicalReport.executive_summary.includes("snapshot"), false);
-  assert.equal(providerValidatedCanonicalReport.executive_summary.includes("high"), false);
-  assert.equal(providerValidatedText.includes("overuse"), false);
-  assert.equal(providerValidatedText.includes("handling"), false);
+  assert.equal(providerValidatedText.includes("Saradljivost"), true);
+  assert.equal(providerValidatedText.includes("Kooperativnost"), true);
+  assert.equal(providerValidatedCanonicalReport.executive_summary.includes("snapshot"), true);
+  assert.equal(providerValidatedCanonicalReport.executive_summary.includes("high"), true);
+  assert.equal(providerValidatedText.includes("overuse"), true);
+  assert.equal(/handling/i.test(providerValidatedText), true);
+
+  const providerReferenceMismatch = clone(report);
+  providerReferenceMismatch.score_references.locale = "en";
+  assert.throws(
+    () => validateStructuredReport(providerReferenceMismatch, preparedInput),
+    /score_references\.locale/,
+  );
 
   const mixedCaseDirtyReport = clone(report);
   mixedCaseDirtyReport.headline = "SARADLJIVOST traži provjeru kroz intervju.";
@@ -588,10 +654,7 @@ async function main() {
     }).ok,
     false,
   );
-  assert.throws(
-    () => validateStructuredReport(mixedCaseDirtyReport, preparedInput),
-    /Forbidden term detected: "Saradljivost"/,
-  );
+  assert.deepEqual(validateStructuredReport(mixedCaseDirtyReport, preparedInput), mixedCaseDirtyReport);
 
   const fourSentenceExecutiveSummary = clone(report);
   fourSentenceExecutiveSummary.executive_summary = [
@@ -633,6 +696,14 @@ async function main() {
       (error) =>
         error.path === "executive_summary" && error.message.includes("at most 600 characters"),
     ),
+  );
+  assert.equal(
+    validateIpipNeo120HrReportV1(tooLongExecutiveSummary, {
+      strictContract: true,
+      enforceGuardrails: false,
+      expectedInput: preparedInput.promptInput,
+    }).ok,
+    true,
   );
 
   const bulletedExecutiveSummary = clone(report);
@@ -765,6 +836,14 @@ async function main() {
     }).ok,
     false,
   );
+  assert.equal(
+    validateIpipNeo120HrReportV1(hireLanguage, {
+      strictContract: true,
+      enforceGuardrails: false,
+      expectedInput: preparedInput.promptInput,
+    }).ok,
+    true,
+  );
 
   const wrongQuestionCount = clone(report);
   wrongQuestionCount.interview_questions = wrongQuestionCount.interview_questions.slice(0, 4);
@@ -816,6 +895,39 @@ async function main() {
     }).ok,
     false,
   );
+
+  const runtimeReadableWithProseIssue = clone(report);
+  runtimeReadableWithProseIssue.headline =
+    "Saradljivost i Kooperativnost ostaju vidljive jer runtime read ne smije canonicalizovati current v2.";
+  const runtimeValidation = validateRuntimeCompletedAssessmentReport(runtimeReadableWithProseIssue, {
+    testSlug: "ipip-neo-120-v1",
+    audience: "hr",
+  });
+  assert.equal(runtimeValidation.ok, true, runtimeValidation.ok ? undefined : runtimeValidation.reason);
+  assert.deepEqual(runtimeValidation.value, runtimeReadableWithProseIssue);
+
+  const currentDisplayReport = coerceIpipNeo120HrReportV1ForDisplay(runtimeReadableWithProseIssue);
+  assert.deepEqual(currentDisplayReport, runtimeReadableWithProseIssue);
+  assert.equal(
+    currentDisplayReport.headline,
+    "Saradljivost i Kooperativnost ostaju vidljive jer runtime read ne smije canonicalizovati current v2.",
+  );
+
+  const providerSource = fs.readFileSync(
+    path.join(projectRoot, "lib/assessment/report-provider-openai.ts"),
+    "utf8",
+  );
+  assert.equal(/canonicalizeIpipNeo120HrReportTerminology\(.*report/s.test(providerSource), false);
+  assert.equal(/validateIpipNeo120HrReportV1\(report,\s*\{[\s\S]*enforceGuardrails:\s*false/.test(providerSource), true);
+  assert.equal(/expectedInput:\s*input\.promptInput/.test(providerSource), true);
+
+  const workerSource = fs.readFileSync(
+    path.join(projectRoot, "lib/assessment/report-job-worker.ts"),
+    "utf8",
+  );
+  assert.equal(/isIpipNeo120TestSlug\(job\.test_slug\) && job\.audience === "hr"/.test(workerSource), true);
+  assert.equal(/validateIpipNeo120HrReportV1\(generationResult\.report,\s*\{[\s\S]*expectedInput:\s*preparedInput\.promptInput/.test(workerSource), true);
+  assert.equal(/validateIpipNeo120HrReportV1\(generationResult\.report,\s*\{[\s\S]*enforceGuardrails:\s*false/.test(workerSource), true);
 
   console.log("IPIP NEO-120 HR report contract tests passed.");
 }

@@ -688,7 +688,11 @@ function validateHrDomainOverview(
   const expectedLabel = getIpipNeo120HrDomainLabel(expectedDomainCode) ?? expectedDomainCode;
   const domainNameOk = validateNonEmptyString(value.domain_name, `${path}.domain_name`, errors);
 
-  if (typeof value.domain_name === "string" && normalizeWhitespace(value.domain_name) !== expectedLabel) {
+  if (
+    enforceProseProfiles &&
+    typeof value.domain_name === "string" &&
+    normalizeWhitespace(value.domain_name) !== expectedLabel
+  ) {
     errors.push({
       path: `${path}.domain_name`,
       message: `Expected canonical label "${expectedLabel}".`,
@@ -1620,6 +1624,10 @@ export function coerceIpipNeo120HrReportV1ForDisplay(value: unknown): IpipNeo120
     return null;
   }
 
+  if (value.contract_version === "ipip_neo_120_hr_v2") {
+    return value as IpipNeo120HrReportV1;
+  }
+
   return normalizeIpipNeo120HrReportV1(value);
 }
 
@@ -1636,9 +1644,9 @@ export function validateIpipNeo120HrReportV1(
   const normalized = normalizeIpipNeo120HrReportV1(value);
   const errors: ValidationError[] = [];
   const strictContract = options?.strictContract ?? false;
-  const enforceGuardrails = options?.enforceGuardrails ?? false;
   const isLegacyShape = isLegacyIpipNeo120HrReportShape(value);
-  const enforceNarrativeConstraints = strictContract || !isLegacyShape;
+  const enforceGuardrails = options?.enforceGuardrails ?? !isLegacyShape;
+  const enforceNarrativeConstraints = enforceGuardrails;
 
   if (!isNonArrayObject(value)) {
     return {
@@ -1648,6 +1656,10 @@ export function validateIpipNeo120HrReportV1(
   }
 
   const objectValue = value as Record<string, unknown>;
+  const isCurrentShape = objectValue.contract_version === "ipip_neo_120_hr_v2";
+  const reportForValidation = isCurrentShape
+    ? (objectValue as Partial<IpipNeo120HrReportV1>)
+    : normalized;
 
   if (strictContract && isLegacyShape) {
     errors.push({
@@ -1682,7 +1694,6 @@ export function validateIpipNeo120HrReportV1(
     );
   }
 
-  const isCurrentShape = objectValue.contract_version === "ipip_neo_120_hr_v2";
   const isSupportedLegacyShape = objectValue.contract_version === "ipip_neo_120_hr_v1" && isLegacyShape;
 
   if (!isCurrentShape && !isSupportedLegacyShape) {
@@ -1724,8 +1735,8 @@ export function validateIpipNeo120HrReportV1(
     }
   }
 
-  validateNonEmptyString(normalized.headline, "headline", errors);
-  validateNonEmptyString(normalized.executive_summary, "executive_summary", errors);
+  validateNonEmptyString(reportForValidation.headline, "headline", errors);
+  validateNonEmptyString(reportForValidation.executive_summary, "executive_summary", errors);
   if (enforceNarrativeConstraints) {
     validateAiReportProseField(objectValue.headline, "headline", "ipipHeadline", errors);
     validateAiReportProseField(
@@ -1736,41 +1747,41 @@ export function validateIpipNeo120HrReportV1(
     );
   }
 
-  if (validateExactObjectArrayLength(normalized.key_hr_signals, "key_hr_signals", 3, errors)) {
-    normalized.key_hr_signals.forEach((item, index) => {
+  if (validateExactObjectArrayLength(reportForValidation.key_hr_signals, "key_hr_signals", 3, errors)) {
+    reportForValidation.key_hr_signals.forEach((item, index) => {
       validateHrKeySignal(item, `key_hr_signals[${index}]`, errors);
     });
   }
 
-  if (validateExactObjectArrayLength(normalized.verification_focus, "verification_focus", 3, errors)) {
-    normalized.verification_focus.forEach((item, index) => {
+  if (validateExactObjectArrayLength(reportForValidation.verification_focus, "verification_focus", 3, errors)) {
+    reportForValidation.verification_focus.forEach((item, index) => {
       validateHrVerificationFocus(item, `verification_focus[${index}]`, errors);
     });
   }
 
-  if (validateExactObjectArrayLength(normalized.interview_questions, "interview_questions", 5, errors)) {
-    normalized.interview_questions.forEach((item, index) => {
+  if (validateExactObjectArrayLength(reportForValidation.interview_questions, "interview_questions", 5, errors)) {
+    reportForValidation.interview_questions.forEach((item, index) => {
       validateHrInterviewQuestion(item, `interview_questions[${index}]`, errors);
     });
   }
 
   if (
-    !Array.isArray(normalized.strengths_and_overuse_risks) ||
-    normalized.strengths_and_overuse_risks.length < 2 ||
-    normalized.strengths_and_overuse_risks.length > 3
+    !Array.isArray(reportForValidation.strengths_and_overuse_risks) ||
+    reportForValidation.strengths_and_overuse_risks.length < 2 ||
+    reportForValidation.strengths_and_overuse_risks.length > 3
   ) {
     errors.push({
       path: "strengths_and_overuse_risks",
       message: "HR report: Expected 2 to 3 strengths_and_overuse_risks entries.",
     });
   } else {
-    normalized.strengths_and_overuse_risks.forEach((item, index) => {
+    reportForValidation.strengths_and_overuse_risks.forEach((item, index) => {
       validateHrStrengthsAndOveruseRisk(item, `strengths_and_overuse_risks[${index}]`, errors);
     });
   }
 
-  if (validateExactObjectArrayLength(normalized.domain_overview, "domain_overview", 5, errors)) {
-    normalized.domain_overview.forEach((item, index) => {
+  if (validateExactObjectArrayLength(reportForValidation.domain_overview, "domain_overview", 5, errors)) {
+    reportForValidation.domain_overview.forEach((item, index) => {
       validateHrDomainOverview(
         item,
         `domain_overview[${index}]`,
@@ -1783,25 +1794,25 @@ export function validateIpipNeo120HrReportV1(
 
   if (
     validateExactObjectArrayLength(
-      normalized.onboarding_and_management_guidance,
+      reportForValidation.onboarding_and_management_guidance,
       "onboarding_and_management_guidance",
       4,
       errors,
     )
   ) {
-    normalized.onboarding_and_management_guidance.forEach((item, index) => {
+    reportForValidation.onboarding_and_management_guidance?.forEach((item, index) => {
       validateHrOnboardingGuidance(item, `onboarding_and_management_guidance[${index}]`, errors);
     });
   }
 
-  if (validateExactObjectArrayLength(normalized.team_fit_notes, "team_fit_notes", 3, errors)) {
-    normalized.team_fit_notes.forEach((item, index) => {
+  if (validateExactObjectArrayLength(reportForValidation.team_fit_notes, "team_fit_notes", 3, errors)) {
+    reportForValidation.team_fit_notes.forEach((item, index) => {
       validateHrTeamFitNote(item, `team_fit_notes[${index}]`, errors);
     });
   }
 
-  validateStringArrayRange(normalized.decision_support_note, "decision_support_note", 2, 4, errors);
-  validateNonEmptyString(normalized.interpretation_note, "interpretation_note", errors);
+  validateStringArrayRange(reportForValidation.decision_support_note, "decision_support_note", 2, 4, errors);
+  validateNonEmptyString(reportForValidation.interpretation_note, "interpretation_note", errors);
   if (enforceNarrativeConstraints) {
     validateAiReportProseField(
       (value as Record<string, unknown>).interpretation_note,
@@ -1821,7 +1832,7 @@ export function validateIpipNeo120HrReportV1(
     return { ok: false, errors: prefixValidationErrors(errors, "HR report: ") };
   }
 
-  return { ok: true, value: normalized };
+  return { ok: true, value: isCurrentShape ? (value as IpipNeo120HrReportV1) : normalized };
 }
 
 export function formatIpipNeo120ReportValidationErrors(errors: ValidationError[]): string {
