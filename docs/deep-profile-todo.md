@@ -60,7 +60,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Individualni razvojni profil product/report contract spec | Zatvoreno za ovaj IDP quality/hardening krug; voice doctrine, validator boundary, raw inspector i kontrolisana Amra regeneracija su završeni | Individualni razvojni profil / Product architecture | Sljedeće: ne regenerisati dalje IDP reportove bez eksplicitne odluke. Ako se nastavlja IDP lane, raditi samo uski golden examples / reviewer / app-level disclaimer slice ili preći na sljedeći prioritet iz canonical todo-a. |
 | P1        | Cross-report validator boundary and report ownership audit | Završeno za SAFRAN/MWMS/IPIP current boundary krug; single-test HR lanes closed na data-only production validation; Composite HR observability audit, request capture inspector, boundary diagnostic, data-only shadow comparator, DB-backed auto-discovery smoke i production provider data-only switch su završeni; post-switch real persisted smoke PASS nad `98e89663-5692-45a6-9ca7-1bc60da51a63`; Composite prose/BHS/reviewer/style nalazi su diagnostic-only, dok deterministic source/reference/evidence/contract integrity ostaje production hard-blocking; mutation/rewrite cleanup i renderer/display sanitization ostaju budući zasebni slice-ovi | Report architecture / Validator boundary audit | MWMS HR, SAFRAN HR i IPIP HR su sada sva tri single-test HR production lane-a na data-only blocking validation. Composite HR je usklađen sa single-test HR validator boundary doktrinom na production blocking nivou; preostali future rizici su renderer rewriting/sanitization, mutation/rewrite cleanup i eventualni prompt authority, ali nisu sljedeći default task bez nove odluke. |
 | P1        | Admin AI prompt/request payload observability | Završeno za dev-only single-test HR request dump foundation za IPIP/SAFRAN/MWMS HR | AI governance / Report quality / Admin tooling | Admin UI/route nije sljedeći default. Composite HR observability ostaje zaseban future adapter jer ne koristi shared request builder. Eventualni admin route zahtijeva posebnu odluku o org-scope autorizaciji i allowed roles. |
-| P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Otvoreno / Read-only nalaz potvrđen | Infrastructure / Supabase / Migration history | Kontrolisano riješiti remote-only migration marker 20260530183640 koji je alias za lokalnu Team Fit migraciju 20260530110000_add_team_fit_reports.sql; prije bilo kakvog repair/db push zahvata definisati sigurnu strategiju mirror/repair-a i potvrditi da nema runtime schema razlike. |
+| P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Read-only audit završen i dokumentovan u `docs/supabase-team-fit-migration-drift-audit.md`; remote history ima oba markera `20260530110000` i `20260530183640`, oba nose isto ime `20260530110000_add_team_fit_reports`, a read-only SQL je pokazao da `team_fit_reports` runtime schema izgleda usklađeno sa lokalnom migracijom; drift je migration-history alias/duplikat, ne dokaz runtime schema problema. | Infrastructure / Supabase / Migration history | Ne raditi `supabase migration repair`, `db push`, `db reset`, `migration up/down` ili bilo kakav DB write po defaultu; sljedeći mogući korak je zaseban operator-approved repair/mirror decision task; prije repair-a treba odabrati strategiju: lokalni no-op/alias mirror fajl pod remote timestampom, Supabase migration history repair, ili ostaviti stanje ako ne blokira workflow; bilo koji repair zahtijeva backup/parity guardrail i eksplicitno odobrenje. |
 | P1        | Timski fit kandidata product/report contract spec | Enriched input + real OpenAI QA + prompt polish + manual HR review + renderer/copy polish V1 + upstream DB smoke + source resolver fix potvrđeni / mock default ostaje | Relacijski report / Candidate-team fit | Sljedeći zdravi slice: odlučiti da li nastaviti Team Fit V2 information hierarchy polish ili preći na sljedeći prioritet iz canonical todo-a; bez worker/scheduler-a i bez automatske produkcijske generacije. |
 
 ### Completion note — Team spec documentation sync
@@ -72,6 +72,21 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - Team Style je research-informed i `validation pending`.
 - Zaštićeni/licencirani itemi i scenariji se ne smiju kopirati u repo.
 - Nije bilo runtime, DB, OpenAI, report generation/regeneration, scheduler/worker ili Composite HR promjena.
+
+### Completion note — Supabase Team Fit migration drift read-only audit
+
+- Audit je bio read-only.
+- Kreiran je `docs/supabase-team-fit-migration-drift-audit.md`.
+- Korisnik je ručno potvrdio remote footprint kroz read-only SQL.
+- Runtime schema parity je potvrđena dovoljno jako kroz lokalnu migraciju i read-only provjere.
+- Migration history parity nije čista zbog dodatnog remote alias markera.
+- Nije bilo DB write-a.
+- Nije bilo Supabase repair/db push/db reset/migration up/down komandi.
+- Nije bilo runtime code promjena.
+- Nije bilo migration fajl promjena.
+- Nije bilo OpenAI poziva.
+- Nije bilo report generation/regenerationa.
+- Nije bilo Composite HR promjena.
 
 ### 2026-06-04 — AI segment-aware report content architecture for individual reports
 
