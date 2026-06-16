@@ -10,6 +10,119 @@ export const TEAM_FIT_RELATIONSHIP_PATTERNS = [
 export type TeamFitRelationshipPattern =
   (typeof TEAM_FIT_RELATIONSHIP_PATTERNS)[number];
 
+export const TEAM_FIT_REPORT_CONTRACT_VERSION = "team_fit_report_v1" as const;
+export const TEAM_FIT_REPORT_CONTRACT_REPORT_TYPE = "team_fit" as const;
+export const TEAM_FIT_REPORT_CONTRACT_AUDIENCE = "hr" as const;
+export const TEAM_FIT_REPORT_EVIDENCE_SOURCE_TYPES = [
+  "candidate_deep_profile_signal",
+  "team_style_collaboration_signal",
+  "team_dynamics_aggregation_signal",
+  "team_dynamics_executive_overview_signal",
+  "hr_admin_optional_context",
+  "interpretive_link",
+] as const;
+
+export type TeamFitReportEvidenceSourceType =
+  (typeof TEAM_FIT_REPORT_EVIDENCE_SOURCE_TYPES)[number];
+
+export type TeamFitReportEvidenceReference = {
+  id: string;
+  sourceType: TeamFitReportEvidenceSourceType;
+  sourceLabel: string;
+  signalLabel: string;
+  summary: string;
+  relationToClaim: string;
+  snapshotId?: string | null;
+  version?: string | null;
+};
+
+export type TeamFitEvidenceLinkedSection = {
+  headline: string;
+  summary: string;
+  evidence: TeamFitReportEvidenceReference[];
+};
+
+export type TeamFitEvidenceLinkedItem = {
+  title: string;
+  signal: string;
+  interpretation: string;
+  recommendation?: string;
+  evidence: TeamFitReportEvidenceReference[];
+};
+
+export type TeamFitInterviewProbe = {
+  question: string;
+  rationale: string;
+  whatToListenFor: string[];
+  evidence: TeamFitReportEvidenceReference[];
+};
+
+export type TeamFitRiskMitigationItem = {
+  risk: string;
+  trigger: string;
+  mitigation: string;
+  owner: "hr" | "manager" | "team_lead";
+  evidence: TeamFitReportEvidenceReference[];
+};
+
+export type TeamFitReportV1ContractSnapshot = {
+  contractVersion: typeof TEAM_FIT_REPORT_CONTRACT_VERSION;
+  reportType: typeof TEAM_FIT_REPORT_CONTRACT_REPORT_TYPE;
+  audience: typeof TEAM_FIT_REPORT_CONTRACT_AUDIENCE;
+  sourceType: "candidate_team_relational";
+  locale: string;
+  generatedFor: {
+    organizationId: string;
+    teamId: string;
+    participantId: string;
+    teamName?: string | null;
+    candidateDisplayName?: string | null;
+  };
+  source: {
+    candidateDeepProfileSignals: TeamFitReportEvidenceReference[];
+    teamStyleCollaborationSignals: TeamFitReportEvidenceReference[];
+    teamDynamicsAggregationSignals: TeamFitReportEvidenceReference[];
+    teamDynamicsExecutiveOverviewSignals: TeamFitReportEvidenceReference[];
+    hrAdminOptionalContextSignals: TeamFitReportEvidenceReference[];
+    interpretiveLinks: TeamFitReportEvidenceReference[];
+  };
+  summary: TeamFitEvidenceLinkedSection;
+  fitOverview: TeamFitEvidenceLinkedSection & {
+    relationshipPattern: TeamFitRelationshipPattern;
+  };
+  likelyTeamContribution: {
+    items: TeamFitEvidenceLinkedItem[];
+  };
+  possibleFrictionPoints: {
+    items: TeamFitEvidenceLinkedItem[];
+  };
+  teamConditionsThatImproveFit: {
+    items: TeamFitEvidenceLinkedItem[];
+  };
+  interviewProbes: {
+    items: TeamFitInterviewProbe[];
+  };
+  onboardingAndManagerGuidance: {
+    items: TeamFitEvidenceLinkedItem[];
+  };
+  riskAndMitigationMap: {
+    items: TeamFitRiskMitigationItem[];
+  };
+  evidenceAppendix: {
+    entries: TeamFitReportEvidenceReference[];
+  };
+  interpretationLimits: {
+    limits: string[];
+    evidence: TeamFitReportEvidenceReference[];
+  };
+  metadata: {
+    generatedAt: string;
+    schemaVersion: string;
+    provider?: string;
+    providerVersion?: string;
+  };
+};
+
 export type TeamFitReportPatternSummary = {
   title: string;
   summary: string;
@@ -109,29 +222,20 @@ export type TeamFitReportValidationResult =
   | { ok: true; snapshot: TeamFitReportV1 }
   | { ok: false; errors: string[] };
 
+export type TeamFitReportV1ContractValidationResult =
+  | { ok: true; snapshot: TeamFitReportV1ContractSnapshot }
+  | { ok: false; errors: string[] };
+
 const FORBIDDEN_KEY_PATTERNS = [
   /(^|\.)(fitScore|hireScore)$/i,
-  /(^|\.)(hireRecommendation|hiringRecommendation|rejectRecommendation|decisionRecommendation)$/i,
+  /(^|\.)(numericScore|fitPercentage|fitPercent|percentageFit)$/i,
+  /(^|\.)(decision|hireDecision|hiringDecision|hireRecommendation|hiringRecommendation|rejectRecommendation|decisionRecommendation|passFail)$/i,
+  /(^|\.)(rank|ranking|candidateRank)$/i,
   /(^|\.)(rawAnswers|rawResponses|teamMemberAnswers|individualResponses)$/i,
   /(^|\.)(teamMemberScores|individualScores|memberScoreDetails)$/i,
+  /(^|\.)(teamMemberNames|namedTeamMembers|individualTeamMembers)$/i,
   /(^|\.)(memberReports|individualNarrativeReports)$/i,
   /(^|\.)(candidateVisible)$/i,
-];
-
-const FORBIDDEN_TEXT_PATTERNS = [
-  /\bno-hire\b/i,
-  /\breject\b/i,
-  /\bbad fit\b/i,
-  /\bpoor fit\b/i,
-  /\bdoes not fit\b/i,
-  /\bculture fit\b/i,
-  /\bcultural fit\b/i,
-  /\bperformance will\b/i,
-  /\bwill perform\b/i,
-  /\bcaused by\b/i,
-  /\bdiagnosis\b/i,
-  /\bclinical\b/i,
-  /\bhire\b/i,
 ];
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -211,38 +315,6 @@ function hasForbiddenKeyDeep(value: unknown, path = "", errors: string[] = []): 
   }
 
   return errors;
-}
-
-function collectStringLeaves(value: unknown, output: string[] = []): string[] {
-  if (typeof value === "string") {
-    output.push(value);
-    return output;
-  }
-
-  if (Array.isArray(value)) {
-    value.forEach((entry) => collectStringLeaves(entry, output));
-    return output;
-  }
-
-  if (isPlainRecord(value)) {
-    Object.values(value).forEach((entry) => collectStringLeaves(entry, output));
-  }
-
-  return output;
-}
-
-function findForbiddenWording(value: unknown): string[] {
-  const hits: string[] = [];
-
-  collectStringLeaves(value).forEach((entry) => {
-    FORBIDDEN_TEXT_PATTERNS.forEach((pattern) => {
-      if (pattern.test(entry)) {
-        hits.push(`forbiddenText: Found forbidden phrase matching ${pattern}.`);
-      }
-    });
-  });
-
-  return hits;
 }
 
 function validatePatternSummaryArray(value: unknown, path: string, errors: string[]): boolean {
@@ -372,6 +444,364 @@ function validateManagerGuidance(value: unknown, path: string, errors: string[])
   return true;
 }
 
+function validateEvidenceReference(
+  value: unknown,
+  path: string,
+  errors: string[],
+): value is TeamFitReportEvidenceReference {
+  if (!isPlainRecord(value)) {
+    errors.push(`${path}: Expected object.`);
+    return false;
+  }
+
+  validateNonEmptyString(value.id, `${path}.id`, errors);
+
+  if (!TEAM_FIT_REPORT_EVIDENCE_SOURCE_TYPES.includes(value.sourceType as TeamFitReportEvidenceSourceType)) {
+    errors.push(`${path}.sourceType: Expected allowed evidence source type.`);
+  }
+
+  validateNonEmptyString(value.sourceLabel, `${path}.sourceLabel`, errors);
+  validateNonEmptyString(value.signalLabel, `${path}.signalLabel`, errors);
+  validateNonEmptyString(value.summary, `${path}.summary`, errors);
+  validateNonEmptyString(value.relationToClaim, `${path}.relationToClaim`, errors);
+
+  if (value.snapshotId != null) {
+    validateNonEmptyString(value.snapshotId, `${path}.snapshotId`, errors);
+  }
+
+  if (value.version != null) {
+    validateNonEmptyString(value.version, `${path}.version`, errors);
+  }
+
+  return true;
+}
+
+function validateEvidenceReferences(
+  value: unknown,
+  path: string,
+  errors: string[],
+  options: { requireNonEmpty: boolean },
+): value is TeamFitReportEvidenceReference[] {
+  if (!Array.isArray(value)) {
+    errors.push(`${path}: Expected array.`);
+    return false;
+  }
+
+  if (options.requireNonEmpty && value.length === 0) {
+    errors.push(`${path}: Expected at least one evidence reference.`);
+  }
+
+  value.forEach((entry, index) => {
+    validateEvidenceReference(entry, `${path}[${index}]`, errors);
+  });
+
+  return true;
+}
+
+function validateEvidenceLinkedSection(
+  value: unknown,
+  path: string,
+  errors: string[],
+): value is TeamFitEvidenceLinkedSection {
+  if (!isPlainRecord(value)) {
+    errors.push(`${path}: Expected object.`);
+    return false;
+  }
+
+  validateNonEmptyString(value.headline, `${path}.headline`, errors);
+  validateNonEmptyString(value.summary, `${path}.summary`, errors);
+  validateEvidenceReferences(value.evidence, `${path}.evidence`, errors, {
+    requireNonEmpty: true,
+  });
+
+  return true;
+}
+
+function validateEvidenceLinkedItems(
+  value: unknown,
+  path: string,
+  errors: string[],
+): value is TeamFitEvidenceLinkedItem[] {
+  if (!Array.isArray(value)) {
+    errors.push(`${path}: Expected array.`);
+    return false;
+  }
+
+  if (value.length === 0) {
+    errors.push(`${path}: Expected at least one item.`);
+  }
+
+  value.forEach((entry, index) => {
+    if (!isPlainRecord(entry)) {
+      errors.push(`${path}[${index}]: Expected object.`);
+      return;
+    }
+
+    validateNonEmptyString(entry.title, `${path}[${index}].title`, errors);
+    validateNonEmptyString(entry.signal, `${path}[${index}].signal`, errors);
+    validateNonEmptyString(entry.interpretation, `${path}[${index}].interpretation`, errors);
+
+    if (entry.recommendation != null) {
+      validateNonEmptyString(entry.recommendation, `${path}[${index}].recommendation`, errors);
+    }
+
+    validateEvidenceReferences(entry.evidence, `${path}[${index}].evidence`, errors, {
+      requireNonEmpty: true,
+    });
+  });
+
+  return true;
+}
+
+function validateInterviewProbes(value: unknown, path: string, errors: string[]): boolean {
+  if (!Array.isArray(value)) {
+    errors.push(`${path}: Expected array.`);
+    return false;
+  }
+
+  if (value.length === 0) {
+    errors.push(`${path}: Expected at least one item.`);
+  }
+
+  value.forEach((entry, index) => {
+    if (!isPlainRecord(entry)) {
+      errors.push(`${path}[${index}]: Expected object.`);
+      return;
+    }
+
+    validateNonEmptyString(entry.question, `${path}[${index}].question`, errors);
+    validateNonEmptyString(entry.rationale, `${path}[${index}].rationale`, errors);
+    validateStringArray(entry.whatToListenFor, `${path}[${index}].whatToListenFor`, errors);
+    validateEvidenceReferences(entry.evidence, `${path}[${index}].evidence`, errors, {
+      requireNonEmpty: true,
+    });
+  });
+
+  return true;
+}
+
+function validateRiskAndMitigationItems(value: unknown, path: string, errors: string[]): boolean {
+  if (!Array.isArray(value)) {
+    errors.push(`${path}: Expected array.`);
+    return false;
+  }
+
+  if (value.length === 0) {
+    errors.push(`${path}: Expected at least one item.`);
+  }
+
+  value.forEach((entry, index) => {
+    if (!isPlainRecord(entry)) {
+      errors.push(`${path}[${index}]: Expected object.`);
+      return;
+    }
+
+    validateNonEmptyString(entry.risk, `${path}[${index}].risk`, errors);
+    validateNonEmptyString(entry.trigger, `${path}[${index}].trigger`, errors);
+    validateNonEmptyString(entry.mitigation, `${path}[${index}].mitigation`, errors);
+
+    if (!["hr", "manager", "team_lead"].includes(String(entry.owner))) {
+      errors.push(`${path}[${index}].owner: Expected hr, manager, or team_lead.`);
+    }
+
+    validateEvidenceReferences(entry.evidence, `${path}[${index}].evidence`, errors, {
+      requireNonEmpty: true,
+    });
+  });
+
+  return true;
+}
+
+export function validateTeamFitReportV1ContractSnapshot(
+  snapshot: unknown,
+): TeamFitReportV1ContractValidationResult {
+  const errors: string[] = [];
+
+  if (!isPlainRecord(snapshot)) {
+    return { ok: false, errors: ["<root>: Expected object."] };
+  }
+
+  if (containsUndefinedDeep(snapshot)) {
+    errors.push("<root>: Snapshot contains undefined values and is not JSON-safe.");
+  }
+
+  errors.push(...hasForbiddenKeyDeep(snapshot));
+
+  if (snapshot.contractVersion !== TEAM_FIT_REPORT_CONTRACT_VERSION) {
+    errors.push(`contractVersion: Expected ${TEAM_FIT_REPORT_CONTRACT_VERSION}.`);
+  }
+
+  if (snapshot.reportType !== TEAM_FIT_REPORT_CONTRACT_REPORT_TYPE) {
+    errors.push(`reportType: Expected ${TEAM_FIT_REPORT_CONTRACT_REPORT_TYPE}.`);
+  }
+
+  if (snapshot.audience !== TEAM_FIT_REPORT_CONTRACT_AUDIENCE) {
+    errors.push(`audience: Expected ${TEAM_FIT_REPORT_CONTRACT_AUDIENCE}.`);
+  }
+
+  if (snapshot.sourceType !== "candidate_team_relational") {
+    errors.push("sourceType: Expected candidate_team_relational.");
+  }
+
+  validateNonEmptyString(snapshot.locale, "locale", errors);
+
+  if (!isPlainRecord(snapshot.generatedFor)) {
+    errors.push("generatedFor: Expected object.");
+  } else {
+    validateNonEmptyString(snapshot.generatedFor.organizationId, "generatedFor.organizationId", errors);
+    validateNonEmptyString(snapshot.generatedFor.teamId, "generatedFor.teamId", errors);
+    validateNonEmptyString(snapshot.generatedFor.participantId, "generatedFor.participantId", errors);
+
+    if (snapshot.generatedFor.teamName != null) {
+      validateNonEmptyString(snapshot.generatedFor.teamName, "generatedFor.teamName", errors);
+    }
+
+    if (snapshot.generatedFor.candidateDisplayName != null) {
+      validateNonEmptyString(
+        snapshot.generatedFor.candidateDisplayName,
+        "generatedFor.candidateDisplayName",
+        errors,
+      );
+    }
+  }
+
+  if (!isPlainRecord(snapshot.source)) {
+    errors.push("source: Expected object.");
+  } else {
+    validateEvidenceReferences(
+      snapshot.source.candidateDeepProfileSignals,
+      "source.candidateDeepProfileSignals",
+      errors,
+      { requireNonEmpty: true },
+    );
+    validateEvidenceReferences(
+      snapshot.source.teamStyleCollaborationSignals,
+      "source.teamStyleCollaborationSignals",
+      errors,
+      { requireNonEmpty: false },
+    );
+    validateEvidenceReferences(
+      snapshot.source.teamDynamicsAggregationSignals,
+      "source.teamDynamicsAggregationSignals",
+      errors,
+      { requireNonEmpty: true },
+    );
+    validateEvidenceReferences(
+      snapshot.source.teamDynamicsExecutiveOverviewSignals,
+      "source.teamDynamicsExecutiveOverviewSignals",
+      errors,
+      { requireNonEmpty: false },
+    );
+    validateEvidenceReferences(
+      snapshot.source.hrAdminOptionalContextSignals,
+      "source.hrAdminOptionalContextSignals",
+      errors,
+      { requireNonEmpty: false },
+    );
+    validateEvidenceReferences(snapshot.source.interpretiveLinks, "source.interpretiveLinks", errors, {
+      requireNonEmpty: true,
+    });
+  }
+
+  validateEvidenceLinkedSection(snapshot.summary, "summary", errors);
+
+  if (!isPlainRecord(snapshot.fitOverview)) {
+    errors.push("fitOverview: Expected object.");
+  } else {
+    validateEvidenceLinkedSection(snapshot.fitOverview, "fitOverview", errors);
+
+    if (
+      !TEAM_FIT_RELATIONSHIP_PATTERNS.includes(
+        snapshot.fitOverview.relationshipPattern as TeamFitRelationshipPattern,
+      )
+    ) {
+      errors.push("fitOverview.relationshipPattern: Expected allowed relationship pattern.");
+    }
+  }
+
+  if (!isPlainRecord(snapshot.likelyTeamContribution)) {
+    errors.push("likelyTeamContribution: Expected object.");
+  } else {
+    validateEvidenceLinkedItems(snapshot.likelyTeamContribution.items, "likelyTeamContribution.items", errors);
+  }
+
+  if (!isPlainRecord(snapshot.possibleFrictionPoints)) {
+    errors.push("possibleFrictionPoints: Expected object.");
+  } else {
+    validateEvidenceLinkedItems(snapshot.possibleFrictionPoints.items, "possibleFrictionPoints.items", errors);
+  }
+
+  if (!isPlainRecord(snapshot.teamConditionsThatImproveFit)) {
+    errors.push("teamConditionsThatImproveFit: Expected object.");
+  } else {
+    validateEvidenceLinkedItems(
+      snapshot.teamConditionsThatImproveFit.items,
+      "teamConditionsThatImproveFit.items",
+      errors,
+    );
+  }
+
+  if (!isPlainRecord(snapshot.interviewProbes)) {
+    errors.push("interviewProbes: Expected object.");
+  } else {
+    validateInterviewProbes(snapshot.interviewProbes.items, "interviewProbes.items", errors);
+  }
+
+  if (!isPlainRecord(snapshot.onboardingAndManagerGuidance)) {
+    errors.push("onboardingAndManagerGuidance: Expected object.");
+  } else {
+    validateEvidenceLinkedItems(
+      snapshot.onboardingAndManagerGuidance.items,
+      "onboardingAndManagerGuidance.items",
+      errors,
+    );
+  }
+
+  if (!isPlainRecord(snapshot.riskAndMitigationMap)) {
+    errors.push("riskAndMitigationMap: Expected object.");
+  } else {
+    validateRiskAndMitigationItems(snapshot.riskAndMitigationMap.items, "riskAndMitigationMap.items", errors);
+  }
+
+  if (!isPlainRecord(snapshot.evidenceAppendix)) {
+    errors.push("evidenceAppendix: Expected object.");
+  } else {
+    validateEvidenceReferences(snapshot.evidenceAppendix.entries, "evidenceAppendix.entries", errors, {
+      requireNonEmpty: true,
+    });
+  }
+
+  if (!isPlainRecord(snapshot.interpretationLimits)) {
+    errors.push("interpretationLimits: Expected object.");
+  } else {
+    validateStringArray(snapshot.interpretationLimits.limits, "interpretationLimits.limits", errors);
+    validateEvidenceReferences(snapshot.interpretationLimits.evidence, "interpretationLimits.evidence", errors, {
+      requireNonEmpty: true,
+    });
+  }
+
+  if (!isPlainRecord(snapshot.metadata)) {
+    errors.push("metadata: Expected object.");
+  } else {
+    validateNonEmptyString(snapshot.metadata.generatedAt, "metadata.generatedAt", errors);
+    validateNonEmptyString(snapshot.metadata.schemaVersion, "metadata.schemaVersion", errors);
+
+    if (snapshot.metadata.provider != null) {
+      validateNonEmptyString(snapshot.metadata.provider, "metadata.provider", errors);
+    }
+
+    if (snapshot.metadata.providerVersion != null) {
+      validateNonEmptyString(snapshot.metadata.providerVersion, "metadata.providerVersion", errors);
+    }
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
+  return { ok: true, snapshot: snapshot as TeamFitReportV1ContractSnapshot };
+}
+
 export function validateTeamFitReportSnapshot(
   snapshot: unknown,
 ): TeamFitReportValidationResult {
@@ -386,7 +816,6 @@ export function validateTeamFitReportSnapshot(
   }
 
   errors.push(...hasForbiddenKeyDeep(snapshot));
-  errors.push(...findForbiddenWording(snapshot));
 
   if (snapshot.reportType !== TEAM_FIT_REPORT_TYPE) {
     errors.push(`reportType: Expected ${TEAM_FIT_REPORT_TYPE}.`);

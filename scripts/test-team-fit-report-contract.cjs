@@ -7,7 +7,6 @@ const ts = require("typescript");
 const projectRoot = path.resolve(__dirname, "..");
 const helperPath = path.join(projectRoot, "lib", "b2b", "team-fit-report-contract.ts");
 const helperSource = fs.readFileSync(helperPath, "utf8");
-const todoPath = path.join(projectRoot, "docs", "deep-profile-todo.md");
 const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
@@ -60,8 +59,10 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 };
 
 assert.match(helperSource, /TEAM_FIT_REPORT_TYPE/);
+assert.match(helperSource, /TEAM_FIT_REPORT_CONTRACT_VERSION/);
 assert.match(helperSource, /TEAM_FIT_RELATIONSHIP_PATTERNS/);
 assert.match(helperSource, /validateTeamFitReportSnapshot/);
+assert.match(helperSource, /validateTeamFitReportV1ContractSnapshot/);
 assert.doesNotMatch(helperSource, /\.from\("/);
 assert.doesNotMatch(helperSource, /OpenAI|renderer|worker/i);
 assert.doesNotMatch(helperSource, /team-fit-report-input|team-fit-report-lifecycle/);
@@ -69,8 +70,12 @@ assert.doesNotMatch(helperSource, /team-fit-report-input|team-fit-report-lifecyc
 const {
   TEAM_FIT_REPORT_TYPE,
   TEAM_FIT_REPORT_VERSION,
+  TEAM_FIT_REPORT_CONTRACT_VERSION,
+  TEAM_FIT_REPORT_CONTRACT_REPORT_TYPE,
+  TEAM_FIT_REPORT_CONTRACT_AUDIENCE,
   TEAM_FIT_RELATIONSHIP_PATTERNS,
   validateTeamFitReportSnapshot,
+  validateTeamFitReportV1ContractSnapshot,
 } = require(helperPath);
 
 function clone(value) {
@@ -168,8 +173,138 @@ function buildValidSnapshot() {
   };
 }
 
-function expectInvalid(snapshot, pattern) {
-  const validation = validateTeamFitReportSnapshot(snapshot);
+function evidence(id, sourceType = "candidate_deep_profile_signal") {
+  return {
+    id,
+    sourceType,
+    sourceLabel: sourceType,
+    signalLabel: `${id} signal`,
+    summary: `${id} summary`,
+    relationToClaim: `${id} links candidate signal to team context.`,
+    snapshotId: `${id}-snapshot`,
+    version: "v1",
+  };
+}
+
+function buildValidContractSnapshot() {
+  const candidateEvidence = evidence("candidate-1", "candidate_deep_profile_signal");
+  const teamEvidence = evidence("team-1", "team_dynamics_aggregation_signal");
+  const linkEvidence = evidence("link-1", "interpretive_link");
+  const sectionEvidence = [candidateEvidence, teamEvidence, linkEvidence];
+
+  return {
+    contractVersion: TEAM_FIT_REPORT_CONTRACT_VERSION,
+    reportType: TEAM_FIT_REPORT_CONTRACT_REPORT_TYPE,
+    audience: TEAM_FIT_REPORT_CONTRACT_AUDIENCE,
+    sourceType: "candidate_team_relational",
+    locale: "bs-BA",
+    generatedFor: {
+      organizationId: "org-1",
+      teamId: "team-1",
+      participantId: "participant-1",
+      teamName: "Tim operacija",
+      candidateDisplayName: "Amina Candidate",
+    },
+    source: {
+      candidateDeepProfileSignals: [candidateEvidence],
+      teamStyleCollaborationSignals: [],
+      teamDynamicsAggregationSignals: [teamEvidence],
+      teamDynamicsExecutiveOverviewSignals: [],
+      hrAdminOptionalContextSignals: [],
+      interpretiveLinks: [linkEvidence],
+    },
+    summary: {
+      headline: "Kandidat može pojačati koordinaciju ako se očekivanja rano ekspliciraju.",
+      summary: "Signal kandidata se poredi s timskim ritmom i pokazuje konkretnu temu za razgovor.",
+      evidence: sectionEvidence,
+    },
+    fitOverview: {
+      relationshipPattern: "mixed_signal",
+      headline: "Postoji kombinacija dopune i potencijalnog trenja.",
+      summary: "Kandidatov strukturisan pristup može pomoći timu, ali tempo usklađivanja treba provjeriti.",
+      evidence: sectionEvidence,
+    },
+    likelyTeamContribution: {
+      items: [
+        {
+          title: "Strukturiranje dogovora",
+          signal: "Kandidat preferira jasne radne okvire.",
+          interpretation: "To može pomoći timu koji već koristi koordinirane ritmove rada.",
+          recommendation: "Provjeriti kako kandidat uvodi strukturu bez usporavanja tima.",
+          evidence: sectionEvidence,
+        },
+      ],
+    },
+    possibleFrictionPoints: {
+      items: [
+        {
+          title: "Ritam povratne informacije",
+          signal: "Kandidat traži eksplicitne dogovore.",
+          interpretation: "U timu s brzim ad hoc odlukama to može otvoriti trenje.",
+          recommendation: "U intervjuu provjeriti reakciju na nepotpune informacije.",
+          evidence: sectionEvidence,
+        },
+      ],
+    },
+    teamConditionsThatImproveFit: {
+      items: [
+        {
+          title: "Jasan početni okvir",
+          signal: "Timski signal pokazuje korist od dogovorenih pravila saradnje.",
+          interpretation: "Fit se poboljšava kada menadžer rano definiše očekivanja.",
+          recommendation: "Postaviti 30-dnevni onboarding dogovor o ritmu check-ina.",
+          evidence: sectionEvidence,
+        },
+      ],
+    },
+    interviewProbes: {
+      items: [
+        {
+          question: "Opišite situaciju kada ste se morali brzo uskladiti s novim timom.",
+          rationale: "Provjerava konkretnu kandidat-vs-team hipotezu o tempu usklađivanja.",
+          whatToListenFor: ["Kako traži informacije", "Kako reaguje na nejasne prioritete"],
+          evidence: sectionEvidence,
+        },
+      ],
+    },
+    onboardingAndManagerGuidance: {
+      items: [
+        {
+          title: "Prve dvije sedmice",
+          signal: "Kombinacija kandidatovog i timskog signala traži eksplicitan onboarding okvir.",
+          interpretation: "Menadžer može smanjiti trenje jasnim dogovorima.",
+          recommendation: "Dodijeliti vlasnika onboarding check-ina i sedmični ritam povratne informacije.",
+          evidence: sectionEvidence,
+        },
+      ],
+    },
+    riskAndMitigationMap: {
+      items: [
+        {
+          risk: "Neusklađen tempo donošenja odluka.",
+          trigger: "Tim odlučuje brzo, a kandidat traži dodatno razjašnjenje.",
+          mitigation: "Dogovoriti koje odluke traže dubinsko razjašnjenje, a koje ne.",
+          owner: "manager",
+          evidence: sectionEvidence,
+        },
+      ],
+    },
+    evidenceAppendix: {
+      entries: sectionEvidence,
+    },
+    interpretationLimits: {
+      limits: ["Report daje hipoteze za HR razgovor, ne odluku o zapošljavanju."],
+      evidence: sectionEvidence,
+    },
+    metadata: {
+      generatedAt: "2026-06-16T12:00:00.000Z",
+      schemaVersion: "team_fit_report_v1_contract_shape",
+    },
+  };
+}
+
+function expectInvalid(snapshot, pattern, validator = validateTeamFitReportSnapshot) {
+  const validation = validator(snapshot);
   assert.equal(validation.ok, false);
   assert.equal(validation.errors.some((error) => pattern.test(error)), true);
 }
@@ -245,34 +380,47 @@ function main() {
   candidateVisibleSnapshot.candidateVisible = true;
   expectInvalid(candidateVisibleSnapshot, /candidateVisible/);
 
-  const forbiddenHireWording = clone(valid);
-  forbiddenHireWording.fitOverview.summary = "This should drive a hire decision.";
-  expectInvalid(forbiddenHireWording, /forbiddenText/);
-
-  const forbiddenBadFitWording = clone(valid);
-  forbiddenBadFitWording.watchouts = ["bad fit risk"]; 
-  expectInvalid(forbiddenBadFitWording, /forbiddenText/);
-
-  const forbiddenCultureFitWording = clone(valid);
-  forbiddenCultureFitWording.teamContextSummary.relevantTeamPatterns[0].summary = "culture fit signal";
-  expectInvalid(forbiddenCultureFitWording, /forbiddenText/);
-
-  const forbiddenWillPerformWording = clone(valid);
-  forbiddenWillPerformWording.complementaritySignals[0].summary = "Candidate will perform above the team baseline.";
-  expectInvalid(forbiddenWillPerformWording, /forbiddenText/);
-
-  const forbiddenDiagnosisWording = clone(valid);
-  forbiddenDiagnosisWording.watchouts = ["diagnosis is implied"]; 
-  expectInvalid(forbiddenDiagnosisWording, /forbiddenText/);
-
   const undefinedSnapshot = clone(valid);
   undefinedSnapshot.metadata.providerVersion = undefined;
   const undefinedResult = validateTeamFitReportSnapshot(undefinedSnapshot);
   assert.equal(undefinedResult.ok, false);
   assert.equal(undefinedResult.errors.some((error) => /undefined/.test(error)), true);
 
-  const todoSource = fs.readFileSync(todoPath, "utf8");
-  assert.match(todoSource, /Completion note — Team Fit contract\/validator shell/);
+  const contractValid = buildValidContractSnapshot();
+  const contractValidResult = validateTeamFitReportV1ContractSnapshot(contractValid);
+  assert.equal(contractValidResult.ok, true);
+
+  const wrongContractVersion = clone(contractValid);
+  wrongContractVersion.contractVersion = "team_fit_report_v0";
+  expectInvalid(wrongContractVersion, /contractVersion/, validateTeamFitReportV1ContractSnapshot);
+
+  const missingRequiredSection = clone(contractValid);
+  delete missingRequiredSection.possibleFrictionPoints;
+  expectInvalid(missingRequiredSection, /possibleFrictionPoints/, validateTeamFitReportV1ContractSnapshot);
+
+  const contractFitScore = clone(contractValid);
+  contractFitScore.fitScore = 0.71;
+  expectInvalid(contractFitScore, /fitScore/, validateTeamFitReportV1ContractSnapshot);
+
+  const contractHireDecision = clone(contractValid);
+  contractHireDecision.hireDecision = "hire";
+  expectInvalid(contractHireDecision, /hireDecision/, validateTeamFitReportV1ContractSnapshot);
+
+  const invalidEvidenceReference = clone(contractValid);
+  delete invalidEvidenceReference.source.candidateDeepProfileSignals[0].sourceType;
+  expectInvalid(
+    invalidEvidenceReference,
+    /source\.candidateDeepProfileSignals\[0\]\.sourceType/,
+    validateTeamFitReportV1ContractSnapshot,
+  );
+
+  const sectionWithoutEvidence = clone(contractValid);
+  sectionWithoutEvidence.summary.evidence = [];
+  expectInvalid(sectionWithoutEvidence, /summary\.evidence/, validateTeamFitReportV1ContractSnapshot);
+
+  const proseOnlyConcern = clone(contractValid);
+  proseOnlyConcern.summary.summary = "This narrative mentions hire wording, but no structural decision field exists.";
+  assert.equal(validateTeamFitReportV1ContractSnapshot(proseOnlyConcern).ok, true);
 
   console.log("test-team-fit-report-contract: ok");
 }
