@@ -37,6 +37,7 @@ assert.doesNotMatch(scriptSource, /from\("attempt_reports"\)|from\("team_assessm
 
 const {
   CONFIRM_ENV,
+  appendCandidateSourceFindings,
   buildBaseArtifact,
   buildSkippedArtifact,
   buildTeamFitDbSourceAuditArtifact,
@@ -83,6 +84,22 @@ async function main() {
   assert.equal(baseArtifact.optionalSources.teamDynamicsExecutiveOverview.requiredTeamSource, false);
   assert.equal(baseArtifact.optionalSources.teamStyle.requiredMvpSource, false);
   assert.equal(baseArtifact.optionalSources.roleContext.requiredMvpSource, false);
+
+  const staleCandidateArtifact = buildBaseArtifact({
+    candidateAssessmentAssignmentId: "missing-assignment",
+  });
+  staleCandidateArtifact.candidateSource.status = "not_found";
+  staleCandidateArtifact.candidateSource.blockers.push(
+    "candidate_assessment_assignment_not_found",
+  );
+  appendCandidateSourceFindings(staleCandidateArtifact);
+  assert.equal(staleCandidateArtifact.findings.length, 1);
+  assert.deepEqual(staleCandidateArtifact.findings[0], {
+    severity: "blocker",
+    category: "candidate_source",
+    message: "Candidate source could not be resolved.",
+    reason: "candidate_assessment_assignment_not_found",
+  });
 
   const skippedArtifact = buildSkippedArtifact({}, "confirmation missing");
   assertAuditMetadata(skippedArtifact);

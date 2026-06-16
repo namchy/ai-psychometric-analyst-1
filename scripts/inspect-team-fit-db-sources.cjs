@@ -166,6 +166,41 @@ function buildSkippedArtifact(inputs, reason) {
   };
 }
 
+function appendCandidateSourceFindings(artifact) {
+  const status = artifact?.candidateSource?.status;
+  const blockers = Array.isArray(artifact?.candidateSource?.blockers)
+    ? artifact.candidateSource.blockers
+    : [];
+
+  if (status === "available" && blockers.length === 0) {
+    return artifact;
+  }
+
+  if (blockers.length > 0) {
+    blockers.forEach((reason) => {
+      artifact.findings.push({
+        severity: "blocker",
+        category: "candidate_source",
+        message: "Candidate source could not be resolved.",
+        reason,
+      });
+    });
+
+    return artifact;
+  }
+
+  if (status && status !== "not_checked") {
+    artifact.findings.push({
+      severity: "blocker",
+      category: "candidate_source",
+      message: "Candidate source is not available for Team Fit input.",
+      reason: status,
+    });
+  }
+
+  return artifact;
+}
+
 function summarizeCandidateSignals(snapshot) {
   const signals = [];
   const summary = snapshot?.summarySignals ?? {};
@@ -637,6 +672,8 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     }
   }
 
+  appendCandidateSourceFindings(artifact);
+
   if (artifact.candidateSource.status === "available" && artifact.teamSource.isReady && artifact.teamSource.isFullCoverage) {
     artifact.findings.push({
       severity: "info",
@@ -669,6 +706,7 @@ module.exports = {
   TEAM_AGGREGATION_SNAPSHOT_ID_ENV,
   TEAM_FIT_REPORT_ID_ENV,
   TEAM_ID_ENV,
+  appendCandidateSourceFindings,
   buildBaseArtifact,
   buildSkippedArtifact,
   buildTeamFitDbSourceAuditArtifact,
