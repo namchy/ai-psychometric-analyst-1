@@ -228,6 +228,47 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - facete ne smiju biti mehanička lista
   - ton ostaje odmjeren, ali autoritativan, bez gomilanja markera tipa `upućuje na osobu koja vjerovatno`
   - structural fields (`domain_name`, `facet_name`, `score_label_or_band`, schema keys, enum values) ostaju netaknuti
+
+### Completion note — Amra replay fixture single-test HR verification and active label decision
+
+- Završen je read-only replay fixture verification krug za tri single-test HR reporta.
+- Replay fixture participant:
+  - `a5678fd5-8fea-4308-8569-5448f26b4f71`
+  - `amra.new1@example.test`
+- Replay assignment:
+  - `033f8975-5d9c-4c66-8842-f37527d556d5`
+- Originalna Amra nije dirana i nije rađena regeneracija originalnih reportova.
+- Replay report IDs i finalni audit status:
+  - IPIP: `5fcc9019-5ddd-42c7-83bb-d6d663e94f72` / `e71d472a-13cb-4cc9-9582-6eaa262affca` / `ready / openai / gpt-5.5`
+  - SAFRAN: `30124c4a-e7d9-412b-bad3-596d8e3bf97b` / `54702bc1-7d91-492e-9b50-14aff6706d34` / `ready / openai / gpt-5.5`
+  - MWMS: `4013e438-099a-400d-bf8c-b7d34dcb60b3` / `8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1` / `ready / openai / gpt-5.5`
+- Runtime config / provider verification je potvrđena za active `individual/hr/single_test` lane:
+  - `generator_type = openai`
+  - `model_name = gpt-5.5`
+  - `reasoning_effort = medium`
+  - `temperature = null`
+- Finalni read-only audit za sva tri reporta potvrdio je:
+  - `report_status = ready`
+  - `generator_type = openai`
+  - `model_name = gpt-5.5`
+  - `input_snapshot_present = true`
+  - `report_snapshot_present = true`
+  - `failure_code = null`
+  - `failure_reason = null`
+- IPIP BHS canonical label decision je sada aktivni status:
+  - internal psychometric key ostaje `COOPERATION`
+  - active BHS facet label za `COOPERATION` je `Sklonost saradnji`
+  - AGREEABLENESS domain label ostaje `Spremnost na saradnju`
+  - `Saradljivost` je legacy/forbidden aktivni vocabulary term i ostaje dozvoljen samo u negativnim testovima ili historijskim referencama
+- Read-only HR quality inspector je dodan kao dev-only diagnostic sloj:
+  - `scripts/inspect-amra-replay-single-test-hr-report-quality.cjs`
+  - `scripts/test-inspect-amra-replay-single-test-hr-report-quality.cjs`
+  - inspector ne zove OpenAI, ne piše u DB i ne radi regeneraciju/retry
+  - potvrđuje validator ok, display ready, renderer shape ok i odsustvo `Saradljivost`, `overuse`, `handling`, `Ugodnost`, `Kooperativnost` i `Saradnički profil`
+  - IPIP language diagnostics: `vjerovatno=3`, bez top cautious repeat
+  - SAFRAN/MWMS language diagnostics: `vjerovatno=0`, bez forbidden English leakova, bez bullet artifacts, bez filler flagova
+- Current next recommended step je read-only full user-facing text review tri replay HR reporta, kroz browser route ili mali markdown/text export helper.
+- Separate future cleanup candidate ostaje repo-wide leftover `Saradljivost` audit za preostale Composite/UI display pathove koji su namjerno izvan scope-a ovog IPIP label rename-a.
 - `scripts/test-ipip-hr-prompt-request-authority.cjs` je proširen da potvrdi da nove content-quality instrukcije ulaze u stvarni OpenAI request payload i debug dump.
 - Confirmed OpenAI dry-run nakon prompt hardeninga prošao je sa:
   - `bhsValidationOk: true`
