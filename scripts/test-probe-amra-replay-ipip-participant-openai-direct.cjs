@@ -22,8 +22,9 @@ const {
   TARGET,
   TIMEOUT_ENV,
   assertCaptureArtifact,
-  buildOpenAiFetchRequestInit,
   classifyProbeFailure,
+  callOpenAiDirect,
+  loadOpenAiTransportHelpers,
   runProbe,
   validateEnv,
 } = require(scriptPath);
@@ -125,25 +126,50 @@ async function main() {
   assert.equal(blocked.openAiCalled, false);
   assert.equal(blocked.databaseWrites, false);
 
-  const controller = new AbortController();
-  const directProbeDispatcher = { kind: "probe-dispatcher" };
-  const dispatcherCalls = [];
-  const requestInit = buildOpenAiFetchRequestInit({
-    apiKey: "probe-key",
-    requestBody: createCaptureArtifact().preparedOpenAiRequest.requestBody,
-    signal: controller.signal,
-    timeoutMs: 900000,
-    createDispatcher(timeoutMs) {
-      dispatcherCalls.push(timeoutMs);
-      return directProbeDispatcher;
+  const transportHelpers = loadOpenAiTransportHelpers();
+  assert.equal(typeof transportHelpers.resolveOpenAiFetchTransport, "function");
+
+  let transportFetchUrl = null;
+  let transportFetchInit = null;
+  const transport = {
+    fetchImplementation: "undici.fetch",
+    dispatcher: { kind: "probe-dispatcher" },
+    transportTimeoutApplied: true,
+    transportHeadersTimeoutMs: 900000,
+    transportBodyTimeoutMs: 900000,
+    async fetchImpl(url, init) {
+      transportFetchUrl = url;
+      transportFetchInit = init;
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        async json() {
+          return {
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({ report_type: "individual", audience: "participant" }),
+                },
+              },
+            ],
+          };
+        },
+      };
     },
+  };
+  const directCall = await callOpenAiDirect({
+    apiKey: "probe-key",
+    timeoutMs: 900000,
+    requestBody: createCaptureArtifact().preparedOpenAiRequest.requestBody,
+    transport,
   });
-  assert.deepEqual(dispatcherCalls, [900000]);
-  assert.equal(requestInit.signal, controller.signal);
-  assert.equal(requestInit.dispatcher, directProbeDispatcher);
-  assert.equal(requestInit.headers.Authorization, "Bearer probe-key");
+  assert.equal(directCall.transport.fetchImplementation, "undici.fetch");
+  assert.equal(transportFetchUrl, "https://api.openai.com/v1/chat/completions");
+  assert.equal(transportFetchInit.dispatcher, transport.dispatcher);
+  assert.equal(transportFetchInit.headers.Authorization, "Bearer probe-key");
   assert.deepEqual(
-    JSON.parse(requestInit.body),
+    JSON.parse(transportFetchInit.body),
     createCaptureArtifact().preparedOpenAiRequest.requestBody,
   );
 
@@ -169,6 +195,7 @@ async function main() {
         }),
         httpStatus: 200,
         httpStatusText: "OK",
+        transport,
       };
     },
     now: (() => {
@@ -185,6 +212,10 @@ async function main() {
   assert.equal(success.databaseWrites, false);
   assert.equal(success.resultClassification, "direct_openai_succeeded");
   assert.equal(success.parsedJson, true);
+  assert.equal(success.transportTimeoutApplied, true);
+  assert.equal(success.transportHeadersTimeoutMs, 900000);
+  assert.equal(success.transportBodyTimeoutMs, 900000);
+  assert.equal(success.fetchImplementation, "undici.fetch");
   assert.deepEqual(success.topLevelResponseKeys, ["report_type", "audience"]);
 
   const parseFailure = await runProbe({
@@ -196,6 +227,7 @@ async function main() {
       rawContent: "{not-json",
       httpStatus: 200,
       httpStatusText: "OK",
+      transport,
     }),
     now: (() => {
       let tick = 0;
@@ -216,7 +248,9 @@ async function main() {
       return JSON.stringify(createCaptureArtifact());
     },
     callOpenAi: async () => {
-      throw new Error("OpenAI direct IPIP participant probe timed out after 900000ms.");
+      const error = new Error("OpenAI direct IPIP participant probe timed out after 900000ms.");
+      error.transport = transport;
+      throw error;
     },
     now: (() => {
       let tick = 0;
@@ -234,7 +268,9 @@ async function main() {
       return JSON.stringify(createCaptureArtifact());
     },
     callOpenAi: async () => {
-      throw new Error("fetch failed");
+      const error = new Error("fetch failed");
+      error.transport = transport;
+      throw error;
     },
   });
   assert.equal(fetchFailure.resultClassification, "direct_openai_fetch_failed");
@@ -263,11 +299,13 @@ async function main() {
         rawContent: JSON.stringify({ ok: true }),
         httpStatus: 200,
         httpStatusText: "OK",
+        transport,
       };
     },
   });
   assert.equal(artifactRead.resultClassification, "direct_openai_succeeded");
   assert.equal(artifactRead.timeoutMs, 777000);
+  assert.equal(artifactRead.fetchImplementation, "undici.fetch");
 
   console.log("test-probe-amra-replay-ipip-participant-openai-direct: ok");
 }

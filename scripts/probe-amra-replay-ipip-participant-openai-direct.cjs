@@ -1,5 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const Module = require("node:module");
+const ts = require("typescript");
 
 const CONFIRM_ENV = "CONFIRM_AMRA_REPLAY_IPIP_PARTICIPANT_OPENAI_DIRECT_PROBE";
 const CAPTURE_PATH_ENV = "IPIP_PARTICIPANT_REQUEST_CAPTURE_PATH";
@@ -19,6 +21,72 @@ const TARGET = {
   providerMode: "v2-single",
   schemaName: "ipip-neo-120-participant-v2",
 };
+
+const projectRoot = path.resolve(__dirname, "..");
+const originalResolveFilename = Module._resolveFilename;
+let typeScriptRuntimeInstalled = false;
+
+function resolveWithExtensions(candidatePath) {
+  if (path.extname(candidatePath) && fs.existsSync(candidatePath)) {
+    return candidatePath;
+  }
+
+  for (const extension of [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"]) {
+    const withExtension = `${candidatePath}${extension}`;
+    if (fs.existsSync(withExtension)) {
+      return withExtension;
+    }
+  }
+
+  return candidatePath;
+}
+
+function installTypeScriptRuntime() {
+  if (typeScriptRuntimeInstalled) {
+    return;
+  }
+
+  Module._resolveFilename = function resolveFilename(request, parent, isMain, options) {
+    if (request === "server-only") {
+      return path.join(__dirname, "empty-module.cjs");
+    }
+
+    if (request.startsWith("@/")) {
+      return originalResolveFilename.call(
+        this,
+        resolveWithExtensions(path.join(projectRoot, request.slice(2))),
+        parent,
+        isMain,
+        options,
+      );
+    }
+
+    return originalResolveFilename.call(this, request, parent, isMain, options);
+  };
+
+  require.extensions[".ts"] = function compileTypeScript(module, filename) {
+    const source = fs.readFileSync(filename, "utf8");
+    const transpiled = ts.transpileModule(source, {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        moduleResolution: ts.ModuleResolutionKind.NodeJs,
+        target: ts.ScriptTarget.ES2022,
+        esModuleInterop: true,
+        resolveJsonModule: true,
+      },
+      fileName: filename,
+    });
+
+    module._compile(transpiled.outputText, filename);
+  };
+
+  typeScriptRuntimeInstalled = true;
+}
+
+function loadOpenAiTransportHelpers() {
+  installTypeScriptRuntime();
+  return require("../lib/assessment/openai-fetch-transport.ts");
+}
 
 function normalizeString(value) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -182,46 +250,15 @@ function classifyProbeFailure(error, rawContent) {
   return "direct_openai_other_error";
 }
 
-function buildOpenAiFetchRequestInit({ apiKey, requestBody, signal, timeoutMs, createDispatcher }) {
-  const dispatcher = (createDispatcher ?? createOpenAiTransportDispatcher)(timeoutMs) ?? null;
-  const requestInit = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-    signal,
-    cache: "no-store",
-  };
-
-  if (dispatcher) {
-    requestInit.dispatcher = dispatcher;
-  }
-
-  return requestInit;
-}
-
-function createOpenAiTransportDispatcher(timeoutMs) {
-  try {
-    const { Agent } = require("undici");
-    if (typeof Agent !== "function") {
-      return null;
-    }
-
-    return new Agent({
-      headersTimeout: timeoutMs,
-      bodyTimeout: timeoutMs,
-    });
-  } catch {
-    return null;
-  }
-}
-
 async function callOpenAiDirect(options) {
   if (!options.apiKey) {
     throw new Error("Missing required env var: OPENAI_API_KEY");
   }
+
+  const {
+    buildOpenAiFetchRequestInit,
+    resolveOpenAiFetchTransport,
+  } = loadOpenAiTransportHelpers();
 
   const controller = new AbortController();
   const timeout = setTimeout(
@@ -233,42 +270,54 @@ async function callOpenAiDirect(options) {
   );
 
   try {
-    const response = await options.fetchImpl(
-      "https://api.openai.com/v1/chat/completions",
-      buildOpenAiFetchRequestInit({
-        apiKey: options.apiKey,
-        requestBody: options.requestBody,
-        signal: controller.signal,
-        timeoutMs: options.timeoutMs,
-        createDispatcher: options.createDispatcher,
-      }),
-    );
-
-    if (!response.ok) {
-      const error = new Error(
-        `OpenAI direct IPIP participant probe failed with status ${response.status}: ${await response.text()}`,
+    const transport =
+      options.transport ??
+      (options.resolveTransport ?? resolveOpenAiFetchTransport)(options.timeoutMs);
+    try {
+      const response = await transport.fetchImpl(
+        "https://api.openai.com/v1/chat/completions",
+        buildOpenAiFetchRequestInit({
+          apiKey: options.apiKey,
+          requestBody: options.requestBody,
+          signal: controller.signal,
+          dispatcher: transport.dispatcher,
+        }),
       );
-      error.httpStatus = response.status;
-      error.httpStatusText = response.statusText ?? null;
+
+      if (!response.ok) {
+        const error = new Error(
+          `OpenAI direct IPIP participant probe failed with status ${response.status}: ${await response.text()}`,
+        );
+        error.httpStatus = response.status;
+        error.httpStatusText = response.statusText ?? null;
+        error.transport = transport;
+        throw error;
+      }
+
+      const payload = await response.json();
+      const rawContent = payload?.choices?.[0]?.message?.content;
+
+      if (typeof rawContent !== "string" || rawContent.trim().length === 0) {
+        const error = new Error("OpenAI direct IPIP participant probe response did not contain structured content.");
+        error.httpStatus = response.status;
+        error.httpStatusText = response.statusText ?? null;
+        error.transport = transport;
+        throw error;
+      }
+
+      return {
+        rawContent,
+        responsePayload: payload,
+        httpStatus: response.status,
+        httpStatusText: response.statusText ?? null,
+        transport,
+      };
+    } catch (error) {
+      if (error && typeof error === "object" && !("transport" in error)) {
+        error.transport = transport;
+      }
       throw error;
     }
-
-    const payload = await response.json();
-    const rawContent = payload?.choices?.[0]?.message?.content;
-
-    if (typeof rawContent !== "string" || rawContent.trim().length === 0) {
-      const error = new Error("OpenAI direct IPIP participant probe response did not contain structured content.");
-      error.httpStatus = response.status;
-      error.httpStatusText = response.statusText ?? null;
-      throw error;
-    }
-
-    return {
-      rawContent,
-      responsePayload: payload,
-      httpStatus: response.status,
-      httpStatusText: response.statusText ?? null,
-    };
   } finally {
     clearTimeout(timeout);
   }
@@ -293,7 +342,6 @@ async function runProbe(options = {}) {
   const readFile = options.readFile ?? fs.readFileSync;
   const capture = readCaptureArtifact(validation.capturePath, readFile);
   const asserted = assertCaptureArtifact(capture);
-  const fetchImpl = options.fetchImpl ?? fetch;
   const callOpenAi = options.callOpenAi ?? callOpenAiDirect;
   const timeoutMs = validation.timeoutMs ?? asserted.timeoutMs ?? 900000;
   const requestBodyJson = JSON.stringify(asserted.requestBody);
@@ -304,7 +352,8 @@ async function runProbe(options = {}) {
       apiKey: normalizeString(env.OPENAI_API_KEY),
       timeoutMs,
       requestBody: asserted.requestBody,
-      fetchImpl,
+      transport: options.transport,
+      resolveTransport: options.resolveTransport,
     });
     const endedAt = options.now ? options.now() : Date.now();
 
@@ -324,6 +373,10 @@ async function runProbe(options = {}) {
         model: asserted.requestBody.model,
         schemaName: capture.preparedOpenAiRequest.schemaName,
         requestBodyByteCount: Buffer.byteLength(requestBodyJson, "utf8"),
+        transportTimeoutApplied: response.transport?.transportTimeoutApplied ?? false,
+        transportHeadersTimeoutMs: response.transport?.transportHeadersTimeoutMs ?? null,
+        transportBodyTimeoutMs: response.transport?.transportBodyTimeoutMs ?? null,
+        fetchImplementation: response.transport?.fetchImplementation ?? null,
         responseReceived: true,
         parsedJson: false,
         topLevelResponseKeys: [],
@@ -354,6 +407,10 @@ async function runProbe(options = {}) {
       model: asserted.requestBody.model,
       schemaName: capture.preparedOpenAiRequest.schemaName,
       requestBodyByteCount: Buffer.byteLength(requestBodyJson, "utf8"),
+      transportTimeoutApplied: response.transport?.transportTimeoutApplied ?? false,
+      transportHeadersTimeoutMs: response.transport?.transportHeadersTimeoutMs ?? null,
+      transportBodyTimeoutMs: response.transport?.transportBodyTimeoutMs ?? null,
+      fetchImplementation: response.transport?.fetchImplementation ?? null,
       responseReceived: true,
       parsedJson: true,
       topLevelResponseKeys: Object.keys(parsed),
@@ -384,6 +441,10 @@ async function runProbe(options = {}) {
       model: asserted.requestBody.model,
       schemaName: capture.preparedOpenAiRequest.schemaName,
       requestBodyByteCount: Buffer.byteLength(requestBodyJson, "utf8"),
+      transportTimeoutApplied: error?.transport?.transportTimeoutApplied ?? false,
+      transportHeadersTimeoutMs: error?.transport?.transportHeadersTimeoutMs ?? null,
+      transportBodyTimeoutMs: error?.transport?.transportBodyTimeoutMs ?? null,
+      fetchImplementation: error?.transport?.fetchImplementation ?? null,
       responseReceived: false,
       parsedJson: false,
       topLevelResponseKeys: [],
@@ -422,10 +483,10 @@ module.exports = {
   TARGET,
   TIMEOUT_ENV,
   assertCaptureArtifact,
-  buildOpenAiFetchRequestInit,
   callOpenAiDirect,
   classifyProbeFailure,
-  createOpenAiTransportDispatcher,
+  installTypeScriptRuntime,
+  loadOpenAiTransportHelpers,
   readCaptureArtifact,
   runProbe,
   sanitizeExcerpt,

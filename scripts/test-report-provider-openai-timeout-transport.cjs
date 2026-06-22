@@ -59,15 +59,23 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const providerPath = path.join(projectRoot, "lib", "assessment", "report-provider-openai.ts");
 const providerSource = fs.readFileSync(providerPath, "utf8");
+const transportHelperPath = path.join(projectRoot, "lib", "assessment", "openai-fetch-transport.ts");
+const transportHelperSource = fs.readFileSync(transportHelperPath, "utf8");
 
-assert.match(providerSource, /headersTimeout:\s*timeoutMs/);
-assert.match(providerSource, /bodyTimeout:\s*timeoutMs/);
-assert.doesNotMatch(providerSource, /headersTimeout:\s*300000|bodyTimeout:\s*300000/);
+assert.match(providerSource, /resolveOpenAiFetchTransport/);
+assert.match(providerSource, /transport\.fetchImpl/);
+assert.match(transportHelperSource, /headersTimeout:\s*timeoutMs/);
+assert.match(transportHelperSource, /bodyTimeout:\s*timeoutMs/);
+assert.match(transportHelperSource, /fetchImplementation:\s*"undici\.fetch"/);
+assert.doesNotMatch(transportHelperSource, /headersTimeout:\s*300000|bodyTimeout:\s*300000/);
 
 const {
   buildOpenAiChatCompletionsRequestBody,
-  buildOpenAiFetchRequestInit,
 } = require(providerPath);
+const {
+  buildOpenAiFetchRequestInit,
+  resolveOpenAiFetchTransport,
+} = require(transportHelperPath);
 
 function main() {
   const requestBody = buildOpenAiChatCompletionsRequestBody(
@@ -85,20 +93,14 @@ function main() {
   );
 
   const controller = new AbortController();
-  const createDispatcherCalls = [];
   const dispatcher = { kind: "undici-agent-like" };
   const requestInit = buildOpenAiFetchRequestInit({
     apiKey: "test-key",
     requestBody,
     signal: controller.signal,
-    timeoutMs: 900000,
-    createDispatcher(timeoutMs) {
-      createDispatcherCalls.push(timeoutMs);
-      return dispatcher;
-    },
+    dispatcher,
   });
 
-  assert.deepEqual(createDispatcherCalls, [900000]);
   assert.equal(requestInit.method, "POST");
   assert.equal(requestInit.cache, "no-store");
   assert.equal(requestInit.signal, controller.signal);
@@ -111,18 +113,32 @@ function main() {
     "ipip-neo-120-participant-v2",
   );
 
+  const transport = resolveOpenAiFetchTransport(45000, {
+    fetch: async () => ({ ok: true }),
+    Agent: function Agent(options) {
+      this.options = options;
+    },
+  });
+  assert.equal(transport.fetchImplementation, "undici.fetch");
+  assert.equal(transport.transportTimeoutApplied, true);
+  assert.equal(transport.transportHeadersTimeoutMs, 45000);
+  assert.equal(transport.transportBodyTimeoutMs, 45000);
+  assert.deepEqual(transport.dispatcher.options, {
+    headersTimeout: 45000,
+    bodyTimeout: 45000,
+  });
+
+  const withoutDispatcherTransport = resolveOpenAiFetchTransport(45000, {
+    fetch: async () => ({ ok: true }),
+    Agent: undefined,
+  });
   const withoutDispatcher = buildOpenAiFetchRequestInit({
     apiKey: "test-key",
     requestBody,
     signal: controller.signal,
-    timeoutMs: 45000,
-    createDispatcher(timeoutMs) {
-      createDispatcherCalls.push(timeoutMs);
-      return null;
-    },
+    dispatcher: withoutDispatcherTransport.dispatcher,
   });
 
-  assert.deepEqual(createDispatcherCalls, [900000, 45000]);
   assert.equal(Object.prototype.hasOwnProperty.call(withoutDispatcher, "dispatcher"), false);
   assert.deepEqual(JSON.parse(withoutDispatcher.body), requestBody);
 
