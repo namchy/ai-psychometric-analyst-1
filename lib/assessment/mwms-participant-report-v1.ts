@@ -1,5 +1,8 @@
 import mwmsParticipantReportV1SchemaJson from "@/lib/assessment/schemas/mwms-participant-report-v1.json";
-import { validateParticipantReportSafety } from "@/lib/assessment/participant-report-safety";
+import {
+  formatParticipantReportSafetyFinding,
+  validateParticipantReportSafety,
+} from "@/lib/assessment/participant-report-safety";
 
 export const MWMS_PARTICIPANT_REPORT_SCHEMA_VERSION = "mwms_participant_report_v1" as const;
 
@@ -324,7 +327,7 @@ export function validateMwmsParticipantReportV1(
   }
 
   validateParticipantReportSafety(value).forEach((finding) => {
-    errors.push(`${finding.path}: ${finding.message}`);
+    errors.push(formatParticipantReportSafetyFinding(finding));
   });
 
   if (

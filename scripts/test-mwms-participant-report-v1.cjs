@@ -54,6 +54,10 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 };
 
 const {
+  formatParticipantReportSafetyFinding,
+  validateParticipantReportSafety,
+} = require("../lib/assessment/participant-report-safety.ts");
+const {
   validateMwmsParticipantReportV1,
 } = require("../lib/assessment/mwms-participant-report-v1.ts");
 
@@ -197,5 +201,52 @@ assert.equal(
   true,
   distinctArraysResult.ok ? undefined : distinctArraysResult.errors.join(" | "),
 );
+
+const motivationVocabularyReport = clone(validReport);
+motivationVocabularyReport.summary.paragraph =
+  "Motivacijski obrazac pokazuje kako se motivacija i introjektirana motivacija mogu mijenjati kroz kontekst zadatka.";
+motivationVocabularyReport.motivation_pattern.amotivation =
+  "Amotivacija i epizode amotivacije ovdje se čitaju kao signal za provjeru jasnoće, svrhe i uslova rada.";
+motivationVocabularyReport.interpretation_note =
+  "Ovaj izvještaj opisuje motivacijski obrazac i amotivaciju u radnom kontekstu, bez konačnih zaključaka o osobi.";
+const motivationVocabularyResult = validateMwmsParticipantReportV1(motivationVocabularyReport, {
+  enforceProseGuardrails: false,
+});
+assert.equal(
+  motivationVocabularyResult.ok,
+  true,
+  motivationVocabularyResult.ok ? undefined : motivationVocabularyResult.errors.join(" | "),
+);
+
+const diagnosisSafetyReport = clone(validReport);
+diagnosisSafetyReport.interpretation_note =
+  "Ovaj rezultat pokazuje kliničku anksioznost i predstavlja medicinsku dijagnozu.";
+const diagnosisSafetyResult = validateMwmsParticipantReportV1(diagnosisSafetyReport, {
+  enforceProseGuardrails: false,
+});
+assert.equal(diagnosisSafetyResult.ok, false);
+assert.match(diagnosisSafetyResult.errors.join(" | "), /interpretation_note/i);
+assert.match(diagnosisSafetyResult.errors.join(" | "), /diagnosis, clinical claim, or medical claim/i);
+assert.match(
+  diagnosisSafetyResult.errors.join(" | "),
+  /rule=(diagnosis_term|clinical_term|medical_term)/i,
+);
+
+const directSafetyFindings = validateParticipantReportSafety({
+  interpretation_note:
+    "Ovaj rezultat pokazuje kliničku anksioznost i predstavlja medicinsku dijagnozu.",
+});
+assert.equal(directSafetyFindings.length >= 1, true);
+assert.equal(directSafetyFindings[0].path, "interpretation_note");
+assert.equal(typeof directSafetyFindings[0].ruleId, "string");
+assert.equal(typeof directSafetyFindings[0].matchedTerm, "string");
+assert.match(formatParticipantReportSafetyFinding(directSafetyFindings[0]), /rule=/i);
+assert.match(formatParticipantReportSafetyFinding(directSafetyFindings[0]), /match=/i);
+
+const safeMotivationFindings = validateParticipantReportSafety({
+  interpretation_note:
+    "Ovaj motivacijski obrazac uključuje amotivaciju, amotivacije i introjektiranu motivaciju kao radne konstrukte.",
+});
+assert.deepEqual(safeMotivationFindings, []);
 
 console.log("MWMS participant report V1 validator tests passed.");

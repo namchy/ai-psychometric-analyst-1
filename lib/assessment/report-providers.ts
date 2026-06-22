@@ -75,7 +75,10 @@ import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type { ScoringMethod } from "@/lib/assessment/types";
 import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
-import { validateParticipantReportSafety } from "@/lib/assessment/participant-report-safety";
+import {
+  formatParticipantReportSafetyFinding,
+  validateParticipantReportSafety,
+} from "@/lib/assessment/participant-report-safety";
 
 export type ReportGeneratorType = "mock" | "openai";
 export type ReportFamily = "big_five" | "ipc" | "mwms" | "safran";
@@ -445,7 +448,7 @@ export function validateRuntimeCompletedAssessmentReport(
       return {
         ok: false,
         reason: safetyFindings
-          .map((finding) => `${finding.path}: ${finding.message}`)
+          .map((finding) => formatParticipantReportSafetyFinding(finding))
           .join(" | "),
       };
     }
