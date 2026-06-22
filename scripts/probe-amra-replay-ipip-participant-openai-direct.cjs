@@ -18,7 +18,6 @@ const TARGET = {
   model: "gpt-5.5",
   providerMode: "v2-single",
   schemaName: "ipip-neo-120-participant-v2",
-  responseFormatSchemaName: "ipip_neo_120_participant_v2",
 };
 
 function normalizeString(value) {
@@ -88,6 +87,9 @@ function assertCaptureArtifact(artifact) {
   const metadata = artifact?.metadata ?? null;
   const request = artifact?.preparedOpenAiRequest ?? null;
   const requestBody = request?.requestBody ?? null;
+  const artifactSchemaName = request?.schemaName ?? null;
+  const responseFormatSchemaName =
+    requestBody?.response_format?.json_schema?.name ?? null;
 
   if (!target || typeof target !== "object") {
     throw new Error("Capture artifact is missing target metadata.");
@@ -111,16 +113,11 @@ function assertCaptureArtifact(artifact) {
     ["runtime.provider", runtime.provider, TARGET.provider],
     ["runtime.model", runtime.model, TARGET.model],
     ["artifact.providerMode", artifact?.providerMode, TARGET.providerMode],
-    ["preparedOpenAiRequest.schemaName", request?.schemaName, TARGET.schemaName],
+    ["preparedOpenAiRequest.schemaName", artifactSchemaName, TARGET.schemaName],
     [
       "preparedOpenAiRequest.requestBody.model",
       requestBody?.model,
       TARGET.model,
-    ],
-    [
-      "preparedOpenAiRequest.requestBody.response_format.json_schema.name",
-      requestBody?.response_format?.json_schema?.name,
-      TARGET.responseFormatSchemaName,
     ],
   ];
 
@@ -128,6 +125,12 @@ function assertCaptureArtifact(artifact) {
     if (received !== expected) {
       throw new Error(`Capture artifact ${label} mismatch: expected ${expected}, received ${received}.`);
     }
+  }
+
+  if (responseFormatSchemaName !== artifactSchemaName) {
+    throw new Error(
+      `Capture artifact preparedOpenAiRequest.requestBody.response_format.json_schema.name mismatch: expected ${artifactSchemaName}, received ${responseFormatSchemaName}.`,
+    );
   }
 
   if (metadata?.participantDataOnlyQa !== true) {

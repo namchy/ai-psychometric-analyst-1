@@ -68,7 +68,7 @@ function createCaptureArtifact(overrides = {}) {
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: overrides.responseFormatSchemaName ?? TARGET.responseFormatSchemaName,
+            name: overrides.responseFormatSchemaName ?? TARGET.schemaName,
             strict: true,
             schema: { type: "object" },
           },
@@ -109,6 +109,14 @@ async function main() {
   await assert.rejects(
     async () => assertCaptureArtifact(createCaptureArtifact({ schemaName: "wrong-schema" })),
     /schemaName mismatch/,
+  );
+
+  await assert.rejects(
+    async () =>
+      assertCaptureArtifact(
+        createCaptureArtifact({ responseFormatSchemaName: "ipip_neo_120_participant_v2" }),
+      ),
+    /response_format\.json_schema\.name mismatch/,
   );
 
   const blocked = await runProbe({ env: {} });
