@@ -126,6 +126,14 @@ for (const placeholder of ["N/A", "TBD", "Lorem ipsum", "test"]) {
 const genericSummary = clone(validReport);
 genericSummary.summary.paragraph = "Ovaj izvještaj prikazuje rezultate.";
 expectInvalid(genericSummary, /summary\.paragraph.*generic MWMS filler/i);
+const genericDataOnlyResult = validateMwmsParticipantReportV1(genericSummary, {
+  enforceProseGuardrails: false,
+});
+assert.equal(
+  genericDataOnlyResult.ok,
+  true,
+  genericDataOnlyResult.ok ? undefined : genericDataOnlyResult.errors.join(" | "),
+);
 
 const duplicateObservations = clone(validReport);
 duplicateObservations.key_observations = [
@@ -149,6 +157,15 @@ const unsafeClaim = clone(validReport);
 unsafeClaim.summary.paragraph =
   "Ovaj rezultat sigurno pokazuje da osoba uvijek ostaje motivisana bez obzira na kontekst.";
 expectInvalid(unsafeClaim, /unsafe or overclaiming/i);
+
+const degradingClaim = clone(validReport);
+degradingClaim.summary.paragraph =
+  "Ovaj rezultat pokazuje da si bezvrijedna i nepopravljivo nesposobna osoba.";
+const degradingDataOnlyResult = validateMwmsParticipantReportV1(degradingClaim, {
+  enforceProseGuardrails: false,
+});
+assert.equal(degradingDataOnlyResult.ok, false);
+assert.match(degradingDataOnlyResult.errors.join(" | "), /harmful|degrading/i);
 
 const statementReflection = clone(validReport);
 statementReflection.reflection_questions = [

@@ -19,6 +19,10 @@ import {
   isMwmsTestSlug,
 } from "@/lib/assessment/mwms-report-contract";
 import {
+  formatMwmsParticipantReportV1ValidationErrors,
+  validateMwmsParticipantReportV1,
+} from "@/lib/assessment/mwms-participant-report-v1";
+import {
   MWMS_HR_REPORT_V1_CONTRACT,
   formatMwmsHrReportValidationErrors,
   validateMwmsHrReportV1,
@@ -32,7 +36,10 @@ import {
 } from "@/lib/assessment/safran-hr-report-v1";
 import {
   SAFRAN_PARTICIPANT_AI_REPORT_CONTRACT,
+  formatSafranParticipantAiReportValidationErrors,
   isSafranTestSlug,
+  type SafranAiReportInput,
+  validateSafranParticipantAiReport,
 } from "@/lib/assessment/safran-participant-ai-report-v1";
 import {
   type RuntimeCompletedAssessmentReport,
@@ -88,6 +95,25 @@ type AttemptTestRecord = {
   test_id: string;
   locale: AssessmentLocale | null;
 };
+
+function isSafranParticipantInput(value: unknown): value is SafranAiReportInput {
+  if (!value || typeof value !== "object" || !("test" in value) || !("scores" in value)) {
+    return false;
+  }
+
+  const test = value.test;
+
+  if (!test || typeof test !== "object") {
+    return false;
+  }
+
+  return (
+    "slug" in test &&
+    test.slug === "safran_v1" &&
+    "audience" in test &&
+    test.audience === "participant"
+  );
+}
 
 type QueuedReportJobSelector = {
   attemptId?: string;
@@ -684,7 +710,12 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   });
 
   const validationResult =
-    isIpipNeo120TestSlug(job.test_slug) && job.audience === "hr"
+    isIpipNeo120TestSlug(job.test_slug) && job.audience === "participant"
+      ? validateRuntimeCompletedAssessmentReport(generationResult.report, {
+          testSlug: job.test_slug,
+          audience: job.audience,
+        })
+      : isIpipNeo120TestSlug(job.test_slug) && job.audience === "hr"
       ? (() => {
           if (!isIpipNeo120HrReportInput(preparedInput.promptInput)) {
             return {
@@ -709,6 +740,22 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
                 reason: formatIpipNeo120ReportValidationErrors(ipipHrValidation.errors),
               };
         })()
+      : isMwmsTestSlug(job.test_slug) && job.audience === "participant"
+        ? (() => {
+            const participantValidation = validateMwmsParticipantReportV1(
+              generationResult.report,
+              { enforceProseGuardrails: false },
+            );
+
+            return participantValidation.ok
+              ? { ok: true as const, value: participantValidation.value }
+              : {
+                  ok: false as const,
+                  reason: formatMwmsParticipantReportV1ValidationErrors(
+                    participantValidation.errors,
+                  ),
+                };
+          })()
       : isMwmsTestSlug(job.test_slug) && job.audience === "hr"
       ? (() => {
           if (!isMwmsHrReportInput(preparedInput.promptInput)) {
@@ -733,6 +780,32 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
                 reason: formatMwmsHrReportValidationErrors(mwmsValidation.errors),
               };
         })()
+      : isSafranTestSlug(job.test_slug) && job.audience === "participant"
+        ? (() => {
+            if (!isSafranParticipantInput(preparedInput.promptInput)) {
+              return {
+                ok: false as const,
+                reason: "SAFRAN participant prepared input failed data/reference validation.",
+              };
+            }
+
+            const participantValidation = validateSafranParticipantAiReport(
+              generationResult.report,
+              {
+                expectedInput: preparedInput.promptInput,
+                enforceProseGuardrails: false,
+              },
+            );
+
+            return participantValidation.ok
+              ? { ok: true as const, value: participantValidation.value }
+              : {
+                  ok: false as const,
+                  reason: formatSafranParticipantAiReportValidationErrors(
+                    participantValidation.errors,
+                  ),
+                };
+          })()
       : isSafranTestSlug(job.test_slug) && job.audience === "hr"
         ? (() => {
             if (!isSafranHrReportInput(preparedInput.promptInput)) {

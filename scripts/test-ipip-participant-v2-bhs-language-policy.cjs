@@ -373,6 +373,7 @@ async function main() {
     const {
       validateStructuredReport,
       createOpenAiReportProvider,
+      prepareIpipNeo120ParticipantAiInputV2ForOpenAi,
     } = require("../lib/assessment/report-provider-openai.ts");
     const {
       validateIpipNeo120ParticipantReportV2,
@@ -387,10 +388,10 @@ async function main() {
     const rawSingleReport = buildSingleOutputReport(v2Input);
     const validatedSingleReport = validateStructuredReport(clone(rawSingleReport), bsInput);
 
-    assert.equal(validatedSingleReport.summary.headline.includes("snapshot"), false);
-    assert.equal(validatedSingleReport.summary.overview.includes("high"), false);
-    assert.equal(validatedSingleReport.work_style.paragraphs[0].includes("snapshot"), false);
-    assert.equal(validatedSingleReport.domains[0].summary.includes("high"), false);
+    assert.equal(validatedSingleReport.summary.headline.includes("snapshot"), true);
+    assert.equal(validatedSingleReport.summary.overview.includes("high"), true);
+    assert.equal(validatedSingleReport.work_style.paragraphs[0].includes("snapshot"), true);
+    assert.equal(validatedSingleReport.domains[0].summary.includes("high"), true);
     assert.equal(validatedSingleReport.domains[0].candidate_reflection.includes("ti"), true);
     assert.equal(
       validatedSingleReport.domains[0].participant_display_label,
@@ -410,9 +411,12 @@ async function main() {
       true,
     );
 
-    for (const locale of ["hr", "sr", "en", "unknown", null, "de"]) {
+    for (const locale of ["hr", "sr", "en", "unknown", "de"]) {
       const noPolicyInput = buildPreparedInput(locale);
-      const noPolicyReport = validateStructuredReport(clone(rawSingleReport), noPolicyInput);
+      const noPolicyRawReport = clone(rawSingleReport);
+      noPolicyRawReport.test.locale =
+        prepareIpipNeo120ParticipantAiInputV2ForOpenAi(noPolicyInput).locale;
+      const noPolicyReport = validateStructuredReport(noPolicyRawReport, noPolicyInput);
       assert.equal(
         noPolicyReport.summary.headline.includes("snapshot"),
         true,
@@ -427,9 +431,32 @@ async function main() {
 
     const invalidReflectionReport = clone(rawSingleReport);
     invalidReflectionReport.domains[0].candidate_reflection = "Kako možeš bolje koristiti ovaj obrazac?";
+    const invalidReflectionValidated = validateStructuredReport(invalidReflectionReport, bsInput);
+    assert.equal(
+      invalidReflectionValidated.domains[0].candidate_reflection,
+      invalidReflectionReport.domains[0].candidate_reflection,
+    );
+    assert.equal(validateIpipNeo120ParticipantReportV2(invalidReflectionReport).ok, false);
+    assert.equal(
+      validateIpipNeo120ParticipantReportV2(invalidReflectionReport, {
+        enforceProseGuardrails: false,
+      }).ok,
+      true,
+    );
+
+    const mismatchedScoreReport = clone(rawSingleReport);
+    mismatchedScoreReport.domains[0].score += 1;
     assert.throws(
-      () => validateStructuredReport(invalidReflectionReport, bsInput),
-      /candidate_reflection must be a declarative sentence, not a question/i,
+      () => validateStructuredReport(mismatchedScoreReport, bsInput),
+      /Must match deterministic input/i,
+    );
+
+    const degradingReport = clone(rawSingleReport);
+    degradingReport.summary.overview =
+      "Ovaj rezultat pokazuje da si bezvrijedna i nepopravljivo nesposobna osoba.";
+    assert.throws(
+      () => validateStructuredReport(degradingReport, bsInput),
+      /harmful|degrading/i,
     );
 
     process.env.IPIP_NEO_120_PARTICIPANT_GENERATION_MODE = "segmented";
@@ -459,9 +486,9 @@ async function main() {
     const segmentedReport = segmentedResult.report;
     const segmentedValidation = validateIpipNeo120ParticipantReportV2(segmentedReport);
     assert.equal(segmentedValidation.ok, true, segmentedValidation.ok ? "" : segmentedValidation.errors.join(" | "));
-    assert.equal(segmentedReport.summary.headline.includes("snapshot"), false);
-    assert.equal(segmentedReport.summary.overview.includes("high"), false);
-    assert.equal(segmentedReport.domains[0].summary.includes("high"), false);
+    assert.equal(segmentedReport.summary.headline.includes("snapshot"), true);
+    assert.equal(segmentedReport.summary.overview.includes("high"), true);
+    assert.equal(segmentedReport.domains[0].summary.includes("high"), true);
     assert.equal(segmentedReport.domains[0].candidate_reflection.includes("ti"), true);
     assert.equal(
       segmentedReport.domains[0].participant_display_label,

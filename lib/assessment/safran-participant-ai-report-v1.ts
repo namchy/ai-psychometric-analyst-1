@@ -1,4 +1,5 @@
 import type { AssessmentLocale } from "@/lib/assessment/locale";
+import { validateParticipantReportSafety } from "@/lib/assessment/participant-report-safety";
 import type { CompletedAssessmentReportRequest } from "@/lib/assessment/report-providers";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import {
@@ -1065,6 +1066,7 @@ export function validateSafranParticipantAiReport(
   value: unknown,
   options?: {
     expectedInput?: SafranAiReportInput | null;
+    enforceProseGuardrails?: boolean;
   },
 ): { ok: true; value: SafranParticipantAiReport } | { ok: false; errors: string[] } {
   const errors: string[] = [];
@@ -1363,6 +1365,10 @@ export function validateSafranParticipantAiReport(
     validateForbiddenPhrases(value as SafranParticipantAiReport, errors);
   }
 
+  validateParticipantReportSafety(value).forEach((finding) => {
+    errors.push(`${finding.path}: ${finding.message}`);
+  });
+
   const expectedInput = options?.expectedInput ?? null;
 
   if (
@@ -1396,7 +1402,7 @@ export function validateSafranParticipantAiReport(
     });
   }
 
-  if (errors.length === 0) {
+  if (errors.length === 0 && options?.enforceProseGuardrails !== false) {
     validateNarrativeQuality(
       value as SafranParticipantAiReport,
       expectedInput,

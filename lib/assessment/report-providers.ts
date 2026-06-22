@@ -75,6 +75,7 @@ import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import type { ScoringMethod } from "@/lib/assessment/types";
 import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
+import { validateParticipantReportSafety } from "@/lib/assessment/participant-report-safety";
 
 export type ReportGeneratorType = "mock" | "openai";
 export type ReportFamily = "big_five" | "ipc" | "mwms" | "safran";
@@ -437,6 +438,19 @@ export function validateRuntimeCompletedAssessmentReport(
 ): 
   | { ok: true; value: RuntimeCompletedAssessmentReport }
   | { ok: false; reason: string } {
+  if (context.audience === "participant") {
+    const safetyFindings = validateParticipantReportSafety(value);
+
+    if (safetyFindings.length > 0) {
+      return {
+        ok: false,
+        reason: safetyFindings
+          .map((finding) => `${finding.path}: ${finding.message}`)
+          .join(" | "),
+      };
+    }
+  }
+
   if (isIpipNeo120TestSlug(context.testSlug) && context.audience === "participant") {
     const v1ValidationResult = validateIpipNeo120ParticipantReportV1(value);
 
@@ -447,7 +461,9 @@ export function validateRuntimeCompletedAssessmentReport(
       };
     }
 
-    const v2ValidationResult = validateIpipNeo120ParticipantReportV2(value);
+    const v2ValidationResult = validateIpipNeo120ParticipantReportV2(value, {
+      enforceProseGuardrails: false,
+    });
 
     if (v2ValidationResult.ok) {
       return {
@@ -505,7 +521,9 @@ export function validateRuntimeCompletedAssessmentReport(
   }
 
   if (isMwmsTestSlug(context.testSlug) && context.audience === "participant") {
-    const validationResult = validateMwmsParticipantReportV1(value);
+    const validationResult = validateMwmsParticipantReportV1(value, {
+      enforceProseGuardrails: false,
+    });
 
     if (!validationResult.ok) {
       return {
@@ -539,7 +557,9 @@ export function validateRuntimeCompletedAssessmentReport(
   }
 
   if (isSafranTestSlug(context.testSlug) && context.audience === "participant") {
-    const validationResult = validateSafranParticipantAiReport(value);
+    const validationResult = validateSafranParticipantAiReport(value, {
+      enforceProseGuardrails: false,
+    });
 
     if (!validationResult.ok) {
       return {

@@ -191,24 +191,20 @@ function applyIpipNeo120ParticipantV2BhsOutputPolicy<T>(
   label: string,
 ): T {
   const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
-  const canonicalizedReport = languagePolicy
-    ? languagePolicy.canonicalizeUserFacingOutput(report)
-    : report;
   const globalValidationErrors = languagePolicy
-    ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+    ? languagePolicy.validateUserFacingOutput(report, {
         audience: "participant",
       })
     : [];
 
   if (globalValidationErrors.length > 0) {
-    throw new Error(
-      `OpenAI response JSON failed global BHS ${label} output validation: ${globalValidationErrors
-        .map((error) => `${error.path}: ${error.message}`)
-        .join(" | ")}`,
-    );
+    console.warn(`Global BHS ${label} diagnostics detected non-blocking findings`, {
+      attemptId: input.attemptId,
+      findings: globalValidationErrors,
+    });
   }
 
-  return canonicalizedReport;
+  return report;
 }
 
 export function shouldOmitOpenAiTemperature(model: string): boolean {
@@ -1496,12 +1492,25 @@ export function validateStructuredReport(
         input,
         "IPIP-NEO-120 participant V2 report",
       );
-      const validationResult = validateIpipNeo120ParticipantReportV2(canonicalizedReport);
+      const expectedInput = prepareIpipNeo120ParticipantAiInputV2ForOpenAi(input);
+      const validationResult = validateIpipNeo120ParticipantReportV2(canonicalizedReport, {
+        enforceProseGuardrails: false,
+        expectedInput,
+      });
 
       if (!validationResult.ok) {
         throw new Error(
           `OpenAI response JSON failed IPIP-NEO-120 participant V2 report validation: ${formatIpipNeo120ParticipantReportV2ValidationErrors(validationResult.errors)}`,
         );
+      }
+
+      const proseDiagnostics = validateIpipNeo120ParticipantReportV2(report);
+
+      if (!proseDiagnostics.ok) {
+        console.warn("IPIP participant prose diagnostics detected non-blocking findings", {
+          attemptId: input.attemptId,
+          findings: proseDiagnostics.errors,
+        });
       }
 
       return validationResult.value;
@@ -1569,29 +1578,36 @@ export function validateStructuredReport(
 
   if (input.testSlug === "mwms_v1" && isMwmsParticipantPromptInput(input.promptInput)) {
     const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
-    const canonicalizedReport = languagePolicy
-      ? languagePolicy.canonicalizeUserFacingOutput(report)
-      : report;
     const globalValidationErrors = languagePolicy
-      ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+      ? languagePolicy.validateUserFacingOutput(report, {
           audience: "participant",
         })
       : [];
 
     if (globalValidationErrors.length > 0) {
-      throw new Error(
-        `OpenAI response JSON failed global BHS MWMS participant output validation: ${globalValidationErrors
-          .map((error) => `${error.path}: ${error.message}`)
-          .join(" | ")}`,
-      );
+      console.warn("MWMS participant BHS language diagnostics detected non-blocking findings", {
+        attemptId: input.attemptId,
+        findings: globalValidationErrors,
+      });
     }
 
-    const validationResult = validateMwmsParticipantReportV1(canonicalizedReport);
+    const validationResult = validateMwmsParticipantReportV1(report, {
+      enforceProseGuardrails: false,
+    });
 
     if (!validationResult.ok) {
       throw new Error(
         `OpenAI response JSON failed MWMS participant report validation: ${formatMwmsParticipantReportV1ValidationErrors(validationResult.errors)}`,
       );
+    }
+
+    const proseDiagnostics = validateMwmsParticipantReportV1(report);
+
+    if (!proseDiagnostics.ok) {
+      console.warn("MWMS participant prose diagnostics detected non-blocking findings", {
+        attemptId: input.attemptId,
+        findings: proseDiagnostics.errors,
+      });
     }
 
     return validationResult.value;
@@ -1635,31 +1651,39 @@ export function validateStructuredReport(
         ? input.requestedLocale
         : getPromptInputLocale(input.promptInput),
     );
-    const canonicalizedReport = languagePolicy
-      ? languagePolicy.canonicalizeUserFacingOutput(report)
-      : report;
     const globalValidationErrors = languagePolicy
-      ? languagePolicy.validateUserFacingOutput(canonicalizedReport, {
+      ? languagePolicy.validateUserFacingOutput(report, {
           audience: "participant",
         })
       : [];
 
     if (globalValidationErrors.length > 0) {
-      throw new Error(
-        `OpenAI response JSON failed global BHS SAFRAN participant output validation: ${globalValidationErrors
-          .map((error) => `${error.path}: ${error.message}`)
-          .join(" | ")}`,
-      );
+      console.warn("SAFRAN participant BHS language diagnostics detected non-blocking findings", {
+        attemptId: input.attemptId,
+        findings: globalValidationErrors,
+      });
     }
 
-    const validationResult = validateSafranParticipantAiReport(canonicalizedReport, {
+    const validationResult = validateSafranParticipantAiReport(report, {
       expectedInput: input.promptInput,
+      enforceProseGuardrails: false,
     });
 
     if (!validationResult.ok) {
       throw new Error(
         `OpenAI response JSON failed SAFRAN participant report validation: ${formatSafranParticipantAiReportValidationErrors(validationResult.errors)}`,
       );
+    }
+
+    const proseDiagnostics = validateSafranParticipantAiReport(report, {
+      expectedInput: input.promptInput,
+    });
+
+    if (!proseDiagnostics.ok) {
+      console.warn("SAFRAN participant prose diagnostics detected non-blocking findings", {
+        attemptId: input.attemptId,
+        findings: proseDiagnostics.errors,
+      });
     }
 
     return validationResult.value;

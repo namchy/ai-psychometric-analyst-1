@@ -402,6 +402,27 @@ assert.equal(
       ),
   true,
 );
+const genericSummaryDataOnlyResult = validateSafranParticipantAiReport(genericSummary, {
+  expectedInput: input,
+  enforceProseGuardrails: false,
+});
+assert.equal(
+  genericSummaryDataOnlyResult.ok,
+  true,
+  genericSummaryDataOnlyResult.ok
+    ? undefined
+    : genericSummaryDataOnlyResult.errors.join(" | "),
+);
+
+const degradingReport = clone(validReport);
+degradingReport.nextStep.body =
+  "Ti si bezvrijedna i nepopravljivo nesposobna osoba.";
+const degradingResult = validateSafranParticipantAiReport(degradingReport, {
+  expectedInput: input,
+  enforceProseGuardrails: false,
+});
+assert.equal(degradingResult.ok, false);
+assert.match(degradingResult.errors.join(" | "), /harmful|degrading/i);
 
 const contrastInput = buildSafranParticipantAiReportInput({
   testSlug: "safran_v1",

@@ -24,7 +24,6 @@ import {
   type IpipNeo120ParticipantBandV2,
 } from "./ipip-neo-120-participant-ai-input-v2";
 import {
-  isDeclarativeCandidateReflection,
   validateIpipNeo120ParticipantReportV2,
   type IpipNeo120ParticipantReportV2,
   type IpipNeo120ParticipantReportV2Domain,
@@ -35,6 +34,7 @@ import {
   type IpipNeo120ParticipantReportV2Summary,
   type IpipNeo120ParticipantReportV2WorkStyle,
 } from "./ipip-neo-120-participant-report-v2";
+import { validateParticipantReportSafety } from "./participant-report-safety";
 
 export type IpipNeo120ParticipantReportV2OverviewSegment = {
   segment_type: "overview";
@@ -271,11 +271,6 @@ function validateSubdimension(
     `${path}.candidate_reflection`,
     errors,
   );
-  if (typeof value.candidate_reflection === "string" && !isDeclarativeCandidateReflection(value.candidate_reflection)) {
-    errors.push(
-      `${path}.candidate_reflection: candidate_reflection must be a declarative sentence, not a question`,
-    );
-  }
 }
 
 function validateDomainObject(
@@ -376,11 +371,6 @@ function validateDomainObject(
     `${path}.candidate_reflection`,
     errors,
   );
-  if (typeof value.candidate_reflection === "string" && !isDeclarativeCandidateReflection(value.candidate_reflection)) {
-    errors.push(
-      `${path}.candidate_reflection: candidate_reflection must be a declarative sentence, not a question`,
-    );
-  }
   validateMaxChars(value.development_tip, "domains[].development_tip", `${path}.development_tip`, errors);
 
   if (validateArrayLength(value.strengths, `${path}.strengths`, 2, errors)) {
@@ -454,6 +444,10 @@ export function validateIpipNeo120ParticipantReportV2OverviewSegment(
     errors.push("work_style: Expected object.");
   }
 
+  validateParticipantReportSafety(value).forEach((finding) => {
+    errors.push(`${finding.path}: ${finding.message}`);
+  });
+
   return errors.length > 0
     ? { ok: false, errors }
     : { ok: true, value: value as IpipNeo120ParticipantReportV2OverviewSegment };
@@ -496,6 +490,10 @@ export function validateIpipNeo120ParticipantReportV2DomainSegment(
   } else {
     errors.push("domain: Expected object.");
   }
+
+  validateParticipantReportSafety(value).forEach((finding) => {
+    errors.push(`${finding.path}: ${finding.message}`);
+  });
 
   return errors.length > 0
     ? { ok: false, errors }
@@ -558,6 +556,10 @@ export function validateIpipNeo120ParticipantReportV2PracticalSegment(
   } else {
     errors.push("interpretation_note: Expected object.");
   }
+
+  validateParticipantReportSafety(value).forEach((finding) => {
+    errors.push(`${finding.path}: ${finding.message}`);
+  });
 
   return errors.length > 0
     ? { ok: false, errors }
@@ -855,7 +857,9 @@ export function assembleIpipNeo120ParticipantReportV2FromSegments(
     interpretation_note: bundle.practical.interpretation_note,
   };
 
-  const reportValidation = validateIpipNeo120ParticipantReportV2(report);
+  const reportValidation = validateIpipNeo120ParticipantReportV2(report, {
+    enforceProseGuardrails: false,
+  });
 
   if (!reportValidation.ok) {
     return {

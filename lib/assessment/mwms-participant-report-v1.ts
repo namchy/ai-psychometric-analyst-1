@@ -1,4 +1,5 @@
 import mwmsParticipantReportV1SchemaJson from "@/lib/assessment/schemas/mwms-participant-report-v1.json";
+import { validateParticipantReportSafety } from "@/lib/assessment/participant-report-safety";
 
 export const MWMS_PARTICIPANT_REPORT_SCHEMA_VERSION = "mwms_participant_report_v1" as const;
 
@@ -77,7 +78,12 @@ function hasUnsafeMwmsClaim(value: string): boolean {
   );
 }
 
-function validateNarrativeText(value: unknown, path: string, errors: string[]): value is string {
+function validateNarrativeText(
+  value: unknown,
+  path: string,
+  errors: string[],
+  options?: { enforceProseGuardrails?: boolean },
+): value is string {
   if (!isNonEmptyString(value)) {
     errors.push(`${path}: Expected non-empty string.`);
     return false;
@@ -87,7 +93,7 @@ function validateNarrativeText(value: unknown, path: string, errors: string[]): 
     errors.push(`${path}: Text is placeholder-like or too short.`);
   }
 
-  if (isGenericMwmsFiller(value)) {
+  if (options?.enforceProseGuardrails !== false && isGenericMwmsFiller(value)) {
     errors.push(`${path}: Text is generic MWMS filler.`);
   }
 
@@ -113,7 +119,7 @@ function validateStringArray(
   value: unknown,
   path: string,
   errors: string[],
-  options?: { requireQuestionShape?: boolean },
+  options?: { requireQuestionShape?: boolean; enforceProseGuardrails?: boolean },
 ): value is string[] {
   if (!Array.isArray(value)) {
     errors.push(`${path}: Expected array.`);
@@ -125,30 +131,40 @@ function validateStringArray(
   }
 
   value.forEach((item, index) => {
-    if (validateNarrativeText(item, `${path}[${index}]`, errors)) {
-      if (options?.requireQuestionShape && !isReflectionQuestionLike(item)) {
+    if (validateNarrativeText(item, `${path}[${index}]`, errors, options)) {
+      if (
+        options?.enforceProseGuardrails !== false &&
+        options?.requireQuestionShape &&
+        !isReflectionQuestionLike(item)
+      ) {
         errors.push(`${path}[${index}]: Expected reflection question-shaped text.`);
       }
     }
   });
 
-  assertUniqueNarrativeTexts(
-    value.filter((item): item is string => typeof item === "string"),
-    path,
-    errors,
-  );
+  if (options?.enforceProseGuardrails !== false) {
+    assertUniqueNarrativeTexts(
+      value.filter((item): item is string => typeof item === "string"),
+      path,
+      errors,
+    );
+  }
 
   return value.every(isNonEmptyString) && value.length >= 1 && value.length <= 3;
 }
 
-function validateSummary(value: unknown, errors: string[]): value is MwmsParticipantReportV1["summary"] {
+function validateSummary(
+  value: unknown,
+  errors: string[],
+  options?: { enforceProseGuardrails?: boolean },
+): value is MwmsParticipantReportV1["summary"] {
   if (!isRecord(value)) {
     errors.push("summary: Expected object.");
     return false;
   }
 
-  const headlineOk = validateNarrativeText(value.headline, "summary.headline", errors);
-  const paragraphOk = validateNarrativeText(value.paragraph, "summary.paragraph", errors);
+  const headlineOk = validateNarrativeText(value.headline, "summary.headline", errors, options);
+  const paragraphOk = validateNarrativeText(value.paragraph, "summary.paragraph", errors, options);
 
   return headlineOk && paragraphOk;
 }
@@ -156,6 +172,7 @@ function validateSummary(value: unknown, errors: string[]): value is MwmsPartici
 function validateMotivationPattern(
   value: unknown,
   errors: string[],
+  options?: { enforceProseGuardrails?: boolean },
 ): value is MwmsParticipantReportV1["motivation_pattern"] {
   if (!isRecord(value)) {
     errors.push("motivation_pattern: Expected object.");
@@ -163,7 +180,7 @@ function validateMotivationPattern(
   }
 
   for (const key of ["autonomous", "controlled", "amotivation"] as const) {
-    validateNarrativeText(value[key], `motivation_pattern.${key}`, errors);
+    validateNarrativeText(value[key], `motivation_pattern.${key}`, errors, options);
   }
 
   return (
@@ -244,6 +261,9 @@ function validateCrossFieldDuplicates(
 
 export function validateMwmsParticipantReportV1(
   value: unknown,
+  options?: {
+    enforceProseGuardrails?: boolean;
+  },
 ): { ok: true; value: MwmsParticipantReportV1 } | { ok: false; errors: string[] } {
   const errors: string[] = [];
 
@@ -267,23 +287,26 @@ export function validateMwmsParticipantReportV1(
     errors.push("title: Expected Radna motivacija.");
   }
 
-  const summaryOk = validateSummary(value.summary, errors);
-  const patternOk = validateMotivationPattern(value.motivation_pattern, errors);
-  const observationsOk = validateStringArray(value.key_observations, "key_observations", errors);
-  const tensionsOk = validateStringArray(value.possible_tensions, "possible_tensions", errors);
+  const summaryOk = validateSummary(value.summary, errors, options);
+  const patternOk = validateMotivationPattern(value.motivation_pattern, errors, options);
+  const observationsOk = validateStringArray(value.key_observations, "key_observations", errors, options);
+  const tensionsOk = validateStringArray(value.possible_tensions, "possible_tensions", errors, options);
   const questionsOk = validateStringArray(value.reflection_questions, "reflection_questions", errors, {
     requireQuestionShape: true,
+    enforceProseGuardrails: options?.enforceProseGuardrails,
   });
   const suggestionsOk = validateStringArray(
     value.development_suggestions,
     "development_suggestions",
     errors,
+    options,
   );
 
   const interpretationNoteOk = validateNarrativeText(
     value.interpretation_note,
     "interpretation_note",
     errors,
+    options,
   );
 
   if (
@@ -295,8 +318,14 @@ export function validateMwmsParticipantReportV1(
     suggestionsOk &&
     interpretationNoteOk
   ) {
-    validateCrossFieldDuplicates(value as MwmsParticipantReportV1, errors);
+    if (options?.enforceProseGuardrails !== false) {
+      validateCrossFieldDuplicates(value as MwmsParticipantReportV1, errors);
+    }
   }
+
+  validateParticipantReportSafety(value).forEach((finding) => {
+    errors.push(`${finding.path}: ${finding.message}`);
+  });
 
   if (
     errors.length > 0 ||

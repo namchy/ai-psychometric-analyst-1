@@ -15,8 +15,10 @@ import {
   getIpipNeo120ParticipantDisplayBandLabelForDomainV2,
   getIpipNeo120ParticipantDisplayScoreForDomainV2,
   IPIP_NEO_120_PARTICIPANT_TEXT_BUDGETS_V2,
+  type IpipNeo120ParticipantAiInputV2,
   type IpipNeo120ParticipantBandV2,
 } from "./ipip-neo-120-participant-ai-input-v2";
+import { validateParticipantReportSafety } from "./participant-report-safety";
 
 export type IpipNeo120ParticipantReportV2Badge = {
   label: string;
@@ -234,10 +236,19 @@ export function isDeclarativeCandidateReflection(text: string): boolean {
   return !CANDIDATE_REFLECTION_FORBIDDEN_PREFIXES.some((prefix) => lower.startsWith(prefix));
 }
 
-function validateCandidateReflection(value: unknown, path: string, errors: string[]): void {
+function validateCandidateReflection(
+  value: unknown,
+  path: string,
+  errors: string[],
+  enforceProseGuardrails: boolean,
+): void {
   validateRequiredString(value, path, errors);
 
-  if (typeof value === "string" && !isDeclarativeCandidateReflection(value)) {
+  if (
+    enforceProseGuardrails &&
+    typeof value === "string" &&
+    !isDeclarativeCandidateReflection(value)
+  ) {
     errors.push(`${path}: candidate_reflection must be a declarative sentence, not a question`);
   }
 }
@@ -429,6 +440,7 @@ function validateSubdimension(
   expectedFacetCode: string,
   path: string,
   errors: string[],
+  enforceProseGuardrails: boolean,
 ): void {
   if (!isRecord(value)) {
     errors.push(`${path}: Expected object.`);
@@ -461,7 +473,12 @@ function validateSubdimension(
   validateRequiredString(value.card_title, `${path}.card_title`, errors);
   validateRequiredString(value.summary, `${path}.summary`, errors);
   validateRequiredString(value.practical_signal, `${path}.practical_signal`, errors);
-  validateCandidateReflection(value.candidate_reflection, `${path}.candidate_reflection`, errors);
+  validateCandidateReflection(
+    value.candidate_reflection,
+    `${path}.candidate_reflection`,
+    errors,
+    enforceProseGuardrails,
+  );
   validateMaxChars(value.card_title, "subdimensions[].card_title", `${path}.card_title`, errors);
   validateMaxChars(value.summary, "subdimensions[].summary", `${path}.summary`, errors);
   validateMaxChars(
@@ -483,6 +500,7 @@ function validateDomain(
   expectedDomainCode: IpipNeo120DomainCode,
   index: number,
   errors: string[],
+  enforceProseGuardrails: boolean,
 ): number {
   const path = `domains[${index}]`;
 
@@ -531,7 +549,12 @@ function validateDomain(
   validateRequiredString(value.card_title, `${path}.card_title`, errors);
   validateRequiredString(value.summary, `${path}.summary`, errors);
   validateRequiredString(value.practical_signal, `${path}.practical_signal`, errors);
-  validateCandidateReflection(value.candidate_reflection, `${path}.candidate_reflection`, errors);
+  validateCandidateReflection(
+    value.candidate_reflection,
+    `${path}.candidate_reflection`,
+    errors,
+    enforceProseGuardrails,
+  );
   validateRequiredString(value.development_tip, `${path}.development_tip`, errors);
   validateMaxChars(value.card_title, "domains[].card_title", `${path}.card_title`, errors);
   validateMaxChars(value.summary, "domains[].summary", `${path}.summary`, errors);
@@ -595,6 +618,7 @@ function validateDomain(
       expectedFacetCode,
       `${path}.subdimensions[${subdimensionIndex}]`,
       errors,
+      enforceProseGuardrails,
     );
   });
 
@@ -603,8 +627,13 @@ function validateDomain(
 
 export function validateIpipNeo120ParticipantReportV2(
   value: unknown,
+  options?: {
+    enforceProseGuardrails?: boolean;
+    expectedInput?: IpipNeo120ParticipantAiInputV2 | null;
+  },
 ): IpipNeo120ParticipantReportV2ValidationResult {
   const errors: string[] = [];
+  const enforceProseGuardrails = options?.enforceProseGuardrails !== false;
 
   if (!isRecord(value)) {
     return { ok: false, errors: ["report: Expected object."] };
@@ -672,7 +701,13 @@ export function validateIpipNeo120ParticipantReportV2(
         return;
       }
 
-      totalSubdimensions += validateDomain(domain, expectedDomainCode, index, errors);
+      totalSubdimensions += validateDomain(
+        domain,
+        expectedDomainCode,
+        index,
+        errors,
+        enforceProseGuardrails,
+      );
     });
   }
 
@@ -740,6 +775,60 @@ export function validateIpipNeo120ParticipantReportV2(
     );
   } else {
     errors.push("interpretation_note: Expected object.");
+  }
+
+  validateParticipantReportSafety(value).forEach((finding) => {
+    errors.push(`${finding.path}: ${finding.message}`);
+  });
+
+  const expectedInput = options?.expectedInput ?? null;
+
+  if (
+    expectedInput &&
+    isRecord(value.test) &&
+    value.test.locale !== expectedInput.locale
+  ) {
+    errors.push("test.locale: Must match deterministic input.");
+  }
+
+  if (expectedInput && Array.isArray(value.domains)) {
+    value.domains.forEach((domain, domainIndex) => {
+      const expectedDomain = expectedInput.domains[domainIndex];
+
+      if (!isRecord(domain) || !expectedDomain) {
+        return;
+      }
+
+      if (domain.score !== expectedDomain.score) {
+        errors.push(`domains[${domainIndex}].score: Must match deterministic input.`);
+      }
+
+      if (domain.band !== expectedDomain.band) {
+        errors.push(`domains[${domainIndex}].band: Must match deterministic input.`);
+      }
+
+      if (Array.isArray(domain.subdimensions)) {
+        domain.subdimensions.forEach((subdimension, facetIndex) => {
+          const expectedFacet = expectedDomain.subdimensions[facetIndex];
+
+          if (!isRecord(subdimension) || !expectedFacet) {
+            return;
+          }
+
+          if (subdimension.score !== expectedFacet.score) {
+            errors.push(
+              `domains[${domainIndex}].subdimensions[${facetIndex}].score: Must match deterministic input.`,
+            );
+          }
+
+          if (subdimension.band !== expectedFacet.band) {
+            errors.push(
+              `domains[${domainIndex}].subdimensions[${facetIndex}].band: Must match deterministic input.`,
+            );
+          }
+        });
+      }
+    });
   }
 
   if (errors.length > 0) {
