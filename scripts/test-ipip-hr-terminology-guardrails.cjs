@@ -141,6 +141,9 @@ async function main() {
   assert.equal(cleanValidation.ok, true, cleanValidation.ok ? undefined : cleanValidation.errors.map((error) => error.message).join(" | "));
 
   const cleanReport = cleanValidation.value;
+  assert.equal(buildPromptInput().domains[1].facets[3].facet_code, "COOPERATION");
+  assert.equal(buildPromptInput().domains[1].facets[3].label, "Sklonost saradnji");
+  assert.equal(JSON.stringify(buildPromptInput()).includes("Saradljivost"), false);
   assert.equal(JSON.stringify(cleanReport.domain_overview).includes("Spremnost na saradnju"), true);
   assert.equal(
     cleanReport.strengths_and_overuse_risks.some((item) =>

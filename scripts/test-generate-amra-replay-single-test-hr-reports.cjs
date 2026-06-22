@@ -21,7 +21,7 @@ assert.match(scriptSource, /gpt-5\.5/);
 assert.match(scriptSource, /a5678fd5-8fea-4308-8569-5448f26b4f71/);
 assert.match(scriptSource, /033f8975-5d9c-4c66-8842-f37527d556d5/);
 assert.match(scriptSource, /d73c6390-e6fe-411a-a8f3-02c52bc60612/);
-assert.match(scriptSource, /31b9a229-c7cf-4119-af13-ca4bd0ce8147/);
+assert.match(scriptSource, /5136bc05-153a-4356-8aa2-ee06dd67877a/);
 assert.match(scriptSource, /amra_replay_fixture_v1/);
 assert.match(scriptSource, /recoverHrAttemptReport/);
 assert.match(scriptSource, /claimNextReportJob/);
@@ -93,7 +93,7 @@ assert.equal(TARGET_TESTS.safran_v1.attemptId, "54702bc1-7d91-492e-9b50-14aff670
 assert.equal(TARGET_TESTS["ipip-neo-120-v1"].attemptId, "e71d472a-13cb-4cc9-9582-6eaa262affca");
 assert.equal(ACCIDENTAL_MOCK_REPORT.reportId, "d73c6390-e6fe-411a-a8f3-02c52bc60612");
 assert.equal(ACCIDENTAL_MOCK_REPORT.attemptId, TARGET_TESTS.mwms_v1.attemptId);
-assert.equal(FAILED_IPIP_REPLAY_REPORT.reportId, "31b9a229-c7cf-4119-af13-ca4bd0ce8147");
+assert.equal(FAILED_IPIP_REPLAY_REPORT.reportId, "5136bc05-153a-4356-8aa2-ee06dd67877a");
 assert.equal(FAILED_IPIP_REPLAY_REPORT.attemptId, TARGET_TESTS["ipip-neo-120-v1"].attemptId);
 assert.equal(EXPECTED_PROVIDER, "openai");
 assert.equal(EXPECTED_MODEL, "gpt-5.5");
@@ -453,7 +453,7 @@ assert.match(cleanupAuditSql, /8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1/);
 assert.match(cleanupAuditSql, /mwms_v1/);
 
 const failedCleanupAuditSql = buildFailedCleanupAuditSql();
-assert.match(failedCleanupAuditSql, /31b9a229-c7cf-4119-af13-ca4bd0ce8147/);
+assert.match(failedCleanupAuditSql, /5136bc05-153a-4356-8aa2-ee06dd67877a/);
 assert.match(failedCleanupAuditSql, /e71d472a-13cb-4cc9-9582-6eaa262affca/);
 assert.match(failedCleanupAuditSql, /ipip-neo-120-v1/);
 

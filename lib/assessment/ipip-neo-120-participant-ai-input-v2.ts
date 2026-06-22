@@ -157,7 +157,7 @@ export const IPIP_NEO_120_DOMAIN_DEFINITIONS_V2 = {
     definition:
       "Opisuje način na koji osoba gradi odnose, pokazuje povjerenje, obzirnost, saradnju, spremnost na dogovor i osjetljivost za potrebe drugih.",
     display_rule:
-      "Higher znači izraženiju saradljivost, obzirnost i orijentaciju na odnos. Lower znači direktniji, manje prilagodljiv stil, ali ne nužno manjak korektnosti.",
+      "Higher znači izraženiju sklonost saradnji, obzirnost i orijentaciju na odnos. Lower znači direktniji, manje prilagodljiv stil, ali ne nužno manjak korektnosti.",
   },
   CONSCIENTIOUSNESS: {
     code: "CONSCIENTIOUSNESS",
@@ -282,7 +282,7 @@ export const IPIP_NEO_120_FACET_DEFINITIONS_V2 = {
   COOPERATION: {
     code: "COOPERATION",
     domain_code: "AGREEABLENESS",
-    label: "Saradljivost",
+    label: "Sklonost saradnji",
     participant_display_label: "Spremnost na dogovor",
     display_direction: "direct",
     definition:

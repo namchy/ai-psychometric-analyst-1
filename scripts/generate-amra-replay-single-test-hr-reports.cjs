@@ -35,7 +35,7 @@ const ACCIDENTAL_MOCK_REPORT = {
 };
 
 const FAILED_IPIP_REPLAY_REPORT = {
-  reportId: "31b9a229-c7cf-4119-af13-ca4bd0ce8147",
+  reportId: "5136bc05-153a-4356-8aa2-ee06dd67877a",
   attemptId: "e71d472a-13cb-4cc9-9582-6eaa262affca",
   testSlug: "ipip-neo-120-v1",
   reportType: "individual",

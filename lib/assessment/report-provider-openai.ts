@@ -969,7 +969,7 @@ function buildIpipNeo120HrTerminologyAuthorityBlock(): string {
     'For Big Five Agreeableness, use only the label/title/domain form "Spremnost na saradnju".',
     'Inside narrative sentences, use only the sentence form "spremnost na saradnju".',
     'Do not use "Ugodnost", "ugodnost", "Saradljivost", "saradljivost", "Kooperativnost", "kooperativnost", "Saradnički profil" or "saradnički profil" anywhere in user-facing narrative or interpretive fields.',
-    'Narrow structural exception: score_references must preserve exact deterministic input labels. That means AGREEABLENESS domain_name stays "Spremnost na saradnju" and COOPERATION facet_name stays "Saradljivost" inside score_references only.',
+    'Narrow structural exception: score_references must preserve exact deterministic input labels. That means AGREEABLENESS domain_name stays "Spremnost na saradnju" and COOPERATION facet_name stays "Sklonost saradnji" inside score_references only.',
     'This structural exception does not apply to headline, executive_summary, key_hr_signals, verification_focus, interview_questions, strengths_and_overuse_risks, domain_overview, onboarding_and_management_guidance, team_fit_notes, decision_support_note or interpretation_note.',
     'Do not use English user-facing terms "overuse", "Overuse", "handling" or "Handling" anywhere in user-facing report text.',
     'Use BHS-safe wording such as "prekomjerno oslanjanje", "rizici prekomjernog oslanjanja", "upravljanje", "postupanje", "nošenje sa" or "način upravljanja".',

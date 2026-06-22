@@ -222,10 +222,7 @@ async function main() {
       promptText.includes('Narrow structural exception: score_references must preserve exact deterministic input labels.'),
       true,
     );
-    assert.equal(
-      promptText.includes('COOPERATION facet_name stays "Saradljivost" inside score_references only.'),
-      true,
-    );
+    assert.equal(promptText.includes('COOPERATION facet_name stays "Sklonost saradnji" inside score_references only.'), true);
     assert.equal(
       promptText.includes("This structural exception does not apply to headline, executive_summary, key_hr_signals"),
       true,
@@ -233,9 +230,10 @@ async function main() {
     assert.equal(promptText.includes('"overuse"'), true);
     assert.equal(promptText.includes('"handling"'), true);
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("Ugodnost"), false);
-    assert.equal(JSON.stringify(preparedInput.promptInput).includes("Saradljivost"), true);
+    assert.equal(JSON.stringify(preparedInput.promptInput).includes("Saradljivost"), false);
+    assert.equal(JSON.stringify(preparedInput.promptInput).includes("Sklonost saradnji"), true);
     assert.equal(preparedInput.promptInput.domains[1].facets[3].facet_code, "COOPERATION");
-    assert.equal(preparedInput.promptInput.domains[1].facets[3].label, "Saradljivost");
+    assert.equal(preparedInput.promptInput.domains[1].facets[3].label, "Sklonost saradnji");
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("Kooperativnost"), false);
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("overuse"), false);
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("handling"), false);
@@ -349,7 +347,7 @@ async function main() {
     assert.equal(dumpPromptText.includes('Do not use "Ugodnost"'), true);
     assert.equal(dumpPromptText.includes('"Saradljivost"'), true);
     assert.equal(
-      dumpPromptText.includes('COOPERATION facet_name stays "Saradljivost" inside score_references only.'),
+      dumpPromptText.includes('COOPERATION facet_name stays "Sklonost saradnji" inside score_references only.'),
       true,
     );
     assert.equal(dumpPromptText.includes('"Kooperativnost"'), true);

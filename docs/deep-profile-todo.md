@@ -6943,7 +6943,7 @@ Razlog za sljedeći prioritet:
   - IPIP HR path može proizvesti `Ugodnost`
   - participant V2/Composite koriste varijante `Spremnost na saradnju`
   - generic fallback može koristiti `Kooperativnost`
-  - facet-level label koristi `Saradljivost`
+  - raniji facet-level label koristio je `Saradljivost`; current active BHS label za `COOPERATION` treba biti `Sklonost saradnji`
 - `Ugodnost` regresija je potvrđena u Amrinom persisted IPIP `input_snapshot` i `report_snapshot`, ne samo u rendereru.
 - Ne popravljati terminologiju samo u UI rendereru. Source mora biti centralizovan u input/prompt/validator/display policy layer-u.
 - Potrebna je hijerarhija prompt policy slojeva:
@@ -6974,7 +6974,7 @@ Razlog za sljedeći prioritet:
   - Primarno pokriti shared single-test HR OpenAI provider; kasnije proširiti na Composite/Team Fit/Team Dynamics ako treba.
 - Slice 2: IPIP terminology authority cleanup.
   - Izabrati canonical BHS naziv za Agreeableness.
-  - Preporučeni label: `Saradljivost`; dozvoljeno objašnjenje u prozi: `spremnost na saradnju`.
+  - Current label/domain form za AGREEABLENESS je `Spremnost na saradnju`; current facet label za `COOPERATION` je `Sklonost saradnji`; `Saradljivost` ostaje forbidden legacy term.
   - Ukloniti `Ugodnost` iz IPIP HR input/prompt/schema/display source patha.
   - Uskladiti DB IPIP-specific prompt sa terminološkim rječnikom.
   - Regenerisati samo Amrin IPIP HR report i potvrditi da snapshot više ne sadrži `Ugodnost`.

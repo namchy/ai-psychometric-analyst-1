@@ -105,7 +105,7 @@ export const IPIP_NEO_120_FACET_LABELS_BS: Record<IpipNeo120FacetCode, string> =
   TRUST: "Povjerenje",
   MORALITY: "Iskrenost",
   ALTRUISM: "Altruizam",
-  COOPERATION: "Saradljivost",
+  COOPERATION: "Sklonost saradnji",
   MODESTY: "Skromnost",
   SYMPATHY: "Saosjećajnost",
   SELF_EFFICACY: "Samoefikasnost",

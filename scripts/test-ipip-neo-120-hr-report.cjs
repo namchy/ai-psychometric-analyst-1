@@ -314,16 +314,19 @@ async function main() {
   assert.equal(reportValueText.includes("handling"), false);
   assert.equal(reportValueText.includes("Handling"), false);
   assert.equal(reportValueText.includes("Spremnost na saradnju"), true);
+  assert.equal(preparedInput.promptInput.domains[1].facets[3].facet_code, "COOPERATION");
+  assert.equal(preparedInput.promptInput.domains[1].facets[3].label, "Sklonost saradnji");
+  assert.equal(JSON.stringify(preparedInput.promptInput).includes("Saradljivost"), false);
   assert.equal(
     scoreReferences.domains
       .flatMap((domain) => domain.facets)
-      .some((facet) => facet.facet_name === "Saradljivost"),
+      .some((facet) => facet.facet_name === "Sklonost saradnji"),
     true,
   );
   assert.equal(scoreReferences.domains[1].domain_code, "AGREEABLENESS");
   assert.equal(scoreReferences.domains[1].domain_name, "Spremnost na saradnju");
   assert.equal(scoreReferences.domains[1].facets[3].facet_code, "COOPERATION");
-  assert.equal(scoreReferences.domains[1].facets[3].facet_name, "Saradljivost");
+  assert.equal(scoreReferences.domains[1].facets[3].facet_name, "Sklonost saradnji");
   assert.equal(/prekomjern\w* oslanjanj\w*/i.test(reportValueText), true);
   assert.equal(report.key_hr_signals.length, 3);
   assert.equal(report.verification_focus.length, 3);
