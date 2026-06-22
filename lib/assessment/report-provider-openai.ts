@@ -115,6 +115,12 @@ type OpenAiChatCompletionsRequestBody = {
   temperature?: number;
 };
 
+type OpenAiFetchRequestInit = RequestInit & {
+  dispatcher?: unknown;
+};
+
+type OpenAiDispatcherFactory = (timeoutMs: number) => unknown | null;
+
 function isIpipNeo120ParticipantPromptInput(
   promptInput: ReportPromptInput,
 ): promptInput is Extract<ReportPromptInput, { audience: "participant"; domains: unknown[] }> {
@@ -315,6 +321,57 @@ export function buildOpenAiStructuredRequestPayload(
       userPrompt,
     }),
   };
+}
+
+function createOpenAiTransportDispatcher(
+  timeoutMs: number,
+): unknown | null {
+  try {
+    const undici = require("undici") as {
+      Agent?: new (options: {
+        headersTimeout: number;
+        bodyTimeout: number;
+      }) => unknown;
+    };
+
+    if (typeof undici?.Agent !== "function") {
+      return null;
+    }
+
+    return new undici.Agent({
+      headersTimeout: timeoutMs,
+      bodyTimeout: timeoutMs,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function buildOpenAiFetchRequestInit(args: {
+  apiKey: string;
+  requestBody: OpenAiChatCompletionsRequestBody;
+  signal: AbortSignal;
+  timeoutMs: number;
+  createDispatcher?: OpenAiDispatcherFactory;
+}): OpenAiFetchRequestInit {
+  const dispatcher =
+    (args.createDispatcher ?? createOpenAiTransportDispatcher)(args.timeoutMs) ?? null;
+  const requestInit: OpenAiFetchRequestInit = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${args.apiKey}`,
+    },
+    body: JSON.stringify(args.requestBody),
+    signal: args.signal,
+    cache: "no-store",
+  };
+
+  if (dispatcher) {
+    requestInit.dispatcher = dispatcher;
+  }
+
+  return requestInit;
 }
 
 function buildIpipNeo120ParticipantSegmentSchemaName(
@@ -1287,16 +1344,15 @@ async function requestOpenAiStructuredJson(
       },
     );
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${options.apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-      cache: "no-store",
-    });
+    const response = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      buildOpenAiFetchRequestInit({
+        apiKey: options.apiKey,
+        requestBody,
+        signal: controller.signal,
+        timeoutMs,
+      }),
+    );
 
     if (!response.ok) {
       const errorText = await response.text();

@@ -182,6 +182,42 @@ function classifyProbeFailure(error, rawContent) {
   return "direct_openai_other_error";
 }
 
+function buildOpenAiFetchRequestInit({ apiKey, requestBody, signal, timeoutMs, createDispatcher }) {
+  const dispatcher = (createDispatcher ?? createOpenAiTransportDispatcher)(timeoutMs) ?? null;
+  const requestInit = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+    signal,
+    cache: "no-store",
+  };
+
+  if (dispatcher) {
+    requestInit.dispatcher = dispatcher;
+  }
+
+  return requestInit;
+}
+
+function createOpenAiTransportDispatcher(timeoutMs) {
+  try {
+    const { Agent } = require("undici");
+    if (typeof Agent !== "function") {
+      return null;
+    }
+
+    return new Agent({
+      headersTimeout: timeoutMs,
+      bodyTimeout: timeoutMs,
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function callOpenAiDirect(options) {
   if (!options.apiKey) {
     throw new Error("Missing required env var: OPENAI_API_KEY");
@@ -197,16 +233,16 @@ async function callOpenAiDirect(options) {
   );
 
   try {
-    const response = await options.fetchImpl("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${options.apiKey}`,
-      },
-      body: JSON.stringify(options.requestBody),
-      signal: controller.signal,
-      cache: "no-store",
-    });
+    const response = await options.fetchImpl(
+      "https://api.openai.com/v1/chat/completions",
+      buildOpenAiFetchRequestInit({
+        apiKey: options.apiKey,
+        requestBody: options.requestBody,
+        signal: controller.signal,
+        timeoutMs: options.timeoutMs,
+        createDispatcher: options.createDispatcher,
+      }),
+    );
 
     if (!response.ok) {
       const error = new Error(
@@ -386,8 +422,10 @@ module.exports = {
   TARGET,
   TIMEOUT_ENV,
   assertCaptureArtifact,
+  buildOpenAiFetchRequestInit,
   callOpenAiDirect,
   classifyProbeFailure,
+  createOpenAiTransportDispatcher,
   readCaptureArtifact,
   runProbe,
   sanitizeExcerpt,

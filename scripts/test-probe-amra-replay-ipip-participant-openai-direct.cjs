@@ -22,6 +22,7 @@ const {
   TARGET,
   TIMEOUT_ENV,
   assertCaptureArtifact,
+  buildOpenAiFetchRequestInit,
   classifyProbeFailure,
   runProbe,
   validateEnv,
@@ -123,6 +124,28 @@ async function main() {
   assert.equal(blocked.status, "blocked_confirmation");
   assert.equal(blocked.openAiCalled, false);
   assert.equal(blocked.databaseWrites, false);
+
+  const controller = new AbortController();
+  const directProbeDispatcher = { kind: "probe-dispatcher" };
+  const dispatcherCalls = [];
+  const requestInit = buildOpenAiFetchRequestInit({
+    apiKey: "probe-key",
+    requestBody: createCaptureArtifact().preparedOpenAiRequest.requestBody,
+    signal: controller.signal,
+    timeoutMs: 900000,
+    createDispatcher(timeoutMs) {
+      dispatcherCalls.push(timeoutMs);
+      return directProbeDispatcher;
+    },
+  });
+  assert.deepEqual(dispatcherCalls, [900000]);
+  assert.equal(requestInit.signal, controller.signal);
+  assert.equal(requestInit.dispatcher, directProbeDispatcher);
+  assert.equal(requestInit.headers.Authorization, "Bearer probe-key");
+  assert.deepEqual(
+    JSON.parse(requestInit.body),
+    createCaptureArtifact().preparedOpenAiRequest.requestBody,
+  );
 
   let fetchCalled = false;
   let callCount = 0;
