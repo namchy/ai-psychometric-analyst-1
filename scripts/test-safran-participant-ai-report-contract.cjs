@@ -423,6 +423,29 @@ const degradingResult = validateSafranParticipantAiReport(degradingReport, {
 });
 assert.equal(degradingResult.ok, false);
 assert.match(degradingResult.errors.join(" | "), /harmful|degrading/i);
+const degradingQaDataOnlyResult = validateSafranParticipantAiReport(degradingReport, {
+  expectedInput: input,
+  enforceProseGuardrails: false,
+  enforceSafetyGuardrails: false,
+});
+assert.equal(
+  degradingQaDataOnlyResult.ok,
+  true,
+  degradingQaDataOnlyResult.ok
+    ? undefined
+    : degradingQaDataOnlyResult.errors.join(" | "),
+);
+
+const missingQaDataOnlySection = clone(degradingReport);
+delete missingQaDataOnlySection.nextStep;
+assert.equal(
+  validateSafranParticipantAiReport(missingQaDataOnlySection, {
+    expectedInput: input,
+    enforceProseGuardrails: false,
+    enforceSafetyGuardrails: false,
+  }).ok,
+  false,
+);
 
 const contrastInput = buildSafranParticipantAiReportInput({
   testSlug: "safran_v1",

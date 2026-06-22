@@ -629,6 +629,7 @@ export function validateIpipNeo120ParticipantReportV2(
   value: unknown,
   options?: {
     enforceProseGuardrails?: boolean;
+    enforceSafetyGuardrails?: boolean;
     expectedInput?: IpipNeo120ParticipantAiInputV2 | null;
   },
 ): IpipNeo120ParticipantReportV2ValidationResult {
@@ -777,9 +778,11 @@ export function validateIpipNeo120ParticipantReportV2(
     errors.push("interpretation_note: Expected object.");
   }
 
-  validateParticipantReportSafety(value).forEach((finding) => {
-    errors.push(`${finding.path}: ${finding.message}`);
-  });
+  if (options?.enforceSafetyGuardrails !== false) {
+    validateParticipantReportSafety(value).forEach((finding) => {
+      errors.push(`${finding.path}: ${finding.message}`);
+    });
+  }
 
   const expectedInput = options?.expectedInput ?? null;
 

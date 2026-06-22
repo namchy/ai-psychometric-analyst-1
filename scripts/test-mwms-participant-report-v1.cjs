@@ -170,6 +170,47 @@ const degradingDataOnlyResult = validateMwmsParticipantReportV1(degradingClaim, 
 });
 assert.equal(degradingDataOnlyResult.ok, false);
 assert.match(degradingDataOnlyResult.errors.join(" | "), /harmful|degrading/i);
+const degradingQaDataOnlyResult = validateMwmsParticipantReportV1(degradingClaim, {
+  enforceProseGuardrails: false,
+  enforceSafetyGuardrails: false,
+});
+assert.equal(
+  degradingQaDataOnlyResult.ok,
+  true,
+  degradingQaDataOnlyResult.ok
+    ? undefined
+    : degradingQaDataOnlyResult.errors.join(" | "),
+);
+
+const diagnosisQaDataOnlyReport = clone(validReport);
+diagnosisQaDataOnlyReport.interpretation_note =
+  "Ovaj rezultat predstavlja kliničku dijagnozu.";
+const diagnosisQaDataOnlyResult = validateMwmsParticipantReportV1(
+  diagnosisQaDataOnlyReport,
+  {
+    enforceProseGuardrails: false,
+    enforceSafetyGuardrails: false,
+  },
+);
+assert.equal(
+  diagnosisQaDataOnlyResult.ok,
+  true,
+  diagnosisQaDataOnlyResult.ok
+    ? undefined
+    : diagnosisQaDataOnlyResult.errors.join(" | "),
+);
+
+const malformedQaDataOnlyReport = clone(degradingClaim);
+delete malformedQaDataOnlyReport.summary;
+const malformedQaDataOnlyResult = validateMwmsParticipantReportV1(
+  malformedQaDataOnlyReport,
+  {
+    enforceProseGuardrails: false,
+    enforceSafetyGuardrails: false,
+  },
+);
+assert.equal(malformedQaDataOnlyResult.ok, false);
+assert.match(malformedQaDataOnlyResult.errors.join(" | "), /summary: Expected object/i);
 
 const statementReflection = clone(validReport);
 statementReflection.reflection_questions = [

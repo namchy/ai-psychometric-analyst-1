@@ -1067,6 +1067,7 @@ export function validateSafranParticipantAiReport(
   options?: {
     expectedInput?: SafranAiReportInput | null;
     enforceProseGuardrails?: boolean;
+    enforceSafetyGuardrails?: boolean;
   },
 ): { ok: true; value: SafranParticipantAiReport } | { ok: false; errors: string[] } {
   const errors: string[] = [];
@@ -1298,7 +1299,9 @@ export function validateSafranParticipantAiReport(
         }
       });
 
-      validateReadingGuideCoverage(value.readingGuide.bullets as string[], errors);
+      if (options?.enforceProseGuardrails !== false) {
+        validateReadingGuideCoverage(value.readingGuide.bullets as string[], errors);
+      }
     }
   }
 
@@ -1355,19 +1358,26 @@ export function validateSafranParticipantAiReport(
       "containsClinicalClaim",
       "containsFixedAbilityClaim",
     ] as const) {
-      if (value.safetyChecks[key] !== false) {
+      if (typeof value.safetyChecks[key] !== "boolean") {
+        errors.push(`safetyChecks.${key}: Expected boolean.`);
+      } else if (
+        options?.enforceSafetyGuardrails !== false &&
+        value.safetyChecks[key] !== false
+      ) {
         errors.push(`safetyChecks.${key}: Expected false.`);
       }
     }
   }
 
-  if (errors.length === 0) {
+  if (errors.length === 0 && options?.enforceSafetyGuardrails !== false) {
     validateForbiddenPhrases(value as SafranParticipantAiReport, errors);
   }
 
-  validateParticipantReportSafety(value).forEach((finding) => {
-    errors.push(`${finding.path}: ${finding.message}`);
-  });
+  if (options?.enforceSafetyGuardrails !== false) {
+    validateParticipantReportSafety(value).forEach((finding) => {
+      errors.push(`${finding.path}: ${finding.message}`);
+    });
+  }
 
   const expectedInput = options?.expectedInput ?? null;
 

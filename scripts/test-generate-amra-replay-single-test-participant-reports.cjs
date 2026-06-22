@@ -11,6 +11,10 @@ const scriptPath = path.join(
 const scriptSource = fs.readFileSync(scriptPath, "utf8");
 
 assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_PARTICIPANT_REPORT_GENERATION/);
+assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_PARTICIPANT_DATA_ONLY_QA/);
+assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_PARTICIPANT_FAILED_REPORT_CLEANUP/);
+assert.match(scriptSource, /TARGET_FAILED_REPORT_ID/);
+assert.match(scriptSource, /3cc0ef77-ce5a-47b8-9562-3ff81556a0bd/);
 assert.match(scriptSource, /TARGET_REPLAY_PARTICIPANT_ID/);
 assert.match(scriptSource, /TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID/);
 assert.match(scriptSource, /TARGET_TEST_SLUG/);
@@ -38,12 +42,16 @@ const {
   AI_REPORT_PROVIDER_ENV,
   ALLOWED_TEST_SLUGS,
   CONFIRM_ENV,
+  DATA_ONLY_QA_CONFIRM_ENV,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
+  EXPECTED_FAILED_REPORT,
   EXPECTED_TARGETS,
+  FAILED_REPORT_CLEANUP_CONFIRM_ENV,
   SUPPORTED_TARGET_TEST_SLUGS,
   TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV,
   TARGET_REPLAY_PARTICIPANT_ID_ENV,
+  TARGET_FAILED_REPORT_ID_ENV,
   TARGET_TEST_SLUG_ALL,
   TARGET_TEST_SLUG_ENV,
   TARGET_TESTS,
@@ -52,6 +60,7 @@ const {
   buildRuntimeConfigCreateSql,
   buildRuntimeConfigInspectSql,
   evaluatePersistedReportPostcondition,
+  evaluateFailedParticipantReportCleanupGuard,
   evaluateReplayAssignmentGuard,
   evaluateReplayParticipantGuard,
   evaluateRuntimeResolution,
@@ -264,6 +273,34 @@ const persistedPass = evaluatePersistedReportPostcondition({
   modelName: EXPECTED_MODEL,
 });
 assert.equal(persistedPass.ok, true);
+
+const exactFailedCleanupRow = {
+  id: EXPECTED_FAILED_REPORT.id,
+  attempt_id: EXPECTED_FAILED_REPORT.attemptId,
+  test_slug: EXPECTED_FAILED_REPORT.testSlug,
+  report_type: "individual",
+  audience: "participant",
+  source_type: "single_test",
+  report_status: "failed",
+  generator_type: EXPECTED_PROVIDER,
+  model_name: EXPECTED_MODEL,
+  report_snapshot: null,
+};
+assert.equal(evaluateFailedParticipantReportCleanupGuard(exactFailedCleanupRow).ok, true);
+assert.equal(
+  evaluateFailedParticipantReportCleanupGuard({
+    ...exactFailedCleanupRow,
+    audience: "hr",
+  }).ok,
+  false,
+);
+assert.equal(
+  evaluateFailedParticipantReportCleanupGuard({
+    ...exactFailedCleanupRow,
+    report_snapshot: { unexpected: true },
+  }).ok,
+  false,
+);
 
 const auditSql = buildReadOnlyAuditSql();
 assert.match(auditSql, /participant/);
@@ -687,6 +724,45 @@ async function main() {
   assert.equal(missingConfirmed.status, "confirmation_required");
   assert.equal(missingConfirmed.blockers.includes("missing_target_env"), true);
   assert.equal(missingConfirmed.metadata.databaseWrites, false);
+
+  const qaDryRun = await runWithStubbedDeps({
+    [DATA_ONLY_QA_CONFIRM_ENV]: "true",
+    [TARGET_TEST_SLUG_ENV]: "mwms_v1",
+  });
+  assert.equal(qaDryRun.status, "dry_run_ready");
+  assert.equal(qaDryRun.metadata.dryRun, true);
+  assert.equal(qaDryRun.metadata.participantDataOnlyQaConfirmed, true);
+  assert.equal(qaDryRun.metadata.participantSafetyAndProseValidationBypassed, true);
+  assert.equal(qaDryRun.metadata.databaseWrites, false);
+  assert.equal(
+    qaDryRun.findings.some((finding) => finding.category === "participant_data_only_qa"),
+    true,
+  );
+
+  const normalDryRun = await runWithStubbedDeps({
+    [TARGET_TEST_SLUG_ENV]: "mwms_v1",
+  });
+  assert.equal(normalDryRun.metadata.participantDataOnlyQaConfirmed, false);
+  assert.equal(normalDryRun.metadata.participantSafetyAndProseValidationBypassed, false);
+
+  const wrongCleanupId = await runWithStubbedDeps({
+    [FAILED_REPORT_CLEANUP_CONFIRM_ENV]: "true",
+    [TARGET_FAILED_REPORT_ID_ENV]: "00000000-0000-0000-0000-000000000000",
+    [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+    [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+  });
+  assert.equal(wrongCleanupId.status, "blocked_cleanup_confirmation");
+  assert.equal(wrongCleanupId.metadata.databaseWrites, false);
+  assert.equal(wrongCleanupId.blockers.includes("exact_failed_report_id_required"), true);
+
+  const cleanupWrongOwner = await runWithStubbedDeps({
+    [FAILED_REPORT_CLEANUP_CONFIRM_ENV]: "true",
+    [TARGET_FAILED_REPORT_ID_ENV]: EXPECTED_FAILED_REPORT.id,
+    [TARGET_REPLAY_PARTICIPANT_ID_ENV]: "2432eb12-2b54-4881-bef2-2ac687b59e0b",
+    [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+  });
+  assert.equal(cleanupWrongOwner.status, "blocked_cleanup_confirmation");
+  assert.equal(cleanupWrongOwner.metadata.databaseWrites, false);
 
   const wrongIds = await runWithStubbedDeps({
     [CONFIRM_ENV]: "true",

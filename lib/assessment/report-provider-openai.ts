@@ -180,7 +180,8 @@ export function resolveIpipNeo120ParticipantProviderMode(
     return "v1";
   }
 
-  return getIpipNeo120ParticipantGenerationMode() === "segmented"
+  return !input.participantDataOnlyQa &&
+    getIpipNeo120ParticipantGenerationMode() === "segmented"
     ? "v2-segmented"
     : "v2-single";
 }
@@ -1487,14 +1488,17 @@ export function validateStructuredReport(
 ): RuntimeCompletedAssessmentReport {
   if (input.testSlug === "ipip-neo-120-v1" && isIpipNeo120ParticipantPromptInput(input.promptInput)) {
     if (shouldUseIpipNeo120ParticipantReportV2(input)) {
-      const canonicalizedReport = applyIpipNeo120ParticipantV2BhsOutputPolicy(
-        report,
-        input,
-        "IPIP-NEO-120 participant V2 report",
-      );
+      const candidateReport = input.participantDataOnlyQa
+        ? report
+        : applyIpipNeo120ParticipantV2BhsOutputPolicy(
+            report,
+            input,
+            "IPIP-NEO-120 participant V2 report",
+          );
       const expectedInput = prepareIpipNeo120ParticipantAiInputV2ForOpenAi(input);
-      const validationResult = validateIpipNeo120ParticipantReportV2(canonicalizedReport, {
+      const validationResult = validateIpipNeo120ParticipantReportV2(candidateReport, {
         enforceProseGuardrails: false,
+        enforceSafetyGuardrails: !input.participantDataOnlyQa,
         expectedInput,
       });
 
@@ -1504,7 +1508,9 @@ export function validateStructuredReport(
         );
       }
 
-      const proseDiagnostics = validateIpipNeo120ParticipantReportV2(report);
+      const proseDiagnostics = input.participantDataOnlyQa
+        ? { ok: true as const, value: validationResult.value }
+        : validateIpipNeo120ParticipantReportV2(report);
 
       if (!proseDiagnostics.ok) {
         console.warn("IPIP participant prose diagnostics detected non-blocking findings", {
@@ -1578,7 +1584,9 @@ export function validateStructuredReport(
 
   if (input.testSlug === "mwms_v1" && isMwmsParticipantPromptInput(input.promptInput)) {
     const languagePolicy = resolveAiReportLanguagePolicy(getPromptInputLocale(input.promptInput));
-    const globalValidationErrors = languagePolicy
+    const globalValidationErrors = input.participantDataOnlyQa
+      ? []
+      : languagePolicy
       ? languagePolicy.validateUserFacingOutput(report, {
           audience: "participant",
         })
@@ -1593,6 +1601,7 @@ export function validateStructuredReport(
 
     const validationResult = validateMwmsParticipantReportV1(report, {
       enforceProseGuardrails: false,
+      enforceSafetyGuardrails: !input.participantDataOnlyQa,
     });
 
     if (!validationResult.ok) {
@@ -1601,7 +1610,9 @@ export function validateStructuredReport(
       );
     }
 
-    const proseDiagnostics = validateMwmsParticipantReportV1(report);
+    const proseDiagnostics = input.participantDataOnlyQa
+      ? { ok: true as const, value: validationResult.value }
+      : validateMwmsParticipantReportV1(report);
 
     if (!proseDiagnostics.ok) {
       console.warn("MWMS participant prose diagnostics detected non-blocking findings", {
@@ -1651,7 +1662,9 @@ export function validateStructuredReport(
         ? input.requestedLocale
         : getPromptInputLocale(input.promptInput),
     );
-    const globalValidationErrors = languagePolicy
+    const globalValidationErrors = input.participantDataOnlyQa
+      ? []
+      : languagePolicy
       ? languagePolicy.validateUserFacingOutput(report, {
           audience: "participant",
         })
@@ -1667,6 +1680,7 @@ export function validateStructuredReport(
     const validationResult = validateSafranParticipantAiReport(report, {
       expectedInput: input.promptInput,
       enforceProseGuardrails: false,
+      enforceSafetyGuardrails: !input.participantDataOnlyQa,
     });
 
     if (!validationResult.ok) {
@@ -1675,9 +1689,11 @@ export function validateStructuredReport(
       );
     }
 
-    const proseDiagnostics = validateSafranParticipantAiReport(report, {
-      expectedInput: input.promptInput,
-    });
+    const proseDiagnostics = input.participantDataOnlyQa
+      ? { ok: true as const, value: validationResult.value }
+      : validateSafranParticipantAiReport(report, {
+          expectedInput: input.promptInput,
+        });
 
     if (!proseDiagnostics.ok) {
       console.warn("SAFRAN participant prose diagnostics detected non-blocking findings", {

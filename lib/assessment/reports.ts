@@ -115,6 +115,7 @@ export type ReportGenerationOverrides = Partial<
 > & {
   promptVersionId?: string | null;
   promptTemplate?: ActivePromptVersion | null;
+  participantDataOnlyQa?: boolean;
 };
 
 export type EnqueueCompletedAssessmentReportsSummary = {
@@ -213,6 +214,7 @@ async function generateReportWithFallback(
   const preparedInput = buildPreparedReportGenerationInput(input, {
     promptVersionId: overrides?.promptVersionId ?? null,
     promptTemplate: overrides?.promptTemplate ?? null,
+    participantDataOnlyQa: overrides?.participantDataOnlyQa,
   });
   const primaryResult = await selectedProvider.generateReport(preparedInput);
 

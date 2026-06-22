@@ -85,14 +85,20 @@ function validateNarrativeText(
   value: unknown,
   path: string,
   errors: string[],
-  options?: { enforceProseGuardrails?: boolean },
+  options?: {
+    enforceProseGuardrails?: boolean;
+    enforceSafetyGuardrails?: boolean;
+  },
 ): value is string {
   if (!isNonEmptyString(value)) {
     errors.push(`${path}: Expected non-empty string.`);
     return false;
   }
 
-  if (isPlaceholderLikeText(value)) {
+  if (
+    options?.enforceProseGuardrails !== false &&
+    isPlaceholderLikeText(value)
+  ) {
     errors.push(`${path}: Text is placeholder-like or too short.`);
   }
 
@@ -100,7 +106,10 @@ function validateNarrativeText(
     errors.push(`${path}: Text is generic MWMS filler.`);
   }
 
-  if (hasUnsafeMwmsClaim(value)) {
+  if (
+    options?.enforceSafetyGuardrails !== false &&
+    hasUnsafeMwmsClaim(value)
+  ) {
     errors.push(`${path}: Text contains an unsafe or overclaiming MWMS assertion.`);
   }
 
@@ -122,7 +131,11 @@ function validateStringArray(
   value: unknown,
   path: string,
   errors: string[],
-  options?: { requireQuestionShape?: boolean; enforceProseGuardrails?: boolean },
+  options?: {
+    requireQuestionShape?: boolean;
+    enforceProseGuardrails?: boolean;
+    enforceSafetyGuardrails?: boolean;
+  },
 ): value is string[] {
   if (!Array.isArray(value)) {
     errors.push(`${path}: Expected array.`);
@@ -159,7 +172,10 @@ function validateStringArray(
 function validateSummary(
   value: unknown,
   errors: string[],
-  options?: { enforceProseGuardrails?: boolean },
+  options?: {
+    enforceProseGuardrails?: boolean;
+    enforceSafetyGuardrails?: boolean;
+  },
 ): value is MwmsParticipantReportV1["summary"] {
   if (!isRecord(value)) {
     errors.push("summary: Expected object.");
@@ -175,7 +191,10 @@ function validateSummary(
 function validateMotivationPattern(
   value: unknown,
   errors: string[],
-  options?: { enforceProseGuardrails?: boolean },
+  options?: {
+    enforceProseGuardrails?: boolean;
+    enforceSafetyGuardrails?: boolean;
+  },
 ): value is MwmsParticipantReportV1["motivation_pattern"] {
   if (!isRecord(value)) {
     errors.push("motivation_pattern: Expected object.");
@@ -266,6 +285,7 @@ export function validateMwmsParticipantReportV1(
   value: unknown,
   options?: {
     enforceProseGuardrails?: boolean;
+    enforceSafetyGuardrails?: boolean;
   },
 ): { ok: true; value: MwmsParticipantReportV1 } | { ok: false; errors: string[] } {
   const errors: string[] = [];
@@ -297,6 +317,7 @@ export function validateMwmsParticipantReportV1(
   const questionsOk = validateStringArray(value.reflection_questions, "reflection_questions", errors, {
     requireQuestionShape: true,
     enforceProseGuardrails: options?.enforceProseGuardrails,
+    enforceSafetyGuardrails: options?.enforceSafetyGuardrails,
   });
   const suggestionsOk = validateStringArray(
     value.development_suggestions,
@@ -326,9 +347,11 @@ export function validateMwmsParticipantReportV1(
     }
   }
 
-  validateParticipantReportSafety(value).forEach((finding) => {
-    errors.push(formatParticipantReportSafetyFinding(finding));
-  });
+  if (options?.enforceSafetyGuardrails !== false) {
+    validateParticipantReportSafety(value).forEach((finding) => {
+      errors.push(formatParticipantReportSafetyFinding(finding));
+    });
+  }
 
   if (
     errors.length > 0 ||

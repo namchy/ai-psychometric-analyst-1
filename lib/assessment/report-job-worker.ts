@@ -427,6 +427,7 @@ function getGenerationOverrides(
   options?: {
     promptVersionId?: string | null;
     promptTemplate?: ActivePromptVersion | null;
+    participantDataOnlyQa?: boolean;
   },
 ): ReportGenerationOverrides {
   return {
@@ -434,6 +435,7 @@ function getGenerationOverrides(
     promptVersion,
     promptVersionId: options?.promptVersionId ?? null,
     promptTemplate: options?.promptTemplate ?? null,
+    participantDataOnlyQa: options?.participantDataOnlyQa,
     ...(resolvedModelName ? { model: resolvedModelName } : {}),
   };
 }
@@ -632,7 +634,10 @@ async function loadRuntimeConfigForJob(job: ClaimedReportJob) {
   }
 }
 
-async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
+async function buildReportSnapshot(
+  job: ClaimedReportJob,
+  options?: { participantDataOnlyQa?: boolean },
+): Promise<{
   snapshot: RuntimeCompletedAssessmentReport;
   modelName: string | null;
 }> {
@@ -646,6 +651,7 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   const overrides = getGenerationOverrides(job, promptVersion, resolvedModelName, {
     promptVersionId: activePromptVersion?.id ?? job.prompt_version_id,
     promptTemplate: activePromptVersion,
+    participantDataOnlyQa: options?.participantDataOnlyQa,
   });
   const request = await buildCompletedAssessmentReportRequest(attemptContext.testId, job.attempt_id, {
     audience: job.audience,
@@ -663,6 +669,7 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
   const preparedInput = buildPreparedReportGenerationInput(request, {
     promptVersionId: activePromptVersion?.id ?? job.prompt_version_id,
     promptTemplate: activePromptVersion,
+    participantDataOnlyQa: options?.participantDataOnlyQa,
   });
 
   await freezeProcessingReportMetadata(job.id, {
@@ -714,6 +721,7 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
       ? validateRuntimeCompletedAssessmentReport(generationResult.report, {
           testSlug: job.test_slug,
           audience: job.audience,
+          participantDataOnlyQa: options?.participantDataOnlyQa,
         })
       : isIpipNeo120TestSlug(job.test_slug) && job.audience === "hr"
       ? (() => {
@@ -744,7 +752,10 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
         ? (() => {
             const participantValidation = validateMwmsParticipantReportV1(
               generationResult.report,
-              { enforceProseGuardrails: false },
+              {
+                enforceProseGuardrails: false,
+                enforceSafetyGuardrails: !options?.participantDataOnlyQa,
+              },
             );
 
             return participantValidation.ok
@@ -794,6 +805,7 @@ async function buildReportSnapshot(job: ClaimedReportJob): Promise<{
               {
                 expectedInput: preparedInput.promptInput,
                 enforceProseGuardrails: false,
+                enforceSafetyGuardrails: !options?.participantDataOnlyQa,
               },
             );
 
@@ -879,9 +891,10 @@ export async function claimNextReportJob(
 
 export async function processClaimedReportJob(
   job: ClaimedReportJob,
+  options?: { participantDataOnlyQa?: boolean },
 ): Promise<ProcessClaimedReportJobResult> {
   try {
-    const { snapshot, modelName } = await buildReportSnapshot(job);
+    const { snapshot, modelName } = await buildReportSnapshot(job, options);
 
     await completeReportJob(job.id, snapshot, {
       modelName: job.generator_type === "openai" ? modelName : null,

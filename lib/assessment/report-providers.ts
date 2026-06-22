@@ -175,6 +175,7 @@ export type ReportContractDescriptor = {
 export type PreparedReportGenerationInput = {
   attemptId: string;
   testSlug: string;
+  participantDataOnlyQa?: boolean;
   requestedLocale?: string | null;
   promptVersion: string;
   promptVersionId: string | null;
@@ -437,11 +438,12 @@ export function validateRuntimeCompletedAssessmentReport(
   context: {
     testSlug: string;
     audience: ReportAudience;
+    participantDataOnlyQa?: boolean;
   },
 ): 
   | { ok: true; value: RuntimeCompletedAssessmentReport }
   | { ok: false; reason: string } {
-  if (context.audience === "participant") {
+  if (context.audience === "participant" && !context.participantDataOnlyQa) {
     const safetyFindings = validateParticipantReportSafety(value);
 
     if (safetyFindings.length > 0) {
@@ -466,6 +468,7 @@ export function validateRuntimeCompletedAssessmentReport(
 
     const v2ValidationResult = validateIpipNeo120ParticipantReportV2(value, {
       enforceProseGuardrails: false,
+      enforceSafetyGuardrails: !context.participantDataOnlyQa,
     });
 
     if (v2ValidationResult.ok) {
@@ -526,6 +529,7 @@ export function validateRuntimeCompletedAssessmentReport(
   if (isMwmsTestSlug(context.testSlug) && context.audience === "participant") {
     const validationResult = validateMwmsParticipantReportV1(value, {
       enforceProseGuardrails: false,
+      enforceSafetyGuardrails: !context.participantDataOnlyQa,
     });
 
     if (!validationResult.ok) {
@@ -562,6 +566,7 @@ export function validateRuntimeCompletedAssessmentReport(
   if (isSafranTestSlug(context.testSlug) && context.audience === "participant") {
     const validationResult = validateSafranParticipantAiReport(value, {
       enforceProseGuardrails: false,
+      enforceSafetyGuardrails: !context.participantDataOnlyQa,
     });
 
     if (!validationResult.ok) {

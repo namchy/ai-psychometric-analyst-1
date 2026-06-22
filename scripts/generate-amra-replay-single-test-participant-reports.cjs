@@ -8,6 +8,10 @@ const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 const CONFIRM_ENV = "CONFIRM_AMRA_REPLAY_PARTICIPANT_REPORT_GENERATION";
+const DATA_ONLY_QA_CONFIRM_ENV = "CONFIRM_AMRA_REPLAY_PARTICIPANT_DATA_ONLY_QA";
+const FAILED_REPORT_CLEANUP_CONFIRM_ENV =
+  "CONFIRM_AMRA_REPLAY_PARTICIPANT_FAILED_REPORT_CLEANUP";
+const TARGET_FAILED_REPORT_ID_ENV = "TARGET_FAILED_REPORT_ID";
 const TARGET_REPLAY_PARTICIPANT_ID_ENV = "TARGET_REPLAY_PARTICIPANT_ID";
 const TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV = "TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID";
 const TARGET_TEST_SLUG_ENV = "TARGET_TEST_SLUG";
@@ -17,6 +21,11 @@ const AI_REPORT_MODEL_ENV = "AI_REPORT_MODEL";
 
 const EXPECTED_PROVIDER = "openai";
 const EXPECTED_MODEL = "gpt-5.5";
+const EXPECTED_FAILED_REPORT = {
+  id: "3cc0ef77-ce5a-47b8-9562-3ff81556a0bd",
+  attemptId: "8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1",
+  testSlug: "mwms_v1",
+};
 
 const EXPECTED_TARGETS = {
   participantId: "a5678fd5-8fea-4308-8569-5448f26b4f71",
@@ -298,6 +307,35 @@ function evaluatePersistedReportPostcondition(input) {
   };
 }
 
+function evaluateFailedParticipantReportCleanupGuard(row) {
+  const mismatches = [];
+
+  const expected = {
+    id: EXPECTED_FAILED_REPORT.id,
+    attempt_id: EXPECTED_FAILED_REPORT.attemptId,
+    test_slug: EXPECTED_FAILED_REPORT.testSlug,
+    report_type: "individual",
+    audience: "participant",
+    source_type: "single_test",
+    report_status: "failed",
+    generator_type: EXPECTED_PROVIDER,
+    model_name: EXPECTED_MODEL,
+    report_snapshot: null,
+  };
+
+  if (!row || typeof row !== "object") {
+    return { ok: false, mismatches: [{ field: "<row>", expected: "existing row", received: null }] };
+  }
+
+  for (const [field, expectedValue] of Object.entries(expected)) {
+    if (row[field] !== expectedValue) {
+      mismatches.push({ field, expected: expectedValue, received: row[field] ?? null });
+    }
+  }
+
+  return { ok: mismatches.length === 0, mismatches };
+}
+
 function buildReadOnlyAuditSql(testSlugs = ALLOWED_TEST_SLUGS) {
   const selected = testSlugs
     .map((testSlug) => TARGET_TESTS[testSlug]?.attemptId)
@@ -392,6 +430,9 @@ function buildBaseArtifact(input = {}) {
       operation: input.operation ?? "generate",
       dryRun: input.dryRun ?? true,
       writeModeConfirmed: input.writeModeConfirmed ?? false,
+      participantDataOnlyQaConfirmed: input.participantDataOnlyQaConfirmed ?? false,
+      participantSafetyAndProseValidationBypassed:
+        input.participantDataOnlyQaConfirmed ?? false,
       databaseWrites: false,
       openAiCalled: false,
       openAiRequired: true,
@@ -596,6 +637,22 @@ async function loadFinalParticipantReportRow(supabase, reportId) {
 
   if (error) {
     throw new Error(`Failed to load final replay participant report row: ${error.message}`);
+  }
+
+  return data ?? null;
+}
+
+async function loadFailedParticipantReportRow(supabase, reportId) {
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select(
+      "id, attempt_id, test_slug, report_type, audience, source_type, report_status, generator_type, model_name, report_snapshot",
+    )
+    .eq("id", reportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load replay participant failed report row: ${error.message}`);
   }
 
   return data ?? null;
@@ -841,6 +898,14 @@ async function inspectReplayParticipantTargets(input, deps) {
   }
 
   artifact.status = "dry_run_ready";
+  if (input.participantDataOnlyQaConfirmed) {
+    artifact.findings.push({
+      severity: "warning",
+      category: "participant_data_only_qa",
+      message:
+        "Replay QA data-only mode is confirmed: prose, BHS, genericity, actionability and participant safety validators will be bypassed as blockers. JSON/shape/contract/data/reference validation remains blocking, and AI prose will not be rewritten.",
+    });
+  }
   artifact.findings.push({
     severity: "info",
     category: "dry_run",
@@ -934,7 +999,9 @@ async function runConfirmedGeneration(input, deps) {
       return inspectionArtifact;
     }
 
-    const workerResult = await deps.processClaimedReportJob(claimedJob);
+    const workerResult = await deps.processClaimedReportJob(claimedJob, {
+      participantDataOnlyQa: input.participantDataOnlyQaConfirmed,
+    });
     inspectionArtifact.metadata.workerOrSchedulerRun = true;
     inspectionArtifact.metadata.openAiCalled = inspectionArtifact.metadata.openAiCalled || claimedJob.generator_type === "openai";
     inspectionArtifact.metadata.reportsGenerated =
@@ -997,10 +1064,133 @@ async function runConfirmedGeneration(input, deps) {
   return inspectionArtifact;
 }
 
+async function deleteExactFailedParticipantReport(supabase, reportId) {
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .delete()
+    .eq("id", reportId)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to delete exact replay participant failed report row: ${error.message}`);
+  }
+
+  return data;
+}
+
+async function runConfirmedFailedReportCleanup(input, deps) {
+  const artifact = buildBaseArtifact({
+    ...input,
+    operation: "cleanup_failed_participant_report",
+    dryRun: false,
+    writeModeConfirmed: true,
+    status: "running_cleanup_preflight",
+  });
+  const supabase = deps.createSupabaseAdminClient();
+  const participant = await loadReplayParticipant(supabase, input.participantId);
+  const assignment = await loadReplayAssignment(supabase, input.assessmentAssignmentId);
+  const attempt = await loadReplayAttemptContext(supabase, {
+    assessmentAssignmentId: input.assessmentAssignmentId,
+    testSlug: EXPECTED_FAILED_REPORT.testSlug,
+  });
+
+  if (
+    !evaluateReplayParticipantGuard(participant) ||
+    !evaluateReplayAssignmentGuard(assignment, input.participantId) ||
+    assignment?.status !== "completed" ||
+    !attempt ||
+    attempt.attemptId !== EXPECTED_FAILED_REPORT.attemptId ||
+    attempt.organizationId !== EXPECTED_TARGETS.organizationId ||
+    attempt.participantId !== input.participantId ||
+    attempt.status !== "completed"
+  ) {
+    artifact.status = "blocked_cleanup_replay_ownership_guard";
+    artifact.blockers.push("cleanup_replay_ownership_guard_failed");
+    return artifact;
+  }
+
+  const failedRow = await loadFailedParticipantReportRow(supabase, input.failedReportId);
+  const rowGuard = evaluateFailedParticipantReportCleanupGuard(failedRow);
+
+  if (!rowGuard.ok) {
+    artifact.status = "blocked_cleanup_failed_report_guard";
+    artifact.blockers.push("cleanup_failed_report_guard_failed");
+    artifact.findings.push({
+      severity: "blocker",
+      category: "cleanup",
+      message: "Failed participant report row did not match the exact approved cleanup contract.",
+      mismatches: rowGuard.mismatches,
+    });
+    return artifact;
+  }
+
+  const deleted = await deleteExactFailedParticipantReport(supabase, input.failedReportId);
+  artifact.metadata.databaseWrites = true;
+  artifact.status = "cleanup_complete";
+  artifact.findings.push({
+    severity: "info",
+    category: "cleanup",
+    message: "Deleted exactly one approved failed MWMS replay participant report row.",
+    reportId: deleted.id,
+  });
+  return artifact;
+}
+
 async function generateAmraReplaySingleTestParticipantReports(options = {}) {
   const env = options.env ?? process.env;
   const stdout = options.stdout ?? process.stdout;
   const writeModeConfirmed = env[CONFIRM_ENV] === "true";
+  const participantDataOnlyQaConfirmed = env[DATA_ONLY_QA_CONFIRM_ENV] === "true";
+  const cleanupConfirmed = env[FAILED_REPORT_CLEANUP_CONFIRM_ENV] === "true";
+  const failedReportId = normalizeEnvString(env[TARGET_FAILED_REPORT_ID_ENV]);
+
+  if (cleanupConfirmed && writeModeConfirmed) {
+    const artifact = buildBaseArtifact({
+      operation: "invalid_conflicting_operations",
+      dryRun: true,
+      status: "blocked_conflicting_operations",
+    });
+    artifact.blockers.push("generation_and_cleanup_cannot_run_together");
+    stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+    return artifact;
+  }
+
+  if (cleanupConfirmed) {
+    const validation = validateRequestedTargetInputs(env, {
+      requireExplicitIds: true,
+      requireExplicitTestSlug: false,
+    });
+
+    if (!validation.ok || failedReportId !== EXPECTED_FAILED_REPORT.id) {
+      const artifact = buildInvalidInputArtifact(validation, {
+        env,
+        writeModeConfirmed: true,
+      });
+      artifact.status = "blocked_cleanup_confirmation";
+      artifact.metadata.operation = "cleanup_failed_participant_report";
+      artifact.blockers.push("exact_failed_report_id_required");
+      artifact.findings.push({
+        severity: "blocker",
+        category: "cleanup",
+        message: `Cleanup requires ${TARGET_FAILED_REPORT_ID_ENV}=${EXPECTED_FAILED_REPORT.id}.`,
+      });
+      stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+      return artifact;
+    }
+
+    const deps = options.deps ?? (await createRealDeps());
+    const artifact = await runConfirmedFailedReportCleanup(
+      {
+        ...validation.inputs,
+        failedReportId,
+      },
+      deps,
+    );
+    stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+    return artifact;
+  }
+
   const validation = validateRequestedTargetInputs(env, {
     requireExplicitIds: writeModeConfirmed,
     requireExplicitTestSlug: writeModeConfirmed,
@@ -1019,6 +1209,7 @@ async function generateAmraReplaySingleTestParticipantReports(options = {}) {
       ...validation.inputs,
       ...providerInputs,
       writeModeConfirmed,
+      participantDataOnlyQaConfirmed,
     };
     const deps = options.deps ?? (await createRealDeps());
 
@@ -1038,12 +1229,16 @@ module.exports = {
   AI_REPORT_PROVIDER_ENV,
   ALLOWED_TEST_SLUGS,
   CONFIRM_ENV,
+  DATA_ONLY_QA_CONFIRM_ENV,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
+  EXPECTED_FAILED_REPORT,
   EXPECTED_TARGETS,
+  FAILED_REPORT_CLEANUP_CONFIRM_ENV,
   SUPPORTED_TARGET_TEST_SLUGS,
   TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV,
   TARGET_REPLAY_PARTICIPANT_ID_ENV,
+  TARGET_FAILED_REPORT_ID_ENV,
   TARGET_TEST_SLUG_ALL,
   TARGET_TEST_SLUG_ENV,
   TARGET_TESTS,
@@ -1052,6 +1247,7 @@ module.exports = {
   buildRuntimeConfigCreateSql,
   buildRuntimeConfigInspectSql,
   evaluatePersistedReportPostcondition,
+  evaluateFailedParticipantReportCleanupGuard,
   evaluateReplayAssignmentGuard,
   evaluateReplayParticipantGuard,
   evaluateRuntimeResolution,

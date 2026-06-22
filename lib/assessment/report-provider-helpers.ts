@@ -489,11 +489,13 @@ export function buildPreparedReportGenerationInput(
   options?: {
     promptVersionId?: string | null;
     promptTemplate?: ActivePromptVersion | null;
+    participantDataOnlyQa?: boolean;
   },
 ): PreparedReportGenerationInput {
   return {
     attemptId: input.attemptId,
     testSlug: input.testSlug,
+    participantDataOnlyQa: options?.participantDataOnlyQa,
     requestedLocale: input.locale,
     promptVersion: input.promptVersion,
     promptVersionId: options?.promptVersionId ?? null,

@@ -374,6 +374,7 @@ async function main() {
       validateStructuredReport,
       createOpenAiReportProvider,
       prepareIpipNeo120ParticipantAiInputV2ForOpenAi,
+      resolveIpipNeo120ParticipantProviderMode,
     } = require("../lib/assessment/report-provider-openai.ts");
     const {
       validateIpipNeo120ParticipantReportV2,
@@ -457,6 +458,21 @@ async function main() {
     assert.throws(
       () => validateStructuredReport(degradingReport, bsInput),
       /harmful|degrading/i,
+    );
+    const qaDataOnlyInput = {
+      ...bsInput,
+      participantDataOnlyQa: true,
+    };
+    process.env.IPIP_NEO_120_PARTICIPANT_GENERATION_MODE = "segmented";
+    assert.equal(resolveIpipNeo120ParticipantProviderMode(qaDataOnlyInput), "v2-single");
+    const qaDataOnlyReport = validateStructuredReport(degradingReport, qaDataOnlyInput);
+    assert.equal(qaDataOnlyReport.summary.overview, degradingReport.summary.overview);
+
+    const qaMismatchedScoreReport = clone(degradingReport);
+    qaMismatchedScoreReport.domains[0].score += 1;
+    assert.throws(
+      () => validateStructuredReport(qaMismatchedScoreReport, qaDataOnlyInput),
+      /Must match deterministic input/i,
     );
 
     process.env.IPIP_NEO_120_PARTICIPANT_GENERATION_MODE = "segmented";
