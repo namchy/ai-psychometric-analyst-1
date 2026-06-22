@@ -320,6 +320,10 @@ async function main() {
       .some((facet) => facet.facet_name === "Saradljivost"),
     true,
   );
+  assert.equal(scoreReferences.domains[1].domain_code, "AGREEABLENESS");
+  assert.equal(scoreReferences.domains[1].domain_name, "Spremnost na saradnju");
+  assert.equal(scoreReferences.domains[1].facets[3].facet_code, "COOPERATION");
+  assert.equal(scoreReferences.domains[1].facets[3].facet_name, "Saradljivost");
   assert.equal(/prekomjern\w* oslanjanj\w*/i.test(reportValueText), true);
   assert.equal(report.key_hr_signals.length, 3);
   assert.equal(report.verification_focus.length, 3);

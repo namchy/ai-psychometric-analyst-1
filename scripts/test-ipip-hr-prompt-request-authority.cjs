@@ -218,10 +218,24 @@ async function main() {
     assert.equal(promptText.includes('"Saradljivost"'), true);
     assert.equal(promptText.includes('"Kooperativnost"'), true);
     assert.equal(promptText.includes('"Saradnički profil"'), true);
+    assert.equal(
+      promptText.includes('Narrow structural exception: score_references must preserve exact deterministic input labels.'),
+      true,
+    );
+    assert.equal(
+      promptText.includes('COOPERATION facet_name stays "Saradljivost" inside score_references only.'),
+      true,
+    );
+    assert.equal(
+      promptText.includes("This structural exception does not apply to headline, executive_summary, key_hr_signals"),
+      true,
+    );
     assert.equal(promptText.includes('"overuse"'), true);
     assert.equal(promptText.includes('"handling"'), true);
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("Ugodnost"), false);
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("Saradljivost"), true);
+    assert.equal(preparedInput.promptInput.domains[1].facets[3].facet_code, "COOPERATION");
+    assert.equal(preparedInput.promptInput.domains[1].facets[3].label, "Saradljivost");
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("Kooperativnost"), false);
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("overuse"), false);
     assert.equal(JSON.stringify(preparedInput.promptInput).includes("handling"), false);
@@ -334,6 +348,10 @@ async function main() {
     assert.equal(dumpText.includes("Spremnost na saradnju"), true);
     assert.equal(dumpPromptText.includes('Do not use "Ugodnost"'), true);
     assert.equal(dumpPromptText.includes('"Saradljivost"'), true);
+    assert.equal(
+      dumpPromptText.includes('COOPERATION facet_name stays "Saradljivost" inside score_references only.'),
+      true,
+    );
     assert.equal(dumpPromptText.includes('"Kooperativnost"'), true);
     assert.equal(dumpPromptText.includes('"overuse"'), true);
     assert.equal(dumpPromptText.includes('"handling"'), true);
