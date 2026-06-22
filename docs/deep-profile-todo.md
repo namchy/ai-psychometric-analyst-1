@@ -238,6 +238,18 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - Replay assignment:
   - `033f8975-5d9c-4c66-8842-f37527d556d5`
 - Originalna Amra nije dirana i nije rađena regeneracija originalnih reportova.
+
+### Completion note — Amra replay participant/user report QA in progress
+
+- Controlled replay participant/user QA je u toku za fixture `amra_replay_fixture_v1` (`a5678fd5-8fea-4308-8569-5448f26b4f71` / `033f8975-5d9c-4c66-8842-f37527d556d5`).
+- Data-only QA mode je uveden za replay participant generation: prose/BHS/genericity/actionability/safety su diagnostic-only, dok JSON/shape/contract/data/source/reference checks ostaju blocking; AI prose se ne rewrite-a i originalna Amra ostaje netaknuta.
+- MWMS participant replay report je ready: `4979b8b8-ee23-4941-9828-c650542baee0` (`openai / gpt-5.5`).
+- SAFRAN participant replay report je ready: `5c2766ca-86e9-4c57-9624-62fdc03a946c` (`openai / gpt-5.5`).
+- IPIP participant replay report još nije ready; `v2-single` je više puta failao (`300000ms` timeout, `900000ms` fetch failed, latest failed row `294a177b-7b4d-4127-823a-9ce6c0464be1`).
+- Request inspector pokazuje moderate request size, ne očigledno oversized payload: request body ~61.7 KB, user prompt ~45.7k chars, schema ~8.8k chars.
+- Direct OpenAI probe van report job lifecyclea i dalje faila oko 301s sa `HeadersTimeoutError` / `UND_ERR_HEADERS_TIMEOUT`; trenutno `fetchImplementation` ispada `global.fetch`, a `transportTimeoutApplied` je `false`.
+- Trenutni zaključak je da problem nije dokazano prompt size, validator, DB ili report job lifecycle, nego OpenAI transport timeout koji se ne primjenjuje u realnom runtimeu.
+- Sljedeći korak je popraviti OpenAI transport helper tako da dugi OpenAI pozivi koriste realni Undici headers/body timeout ili failaju lokalno prije poziva, pa tek onda retry IPIP replay generation.
 - Replay report IDs i finalni audit status:
   - IPIP: `5fcc9019-5ddd-42c7-83bb-d6d663e94f72` / `e71d472a-13cb-4cc9-9582-6eaa262affca` / `ready / openai / gpt-5.5`
   - SAFRAN: `30124c4a-e7d9-412b-bad3-596d8e3bf97b` / `54702bc1-7d91-492e-9b50-14aff6706d34` / `ready / openai / gpt-5.5`
