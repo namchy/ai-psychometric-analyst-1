@@ -87,6 +87,7 @@ import {
   validateRuntimeCompletedAssessmentReport,
 } from "@/lib/assessment/report-providers";
 import {
+  assertOpenAiTransportReadyForTimeout,
   buildOpenAiFetchRequestInit,
   resolveOpenAiFetchTransport,
 } from "@/lib/assessment/openai-fetch-transport";
@@ -1276,6 +1277,11 @@ async function requestOpenAiStructuredJson(
   try {
     const { requestBody } = buildOpenAiStructuredRequestPayload(input, options, payload);
     const transport = resolveOpenAiFetchTransport(timeoutMs);
+    assertOpenAiTransportReadyForTimeout({
+      timeoutMs,
+      transport,
+      context: `OpenAI ${payload.label}`,
+    });
 
     await maybeWriteAiReportDebugDump(
       input,

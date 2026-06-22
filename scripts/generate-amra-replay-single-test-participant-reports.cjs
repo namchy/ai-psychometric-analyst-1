@@ -21,11 +21,30 @@ const AI_REPORT_MODEL_ENV = "AI_REPORT_MODEL";
 
 const EXPECTED_PROVIDER = "openai";
 const EXPECTED_MODEL = "gpt-5.5";
-const EXPECTED_FAILED_REPORT = {
-  id: "3cc0ef77-ce5a-47b8-9562-3ff81556a0bd",
-  attemptId: "8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1",
-  testSlug: "mwms_v1",
-};
+const APPROVED_FAILED_REPORT_CLEANUP_TARGETS = [
+  {
+    id: "3cc0ef77-ce5a-47b8-9562-3ff81556a0bd",
+    attemptId: "8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1",
+    testSlug: "mwms_v1",
+    participantId: "a5678fd5-8fea-4308-8569-5448f26b4f71",
+    assessmentAssignmentId: "033f8975-5d9c-4c66-8842-f37527d556d5",
+    report_type: "individual",
+    audience: "participant",
+    source_type: "single_test",
+    report_status: "failed",
+  },
+  {
+    id: "294a177b-7b4d-4127-823a-9ce6c0464be1",
+    attemptId: "e71d472a-13cb-4cc9-9582-6eaa262affca",
+    testSlug: "ipip-neo-120-v1",
+    participantId: "a5678fd5-8fea-4308-8569-5448f26b4f71",
+    assessmentAssignmentId: "033f8975-5d9c-4c66-8842-f37527d556d5",
+    report_type: "individual",
+    audience: "participant",
+    source_type: "single_test",
+    report_status: "failed",
+  },
+];
 
 const EXPECTED_TARGETS = {
   participantId: "a5678fd5-8fea-4308-8569-5448f26b4f71",
@@ -307,25 +326,35 @@ function evaluatePersistedReportPostcondition(input) {
   };
 }
 
-function evaluateFailedParticipantReportCleanupGuard(row) {
-  const mismatches = [];
+function findApprovedFailedReportCleanupTarget(reportId) {
+  return (
+    APPROVED_FAILED_REPORT_CLEANUP_TARGETS.find((target) => target.id === reportId) ?? null
+  );
+}
 
-  const expected = {
-    id: EXPECTED_FAILED_REPORT.id,
-    attempt_id: EXPECTED_FAILED_REPORT.attemptId,
-    test_slug: EXPECTED_FAILED_REPORT.testSlug,
-    report_type: "individual",
-    audience: "participant",
-    source_type: "single_test",
-    report_status: "failed",
-    generator_type: EXPECTED_PROVIDER,
-    model_name: EXPECTED_MODEL,
-    report_snapshot: null,
-  };
+function evaluateFailedParticipantReportCleanupGuard(row, approvedTarget) {
+  const mismatches = [];
 
   if (!row || typeof row !== "object") {
     return { ok: false, mismatches: [{ field: "<row>", expected: "existing row", received: null }] };
   }
+
+  if (!approvedTarget) {
+    return {
+      ok: false,
+      mismatches: [{ field: "<approvedTarget>", expected: "approved target", received: null }],
+    };
+  }
+
+  const expected = {
+    id: approvedTarget.id,
+    attempt_id: approvedTarget.attemptId,
+    test_slug: approvedTarget.testSlug,
+    report_type: approvedTarget.report_type,
+    audience: approvedTarget.audience,
+    source_type: approvedTarget.source_type,
+    report_status: approvedTarget.report_status,
+  };
 
   for (const [field, expectedValue] of Object.entries(expected)) {
     if (row[field] !== expectedValue) {
@@ -460,6 +489,8 @@ function buildBaseArtifact(input = {}) {
       scoringTouched: false,
       migrationOrSchemaChanged: false,
       runtimeConfigChanged: false,
+      cleanupPerformed: false,
+      reportRetried: false,
     },
     inputs: {
       targetReplayParticipantId: input.participantId ?? null,
@@ -506,6 +537,10 @@ function buildBaseArtifact(input = {}) {
     })),
     blockers: [],
     findings: [],
+    deletedReportId: input.deletedReportId ?? null,
+    attemptId: input.attemptId ?? null,
+    testSlug: input.testSlug ?? null,
+    cleanupPerformed: input.cleanupPerformed ?? false,
     nextReadOnlyAuditSql: buildReadOnlyAuditSql(input.targetTestSlugs ?? ALLOWED_TEST_SLUGS),
     runtimeConfigInspectSql: buildRuntimeConfigInspectSql(),
     runtimeConfigCreateSql: buildRuntimeConfigCreateSql(),
@@ -1076,6 +1111,10 @@ async function deleteExactFailedParticipantReport(supabase, reportId) {
     throw new Error(`Failed to delete exact replay participant failed report row: ${error.message}`);
   }
 
+  if (!data || data.id !== reportId) {
+    throw new Error("Failed to delete exactly one approved replay participant failed report row.");
+  }
+
   return data;
 }
 
@@ -1086,13 +1125,16 @@ async function runConfirmedFailedReportCleanup(input, deps) {
     dryRun: false,
     writeModeConfirmed: true,
     status: "running_cleanup_preflight",
+    targetTestSlugs: [input.cleanupTarget.testSlug],
+    attemptId: input.cleanupTarget.attemptId,
+    testSlug: input.cleanupTarget.testSlug,
   });
   const supabase = deps.createSupabaseAdminClient();
   const participant = await loadReplayParticipant(supabase, input.participantId);
   const assignment = await loadReplayAssignment(supabase, input.assessmentAssignmentId);
   const attempt = await loadReplayAttemptContext(supabase, {
     assessmentAssignmentId: input.assessmentAssignmentId,
-    testSlug: EXPECTED_FAILED_REPORT.testSlug,
+    testSlug: input.cleanupTarget.testSlug,
   });
 
   if (
@@ -1100,7 +1142,7 @@ async function runConfirmedFailedReportCleanup(input, deps) {
     !evaluateReplayAssignmentGuard(assignment, input.participantId) ||
     assignment?.status !== "completed" ||
     !attempt ||
-    attempt.attemptId !== EXPECTED_FAILED_REPORT.attemptId ||
+    attempt.attemptId !== input.cleanupTarget.attemptId ||
     attempt.organizationId !== EXPECTED_TARGETS.organizationId ||
     attempt.participantId !== input.participantId ||
     attempt.status !== "completed"
@@ -1111,7 +1153,7 @@ async function runConfirmedFailedReportCleanup(input, deps) {
   }
 
   const failedRow = await loadFailedParticipantReportRow(supabase, input.failedReportId);
-  const rowGuard = evaluateFailedParticipantReportCleanupGuard(failedRow);
+  const rowGuard = evaluateFailedParticipantReportCleanupGuard(failedRow, input.cleanupTarget);
 
   if (!rowGuard.ok) {
     artifact.status = "blocked_cleanup_failed_report_guard";
@@ -1127,12 +1169,19 @@ async function runConfirmedFailedReportCleanup(input, deps) {
 
   const deleted = await deleteExactFailedParticipantReport(supabase, input.failedReportId);
   artifact.metadata.databaseWrites = true;
+  artifact.metadata.cleanupPerformed = true;
   artifact.status = "cleanup_complete";
+  artifact.deletedReportId = deleted.id;
+  artifact.attemptId = input.cleanupTarget.attemptId;
+  artifact.testSlug = input.cleanupTarget.testSlug;
+  artifact.cleanupPerformed = true;
   artifact.findings.push({
     severity: "info",
     category: "cleanup",
-    message: "Deleted exactly one approved failed MWMS replay participant report row.",
-    reportId: deleted.id,
+    message: "Deleted exactly one approved failed replay participant report row.",
+    deletedReportId: deleted.id,
+    attemptId: input.cleanupTarget.attemptId,
+    testSlug: input.cleanupTarget.testSlug,
   });
   return artifact;
 }
@@ -1157,12 +1206,19 @@ async function generateAmraReplaySingleTestParticipantReports(options = {}) {
   }
 
   if (cleanupConfirmed) {
+    const approvedCleanupTarget = findApprovedFailedReportCleanupTarget(failedReportId);
     const validation = validateRequestedTargetInputs(env, {
       requireExplicitIds: true,
-      requireExplicitTestSlug: false,
+      requireExplicitTestSlug: true,
     });
 
-    if (!validation.ok || failedReportId !== EXPECTED_FAILED_REPORT.id) {
+    const cleanupTargetMatches =
+      approvedCleanupTarget !== null &&
+      validation.inputs.participantId === approvedCleanupTarget.participantId &&
+      validation.inputs.assessmentAssignmentId === approvedCleanupTarget.assessmentAssignmentId &&
+      validation.inputs.testSlug === approvedCleanupTarget.testSlug;
+
+    if (!validation.ok || !cleanupTargetMatches) {
       const artifact = buildInvalidInputArtifact(validation, {
         env,
         writeModeConfirmed: true,
@@ -1173,7 +1229,16 @@ async function generateAmraReplaySingleTestParticipantReports(options = {}) {
       artifact.findings.push({
         severity: "blocker",
         category: "cleanup",
-        message: `Cleanup requires ${TARGET_FAILED_REPORT_ID_ENV}=${EXPECTED_FAILED_REPORT.id}.`,
+        message:
+          "Cleanup requires an exact approved failed replay participant report target, including report id, participant id, assignment id and test slug.",
+        approvedCleanupTarget: approvedCleanupTarget
+          ? {
+              reportId: approvedCleanupTarget.id,
+              participantId: approvedCleanupTarget.participantId,
+              assessmentAssignmentId: approvedCleanupTarget.assessmentAssignmentId,
+              testSlug: approvedCleanupTarget.testSlug,
+            }
+          : null,
       });
       stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
       return artifact;
@@ -1184,6 +1249,7 @@ async function generateAmraReplaySingleTestParticipantReports(options = {}) {
       {
         ...validation.inputs,
         failedReportId,
+        cleanupTarget: approvedCleanupTarget,
       },
       deps,
     );
@@ -1232,7 +1298,7 @@ module.exports = {
   DATA_ONLY_QA_CONFIRM_ENV,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
-  EXPECTED_FAILED_REPORT,
+  APPROVED_FAILED_REPORT_CLEANUP_TARGETS,
   EXPECTED_TARGETS,
   FAILED_REPORT_CLEANUP_CONFIRM_ENV,
   SUPPORTED_TARGET_TEST_SLUGS,
@@ -1248,6 +1314,7 @@ module.exports = {
   buildRuntimeConfigInspectSql,
   evaluatePersistedReportPostcondition,
   evaluateFailedParticipantReportCleanupGuard,
+  findApprovedFailedReportCleanupTarget,
   evaluateReplayAssignmentGuard,
   evaluateReplayParticipantGuard,
   evaluateRuntimeResolution,

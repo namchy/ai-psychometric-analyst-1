@@ -256,6 +256,7 @@ async function callOpenAiDirect(options) {
   }
 
   const {
+    assertOpenAiTransportReadyForTimeout,
     buildOpenAiFetchRequestInit,
     resolveOpenAiFetchTransport,
   } = loadOpenAiTransportHelpers();
@@ -270,18 +271,40 @@ async function callOpenAiDirect(options) {
   );
 
   try {
-    const transport =
-      options.transport ??
-      (options.resolveTransport ?? resolveOpenAiFetchTransport)(options.timeoutMs);
+    let transport = null;
     try {
+      transport =
+        options.transport ??
+        (options.resolveTransport ?? resolveOpenAiFetchTransport)(options.timeoutMs);
+    } catch (error) {
+      if (error && typeof error === "object") {
+        error.openAiCalled = false;
+      }
+      throw error;
+    }
+    try {
+      assertOpenAiTransportReadyForTimeout({
+        timeoutMs: options.timeoutMs,
+        transport,
+        context: "OpenAI direct IPIP participant probe",
+      });
+    } catch (error) {
+      if (error && typeof error === "object") {
+        error.transport = transport;
+        error.openAiCalled = false;
+      }
+      throw error;
+    }
+    try {
+      const requestInit = buildOpenAiFetchRequestInit({
+        apiKey: options.apiKey,
+        requestBody: options.requestBody,
+        signal: controller.signal,
+        dispatcher: transport.dispatcher,
+      });
       const response = await transport.fetchImpl(
         "https://api.openai.com/v1/chat/completions",
-        buildOpenAiFetchRequestInit({
-          apiKey: options.apiKey,
-          requestBody: options.requestBody,
-          signal: controller.signal,
-          dispatcher: transport.dispatcher,
-        }),
+        requestInit,
       );
 
       if (!response.ok) {
@@ -310,7 +333,13 @@ async function callOpenAiDirect(options) {
         responsePayload: payload,
         httpStatus: response.status,
         httpStatusText: response.statusText ?? null,
-        transport,
+        transport: {
+          ...transport,
+          dispatcherPassedToFetchInit: Object.prototype.hasOwnProperty.call(
+            requestInit,
+            "dispatcher",
+          ),
+        },
       };
     } catch (error) {
       if (error && typeof error === "object" && !("transport" in error)) {
@@ -356,13 +385,14 @@ async function runProbe(options = {}) {
       resolveTransport: options.resolveTransport,
     });
     const endedAt = options.now ? options.now() : Date.now();
+    const openAiCalled = response.openAiCalled === false ? false : true;
 
     let parsed = null;
     try {
       parsed = JSON.parse(response.rawContent);
     } catch (error) {
       return {
-        openAiCalled: true,
+        openAiCalled,
         databaseWrites: false,
         cleanupPerformed: false,
         reportGenerated: false,
@@ -377,6 +407,8 @@ async function runProbe(options = {}) {
         transportHeadersTimeoutMs: response.transport?.transportHeadersTimeoutMs ?? null,
         transportBodyTimeoutMs: response.transport?.transportBodyTimeoutMs ?? null,
         fetchImplementation: response.transport?.fetchImplementation ?? null,
+        dispatcherConfigured: response.transport?.dispatcherConfigured ?? null,
+        dispatcherPassedToFetchInit: response.transport?.dispatcherPassedToFetchInit ?? null,
         responseReceived: true,
         parsedJson: false,
         topLevelResponseKeys: [],
@@ -396,7 +428,7 @@ async function runProbe(options = {}) {
     }
 
     return {
-      openAiCalled: true,
+      openAiCalled,
       databaseWrites: false,
       cleanupPerformed: false,
       reportGenerated: false,
@@ -411,6 +443,8 @@ async function runProbe(options = {}) {
       transportHeadersTimeoutMs: response.transport?.transportHeadersTimeoutMs ?? null,
       transportBodyTimeoutMs: response.transport?.transportBodyTimeoutMs ?? null,
       fetchImplementation: response.transport?.fetchImplementation ?? null,
+      dispatcherConfigured: response.transport?.dispatcherConfigured ?? null,
+      dispatcherPassedToFetchInit: response.transport?.dispatcherPassedToFetchInit ?? null,
       responseReceived: true,
       parsedJson: true,
       topLevelResponseKeys: Object.keys(parsed),
@@ -429,8 +463,10 @@ async function runProbe(options = {}) {
     const endedAt = options.now ? options.now() : Date.now();
     const cause = error instanceof Error ? error.cause : null;
 
+    const openAiCalled = error?.openAiCalled === false ? false : true;
+
     return {
-      openAiCalled: true,
+      openAiCalled,
       databaseWrites: false,
       cleanupPerformed: false,
       reportGenerated: false,
@@ -445,6 +481,8 @@ async function runProbe(options = {}) {
       transportHeadersTimeoutMs: error?.transport?.transportHeadersTimeoutMs ?? null,
       transportBodyTimeoutMs: error?.transport?.transportBodyTimeoutMs ?? null,
       fetchImplementation: error?.transport?.fetchImplementation ?? null,
+      dispatcherConfigured: error?.transport?.dispatcherConfigured ?? null,
+      dispatcherPassedToFetchInit: error?.transport?.dispatcherPassedToFetchInit ?? null,
       responseReceived: false,
       parsedJson: false,
       topLevelResponseKeys: [],

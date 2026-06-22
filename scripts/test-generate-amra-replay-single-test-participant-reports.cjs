@@ -15,6 +15,7 @@ assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_PARTICIPANT_DATA_ONLY_QA/);
 assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_PARTICIPANT_FAILED_REPORT_CLEANUP/);
 assert.match(scriptSource, /TARGET_FAILED_REPORT_ID/);
 assert.match(scriptSource, /3cc0ef77-ce5a-47b8-9562-3ff81556a0bd/);
+assert.match(scriptSource, /294a177b-7b4d-4127-823a-9ce6c0464be1/);
 assert.match(scriptSource, /TARGET_REPLAY_PARTICIPANT_ID/);
 assert.match(scriptSource, /TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID/);
 assert.match(scriptSource, /TARGET_TEST_SLUG/);
@@ -45,7 +46,7 @@ const {
   DATA_ONLY_QA_CONFIRM_ENV,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
-  EXPECTED_FAILED_REPORT,
+  APPROVED_FAILED_REPORT_CLEANUP_TARGETS,
   EXPECTED_TARGETS,
   FAILED_REPORT_CLEANUP_CONFIRM_ENV,
   SUPPORTED_TARGET_TEST_SLUGS,
@@ -61,6 +62,7 @@ const {
   buildRuntimeConfigInspectSql,
   evaluatePersistedReportPostcondition,
   evaluateFailedParticipantReportCleanupGuard,
+  findApprovedFailedReportCleanupTarget,
   evaluateReplayAssignmentGuard,
   evaluateReplayParticipantGuard,
   evaluateRuntimeResolution,
@@ -69,6 +71,12 @@ const {
   resolveRequestedTestSlugs,
   validateRequestedTargetInputs,
 } = require(scriptPath);
+
+const EXPECTED_FAILED_REPORT = APPROVED_FAILED_REPORT_CLEANUP_TARGETS[0];
+const EXPECTED_IPIP_FAILED_REPORT = APPROVED_FAILED_REPORT_CLEANUP_TARGETS.find(
+  (target) => target.testSlug === "ipip-neo-120-v1",
+);
+assert(EXPECTED_IPIP_FAILED_REPORT);
 
 assert.deepEqual(ALLOWED_TEST_SLUGS, ["mwms_v1", "safran_v1", "ipip-neo-120-v1"]);
 assert.deepEqual(SUPPORTED_TARGET_TEST_SLUGS, [
@@ -282,23 +290,62 @@ const exactFailedCleanupRow = {
   audience: "participant",
   source_type: "single_test",
   report_status: "failed",
-  generator_type: EXPECTED_PROVIDER,
-  model_name: EXPECTED_MODEL,
-  report_snapshot: null,
 };
-assert.equal(evaluateFailedParticipantReportCleanupGuard(exactFailedCleanupRow).ok, true);
+assert.equal(findApprovedFailedReportCleanupTarget(EXPECTED_IPIP_FAILED_REPORT.id)?.id, EXPECTED_IPIP_FAILED_REPORT.id);
+assert.equal(findApprovedFailedReportCleanupTarget("00000000-0000-0000-0000-000000000000"), null);
+assert.equal(evaluateFailedParticipantReportCleanupGuard(exactFailedCleanupRow, EXPECTED_FAILED_REPORT).ok, true);
+assert.equal(
+  evaluateFailedParticipantReportCleanupGuard(
+    {
+      ...exactFailedCleanupRow,
+      id: EXPECTED_IPIP_FAILED_REPORT.id,
+      attempt_id: EXPECTED_IPIP_FAILED_REPORT.attemptId,
+      test_slug: EXPECTED_IPIP_FAILED_REPORT.testSlug,
+    },
+    EXPECTED_IPIP_FAILED_REPORT,
+  ).ok,
+  true,
+);
 assert.equal(
   evaluateFailedParticipantReportCleanupGuard({
     ...exactFailedCleanupRow,
     audience: "hr",
-  }).ok,
+  }, EXPECTED_FAILED_REPORT).ok,
   false,
 );
 assert.equal(
   evaluateFailedParticipantReportCleanupGuard({
     ...exactFailedCleanupRow,
-    report_snapshot: { unexpected: true },
-  }).ok,
+    report_status: "ready",
+  }, EXPECTED_FAILED_REPORT).ok,
+  false,
+);
+assert.equal(
+  evaluateFailedParticipantReportCleanupGuard({
+    ...exactFailedCleanupRow,
+    attempt_id: EXPECTED_IPIP_FAILED_REPORT.attemptId,
+  }, EXPECTED_FAILED_REPORT).ok,
+  false,
+);
+assert.equal(
+  evaluateFailedParticipantReportCleanupGuard({
+    ...exactFailedCleanupRow,
+    test_slug: "safran_v1",
+  }, EXPECTED_FAILED_REPORT).ok,
+  false,
+);
+assert.equal(
+  evaluateFailedParticipantReportCleanupGuard({
+    ...exactFailedCleanupRow,
+    report_type: "team",
+  }, EXPECTED_FAILED_REPORT).ok,
+  false,
+);
+assert.equal(
+  evaluateFailedParticipantReportCleanupGuard({
+    ...exactFailedCleanupRow,
+    source_type: "composite",
+  }, EXPECTED_FAILED_REPORT).ok,
   false,
 );
 
@@ -411,6 +458,22 @@ function createDeps(options = {}) {
         },
       attemptsBySlug,
       existingReportsBySlug,
+      failedCleanupRow:
+        options.failedCleanupRow ?? {
+          id: EXPECTED_FAILED_REPORT.id,
+          attempt_id: EXPECTED_FAILED_REPORT.attemptId,
+          test_slug: EXPECTED_FAILED_REPORT.testSlug,
+          report_type: EXPECTED_FAILED_REPORT.report_type,
+          audience: EXPECTED_FAILED_REPORT.audience,
+          source_type: EXPECTED_FAILED_REPORT.source_type,
+          report_status: EXPECTED_FAILED_REPORT.report_status,
+        },
+      deletedCleanupRow:
+        options.deletedCleanupRow ?? {
+          id: EXPECTED_FAILED_REPORT.id,
+        },
+      deleteCalls: [],
+      externalDeleteCalls: options.deleteCalls ?? null,
     },
   };
 }
@@ -654,7 +717,7 @@ function installCompositeSupabaseStub(deps) {
 
       if (table === "attempt_reports") {
         const state = { filters: {} };
-        return {
+        const builder = {
           select() {
             return this;
           },
@@ -665,11 +728,30 @@ function installCompositeSupabaseStub(deps) {
           order() {
             return this;
           },
+          async maybeSingle() {
+            if (state.filters.id) {
+              return { data: deps.__testData.failedCleanupRow, error: null };
+            }
+
+            return { data: null, error: null };
+          },
+          delete() {
+            return this;
+          },
+          async single() {
+            deps.__testData.deleteCalls.push({ ...state.filters });
+            if (Array.isArray(deps.__testData.externalDeleteCalls)) {
+              deps.__testData.externalDeleteCalls.push({ ...state.filters });
+            }
+            return { data: deps.__testData.deletedCleanupRow, error: null };
+          },
           then(resolve) {
             const slug = state.filters.test_slug;
             resolve({ data: deps.__testData.existingReportsBySlug[slug] ?? [], error: null });
           },
         };
+
+        return builder;
       }
 
       if (table === "report_runtime_configs") {
@@ -750,6 +832,7 @@ async function main() {
     [TARGET_FAILED_REPORT_ID_ENV]: "00000000-0000-0000-0000-000000000000",
     [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
     [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+    [TARGET_TEST_SLUG_ENV]: "ipip-neo-120-v1",
   });
   assert.equal(wrongCleanupId.status, "blocked_cleanup_confirmation");
   assert.equal(wrongCleanupId.metadata.databaseWrites, false);
@@ -760,9 +843,103 @@ async function main() {
     [TARGET_FAILED_REPORT_ID_ENV]: EXPECTED_FAILED_REPORT.id,
     [TARGET_REPLAY_PARTICIPANT_ID_ENV]: "2432eb12-2b54-4881-bef2-2ac687b59e0b",
     [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+    [TARGET_TEST_SLUG_ENV]: EXPECTED_FAILED_REPORT.testSlug,
   });
   assert.equal(cleanupWrongOwner.status, "blocked_cleanup_confirmation");
   assert.equal(cleanupWrongOwner.metadata.databaseWrites, false);
+
+  const cleanupWrongSlug = await runWithStubbedDeps({
+    [FAILED_REPORT_CLEANUP_CONFIRM_ENV]: "true",
+    [TARGET_FAILED_REPORT_ID_ENV]: EXPECTED_IPIP_FAILED_REPORT.id,
+    [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+    [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+    [TARGET_TEST_SLUG_ENV]: "mwms_v1",
+  });
+  assert.equal(cleanupWrongSlug.status, "blocked_cleanup_confirmation");
+  assert.equal(cleanupWrongSlug.metadata.databaseWrites, false);
+
+  const cleanupWrongAttemptRow = await runWithStubbedDeps(
+    {
+      [FAILED_REPORT_CLEANUP_CONFIRM_ENV]: "true",
+      [TARGET_FAILED_REPORT_ID_ENV]: EXPECTED_IPIP_FAILED_REPORT.id,
+      [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+      [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+      [TARGET_TEST_SLUG_ENV]: EXPECTED_IPIP_FAILED_REPORT.testSlug,
+    },
+    {
+      failedCleanupRow: {
+        id: EXPECTED_IPIP_FAILED_REPORT.id,
+        attempt_id: "wrong-attempt-id",
+        test_slug: EXPECTED_IPIP_FAILED_REPORT.testSlug,
+        report_type: "individual",
+        audience: "participant",
+        source_type: "single_test",
+        report_status: "failed",
+      },
+    },
+  );
+  assert.equal(cleanupWrongAttemptRow.status, "blocked_cleanup_failed_report_guard");
+  assert.equal(cleanupWrongAttemptRow.metadata.databaseWrites, false);
+
+  const cleanupReadyRow = await runWithStubbedDeps(
+    {
+      [FAILED_REPORT_CLEANUP_CONFIRM_ENV]: "true",
+      [TARGET_FAILED_REPORT_ID_ENV]: EXPECTED_IPIP_FAILED_REPORT.id,
+      [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+      [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+      [TARGET_TEST_SLUG_ENV]: EXPECTED_IPIP_FAILED_REPORT.testSlug,
+    },
+    {
+      failedCleanupRow: {
+        id: EXPECTED_IPIP_FAILED_REPORT.id,
+        attempt_id: EXPECTED_IPIP_FAILED_REPORT.attemptId,
+        test_slug: EXPECTED_IPIP_FAILED_REPORT.testSlug,
+        report_type: "individual",
+        audience: "participant",
+        source_type: "single_test",
+        report_status: "ready",
+      },
+    },
+  );
+  assert.equal(cleanupReadyRow.status, "blocked_cleanup_failed_report_guard");
+  assert.equal(cleanupReadyRow.metadata.databaseWrites, false);
+
+  const cleanupDeleteCalls = [];
+  const cleanupSuccess = await runWithStubbedDeps(
+    {
+      [FAILED_REPORT_CLEANUP_CONFIRM_ENV]: "true",
+      [TARGET_FAILED_REPORT_ID_ENV]: EXPECTED_IPIP_FAILED_REPORT.id,
+      [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+      [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+      [TARGET_TEST_SLUG_ENV]: EXPECTED_IPIP_FAILED_REPORT.testSlug,
+    },
+    {
+      deleteCalls: cleanupDeleteCalls,
+      failedCleanupRow: {
+        id: EXPECTED_IPIP_FAILED_REPORT.id,
+        attempt_id: EXPECTED_IPIP_FAILED_REPORT.attemptId,
+        test_slug: EXPECTED_IPIP_FAILED_REPORT.testSlug,
+        report_type: "individual",
+        audience: "participant",
+        source_type: "single_test",
+        report_status: "failed",
+      },
+      deletedCleanupRow: {
+        id: EXPECTED_IPIP_FAILED_REPORT.id,
+      },
+    },
+  );
+  assert.equal(cleanupSuccess.status, "cleanup_complete");
+  assert.equal(cleanupSuccess.metadata.databaseWrites, true);
+  assert.equal(cleanupSuccess.metadata.cleanupPerformed, true);
+  assert.equal(cleanupSuccess.metadata.openAiCalled, false);
+  assert.equal(cleanupSuccess.metadata.reportsGenerated, false);
+  assert.equal(cleanupSuccess.metadata.reportRetried, false);
+  assert.equal(cleanupSuccess.cleanupPerformed, true);
+  assert.equal(cleanupSuccess.deletedReportId, EXPECTED_IPIP_FAILED_REPORT.id);
+  assert.equal(cleanupSuccess.attemptId, EXPECTED_IPIP_FAILED_REPORT.attemptId);
+  assert.equal(cleanupSuccess.testSlug, EXPECTED_IPIP_FAILED_REPORT.testSlug);
+  assert.deepEqual(cleanupDeleteCalls, [{ id: EXPECTED_IPIP_FAILED_REPORT.id }]);
 
   const wrongIds = await runWithStubbedDeps({
     [CONFIRM_ENV]: "true",

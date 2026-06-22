@@ -165,6 +165,7 @@ async function main() {
     transport,
   });
   assert.equal(directCall.transport.fetchImplementation, "undici.fetch");
+  assert.equal(directCall.transport.dispatcherPassedToFetchInit, true);
   assert.equal(transportFetchUrl, "https://api.openai.com/v1/chat/completions");
   assert.equal(transportFetchInit.dispatcher, transport.dispatcher);
   assert.equal(transportFetchInit.headers.Authorization, "Bearer probe-key");
@@ -217,6 +218,44 @@ async function main() {
   assert.equal(success.transportBodyTimeoutMs, 900000);
   assert.equal(success.fetchImplementation, "undici.fetch");
   assert.deepEqual(success.topLevelResponseKeys, ["report_type", "audience"]);
+
+  let unsafeFetchCalled = false;
+  const unsafeTransportRefusal = await runProbe({
+    env: confirmedEnv(),
+    readFile() {
+      return JSON.stringify(createCaptureArtifact());
+    },
+    resolveTransport() {
+      return {
+        fetchImplementation: "global.fetch",
+        dispatcher: null,
+        dispatcherConfigured: false,
+        transportTimeoutApplied: false,
+        transportHeadersTimeoutMs: null,
+        transportBodyTimeoutMs: null,
+        async fetchImpl() {
+          unsafeFetchCalled = true;
+          throw new Error("unsafe transport fetch should not be called");
+        },
+      };
+    },
+    now: (() => {
+      let tick = 0;
+      return () => {
+        tick += 5;
+        return tick;
+      };
+    })(),
+  });
+  assert.equal(unsafeFetchCalled, false);
+  assert.equal(unsafeTransportRefusal.openAiCalled, false);
+  assert.equal(unsafeTransportRefusal.databaseWrites, false);
+  assert.equal(unsafeTransportRefusal.transportTimeoutApplied, false);
+  assert.equal(unsafeTransportRefusal.fetchImplementation, "global.fetch");
+  assert.match(
+    unsafeTransportRefusal.errorMessage,
+    /requires explicit OpenAI transport timeouts/,
+  );
 
   const parseFailure = await runProbe({
     env: confirmedEnv(),

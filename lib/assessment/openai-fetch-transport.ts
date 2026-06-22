@@ -16,10 +16,13 @@ export type OpenAiFetchTransport = {
   fetchImpl: typeof fetch;
   fetchImplementation: "undici.fetch" | "global.fetch";
   dispatcher: unknown | null;
+  dispatcherConfigured: boolean;
   transportTimeoutApplied: boolean;
   transportHeadersTimeoutMs: number | null;
   transportBodyTimeoutMs: number | null;
 };
+
+export const OPENAI_LONG_TIMEOUT_TRANSPORT_THRESHOLD_MS = 300000;
 
 function loadUndiciModule(): UndiciLikeModule | null {
   try {
@@ -48,18 +51,66 @@ export function resolveOpenAiFetchTransport(
   undiciModule: UndiciLikeModule | null = loadUndiciModule(),
 ): OpenAiFetchTransport {
   const dispatcher = createOpenAiTransportDispatcher(timeoutMs, undiciModule);
+  const hasUndiciFetch = typeof undiciModule?.fetch === "function";
   const fetchImpl =
-    typeof undiciModule?.fetch === "function" ? undiciModule.fetch.bind(undiciModule) : fetch;
+    hasUndiciFetch ? undiciModule.fetch!.bind(undiciModule) : fetch;
 
-  return {
+  const transport: OpenAiFetchTransport = {
     fetchImpl,
-    fetchImplementation:
-      typeof undiciModule?.fetch === "function" ? "undici.fetch" : "global.fetch",
+    fetchImplementation: hasUndiciFetch ? "undici.fetch" : "global.fetch",
     dispatcher,
+    dispatcherConfigured: dispatcher !== null,
     transportTimeoutApplied: dispatcher !== null,
     transportHeadersTimeoutMs: dispatcher !== null ? timeoutMs : null,
     transportBodyTimeoutMs: dispatcher !== null ? timeoutMs : null,
   };
+
+  try {
+    assertOpenAiTransportReadyForTimeout({
+      timeoutMs,
+      transport,
+      context: "OpenAI transport resolution",
+    });
+  } catch (error) {
+    if (error && typeof error === "object") {
+      (error as Error & { transport?: OpenAiFetchTransport }).transport = transport;
+    }
+    throw error;
+  }
+
+  return transport;
+}
+
+export function assertOpenAiTransportReadyForTimeout(args: {
+  timeoutMs: number;
+  transport: OpenAiFetchTransport;
+  context: string;
+}): void {
+  if (args.timeoutMs <= OPENAI_LONG_TIMEOUT_TRANSPORT_THRESHOLD_MS) {
+    return;
+  }
+
+  const transportReady =
+    args.transport.fetchImplementation === "undici.fetch" &&
+    args.transport.dispatcher !== null &&
+    args.transport.transportTimeoutApplied === true &&
+    args.transport.transportHeadersTimeoutMs === args.timeoutMs &&
+    args.transport.transportBodyTimeoutMs === args.timeoutMs;
+
+  if (transportReady) {
+    return;
+  }
+
+  throw new Error(
+    [
+      `${args.context} requires explicit OpenAI transport timeouts for timeoutMs=${args.timeoutMs}.`,
+      `Resolved fetchImplementation=${args.transport.fetchImplementation}.`,
+      `transportTimeoutApplied=${args.transport.transportTimeoutApplied}.`,
+      `transportHeadersTimeoutMs=${args.transport.transportHeadersTimeoutMs ?? "null"}.`,
+      `transportBodyTimeoutMs=${args.transport.transportBodyTimeoutMs ?? "null"}.`,
+      "Install/configure undici so long OpenAI calls use undici.fetch with an Agent dispatcher, or lower AI_REPORT_OPENAI_TIMEOUT_MS to 300000 or less.",
+    ].join(" "),
+  );
 }
 
 export function buildOpenAiFetchRequestInit(args: {

@@ -63,16 +63,28 @@ const transportHelperPath = path.join(projectRoot, "lib", "assessment", "openai-
 const transportHelperSource = fs.readFileSync(transportHelperPath, "utf8");
 
 assert.match(providerSource, /resolveOpenAiFetchTransport/);
+assert.match(providerSource, /assertOpenAiTransportReadyForTimeout/);
 assert.match(providerSource, /transport\.fetchImpl/);
 assert.match(transportHelperSource, /headersTimeout:\s*timeoutMs/);
 assert.match(transportHelperSource, /bodyTimeout:\s*timeoutMs/);
 assert.match(transportHelperSource, /fetchImplementation:\s*"undici\.fetch"/);
 assert.doesNotMatch(transportHelperSource, /headersTimeout:\s*300000|bodyTimeout:\s*300000/);
+const providerTransportGuardCallIndex = providerSource.indexOf(
+  "assertOpenAiTransportReadyForTimeout({\n      timeoutMs",
+);
+const providerFetchCallIndex = providerSource.indexOf("transport.fetchImpl");
+assert.notEqual(providerTransportGuardCallIndex, -1);
+assert.notEqual(providerFetchCallIndex, -1);
+assert(
+  providerTransportGuardCallIndex < providerFetchCallIndex,
+  "Provider must assert long-timeout transport safety before calling fetch.",
+);
 
 const {
   buildOpenAiChatCompletionsRequestBody,
 } = require(providerPath);
 const {
+  assertOpenAiTransportReadyForTimeout,
   buildOpenAiFetchRequestInit,
   resolveOpenAiFetchTransport,
 } = require(transportHelperPath);
@@ -120,6 +132,7 @@ function main() {
     },
   });
   assert.equal(transport.fetchImplementation, "undici.fetch");
+  assert.equal(transport.dispatcherConfigured, true);
   assert.equal(transport.transportTimeoutApplied, true);
   assert.equal(transport.transportHeadersTimeoutMs, 45000);
   assert.equal(transport.transportBodyTimeoutMs, 45000);
@@ -127,6 +140,18 @@ function main() {
     headersTimeout: 45000,
     bodyTimeout: 45000,
   });
+  assert.doesNotThrow(() =>
+    assertOpenAiTransportReadyForTimeout({
+      timeoutMs: 900000,
+      transport: resolveOpenAiFetchTransport(900000, {
+        fetch: async () => ({ ok: true }),
+        Agent: function Agent(options) {
+          this.options = options;
+        },
+      }),
+      context: "test long OpenAI call",
+    }),
+  );
 
   const withoutDispatcherTransport = resolveOpenAiFetchTransport(45000, {
     fetch: async () => ({ ok: true }),
@@ -141,6 +166,60 @@ function main() {
 
   assert.equal(Object.prototype.hasOwnProperty.call(withoutDispatcher, "dispatcher"), false);
   assert.deepEqual(JSON.parse(withoutDispatcher.body), requestBody);
+  assert.doesNotThrow(() =>
+    assertOpenAiTransportReadyForTimeout({
+      timeoutMs: 300000,
+      transport: withoutDispatcherTransport,
+      context: "test short OpenAI call",
+    }),
+  );
+  assert.throws(
+    () =>
+      assertOpenAiTransportReadyForTimeout({
+        timeoutMs: 300001,
+        transport: withoutDispatcherTransport,
+        context: "test long OpenAI call",
+      }),
+    /requires explicit OpenAI transport timeouts/,
+  );
+
+  let globalWithDispatcherError = null;
+  try {
+    resolveOpenAiFetchTransport(900000, {
+      Agent: function Agent(options) {
+        this.options = options;
+      },
+    });
+  } catch (error) {
+    globalWithDispatcherError = error;
+  }
+  assert(globalWithDispatcherError instanceof Error);
+  assert.equal(globalWithDispatcherError.transport.fetchImplementation, "global.fetch");
+  assert.equal(globalWithDispatcherError.transport.transportTimeoutApplied, true);
+  assert.throws(
+    () =>
+      assertOpenAiTransportReadyForTimeout({
+        timeoutMs: 900000,
+        transport: globalWithDispatcherError.transport,
+        context: "test long OpenAI call",
+      }),
+    /Resolved fetchImplementation=global\.fetch/,
+  );
+  assert.throws(
+    () => resolveOpenAiFetchTransport(300001, null),
+    /requires explicit OpenAI transport timeouts/,
+  );
+
+  const realTransport = resolveOpenAiFetchTransport(900000);
+  assert.equal(realTransport.fetchImplementation, "undici.fetch");
+  assert.equal(realTransport.transportTimeoutApplied, true);
+  assert.equal(realTransport.transportHeadersTimeoutMs, 900000);
+  assert.equal(realTransport.transportBodyTimeoutMs, 900000);
+  assertOpenAiTransportReadyForTimeout({
+    timeoutMs: 900000,
+    transport: realTransport,
+    context: "real long OpenAI call",
+  });
 
   console.log("test-report-provider-openai-timeout-transport: ok");
 }
