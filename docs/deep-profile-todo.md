@@ -239,26 +239,29 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - `033f8975-5d9c-4c66-8842-f37527d556d5`
 - Originalna Amra nije dirana i nije rađena regeneracija originalnih reportova.
 
-### Completion note — Amra replay participant/user report QA in progress
+### Completion note — Amra replay participant/user report QA closed
 
-- Controlled replay participant/user QA je u toku za fixture `amra_replay_fixture_v1` (`a5678fd5-8fea-4308-8569-5448f26b4f71` / `033f8975-5d9c-4c66-8842-f37527d556d5`).
-- Data-only QA mode je uveden za replay participant generation: prose/BHS/genericity/actionability/safety su diagnostic-only, dok JSON/shape/contract/data/source/reference checks ostaju blocking; AI prose se ne rewrite-a i originalna Amra ostaje netaknuta.
-- MWMS participant replay report je ready: `4979b8b8-ee23-4941-9828-c650542baee0` (`openai / gpt-5.5`).
-- SAFRAN participant replay report je ready: `5c2766ca-86e9-4c57-9624-62fdc03a946c` (`openai / gpt-5.5`).
-- IPIP participant replay report još nije ready; `v2-single` je više puta failao (`300000ms` timeout, `900000ms` fetch failed, latest failed row `294a177b-7b4d-4127-823a-9ce6c0464be1`).
-- Request inspector pokazuje moderate request size, ne očigledno oversized payload: request body ~61.7 KB, user prompt ~45.7k chars, schema ~8.8k chars.
-- Direct OpenAI probe van report job lifecyclea i dalje faila oko 301s sa `HeadersTimeoutError` / `UND_ERR_HEADERS_TIMEOUT`; trenutno `fetchImplementation` ispada `global.fetch`, a `transportTimeoutApplied` je `false`.
-- Trenutni zaključak je da problem nije dokazano prompt size, validator, DB ili report job lifecycle, nego OpenAI transport timeout koji se ne primjenjuje u realnom runtimeu.
-- Sljedeći korak je popraviti OpenAI transport helper tako da dugi OpenAI pozivi koriste realni Undici headers/body timeout ili failaju lokalno prije poziva, pa tek onda retry IPIP replay generation.
-- Replay report IDs i finalni audit status:
-  - IPIP: `5fcc9019-5ddd-42c7-83bb-d6d663e94f72` / `e71d472a-13cb-4cc9-9582-6eaa262affca` / `ready / openai / gpt-5.5`
-  - SAFRAN: `30124c4a-e7d9-412b-bad3-596d8e3bf97b` / `54702bc1-7d91-492e-9b50-14aff6706d34` / `ready / openai / gpt-5.5`
-  - MWMS: `4013e438-099a-400d-bf8c-b7d34dcb60b3` / `8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1` / `ready / openai / gpt-5.5`
-- Runtime config / provider verification je potvrđena za active `individual/hr/single_test` lane:
-  - `generator_type = openai`
-  - `model_name = gpt-5.5`
-  - `reasoning_effort = medium`
-  - `temperature = null`
+- Controlled replay participant/user QA je završen za fixture `amra_replay_fixture_v1` (`a5678fd5-8fea-4308-8569-5448f26b4f71` / `033f8975-5d9c-4c66-8842-f37527d556d5`).
+- Data-only QA mode ostaje uveden za replay participant generation: prose/BHS/genericity/actionability/safety su diagnostic-only, dok JSON/shape/contract/data/source/reference checks ostaju blocking; AI prose se ne rewrite-a i originalna Amra ostaje netaknuta.
+- OpenAI long-timeout transport problem je riješen u code slice-u: uveden je safe Undici transport path za long OpenAI calls sa fail-closed zaštitom za duge timeout-e.
+- Direct OpenAI probe van report job lifecyclea je prošao nakon transport fix-a:
+  - provider mode: `v2-single`
+  - model: `gpt-5.5`
+  - schema: `ipip-neo-120-participant-v2`
+  - HTTP `200`
+  - parsed JSON `true`
+  - `transportTimeoutApplied: true`
+  - `dispatcherConfigured: true`
+  - rezultat: `direct_openai_succeeded`
+- Replay participant ostaje odvojen od originalne Amre i originalna Amra nije dirana.
+- Failed IPIP replay report row je očišćen explicit operator allowlist cleanupom, nakon čega je IPIP participant replay report generisan i ready.
+- Sva tri Amra replay participant single-test reporta su ready, `openai / gpt-5.5`, snapshots `true`:
+  - IPIP: `f1eec6b9-1e54-43fe-b570-07fe90894a10`
+  - MWMS: `4979b8b8-ee23-4941-9828-c650542baee0`
+  - SAFRAN: `5c2766ca-86e9-4c57-9624-62fdc03a946c`
+- Auth user je kreiran i povezan za replay participant:
+  - `authUserId` `fd81f850-18bd-4550-a538-3848891b7400`
+  - login email `amra.new1@example.test`
 - Finalni read-only audit za sva tri reporta potvrdio je:
   - `report_status = ready`
   - `generator_type = openai`
@@ -267,6 +270,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - `report_snapshot_present = true`
   - `failure_code = null`
   - `failure_reason = null`
+- Sljedeći korak za Amra lane je samo future UI/browser review ili dodatni read-only audit ako se otvori novi product question; generation/report QA je zatvoren.
 - IPIP BHS canonical label decision je sada aktivni status:
   - internal psychometric key ostaje `COOPERATION`
   - active BHS facet label za `COOPERATION` je `Sklonost saradnji`
@@ -6881,6 +6885,22 @@ Razlog za sljedeći prioritet:
     * promjenu samo jedne konkretne instance elementa na jednom ekranu bez uticaja na ostale instance
   * Prvi implementation korak ne smije biti redesign, nego audit i mapiranje postojećeg stanja.
   * Najnoviji single-test HR report audit pokazuje da se UI polish/redesign ne smije raditi prije report authority stabilizacije. Vizuelni problem na IPIP HR reportu nije izolovan samo u stilu; isti ekran otkriva prompt, terminology, snapshot i renderer-path split. Sljedeći UI rad mora prvo znati koji route/renderer je canonical i koji snapshot/display model je autoritativan.
+
+### Candidate single-test report UI investigation i pending design decision
+
+- Read-only audit je pokazao da participant-facing single-test reportovi za IPIP, MWMS i SAFRAN i dalje idu kroz legacy monolith `CompletedAssessmentSummary`, a ne kroz novi izolovani participant report renderer.
+- `app/(protected)/app/attempts/[attemptId]/report/page.tsx` koristi postojeći participant detail route i aktivni render path ostaje hibridan: dio stilova je moderniji, ali mnogo copyja i layouta i dalje dolazi iz legacy renderer/template sloja.
+- Vidljive legacy/static strings i dalje dolaze iz renderera/display helpera, ne iz snapshot-only sadržaja.
+- Nije pronađen zaseban, već postojeć i neiskorišten premium participant report renderer koji bi se mogao samo preusmjeriti na route bez dodatnog rada.
+- Product leaning je prema Option B kao stabilnijem dugoročnom smjeru:
+  - novi izolovani `CandidateReportCanvas`
+  - zajednički `CandidateReportHero`
+  - zajednički `CandidateReportSection`
+  - zajednički `CandidateReportCard`
+  - specifični body rendereri `IpipCandidateReportView`, `MwmsCandidateReportView`, `SafranCandidateReportView`
+  - footerless ili premium report chrome bez oslanjanja na legacy report klase iz `globals.css`
+- Option A ostaje samo kratkoročni fallback: patch current `CompletedAssessmentSummary`, shell/footer, širinu i nekoliko legacy kartica.
+- Status ove odluke je pending design decision; nema implementacije, nema promjene route-a i nema regeneracije reportova.
 
 ### Completion note — Participant reports semantic UI targeting foundation
 
