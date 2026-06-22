@@ -74,6 +74,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Team Fit provider request capture inspector v0.1 | Dev-only no-call/no-write inspector za budući `team_fit_report_v1` provider path dokumentovan u `scripts/inspect-team-fit-provider-request.cjs`, uz offline test `scripts/test-inspect-team-fit-provider-request.cjs`; inspector gradi deterministic request capture artefakt iz fixture input bundle-a i postojećih Team Fit helper slojeva | Relacijski report / Candidate-team fit | Inspector gradi complete capture artefakt sa input bundle-om, evidence id mapom, provider prompt inputom, messages, request draftom, response formatom/JSON schema-om, schema name-om i future-provider-like request bodyjem; jasno potvrđuje no-call/no-write stanje, defaultno ispisuje JSON na stdout i podržava optional `/tmp` dump sa `0600` permission. Sljedeći zdravi Team Fit kandidati ostaju zasebne odluke: golden examples/reviewer harness, read-only DB source audit za budući real input builder, mock provider display/read-model compatibility fixture ili eventualno confirmed OpenAI dry-run tek kasnije i samo nakon dodatne odluke. |
 | P1        | Team Fit read-only DB source audit / source-lineage reconciliation | Završeno / operator-only read-only audit | Relacijski report / Candidate-team fit | Zatvoreno nakon dodavanja read-only source audit inspectora i offline guardrail testa; operator audit je potvrdio da su postojeći ready Team Fit artefakti legacy persisted reportovi sa stale source pointerima, a sljedeći korak je novi čist fixture par prije real provider dry-run-a. |
 | P1        | Team Fit clean fixture pair planning slice | Završeno / docs-only clean fixture pair plan; current DB nema clean read-only fixture pair | Relacijski report / Candidate-team fit | Prije real provider dry-run-a pripremiti validan candidate assessment assignment u istoj organizaciji kao validni Team Dynamics aggregation snapshot i potvrditi par kroz read-only inspector. |
+| P1        | Team Fit clean candidate fixture-prep operator script | Završeno za dev-only fixture-prep operator script; confirmed write nije pokrenut | Relacijski report / Candidate-team fit | Ako operator eksplicitno odobri, pokrenuti confirmed clean candidate fixture write za target participant/org/team aggregation, zatim potvrditi par kroz read-only DB source inspector. Ne otvarati Team Fit provider dry-run prije inspector PASS-a. |
 | P1        | Team Dynamics instrument spec v0.1 — TDM-31 + TPS7-based + SJT + outcome pulse | Spec/content package završen / validation pending | Team module / Instrument model | Canonical `team_dynamics_assessment_v1` content/spec package je kreiran i zaključava 48 jedinica kroz TDM-31, psychological safety, SJT i outcome pulse. Preostaju SME review, pilot validation, licensing/legal confirmation, full Rasch/AD_M/SJT empirical calibration i report/scoring validation. Runtime/import/execution implementacija se prati kroz zaseban P1 `Mixed-format Team Dynamics runtime/import support`. Sljedeći implementation slice se odlučuje u chatu. |
 | P1        | Mixed-format Team Dynamics runtime/import support | Završeno / final mixed-format scoring runtime, full-readiness aggregation runtime, report selection UI, dedicated `team_assessment_reports` storage/queue/input shell, Executive Overview contract/validator, mock-safe generation shell, OpenAI provider-backed processor, read-only renderer/display route, manual process/retry UI, manual worker shell i renderer/product polish V1 potvrđeni | Team module / Runtime + Import | Executive Overview renderer/product polish V1 zatvoren. Sljedeći product decision: izabrati novi fokus nakon prvog timskog reporta (npr. Team Fit product/report contract spec, drugi Team Dynamics report kind ili drugi prioritet iz canonical todo-a). Ne otvarati scheduler kao default. |
 | P1        | Team Dynamics data model scaffold and placeholder package support | Završeno / Scaffold + aggregation lifecycle zatvoreni | Team module / Data model scaffold | Runtime DB verifikacija je potvrdila da `team_dynamics_v1_strong` već postoji kao aktivan test (`status='active'`, `is_active=true`) sa potvrđenim footprintom (4 dimenzije, 36 pitanja, 180 opcija, 0 promptova; BS lokalizacije 36/180) i bez report footprinta (`attempt_reports=0`, `assessment_reports single_test=0`). Završeno je post-import active DB guardrail hardening, wrapper readiness test slice, SQL-backed wrapper lifecycle smoke (`BEGIN ... ROLLBACK`), execution access helper, wrapper-based intro i `/run` shell, centralni execution safe-state resolver, wrapper-based `/run` handoff skeleton bez `AssessmentForm`-a, read-only question outline loader, read-only block/section outline za `/run` handoff, docs/spec runtime state machine slice, minimalni UI-only response skeleton za prvi Likert-style item, UI-only local navigation kroz više Likert-style pitanja, docs/spec answer payload contract slice, server-side answer payload validator/helper bez DB write-a, Team Dynamics DB persistence skeleton za single-select Likert odgovore, Team Dynamics manual save action/UI integration, Team Dynamics DB rehydration/resume read path, Team Dynamics completion readiness helper, Team Dynamics completion action skeleton, Team Dynamics post-completion safe UI / admin progress confirmation, Team Dynamics minimal scoring helper, docs/spec scoring storage decision, Team Dynamics member score persistence slice, Team Dynamics server-only post-completion scoring hook, Team Dynamics member score read/verification layer, Team Dynamics server-only aggregation draft helper, Team Dynamics aggregation storage decision / persistence boundary, Team Dynamics aggregation snapshot persistence slice, Team Dynamics aggregation persistence read/verification layer, Team Dynamics end-to-end server-side aggregation runtime smoke, Team Dynamics aggregation persistence lifecycle hardening, Team Dynamics aggregation lifecycle helper skeleton i Team Dynamics aggregation lifecycle runtime smoke. Zatvoreno nakon potvrde wrapper execution scaffold-a, member-level scoring chain-a, team-level aggregation storage/read/lifecycle chain-a, lifecycle ownership guardraila i end-to-end server-side smoke testova. UI, finalni mixed-format runtime, Team Dynamics report, AI/report generation i Team Fit ostaju zasebni budući taskovi. |
@@ -1281,6 +1282,50 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - Blocker razlog je missing candidate assessment assignment in team organization.
 - Real Team Fit provider dry-run ostaje blokiran dok operator ne pripremi validan fixture pair i dok read-only inspector ne potvrdi PASS.
 - Nije bilo OpenAI poziva, DB write-a, report generation/regenerationa, provider runtime-a, processor/manual process actiona, UI/renderer promjena, lifecycle/worker/scheduler promjena, DB/migration promjena, Composite HR runtime promjena, small-AI reviewer implementacije ili app-level quality gradinga.
+
+### Completion note — Team Fit clean candidate fixture-prep operator script
+
+- Dodan je `scripts/prepare-team-fit-clean-candidate-fixture.cjs`.
+- Dodan je `scripts/test-prepare-team-fit-clean-candidate-fixture.cjs`.
+- Script je dev-only operator alat za pripremu candidate-side clean fixture source-a za budući Team Fit clean pair.
+- Safe helper/lifecycle nalaz:
+  - postoji siguran helper sloj za kreiranje assignmenta i linkova: `createStandardAssessmentAssignment`, `buildAssignmentAttemptLinks`, `createAssignmentAttemptLinks`
+  - postoji scoring helper: `persistCompletedAssessmentResults`
+  - ne postoji pogodan high-level lifecycle path za automatsko kompletiranje IPIP/SAFRAN/MWMS bez browser/cookie/report-orchestration side-effecta
+  - script zato koristi dev fixture obrazac: popuni required responses, pozove postojeći scoring helper, linkuje attempts na assignment i ne pokreće report orchestration, OpenAI, provider ili Team Fit report flow
+- Default mode je dry-run/no-write i vraća `confirmation_required`.
+- Dry-run potvrđuje:
+  - `writeModeConfirmed = false`
+  - `databaseWrites = false`
+  - `openAiCalled = false`
+  - `teamFitProviderCalled = false`
+  - `teamFitReportGenerated = false`
+  - `reportGenerated = false`
+  - `reportRegenerated = false`
+  - `teamFitReportsTouched = false`
+  - `teamDynamicsAggregationChanged = false`
+  - `workerOrSchedulerRun = false`
+  - `uiOrRendererChanged = false`
+  - `migrationOrSchemaChanged = false`
+  - `compositeHrRuntimeChanged = false`
+- Confirmed write mode nije pokrenut.
+- Confirmed write mode zahtijeva `CONFIRM_TEAM_FIT_CLEAN_CANDIDATE_FIXTURE_WRITE=true` i eksplicitne target env varijable za organization, participant i Team Dynamics aggregation snapshot.
+- Script targetira postojeći candidate participant:
+  - `participant_id = 38a5d1e4-ee4e-4b1b-9bb3-050e1bfb93bf`
+  - organization `d4508f7a-bc88-4870-8e90-d6487aa8ec3a`
+- Script targetira postojeći validni Team Dynamics aggregation snapshot:
+  - `team_aggregation_snapshot_id = 01716095-a273-4eb0-a14c-5facd90a7532`
+- Script ima strict guardove za participant org ownership, Team Dynamics aggregation org ownership, ready/full-coverage snapshot i partial/incomplete existing fixture rows.
+- Script reuse-a postojeći validan assignment ako current source already resolves.
+- Ako nema assignmenta ni postojećih target attempts, script može u confirmed mode-u kreirati completed standard battery assignment, IPIP/SAFRAN/MWMS attempts, responses i persisted deterministic scores kroz postojeći dev fixture/scoring obrazac.
+- Script ne pokreće report orchestration, OpenAI, provider, Team Fit processor/manual process action ili Team Fit report flow.
+- Post-write read-only inspector ostaje obavezan prije bilo kakvog Team Fit provider dry-run-a.
+- Testovi/provjere koje su prošle:
+  - `node scripts/test-prepare-team-fit-clean-candidate-fixture.cjs`
+  - `node scripts/prepare-team-fit-clean-candidate-fixture.cjs`
+  - `node scripts/test-inspect-team-fit-db-sources.cjs`
+  - `npm run typecheck`
+- Nije bilo confirmed DB write-a, OpenAI poziva, provider poziva, report generation/regenerationa, Team Fit processor/manual process actiona, UI/renderer promjena, lifecycle/worker/scheduler promjena, migration/Supabase repair/db push/db reset promjena ili Composite HR runtime promjena.
 
 | P0        | Candidate dashboard attempt lifecycle hardening     | Završeno    | Candidate dashboard / Attempt lifecycle | Zatvoreno nakon popravke primary attempt selection pravila, standard battery guard-a protiv praznih duplikat attemptova i dodavanja povratka na dashboard iz completed report screena. |
 | P1        | HR report card status mapping                       | Završeno    | HR dashboard / Report status UX | Zatvoreno nakon jasnog razdvajanja ready/queued/processing/failed/unavailable/missing/incomplete stanja bez participant HR fallbacka. |
