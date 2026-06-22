@@ -8,15 +8,27 @@ const emptyModulePath = path.join(__dirname, "empty-module.cjs");
 const originalResolveFilename = Module._resolveFilename;
 
 const CONFIRM_ENV = "CONFIRM_AMRA_REPLAY_HR_REPORT_GENERATION";
+const CONFIRM_CLEANUP_ENV = "CONFIRM_AMRA_REPLAY_MOCK_REPORT_CLEANUP";
 const TARGET_REPLAY_PARTICIPANT_ID_ENV = "TARGET_REPLAY_PARTICIPANT_ID";
 const TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV = "TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID";
 const TARGET_TEST_SLUG_ENV = "TARGET_TEST_SLUG";
+const AI_REPORT_PROVIDER_ENV = "AI_REPORT_PROVIDER";
+const AI_REPORT_MODEL_ENV = "AI_REPORT_MODEL";
+const EXPECTED_PROVIDER = "openai";
+const EXPECTED_MODEL = "gpt-5.5";
 
 const EXPECTED_TARGETS = {
   participantId: "a5678fd5-8fea-4308-8569-5448f26b4f71",
   assessmentAssignmentId: "033f8975-5d9c-4c66-8842-f37527d556d5",
   organizationId: "5d93f3a1-3765-4ec4-b668-c0d1228a8445",
   fixture: "amra_replay_fixture_v1",
+};
+
+const ACCIDENTAL_MOCK_REPORT = {
+  reportId: "5263eda0-2307-4267-b629-939cf79bde70",
+  attemptId: "8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1",
+  testSlug: "mwms_v1",
+  generatorType: "mock",
 };
 
 const TARGET_TESTS = {
@@ -107,15 +119,28 @@ function getTargetInputs(env = process.env) {
   };
 }
 
+function getProviderInputs(env = process.env) {
+  return {
+    resolvedProvider: normalizeEnvString(env[AI_REPORT_PROVIDER_ENV]),
+    resolvedModel: normalizeEnvString(env[AI_REPORT_MODEL_ENV]),
+  };
+}
+
 function buildBaseArtifact(input = {}) {
   return {
     metadata: {
       script: "generate_amra_replay_single_test_hr_reports_v1",
       devOnly: true,
+      operation: input.operation ?? "generate",
       dryRun: input.dryRun ?? true,
       writeModeConfirmed: input.writeModeConfirmed ?? false,
       databaseWrites: false,
       openAiCalled: false,
+      openAiRequired: true,
+      expectedProvider: EXPECTED_PROVIDER,
+      expectedModel: EXPECTED_MODEL,
+      resolvedProvider: input.resolvedProvider ?? null,
+      resolvedModel: input.resolvedModel ?? null,
       reportsGenerated: false,
       reportRegenerated: false,
       originalAmraTouched: false,
@@ -144,6 +169,8 @@ function buildBaseArtifact(input = {}) {
     report_snapshot_present: false,
     queueAction: null,
     workerResult: null,
+    cleanupAction: null,
+    cleanedUpReportId: null,
     blockers: [],
     findings: [],
     nextReadOnlyAuditSql: null,
@@ -176,6 +203,25 @@ function buildReadOnlyAuditSql(input) {
     "  and ar.audience = 'hr'",
     "  and ar.source_type = 'single_test'",
     "order by ar.generated_at desc, ar.id desc;",
+  ].join("\n");
+}
+
+function buildCleanupAuditSql() {
+  return [
+    "select",
+    "  ar.id,",
+    "  ar.attempt_id,",
+    "  ar.test_slug,",
+    "  ar.report_type,",
+    "  ar.audience,",
+    "  ar.source_type,",
+    "  ar.report_status,",
+    "  ar.generator_type,",
+    "  ar.model_name",
+    "from public.attempt_reports ar",
+    `where ar.id = '${ACCIDENTAL_MOCK_REPORT.reportId}'`,
+    `  and ar.attempt_id = '${ACCIDENTAL_MOCK_REPORT.attemptId}'`,
+    `  and ar.test_slug = '${ACCIDENTAL_MOCK_REPORT.testSlug}';`,
   ].join("\n");
 }
 
@@ -231,11 +277,24 @@ function validateConfirmedInputs(env = process.env) {
   };
 }
 
+function validateProviderInputs(env = process.env) {
+  const providerInputs = getProviderInputs(env);
+
+  return {
+    ok:
+      providerInputs.resolvedProvider === EXPECTED_PROVIDER &&
+      providerInputs.resolvedModel === EXPECTED_MODEL,
+    ...providerInputs,
+  };
+}
+
 function buildConfirmationRequiredArtifact(env = process.env) {
   const inputs = getTargetInputs(env);
+  const providerInputs = getProviderInputs(env);
   const testSpec = inputs.testSlug ? TARGET_TESTS[inputs.testSlug] : null;
   const artifact = buildBaseArtifact({
     ...inputs,
+    ...providerInputs,
     targetAttemptId: testSpec?.attemptId ?? null,
     dryRun: true,
     writeModeConfirmed: false,
@@ -254,8 +313,10 @@ function buildConfirmationRequiredArtifact(env = process.env) {
 
 function buildInvalidInputArtifact(validation) {
   const testSpec = validation.inputs.testSlug ? TARGET_TESTS[validation.inputs.testSlug] : null;
+  const providerInputs = getProviderInputs();
   const artifact = buildBaseArtifact({
     ...validation.inputs,
+    ...providerInputs,
     targetAttemptId: testSpec?.attemptId ?? null,
     dryRun: true,
     writeModeConfirmed: true,
@@ -281,6 +342,61 @@ function buildInvalidInputArtifact(validation) {
       mismatches: validation.mismatches,
     });
   }
+
+  return artifact;
+}
+
+function buildProviderBlockedArtifact(input, providerValidation) {
+  const artifact = buildBaseArtifact({
+    ...input,
+    ...providerValidation,
+    targetAttemptId: TARGET_TESTS[input.testSlug]?.attemptId ?? null,
+    dryRun: true,
+    writeModeConfirmed: true,
+    status:
+      providerValidation.resolvedProvider !== EXPECTED_PROVIDER
+        ? "blocked_provider_not_openai"
+        : "blocked_model_not_gpt_5_5",
+  });
+
+  if (providerValidation.resolvedProvider !== EXPECTED_PROVIDER) {
+    artifact.blockers.push("blocked_provider_not_openai");
+    artifact.findings.push({
+      severity: "blocker",
+      category: "provider",
+      message: "Confirmed replay HR generation requires AI_REPORT_PROVIDER=openai.",
+    });
+  } else {
+    artifact.blockers.push("blocked_model_not_gpt_5_5");
+    artifact.findings.push({
+      severity: "blocker",
+      category: "provider",
+      message: "Confirmed replay HR generation requires AI_REPORT_MODEL=gpt-5.5.",
+    });
+  }
+
+  return artifact;
+}
+
+function buildAmbiguousModeArtifact(env = process.env) {
+  const inputs = getTargetInputs(env);
+  const providerInputs = getProviderInputs(env);
+  const testSpec = inputs.testSlug ? TARGET_TESTS[inputs.testSlug] : null;
+  const artifact = buildBaseArtifact({
+    ...inputs,
+    ...providerInputs,
+    targetAttemptId: testSpec?.attemptId ?? null,
+    dryRun: true,
+    writeModeConfirmed: false,
+    status: "blocked_ambiguous_operator_mode",
+  });
+
+  artifact.blockers.push("blocked_ambiguous_operator_mode");
+  artifact.findings.push({
+    severity: "blocker",
+    category: "operator_mode",
+    message: `Set either ${CONFIRM_ENV}=true or ${CONFIRM_CLEANUP_ENV}=true, not both.`,
+  });
 
   return artifact;
 }
@@ -407,6 +523,22 @@ async function loadFinalReportRow(supabase, reportId) {
   return data ?? null;
 }
 
+async function loadCleanupTargetReport(supabase) {
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select(
+      "id, attempt_id, test_slug, report_type, audience, source_type, report_status, generator_type, model_name",
+    )
+    .eq("id", ACCIDENTAL_MOCK_REPORT.reportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load cleanup target report: ${error.message}`);
+  }
+
+  return data ?? null;
+}
+
 async function runConfirmedGeneration(input) {
   installTypeScriptRuntime();
 
@@ -421,6 +553,7 @@ async function runConfirmedGeneration(input) {
   const targetSpec = TARGET_TESTS[input.testSlug];
   const artifact = buildBaseArtifact({
     ...input,
+    operation: "generate",
     targetAttemptId: targetSpec.attemptId,
     dryRun: false,
     writeModeConfirmed: true,
@@ -596,7 +729,130 @@ async function runConfirmedGeneration(input) {
   return artifact;
 }
 
+async function runConfirmedCleanup(input) {
+  installTypeScriptRuntime();
+
+  const { createSupabaseAdminClient } = require(path.join(projectRoot, "lib", "supabase", "admin.ts"));
+  const supabase = createSupabaseAdminClient();
+  const artifact = buildBaseArtifact({
+    ...input,
+    operation: "cleanup_mock_report",
+    targetAttemptId: ACCIDENTAL_MOCK_REPORT.attemptId,
+    dryRun: false,
+    writeModeConfirmed: true,
+    status: "running_cleanup",
+  });
+
+  const participant = await loadReplayParticipant(supabase, input.participantId);
+  if (!participant || participant.organization_id !== EXPECTED_TARGETS.organizationId || participant.email !== "amra.new1@example.test") {
+    artifact.status = "blocked";
+    artifact.blockers.push("cleanup_target_participant_guard_failed");
+    return artifact;
+  }
+
+  const assignment = await loadReplayAssignment(supabase, input.assessmentAssignmentId);
+  if (
+    !assignment ||
+    assignment.organization_id !== EXPECTED_TARGETS.organizationId ||
+    assignment.participant_id !== input.participantId ||
+    assignment.assignment_type !== "standard_battery" ||
+    assignment.metadata?.fixture !== EXPECTED_TARGETS.fixture
+  ) {
+    artifact.status = "blocked";
+    artifact.blockers.push("cleanup_target_assignment_guard_failed");
+    return artifact;
+  }
+
+  if (input.testSlug !== ACCIDENTAL_MOCK_REPORT.testSlug) {
+    artifact.status = "blocked";
+    artifact.blockers.push("cleanup_target_test_slug_mismatch");
+    return artifact;
+  }
+
+  const attempt = await loadReplayAttemptContext(supabase, input);
+  if (
+    !attempt ||
+    attempt.attemptId !== ACCIDENTAL_MOCK_REPORT.attemptId ||
+    attempt.organizationId !== EXPECTED_TARGETS.organizationId ||
+    attempt.participantId !== input.participantId
+  ) {
+    artifact.status = "blocked";
+    artifact.blockers.push("cleanup_target_attempt_guard_failed");
+    return artifact;
+  }
+
+  const report = await loadCleanupTargetReport(supabase);
+  if (!report) {
+    artifact.status = "blocked_cleanup_target_not_found";
+    artifact.blockers.push("cleanup_target_report_not_found");
+    artifact.nextReadOnlyAuditSql = buildCleanupAuditSql();
+    return artifact;
+  }
+
+  if (
+    report.id !== ACCIDENTAL_MOCK_REPORT.reportId ||
+    report.attempt_id !== ACCIDENTAL_MOCK_REPORT.attemptId ||
+    report.test_slug !== ACCIDENTAL_MOCK_REPORT.testSlug ||
+    report.generator_type !== ACCIDENTAL_MOCK_REPORT.generatorType ||
+    report.report_type !== "individual" ||
+    report.audience !== "hr" ||
+    report.source_type !== "single_test"
+  ) {
+    artifact.status = "blocked_cleanup_target_guard_failed";
+    artifact.blockers.push("cleanup_target_report_guard_failed");
+    return artifact;
+  }
+
+  const { error: deleteError } = await supabase
+    .from("attempt_reports")
+    .delete()
+    .eq("id", ACCIDENTAL_MOCK_REPORT.reportId)
+    .eq("attempt_id", ACCIDENTAL_MOCK_REPORT.attemptId)
+    .eq("test_slug", ACCIDENTAL_MOCK_REPORT.testSlug)
+    .eq("generator_type", ACCIDENTAL_MOCK_REPORT.generatorType)
+    .eq("report_type", "individual")
+    .eq("audience", "hr")
+    .eq("source_type", "single_test");
+
+  if (deleteError) {
+    throw new Error(`Failed to cleanup accidental mock replay report: ${deleteError.message}`);
+  }
+
+  artifact.metadata.databaseWrites = true;
+  artifact.status = "cleanup_completed";
+  artifact.cleanupAction = "delete_exact_mock_report";
+  artifact.cleanedUpReportId = ACCIDENTAL_MOCK_REPORT.reportId;
+  artifact.reportId = ACCIDENTAL_MOCK_REPORT.reportId;
+  artifact.testSlug = ACCIDENTAL_MOCK_REPORT.testSlug;
+  artifact.attemptId = ACCIDENTAL_MOCK_REPORT.attemptId;
+  artifact.nextReadOnlyAuditSql = buildCleanupAuditSql();
+
+  return artifact;
+}
+
 async function generateAmraReplaySingleTestHrReports({ env = process.env, stdout = process.stdout } = {}) {
+  if (env[CONFIRM_ENV] === "true" && env[CONFIRM_CLEANUP_ENV] === "true") {
+    const artifact = buildAmbiguousModeArtifact(env);
+    stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+    return artifact;
+  }
+
+  if (env[CONFIRM_CLEANUP_ENV] === "true") {
+    const validation = validateConfirmedInputs(env);
+    if (!validation.ok) {
+      const artifact = buildInvalidInputArtifact(validation);
+      stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+      return artifact;
+    }
+
+    const artifact = await runConfirmedCleanup({
+      ...validation.inputs,
+      ...getProviderInputs(env),
+    });
+    stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+    return artifact;
+  }
+
   if (env[CONFIRM_ENV] !== "true") {
     const artifact = buildConfirmationRequiredArtifact(env);
     stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
@@ -610,25 +866,44 @@ async function generateAmraReplaySingleTestHrReports({ env = process.env, stdout
     return artifact;
   }
 
-  const artifact = await runConfirmedGeneration(validation.inputs);
+  const providerValidation = validateProviderInputs(env);
+  if (!providerValidation.ok) {
+    const artifact = buildProviderBlockedArtifact(validation.inputs, providerValidation);
+    stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+    return artifact;
+  }
+
+  const artifact = await runConfirmedGeneration({
+    ...validation.inputs,
+    ...providerValidation,
+  });
   stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
   return artifact;
 }
 
 module.exports = {
   ALLOWED_TEST_SLUGS,
+  ACCIDENTAL_MOCK_REPORT,
+  AI_REPORT_MODEL_ENV,
+  AI_REPORT_PROVIDER_ENV,
   CONFIRM_ENV,
+  CONFIRM_CLEANUP_ENV,
   EXPECTED_TARGETS,
+  EXPECTED_MODEL,
+  EXPECTED_PROVIDER,
   TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV,
   TARGET_REPLAY_PARTICIPANT_ID_ENV,
   TARGET_TEST_SLUG_ENV,
   TARGET_TESTS,
   buildBaseArtifact,
+  buildCleanupAuditSql,
   buildConfirmationRequiredArtifact,
   buildReadOnlyAuditSql,
+  buildProviderBlockedArtifact,
   generateAmraReplaySingleTestHrReports,
   getTargetInputs,
   validateConfirmedInputs,
+  validateProviderInputs,
 };
 
 if (require.main === module) {
