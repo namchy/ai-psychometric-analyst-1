@@ -8,10 +8,12 @@ const scriptSource = fs.readFileSync(scriptPath, "utf8");
 
 assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_HR_REPORT_GENERATION/);
 assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_MOCK_REPORT_CLEANUP/);
+assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_FAILED_REPORT_CLEANUP/);
 assert.match(scriptSource, /TARGET_REPLAY_PARTICIPANT_ID/);
 assert.match(scriptSource, /TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID/);
 assert.match(scriptSource, /TARGET_TEST_SLUG/);
 assert.match(scriptSource, /TARGET_MOCK_REPORT_ID/);
+assert.match(scriptSource, /TARGET_FAILED_REPORT_ID/);
 assert.match(scriptSource, /AI_REPORT_PROVIDER/);
 assert.match(scriptSource, /AI_REPORT_MODEL/);
 assert.match(scriptSource, /openai/);
@@ -19,6 +21,7 @@ assert.match(scriptSource, /gpt-5\.5/);
 assert.match(scriptSource, /a5678fd5-8fea-4308-8569-5448f26b4f71/);
 assert.match(scriptSource, /033f8975-5d9c-4c66-8842-f37527d556d5/);
 assert.match(scriptSource, /d73c6390-e6fe-411a-a8f3-02c52bc60612/);
+assert.match(scriptSource, /31b9a229-c7cf-4119-af13-ca4bd0ce8147/);
 assert.match(scriptSource, /amra_replay_fixture_v1/);
 assert.match(scriptSource, /recoverHrAttemptReport/);
 assert.match(scriptSource, /claimNextReportJob/);
@@ -38,6 +41,8 @@ assert.match(scriptSource, /blocked_provider_not_openai/);
 assert.match(scriptSource, /blocked_model_not_gpt_5_5/);
 assert.match(scriptSource, /cleanup_completed/);
 assert.match(scriptSource, /delete_exact_mock_report/);
+assert.match(scriptSource, /failed_cleanup_completed/);
+assert.match(scriptSource, /delete_exact_failed_openai_report/);
 assert.doesNotMatch(scriptSource, /\.from\("assessment_reports"\)|\.from\('assessment_reports'\)/);
 assert.doesNotMatch(scriptSource, /\.from\("team_fit_reports"\)|\.from\('team_fit_reports'\)/);
 assert.doesNotMatch(scriptSource, /createQueuedCompositeAssessmentReport|processClaimedAssessmentReportJob|buildCompositeHrInputSnapshot/);
@@ -51,9 +56,12 @@ const {
   AI_REPORT_PROVIDER_ENV,
   CONFIRM_ENV,
   CONFIRM_CLEANUP_ENV,
+  CONFIRM_FAILED_CLEANUP_ENV,
   EXPECTED_TARGETS,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
+  FAILED_IPIP_REPLAY_REPORT,
+  TARGET_FAILED_REPORT_ID_ENV,
   TARGET_MOCK_REPORT_ID_ENV,
   TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV,
   TARGET_REPLAY_PARTICIPANT_ID_ENV,
@@ -61,8 +69,13 @@ const {
   TARGET_TESTS,
   buildCleanupAuditSql,
   buildConfirmationRequiredArtifact,
+  buildFailedCleanupAuditSql,
   evaluateCleanupTargetReportRow,
+  evaluateFailedCleanupTargetSelection,
+  evaluateFailedCleanupTargetReportRow,
   evaluatePersistedReportPostcondition,
+  evaluateReplayAssignmentGuard,
+  evaluateReplayParticipantGuard,
   evaluateResolvedProviderState,
   buildProviderBlockedArtifact,
   buildReadOnlyAuditSql,
@@ -70,6 +83,7 @@ const {
   resolveClaimedJobModelName,
   validateConfirmedInputs,
   validateCleanupInputs,
+  validateFailedCleanupInputs,
   validateProviderInputs,
 } = require(scriptPath);
 
@@ -79,6 +93,8 @@ assert.equal(TARGET_TESTS.safran_v1.attemptId, "54702bc1-7d91-492e-9b50-14aff670
 assert.equal(TARGET_TESTS["ipip-neo-120-v1"].attemptId, "e71d472a-13cb-4cc9-9582-6eaa262affca");
 assert.equal(ACCIDENTAL_MOCK_REPORT.reportId, "d73c6390-e6fe-411a-a8f3-02c52bc60612");
 assert.equal(ACCIDENTAL_MOCK_REPORT.attemptId, TARGET_TESTS.mwms_v1.attemptId);
+assert.equal(FAILED_IPIP_REPLAY_REPORT.reportId, "31b9a229-c7cf-4119-af13-ca4bd0ce8147");
+assert.equal(FAILED_IPIP_REPLAY_REPORT.attemptId, TARGET_TESTS["ipip-neo-120-v1"].attemptId);
 assert.equal(EXPECTED_PROVIDER, "openai");
 assert.equal(EXPECTED_MODEL, "gpt-5.5");
 
@@ -242,6 +258,61 @@ const cleanupValidation = validateCleanupInputs({
 assert.equal(cleanupValidation.ok, false);
 assert.equal(cleanupValidation.missing.includes(TARGET_MOCK_REPORT_ID_ENV), true);
 
+const failedCleanupValidation = validateFailedCleanupInputs({
+  [CONFIRM_FAILED_CLEANUP_ENV]: "true",
+  [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+  [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+  [TARGET_TEST_SLUG_ENV]: "ipip-neo-120-v1",
+});
+assert.equal(failedCleanupValidation.ok, false);
+assert.equal(failedCleanupValidation.missing.includes(TARGET_FAILED_REPORT_ID_ENV), true);
+
+assert.equal(
+  evaluateReplayParticipantGuard({
+    organization_id: EXPECTED_TARGETS.organizationId,
+    email: "amra.new1@example.test",
+  }),
+  true,
+);
+assert.equal(
+  evaluateReplayParticipantGuard({
+    organization_id: "5d93f3a1-3765-4ec4-b668-c0d1228a8445",
+    email: "amrafagan@nestox.com",
+  }),
+  false,
+);
+
+assert.equal(
+  evaluateReplayAssignmentGuard(
+    {
+      organization_id: EXPECTED_TARGETS.organizationId,
+      participant_id: EXPECTED_TARGETS.participantId,
+      assignment_type: "standard_battery",
+      metadata: { fixture: "amra_replay_fixture_v1" },
+    },
+    EXPECTED_TARGETS.participantId,
+  ),
+  true,
+);
+assert.equal(
+  evaluateReplayAssignmentGuard(
+    {
+      organization_id: "5d93f3a1-3765-4ec4-b668-c0d1228a8445",
+      participant_id: "9b742094-53dc-4de5-87a5-174c5491e4dd",
+      assignment_type: "standard_battery",
+      metadata: {},
+    },
+    EXPECTED_TARGETS.participantId,
+  ),
+  false,
+);
+
+const failedCleanupWrongSlug = evaluateFailedCleanupTargetSelection({
+  testSlug: "mwms_v1",
+});
+assert.equal(failedCleanupWrongSlug.ok, false);
+assert.equal(failedCleanupWrongSlug.blocker, "failed_cleanup_target_test_slug_mismatch");
+
 const cleanupTargetRefused = evaluateCleanupTargetReportRow(
   {
     id: ACCIDENTAL_MOCK_REPORT.reportId,
@@ -275,6 +346,85 @@ const cleanupTargetPass = evaluateCleanupTargetReportRow(
 );
 assert.equal(cleanupTargetPass.ok, true);
 
+const failedCleanupReadyRefused = evaluateFailedCleanupTargetReportRow(
+  {
+    id: FAILED_IPIP_REPLAY_REPORT.reportId,
+    attempt_id: FAILED_IPIP_REPLAY_REPORT.attemptId,
+    test_slug: FAILED_IPIP_REPLAY_REPORT.testSlug,
+    report_type: "individual",
+    audience: "hr",
+    source_type: "single_test",
+    report_status: "ready",
+    generator_type: "openai",
+    model_name: "gpt-5.5",
+    failure_code: "PROVIDER_ERROR",
+  },
+  {
+    targetFailedReportId: FAILED_IPIP_REPLAY_REPORT.reportId,
+  },
+);
+assert.equal(failedCleanupReadyRefused.ok, false);
+assert.equal(failedCleanupReadyRefused.status, "failed_cleanup_refused_ready_report");
+
+const failedCleanupMockRefused = evaluateFailedCleanupTargetReportRow(
+  {
+    id: FAILED_IPIP_REPLAY_REPORT.reportId,
+    attempt_id: FAILED_IPIP_REPLAY_REPORT.attemptId,
+    test_slug: FAILED_IPIP_REPLAY_REPORT.testSlug,
+    report_type: "individual",
+    audience: "hr",
+    source_type: "single_test",
+    report_status: "failed",
+    generator_type: "mock",
+    model_name: null,
+    failure_code: "PROVIDER_ERROR",
+  },
+  {
+    targetFailedReportId: FAILED_IPIP_REPLAY_REPORT.reportId,
+  },
+);
+assert.equal(failedCleanupMockRefused.ok, false);
+assert.equal(failedCleanupMockRefused.status, "failed_cleanup_refused_mock_report");
+
+const failedCleanupGuardFailed = evaluateFailedCleanupTargetReportRow(
+  {
+    id: FAILED_IPIP_REPLAY_REPORT.reportId,
+    attempt_id: FAILED_IPIP_REPLAY_REPORT.attemptId,
+    test_slug: "mwms_v1",
+    report_type: "individual",
+    audience: "hr",
+    source_type: "single_test",
+    report_status: "failed",
+    generator_type: "openai",
+    model_name: "gpt-5.5",
+    failure_code: "PROVIDER_ERROR",
+  },
+  {
+    targetFailedReportId: FAILED_IPIP_REPLAY_REPORT.reportId,
+  },
+);
+assert.equal(failedCleanupGuardFailed.ok, false);
+assert.equal(failedCleanupGuardFailed.status, "blocked_failed_cleanup_target_guard_failed");
+
+const failedCleanupPass = evaluateFailedCleanupTargetReportRow(
+  {
+    id: FAILED_IPIP_REPLAY_REPORT.reportId,
+    attempt_id: FAILED_IPIP_REPLAY_REPORT.attemptId,
+    test_slug: FAILED_IPIP_REPLAY_REPORT.testSlug,
+    report_type: "individual",
+    audience: "hr",
+    source_type: "single_test",
+    report_status: "failed",
+    generator_type: "openai",
+    model_name: "gpt-5.5",
+    failure_code: "PROVIDER_ERROR",
+  },
+  {
+    targetFailedReportId: FAILED_IPIP_REPLAY_REPORT.reportId,
+  },
+);
+assert.equal(failedCleanupPass.ok, true);
+
 const persistedMismatch = evaluatePersistedReportPostcondition({
   generatorType: "mock",
   modelName: null,
@@ -301,6 +451,11 @@ const cleanupAuditSql = buildCleanupAuditSql();
 assert.match(cleanupAuditSql, /d73c6390-e6fe-411a-a8f3-02c52bc60612/);
 assert.match(cleanupAuditSql, /8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1/);
 assert.match(cleanupAuditSql, /mwms_v1/);
+
+const failedCleanupAuditSql = buildFailedCleanupAuditSql();
+assert.match(failedCleanupAuditSql, /31b9a229-c7cf-4119-af13-ca4bd0ce8147/);
+assert.match(failedCleanupAuditSql, /e71d472a-13cb-4cc9-9582-6eaa262affca/);
+assert.match(failedCleanupAuditSql, /ipip-neo-120-v1/);
 
 async function main() {
   const toJsonValue = (value) => JSON.parse(JSON.stringify(value));
@@ -399,6 +554,42 @@ async function main() {
   assert.equal(cleanupMissing.metadata.databaseWrites, false);
   assert.equal(cleanupMissing.blockers.includes("missing_target_env"), true);
   assert.deepEqual(JSON.parse(cleanupMissingStdout), toJsonValue(cleanupMissing));
+
+  let failedCleanupMissingStdout = "";
+  const failedCleanupMissing = await generateAmraReplaySingleTestHrReports({
+    env: {
+      [CONFIRM_FAILED_CLEANUP_ENV]: "true",
+      [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+      [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+      [TARGET_TEST_SLUG_ENV]: "ipip-neo-120-v1",
+    },
+    stdout: {
+      write(chunk) {
+        failedCleanupMissingStdout += chunk;
+      },
+    },
+  });
+
+  assert.equal(failedCleanupMissing.status, "confirmation_required");
+  assert.equal(failedCleanupMissing.metadata.databaseWrites, false);
+  assert.equal(failedCleanupMissing.blockers.includes("missing_target_env"), true);
+  assert.deepEqual(JSON.parse(failedCleanupMissingStdout), toJsonValue(failedCleanupMissing));
+
+  let ambiguousStdout = "";
+  const ambiguous = await generateAmraReplaySingleTestHrReports({
+    env: {
+      [CONFIRM_CLEANUP_ENV]: "true",
+      [CONFIRM_FAILED_CLEANUP_ENV]: "true",
+    },
+    stdout: {
+      write(chunk) {
+        ambiguousStdout += chunk;
+      },
+    },
+  });
+  assert.equal(ambiguous.status, "blocked_ambiguous_operator_mode");
+  assert.equal(ambiguous.metadata.databaseWrites, false);
+  assert.deepEqual(JSON.parse(ambiguousStdout), toJsonValue(ambiguous));
 
   console.log("test-generate-amra-replay-single-test-hr-reports: ok");
 }

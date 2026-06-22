@@ -9,10 +9,12 @@ const originalResolveFilename = Module._resolveFilename;
 
 const CONFIRM_ENV = "CONFIRM_AMRA_REPLAY_HR_REPORT_GENERATION";
 const CONFIRM_CLEANUP_ENV = "CONFIRM_AMRA_REPLAY_MOCK_REPORT_CLEANUP";
+const CONFIRM_FAILED_CLEANUP_ENV = "CONFIRM_AMRA_REPLAY_FAILED_REPORT_CLEANUP";
 const TARGET_REPLAY_PARTICIPANT_ID_ENV = "TARGET_REPLAY_PARTICIPANT_ID";
 const TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV = "TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID";
 const TARGET_TEST_SLUG_ENV = "TARGET_TEST_SLUG";
 const TARGET_MOCK_REPORT_ID_ENV = "TARGET_MOCK_REPORT_ID";
+const TARGET_FAILED_REPORT_ID_ENV = "TARGET_FAILED_REPORT_ID";
 const AI_REPORT_PROVIDER_ENV = "AI_REPORT_PROVIDER";
 const AI_REPORT_MODEL_ENV = "AI_REPORT_MODEL";
 const EXPECTED_PROVIDER = "openai";
@@ -30,6 +32,19 @@ const ACCIDENTAL_MOCK_REPORT = {
   attemptId: "8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1",
   testSlug: "mwms_v1",
   generatorType: "mock",
+};
+
+const FAILED_IPIP_REPLAY_REPORT = {
+  reportId: "31b9a229-c7cf-4119-af13-ca4bd0ce8147",
+  attemptId: "e71d472a-13cb-4cc9-9582-6eaa262affca",
+  testSlug: "ipip-neo-120-v1",
+  reportType: "individual",
+  audience: "hr",
+  sourceType: "single_test",
+  reportStatus: "failed",
+  generatorType: "openai",
+  modelName: "gpt-5.5",
+  failureCode: "PROVIDER_ERROR",
 };
 
 const TARGET_TESTS = {
@@ -126,6 +141,12 @@ function getCleanupInputs(env = process.env) {
   };
 }
 
+function getFailedCleanupInputs(env = process.env) {
+  return {
+    targetFailedReportId: normalizeEnvString(env[TARGET_FAILED_REPORT_ID_ENV]),
+  };
+}
+
 function getProviderInputs(env = process.env) {
   return {
     declaredProvider: normalizeEnvString(env[AI_REPORT_PROVIDER_ENV]),
@@ -168,6 +189,7 @@ function buildBaseArtifact(input = {}) {
       targetTestSlug: input.testSlug ?? null,
       targetAttemptId: input.targetAttemptId ?? null,
       targetMockReportId: input.targetMockReportId ?? null,
+      targetFailedReportId: input.targetFailedReportId ?? null,
       allowedTestSlugs: [...ALLOWED_TEST_SLUGS],
     },
     status: input.status ?? "not_started",
@@ -234,6 +256,29 @@ function buildCleanupAuditSql(reportId = ACCIDENTAL_MOCK_REPORT.reportId) {
     `where ar.id = '${reportId}'`,
     `  and ar.attempt_id = '${ACCIDENTAL_MOCK_REPORT.attemptId}'`,
     `  and ar.test_slug = '${ACCIDENTAL_MOCK_REPORT.testSlug}';`,
+  ].join("\n");
+}
+
+function buildFailedCleanupAuditSql(reportId = FAILED_IPIP_REPLAY_REPORT.reportId) {
+  return [
+    "select",
+    "  ar.id,",
+    "  ar.attempt_id,",
+    "  ar.test_slug,",
+    "  ar.report_type,",
+    "  ar.audience,",
+    "  ar.source_type,",
+    "  ar.report_status,",
+    "  ar.generator_type,",
+    "  ar.model_name,",
+    "  ar.failure_code,",
+    "  ar.failure_reason,",
+    "  (ar.input_snapshot is not null) as input_snapshot_present,",
+    "  (ar.report_snapshot is not null) as report_snapshot_present",
+    "from public.attempt_reports ar",
+    `where ar.id = '${reportId}'`,
+    `  and ar.attempt_id = '${FAILED_IPIP_REPLAY_REPORT.attemptId}'`,
+    `  and ar.test_slug = '${FAILED_IPIP_REPLAY_REPORT.testSlug}';`,
   ].join("\n");
 }
 
@@ -314,6 +359,26 @@ function validateCleanupInputs(env = process.env) {
     inputs: {
       ...targetValidation.inputs,
       ...cleanupInputs,
+    },
+    missing,
+    mismatches: targetValidation.mismatches,
+  };
+}
+
+function validateFailedCleanupInputs(env = process.env) {
+  const targetValidation = validateConfirmedInputs(env);
+  const failedCleanupInputs = getFailedCleanupInputs(env);
+  const missing = [...targetValidation.missing];
+
+  if (!failedCleanupInputs.targetFailedReportId) {
+    missing.push(TARGET_FAILED_REPORT_ID_ENV);
+  }
+
+  return {
+    ok: targetValidation.ok && missing.length === 0,
+    inputs: {
+      ...targetValidation.inputs,
+      ...failedCleanupInputs,
     },
     missing,
     mismatches: targetValidation.mismatches,
@@ -503,7 +568,7 @@ function buildAmbiguousModeArtifact(env = process.env) {
   artifact.findings.push({
     severity: "blocker",
     category: "operator_mode",
-    message: `Set either ${CONFIRM_ENV}=true or ${CONFIRM_CLEANUP_ENV}=true, not both.`,
+    message: `Set exactly one of ${CONFIRM_ENV}=true, ${CONFIRM_CLEANUP_ENV}=true or ${CONFIRM_FAILED_CLEANUP_ENV}=true.`,
   });
 
   return artifact;
@@ -647,6 +712,22 @@ async function loadCleanupTargetReport(supabase, reportId) {
   return data ?? null;
 }
 
+async function loadFailedCleanupTargetReport(supabase, reportId) {
+  const { data, error } = await supabase
+    .from("attempt_reports")
+    .select(
+      "id, attempt_id, test_slug, report_type, audience, source_type, report_status, generator_type, model_name, failure_code, failure_reason",
+    )
+    .eq("id", reportId ?? FAILED_IPIP_REPLAY_REPORT.reportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load failed cleanup target report: ${error.message}`);
+  }
+
+  return data ?? null;
+}
+
 async function loadLatestHrLaneRuntimeConfig(supabase) {
   const { data, error } = await supabase
     .from("report_runtime_configs")
@@ -736,6 +817,101 @@ function evaluateCleanupTargetReportRow(report, input) {
   return {
     ok: true,
     status: "cleanup_ready",
+    blocker: null,
+  };
+}
+
+function evaluateReplayParticipantGuard(participant) {
+  return Boolean(
+    participant &&
+      participant.organization_id === EXPECTED_TARGETS.organizationId &&
+      participant.email === "amra.new1@example.test",
+  );
+}
+
+function evaluateReplayAssignmentGuard(assignment, participantId) {
+  return Boolean(
+    assignment &&
+      assignment.organization_id === EXPECTED_TARGETS.organizationId &&
+      assignment.participant_id === participantId &&
+      assignment.assignment_type === "standard_battery" &&
+      assignment.metadata?.fixture === EXPECTED_TARGETS.fixture,
+  );
+}
+
+function evaluateFailedCleanupTargetSelection(input) {
+  if (input.testSlug !== FAILED_IPIP_REPLAY_REPORT.testSlug) {
+    return {
+      ok: false,
+      status: "blocked",
+      blocker: "failed_cleanup_target_test_slug_mismatch",
+    };
+  }
+
+  return {
+    ok: true,
+    status: "selection_ready",
+    blocker: null,
+  };
+}
+
+function evaluateFailedCleanupTargetReportRow(report, input) {
+  if (!report) {
+    return {
+      ok: false,
+      status: "blocked_failed_cleanup_target_not_found",
+      blocker: "failed_cleanup_target_report_not_found",
+    };
+  }
+
+  if (report.report_status !== FAILED_IPIP_REPLAY_REPORT.reportStatus) {
+    return {
+      ok: false,
+      status:
+        report.report_status === "ready"
+          ? "failed_cleanup_refused_ready_report"
+          : "blocked_failed_cleanup_target_wrong_status",
+      blocker:
+        report.report_status === "ready"
+          ? "failed_cleanup_refused_ready_report"
+          : "failed_cleanup_target_wrong_status",
+    };
+  }
+
+  if (report.generator_type !== FAILED_IPIP_REPLAY_REPORT.generatorType) {
+    return {
+      ok: false,
+      status:
+        report.generator_type === "mock"
+          ? "failed_cleanup_refused_mock_report"
+          : "failed_cleanup_refused_wrong_provider",
+      blocker:
+        report.generator_type === "mock"
+          ? "failed_cleanup_refused_mock_report"
+          : "failed_cleanup_refused_wrong_provider",
+    };
+  }
+
+  if (
+    report.id !== input.targetFailedReportId ||
+    report.attempt_id !== FAILED_IPIP_REPLAY_REPORT.attemptId ||
+    report.test_slug !== FAILED_IPIP_REPLAY_REPORT.testSlug ||
+    report.report_type !== FAILED_IPIP_REPLAY_REPORT.reportType ||
+    report.audience !== FAILED_IPIP_REPLAY_REPORT.audience ||
+    report.source_type !== FAILED_IPIP_REPLAY_REPORT.sourceType ||
+    report.model_name !== FAILED_IPIP_REPLAY_REPORT.modelName ||
+    report.failure_code !== FAILED_IPIP_REPLAY_REPORT.failureCode
+  ) {
+    return {
+      ok: false,
+      status: "blocked_failed_cleanup_target_guard_failed",
+      blocker: "failed_cleanup_target_report_guard_failed",
+    };
+  }
+
+  return {
+    ok: true,
+    status: "failed_cleanup_ready",
     blocker: null,
   };
 }
@@ -1120,8 +1296,101 @@ async function runConfirmedCleanup(input) {
   return artifact;
 }
 
+async function runConfirmedFailedCleanup(input) {
+  installTypeScriptRuntime();
+
+  const { createSupabaseAdminClient } = require(path.join(projectRoot, "lib", "supabase", "admin.ts"));
+  const supabase = createSupabaseAdminClient();
+  const artifact = buildBaseArtifact({
+    ...input,
+    operation: "cleanup_failed_openai_report",
+    targetAttemptId: FAILED_IPIP_REPLAY_REPORT.attemptId,
+    targetFailedReportId: input.targetFailedReportId,
+    dryRun: false,
+    writeModeConfirmed: true,
+    status: "running_failed_cleanup",
+  });
+
+  const participant = await loadReplayParticipant(supabase, input.participantId);
+  if (!evaluateReplayParticipantGuard(participant)) {
+    artifact.status = "blocked";
+    artifact.blockers.push("failed_cleanup_target_participant_guard_failed");
+    return artifact;
+  }
+
+  const assignment = await loadReplayAssignment(supabase, input.assessmentAssignmentId);
+  if (!evaluateReplayAssignmentGuard(assignment, input.participantId)) {
+    artifact.status = "blocked";
+    artifact.blockers.push("failed_cleanup_target_assignment_guard_failed");
+    return artifact;
+  }
+
+  const selectionGuard = evaluateFailedCleanupTargetSelection(input);
+  if (!selectionGuard.ok) {
+    artifact.status = selectionGuard.status;
+    artifact.blockers.push(selectionGuard.blocker);
+    return artifact;
+  }
+
+  const attempt = await loadReplayAttemptContext(supabase, input);
+  if (
+    !attempt ||
+    attempt.attemptId !== FAILED_IPIP_REPLAY_REPORT.attemptId ||
+    attempt.organizationId !== EXPECTED_TARGETS.organizationId ||
+    attempt.participantId !== input.participantId
+  ) {
+    artifact.status = "blocked";
+    artifact.blockers.push("failed_cleanup_target_attempt_guard_failed");
+    return artifact;
+  }
+
+  const report = await loadFailedCleanupTargetReport(supabase, input.targetFailedReportId);
+  const cleanupValidation = evaluateFailedCleanupTargetReportRow(report, input);
+  if (!cleanupValidation.ok) {
+    artifact.status = cleanupValidation.status;
+    artifact.blockers.push(cleanupValidation.blocker);
+    artifact.nextReadOnlyAuditSql = buildFailedCleanupAuditSql(input.targetFailedReportId);
+    return artifact;
+  }
+
+  const { error: deleteError } = await supabase
+    .from("attempt_reports")
+    .delete()
+    .eq("id", input.targetFailedReportId)
+    .eq("attempt_id", FAILED_IPIP_REPLAY_REPORT.attemptId)
+    .eq("test_slug", FAILED_IPIP_REPLAY_REPORT.testSlug)
+    .eq("report_type", FAILED_IPIP_REPLAY_REPORT.reportType)
+    .eq("audience", FAILED_IPIP_REPLAY_REPORT.audience)
+    .eq("source_type", FAILED_IPIP_REPLAY_REPORT.sourceType)
+    .eq("report_status", FAILED_IPIP_REPLAY_REPORT.reportStatus)
+    .eq("generator_type", FAILED_IPIP_REPLAY_REPORT.generatorType)
+    .eq("model_name", FAILED_IPIP_REPLAY_REPORT.modelName)
+    .eq("failure_code", FAILED_IPIP_REPLAY_REPORT.failureCode);
+
+  if (deleteError) {
+    throw new Error(`Failed to cleanup failed replay IPIP report: ${deleteError.message}`);
+  }
+
+  artifact.metadata.databaseWrites = true;
+  artifact.status = "failed_cleanup_completed";
+  artifact.cleanupAction = "delete_exact_failed_openai_report";
+  artifact.cleanedUpReportId = input.targetFailedReportId;
+  artifact.reportId = input.targetFailedReportId;
+  artifact.testSlug = FAILED_IPIP_REPLAY_REPORT.testSlug;
+  artifact.attemptId = FAILED_IPIP_REPLAY_REPORT.attemptId;
+  artifact.nextReadOnlyAuditSql = buildFailedCleanupAuditSql(input.targetFailedReportId);
+
+  return artifact;
+}
+
 async function generateAmraReplaySingleTestHrReports({ env = process.env, stdout = process.stdout } = {}) {
-  if (env[CONFIRM_ENV] === "true" && env[CONFIRM_CLEANUP_ENV] === "true") {
+  const confirmedModes = [
+    env[CONFIRM_ENV] === "true",
+    env[CONFIRM_CLEANUP_ENV] === "true",
+    env[CONFIRM_FAILED_CLEANUP_ENV] === "true",
+  ].filter(Boolean).length;
+
+  if (confirmedModes > 1) {
     const artifact = buildAmbiguousModeArtifact(env);
     stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
     return artifact;
@@ -1136,6 +1405,22 @@ async function generateAmraReplaySingleTestHrReports({ env = process.env, stdout
     }
 
     const artifact = await runConfirmedCleanup({
+      ...validation.inputs,
+      ...getProviderInputs(env),
+    });
+    stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+    return artifact;
+  }
+
+  if (env[CONFIRM_FAILED_CLEANUP_ENV] === "true") {
+    const validation = validateFailedCleanupInputs(env);
+    if (!validation.ok) {
+      const artifact = buildInvalidInputArtifact(validation);
+      stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
+      return artifact;
+    }
+
+    const artifact = await runConfirmedFailedCleanup({
       ...validation.inputs,
       ...getProviderInputs(env),
     });
@@ -1178,9 +1463,12 @@ module.exports = {
   AI_REPORT_PROVIDER_ENV,
   CONFIRM_ENV,
   CONFIRM_CLEANUP_ENV,
+  CONFIRM_FAILED_CLEANUP_ENV,
   EXPECTED_TARGETS,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
+  FAILED_IPIP_REPLAY_REPORT,
+  TARGET_FAILED_REPORT_ID_ENV,
   TARGET_MOCK_REPORT_ID_ENV,
   TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV,
   TARGET_REPLAY_PARTICIPANT_ID_ENV,
@@ -1189,17 +1477,24 @@ module.exports = {
   buildBaseArtifact,
   buildCleanupAuditSql,
   buildConfirmationRequiredArtifact,
+  buildFailedCleanupAuditSql,
   evaluateCleanupTargetReportRow,
+  evaluateFailedCleanupTargetSelection,
+  evaluateFailedCleanupTargetReportRow,
   evaluatePersistedReportPostcondition,
+  evaluateReplayAssignmentGuard,
+  evaluateReplayParticipantGuard,
   evaluateResolvedProviderState,
   buildReadOnlyAuditSql,
   buildProviderBlockedArtifact,
   generateAmraReplaySingleTestHrReports,
   getCleanupInputs,
+  getFailedCleanupInputs,
   getTargetInputs,
   resolveClaimedJobModelName,
   validateConfirmedInputs,
   validateCleanupInputs,
+  validateFailedCleanupInputs,
   validateProviderInputs,
 };
 
