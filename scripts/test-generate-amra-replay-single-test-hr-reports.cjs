@@ -11,17 +11,19 @@ assert.match(scriptSource, /CONFIRM_AMRA_REPLAY_MOCK_REPORT_CLEANUP/);
 assert.match(scriptSource, /TARGET_REPLAY_PARTICIPANT_ID/);
 assert.match(scriptSource, /TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID/);
 assert.match(scriptSource, /TARGET_TEST_SLUG/);
+assert.match(scriptSource, /TARGET_MOCK_REPORT_ID/);
 assert.match(scriptSource, /AI_REPORT_PROVIDER/);
 assert.match(scriptSource, /AI_REPORT_MODEL/);
 assert.match(scriptSource, /openai/);
 assert.match(scriptSource, /gpt-5\.5/);
 assert.match(scriptSource, /a5678fd5-8fea-4308-8569-5448f26b4f71/);
 assert.match(scriptSource, /033f8975-5d9c-4c66-8842-f37527d556d5/);
-assert.match(scriptSource, /5263eda0-2307-4267-b629-939cf79bde70/);
+assert.match(scriptSource, /d73c6390-e6fe-411a-a8f3-02c52bc60612/);
 assert.match(scriptSource, /amra_replay_fixture_v1/);
 assert.match(scriptSource, /recoverHrAttemptReport/);
 assert.match(scriptSource, /claimNextReportJob/);
 assert.match(scriptSource, /processClaimedReportJob/);
+assert.match(scriptSource, /report_runtime_configs/);
 assert.match(scriptSource, /databaseWrites:\s*false/);
 assert.match(scriptSource, /openAiCalled:\s*false/);
 assert.match(scriptSource, /openAiRequired:\s*true/);
@@ -52,16 +54,22 @@ const {
   EXPECTED_TARGETS,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
+  TARGET_MOCK_REPORT_ID_ENV,
   TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV,
   TARGET_REPLAY_PARTICIPANT_ID_ENV,
   TARGET_TEST_SLUG_ENV,
   TARGET_TESTS,
   buildCleanupAuditSql,
   buildConfirmationRequiredArtifact,
+  evaluateCleanupTargetReportRow,
+  evaluatePersistedReportPostcondition,
+  evaluateResolvedProviderState,
   buildProviderBlockedArtifact,
   buildReadOnlyAuditSql,
   generateAmraReplaySingleTestHrReports,
+  resolveClaimedJobModelName,
   validateConfirmedInputs,
+  validateCleanupInputs,
   validateProviderInputs,
 } = require(scriptPath);
 
@@ -69,7 +77,7 @@ assert.deepEqual(ALLOWED_TEST_SLUGS, ["mwms_v1", "safran_v1", "ipip-neo-120-v1"]
 assert.equal(TARGET_TESTS.mwms_v1.attemptId, "8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1");
 assert.equal(TARGET_TESTS.safran_v1.attemptId, "54702bc1-7d91-492e-9b50-14aff6706d34");
 assert.equal(TARGET_TESTS["ipip-neo-120-v1"].attemptId, "e71d472a-13cb-4cc9-9582-6eaa262affca");
-assert.equal(ACCIDENTAL_MOCK_REPORT.reportId, "5263eda0-2307-4267-b629-939cf79bde70");
+assert.equal(ACCIDENTAL_MOCK_REPORT.reportId, "d73c6390-e6fe-411a-a8f3-02c52bc60612");
 assert.equal(ACCIDENTAL_MOCK_REPORT.attemptId, TARGET_TESTS.mwms_v1.attemptId);
 assert.equal(EXPECTED_PROVIDER, "openai");
 assert.equal(EXPECTED_MODEL, "gpt-5.5");
@@ -119,8 +127,8 @@ assert.equal(validValidation.ok, true);
 
 const missingProviderValidation = validateProviderInputs({});
 assert.equal(missingProviderValidation.ok, false);
-assert.equal(missingProviderValidation.resolvedProvider, null);
-assert.equal(missingProviderValidation.resolvedModel, null);
+assert.equal(missingProviderValidation.declaredProvider, null);
+assert.equal(missingProviderValidation.declaredModel, null);
 
 const wrongProviderValidation = validateProviderInputs({
   [AI_REPORT_PROVIDER_ENV]: "mock",
@@ -140,15 +148,145 @@ const validProviderValidation = validateProviderInputs({
 });
 assert.equal(validProviderValidation.ok, true);
 
-const providerBlockedArtifact = buildProviderBlockedArtifact(validValidation.inputs, wrongProviderValidation);
+const providerBlockedArtifact = buildProviderBlockedArtifact(
+  validValidation.inputs,
+  evaluateResolvedProviderState({
+    declaredProvider: "mock",
+    declaredModel: EXPECTED_MODEL,
+    actualQueueResolvedProvider: "mock",
+    actualQueueResolvedModel: null,
+    activeOpenAiRuntimeModel: EXPECTED_MODEL,
+    aiConfigModel: EXPECTED_MODEL,
+  }),
+);
 assert.equal(providerBlockedArtifact.status, "blocked_provider_not_openai");
 assert.equal(providerBlockedArtifact.metadata.openAiRequired, true);
-assert.equal(providerBlockedArtifact.metadata.resolvedProvider, "mock");
+assert.equal(providerBlockedArtifact.metadata.actualWorkerResolvedProvider, "mock");
 
-const modelBlockedArtifact = buildProviderBlockedArtifact(validValidation.inputs, wrongModelValidation);
+const modelBlockedArtifact = buildProviderBlockedArtifact(
+  validValidation.inputs,
+  evaluateResolvedProviderState({
+    declaredProvider: EXPECTED_PROVIDER,
+    declaredModel: "gpt-4.1",
+    actualQueueResolvedProvider: "openai",
+    actualQueueResolvedModel: "gpt-4.1",
+    activeOpenAiRuntimeModel: EXPECTED_MODEL,
+    aiConfigModel: EXPECTED_MODEL,
+  }),
+);
 assert.equal(modelBlockedArtifact.status, "blocked_model_not_gpt_5_5");
-assert.equal(modelBlockedArtifact.metadata.resolvedProvider, EXPECTED_PROVIDER);
-assert.equal(modelBlockedArtifact.metadata.resolvedModel, "gpt-4.1");
+assert.equal(modelBlockedArtifact.metadata.actualWorkerResolvedProvider, EXPECTED_PROVIDER);
+assert.equal(modelBlockedArtifact.metadata.actualWorkerResolvedModel, "gpt-4.1");
+
+const runtimeBlockedState = evaluateResolvedProviderState({
+  declaredProvider: EXPECTED_PROVIDER,
+  declaredModel: EXPECTED_MODEL,
+  actualQueueResolvedProvider: "mock",
+  actualQueueResolvedModel: null,
+  activeOpenAiRuntimeModel: EXPECTED_MODEL,
+  aiConfigModel: EXPECTED_MODEL,
+});
+assert.equal(runtimeBlockedState.ok, false);
+assert.equal(runtimeBlockedState.status, "blocked_provider_not_openai");
+assert.equal(runtimeBlockedState.actualWorkerResolvedProvider, "mock");
+
+const runtimeModelBlockedState = evaluateResolvedProviderState({
+  declaredProvider: EXPECTED_PROVIDER,
+  declaredModel: EXPECTED_MODEL,
+  actualQueueResolvedProvider: "openai",
+  actualQueueResolvedModel: "gpt-4.1",
+  activeOpenAiRuntimeModel: EXPECTED_MODEL,
+  aiConfigModel: EXPECTED_MODEL,
+});
+assert.equal(runtimeModelBlockedState.ok, false);
+assert.equal(runtimeModelBlockedState.status, "blocked_model_not_gpt_5_5");
+assert.equal(runtimeModelBlockedState.actualWorkerResolvedModel, "gpt-4.1");
+
+const runtimePassState = evaluateResolvedProviderState({
+  declaredProvider: EXPECTED_PROVIDER,
+  declaredModel: EXPECTED_MODEL,
+  actualQueueResolvedProvider: "openai",
+  actualQueueResolvedModel: null,
+  activeOpenAiRuntimeModel: EXPECTED_MODEL,
+  aiConfigModel: EXPECTED_MODEL,
+});
+assert.equal(runtimePassState.ok, true);
+assert.equal(runtimePassState.actualWorkerResolvedProvider, EXPECTED_PROVIDER);
+assert.equal(runtimePassState.actualWorkerResolvedModel, EXPECTED_MODEL);
+
+assert.equal(
+  resolveClaimedJobModelName({
+    claimedJobGeneratorType: "openai",
+    claimedJobModelName: null,
+    activeOpenAiRuntimeModel: EXPECTED_MODEL,
+    aiConfigModel: EXPECTED_MODEL,
+  }),
+  EXPECTED_MODEL,
+);
+assert.equal(
+  resolveClaimedJobModelName({
+    claimedJobGeneratorType: "mock",
+    claimedJobModelName: null,
+    activeOpenAiRuntimeModel: EXPECTED_MODEL,
+    aiConfigModel: EXPECTED_MODEL,
+  }),
+  null,
+);
+
+const cleanupValidation = validateCleanupInputs({
+  [CONFIRM_CLEANUP_ENV]: "true",
+  [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+  [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+  [TARGET_TEST_SLUG_ENV]: "mwms_v1",
+});
+assert.equal(cleanupValidation.ok, false);
+assert.equal(cleanupValidation.missing.includes(TARGET_MOCK_REPORT_ID_ENV), true);
+
+const cleanupTargetRefused = evaluateCleanupTargetReportRow(
+  {
+    id: ACCIDENTAL_MOCK_REPORT.reportId,
+    attempt_id: ACCIDENTAL_MOCK_REPORT.attemptId,
+    test_slug: ACCIDENTAL_MOCK_REPORT.testSlug,
+    report_type: "individual",
+    audience: "hr",
+    source_type: "single_test",
+    generator_type: "openai",
+  },
+  {
+    targetMockReportId: ACCIDENTAL_MOCK_REPORT.reportId,
+  },
+);
+assert.equal(cleanupTargetRefused.ok, false);
+assert.equal(cleanupTargetRefused.status, "cleanup_refused_non_mock_report");
+
+const cleanupTargetPass = evaluateCleanupTargetReportRow(
+  {
+    id: ACCIDENTAL_MOCK_REPORT.reportId,
+    attempt_id: ACCIDENTAL_MOCK_REPORT.attemptId,
+    test_slug: ACCIDENTAL_MOCK_REPORT.testSlug,
+    report_type: "individual",
+    audience: "hr",
+    source_type: "single_test",
+    generator_type: "mock",
+  },
+  {
+    targetMockReportId: ACCIDENTAL_MOCK_REPORT.reportId,
+  },
+);
+assert.equal(cleanupTargetPass.ok, true);
+
+const persistedMismatch = evaluatePersistedReportPostcondition({
+  generatorType: "mock",
+  modelName: null,
+});
+assert.equal(persistedMismatch.ok, false);
+assert.equal(persistedMismatch.status, "failed_persisted_provider_mismatch");
+
+const persistedPass = evaluatePersistedReportPostcondition({
+  generatorType: EXPECTED_PROVIDER,
+  modelName: EXPECTED_MODEL,
+});
+assert.equal(persistedPass.ok, true);
 
 const auditSql = buildReadOnlyAuditSql({
   attemptId: TARGET_TESTS.mwms_v1.attemptId,
@@ -160,11 +298,12 @@ assert.match(auditSql, /individual/);
 assert.match(auditSql, /single_test/);
 
 const cleanupAuditSql = buildCleanupAuditSql();
-assert.match(cleanupAuditSql, /5263eda0-2307-4267-b629-939cf79bde70/);
+assert.match(cleanupAuditSql, /d73c6390-e6fe-411a-a8f3-02c52bc60612/);
 assert.match(cleanupAuditSql, /8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1/);
 assert.match(cleanupAuditSql, /mwms_v1/);
 
 async function main() {
+  const toJsonValue = (value) => JSON.parse(JSON.stringify(value));
   let stdout = "";
   const dryRunArtifact = await generateAmraReplaySingleTestHrReports({
     env: {},
@@ -180,7 +319,7 @@ async function main() {
   assert.equal(dryRunArtifact.metadata.openAiCalled, false);
   assert.equal(dryRunArtifact.metadata.reportsGenerated, false);
   assert.equal(dryRunArtifact.metadata.originalAmraTouched, false);
-  assert.deepEqual(JSON.parse(stdout), dryRunArtifact);
+  assert.deepEqual(JSON.parse(stdout), toJsonValue(dryRunArtifact));
 
   let missingStdout = "";
   const missingArtifact = await generateAmraReplaySingleTestHrReports({
@@ -197,7 +336,7 @@ async function main() {
   assert.equal(missingArtifact.status, "confirmation_required");
   assert.equal(missingArtifact.metadata.databaseWrites, false);
   assert.equal(missingArtifact.blockers.includes("missing_target_env"), true);
-  assert.deepEqual(JSON.parse(missingStdout), missingArtifact);
+  assert.deepEqual(JSON.parse(missingStdout), toJsonValue(missingArtifact));
 
   let providerBlockedStdout = "";
   const providerBlocked = await generateAmraReplaySingleTestHrReports({
@@ -217,7 +356,7 @@ async function main() {
   assert.equal(providerBlocked.status, "blocked_provider_not_openai");
   assert.equal(providerBlocked.metadata.databaseWrites, false);
   assert.equal(providerBlocked.metadata.openAiCalled, false);
-  assert.deepEqual(JSON.parse(providerBlockedStdout), providerBlocked);
+  assert.deepEqual(JSON.parse(providerBlockedStdout), toJsonValue(providerBlocked));
 
   let modelBlockedStdout = "";
   const modelBlocked = await generateAmraReplaySingleTestHrReports({
@@ -239,12 +378,15 @@ async function main() {
   assert.equal(modelBlocked.status, "blocked_model_not_gpt_5_5");
   assert.equal(modelBlocked.metadata.databaseWrites, false);
   assert.equal(modelBlocked.metadata.openAiCalled, false);
-  assert.deepEqual(JSON.parse(modelBlockedStdout), modelBlocked);
+  assert.deepEqual(JSON.parse(modelBlockedStdout), toJsonValue(modelBlocked));
 
   let cleanupMissingStdout = "";
   const cleanupMissing = await generateAmraReplaySingleTestHrReports({
     env: {
       [CONFIRM_CLEANUP_ENV]: "true",
+      [TARGET_REPLAY_PARTICIPANT_ID_ENV]: EXPECTED_TARGETS.participantId,
+      [TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV]: EXPECTED_TARGETS.assessmentAssignmentId,
+      [TARGET_TEST_SLUG_ENV]: "mwms_v1",
     },
     stdout: {
       write(chunk) {
@@ -255,7 +397,8 @@ async function main() {
 
   assert.equal(cleanupMissing.status, "confirmation_required");
   assert.equal(cleanupMissing.metadata.databaseWrites, false);
-  assert.deepEqual(JSON.parse(cleanupMissingStdout), cleanupMissing);
+  assert.equal(cleanupMissing.blockers.includes("missing_target_env"), true);
+  assert.deepEqual(JSON.parse(cleanupMissingStdout), toJsonValue(cleanupMissing));
 
   console.log("test-generate-amra-replay-single-test-hr-reports: ok");
 }

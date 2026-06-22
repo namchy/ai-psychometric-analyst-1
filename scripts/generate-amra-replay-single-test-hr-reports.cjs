@@ -12,6 +12,7 @@ const CONFIRM_CLEANUP_ENV = "CONFIRM_AMRA_REPLAY_MOCK_REPORT_CLEANUP";
 const TARGET_REPLAY_PARTICIPANT_ID_ENV = "TARGET_REPLAY_PARTICIPANT_ID";
 const TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV = "TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID";
 const TARGET_TEST_SLUG_ENV = "TARGET_TEST_SLUG";
+const TARGET_MOCK_REPORT_ID_ENV = "TARGET_MOCK_REPORT_ID";
 const AI_REPORT_PROVIDER_ENV = "AI_REPORT_PROVIDER";
 const AI_REPORT_MODEL_ENV = "AI_REPORT_MODEL";
 const EXPECTED_PROVIDER = "openai";
@@ -25,7 +26,7 @@ const EXPECTED_TARGETS = {
 };
 
 const ACCIDENTAL_MOCK_REPORT = {
-  reportId: "5263eda0-2307-4267-b629-939cf79bde70",
+  reportId: "d73c6390-e6fe-411a-a8f3-02c52bc60612",
   attemptId: "8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1",
   testSlug: "mwms_v1",
   generatorType: "mock",
@@ -119,10 +120,16 @@ function getTargetInputs(env = process.env) {
   };
 }
 
+function getCleanupInputs(env = process.env) {
+  return {
+    targetMockReportId: normalizeEnvString(env[TARGET_MOCK_REPORT_ID_ENV]),
+  };
+}
+
 function getProviderInputs(env = process.env) {
   return {
-    resolvedProvider: normalizeEnvString(env[AI_REPORT_PROVIDER_ENV]),
-    resolvedModel: normalizeEnvString(env[AI_REPORT_MODEL_ENV]),
+    declaredProvider: normalizeEnvString(env[AI_REPORT_PROVIDER_ENV]),
+    declaredModel: normalizeEnvString(env[AI_REPORT_MODEL_ENV]),
   };
 }
 
@@ -139,8 +146,12 @@ function buildBaseArtifact(input = {}) {
       openAiRequired: true,
       expectedProvider: EXPECTED_PROVIDER,
       expectedModel: EXPECTED_MODEL,
-      resolvedProvider: input.resolvedProvider ?? null,
-      resolvedModel: input.resolvedModel ?? null,
+      declaredProvider: input.declaredProvider ?? null,
+      declaredModel: input.declaredModel ?? null,
+      actualQueueResolvedProvider: input.actualQueueResolvedProvider ?? null,
+      actualQueueResolvedModel: input.actualQueueResolvedModel ?? null,
+      actualWorkerResolvedProvider: input.actualWorkerResolvedProvider ?? null,
+      actualWorkerResolvedModel: input.actualWorkerResolvedModel ?? null,
       reportsGenerated: false,
       reportRegenerated: false,
       originalAmraTouched: false,
@@ -156,6 +167,7 @@ function buildBaseArtifact(input = {}) {
       targetReplayAssessmentAssignmentId: input.assessmentAssignmentId ?? null,
       targetTestSlug: input.testSlug ?? null,
       targetAttemptId: input.targetAttemptId ?? null,
+      targetMockReportId: input.targetMockReportId ?? null,
       allowedTestSlugs: [...ALLOWED_TEST_SLUGS],
     },
     status: input.status ?? "not_started",
@@ -206,7 +218,7 @@ function buildReadOnlyAuditSql(input) {
   ].join("\n");
 }
 
-function buildCleanupAuditSql() {
+function buildCleanupAuditSql(reportId = ACCIDENTAL_MOCK_REPORT.reportId) {
   return [
     "select",
     "  ar.id,",
@@ -219,7 +231,7 @@ function buildCleanupAuditSql() {
     "  ar.generator_type,",
     "  ar.model_name",
     "from public.attempt_reports ar",
-    `where ar.id = '${ACCIDENTAL_MOCK_REPORT.reportId}'`,
+    `where ar.id = '${reportId}'`,
     `  and ar.attempt_id = '${ACCIDENTAL_MOCK_REPORT.attemptId}'`,
     `  and ar.test_slug = '${ACCIDENTAL_MOCK_REPORT.testSlug}';`,
   ].join("\n");
@@ -282,9 +294,89 @@ function validateProviderInputs(env = process.env) {
 
   return {
     ok:
-      providerInputs.resolvedProvider === EXPECTED_PROVIDER &&
-      providerInputs.resolvedModel === EXPECTED_MODEL,
+      providerInputs.declaredProvider === EXPECTED_PROVIDER &&
+      providerInputs.declaredModel === EXPECTED_MODEL,
     ...providerInputs,
+  };
+}
+
+function validateCleanupInputs(env = process.env) {
+  const targetValidation = validateConfirmedInputs(env);
+  const cleanupInputs = getCleanupInputs(env);
+  const missing = [...targetValidation.missing];
+
+  if (!cleanupInputs.targetMockReportId) {
+    missing.push(TARGET_MOCK_REPORT_ID_ENV);
+  }
+
+  return {
+    ok: targetValidation.ok && missing.length === 0,
+    inputs: {
+      ...targetValidation.inputs,
+      ...cleanupInputs,
+    },
+    missing,
+    mismatches: targetValidation.mismatches,
+  };
+}
+
+function evaluateResolvedProviderState(input) {
+  const actualQueueResolvedProvider = input.actualQueueResolvedProvider ?? "mock";
+  const actualQueueResolvedModel =
+    actualQueueResolvedProvider === "openai" ? normalizeEnvString(input.actualQueueResolvedModel) : null;
+  const activeOpenAiRuntimeModel = normalizeEnvString(input.activeOpenAiRuntimeModel);
+  const aiConfigModel = normalizeEnvString(input.aiConfigModel);
+  const actualWorkerResolvedProvider = actualQueueResolvedProvider;
+  const actualWorkerResolvedModel =
+    actualWorkerResolvedProvider === "openai"
+      ? actualQueueResolvedModel ?? activeOpenAiRuntimeModel ?? aiConfigModel
+      : null;
+
+  return {
+    declaredProvider: input.declaredProvider ?? null,
+    declaredModel: input.declaredModel ?? null,
+    actualQueueResolvedProvider,
+    actualQueueResolvedModel,
+    actualWorkerResolvedProvider,
+    actualWorkerResolvedModel,
+    ok:
+      actualWorkerResolvedProvider === EXPECTED_PROVIDER &&
+      actualWorkerResolvedModel === EXPECTED_MODEL,
+    status:
+      actualWorkerResolvedProvider !== EXPECTED_PROVIDER
+        ? "blocked_provider_not_openai"
+        : actualWorkerResolvedModel !== EXPECTED_MODEL
+          ? "blocked_model_not_gpt_5_5"
+          : "ok",
+  };
+}
+
+function resolveClaimedJobModelName(input) {
+  if (input.claimedJobGeneratorType !== "openai") {
+    return null;
+  }
+
+  return (
+    normalizeEnvString(input.claimedJobModelName) ??
+    normalizeEnvString(input.activeOpenAiRuntimeModel) ??
+    normalizeEnvString(input.aiConfigModel)
+  );
+}
+
+function evaluatePersistedReportPostcondition(input) {
+  const persistedProvider = normalizeEnvString(input.generatorType);
+  const persistedModel = normalizeEnvString(input.modelName);
+
+  return {
+    ok: persistedProvider === EXPECTED_PROVIDER && persistedModel === EXPECTED_MODEL,
+    status:
+      persistedProvider !== EXPECTED_PROVIDER
+        ? "failed_persisted_provider_mismatch"
+        : persistedModel !== EXPECTED_MODEL
+          ? "failed_persisted_model_mismatch"
+          : "ready",
+    persistedProvider,
+    persistedModel,
   };
 }
 
@@ -347,31 +439,47 @@ function buildInvalidInputArtifact(validation) {
 }
 
 function buildProviderBlockedArtifact(input, providerValidation) {
+  const actualWorkerResolvedProvider =
+    providerValidation.actualWorkerResolvedProvider ?? providerValidation.declaredProvider ?? null;
+  const actualWorkerResolvedModel =
+    providerValidation.actualWorkerResolvedModel ?? providerValidation.declaredModel ?? null;
   const artifact = buildBaseArtifact({
     ...input,
     ...providerValidation,
+    actualWorkerResolvedProvider,
+    actualWorkerResolvedModel,
     targetAttemptId: TARGET_TESTS[input.testSlug]?.attemptId ?? null,
     dryRun: true,
     writeModeConfirmed: true,
     status:
-      providerValidation.resolvedProvider !== EXPECTED_PROVIDER
+      actualWorkerResolvedProvider !== EXPECTED_PROVIDER
         ? "blocked_provider_not_openai"
         : "blocked_model_not_gpt_5_5",
   });
 
-  if (providerValidation.resolvedProvider !== EXPECTED_PROVIDER) {
+  if (actualWorkerResolvedProvider !== EXPECTED_PROVIDER) {
     artifact.blockers.push("blocked_provider_not_openai");
     artifact.findings.push({
       severity: "blocker",
       category: "provider",
-      message: "Confirmed replay HR generation requires AI_REPORT_PROVIDER=openai.",
+      message:
+        "Confirmed replay HR generation is blocked because the actual queue/worker provider path still resolves to mock instead of openai.",
+      declaredProvider: providerValidation.declaredProvider,
+      declaredModel: providerValidation.declaredModel,
+      actualQueueResolvedProvider: providerValidation.actualQueueResolvedProvider,
+      actualWorkerResolvedProvider,
     });
   } else {
     artifact.blockers.push("blocked_model_not_gpt_5_5");
     artifact.findings.push({
       severity: "blocker",
       category: "provider",
-      message: "Confirmed replay HR generation requires AI_REPORT_MODEL=gpt-5.5.",
+      message:
+        "Confirmed replay HR generation is blocked because the actual worker model path does not resolve to gpt-5.5.",
+      declaredProvider: providerValidation.declaredProvider,
+      declaredModel: providerValidation.declaredModel,
+      actualQueueResolvedModel: providerValidation.actualQueueResolvedModel,
+      actualWorkerResolvedModel,
     });
   }
 
@@ -523,13 +631,13 @@ async function loadFinalReportRow(supabase, reportId) {
   return data ?? null;
 }
 
-async function loadCleanupTargetReport(supabase) {
+async function loadCleanupTargetReport(supabase, reportId) {
   const { data, error } = await supabase
     .from("attempt_reports")
     .select(
       "id, attempt_id, test_slug, report_type, audience, source_type, report_status, generator_type, model_name",
     )
-    .eq("id", ACCIDENTAL_MOCK_REPORT.reportId)
+    .eq("id", reportId ?? ACCIDENTAL_MOCK_REPORT.reportId)
     .maybeSingle();
 
   if (error) {
@@ -539,10 +647,107 @@ async function loadCleanupTargetReport(supabase) {
   return data ?? null;
 }
 
+async function loadLatestHrLaneRuntimeConfig(supabase) {
+  const { data, error } = await supabase
+    .from("report_runtime_configs")
+    .select("id, generator_type, model_name")
+    .eq("report_type", "individual")
+    .eq("audience", "hr")
+    .eq("source_type", "single_test")
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load latest HR lane runtime config: ${error.message}`);
+  }
+
+  return data ?? null;
+}
+
+async function resolveActualWorkerProviderPreflight({
+  supabase,
+  getActiveReportRuntimeConfig,
+  getAiReportConfig,
+  declaredProvider,
+  declaredModel,
+}) {
+  const defaultLaneRuntimeConfig = await loadLatestHrLaneRuntimeConfig(supabase);
+  const openAiRuntimeConfig =
+    (defaultLaneRuntimeConfig?.generator_type ?? "mock") === "openai"
+      ? await getActiveReportRuntimeConfig({
+          reportType: "individual",
+          audience: "hr",
+          sourceType: "single_test",
+          generatorType: "openai",
+        })
+      : null;
+  const aiConfig = getAiReportConfig();
+
+  return {
+    ...evaluateResolvedProviderState({
+      declaredProvider,
+      declaredModel,
+      actualQueueResolvedProvider: defaultLaneRuntimeConfig?.generator_type ?? "mock",
+      actualQueueResolvedModel: defaultLaneRuntimeConfig?.model_name ?? null,
+      activeOpenAiRuntimeModel: openAiRuntimeConfig?.modelName ?? null,
+      aiConfigModel: aiConfig.model ?? null,
+    }),
+    activeOpenAiRuntimeConfigId: openAiRuntimeConfig?.id ?? null,
+    defaultLaneRuntimeConfigId: defaultLaneRuntimeConfig?.id ?? null,
+  };
+}
+
+function evaluateCleanupTargetReportRow(report, input) {
+  if (!report) {
+    return {
+      ok: false,
+      status: "blocked_cleanup_target_not_found",
+      blocker: "cleanup_target_report_not_found",
+    };
+  }
+
+  if (report.generator_type !== ACCIDENTAL_MOCK_REPORT.generatorType) {
+    return {
+      ok: false,
+      status: "cleanup_refused_non_mock_report",
+      blocker: "cleanup_refused_non_mock_report",
+    };
+  }
+
+  if (
+    report.id !== input.targetMockReportId ||
+    report.attempt_id !== ACCIDENTAL_MOCK_REPORT.attemptId ||
+    report.test_slug !== ACCIDENTAL_MOCK_REPORT.testSlug ||
+    report.report_type !== "individual" ||
+    report.audience !== "hr" ||
+    report.source_type !== "single_test"
+  ) {
+    return {
+      ok: false,
+      status: "blocked_cleanup_target_guard_failed",
+      blocker: "cleanup_target_report_guard_failed",
+    };
+  }
+
+  return {
+    ok: true,
+    status: "cleanup_ready",
+    blocker: null,
+  };
+}
+
 async function runConfirmedGeneration(input) {
   installTypeScriptRuntime();
 
   const { createSupabaseAdminClient } = require(path.join(projectRoot, "lib", "supabase", "admin.ts"));
+  const { getAiReportConfig } = require(path.join(projectRoot, "lib", "assessment", "report-config.ts"));
+  const {
+    getActiveReportRuntimeConfig,
+  } = require(path.join(projectRoot, "lib", "assessment", "report-runtime-config.ts"));
   const { recoverHrAttemptReport } = require(path.join(projectRoot, "lib", "assessment", "reports.ts"));
   const {
     claimNextReportJob,
@@ -660,6 +865,46 @@ async function runConfirmedGeneration(input) {
     return artifact;
   }
 
+  const providerPreflight = await resolveActualWorkerProviderPreflight({
+    supabase,
+    getActiveReportRuntimeConfig,
+    getAiReportConfig,
+    declaredProvider: input.declaredProvider,
+    declaredModel: input.declaredModel,
+  });
+  Object.assign(artifact.metadata, {
+    declaredProvider: providerPreflight.declaredProvider,
+    declaredModel: providerPreflight.declaredModel,
+    actualQueueResolvedProvider: providerPreflight.actualQueueResolvedProvider,
+    actualQueueResolvedModel: providerPreflight.actualQueueResolvedModel,
+    actualWorkerResolvedProvider: providerPreflight.actualWorkerResolvedProvider,
+    actualWorkerResolvedModel: providerPreflight.actualWorkerResolvedModel,
+  });
+
+  if (!providerPreflight.ok) {
+    artifact.status = providerPreflight.status;
+    artifact.blockers.push(providerPreflight.status);
+    artifact.findings.push({
+      severity: "blocker",
+      category: "provider_preflight",
+      message:
+        "Replay HR generation preflight failed because the actual queue/worker resolution path does not target OpenAI gpt-5.5.",
+      declaredProvider: providerPreflight.declaredProvider,
+      declaredModel: providerPreflight.declaredModel,
+      actualQueueResolvedProvider: providerPreflight.actualQueueResolvedProvider,
+      actualQueueResolvedModel: providerPreflight.actualQueueResolvedModel,
+      actualWorkerResolvedProvider: providerPreflight.actualWorkerResolvedProvider,
+      actualWorkerResolvedModel: providerPreflight.actualWorkerResolvedModel,
+      defaultLaneRuntimeConfigId: providerPreflight.defaultLaneRuntimeConfigId,
+      activeOpenAiRuntimeConfigId: providerPreflight.activeOpenAiRuntimeConfigId,
+    });
+    artifact.nextReadOnlyAuditSql = buildReadOnlyAuditSql({
+      attemptId: attempt.attemptId,
+      testSlug: input.testSlug,
+    });
+    return artifact;
+  }
+
   const recovery = await recoverHrAttemptReport(attempt.attemptId);
   artifact.queueAction = recovery.action;
   artifact.reportId = recovery.reportId ?? null;
@@ -684,6 +929,39 @@ async function runConfirmedGeneration(input) {
   if (!claimedJob || claimedJob.attempt_id !== attempt.attemptId || claimedJob.test_slug !== input.testSlug) {
     artifact.status = "blocked";
     artifact.blockers.push("failed_to_claim_target_hr_report_job");
+    return artifact;
+  }
+
+  const claimedJobResolvedModel = resolveClaimedJobModelName({
+    claimedJobGeneratorType: claimedJob.generator_type,
+    claimedJobModelName: claimedJob.model_name,
+    activeOpenAiRuntimeModel: artifact.metadata.actualWorkerResolvedModel,
+    aiConfigModel: artifact.metadata.declaredModel,
+  });
+
+  if (
+    claimedJob.generator_type !== EXPECTED_PROVIDER ||
+    claimedJobResolvedModel !== EXPECTED_MODEL
+  ) {
+    artifact.status =
+      claimedJob.generator_type !== EXPECTED_PROVIDER
+        ? "blocked_claimed_job_provider_mismatch"
+        : "blocked_claimed_job_model_mismatch";
+    artifact.blockers.push(artifact.status);
+    artifact.findings.push({
+      severity: "blocker",
+      category: "claimed_job",
+      message:
+        "Claimed HR job did not preserve the OpenAI gpt-5.5 provider/model path, so processing was aborted before worker execution.",
+      claimedJobGeneratorType: claimedJob.generator_type,
+      claimedJobModelName: claimedJob.model_name ?? null,
+      claimedJobResolvedModel,
+    });
+    artifact.reportId = claimedJob.id;
+    artifact.nextReadOnlyAuditSql = buildReadOnlyAuditSql({
+      attemptId: attempt.attemptId,
+      testSlug: input.testSlug,
+    });
     return artifact;
   }
 
@@ -724,6 +1002,30 @@ async function runConfirmedGeneration(input) {
       message: "Replay HR worker finished on failed path.",
       failure: workerResult.failure,
     });
+    return artifact;
+  }
+
+  const persistedPostcondition = evaluatePersistedReportPostcondition({
+    generatorType: finalRow.generator_type,
+    modelName: finalRow.model_name,
+  });
+
+  if (!persistedPostcondition.ok) {
+    artifact.status = persistedPostcondition.status;
+    artifact.blockers.push("persisted_report_provider_model_mismatch");
+    artifact.findings.push({
+      severity: "blocker",
+      category: "postcondition",
+      message:
+        "Persisted replay HR report did not finish as OpenAI gpt-5.5. Treat this as a hard failure and cleanup the mock row before retrying.",
+      persistedProvider: persistedPostcondition.persistedProvider,
+      persistedModel: persistedPostcondition.persistedModel,
+      cleanupCommand:
+        `CONFIRM_AMRA_REPLAY_MOCK_REPORT_CLEANUP=true TARGET_MOCK_REPORT_ID=${finalRow.id} ` +
+        `${TARGET_REPLAY_PARTICIPANT_ID_ENV}=${input.participantId} ` +
+        `${TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV}=${input.assessmentAssignmentId} ` +
+        `${TARGET_TEST_SLUG_ENV}=${input.testSlug} node --env-file=.env.local scripts/generate-amra-replay-single-test-hr-reports.cjs`,
+    });
   }
 
   return artifact;
@@ -738,6 +1040,7 @@ async function runConfirmedCleanup(input) {
     ...input,
     operation: "cleanup_mock_report",
     targetAttemptId: ACCIDENTAL_MOCK_REPORT.attemptId,
+    targetMockReportId: input.targetMockReportId,
     dryRun: false,
     writeModeConfirmed: true,
     status: "running_cleanup",
@@ -781,32 +1084,19 @@ async function runConfirmedCleanup(input) {
     return artifact;
   }
 
-  const report = await loadCleanupTargetReport(supabase);
-  if (!report) {
-    artifact.status = "blocked_cleanup_target_not_found";
-    artifact.blockers.push("cleanup_target_report_not_found");
-    artifact.nextReadOnlyAuditSql = buildCleanupAuditSql();
-    return artifact;
-  }
-
-  if (
-    report.id !== ACCIDENTAL_MOCK_REPORT.reportId ||
-    report.attempt_id !== ACCIDENTAL_MOCK_REPORT.attemptId ||
-    report.test_slug !== ACCIDENTAL_MOCK_REPORT.testSlug ||
-    report.generator_type !== ACCIDENTAL_MOCK_REPORT.generatorType ||
-    report.report_type !== "individual" ||
-    report.audience !== "hr" ||
-    report.source_type !== "single_test"
-  ) {
-    artifact.status = "blocked_cleanup_target_guard_failed";
-    artifact.blockers.push("cleanup_target_report_guard_failed");
+  const report = await loadCleanupTargetReport(supabase, input.targetMockReportId);
+  const cleanupValidation = evaluateCleanupTargetReportRow(report, input);
+  if (!cleanupValidation.ok) {
+    artifact.status = cleanupValidation.status;
+    artifact.blockers.push(cleanupValidation.blocker);
+    artifact.nextReadOnlyAuditSql = buildCleanupAuditSql(input.targetMockReportId);
     return artifact;
   }
 
   const { error: deleteError } = await supabase
     .from("attempt_reports")
     .delete()
-    .eq("id", ACCIDENTAL_MOCK_REPORT.reportId)
+    .eq("id", input.targetMockReportId)
     .eq("attempt_id", ACCIDENTAL_MOCK_REPORT.attemptId)
     .eq("test_slug", ACCIDENTAL_MOCK_REPORT.testSlug)
     .eq("generator_type", ACCIDENTAL_MOCK_REPORT.generatorType)
@@ -821,11 +1111,11 @@ async function runConfirmedCleanup(input) {
   artifact.metadata.databaseWrites = true;
   artifact.status = "cleanup_completed";
   artifact.cleanupAction = "delete_exact_mock_report";
-  artifact.cleanedUpReportId = ACCIDENTAL_MOCK_REPORT.reportId;
-  artifact.reportId = ACCIDENTAL_MOCK_REPORT.reportId;
+  artifact.cleanedUpReportId = input.targetMockReportId;
+  artifact.reportId = input.targetMockReportId;
   artifact.testSlug = ACCIDENTAL_MOCK_REPORT.testSlug;
   artifact.attemptId = ACCIDENTAL_MOCK_REPORT.attemptId;
-  artifact.nextReadOnlyAuditSql = buildCleanupAuditSql();
+  artifact.nextReadOnlyAuditSql = buildCleanupAuditSql(input.targetMockReportId);
 
   return artifact;
 }
@@ -838,7 +1128,7 @@ async function generateAmraReplaySingleTestHrReports({ env = process.env, stdout
   }
 
   if (env[CONFIRM_CLEANUP_ENV] === "true") {
-    const validation = validateConfirmedInputs(env);
+    const validation = validateCleanupInputs(env);
     if (!validation.ok) {
       const artifact = buildInvalidInputArtifact(validation);
       stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
@@ -891,6 +1181,7 @@ module.exports = {
   EXPECTED_TARGETS,
   EXPECTED_MODEL,
   EXPECTED_PROVIDER,
+  TARGET_MOCK_REPORT_ID_ENV,
   TARGET_REPLAY_ASSESSMENT_ASSIGNMENT_ID_ENV,
   TARGET_REPLAY_PARTICIPANT_ID_ENV,
   TARGET_TEST_SLUG_ENV,
@@ -898,11 +1189,17 @@ module.exports = {
   buildBaseArtifact,
   buildCleanupAuditSql,
   buildConfirmationRequiredArtifact,
+  evaluateCleanupTargetReportRow,
+  evaluatePersistedReportPostcondition,
+  evaluateResolvedProviderState,
   buildReadOnlyAuditSql,
   buildProviderBlockedArtifact,
   generateAmraReplaySingleTestHrReports,
+  getCleanupInputs,
   getTargetInputs,
+  resolveClaimedJobModelName,
   validateConfirmedInputs,
+  validateCleanupInputs,
   validateProviderInputs,
 };
 
