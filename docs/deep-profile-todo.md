@@ -61,7 +61,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
-| P1        | Deep Profile premium UI/UX system implementation    | Završeno za UI ownership foundation krug; read-only UI ownership audit završen, semantic targeting foundation implementiran, report card/state message ownership konsolidovan, dashboard CTA/status ownership konsolidovan, `DpPageHeader` typography cleanup završen i browser smoke PASS-ovan | UI system / Product quality / Look and feel | Ne raditi redesign-all. Koristiti novi semantic targeting sloj kao osnovu za buduće precizne UI izmjene; sljedeći mali slice: participant reports reference screen visual polish. |
+| P1        | Deep Profile premium UI/UX system implementation    | Završeno za UI ownership foundation krug i današnji presentation/access-control krug; read-only UI ownership audit završen, semantic targeting foundation implementiran, report card/state message ownership konsolidovan, dashboard CTA/status ownership konsolidovan, `DpPageHeader` typography cleanup završen, dashboard deep-link guard follow-up fix završen, IPIP candidate/HR layout parity audit završen i IPIP HR radar executive anchor V1 implementiran | UI system / Product quality / Look and feel | Ne raditi redesign-all. Koristiti novi semantic targeting sloj kao osnovu za buduće precizne UI izmjene; sljedeći mali slice: `IPIP HR key signals executive cards V1`. |
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP HR P0 quality krug je zatvoren kroz read-only audit, dev-only OpenAI dry-run inspector, interpretive prompt hardening, successful confirmed dry-run, controlled Amra regeneration i post-regeneration inspector + browser smoke PASS. Frontend ostaje renderer, ne autor interpretacije; scoring/test output ostaje čist i deterministički. | Deep Profile / Report content architecture | Sljedeće: creation standard za report ide kroz prompt/content contract/schema prema velikom AI-ju; structural validator hard-blocka samo invalidan shape/data/source/evidence/contract. Future small-AI reviewer ostaje diagnostic/QA lane, ne current production gate. Ne raditi UI redesign kao quality odgovor i ne otvarati novi broad roadmap item bez zasebne odluke. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. IPIP HR authority lane je dodatno zatvoren P0 quality krugom: prompt/content-quality block, dry-run-only diagnostic inspector, validator-backed confirmed OpenAI dry-run i controlled Amra regeneration na `ready`. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove bez eksplicitnog odobrenja. Dalji quality rad ostaje uski prompt/content-contract + structural validator + future diagnostic reviewer/golden-examples lane; ne ići kroz UI polish, scoring izmjene ili persistence/lifecycle refactor. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Repo-backed canonical spec v0.1 dokumentovan u `docs/team-dynamics-product-tech-spec.md` | Team module / Product architecture | Koristiti ovaj spec kao product/tech osnovu za buduće Team Dynamics / Team Fit implementation slice-ove; ne otvarati worker/scheduler kao default; naredni Team Fit/Team Dynamics runtime rad traži zasebnu product odluku. |
@@ -6870,7 +6870,9 @@ Razlog za sljedeći prioritet:
   6. Assessment execution UX kasnije, kao high-risk zaseban talas.
 * **Sljedeći mali slice:**
   * `DpPageHeader` typography cleanup.
-  * Nakon toga participant reports reference screen visual polish.
+  * Nakon toga `IPIP HR key signals executive cards V1`.
+* **Future cleanup candidate:**
+  * `IPIP candidate report width parity`.
 
 * **New decision — UI targeting/control layer prije daljeg redesign-a:**
   * Prije novih vizuelnih izmjena treba prvo uraditi read-only audit postojećeg UI standarda i onoga što aplikacija već ima na raspolaganju.
@@ -6959,6 +6961,75 @@ Razlog za sljedeći prioritet:
 
 - Ako se kasnije uvedu organizacione membership role koje nisu HR/admin/workspace role, razmotriti role-specific HR permission hardening.
 - Trenutno MVP pravilo ostaje: bilo koja aktivna organizacijska membership veza znači HR/dashboard access.
+
+### Completion note — Dashboard deep-link guard follow-up
+
+- `resolveDashboardWorkspaceAccess(...)` sada za HR/org korisnike vraća `{ kind: "hr", action: "allow" }`.
+- `app/(protected)/dashboard/layout.tsx` sada eksplicitno vraća `children` za HR allow slučaj prije redirect grana.
+- `scripts/test-dashboard-workspace-access.cjs` sada pokriva `/dashboard` i `/dashboard/attempts/...` za participant-only, HR i mixed korisnike.
+- Participant-only user ostaje redirectovan na `/app` za `/dashboard` i `/dashboard/...`.
+- HR/org user ostaje na traženoj nested `/dashboard/...` ruti bez normalizacije na `/dashboard`.
+- Mixed HR+participant user ostaje allowed na `/dashboard` i `/dashboard/...`.
+- Validation:
+  - `node scripts/test-dashboard-workspace-access.cjs` passed
+  - `npm run typecheck` passed
+  - `git diff --check` passed, uz postojeće nevezano CRLF upozorenje za netaknuti `supabase/snippets/Untitled query 205.sql`
+- Nije bilo DB/migration/AI/report/scoring/lifecycle/UI styling promjena.
+- Nije mijenjan `app/globals.css`.
+- Nije mijenjan `tailwind.config.ts`.
+
+### Completion note — IPIP candidate/HR layout parity audit and HR radar executive anchor
+
+- Urađen je read-only audit kandidat-facing i HR-facing IPIP report layouta.
+- Candidate IPIP report route ostaje `app/(protected)/app/attempts/[attemptId]/report/page.tsx`.
+- Candidate renderer ostaje `components/assessment/completed-assessment-summary.tsx`.
+- Candidate radar source ostaje deterministic kroz `PersonalityRadarChart`, `getParticipantIpipRadarDomains(...)` i `getParticipantIpipRadarDomainsV2(...)`.
+- HR IPIP report route ostaje `app/(protected)/dashboard/attempts/[attemptId]/page.tsx`.
+- HR renderer ostaje `IpipNeo120HrReportSections` u `components/assessment/completed-assessment-summary.tsx`.
+- Existing low-level radar komponenta ostaje `components/assessment/personality-radar-chart.tsx`.
+- HR deterministic source je `score_references?.domains`.
+- HR validator već poredi `score_references` protiv expected inputa, pa je to siguran deterministic source za budući radar reuse.
+- Product/design odluke iz audita:
+  - IPIP candidate i HR report trebaju koristiti širi desktop canvas sa kontrolisanom čitljivošću.
+  - Radar mora biti dio budućeg IPIP report layouta.
+  - HR radar mora koristiti deterministic `score_references.domains`, ne AI narrative text.
+  - Candidate i HR report trebaju ostati ista vizuelna porodica, ali sa različitom informacijskom hijerarhijom.
+  - Renderer smije biti editor rasporeda, ali ne autor sadržaja.
+- Safety line:
+  - frontend ne smije pisati nove HR zaključke
+  - frontend ne smije mijenjati značenje AI teksta
+  - frontend ne smije generisati nove HR signale
+  - radar ne smije čitati narrative polja kao source
+- Audit validation:
+  - read-only audit je završen
+  - nije rađen redesign-all
+  - nije mijenjan `app/globals.css`
+  - nije mijenjan `tailwind.config.ts`
+- Sljedeći zdravi candidate report follow-up ostaje zaseban i uski slice, bez broad redesign-a.
+
+### Completion note — IPIP HR report width + radar executive anchor V1
+
+- HR attempt report route canvas je proširen sa `max-w-4xl` na `max-w-6xl`.
+- IPIP HR renderer dobio je deterministic radar adapter `getIpipHrRadarDomains(...)`.
+- Gornji HR executive block sada može renderovati radar panel blizu vrha reporta.
+- Radar koristi isključivo `report.score_references?.domains`.
+- Radar ne čita `headline`, `executive_summary`, `key_hr_signals`, `domain_overview` ili druge narrative fieldove.
+- Ako `score_references.domains` nije kompletan, radar se ne renderuje i report nastavlja normalno.
+- Dodani su stabilni targeting atributi:
+  - `data-ui="ipip-hr-executive"`
+  - `data-ui="ipip-hr-radar-panel"`
+  - `data-ui="ipip-domain-radar"`
+- Validation:
+  - `node scripts/test-ipip-hr-report-radar-renderer.cjs` passed
+  - `npm run typecheck` passed
+  - `node scripts/test-ipip-neo-120-hr-report.cjs` passed, uz postojeće non-blocking diagnostics iz testa
+  - `git diff --check` passed, uz postojeće nevezano CRLF upozorenje za netaknuti `supabase/snippets/Untitled query 205.sql`
+- Nije bilo DB/migration/AI/report/scoring/lifecycle/UI styling promjena.
+- Nije mijenjan `app/globals.css`.
+- Nije mijenjan `tailwind.config.ts`.
+- Candidate report nije diran u ovom slice-u.
+- Future follow-up candidate ostaje `IPIP HR key signals executive cards V1`.
+- Parking-lot/future cleanup candidate ostaje `IPIP candidate report width parity`.
 
 ### Candidate single-test report UI investigation i pending design decision
 
