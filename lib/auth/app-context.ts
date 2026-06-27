@@ -21,6 +21,7 @@ export type CurrentUserAppContext = {
 export type DashboardWorkspaceAccess =
   | {
       kind: "hr";
+      action: "allow";
     }
   | {
       kind: "candidate";
@@ -53,6 +54,7 @@ export function resolveDashboardWorkspaceAccess(
   if (context.hasOrganizationMembership) {
     return {
       kind: "hr",
+      action: "allow",
     };
   }
 

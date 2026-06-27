@@ -17,6 +17,10 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const context = await getAppContextForUserId(user.id);
   const dashboardAccess = resolveDashboardWorkspaceAccess(context);
 
+  if (dashboardAccess.kind === "hr" && dashboardAccess.action === "allow") {
+    return <>{children}</>;
+  }
+
   if (dashboardAccess.kind === "candidate") {
     redirect(dashboardAccess.redirectPath);
   }

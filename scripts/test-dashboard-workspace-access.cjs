@@ -40,12 +40,38 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 
 const { resolveDashboardWorkspaceAccess } = require(appContextPath);
 
+function resolveDashboardRequest(input) {
+  const access = resolveDashboardWorkspaceAccess({
+    hasOrganizationMembership: input.hasOrganizationMembership,
+    linkedParticipantId: input.linkedParticipantId,
+  });
+
+  if (access.kind === "hr") {
+    return {
+      action: "allow",
+      pathname: input.pathname,
+    };
+  }
+
+  if (access.kind === "candidate") {
+    return {
+      action: "redirect",
+      redirectPath: access.redirectPath,
+    };
+  }
+
+  return {
+    action: "redirect",
+    redirectPath: "/app",
+  };
+}
+
 assert.deepEqual(
   resolveDashboardWorkspaceAccess({
     hasOrganizationMembership: true,
     linkedParticipantId: null,
   }),
-  { kind: "hr" },
+  { kind: "hr", action: "allow" },
   "Expected organization members to keep HR dashboard access.",
 );
 
@@ -54,7 +80,7 @@ assert.deepEqual(
     hasOrganizationMembership: true,
     linkedParticipantId: "participant-1",
   }),
-  { kind: "hr" },
+  { kind: "hr", action: "allow" },
   "Expected HR access to win when a user also has a linked participant.",
 );
 
@@ -76,6 +102,46 @@ assert.deepEqual(
   "Expected users without HR or participant access not to receive the HR dashboard shell.",
 );
 
+for (const pathname of [
+  "/dashboard",
+  "/dashboard/attempts/attempt-1",
+]) {
+  assert.deepEqual(
+    resolveDashboardRequest({
+      pathname,
+      hasOrganizationMembership: false,
+      linkedParticipantId: "participant-1",
+    }),
+    { action: "redirect", redirectPath: "/app" },
+    `Expected participant-only ${pathname} requests to leave the HR dashboard namespace.`,
+  );
+}
+
+for (const pathname of [
+  "/dashboard",
+  "/dashboard/attempts/attempt-1",
+]) {
+  assert.deepEqual(
+    resolveDashboardRequest({
+      pathname,
+      hasOrganizationMembership: true,
+      linkedParticipantId: null,
+    }),
+    { action: "allow", pathname },
+    `Expected HR ${pathname} requests to render the requested dashboard route without normalization.`,
+  );
+}
+
+assert.deepEqual(
+  resolveDashboardRequest({
+    pathname: "/dashboard/attempts/attempt-1",
+    hasOrganizationMembership: true,
+    linkedParticipantId: "participant-1",
+  }),
+  { action: "allow", pathname: "/dashboard/attempts/attempt-1" },
+  "Expected mixed HR+participant users to keep direct HR dashboard deep-link access.",
+);
+
 const dashboardLayoutSource = fs.readFileSync(dashboardLayoutPath, "utf8");
 const dashboardPageSource = fs.readFileSync(dashboardPagePath, "utf8");
 
@@ -83,6 +149,11 @@ assert.match(dashboardLayoutSource, /resolveDashboardWorkspaceAccess\(context\)/
 assert.match(dashboardLayoutSource, /getAppContextForUserId\(user\.id\)/);
 assert.match(dashboardLayoutSource, /redirect\(dashboardAccess\.redirectPath\)/);
 assert.match(dashboardLayoutSource, /redirect\("\/app"\)/);
+assert.doesNotMatch(
+  dashboardLayoutSource,
+  /redirect\(["']\/dashboard["']\)/,
+  "Expected dashboard layout not to normalize allowed HR deep links back to the dashboard home.",
+);
 assert.doesNotMatch(
   dashboardLayoutSource,
   /redirect\(["']\/login["']\)/,
