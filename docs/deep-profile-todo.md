@@ -61,7 +61,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | SAFRAN HR report V1                                 | Završeno    | HR report / SAFRAN           | Zatvoreno nakon contract/input/validator sloja, mock i OpenAI runtime-a, HR renderer-a, lifecycle smoke-a, browser smoke-a i završnog copy polish-a. |
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
-| P1        | Deep Profile premium UI/UX system implementation    | Zatvoreno za četiri slice-a / read-only UI targeting-control audit završen, semantic targeting foundation implementiran, participant reports metadata cleanup, card hierarchy/readability polish i ready-card copy cleanup završeni | UI system / Product quality / Look and feel | Ne raditi redesign-all. Koristiti novi semantic targeting sloj kao osnovu za buduće precizne UI izmjene; sljedeći UI slice treba ostati mali i kontrolisan, po mogućnosti CTA/status visual clarity ili drugi uski polish nakon product/design odluke. |
+| P1        | Deep Profile premium UI/UX system implementation    | Završeno za UI ownership foundation krug; read-only UI ownership audit završen, semantic targeting foundation implementiran, report card/state message ownership konsolidovan, dashboard CTA/status ownership konsolidovan i browser smoke PASS-ovan | UI system / Product quality / Look and feel | Ne raditi redesign-all. Koristiti novi semantic targeting sloj kao osnovu za buduće precizne UI izmjene; sljedeći mali slice: `DpPageHeader` typography cleanup, a nakon toga participant reports reference screen visual polish. |
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP HR P0 quality krug je zatvoren kroz read-only audit, dev-only OpenAI dry-run inspector, interpretive prompt hardening, successful confirmed dry-run, controlled Amra regeneration i post-regeneration inspector + browser smoke PASS. Frontend ostaje renderer, ne autor interpretacije; scoring/test output ostaje čist i deterministički. | Deep Profile / Report content architecture | Sljedeće: creation standard za report ide kroz prompt/content contract/schema prema velikom AI-ju; structural validator hard-blocka samo invalidan shape/data/source/evidence/contract. Future small-AI reviewer ostaje diagnostic/QA lane, ne current production gate. Ne raditi UI redesign kao quality odgovor i ne otvarati novi broad roadmap item bez zasebne odluke. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. IPIP HR authority lane je dodatno zatvoren P0 quality krugom: prompt/content-quality block, dry-run-only diagnostic inspector, validator-backed confirmed OpenAI dry-run i controlled Amra regeneration na `ready`. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove bez eksplicitnog odobrenja. Dalji quality rad ostaje uski prompt/content-contract + structural validator + future diagnostic reviewer/golden-examples lane; ne ići kroz UI polish, scoring izmjene ili persistence/lifecycle refactor. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Repo-backed canonical spec v0.1 dokumentovan u `docs/team-dynamics-product-tech-spec.md` | Team module / Product architecture | Koristiti ovaj spec kao product/tech osnovu za buduće Team Dynamics / Team Fit implementation slice-ove; ne otvarati worker/scheduler kao default; naredni Team Fit/Team Dynamics runtime rad traži zasebnu product odluku. |
@@ -6837,7 +6837,7 @@ Razlog za sljedeći prioritet:
 
 ### 5.21 Deep Profile premium UI/UX system implementation
 
-* **Status:** Otvoreno / Read-only audit završen
+* **Status:** Završeno / UI ownership foundation krug završen
 * **Kategorija:** UI system / Product quality / Look and feel
 * **Audit nalaz:**
   * Aplikacija je djelimično usklađena sa UI sistemom, ali postoje paralelni vizuelni slojevi: dashboard primitive layer, legacy candidate/report CSS layer i inline assessment skin.
@@ -6868,6 +6868,9 @@ Razlog za sljedeći prioritet:
   4. Report view family alignment: Composite, Team Fit, IDP, Team Dynamics.
   5. Candidate dashboard polish.
   6. Assessment execution UX kasnije, kao high-risk zaseban talas.
+* **Sljedeći mali slice:**
+  * `DpPageHeader` typography cleanup.
+  * Nakon toga participant reports reference screen visual polish.
 
 * **New decision — UI targeting/control layer prije daljeg redesign-a:**
   * Prije novih vizuelnih izmjena treba prvo uraditi read-only audit postojećeg UI standarda i onoga što aplikacija već ima na raspolaganju.
@@ -6885,6 +6888,53 @@ Razlog za sljedeći prioritet:
     * promjenu samo jedne konkretne instance elementa na jednom ekranu bez uticaja na ostale instance
   * Prvi implementation korak ne smije biti redesign, nego audit i mapiranje postojećeg stanja.
   * Najnoviji single-test HR report audit pokazuje da se UI polish/redesign ne smije raditi prije report authority stabilizacije. Vizuelni problem na IPIP HR reportu nije izolovan samo u stilu; isti ekran otkriva prompt, terminology, snapshot i renderer-path split. Sljedeći UI rad mora prvo znati koji route/renderer je canonical i koji snapshot/display model je autoritativan.
+
+### Completion note — Deep Profile UI ownership foundation krug
+
+- Referentni ekran ostaje `/dashboard/participants/[participantId]/reports`.
+- Urađen je read-only UI ownership audit za Tailwind/CSS/shared primitive stanje.
+- Audit je potvrdio da Tailwind ostaje implementation utility layer, a visual ownership ide kroz shared dashboard/report primitives.
+- Nije rađen redesign-all.
+- Nisu mijenjani `app/globals.css` ni `tailwind.config.ts`.
+- Završeni implementation slice 1:
+  - Dodan je `DpReportCard` kao shared owner za report card visual wrapper.
+  - Dodan je `DpReportStateMessage` kao shared owner za report state/info message wrapper.
+  - Refaktorisani su:
+    - `app/(protected)/dashboard/participants/[participantId]/reports/page.tsx`
+    - `components/dashboard/team-fit-report-list.tsx`
+    - `components/dashboard/individual-development-profile-report-list.tsx`
+  - Dodani su stabilni targeting atributi:
+    - `data-ui="report-card"`
+    - `data-report-type`
+    - `data-report-status`
+    - `data-report-slug` gdje postoji
+    - `data-ui="report-state-message"`
+    - `data-report-tone`
+- Završeni implementation slice 2:
+  - `DpButton` je ojačan kao canonical public dashboard/report CTA wrapper za touched report akcije.
+  - `getDashboardCtaClassName(...)` ostaje kao internal/backwards-compatible implementation detail.
+  - `DpStatusBadge` je ojačan kao canonical public dashboard/report badge wrapper za touched report views/queues.
+  - `DashboardStatusBadge` ostaje kao base/backwards-compatible implementation.
+  - Dodani su stabilni targeting atributi:
+    - `DpButton`: `data-ui="dp-button"`, `data-variant`, `data-size`
+    - `DpStatusBadge`: `data-ui="dp-status-badge"`, `data-tone`
+- Validacija:
+  - `node scripts/test-hr-participant-reports-renderer-hygiene.cjs` passed
+  - `npm run typecheck` passed
+  - `git diff --check` passed, uz postojeće CRLF upozorenje za netaknuti `supabase/snippets/Untitled query 205.sql`
+  - Browser smoke je ručno prošao bez očiglednog loma na:
+    - `http://localhost:3000/dashboard`
+    - `http://localhost:3000/dashboard/participants/a5678fd5-8fea-4308-8569-5448f26b4f71/reports`
+    - `http://localhost:3000/dashboard/attempts/8aefc4f9-3ca6-48f2-a41e-0f6b75c5e0d1`
+    - `http://localhost:3000/dashboard/attempts/54702bc1-7d91-492e-9b50-14aff6706d34`
+- Non-goals / guardrails:
+  - Nije mijenjan `app/globals.css`.
+  - Nije mijenjan `tailwind.config.ts`.
+  - Nije mijenjan app shell/header/navbar.
+  - Nije mijenjan login/auth UI.
+  - Nije diran assessment execution UI.
+  - Nisu dirani DB, migrations, auth, lifecycle, worker/scheduler, AI promptovi, providers, report contracts, snapshot shape, scoring ili report content.
+  - Nije rađen broad visual redesign.
 
 ### Candidate single-test report UI investigation i pending design decision
 
