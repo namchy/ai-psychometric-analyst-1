@@ -528,6 +528,9 @@ function getParticipantIpipBandPillClassName(
 
 type ParticipantIpipDomain = IpipNeo120ParticipantReportV1["domains"][number];
 type ParticipantIpipDomainV2 = IpipNeo120ParticipantReportV2["domains"][number];
+type HrIpipScoreReferenceDomain = NonNullable<
+  IpipNeo120HrReportV1["score_references"]
+>["domains"][number];
 type ParticipantIpipDomainDisplayState = {
   score: ParticipantIpipDomain["score"];
   band: ParticipantIpipDomain["band"];
@@ -540,6 +543,14 @@ const PARTICIPANT_IPIP_RADAR_DOMAIN_ORDER = [
   "NEUROTICISM",
   "OPENNESS_TO_EXPERIENCE",
 ] as const satisfies ReadonlyArray<ParticipantIpipDomain["domain_code"]>;
+
+const HR_IPIP_RADAR_DOMAIN_ORDER = [
+  "EXTRAVERSION",
+  "AGREEABLENESS",
+  "CONSCIENTIOUSNESS",
+  "NEUROTICISM",
+  "OPENNESS_TO_EXPERIENCE",
+] as const satisfies ReadonlyArray<HrIpipScoreReferenceDomain["domain_code"]>;
 
 function getParticipantIpipDomainDisplayState(
   domain: Pick<ParticipantIpipDomain, "domain_code" | "score" | "band">,
@@ -650,6 +661,32 @@ function getParticipantIpipRadarDomainsV2(
         key: domain.domain_code,
         label: getParticipantIpipRadarLabelV2(domain),
         score: domain.display_score,
+      },
+    ];
+  });
+}
+
+function getIpipHrRadarDomains(report: IpipNeo120HrReportV1): PersonalityRadarDomain[] {
+  const scoreDomains = report.score_references?.domains;
+
+  if (!Array.isArray(scoreDomains) || scoreDomains.length !== HR_IPIP_RADAR_DOMAIN_ORDER.length) {
+    return [];
+  }
+
+  const domainsByCode = new Map(scoreDomains.map((domain) => [domain.domain_code, domain]));
+
+  return HR_IPIP_RADAR_DOMAIN_ORDER.flatMap((domainCode) => {
+    const domain = domainsByCode.get(domainCode);
+
+    if (!domain || !Number.isFinite(domain.score)) {
+      return [];
+    }
+
+    return [
+      {
+        key: domain.domain_code,
+        label: domain.domain_name,
+        score: domain.score,
       },
     ];
   });
@@ -2448,14 +2485,51 @@ function IpipNeo120HrReportSections({
 }: {
   report: IpipNeo120HrReportV1;
 }) {
+  const radarDomains = getIpipHrRadarDomains(report);
+  const shouldRenderRadar = radarDomains.length === HR_IPIP_RADAR_DOMAIN_ORDER.length;
+
   return (
     <div className="results-report__closing stack-md">
-      <section className="results-report__section results-report__panel card stack-sm">
-        <div className="results-report__section-heading">
-          <p className="results-report__section-kicker">HR izvještaj</p>
-          <h3>{report.headline}</h3>
+      <section
+        className="results-report__section results-report__panel card"
+        data-ui="ipip-hr-executive"
+      >
+        <div
+          className={
+            shouldRenderRadar
+              ? "grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start"
+              : "stack-sm"
+          }
+        >
+          <div className="stack-sm">
+            <div className="results-report__section-heading">
+              <p className="results-report__section-kicker">HR izvještaj</p>
+              <h3>{report.headline}</h3>
+            </div>
+            <p className="max-w-[760px] text-[15px] leading-7 text-slate-700">
+              {report.executive_summary}
+            </p>
+          </div>
+
+          {shouldRenderRadar ? (
+            <aside
+              className="rounded-[1.15rem] border border-[rgba(17,138,178,0.16)] bg-[rgba(248,250,252,0.86)] px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
+              data-ui="ipip-hr-radar-panel"
+            >
+              <div className="results-report__section-heading gap-1.5">
+                <h4 className="text-[14px] font-semibold leading-5 text-[#073b4c]">
+                  Profil domena
+                </h4>
+                <p className="text-[12.5px] leading-5 text-slate-500">
+                  Radar prikazuje pet IPIP domena na skali od 1 do 5.
+                </p>
+              </div>
+              <div className="mt-3" data-ui="ipip-domain-radar">
+                <PersonalityRadarChart domains={radarDomains} className="h-[280px] sm:h-[292px]" />
+              </div>
+            </aside>
+          ) : null}
         </div>
-        <p>{report.executive_summary}</p>
       </section>
 
       <section className="results-report__section results-report__panel card stack-sm">
