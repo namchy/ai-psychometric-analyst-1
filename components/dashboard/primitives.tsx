@@ -589,18 +589,34 @@ export function DpPageHeader({
   className?: string;
 }) {
   return (
-    <div className={joinClassNames("space-y-3", className)}>
+    <div className={joinClassNames("space-y-3", className)} data-ui="dp-page-header">
       <PageNavigation backHref={backHref} backLabel={backLabel} backLinkVariant="subtle" />
       <DashboardSectionShell className="shadow-[0_24px_54px_rgba(15,23,42,0.1)] lg:p-7">
         <div className="relative space-y-6">
-          <DashboardSectionHeader
-            eyebrow={eyebrow}
-            eyebrowClassName="text-[#073b4c]"
-            title={title}
-            titleClassName="text-3xl font-extrabold tracking-[-0.05em] text-[#073b4c] sm:text-4xl"
-            description={description}
-            descriptionClassName="max-w-3xl text-base text-slate-600"
-          />
+          <div className="flex flex-col gap-2">
+            {eyebrow ? (
+              <p
+                className={joinClassNames(DASHBOARD_SECTION_EYEBROW_CLASS_NAME, "text-[#073b4c]")}
+                data-ui="dp-page-header-eyebrow"
+              >
+                {eyebrow}
+              </p>
+            ) : null}
+            <h1
+              className="font-headline text-3xl font-bold leading-tight tracking-normal text-[#073b4c] sm:text-4xl"
+              data-ui="dp-page-header-title"
+            >
+              {title}
+            </h1>
+            {description ? (
+              <p
+                className="max-w-3xl font-body text-[15px] leading-7 text-slate-600 sm:text-base"
+                data-ui="dp-page-header-description"
+              >
+                {description}
+              </p>
+            ) : null}
+          </div>
           {badges ? <div className="flex flex-wrap gap-2.5">{badges}</div> : null}
           {meta ? <div>{meta}</div> : null}
         </div>

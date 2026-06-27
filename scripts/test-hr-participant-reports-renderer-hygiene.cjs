@@ -218,6 +218,31 @@ assert.equal(
   "Expected HR participant detail page to use the shared DP page header wrapper.",
 );
 assert.equal(
+  dashboardPrimitivesSource.includes('data-ui="dp-page-header"'),
+  true,
+  "Expected DpPageHeader to expose a stable root data-ui target.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes('data-ui="dp-page-header-title"'),
+  true,
+  "Expected DpPageHeader to expose a stable title data-ui target.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes('data-ui="dp-page-header-eyebrow"'),
+  true,
+  "Expected DpPageHeader to expose a stable eyebrow data-ui target.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes('data-ui="dp-page-header-description"'),
+  true,
+  "Expected DpPageHeader to expose a stable description data-ui target.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("text-3xl font-extrabold tracking-[-0.05em]"),
+  false,
+  "Expected DpPageHeader H1 typography to avoid the old extra-bold tightly tracked heading style.",
+);
+assert.equal(
   candidateReportsPageSource.includes('className="-mt-10 pb-12"'),
   true,
   "Expected HR participant detail page to use the localized negative top margin that tightens header spacing.",
