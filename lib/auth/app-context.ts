@@ -18,6 +18,18 @@ export type CurrentUserAppContext = {
   recommendedAppArea: RecommendedAppArea;
 };
 
+export type DashboardWorkspaceAccess =
+  | {
+      kind: "hr";
+    }
+  | {
+      kind: "candidate";
+      redirectPath: "/app";
+    }
+  | {
+      kind: "none";
+    };
+
 export function getRecommendedAppAreaRedirectPath(
   context: Pick<CurrentUserAppContext, "recommendedAppArea">,
 ): "/hr" | "/app" | "/dashboard" {
@@ -30,6 +42,30 @@ export function getRecommendedAppAreaRedirectPath(
       // Transitional fallback until every authenticated user has a clearer area mapping.
       return "/dashboard";
   }
+}
+
+export function resolveDashboardWorkspaceAccess(
+  context: Pick<
+    CurrentUserAppContext,
+    "hasOrganizationMembership" | "linkedParticipantId"
+  >,
+): DashboardWorkspaceAccess {
+  if (context.hasOrganizationMembership) {
+    return {
+      kind: "hr",
+    };
+  }
+
+  if (context.linkedParticipantId) {
+    return {
+      kind: "candidate",
+      redirectPath: "/app",
+    };
+  }
+
+  return {
+    kind: "none",
+  };
 }
 
 async function buildAppContextForUserId(userId: string): Promise<CurrentUserAppContext> {
