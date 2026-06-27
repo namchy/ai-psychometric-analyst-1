@@ -27,6 +27,8 @@ export const DASHBOARD_SECTION_EYEBROW_CLASS_NAME =
 type DashboardCtaVariant = "primary" | "secondary" | "disabled";
 type DashboardCtaSize = "sm" | "md";
 type DashboardStatusTone = "neutral" | "success" | "info" | "warning" | "danger";
+type DpReportCardVariant = "standard" | "composite";
+type DpReportStateMessageTone = "neutral" | "info";
 
 export function getDashboardCtaClassName({
   variant = "primary",
@@ -100,6 +102,74 @@ export function DashboardInfoCardShell({
     >
       {children}
     </article>
+  );
+}
+
+export function DpReportCard({
+  children,
+  className,
+  reportType,
+  dataReportType,
+  reportStatus,
+  dataReportStatus,
+  reportSlug,
+  dataUi = "report-card",
+  variant = "standard",
+}: {
+  children: ReactNode;
+  className?: string;
+  reportType?: string;
+  dataReportType?: string;
+  reportStatus?: string | null;
+  dataReportStatus?: string | null;
+  reportSlug?: string | null;
+  dataUi?: string;
+  variant?: DpReportCardVariant;
+}) {
+  const variantClassName =
+    variant === "composite"
+      ? "mt-6 max-w-[920px] rounded-[1.5rem] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6"
+      : "flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6";
+
+  return (
+    <article
+      className={joinClassNames(variantClassName, className)}
+      data-report-slug={reportSlug ?? undefined}
+      data-report-status={dataReportStatus ?? reportStatus ?? undefined}
+      data-report-type={dataReportType ?? reportType ?? undefined}
+      data-ui={dataUi}
+    >
+      {children}
+    </article>
+  );
+}
+
+export function DpReportStateMessage({
+  children,
+  className,
+  tone = "info",
+}: {
+  children: ReactNode;
+  className?: string;
+  tone?: DpReportStateMessageTone;
+}) {
+  const toneClassName =
+    tone === "neutral"
+      ? "border-[rgba(7,59,76,0.1)] bg-[rgba(7,59,76,0.035)]"
+      : "border-[rgba(17,138,178,0.12)] bg-[rgba(17,138,178,0.045)]";
+
+  return (
+    <p
+      className={joinClassNames(
+        "rounded-[1rem] border px-4 py-3.5 text-sm leading-6 text-slate-700",
+        toneClassName,
+        className,
+      )}
+      data-report-tone={tone}
+      data-ui="report-state-message"
+    >
+      {children}
+    </p>
   );
 }
 

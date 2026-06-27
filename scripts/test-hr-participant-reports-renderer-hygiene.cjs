@@ -51,9 +51,45 @@ assert.equal(
   "Expected participant reports page sections to expose stable report group targets.",
 );
 assert.equal(
-  candidateReportsPageSource.includes('data-ui="report-card"'),
+  dashboardPrimitivesSource.includes("export function DpReportCard"),
   true,
-  "Expected participant reports page cards to expose stable report card targets.",
+  "Expected dashboard primitives to expose a shared report card owner.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes('data-ui={dataUi}'),
+  true,
+  "Expected DpReportCard to render a stable report card data-ui target.",
+);
+for (const reportAttribute of [
+  "data-report-type",
+  "data-report-status",
+  "data-report-slug",
+]) {
+  assert.equal(
+    dashboardPrimitivesSource.includes(reportAttribute),
+    true,
+    `Expected DpReportCard to own the ${reportAttribute} semantic target.`,
+  );
+}
+assert.equal(
+  dashboardPrimitivesSource.includes("export function DpReportStateMessage"),
+  true,
+  "Expected dashboard primitives to expose a shared report state message owner.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes('data-ui="report-state-message"'),
+  true,
+  "Expected DpReportStateMessage to render a stable state message data-ui target.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes("data-report-tone={tone}"),
+  true,
+  "Expected DpReportStateMessage to expose a semantic report tone target.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("<DpReportCard"),
+  true,
+  "Expected participant reports page cards to use the shared report card owner.",
 );
 for (const reportType of ["ipip", "safran", "mwms"]) {
   assert.equal(
@@ -63,68 +99,96 @@ for (const reportType of ["ipip", "safran", "mwms"]) {
   );
 }
 assert.equal(
-  candidateReportsPageSource.includes('data-report-type="composite"'),
+  candidateReportsPageSource.includes('reportType="composite"'),
   true,
   "Expected composite card to expose the composite report type target.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("data-report-status={card.state}"),
+  candidateReportsPageSource.includes("reportStatus={card.state}"),
   true,
   "Expected individual report cards to expose their existing canonical state.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("data-report-status={model.compositeCard.state}"),
+  candidateReportsPageSource.includes("reportStatus={model.compositeCard.state}"),
   true,
   "Expected composite report card to expose its existing canonical state.",
 );
 assert.equal(
-  candidateReportsPageSource.includes('data-ui="report-state-message"'),
+  candidateReportsPageSource.includes("<DpReportStateMessage"),
   true,
-  "Expected participant report card status copy to expose a stable state message target.",
+  "Expected participant report card status copy to use the shared state message owner.",
 );
 assert.equal(
-  teamFitReportListSource.includes('data-ui="report-card"'),
+  teamFitReportListSource.includes("<DpReportCard"),
   true,
-  "Expected Team Fit cards to expose stable report card targets.",
+  "Expected Team Fit cards to use the shared report card owner.",
 );
 assert.equal(
-  teamFitReportListSource.includes('data-report-type="team-fit"'),
+  teamFitReportListSource.includes('reportType="team-fit"'),
   true,
   "Expected Team Fit cards to expose the Team Fit report type target.",
 );
 assert.equal(
-  teamFitReportListSource.includes("data-report-status={entry.status}"),
+  teamFitReportListSource.includes("reportStatus={entry.status}"),
   true,
   "Expected Team Fit cards to expose their existing canonical status.",
 );
 assert.equal(
-  teamFitReportListSource.includes('data-ui="report-state-message"'),
+  teamFitReportListSource.includes("<DpReportStateMessage"),
   true,
-  "Expected Team Fit status copy to expose a stable state message target.",
+  "Expected Team Fit status copy to use the shared state message owner.",
 );
 assert.equal(
-  individualDevelopmentProfileReportListSource.includes('data-ui="report-card"'),
+  individualDevelopmentProfileReportListSource.includes("<DpReportCard"),
   true,
-  "Expected IDP cards to expose stable report card targets.",
+  "Expected IDP cards to use the shared report card owner.",
 );
 assert.equal(
-  individualDevelopmentProfileReportListSource.includes('data-report-type="idp"'),
+  individualDevelopmentProfileReportListSource.includes('reportType="idp"'),
   true,
   "Expected IDP cards to expose the IDP report type target.",
 );
 assert.equal(
   individualDevelopmentProfileReportListSource.includes(
-    "data-report-status={entry.status}",
+    "reportStatus={entry.status}",
   ),
   true,
   "Expected IDP cards to expose their existing canonical status.",
 );
 assert.equal(
   individualDevelopmentProfileReportListSource.includes(
-    'data-ui="report-state-message"',
+    "<DpReportStateMessage",
   ),
   true,
-  "Expected IDP status copy to expose a stable state message target.",
+  "Expected IDP status copy to use the shared state message owner.",
+);
+assert.equal(
+  candidateReportsPageSource.includes("reportSlug={card.slug}"),
+  true,
+  "Expected individual report cards to expose the stable assessment slug through DpReportCard.",
+);
+assert.equal(
+  candidateReportsPageSource.includes('tone="neutral"'),
+  true,
+  "Expected composite report state copy to expose its neutral report tone.",
+);
+const repeatedReportCardClass =
+  "flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6";
+for (const [sourceName, source] of [
+  ["participant reports page", candidateReportsPageSource],
+  ["Team Fit report list", teamFitReportListSource],
+  ["IDP report list", individualDevelopmentProfileReportListSource],
+]) {
+  assert.equal(
+    source.includes(repeatedReportCardClass),
+    false,
+    `Expected ${sourceName} not to duplicate the shared report card Tailwind block.`,
+  );
+}
+assert.equal(
+  dashboardPrimitivesSource.includes(repeatedReportCardClass),
+  true,
+  "Expected the shared report card owner to contain the standard report card visual block.",
 );
 assert.equal(
   [
@@ -375,14 +439,14 @@ assert.equal(
   "Expected participant reports page to suppress disabled button-like rendering for the 'Nije dostupno' single-report CTA label.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("max-w-[920px]"),
+  dashboardPrimitivesSource.includes("max-w-[920px]"),
   true,
-  "Expected composite inner card to use a fixed max width on desktop.",
+  "Expected the shared report card owner to preserve the composite inner card fixed max width on desktop.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("min-[900px]:grid-cols-[minmax(0,1fr)_auto]"),
+  dashboardPrimitivesSource.includes("min-[900px]:grid-cols-[minmax(0,1fr)_auto]"),
   true,
-  "Expected composite inner card to switch to a two-column desktop layout.",
+  "Expected the shared report card owner to preserve the composite inner card two-column desktop layout.",
 );
 assert.equal(
   candidateReportsPageSource.includes("min-[900px]:whitespace-nowrap"),
@@ -424,14 +488,14 @@ assert.equal(
   "Expected the composite section shell to use a dark-teal accent shadow.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("border-l-4 border-l-[#073b4c]"),
+  dashboardPrimitivesSource.includes("border-l-4 border-l-[#073b4c]"),
   true,
-  "Expected the composite inner card to use a dark-teal left accent strip.",
+  "Expected the shared report card owner to preserve the composite inner card dark-teal left accent strip.",
 );
 assert.equal(
-  candidateReportsPageSource.includes("bg-[rgba(255,255,255,0.82)]"),
+  dashboardPrimitivesSource.includes("bg-[rgba(255,255,255,0.82)]"),
   true,
-  "Expected the composite inner card to use the specified translucent white background.",
+  "Expected the shared report card owner to preserve the composite inner card translucent white background.",
 );
 assert.equal(
   dashboardPrimitivesSource.includes("bg-[#079985]"),

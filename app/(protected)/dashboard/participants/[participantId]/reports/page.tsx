@@ -16,6 +16,8 @@ import {
   DpMetaGrid,
   DpMetaItem,
   DpPageHeader,
+  DpReportCard,
+  DpReportStateMessage,
   DpStatusBadge,
 } from "@/components/dashboard/primitives";
 import { IndividualDevelopmentProfileReportList } from "@/components/dashboard/individual-development-profile-report-list";
@@ -284,12 +286,11 @@ export default async function CandidateReportsPage({
       ) : (
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
           {model.cards.map((card) => (
-            <article
+            <DpReportCard
               key={card.slug}
-              className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6"
-              data-report-status={card.state}
-              data-report-type={getIndividualReportType(card.slug)}
-              data-ui="report-card"
+              reportSlug={card.slug}
+              reportStatus={card.state}
+              reportType={getIndividualReportType(card.slug)}
             >
               <div className="flex-1 space-y-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -308,12 +309,7 @@ export default async function CandidateReportsPage({
                 </div>
 
                 {card.state !== "ready" || card.body !== card.subtitle ? (
-                  <p
-                    className="rounded-[1rem] border border-[rgba(17,138,178,0.12)] bg-[rgba(17,138,178,0.045)] px-4 py-3.5 text-sm leading-6 text-slate-700"
-                    data-ui="report-state-message"
-                  >
-                    {card.body}
-                  </p>
+                  <DpReportStateMessage>{card.body}</DpReportStateMessage>
                 ) : null}
 
                 <DpMetaGrid className="border-t border-slate-200/80 pt-4" columns={2}>
@@ -359,7 +355,7 @@ export default async function CandidateReportsPage({
                   ) : null}
                 </div>
               </div>
-            </article>
+            </DpReportCard>
           ))}
         </div>
       )}
@@ -401,11 +397,10 @@ export default async function CandidateReportsPage({
         titleClassName="text-[1.35rem]"
       />
 
-      <article
-        className="mt-6 max-w-[920px] rounded-[1.5rem] border border-[rgba(7,59,76,0.08)] border-l-4 border-l-[#073b4c] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] min-[900px]:mr-auto min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_auto] min-[900px]:items-center min-[900px]:gap-x-8 min-[900px]:p-6"
-        data-report-status={model.compositeCard.state}
-        data-report-type="composite"
-        data-ui="report-card"
+      <DpReportCard
+        reportStatus={model.compositeCard.state}
+        reportType="composite"
+        variant="composite"
       >
         {compositeQueueMessage ? (
           <DpInlineMessage
@@ -429,12 +424,9 @@ export default async function CandidateReportsPage({
                 {model.compositeCard.statusLabel}
               </DpStatusBadge>
             </div>
-            <p
-              className="max-w-[560px] rounded-[1rem] border border-[rgba(7,59,76,0.1)] bg-[rgba(7,59,76,0.035)] px-4 py-3.5 text-sm leading-6 text-slate-700"
-              data-ui="report-state-message"
-            >
+            <DpReportStateMessage className="max-w-[560px]" tone="neutral">
               {model.compositeCard.body}
-            </p>
+            </DpReportStateMessage>
           </div>
 
           {model.compositeCard.cta.action && !model.compositeCard.cta.disabled ? (
@@ -490,7 +482,7 @@ export default async function CandidateReportsPage({
             </DpButton>
           )}
         </div>
-      </article>
+      </DpReportCard>
     </DashboardSectionShell>
   );
 

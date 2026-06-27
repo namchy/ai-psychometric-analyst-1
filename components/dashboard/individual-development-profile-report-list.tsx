@@ -8,6 +8,8 @@ import {
   DpButton,
   DpMetaGrid,
   DpMetaItem,
+  DpReportCard,
+  DpReportStateMessage,
   DpStatusBadge,
 } from "@/components/dashboard/primitives";
 import type { IndividualDevelopmentProfileReportListEntry } from "@/lib/assessment/individual-development-profile-report-list";
@@ -73,12 +75,10 @@ export function IndividualDevelopmentProfileReportList({
 
       <div className="grid gap-4 xl:grid-cols-2">
         {entries.map((entry) => (
-          <article
+          <DpReportCard
             key={entry.id}
-            className="flex h-full flex-col rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(249,251,253,0.96))] p-5 shadow-[0_14px_27px_rgba(15,23,42,0.06)] sm:p-6"
-            data-report-status={entry.status}
-            data-report-type="idp"
-            data-ui="report-card"
+            reportStatus={entry.status}
+            reportType="idp"
           >
             <div className="flex-1 space-y-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -98,12 +98,9 @@ export function IndividualDevelopmentProfileReportList({
                 </DpStatusBadge>
               </div>
 
-              <p
-                className="rounded-[1rem] border border-[rgba(17,138,178,0.12)] bg-[rgba(17,138,178,0.045)] px-4 py-3.5 text-sm leading-6 text-slate-700"
-                data-ui="report-state-message"
-              >
+              <DpReportStateMessage>
                 {entry.safeStatusMessage}
-              </p>
+              </DpReportStateMessage>
 
               <DpMetaGrid className="border-t border-slate-200/80 pt-4" columns={2}>
                 <DpMetaItem
@@ -162,7 +159,7 @@ export function IndividualDevelopmentProfileReportList({
                 </form>
               ) : null}
             </div>
-          </article>
+          </DpReportCard>
         ))}
       </div>
     </div>
