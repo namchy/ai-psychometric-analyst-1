@@ -5,7 +5,7 @@ import {
   DashboardInfoCardShell,
   PageNavigation,
   DashboardSectionHeader,
-  DashboardStatusBadge,
+  DpStatusBadge,
 } from "@/components/dashboard/primitives";
 
 type CompositeHrReportViewProps = {
@@ -454,12 +454,12 @@ export function CompositeHrReportView({
               <p className="-mt-1 text-sm text-slate-600 sm:text-base">{participantEmail}</p>
             ) : null}
             <div className="flex flex-wrap gap-2.5">
-              <DashboardStatusBadge tone="success" emphasized>
+              <DpStatusBadge tone="success" emphasized>
                 {model.statusLabel}
-              </DashboardStatusBadge>
-              <DashboardStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]">
+              </DpStatusBadge>
+              <DpStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]" tone="info">
                 {model.source.locale.toUpperCase()}
-              </DashboardStatusBadge>
+              </DpStatusBadge>
             </div>
           </div>
         </div>

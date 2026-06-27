@@ -1,7 +1,7 @@
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
-  DashboardStatusBadge,
+  DpStatusBadge,
 } from "@/components/dashboard/primitives";
 import type { IndividualDevelopmentProfileSnapshot } from "@/lib/assessment/individual-development-profile-contract";
 
@@ -352,12 +352,12 @@ export function IndividualDevelopmentProfileReportView(
           />
 
           <div className="flex flex-wrap gap-2.5">
-            <DashboardStatusBadge tone="success" emphasized>
+            <DpStatusBadge tone="success" emphasized>
               Spremno za pregled
-            </DashboardStatusBadge>
-            <DashboardStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]">
+            </DpStatusBadge>
+            <DpStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]" tone="info">
               Razvojni pregled
-            </DashboardStatusBadge>
+            </DpStatusBadge>
           </div>
 
           <div className="rounded-[1.15rem] border border-[#118ab2]/14 bg-[#118ab2]/[0.05] px-4 py-3 text-sm leading-6 text-slate-700">

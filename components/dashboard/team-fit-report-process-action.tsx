@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { processTeamFitReportAction } from "@/app/actions/team-assessments";
-import { getDashboardCtaClassName } from "@/components/dashboard/primitives";
+import { DpButton } from "@/components/dashboard/primitives";
 
 type TeamFitReportProcessActionProps = {
   teamFitReportId: string;
@@ -45,17 +45,15 @@ export function TeamFitReportProcessAction({
 
   return (
     <div className="space-y-2 pt-1">
-      <button
-        type="button"
-        className={getDashboardCtaClassName({
-          variant: isPending ? "disabled" : "secondary",
-          size: "sm",
-        })}
+      <DpButton
         disabled={isPending}
         onClick={handleProcessReport}
+        size="sm"
+        type="button"
+        variant={isPending ? "disabled" : "secondary"}
       >
         {isPending ? "Priprema u toku" : "Pripremi Team Fit izvještaj"}
-      </button>
+      </DpButton>
       {feedback ? (
         <p
           className={

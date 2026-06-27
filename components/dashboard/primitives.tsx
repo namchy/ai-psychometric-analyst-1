@@ -330,12 +330,13 @@ export function DashboardStatusBadge({
   tone = "neutral",
   emphasized = false,
   className,
+  ...props
 }: {
   children: ReactNode;
   tone?: DashboardStatusTone;
   emphasized?: boolean;
   className?: string;
-}) {
+} & HTMLAttributes<HTMLSpanElement>) {
   const toneClassName = getDashboardStatusBadgeToneClassName(tone);
 
   return (
@@ -346,6 +347,7 @@ export function DashboardStatusBadge({
         toneClassName,
         className,
       )}
+      {...props}
     >
       {children}
     </span>
@@ -383,17 +385,23 @@ export function DpStatusBadge({
   tone = "neutral",
   emphasized = false,
   className,
+  dataUi = "dp-status-badge",
 }: {
   children: ReactNode;
   tone?: DashboardStatusTone;
   emphasized?: boolean;
   className?: string;
+  dataUi?: string;
 }) {
   return (
     <DashboardStatusBadge
       tone={tone}
       emphasized={emphasized}
-      className={joinClassNames(getDashboardStatusBadgeToneClassName(tone), className)}
+      className={className}
+      {...{
+        "data-tone": tone,
+        "data-ui": dataUi,
+      }}
     >
       {children}
     </DashboardStatusBadge>
@@ -408,6 +416,8 @@ type DpButtonProps = {
   fullWidth?: boolean;
   className?: string;
   disabled?: boolean;
+  dataUi?: string;
+  onClick?: ButtonHTMLAttributes<HTMLButtonElement>["onClick"];
   type?: ButtonHTMLAttributes<HTMLButtonElement>["type"];
 };
 
@@ -419,6 +429,8 @@ export function DpButton({
   fullWidth = false,
   className,
   disabled = false,
+  dataUi = "dp-button",
+  onClick,
   type = "button",
 }: DpButtonProps) {
   const effectiveVariant = disabled ? "disabled" : variant;
@@ -430,21 +442,36 @@ export function DpButton({
     }),
     className,
   );
+  const dataAttributes = {
+    "data-size": size,
+    "data-ui": dataUi,
+    "data-variant": effectiveVariant,
+  };
 
   if (href && !disabled) {
     return (
-      <Link className={buttonClassName} href={href}>
+      <Link className={buttonClassName} href={href} {...dataAttributes}>
         {children}
       </Link>
     );
   }
 
   if (href || disabled) {
-    return <span className={buttonClassName}>{children}</span>;
+    return (
+      <span className={buttonClassName} {...dataAttributes}>
+        {children}
+      </span>
+    );
   }
 
   return (
-    <button className={buttonClassName} disabled={disabled} type={type}>
+    <button
+      className={buttonClassName}
+      disabled={disabled}
+      onClick={onClick}
+      type={type}
+      {...dataAttributes}
+    >
       {children}
     </button>
   );

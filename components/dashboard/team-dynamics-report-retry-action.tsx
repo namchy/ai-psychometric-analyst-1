@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { resetTeamDynamicsExecutiveOverviewReportAction } from "@/app/actions/team-assessments";
-import { getDashboardCtaClassName } from "@/components/dashboard/primitives";
+import { DpButton } from "@/components/dashboard/primitives";
 
 type TeamDynamicsReportRetryActionProps = {
   teamAssessmentReportId: string;
@@ -42,17 +42,15 @@ export function TeamDynamicsReportRetryAction({
 
   return (
     <div className="space-y-2 pt-1">
-      <button
-        type="button"
-        className={getDashboardCtaClassName({
-          variant: isPending ? "disabled" : "secondary",
-          size: "sm",
-        })}
+      <DpButton
         disabled={isPending}
         onClick={handleRetryReport}
+        size="sm"
+        type="button"
+        variant={isPending ? "disabled" : "secondary"}
       >
         {isPending ? "Vraćanje u queued" : "Pokušaj ponovo"}
-      </button>
+      </DpButton>
       {feedback ? (
         <p
           className={

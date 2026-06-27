@@ -27,6 +27,18 @@ const individualDevelopmentProfileReportListSource = fs.readFileSync(
   ),
   "utf8",
 );
+const teamFitReportProcessActionSource = fs.readFileSync(
+  path.join(projectRoot, "components/dashboard/team-fit-report-process-action.tsx"),
+  "utf8",
+);
+const teamFitReportRetryActionSource = fs.readFileSync(
+  path.join(projectRoot, "components/dashboard/team-fit-report-retry-action.tsx"),
+  "utf8",
+);
+const teamDynamicsReportQueueListSource = fs.readFileSync(
+  path.join(projectRoot, "components/dashboard/team-dynamics-report-queue-list.tsx"),
+  "utf8",
+);
 
 assert.equal(
   candidateReportsPageSource.includes('data-ui="participant-reports-page"'),
@@ -548,6 +560,28 @@ assert.equal(
   "Expected dashboard primitives to expose a shared CTA helper.",
 );
 assert.equal(
+  dashboardPrimitivesSource.includes('dataUi = "dp-button"'),
+  true,
+  "Expected DpButton to expose a stable default data-ui target.",
+);
+for (const buttonAttribute of ['"data-ui": dataUi', '"data-variant": effectiveVariant', '"data-size": size']) {
+  assert.equal(
+    dashboardPrimitivesSource.includes(buttonAttribute),
+    true,
+    `Expected DpButton to render ${buttonAttribute} for semantic targeting.`,
+  );
+}
+assert.equal(
+  dashboardPrimitivesSource.includes('dataUi = "dp-status-badge"'),
+  true,
+  "Expected DpStatusBadge to expose a stable default data-ui target.",
+);
+assert.equal(
+  dashboardPrimitivesSource.includes('"data-tone": tone'),
+  true,
+  "Expected DpStatusBadge to render data-tone for semantic targeting.",
+);
+assert.equal(
   dashboardPrimitivesSource.includes("hover:text-white"),
   true,
   "Expected shared dashboard CTA helper to keep white text on darker hover states.",
@@ -563,6 +597,27 @@ assert.equal(
   ),
   true,
   "Expected HR participant detail page to use the shared disabled DP button treatment.",
+);
+for (const [sourceName, source] of [
+  ["Team Fit process action", teamFitReportProcessActionSource],
+  ["Team Fit retry action", teamFitReportRetryActionSource],
+  ["Team Dynamics report queue list", teamDynamicsReportQueueListSource],
+]) {
+  assert.equal(
+    source.includes("<DpButton"),
+    true,
+    `Expected ${sourceName} to route report CTAs through DpButton.`,
+  );
+  assert.equal(
+    source.includes("getDashboardCtaClassName"),
+    false,
+    `Expected ${sourceName} not to call the CTA class helper directly.`,
+  );
+}
+assert.equal(
+  teamDynamicsReportQueueListSource.includes("<DpStatusBadge"),
+  true,
+  "Expected Team Dynamics report queue status pills to route through DpStatusBadge.",
 );
 
 console.log("HR participant reports renderer hygiene tests passed.");

@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { TeamDynamicsReportProcessAction } from "@/components/dashboard/team-dynamics-report-process-action";
 import { TeamDynamicsReportRetryAction } from "@/components/dashboard/team-dynamics-report-retry-action";
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
-  DashboardStatusBadge,
-  getDashboardCtaClassName,
+  DpButton,
+  DpStatusBadge,
 } from "@/components/dashboard/primitives";
 import type {
   TeamDynamicsReportRowSummary,
@@ -47,6 +46,23 @@ function getReportStatusToneClassName(status: TeamDynamicsReportStatus): string 
   }
 }
 
+function getReportStatusTone(
+  status: TeamDynamicsReportStatus,
+): "success" | "warning" | "info" | "danger" | "neutral" {
+  switch (status) {
+    case "ready":
+      return "success";
+    case "queued":
+      return "warning";
+    case "processing":
+      return "info";
+    case "failed":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
 function getReportTimestampLabel(reportRow: TeamDynamicsReportRowSummary): string {
   return reportRow.queuedAt ?? reportRow.createdAt;
 }
@@ -76,11 +92,12 @@ export function TeamDynamicsReportQueueList({
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-2">
-                    <DashboardStatusBadge
+                    <DpStatusBadge
                       className={`w-fit ${getReportStatusToneClassName(reportRow.reportStatus)}`}
+                      tone={getReportStatusTone(reportRow.reportStatus)}
                     >
                       {getReportStatusLabel(reportRow.reportStatus)}
-                    </DashboardStatusBadge>
+                    </DpStatusBadge>
                     <p className="text-sm leading-6 text-slate-600">
                       Vrijeme zapisa: {getReportTimestampLabel(reportRow)}
                     </p>
@@ -97,21 +114,20 @@ export function TeamDynamicsReportQueueList({
                     ) : null}
                     {reportRow.reportStatus === "processing" ? (
                       <div className="pt-1">
-                        <span
-                          className={getDashboardCtaClassName({ variant: "disabled", size: "sm" })}
-                        >
+                        <DpButton disabled size="sm">
                           Obrada u toku
-                        </span>
+                        </DpButton>
                       </div>
                     ) : null}
                     {reportRow.reportStatus === "ready" ? (
                       <div className="pt-1">
-                        <Link
-                          className={getDashboardCtaClassName({ variant: "secondary", size: "sm" })}
+                        <DpButton
                           href={`/dashboard/teams/${teamId}/reports/${reportRow.id}`}
+                          size="sm"
+                          variant="secondary"
                         >
                           Otvori izvještaj
-                        </Link>
+                        </DpButton>
                       </div>
                     ) : null}
                     {reportRow.reportStatus === "failed" ? (

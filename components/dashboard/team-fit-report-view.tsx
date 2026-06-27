@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { DashboardStatusBadge } from "@/components/dashboard/primitives";
+import { DpStatusBadge } from "@/components/dashboard/primitives";
 import { SingleOpenPanelGroup } from "@/components/dashboard/single-open-panel-group";
 import {
   CalloutBlock,
@@ -244,8 +244,8 @@ function NonReadyState({ record }: TeamFitReportViewProps) {
           </div>
 
           <div className="flex flex-wrap gap-2.5">
-            <DashboardStatusBadge
-              tone="neutral"
+            <DpStatusBadge
+              tone={record.status === "failed" ? "danger" : "neutral"}
               emphasized
               className={
                 record.status === "failed"
@@ -254,10 +254,10 @@ function NonReadyState({ record }: TeamFitReportViewProps) {
               }
             >
               {statusLabel}
-            </DashboardStatusBadge>
-            <DashboardStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]">
+            </DpStatusBadge>
+            <DpStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]" tone="info">
               {record.reportVersion.toUpperCase()}
-            </DashboardStatusBadge>
+            </DpStatusBadge>
           </div>
 
           <div className="grid gap-3 border-t border-slate-200/80 pt-5 md:grid-cols-2 xl:grid-cols-4">
@@ -833,12 +833,12 @@ function ReadyState({ record }: TeamFitReportViewProps) {
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.55fr)]">
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <DashboardStatusBadge tone="success" emphasized>
+              <DpStatusBadge tone="success" emphasized>
                 Spremno za pregled
-              </DashboardStatusBadge>
-              <DashboardStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]">
+              </DpStatusBadge>
+              <DpStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]" tone="info">
                 {relationshipLabel}
-              </DashboardStatusBadge>
+              </DpStatusBadge>
             </div>
 
             <div className="space-y-3">

@@ -1,7 +1,7 @@
 import {
   DashboardInfoCardShell,
   DashboardSectionHeader,
-  DashboardStatusBadge,
+  DpStatusBadge,
   PageNavigation,
 } from "@/components/dashboard/primitives";
 import type {
@@ -129,12 +129,12 @@ export function TeamDynamicsExecutiveOverviewReportView({
           />
 
           <div className="flex flex-wrap gap-2.5">
-            <DashboardStatusBadge tone="success" emphasized>
+            <DpStatusBadge tone="success" emphasized>
               Spremno za pregled
-            </DashboardStatusBadge>
-            <DashboardStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]">
+            </DpStatusBadge>
+            <DpStatusBadge className="border-[#118ab2]/20 bg-[#118ab2]/10 text-[#073b4c]" tone="info">
               {snapshot.locale.toUpperCase()}
-            </DashboardStatusBadge>
+            </DpStatusBadge>
           </div>
 
           <div className="rounded-[1.15rem] border border-[#118ab2]/15 bg-[linear-gradient(135deg,rgba(17,138,178,0.05),rgba(255,255,255,0.96))] px-4 py-4">

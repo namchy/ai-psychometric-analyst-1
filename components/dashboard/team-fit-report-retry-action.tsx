@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { resetTeamFitReportAction } from "@/app/actions/team-assessments";
-import { getDashboardCtaClassName } from "@/components/dashboard/primitives";
+import { DpButton } from "@/components/dashboard/primitives";
 
 type TeamFitReportRetryActionProps = {
   teamFitReportId: string;
@@ -45,17 +45,15 @@ export function TeamFitReportRetryAction({
 
   return (
     <div className="space-y-2 pt-1">
-      <button
-        type="button"
-        className={getDashboardCtaClassName({
-          variant: isPending ? "disabled" : "primary",
-          size: "sm",
-        })}
+      <DpButton
         disabled={isPending}
         onClick={handleRetryReport}
+        size="sm"
+        type="button"
+        variant={isPending ? "disabled" : "primary"}
       >
         Pokušaj ponovo
-      </button>
+      </DpButton>
       {feedback ? (
         <p
           className={
