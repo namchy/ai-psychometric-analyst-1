@@ -65,7 +65,7 @@
   left: 4%;
   animation:
     driftBlob1
-    24s
+    18s
     infinite
     alternate
     ease-in-out;
@@ -82,12 +82,12 @@
     );
   animation:
     morphBlob1
-      11s
+      8.25s
       infinite
       alternate
       ease-in-out,
     pulseBlob1
-      7.5s
+      5.625s
       infinite
       alternate
       ease-in-out;
@@ -100,7 +100,7 @@
   bottom: -26%;
   animation:
     driftBlob2
-    31s
+    23.25s
     infinite
     alternate
     ease-in-out;
@@ -117,12 +117,12 @@
     );
   animation:
     morphBlob2
-      14s
+      10.5s
       infinite
       alternate
       ease-in-out,
     pulseBlob2
-      9.5s
+      7.125s
       infinite
       alternate
       ease-in-out;
@@ -135,7 +135,7 @@
   left: 33%;
   animation:
     driftBlob3
-    27s
+    20.25s
     infinite
     alternate
     ease-in-out;
@@ -152,12 +152,12 @@
     );
   animation:
     morphBlob3
-      9s
+      6.75s
       infinite
       alternate
       ease-in-out,
     pulseBlob3
-      6.5s
+      4.875s
       infinite
       alternate
       ease-in-out;
@@ -220,58 +220,40 @@
 
 .animateDeep {
   animation:
-    synchronizedEntrance
-      2.8s
-      cubic-bezier(0.22, 1, 0.36, 1)
-      0s
-      1
-      forwards,
-    deepBreathing
-      7s
-      cubic-bezier(0.42, 0, 0.58, 1)
-      2.8s
-      infinite
-      alternate;
+    deepCounterBreathing
+    10.5s
+    linear
+    infinite;
 }
 
 .animateProfile {
   animation:
-    synchronizedEntrance
-      2.8s
-      cubic-bezier(0.22, 1, 0.36, 1)
-      0s
-      1
-      forwards,
-    profileBreathing
-      7.7s
-      cubic-bezier(0.42, 0, 0.58, 1)
-      2.8s
-      infinite
-      alternate;
+    profileCounterBreathing
+    11.2875s
+    linear
+    infinite;
 }
 
-@keyframes synchronizedEntrance {
-  from {
+@keyframes deepCounterBreathing {
+  0% {
     transform:
-      translateX(0)
-      scale(0.9);
-    opacity: 0;
+      translateX(-8px)
+      scale(0.955);
+    opacity: 0.64;
     filter:
-      blur(12px);
+      blur(1.5px);
   }
 
-  to {
+  12.5% {
     transform:
-      translateX(0)
-      scale(1);
-    opacity: 1;
+      translateX(-4px)
+      scale(0.978);
+    opacity: 0.82;
     filter:
-      blur(0);
+      blur(0.75px);
   }
-}
 
-@keyframes deepBreathing {
-  from {
+  25% {
     transform:
       translateX(0)
       scale(1);
@@ -280,7 +262,34 @@
       blur(0);
   }
 
-  to {
+  37.5% {
+    transform:
+      translateX(-4px)
+      scale(0.978);
+    opacity: 0.82;
+    filter:
+      blur(0.75px);
+  }
+
+  50% {
+    transform:
+      translateX(-8px)
+      scale(0.955);
+    opacity: 0.64;
+    filter:
+      blur(1.5px);
+  }
+
+  62.5% {
+    transform:
+      translateX(-12px)
+      scale(0.9325);
+    opacity: 0.48;
+    filter:
+      blur(2.25px);
+  }
+
+  75% {
     transform:
       translateX(-16px)
       scale(0.91);
@@ -288,10 +297,82 @@
     filter:
       blur(3px);
   }
+
+  87.5% {
+    transform:
+      translateX(-12px)
+      scale(0.9325);
+    opacity: 0.48;
+    filter:
+      blur(2.25px);
+  }
+
+  100% {
+    transform:
+      translateX(-8px)
+      scale(0.955);
+    opacity: 0.64;
+    filter:
+      blur(1.5px);
+  }
 }
 
-@keyframes profileBreathing {
-  from {
+@keyframes profileCounterBreathing {
+  0% {
+    transform:
+      translateX(8px)
+      scale(0.955);
+    opacity: 0.64;
+    filter:
+      blur(1.5px);
+  }
+
+  12.5% {
+    transform:
+      translateX(12px)
+      scale(0.9325);
+    opacity: 0.48;
+    filter:
+      blur(2.25px);
+  }
+
+  25% {
+    transform:
+      translateX(16px)
+      scale(0.91);
+    opacity: 0.32;
+    filter:
+      blur(3px);
+  }
+
+  37.5% {
+    transform:
+      translateX(12px)
+      scale(0.9325);
+    opacity: 0.48;
+    filter:
+      blur(2.25px);
+  }
+
+  50% {
+    transform:
+      translateX(8px)
+      scale(0.955);
+    opacity: 0.64;
+    filter:
+      blur(1.5px);
+  }
+
+  62.5% {
+    transform:
+      translateX(4px)
+      scale(0.978);
+    opacity: 0.82;
+    filter:
+      blur(0.75px);
+  }
+
+  75% {
     transform:
       translateX(0)
       scale(1);
@@ -300,13 +381,22 @@
       blur(0);
   }
 
-  to {
+  87.5% {
     transform:
-      translateX(16px)
-      scale(0.91);
-    opacity: 0.32;
+      translateX(4px)
+      scale(0.978);
+    opacity: 0.82;
     filter:
-      blur(3px);
+      blur(0.75px);
+  }
+
+  100% {
+    transform:
+      translateX(8px)
+      scale(0.955);
+    opacity: 0.64;
+    filter:
+      blur(1.5px);
   }
 }
 
