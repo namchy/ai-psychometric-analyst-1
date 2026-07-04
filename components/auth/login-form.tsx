@@ -29,233 +29,127 @@ const localeOptions = [
   { value: "sr", label: "Srpski" },
 ] as const;
 
-function MailIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-      <path
-        d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-      <path
-        d="m5.5 8.5 5.58 4.18a1.56 1.56 0 0 0 1.84 0L18.5 8.5"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-      <path
-        d="M7.75 10V8.25a4.25 4.25 0 1 1 8.5 0V10"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-      <rect
-        x="5"
-        y="10"
-        width="14"
-        height="10"
-        rx="2.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}
-
 export function LoginForm({ content, initialLocale }: LoginFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [locale, setLocale] = useState<AssessmentLocale>(initialLocale);
-  const [rememberDevice, setRememberDevice] = useState(true);
-  const rememberId = useId();
   const localeId = useId();
+  const emailId = useId();
+  const passwordId = useId();
   const inputClassName =
-    "block h-[56px] w-full appearance-none rounded-[18px] border border-[#8bb8d4]/30 bg-[#e9f5ff] font-body text-[17px] font-medium leading-[1.15] text-[#00374d] shadow-none outline-none ring-0 transition-all duration-200 placeholder:text-[#54809a]/78 focus:border-[#8bb8d4]/45 focus:outline-none focus:ring-2 focus:ring-[#abe5fe]";
+    "block h-11 w-full rounded-md border border-[#8bb8d4]/35 bg-[#fffefe] px-3 font-body text-sm text-[#00374d] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] outline-none transition-colors placeholder:text-[#54809a]/60 focus:border-[#29667b] focus:bg-white focus:ring-2 focus:ring-[#abe5fe]/80 disabled:cursor-not-allowed disabled:opacity-60";
+  const localeSelectClassName =
+    "block h-10 w-full rounded-md border border-[#8bb8d4]/25 bg-[#fbfdff] px-3 font-body text-sm text-[#37647d] shadow-none outline-none transition-colors focus:border-[#29667b] focus:bg-white focus:ring-2 focus:ring-[#abe5fe]/70 disabled:cursor-not-allowed disabled:opacity-60";
   const labelClassName =
-    "mb-3 ml-1 block font-label text-[11px] leading-none font-bold uppercase tracking-[0.22em] text-[#37647d]";
+    "font-label text-sm font-medium leading-none text-[#00374d]";
 
   return (
-    <form
-      className="space-y-0"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const email = String(formData.get("email") ?? "");
-        const password = String(formData.get("password") ?? "");
-        const locale = String(formData.get("locale") ?? "");
+    <div className="flex flex-col">
+      <section className="rounded-lg border border-[#8bb8d4]/25 bg-white shadow-[0_18px_44px_rgba(0,55,77,0.08)]">
+        <header className="space-y-1.5 px-6 pb-5 pt-6 text-center">
+          <h1 className="font-headline text-xl font-semibold tracking-tight text-[#00374d]">
+            Dobro došli
+          </h1>
+          <p className="text-sm leading-6 text-[#37647d]">
+            Prijavite se na svoj Deep Profile nalog
+          </p>
+        </header>
+        <div className="px-6 pb-6 pt-0">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              const email = String(formData.get("email") ?? "");
+              const password = String(formData.get("password") ?? "");
+              const locale = String(formData.get("locale") ?? "");
 
-        startTransition(async () => {
-          const result = await loginWithPassword({ email, password, locale });
+              startTransition(async () => {
+                const result = await loginWithPassword({ email, password, locale });
 
-          if (!result.ok) {
-            setMessage(result.message);
-            return;
-          }
+                if (!result.ok) {
+                  setMessage(result.message);
+                  return;
+                }
 
-          setMessage(null);
-          router.push(result.redirectPath);
-          router.refresh();
-        });
-      }}
-    >
-      <div className="space-y-6">
-        <label className="block" htmlFor="email">
-          <span className={labelClassName}>{content.emailLabel}</span>
-          <span className="relative block">
-            <span className="pointer-events-none absolute left-6 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-[#54809a]">
-              <MailIcon />
-            </span>
-            <input
-              className={inputClassName}
-              id="email"
-              name="email"
-              type="email"
-              placeholder="name@company.com"
-              autoComplete="email"
-              style={{ paddingLeft: "76px", paddingRight: "84px" }}
-              required
-            />
-          </span>
-        </label>
-
-        <label className="block" htmlFor="password">
-          <span className={labelClassName}>{content.passwordLabel}</span>
-          <span className="relative block">
-            <span className="pointer-events-none absolute left-6 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-[#54809a]">
-              <LockIcon />
-            </span>
-            <input
-              className={inputClassName}
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              style={{ paddingLeft: "76px", paddingRight: "84px" }}
-              required
-            />
-          </span>
-        </label>
-      </div>
-
-      <div className="mt-6 border-b border-[#8bb8d4]/25 pb-6">
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <label className="min-w-0 flex-1" htmlFor={localeId}>
-            <span className={labelClassName}>Jezik</span>
-            <span className="relative block">
-              <select
-                className="block h-[48px] w-full appearance-none rounded-[16px] border border-[#8bb8d4]/30 bg-[#e9f5ff] px-5 pr-12 font-body text-[15px] font-medium text-[#00374d] outline-none transition-all duration-200 focus:border-[#8bb8d4]/45 focus:ring-2 focus:ring-[#abe5fe]"
-                id={localeId}
-                name="locale"
-                value={locale}
-                onChange={(event) => setLocale(event.target.value as AssessmentLocale)}
-              >
-                {localeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#54809a]">
-                <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4">
-                  <path
-                    d="m5.5 7.5 4.5 4.5 4.5-4.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
-                </svg>
-              </span>
-            </span>
-          </label>
-        </div>
-        <div className="flex items-start gap-3">
-        <label
-          className="inline-flex cursor-pointer items-start gap-3"
-          htmlFor={rememberId}
-        >
-          <input
-            className="peer sr-only"
-            id={rememberId}
-            type="checkbox"
-            checked={rememberDevice}
-            onChange={(event) => setRememberDevice(event.target.checked)}
-          />
-          <span
-            className={
-              rememberDevice
-                ? "mt-[2px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#29667b] bg-[#29667b] text-white transition-all duration-200"
-                : "mt-[2px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[#6f9ab2] bg-[#eef6fb] text-[#6f9ab2] transition-all duration-200"
-            }
+                setMessage(null);
+                router.push(result.redirectPath);
+                router.refresh();
+              });
+            }}
           >
-            {rememberDevice ? (
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 16 16"
-                className="h-3.5 w-3.5"
-              >
-                <path
-                  d="M3.5 8.5 6.5 11.5 12.5 5.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
+            <div className="flex flex-col gap-4">
+              <div className="grid gap-2">
+                <label className={labelClassName} htmlFor={emailId}>
+                  {content.emailLabel}
+                </label>
+                <input
+                  autoComplete="email"
+                  className={inputClassName}
+                  disabled={isPending}
+                  id={emailId}
+                  name="email"
+                  placeholder="name@company.com"
+                  required
+                  type="email"
                 />
-              </svg>
-            ) : null}
-          </span>
-          <span className="text-[15px] font-medium leading-6 text-[#37647d]">
-            {content.rememberLabel}
-          </span>
-        </label>
-        </div>
-      </div>
+              </div>
 
-      <div className="pt-6">
-        <button
-          className="h-[64px] w-full rounded-full bg-[linear-gradient(90deg,#29667b_0%,#195a6f_100%)] font-label text-[15px] font-bold uppercase leading-none tracking-[0.20em] text-white shadow-[0_12px_30px_rgba(41,102,123,0.18)] transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_16px_36px_rgba(41,102,123,0.24)] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0 active:translate-y-0 active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:scale-100"
-          type="submit"
-          disabled={isPending}
-        >
-          {isPending ? content.primaryButtonPendingLabel : content.primaryButtonLabel}
-        </button>
-        {message ? (
-          <p className="status-message status-message--danger rounded-[1.5rem] border border-[#fda18a]/40 bg-[#fef1ed] px-4 py-3 text-sm text-[#70030f]">
-            {getDesktopLoginMessage(message)}
-          </p>
-        ) : null}
+              <div className="grid gap-2">
+                <label className={labelClassName} htmlFor={passwordId}>
+                  {content.passwordLabel}
+                </label>
+                <input
+                  autoComplete="current-password"
+                  className={inputClassName}
+                  disabled={isPending}
+                  id={passwordId}
+                  name="password"
+                  required
+                  type="password"
+                />
+              </div>
 
-        <div className="mx-auto mt-5 max-w-[360px] text-center">
-          <p className="font-body text-[15px] leading-7 text-[#37647d]">
-            {content.bottomHelperText}{" "}
-            <a
-              className="font-bold text-[#934a38] underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-0"
-              href={content.bottomHelperHref}
-            >
-              {content.bottomHelperLinkLabel}
-            </a>
-          </p>
+              <div className="grid gap-2 pt-1">
+                <label
+                  className="font-label text-xs font-medium leading-none text-[#37647d]"
+                  htmlFor={localeId}
+                >
+                  Jezik
+                </label>
+                <select
+                  className={localeSelectClassName}
+                  disabled={isPending}
+                  id={localeId}
+                  name="locale"
+                  value={locale}
+                  onChange={(event) => setLocale(event.target.value as AssessmentLocale)}
+                >
+                  {localeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                className="inline-flex h-12 w-full items-center justify-center rounded-md bg-[#29667b] px-4 py-2 font-label text-sm font-bold text-white shadow-[0_10px_22px_rgba(41,102,123,0.18)] transition-colors hover:bg-[#195a6f] focus:outline-none focus:ring-2 focus:ring-primary-container focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isPending}
+                type="submit"
+              >
+                {isPending ? content.primaryButtonPendingLabel : "Prijavi se"}
+              </button>
+
+              {message ? (
+                <p className="rounded-md border border-[#fda18a]/40 bg-[#fef1ed] px-4 py-3 text-sm leading-6 text-[#70030f]">
+                  {getDesktopLoginMessage(message)}
+                </p>
+              ) : null}
+            </div>
+          </form>
         </div>
-      </div>
-    </form>
+      </section>
+    </div>
   );
 }
