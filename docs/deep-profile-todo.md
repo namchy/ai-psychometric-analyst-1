@@ -62,7 +62,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završeno za UI ownership foundation krug i današnji presentation/access-control krug; read-only UI ownership audit završen, semantic targeting foundation implementiran, report card/state message ownership konsolidovan, dashboard CTA/status ownership konsolidovan, `DpPageHeader` typography cleanup završen, dashboard deep-link guard follow-up fix završen, IPIP candidate/HR layout parity audit završen i IPIP HR radar executive anchor V1 implementiran | UI system / Product quality / Look and feel | Ne raditi redesign-all. Koristiti novi semantic targeting sloj kao osnovu za buduće precizne UI izmjene; sljedeći mali slice: `IPIP HR key signals executive cards V1`. |
-| P1        | Controlled codebase stabilization & performance refactoring | Planirano / Ograničeni epic | Architecture / Performance / Technical debt | Prvi obavezni slice: F02 server numeric validation parity. Nakon toga F01 candidate dashboard server read-model uz characterization safety net i uski baseline. Poslije F01 obavezno stati, izmjeriti rezultat i ponovo odlučiti o nastavku. |
+| P1        | Controlled codebase stabilization & performance refactoring | F02 + F01 završeni / Mandatory stop review | Architecture / Performance / Technical debt | Uraditi obavezni stop review nakon F01: dokumentovati stvarni rezultat, preostale neizvjesnosti i odlučiti da li se refactoring ovdje zaustavlja ili se otvara novi zasebno odobren slice. F05 ostaje conditional i ne otvara se bez mjerenja. |
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP HR P0 quality krug je zatvoren kroz read-only audit, dev-only OpenAI dry-run inspector, interpretive prompt hardening, successful confirmed dry-run, controlled Amra regeneration i post-regeneration inspector + browser smoke PASS. Frontend ostaje renderer, ne autor interpretacije; scoring/test output ostaje čist i deterministički. | Deep Profile / Report content architecture | Sljedeće: creation standard za report ide kroz prompt/content contract/schema prema velikom AI-ju; structural validator hard-blocka samo invalidan shape/data/source/evidence/contract. Future small-AI reviewer ostaje diagnostic/QA lane, ne current production gate. Ne raditi UI redesign kao quality odgovor i ne otvarati novi broad roadmap item bez zasebne odluke. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. IPIP HR authority lane je dodatno zatvoren P0 quality krugom: prompt/content-quality block, dry-run-only diagnostic inspector, validator-backed confirmed OpenAI dry-run i controlled Amra regeneration na `ready`. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove bez eksplicitnog odobrenja. Dalji quality rad ostaje uski prompt/content-contract + structural validator + future diagnostic reviewer/golden-examples lane; ne ići kroz UI polish, scoring izmjene ili persistence/lifecycle refactor. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Repo-backed canonical spec v0.1 dokumentovan u `docs/team-dynamics-product-tech-spec.md` | Team module / Product architecture | Koristiti ovaj spec kao product/tech osnovu za buduće Team Dynamics / Team Fit implementation slice-ove; ne otvarati worker/scheduler kao default; naredni Team Fit/Team Dynamics runtime rad traži zasebnu product odluku. |
@@ -1635,7 +1635,7 @@ SAFRAN report je vizuelno usklađen sa Deep Profile/IPIP report porodicom kroz s
 
 ### P1 — Controlled codebase stabilization & performance refactoring
 
-**Status:** Planirano / Ograničeni epic
+**Status:** F02 + F01 završeni / Mandatory stop review
 **Kategorija:** Architecture / Performance / Technical debt
 
 **Problem / context:**
@@ -1839,6 +1839,83 @@ Ne raditi kao dio ovog mini-refactoring epica:
 - Nakon F01 je napravljen obavezni stop review.
 - Nijedan high-risk broad refactor nije otvoren automatski.
 - Svaki eventualni nastavak ima novi dokazani razlog i zasebnu odluku.
+
+**Completion note — F02 server numeric validation parity**
+
+- Audit nalaz je potvrđen.
+- Client completion je numeric pitanja validirao preko `renderer_type === "numeric_input"` i canonical complete numeric rule-a.
+- Server completion loader prije fixa nije imao dovoljno metadata signala da isto pitanje tretira kao numeric input.
+- Persistence path je za text value prije fixa mogao prihvatiti bilo koji string, uključujući invalid numeric payload.
+- Invalid payload poput `abc` ili `-` mogao je biti persisted, zatim tretiran kao answered na server completion pathu i tek kasnije implicitno završiti kao `0` u SAFRAN scoringu umjesto da bude ranije odbijen.
+- Finalno pravilo je `^-?\d+(?:[.,]\d+)?$`.
+- Trenutni podržani validni primjeri su `12`, `-12`, `12.5` i `12,5`.
+- Invalid primjeri su `abc`, `-`, `12.` i `empty`.
+- Sada client i server koriste istu numeric validity semantiku.
+- Server persistence odbija invalid numeric payload prije DB upisa.
+- Server completion zna da je pitanje `numeric_input`.
+- Historical invalid row, ako postoji, više se ne računa kao validno answered numeric pitanje.
+- Nisu mijenjani SAFRAN scoring, score formule, report pipeline, AssessmentForm arhitektura, autosave arhitektura, candidate dashboard, RLS, Team Dynamics, Team Fit niti UI/copy.
+- Prošli testovi: `node scripts/test-assessment-numeric-validation-parity.cjs`, `npm run typecheck`, `npm run test:safran-v1-scoring`.
+- Zaključak: F02 je završen i zatvoren kao isolated correctness slice.
+
+**Completion note — F01A characterization + safety net**
+
+- F01A je završen prije implementacije server read-modela.
+- Audit je potvrdio current browser-owned dashboard flow: server page je učitavao auth/app context i initial attempts, a nakon hydrationa je `CandidateDashboardView` pravio browser Supabase queryje za `tests`, `organization_test_access`, `questions`, `dimension_scores` i `responses`.
+- Finalni dashboard state se tek nakon toga sastavljao u browseru.
+- Current baseline prije F01B je bio: 2 obavezna browser queryja (`tests`, `organization_test_access`), do 3 dodatna uslovna (`questions`, `dimension_scores`, `responses`), loading skeleton prije finalnog statea i effect-driven waterfall.
+- Uveden je minimalni pure model seam `lib/dashboard/candidate-dashboard-model.ts` kao deterministic authority prije promjene data ownershipa.
+- Characterization safety net je zaključao curated battery card order/presentation, IPIP / SAFRAN / MWMS kartice, Team Dynamics exclusion, availability behavior, empty `in_progress`, partial active `in_progress`, SAFRAN `scored_started_at`, completed attempt, completed + noviji empty `in_progress`, abandoned, CTA mapping (`Započni procjenu`, `Nastavi procjenu`, `Pogledaj rezultate`) i progress semantics.
+- Runtime data fetching i server/client ownership nisu bili promijenjeni u F01A.
+- Commit: `8c8edd0 Characterize candidate dashboard model flow`
+- Prošli testovi: `node scripts/test-candidate-dashboard-model.cjs`, `node scripts/test-attempt-lifecycle.cjs`, `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`, `node scripts/test-standard-battery-active.cjs`, `npm run typecheck`.
+- Playwright candidate dashboard smoke je pokušan, ali je environment-blocked zbog missing `PLAYWRIGHT_CANDIDATE_PASSWORD`.
+
+**Completion note — F01B candidate dashboard server read-model**
+
+- F01B je završen i time je F01 zatvoren.
+- Prije: `server → client hydration → browser Supabase queries → client transformacije → final dashboard`.
+- Browser initial read-model query kategorije bile su `tests`, `organization_test_access`, `questions`, `dimension_scores` i `responses`.
+- Poslije: `server queries → shared pure dashboard model → prepared props → dashboard render`.
+- Nova ownership granica je sada: `app/(protected)/app/page.tsx` server-side priprema dashboard podatke, `lib/dashboard/candidate-dashboard-data.ts` učitava potrebne source podatke, helper koristi postojeći shared pure model iz `lib/dashboard/candidate-dashboard-model.ts`, a `CandidateDashboardView` prima prepared dashboard model kroz props.
+- Client više ne radi initial dashboard Supabase read-model fetch.
+- Performance/architecture rezultat je `5` kategorija initial browser read-model queryja → `0`.
+- Ova promjena se odnosi samo na initial `/app` dashboard read-model za `tests`, `organization_test_access`, `questions`, `dimension_scores` i `responses`.
+- Očuvani su card order, availability semantics, Team Dynamics exclusion, attempt lifecycle, primary attempt selection, CTA mapping, progress semantics i completed state.
+- Server koristi isti shared pure model iz F01A, a ne novi paralelni skup business rules.
+
+**F01 error-path follow-up**
+
+- Uspostavljen je uski follow-up prije F01B commita.
+- Stari client flow je na load error prestajao prikazivati skeleton i mogao završiti kao lažno-prazan dashboard.
+- Prvi F01B prolaz je server failure eksplicitno pretvarao u valid empty model, što je klasifikovano kao neispravna semantika.
+- Finalno pravilo je: `valid empty data != server/read-model failure`.
+- Sada valid empty source data daje validan empty dashboard model, server/read-model failure postavlja odvojen error signal, candidate dashboard prikazuje kontrolisani unavailable state, a failure se više ne tretira kao legitimno prazan dashboard.
+- Ovo je bio uski F01B behavior correction, ne broad error architecture refactor.
+
+**F01B verification**
+
+- Prošli testovi: `node scripts/test-candidate-dashboard-server-read-model.cjs`, `node scripts/test-candidate-dashboard-model.cjs`, `node scripts/test-candidate-dashboard-team-dynamics-exclusion.cjs`, `node scripts/test-attempt-lifecycle.cjs`, `npm run typecheck`.
+- Playwright nije korišten kao completion blocker jer lokalni candidate credential setup nema `PLAYWRIGHT_CANDIDATE_PASSWORD`; to je environment blocker, ne code failure.
+- F01B je commitovan i working tree nakon commita je bio čist.
+- Zaključak: F01 je završen i zatvoren.
+
+**Mandatory stop review — current state**
+
+- F02 je završen.
+- F01 je završen.
+- Planirani stop-kriterij je dostignut.
+- Ne nastavljati automatski na F05, F07, F15 ili drugi audit nalaz.
+- Sljedeći korak je review stvarne vrijednosti završenog mini-refactoring kruga.
+
+Stop review treba odgovoriti najmanje na:
+
+1. Šta je stvarno popravljeno?
+2. Šta je stvarno ubrzano ili pojednostavljeno?
+3. Šta je dokazano testovima?
+4. Šta nije runtime izmjereno zbog Playwright credential blockera?
+5. Da li postoje novi rizici ili komplikacije?
+6. Da li se dalji refactoring sada isplati više od povratka na product backlog?
 
 ---
 
