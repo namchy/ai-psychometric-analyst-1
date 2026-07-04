@@ -66,13 +66,18 @@ const dashboardSource = fs.readFileSync(
   path.join(projectRoot, "components", "dashboard", "candidate-dashboard.tsx"),
   "utf8",
 );
+const dashboardModelSource = fs.readFileSync(
+  path.join(projectRoot, "lib", "dashboard", "candidate-dashboard-model.ts"),
+  "utf8",
+);
 
-assert.match(dashboardSource, /shouldHideAssessmentFromCandidateDashboard/);
+assert.match(dashboardModelSource, /shouldHideAssessmentFromCandidateDashboard/);
 assert.match(
-  dashboardSource,
+  dashboardModelSource,
   /!shouldHideAssessmentFromCandidateDashboard\(\{ slug: test\.slug \}\)/,
 );
-assert.match(dashboardSource, /const additionalDatabaseCards = sortedDatabaseCards\.filter/);
+assert.match(dashboardModelSource, /const additionalDatabaseCards = sortedDatabaseCards\.filter/);
+assert.match(dashboardSource, /buildAssessmentCardsFromTests/);
 
 assert.equal(
   shouldHideAssessmentFromCandidateDashboard({ slug: "team_dynamics_v1_strong" }),
