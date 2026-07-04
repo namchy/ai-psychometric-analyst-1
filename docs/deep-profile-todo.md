@@ -62,6 +62,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | HR candidate assessment detail page                 | Završeno    | HR dashboard / Report navigation | Zatvoreno nakon uvođenja participant-level detail stranice sa IPIP/SAFRAN/MWMS report karticama i composite placeholderom. |
 | P1        | HR participant reports UI polish (navigation + metadata) | Završeno | HR dashboard / Report UI polish | Zatvoreno nakon Composite i participant navigation cleanupa i HR-facing metadata formatiranja na participant reports karticama. |
 | P1        | Deep Profile premium UI/UX system implementation    | Završeno za UI ownership foundation krug i današnji presentation/access-control krug; read-only UI ownership audit završen, semantic targeting foundation implementiran, report card/state message ownership konsolidovan, dashboard CTA/status ownership konsolidovan, `DpPageHeader` typography cleanup završen, dashboard deep-link guard follow-up fix završen, IPIP candidate/HR layout parity audit završen i IPIP HR radar executive anchor V1 implementiran | UI system / Product quality / Look and feel | Ne raditi redesign-all. Koristiti novi semantic targeting sloj kao osnovu za buduće precizne UI izmjene; sljedeći mali slice: `IPIP HR key signals executive cards V1`. |
+| P1        | Controlled codebase stabilization & performance refactoring | Planirano / Ograničeni epic | Architecture / Performance / Technical debt | Prvi obavezni slice: F02 server numeric validation parity. Nakon toga F01 candidate dashboard server read-model uz characterization safety net i uski baseline. Poslije F01 obavezno stati, izmjeriti rezultat i ponovo odlučiti o nastavku. |
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP HR P0 quality krug je zatvoren kroz read-only audit, dev-only OpenAI dry-run inspector, interpretive prompt hardening, successful confirmed dry-run, controlled Amra regeneration i post-regeneration inspector + browser smoke PASS. Frontend ostaje renderer, ne autor interpretacije; scoring/test output ostaje čist i deterministički. | Deep Profile / Report content architecture | Sljedeće: creation standard za report ide kroz prompt/content contract/schema prema velikom AI-ju; structural validator hard-blocka samo invalidan shape/data/source/evidence/contract. Future small-AI reviewer ostaje diagnostic/QA lane, ne current production gate. Ne raditi UI redesign kao quality odgovor i ne otvarati novi broad roadmap item bez zasebne odluke. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. IPIP HR authority lane je dodatno zatvoren P0 quality krugom: prompt/content-quality block, dry-run-only diagnostic inspector, validator-backed confirmed OpenAI dry-run i controlled Amra regeneration na `ready`. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove bez eksplicitnog odobrenja. Dalji quality rad ostaje uski prompt/content-contract + structural validator + future diagnostic reviewer/golden-examples lane; ne ići kroz UI polish, scoring izmjene ili persistence/lifecycle refactor. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Repo-backed canonical spec v0.1 dokumentovan u `docs/team-dynamics-product-tech-spec.md` | Team module / Product architecture | Koristiti ovaj spec kao product/tech osnovu za buduće Team Dynamics / Team Fit implementation slice-ove; ne otvarati worker/scheduler kao default; naredni Team Fit/Team Dynamics runtime rad traži zasebnu product odluku. |
@@ -1629,6 +1630,215 @@ Ovaj task se radi nakon što je zaključen sadržaj i redoslijed SAFRAN reporta.
 
 **Completion note:**  
 SAFRAN report je vizuelno usklađen sa Deep Profile/IPIP report porodicom kroz summary layout sa `Glavni obrazac`, overall score blok, neutralne score trackove po oblastima, humaniju sekciju `Kognitivni signal`, sekundarni reading guide i CTA polish. U kandidat-facing prikazu uklonjeni su interni izrazi poput `Practice` i `scoring`. Scoring, AI prompt, validator i provider pipeline nisu mijenjani u ovom visual tasku.
+
+---
+
+### P1 — Controlled codebase stabilization & performance refactoring
+
+**Status:** Planirano / Ograničeni epic
+**Kategorija:** Architecture / Performance / Technical debt
+
+**Problem / context:**
+Read-only codebase audit je pokazao da je Deep Profile prerastao početni MVP model i da sada postoje konkretni hotspotovi u data flowu, completion/scoring toku i velikim client runtime granicama.
+
+Odluka nije pokrenuti broad refactoring program niti generalno “očistiti codebase”.
+
+Ovaj epic je namjerno ograničen na mali broj dokazivih correctness, architecture i performance zahvata sa:
+
+- jasnim početnim stanjem
+- characterization safety netom
+- uskim mjerenjem prije i poslije zahvata
+- nepromijenjenim user-facing ponašanjem gdje refactor ne zahtijeva drugačije ponašanje
+- eksplicitnim stop-kriterijem nakon prvog pravog refactoring slice-a
+
+Epic se ne nastavlja automatski kroz sve nalaze codebase audita.
+
+**Glavna odluka:**
+
+Rad ide ovim redoslijedom:
+
+1. F02 — server numeric validation parity
+2. F01 — candidate dashboard server read-model
+3. obavezni stop + mjerenje rezultata
+4. F05 — scoring persistence optimization samo ako mjerenje potvrdi stvarni bottleneck
+5. svaki dalji refactoring zahtijeva novu eksplicitnu odluku
+
+**Slice 1 — F02 server numeric validation parity**
+
+Tip: Correctness/security fix prije pravog refactoringa
+
+**Problem:**
+Client i server completion validation nisu dokazano usklađeni za SAFRAN/numeric pitanja. Server completion path mora odbiti invalid numeric payload koji UI ne bi dozvolio.
+
+**Scope:**
+
+- provjeriti postojeću client numeric validaciju
+- zaključati isti numeric rule server-side
+- osigurati da completion/persistence path ne prihvata invalid numeric text payload
+- dodati behavior test za invalid i valid numeric payload
+
+**Acceptance criteria:**
+
+- invalid numeric payload ne može završiti assessment
+- validan numeric payload koji UI podržava i dalje prolazi
+- scoring ne dobija invalid numeric raw value
+- postojeći validni SAFRAN flow ne regresira
+
+**Out of scope:**
+
+- SAFRAN scoring redesign
+- assessment form redesign
+- completion architecture refactor
+- report pipeline promjene
+
+**Slice 2 — F01 candidate dashboard server read-model**
+
+Tip: Prvi pravi refactoring slice
+
+**Problem:**
+Candidate dashboard trenutno dio privatnog read-modela gradi kroz browser-side Supabase queryje i client-side transformacije. To stvara rasut data flow, dodatne network pozive, loading složenost i lošije server/client ownership granice.
+
+**Cilj:**
+Premjestiti candidate dashboard read-model na server tako da client komponenta dobije već pripremljen dashboard model za render.
+
+**Obavezni redoslijed:**
+
+- zaključati postojeće dashboard ponašanje characterization testovima
+- napraviti uski baseline samo za ovaj flow
+- implementirati server read-model
+- potvrditi isti user-facing output
+- izmjeriti rezultat
+- stati i napraviti novu odluku prije sljedećeg većeg slice-a
+
+**Safety net mora pokriti najmanje:**
+
+- curated/standard battery kartice
+- test availability
+- primary attempt selection
+- not started state
+- active progress/resume state
+- completed state
+- CTA mapping
+- progress prikaz
+- postojeći relevantni Playwright candidate dashboard smoke
+
+**Uski baseline prije zahvata treba zabilježiti samo ono što je potrebno za ovaj slice:**
+
+- browser-side Supabase/network pozive sa candidate dashboarda
+- broj privatnih dashboard data queryja iz browsera
+- osnovni loading/render tok
+
+Ne otvarati broad observability projekt.
+
+**Acceptance criteria:**
+
+- privatni candidate dashboard read-model više se ne sastavlja kroz browser-side Supabase queryje gdje server već treba biti owner
+- user-facing dashboard ponašanje ostaje isto
+- attempt lifecycle pravila ostaju ista
+- standard battery ponašanje ostaje isto
+- broj nepotrebnih browser network poziva je smanjen
+- relevantni characterization i Playwright smoke testovi prolaze
+
+**Out of scope:**
+
+- dashboard visual redesign
+- dashboard copy rewrite
+- design system promjene
+- RLS policy widening
+- route migration
+- auth architecture redesign
+
+**Obavezni stop-kriterij nakon F01**
+
+Nakon završetka F01 ne nastavljati automatski na sljedeći audit nalaz.
+
+Prvo dokumentovati:
+
+- šta je stvarno promijenjeno
+- da li je user-facing ponašanje ostalo stabilno
+- broj browser/network poziva prije i poslije
+- koje komplikacije su otkrivene
+- da li se sljedeći refactoring i dalje isplati
+
+Tek tada donijeti novu odluku u chatu i, ako je stabilizovana, upisati je u canonical todo.
+
+**Conditional candidate — F05 scoring response persistence**
+
+**Status:** Ne otvarati bez mjerenja
+
+Codebase audit je identifikovao potencijalno sekvencijalne response score update pozive u completion/scoring toku.
+
+Ovo nije automatski sljedeći task.
+
+Prije implementacije treba izmjeriti najmanje:
+
+- koliko score update poziva stvarno nastaje po reprezentativnom assessmentu
+- ukupno completion vrijeme
+- koliko completion vremena odlazi na scoring persistence
+
+F05 se otvara samo ako mjerenje potvrdi da je scoring persistence stvarni, korisniku relevantan bottleneck.
+
+Ako je problem potvrđen, budući slice mora očuvati identičan:
+
+- raw_value
+- scored_value
+- reverse_scored
+- dimension_scores
+- scoring output
+
+Ne uvoditi RPC, bulk update ili concurrency samo zato što statički kod izgleda neoptimalno.
+
+**Mali budući kandidati, svaki uz zasebnu odluku**
+
+Sljedeći nalazi mogu biti razmatrani tek nakon F01 stop reviewa:
+
+- F07 — report polling cap/backoff
+- F15 — cacheiranje SAFRAN correct answer map-a
+- F05 — scoring persistence optimization, samo ako baseline potvrdi bottleneck
+
+Ovi taskovi nisu unaprijed odobreni za implementaciju samim postojanjem ovog epica.
+
+**Explicitly out of scope / Do not touch u ovom epicu**
+
+Ne raditi kao dio ovog mini-refactoring epica:
+
+- broad codebase refactor
+- generalni cleanup svih velikih fajlova
+- veliki AssessmentForm split
+- veliki CompletedAssessmentSummary / report renderer split
+- shared completion helper refactor
+- broad completion architecture rewrite
+- auth/context caching bez zasebnog mjerenja i sigurnosne odluke
+- Team Dynamics legacy/mixed runtime cleanup
+- `/dashboard` / `/hr` route migration
+- `/assessment` redirect cleanup
+- RLS widening da bi browser dashboard queryji proradili
+- report copy ili report visual redesign
+- UI system redesign
+- broad scripts cleanup
+- masovno brisanje neklasifikovanih skripti
+- dependency cleanup bez dokazanog razloga
+
+**Epic guardrails**
+
+- Jedan veći refactoring slice u jednom trenutku.
+- Prvo safety net, zatim promjena.
+- Mjeriti samo ono što je relevantno za sljedeći zahvat.
+- Ne graditi broad performance observability program.
+- Ne refaktorisati na osnovu veličine fajla same po sebi.
+- Ne optimizovati neizmjeren bottleneck.
+- Ne miješati behavioral, data-flow i UI/copy promjene u isti slice.
+- Svaki visoko-rizični strukturni zahvat traži zasebnu novu odluku.
+- Epic se može završiti nakon F01 ako dalji rad nema dovoljno dokazanu vrijednost.
+
+**Epic acceptance criteria:**
+
+- F02 correctness gap je zatvoren.
+- F01 candidate dashboard server read-model je implementiran uz stabilno postojeće ponašanje.
+- Postoji minimalni prije/poslije dokaz za F01.
+- Nakon F01 je napravljen obavezni stop review.
+- Nijedan high-risk broad refactor nije otvoren automatski.
+- Svaki eventualni nastavak ima novi dokazani razlog i zasebnu odluku.
 
 ---
 
