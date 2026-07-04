@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { isTextQuestionSelectionValidForPersistence } from "@/lib/assessment/completion";
 import {
   loadAssessmentCompletionState,
 } from "@/lib/assessment/completion-server";
@@ -33,6 +34,7 @@ import {
 import {
   shouldBypassIndividualPostCompletionArtifacts,
 } from "@/lib/assessment/team-dynamics";
+import { getAssessmentQuestionRendererType } from "@/lib/assessment/test-render-types";
 import {
   syncTeamAssessmentParticipantCompletionByAttemptId,
 } from "@/lib/assessment/team-assessments";
@@ -91,6 +93,7 @@ type CompleteAssessmentAttemptResult =
 
 type QuestionRecord = {
   id: string;
+  code: string;
   question_type: QuestionType;
 };
 
@@ -335,7 +338,7 @@ async function persistAssessmentSelections(
   if (questionIds.length > 0) {
     const { data: questionsData, error: questionsError } = await supabase
       .from("questions")
-      .select("id, question_type")
+      .select("id, code, question_type")
       .eq("test_id", input.testId)
       .in("id", questionIds);
 
@@ -409,6 +412,18 @@ async function persistAssessmentSelections(
     if (question.question_type === "text") {
       if (typeof value !== "string") {
         return { ok: false, message: "Text responses must be saved as text." };
+      }
+
+      if (
+        !isTextQuestionSelectionValidForPersistence(
+          {
+            question_type: question.question_type,
+            renderer_type: getAssessmentQuestionRendererType(question),
+          },
+          value,
+        )
+      ) {
+        return { ok: false, message: "Numeric responses must contain a valid number." };
       }
 
       continue;

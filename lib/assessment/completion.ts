@@ -35,8 +35,23 @@ function isNonEmptyString(value: string): boolean {
   return value.trim().length > 0;
 }
 
-function isCompleteNumericInputValue(value: string): boolean {
+export function isCompleteNumericInputValue(value: string): boolean {
   return /^-?\d+(?:[.,]\d+)?$/.test(value.trim());
+}
+
+export function isTextQuestionSelectionValidForPersistence(
+  question: Pick<CompletionQuestion, "question_type" | "renderer_type">,
+  selection: string,
+): boolean {
+  if (question.question_type !== "text") {
+    return false;
+  }
+
+  if (question.renderer_type === "numeric_input") {
+    return selection.length === 0 || isCompleteNumericInputValue(selection);
+  }
+
+  return true;
 }
 
 export function isQuestionAnswered(

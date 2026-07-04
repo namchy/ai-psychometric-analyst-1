@@ -4,6 +4,7 @@ import {
   type AssessmentCompletionState,
   type CompletionQuestion,
 } from "@/lib/assessment/completion";
+import { getAssessmentQuestionRendererType } from "@/lib/assessment/test-render-types";
 import type { ResponseKind } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -24,7 +25,7 @@ export async function loadAssessmentCompletionState(
   const supabase = createSupabaseAdminClient();
   const { data: questionsData, error: questionsError } = await supabase
     .from("questions")
-    .select("id, text, question_type, is_required")
+    .select("id, code, text, question_type, is_required")
     .eq("test_id", testId)
     .eq("is_active", true)
     .order("question_order", { ascending: true });
@@ -49,7 +50,10 @@ export async function loadAssessmentCompletionState(
   }
 
   return getAssessmentCompletionState(
-    (questionsData ?? []) as CompletionQuestion[],
+    ((questionsData ?? []) as Array<CompletionQuestion & { code: string }>).map((question) => ({
+      ...question,
+      renderer_type: getAssessmentQuestionRendererType(question),
+    })),
     buildSelectionsFromResponses((responsesData ?? []) as CompletionResponseRecord[]),
   );
 }

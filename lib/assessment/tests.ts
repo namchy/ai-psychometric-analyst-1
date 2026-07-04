@@ -30,6 +30,7 @@ import type {
   TestAnswerOption,
   TestQuestion,
 } from "@/lib/assessment/test-render-types";
+import { getAssessmentQuestionRendererType } from "@/lib/assessment/test-render-types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -66,20 +67,6 @@ type AnswerOptionLocalizationRow = {
 };
 
 const LOCALIZATION_QUERY_CHUNK_SIZE = 50;
-
-function getQuestionRendererType(
-  question: Pick<Question, "code" | "question_type" | "stimulus_image_path" | "stimulus_secondary_image_path">,
-): AssessmentQuestionRendererType {
-  if (question.question_type === "text") {
-    return question.code.startsWith("NZ") ? "numeric_input" : "text_input";
-  }
-
-  if (question.stimulus_image_path || question.stimulus_secondary_image_path) {
-    return "image_choice";
-  }
-
-  return "text_choice";
-}
 
 function chunkValues<T>(values: T[], chunkSize: number): T[][] {
   const chunks: T[][] = [];
@@ -144,7 +131,7 @@ export async function getQuestionsForTest(
 
   const questions = ((data ?? []) as Omit<TestQuestion, "renderer_type">[]).map((question) => ({
     ...question,
-    renderer_type: getQuestionRendererType(question),
+    renderer_type: getAssessmentQuestionRendererType(question),
   }));
 
   if (questions.length === 0 || !locale) {
