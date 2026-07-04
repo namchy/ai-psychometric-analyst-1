@@ -58,6 +58,14 @@ export type CandidateAssessmentCard = {
   availabilityNote?: string;
 };
 
+export type CandidateDashboardPreparedData = {
+  assessments: CandidateAssessmentCard[];
+  completedAttempts: number;
+  totalPaidTestsCount: number;
+  totalTimeSeconds: number;
+  averageNormalizedScore: number;
+};
+
 type CandidateAssessmentCtaState = Pick<
   CandidateAssessmentCard,
   "attemptId" | "ctaKind" | "ctaLabel" | "disabled" | "href" | "status"

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FileText, Play, RotateCcw } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createAssessmentAttempt } from "@/app/(protected)/app/actions";
 import { AddressingFormSelectionModal } from "@/components/dashboard/addressing-form-selection-modal";
@@ -24,41 +23,20 @@ import {
   DashboardStatusBadge,
 } from "@/components/dashboard/primitives";
 import {
-  buildAssessmentCardsFromTests,
   CURATED_BATTERY_TESTS,
   CURATED_BATTERY_TEST_SLUGS,
   getAssessmentCardProgressState,
-  mapInitialAttemptsToDashboardAttempts,
   type CandidateAssessmentCard,
-  type CandidateDashboardInitialAttempt,
-  type DashboardAttemptRow,
+  type CandidateDashboardPreparedData,
   type DashboardIconName,
-  type DashboardOrganizationTestAccessRow,
-  type DashboardRelation,
-  type DashboardTestCategory,
-  type DashboardTestRow,
 } from "@/lib/dashboard/candidate-dashboard-model";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type CandidateDashboardViewProps = {
+  dashboardLoadError: boolean;
   hasLinkedParticipant: boolean;
   linkedOrganizationId?: string | null;
-  initialAttempts: CandidateDashboardInitialAttempt[];
   needsAddressingFormSelection: boolean;
-};
-
-type DashboardDimensionScoreRow = {
-  attempt_id: string;
-  normalized_score: number | string | null;
-};
-
-type DashboardResponseRow = {
-  attempt_id: string;
-  answered_at: string | null;
-};
-
-type DashboardQuestionRow = {
-  test_id: string;
+  preparedDashboardData: CandidateDashboardPreparedData;
 };
 
 type CompositeReportState = "locked" | "pending" | "ready";
@@ -473,85 +451,6 @@ function QuickActionCard({
   );
 }
 
-function DashboardSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
-      <div className="lg:h-full lg:border-r lg:border-slate-200 lg:pr-12">
-        <aside className="w-full space-y-5 lg:top-24">
-          <div className="mb-4 h-3 w-28 animate-pulse rounded-full bg-slate-200" />
-          <div className="rounded-[1.75rem] border border-white/80 bg-white/80 p-6 sm:p-7">
-            <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-4 h-10 w-2/3 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-4 h-4 w-full animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-2 h-4 w-5/6 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50 p-4">
-              <div className="h-3 w-16 animate-pulse rounded-full bg-slate-200" />
-              <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-slate-200" />
-              <div className="mt-2 h-4 w-1/2 animate-pulse rounded-full bg-slate-200" />
-            </div>
-          </div>
-
-          <section aria-label="Dashboard overview" className="grid grid-cols-2 gap-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                className="rounded-[1.75rem] border border-white/80 bg-white/80 p-5 shadow-[0_16px_27px_rgba(15,23,42,0.05)] sm:p-6"
-                key={`kpi-skeleton-${index}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="h-3 w-20 animate-pulse rounded-full bg-slate-200" />
-                  <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-200" />
-                </div>
-                <div className="mt-4 h-9 w-16 animate-pulse rounded-full bg-slate-200" />
-              </div>
-            ))}
-          </section>
-
-          <div className="rounded-[1.75rem] border border-white/80 bg-white/80 p-6">
-            <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-4 h-7 w-2/3 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-full animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-2 h-4 w-5/6 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-5 h-11 w-full animate-pulse rounded-full bg-slate-200" />
-          </div>
-        </aside>
-      </div>
-
-      <section aria-label="Assessments" className="min-w-0 w-full">
-        <div className="space-y-6">
-          <div className="mb-4 h-3 w-32 animate-pulse rounded-full bg-slate-200" />
-          <div className="w-full rounded-[1.75rem] border border-white/80 bg-white/80 p-6 sm:p-7">
-            <div className="h-3 w-28 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-4 h-10 w-1/2 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-3 h-4 w-full animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-2 h-4 w-3/4 animate-pulse rounded-full bg-slate-200" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                className="rounded-[1.75rem] border border-white/80 bg-white/80 p-5"
-                key={`assessment-skeleton-${index}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="h-14 w-14 animate-pulse rounded-[1.25rem] bg-slate-200" />
-                  <div className="h-8 w-24 animate-pulse rounded-full bg-slate-200" />
-                </div>
-                <div className="mt-5 h-7 w-2/3 animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-3 h-4 w-full animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-2 h-4 w-5/6 animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-5 border-t border-slate-200 pt-4">
-                  <div className="h-4 w-1/3 animate-pulse rounded-full bg-slate-200" />
-                </div>
-                <div className="mt-6 h-11 w-full animate-pulse rounded-full bg-slate-200" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
 function AssessmentSection({
   title,
   description,
@@ -886,183 +785,31 @@ function EmptyState() {
   );
 }
 
+function DashboardUnavailableState() {
+  return (
+    <section className="rounded-[1.75rem] border border-[var(--dp-border)] bg-[var(--dp-surface)]/85 p-8 shadow-[0_24px_48px_rgba(15,23,42,0.07)] md:p-10">
+      <h2 className="font-headline text-2xl font-bold tracking-tight text-[var(--dp-text)]">
+        Procjene trenutno nisu dostupne
+      </h2>
+      <p className="mt-4 max-w-2xl font-body text-sm leading-7 text-[var(--dp-text-muted)]">
+        Došlo je do greške pri učitavanju tvoje baterije testova i rezultata.
+      </p>
+      <p className="mt-2 max-w-2xl font-body text-sm leading-7 text-[var(--dp-text-muted)]">
+        Osvježi stranicu ili pokušaj ponovo malo kasnije.
+      </p>
+    </section>
+  );
+}
+
 export function CandidateDashboardView({
+  dashboardLoadError,
   hasLinkedParticipant,
   linkedOrganizationId,
-  initialAttempts,
   needsAddressingFormSelection,
+  preparedDashboardData,
 }: CandidateDashboardViewProps) {
-  const [isLoading, setIsLoading] = useState(hasLinkedParticipant);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [liveAssessments, setLiveAssessments] = useState<CandidateAssessmentCard[]>([]);
-  const [completedAttempts, setCompletedAttempts] = useState(0);
-  const [totalPaidTestsCount, setTotalPaidTestsCount] = useState(0);
-
-  useEffect(() => {
-    if (!hasLinkedParticipant) {
-      setIsLoading(false);
-      return;
-    }
-
-    if (!linkedOrganizationId) {
-      setIsLoading(false);
-      setLoadError("Linked organization is required to load test access.");
-      return;
-    }
-
-    const organizationId = linkedOrganizationId;
-
-    let isCancelled = false;
-
-    async function loadDashboardData() {
-      setIsLoading(true);
-      setLoadError(null);
-
-      try {
-        const supabase = getSupabaseBrowserClient();
-        const mappedAttempts = mapInitialAttemptsToDashboardAttempts(initialAttempts);
-        const attemptIds = mappedAttempts.map((attempt) => attempt.id);
-
-        const [
-          { data: testsData, error: testsError },
-          { data: accessData, error: accessError },
-        ] = await Promise.all([
-          supabase
-            .from("tests")
-            .select(
-              "id, slug, name, category, description, status, scoring_method, duration_minutes, is_active",
-            )
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("organization_test_access")
-            .select("organization_id, test_id")
-            .eq("organization_id", organizationId),
-        ]);
-        if (testsError) {
-          throw new Error(testsError.message);
-        }
-
-        if (accessError) {
-          throw new Error(accessError.message);
-        }
-
-        let dimensionScoreRows: DashboardDimensionScoreRow[] = [];
-        let responseRows: DashboardResponseRow[] = [];
-
-        const testIds = ((testsData ?? []) as DashboardTestRow[]).map((test) => test.id);
-        let questionRows: DashboardQuestionRow[] = [];
-
-        if (testIds.length > 0) {
-          const { data: questionsData, error: questionsError } = await supabase
-            .from("questions")
-            .select("test_id")
-            .in("test_id", testIds)
-            .eq("is_active", true);
-
-          if (questionsError) {
-            throw new Error(questionsError.message);
-          }
-
-          questionRows = (questionsData ?? []) as DashboardQuestionRow[];
-        }
-
-        if (attemptIds.length > 0) {
-          const { data: dimensionScoresData, error: dimensionScoresError } = await supabase
-            .from("dimension_scores")
-            .select("attempt_id, normalized_score")
-            .in("attempt_id", attemptIds);
-
-          if (dimensionScoresError) {
-            throw new Error(dimensionScoresError.message);
-          }
-
-          dimensionScoreRows = (dimensionScoresData ?? []) as DashboardDimensionScoreRow[];
-
-          const { data: responsesData, error: responsesError } = await supabase
-            .from("responses")
-            .select("attempt_id, answered_at")
-            .in("attempt_id", attemptIds);
-
-          if (responsesError) {
-            throw new Error(responsesError.message);
-          }
-
-          responseRows = (responsesData ?? []) as DashboardResponseRow[];
-        }
-
-        const completedCount = mappedAttempts.filter((attempt) => attempt.status === "completed").length;
-        const totalTimeSeconds = mappedAttempts.reduce(
-          (sum, attempt) => sum + (attempt.total_time_seconds ?? 0),
-          0,
-        );
-        const normalizedScores = dimensionScoreRows
-          .map((score) =>
-            score.normalized_score === null ? null : Number(score.normalized_score),
-          )
-          .filter((score): score is number => Number.isFinite(score));
-        const normalizedAverage =
-          normalizedScores.length > 0
-            ? normalizedScores.reduce((sum, score) => sum + score, 0) / normalizedScores.length
-            : 0;
-        const questionCountsByTestId = questionRows.reduce((counts, question) => {
-          counts.set(question.test_id, (counts.get(question.test_id) ?? 0) + 1);
-          return counts;
-        }, new Map<string, number>());
-        const lastAnsweredAtByAttemptId = responseRows.reduce((timestamps, response) => {
-          if (!response.answered_at) {
-            return timestamps;
-          }
-
-          const previousTimestamp = timestamps.get(response.attempt_id);
-
-          if (!previousTimestamp || Date.parse(response.answered_at) > Date.parse(previousTimestamp)) {
-            timestamps.set(response.attempt_id, response.answered_at);
-          }
-
-          return timestamps;
-        }, new Map<string, string>());
-        const attemptsWithActivity = mappedAttempts.map((attempt) => ({
-          ...attempt,
-          last_answered_at: lastAnsweredAtByAttemptId.get(attempt.id) ?? null,
-        }));
-
-        if (isCancelled) {
-          return;
-        }
-
-        setLiveAssessments(
-          buildAssessmentCardsFromTests(
-            (testsData ?? []) as DashboardTestRow[],
-            attemptsWithActivity,
-            (accessData ?? []) as DashboardOrganizationTestAccessRow[],
-            questionCountsByTestId,
-          ),
-        );
-        setTotalPaidTestsCount((accessData ?? []).length);
-        setCompletedAttempts(completedCount);
-      } catch (error) {
-        console.error("--- DASHBOARD FATAL ERROR ---", error);
-        if (isCancelled) {
-          return;
-        }
-
-        setLoadError(error instanceof Error ? error.message : "Failed to load dashboard data.");
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadDashboardData();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [hasLinkedParticipant, initialAttempts, linkedOrganizationId]);
-
   const curatedBatterySlugs = new Set<string>(CURATED_BATTERY_TEST_SLUGS);
-  const availableAssessments = liveAssessments.filter(
+  const availableAssessments = preparedDashboardData.assessments.filter(
     (assessment) => Boolean(assessment.testSlug && curatedBatterySlugs.has(assessment.testSlug)),
   );
   const totalBatteryTestsCount = CURATED_BATTERY_TESTS.length;
@@ -1082,49 +829,47 @@ export function CandidateDashboardView({
   return (
     <AuthenticatedAppMainContent topPaddingClassName="pt-0">
       {needsAddressingFormSelection ? <AddressingFormSelectionModal /> : null}
-      {hasLinkedParticipant ? (
-        isLoading && !loadError ? (
-          <DashboardSkeleton />
-        ) : (
-          <div className={DASHBOARD_CONTENT_GRID_CLASS_NAME}>
-            <div className={DASHBOARD_SIDEBAR_CLASS_NAME}>
-              <aside className={DASHBOARD_SIDEBAR_STACK_CLASS_NAME}>
-                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
-                  Korisnički profil
-                </p>
-                <WelcomeOverviewCard
-                  completedCount={completedBatteryCount}
-                  totalAssigned={totalBatteryTestsCount}
-                />
+      {hasLinkedParticipant ? dashboardLoadError ? (
+        <DashboardUnavailableState />
+      ) : (
+        <div className={DASHBOARD_CONTENT_GRID_CLASS_NAME}>
+          <div className={DASHBOARD_SIDEBAR_CLASS_NAME}>
+            <aside className={DASHBOARD_SIDEBAR_STACK_CLASS_NAME}>
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-text-soft)]">
+                Korisnički profil
+              </p>
+              <WelcomeOverviewCard
+                completedCount={completedBatteryCount}
+                totalAssigned={totalBatteryTestsCount}
+              />
 
-                <QuickActionCard
-                  state={compositeReportState}
-                  title={aiAnalystTitle}
-                />
-              </aside>
-            </div>
-
-            <section aria-label="Assessments" className={DASHBOARD_PRIMARY_COLUMN_CLASS_NAME}>
-              <div className={DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME}>
-                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-primary-hover)]">
-                  TVOJA BATERIJA TESTOVA
-                </p>
-                <div className="!mt-3">
-                  <DashboardHeader />
-                </div>
-                {availableAssessments.length > 0 ? (
-                  <AssessmentSection
-                    title="Tvoja baterija testova"
-                    description="Aktivne procjene koje možeš odmah otvoriti i završiti."
-                    assessments={availableAssessments}
-                    linkedOrganizationId={linkedOrganizationId}
-                    hideSectionHeader
-                  />
-                ) : null}
-              </div>
-            </section>
+              <QuickActionCard
+                state={compositeReportState}
+                title={aiAnalystTitle}
+              />
+            </aside>
           </div>
-        )
+
+          <section aria-label="Assessments" className={DASHBOARD_PRIMARY_COLUMN_CLASS_NAME}>
+            <div className={DASHBOARD_PRIMARY_COLUMN_STACK_CLASS_NAME}>
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--dp-primary-hover)]">
+                TVOJA BATERIJA TESTOVA
+              </p>
+              <div className="!mt-3">
+                <DashboardHeader />
+              </div>
+              {availableAssessments.length > 0 ? (
+                <AssessmentSection
+                  title="Tvoja baterija testova"
+                  description="Aktivne procjene koje možeš odmah otvoriti i završiti."
+                  assessments={availableAssessments}
+                  linkedOrganizationId={linkedOrganizationId}
+                  hideSectionHeader
+                />
+              ) : null}
+            </div>
+          </section>
+        </div>
       ) : (
         <EmptyState />
       )}

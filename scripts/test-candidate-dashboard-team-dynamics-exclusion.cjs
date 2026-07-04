@@ -70,6 +70,10 @@ const dashboardModelSource = fs.readFileSync(
   path.join(projectRoot, "lib", "dashboard", "candidate-dashboard-model.ts"),
   "utf8",
 );
+const dashboardDataSource = fs.readFileSync(
+  path.join(projectRoot, "lib", "dashboard", "candidate-dashboard-data.ts"),
+  "utf8",
+);
 
 assert.match(dashboardModelSource, /shouldHideAssessmentFromCandidateDashboard/);
 assert.match(
@@ -77,7 +81,8 @@ assert.match(
   /!shouldHideAssessmentFromCandidateDashboard\(\{ slug: test\.slug \}\)/,
 );
 assert.match(dashboardModelSource, /const additionalDatabaseCards = sortedDatabaseCards\.filter/);
-assert.match(dashboardSource, /buildAssessmentCardsFromTests/);
+assert.match(dashboardDataSource, /buildAssessmentCardsFromTests/);
+assert.doesNotMatch(dashboardSource, /getSupabaseBrowserClient/);
 
 assert.equal(
   shouldHideAssessmentFromCandidateDashboard({ slug: "team_dynamics_v1_strong" }),

@@ -73,16 +73,25 @@ const appPageSource = fs.readFileSync(
   path.join(projectRoot, "app", "(protected)", "app", "page.tsx"),
   "utf8",
 );
+const dashboardDataSource = fs.readFileSync(
+  path.join(projectRoot, "lib", "dashboard", "candidate-dashboard-data.ts"),
+  "utf8",
+);
 
-assert.match(appPageSource, /initialAttempts=\{initialAttempts\}/);
-assert.match(dashboardSource, /getSupabaseBrowserClient/);
-assert.match(dashboardSource, /\.from\("tests"\)/);
-assert.match(dashboardSource, /\.from\("organization_test_access"\)/);
-assert.match(dashboardSource, /\.from\("questions"\)/);
-assert.match(dashboardSource, /\.from\("dimension_scores"\)/);
-assert.match(dashboardSource, /\.from\("responses"\)/);
-assert.match(dashboardSource, /buildAssessmentCardsFromTests/);
-assert.match(dashboardSource, /mapInitialAttemptsToDashboardAttempts/);
+assert.match(appPageSource, /preparedDashboardData=\{preparedDashboardData\}/);
+assert.doesNotMatch(dashboardSource, /getSupabaseBrowserClient/);
+assert.doesNotMatch(dashboardSource, /\.from\("tests"\)/);
+assert.doesNotMatch(dashboardSource, /\.from\("organization_test_access"\)/);
+assert.doesNotMatch(dashboardSource, /\.from\("questions"\)/);
+assert.doesNotMatch(dashboardSource, /\.from\("dimension_scores"\)/);
+assert.doesNotMatch(dashboardSource, /\.from\("responses"\)/);
+assert.match(dashboardDataSource, /\.from\("tests"\)/);
+assert.match(dashboardDataSource, /\.from\("organization_test_access"\)/);
+assert.match(dashboardDataSource, /\.from\("questions"\)/);
+assert.match(dashboardDataSource, /\.from\("dimension_scores"\)/);
+assert.match(dashboardDataSource, /\.from\("responses"\)/);
+assert.match(dashboardDataSource, /buildAssessmentCardsFromTests/);
+assert.match(dashboardDataSource, /mapInitialAttemptsToDashboardAttempts/);
 
 const tests = [
   {
