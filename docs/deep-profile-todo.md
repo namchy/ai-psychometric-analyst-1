@@ -1430,7 +1430,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Globalni app header i footer                         | Završeno    | App shell / UI system        | Zatvoreno nakon uvođenja protected app-wide chrome i focus chrome moda za assessment execution rute. |
 | P1        | Logo u headeru                                       | Završeno    | Branding / UI                | Zatvoreno nakon zamjene tekstualnog Deep Profile prikaza PNG logoom u protected app headeru.   |
 | P1        | MWMS licenca                                         | Otvoreno    | Legal / Product risk         | Pravno očistiti komercijalnu upotrebu MWMS-a prije produkcijskog rollouta.                     |
-| P2        | Login screen UI polish                               | Otvoreno    | Auth UI / Visual consistency | Uskladiti login ekran sa ostatkom aplikacije i popraviti font promjenu pri fokusu email polja. |
+| P2        | Login screen UI polish                               | Aktivno / Animated scene foundation završena | Auth UI / Visual consistency | Novi login scene i continuous counter-breathing animation model su završeni i vizuelno potvrđeni. Preostaje samo uski form polish: copy/locale selector/input/button/card detalji. Browser autofill/password-manager load twitch je potvrđen samo u normalnom profilu, nestaje u Incognito i prihvaćen je za sada bez dodatnog fixa. |
 | P2        | IPIP poddimenzije prikaz                             | Otvoreno    | Report UI / Visualization    | Skratiti prikaz poddimenzija i razmotriti bars umjesto predugog tekstualnog prikaza.           |
 | P2        | Candidate dashboard labels                           | Završeno    | UX copy                      | Kartice sada koriste user-facing title kao glavni naziv procjene, a instrument kao subtitle.   |
 | P2        | Candidate dashboard CTA hover contrast               | Završeno    | Dashboard UI / Accessibility | Zatvoreno nakon popravke shared CTA hover/focus stilova za Započni procjenu, Nastavi procjenu i Pogledaj rezultate. |
@@ -6880,6 +6880,47 @@ Razlog za sljedeći prioritet:
 * Sljedeći UI rad ne smije nastaviti po principu “popravi jednu sekciju”; treba planski primijeniti UI system na cijeli Composite HR report renderer.
 * Posebno treba smanjiti nested card slojeve, ujednačiti surface/shadow/spacing i spriječiti povratak mliječnog/mentol vizuelnog pravca.
 * Tek nakon toga ima smisla otvarati veće sadržajne taskove poput Interview guidance V2 i Onboarding 30/60/90.
+
+### Completion note — Login animated scene foundation
+
+- Završen je novi Deep Profile login scene foundation.
+- Desktop login koristi trodijelni layout:
+  - `Deep`
+  - centralni `LoginForm`
+  - `Profile`
+- Pozadina koristi jednu kontinuiranu tamnu ocean scene površinu sa tri animirana organska blob sloja.
+- Nema vidljivih separatora između desktop kolona.
+- Bočne riječi više ne koriste zaseban entrance animation pa breathing animation.
+- Finalni model koristi jednu beskonačnu continuous animation po riječi.
+- Obje riječi počinju iz srednjeg blur/crisp stanja.
+- `Deep` odmah ide prema crisp stanju.
+- `Profile` odmah ide prema blur/povučenom stanju.
+- Deep animation traje `10.5s`.
+- Profile animation traje `11.2875s`.
+- Različita trajanja omogućavaju postepeno driftovanje ritma bez animation handoffa.
+- Uklonjen je raniji blur-to-crisp snap uzrokovan vizuelno lošim odvojenim entrance/breathing modelom.
+- Blob animacije su ubrzane 25%:
+  - Blob 1: drift `18s`, morph `8.25s`, pulse `5.625s`
+  - Blob 2: drift `23.25s`, morph `10.5s`, pulse `7.125s`
+  - Blob 3: drift `20.25s`, morph `6.75s`, pulse `4.875s`
+- Blob boje, geometrija, dimenzije, pozicije i keyframe putanje nisu redizajnirane u finalnom animation slice-u.
+- Mobile prikaz zadržava single-column form layout sa compact Deep Profile brandingom.
+- `prefers-reduced-motion` ostaje podržan.
+- Login auth behavior, Supabase login, redirects, role/access behavior i form submission flow nisu mijenjani.
+- Finalna animacija je potvrđena ručnim browser reviewom kao odlična.
+- Preostali load twitch forme je izolovan na normalni browser profil:
+  - u Incognito nema trzaja
+  - najvjerovatniji izvor je browser autofill i/ili password-manager intervencija nakon prvog painta
+  - autofill stabilization fix nije implementiran
+  - problem je prihvaćen za sada i nije blocker
+- Preostali budući login form polish treba ostati uzak i ne smije mijenjati potvrđenu scene animaciju:
+  - copy
+  - Bosanski-only locale selector za trenutni MVP prikaz
+  - input visual styling
+  - submit button styling
+  - eventualni minimalni card polish
+- Codex ne smije donositi nove dizajnerske odluke za login ekran.
+- Budući login UI task mora prvo pročitati `docs/deep-profile-ui-system.md` i mora dobiti precizne vrijednosti, scope, zabrane i acceptance criteria.
 
 ### 5.14 Assessment autosave UX politika
 
