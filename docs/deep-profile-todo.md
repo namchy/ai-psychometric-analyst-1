@@ -6,7 +6,7 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
-Pravila:
+Pravila: 
 
 - `docs/deep-profile-todo.md` je zadnji stabilizovani zapis trenutno važećeg plana, prioriteta i otvorenih taskova.
 - Dokument ne zamjenjuje razgovor, product judgement ili novu odluku.
@@ -65,6 +65,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Controlled codebase stabilization & performance refactoring | F02 + F01 završeni / Mandatory stop review | Architecture / Performance / Technical debt | Uraditi obavezni stop review nakon F01: dokumentovati stvarni rezultat, preostale neizvjesnosti i odlučiti da li se refactoring ovdje zaustavlja ili se otvara novi zasebno odobren slice. F05 ostaje conditional i ne otvara se bez mjerenja. |
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP HR P0 quality krug je zatvoren kroz read-only audit, dev-only OpenAI dry-run inspector, interpretive prompt hardening, successful confirmed dry-run, controlled Amra regeneration i post-regeneration inspector + browser smoke PASS. Frontend ostaje renderer, ne autor interpretacije; scoring/test output ostaje čist i deterministički. | Deep Profile / Report content architecture | Sljedeće: creation standard za report ide kroz prompt/content contract/schema prema velikom AI-ju; structural validator hard-blocka samo invalidan shape/data/source/evidence/contract. Future small-AI reviewer ostaje diagnostic/QA lane, ne current production gate. Ne raditi UI redesign kao quality odgovor i ne otvarati novi broad roadmap item bez zasebne odluke. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. IPIP HR authority lane je dodatno zatvoren P0 quality krugom: prompt/content-quality block, dry-run-only diagnostic inspector, validator-backed confirmed OpenAI dry-run i controlled Amra regeneration na `ready`. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove bez eksplicitnog odobrenja. Dalji quality rad ostaje uski prompt/content-contract + structural validator + future diagnostic reviewer/golden-examples lane; ne ići kroz UI polish, scoring izmjene ili persistence/lifecycle refactor. |
+| P1        | Golden Demo Cohort and AI report calibration | Active | Demo data / Report QA / Calibration | Partner Plus demo identitet, 24 korisnika i tehnički preflight su zaključani. Sljedeći: offline manifest/contracts foundation, validator i dry-run plan za GD-001. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Repo-backed canonical spec v0.1 dokumentovan u `docs/team-dynamics-product-tech-spec.md` | Team module / Product architecture | Koristiti ovaj spec kao product/tech osnovu za buduće Team Dynamics / Team Fit implementation slice-ove; ne otvarati worker/scheduler kao default; naredni Team Fit/Team Dynamics runtime rad traži zasebnu product odluku. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Canonical product/spec v0.1 dokumentovan u `docs/team-style-collaboration-product-spec.md` | Team module / Product architecture | Prije implementacije uraditi zaseban content/spec ili implementation slice; validacijski status ostaje pending; ne kopirati zaštićene/licencirane iteme ili scenarije; ne uvoditi runtime/DB/import package bez zasebne odluke. |
 | P1        | Team Fit provider input planning spec v0.1 | Canonical planning spec za budući `team_fit_report_v1` provider prompt/input slice dokumentovan u `docs/team-fit-provider-input-planning-spec.md`; spec je usklađen sa `docs/team-fit-report-contract-acceptance-spec.md`, `lib/b2b/team-fit-report-contract.ts`, Team Dynamics product/tech specom i Team Style & Collaboration product/specom | Relacijski report / Candidate-team fit | Budući provider input smije koristiti samo dozvoljene, purpose-built i evidence-packed signale; ne otvarati provider implementation po defaultu, niti uvoditi OpenAI, worker/scheduler, migration repair, DB write ili Composite HR kao dio ovog synca. Sljedeći Team Fit slice treba ostati zasebna odluka: provider prompt skeleton, JSON schema adapter planning/implementation, golden examples/reviewer harness, mock fixture, display/read-model mapping ili drugi eksplicitno odobren slice. |
@@ -1532,6 +1533,20 @@ Dobre ideje koje nisu za sadašnji razvojni sprint.
 ---
 
 ## 4. Aktivni backlog
+
+### P1 — Golden Demo Cohort and AI report calibration
+
+**Status:** Active
+**Kategorija:** Demo data / Report QA / Calibration
+
+**Cilj:** Izgraditi 24 Golden Demo kandidata u četiri sintetička tima kao realističan, kontrolisan dataset za scoring provjeru, individualne i timske reportove, semantičku evaluator QA, ciljanu prompt/content-contract kalibraciju, razvoj novog HR dashboarda i mogući klijentski web demo. Demo organizacija je **Partner Plus d.o.o. — Mikrokreditna organizacija**. Kohorta ima 18 development/calibration i 6 holdout kandidata, ljudski čitljiva sintetička imena i funkcije te odvojene stabilne interne fixture ključeve. Workstream je odvojen od novog HR dashboard UI workstreama, ali mu obezbjeđuje realistične podatke i potvrđuje kvalitet reporta. Nije zaključeno da svih 24 kandidata mora biti završeno prije bilo kakvog UI rada.
+
+**Plan i preflight:** `docs/deep-profile-golden-demo-cohort-plan.md` i `docs/deep-profile-golden-demo-cohort-preflight.md`.
+
+**Trenutni milestone:** Plan, read-only technical preflight, demo organizacija, timovi i registry 24 kandidata su zaključani.
+**Naredni očekivani milestone:** Offline manifest/contracts foundation, manifest validator i dry-run plan artefakt za `GD-001`, bez DB write-a i OpenAI poziva.
+
+**Granice:** Ne mijenjati GitHub Issues ili GitHub Projects i ne stvarati drugi canonical todo. Cohort plan je execution tracker; ovaj dokument ostaje canonical backlog. Nacionalna pripadnost nije product podatak i ne smije se čuvati niti prikazivati u aplikaciji; korisnikove tri liste imena služe samo kao offline kontrola ravnoteže sintetičke kohorte.
 
 ### P0 — SAFRAN user report content architecture
 
