@@ -8,6 +8,8 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 
 > **Update — GDT-01 Team Dynamics offline foundation:** runtime snapshot `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d` je VALID/live EXACT_MATCH. Šest zaključanih GDT-01 članova imaju offline mixed_v1 fixture, production scorer i production final aggregation verifier; GDT-01 output je deterministic-only i `ai_prompt_calibration_allowed=false`. DB writer/live attempts/report/OpenAI ostaju van ovog koraka. Sljedeći task: `controlled GDT-01 Team Dynamics DB writer and live-state inspector`.
 
+> **DB-writer audit correction:** writer je blokiran dok `team-dynamics-gdt-01-answers.json` ne postane canonical per-question authored payload. Trenutni block-level recipe (`likert_values` i SJT option order) nema 48 `question_code` entries ni per-scenario `best_option_code`/`worst_option_code`, pa nije siguran persistence input. Ne implementirati DB writer ili RPC prije te offline fixture correction/re-freeze faze.
+
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
 Pravila: 

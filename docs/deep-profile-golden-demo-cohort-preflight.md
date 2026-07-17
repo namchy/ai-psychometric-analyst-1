@@ -6,6 +6,8 @@
 
 > **Update:** snapshot je kreiran i VALID/live EXACT_MATCH (`375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`): 48 required pitanja i 192 options. Offline fixture koristi `buildTeamDynamicsMixedScore` i `loadTeamDynamicsFinalAggregation` nad snapshot-derived adapterom; nema DB writea, live scoringa, agregacije persistencea, Team Fit reporta ili OpenAI poziva.
 
+> **Writer gate:** `responses`/`response_selections` production contract podržava 48 response objekata i 54 selections po članu, ali trenutni recipe-shaped answers fixture ne sadrži njihove canonical per-question/per-option identitete. Ne uvoditi persistence RPC ili writer dok se taj offline contract ne zamrzne eksplicitno.
+
 ## Post-preflight implementation evidence — transaction-safe GD-001 writer
 
 - RPC: `public.create_golden_demo_gd001_fixture_v1(p_fixture jsonb)`.

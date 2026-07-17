@@ -11,6 +11,8 @@
 
 GDT-01 offline Team Dynamics foundation je sada zaključan na exported checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`: šest članova, 48 assessment units po članu, 48 stored response objekata (54 option selections zbog šest SJT best/worst parova), 48 expected member score entries i 8 expected aggregation entries. `GD-019` je dozvoljen samo za deterministic verification; cijeli GDT-01 output ima `ai_prompt_calibration_allowed=false`.
 
+DB persistence je trenutno blocked: authored answer fixture mora prvo zamijeniti recipe-only block values eksplicitnim per-question canonical option codes prije controlled writer/inspector implementacije.
+
 Ovo je kontrolisani sintetički dataset za demonstraciju, report QA i regresiju. Nije trening niti model fine-tuning. Iterativno se kalibriraju prompt, content contract, schema zahtjevi, input builder i, samo kada je opravdano, validator granice.
 
 ## Implementacijski checkpoint — GD-001 database fixture
