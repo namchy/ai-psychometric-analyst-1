@@ -5,20 +5,29 @@
 ## Post-preflight implementation evidence — transaction-safe GD-001 writer
 
 - RPC: `public.create_golden_demo_gd001_fixture_v1(p_fixture jsonb)`.
-- Migration (not applied): `supabase/migrations/20260717120000_create_golden_demo_gd001_fixture_rpc.sql`.
+- Migration: `supabase/migrations/20260717120000_create_golden_demo_gd001_fixture_rpc.sql`; primijenjena na live bazu prema operator-provided preflight evidenceu.
 - Transaction strategy: one PostgreSQL function call, transaction-level advisory lock for `golden-demo:partner-plus:GD-001`, all fixture validation before inserts, and exception rollback for participant, assignment, three attempts, three links and 184 responses.
 - Security model: `SECURITY DEFINER` with `search_path = ''`, schema-qualified objects, public/anon/authenticated execute revoked and `service_role` execute granted only.
 - Write contract: EMPTY-only; no upsert, repair, cleanup, overwrite, scoring or report generation. Existing state remains a Node-side read-only classification boundary (`EXACT_MATCH`, `PARTIAL`, `CONFLICT`).
-- Non-goals: this migration was not applied and no DB dry-run/apply, scoring, report generation or OpenAI call was executed during implementation.
+- Live evidence: Partner Plus organizacija je active; GD-001 apply je završen atomskim RPC-om, a završni read-only preflight je `EXACT_MATCH` sa tri attempta i 184 odgovora. Scoring, report generation i OpenAI nisu pokrenuti.
 
 ## Post-review evidence — multi-active assessment test contract
 
 - Legacy blocker: `20260312133500_harden_active_test_contract.sql` kreirao je globalni partial unique indeks `tests_one_active_test_idx`, iako standard battery zahtijeva istovremeno active IPIP, SAFRAN i MWMS testove.
-- Forward migration (not applied): `supabase/migrations/20260717121000_resolve_multi_active_test_contract.sql` uklanja samo taj globalni indeks i ne mijenja test podatke.
+- Forward migration `supabase/migrations/20260717121000_resolve_multi_active_test_contract.sql` primijenjena je na live bazu; uklanja samo taj globalni indeks i ne mijenja test podatke.
 - Uniqueness contract: `tests.slug` ostaje globally unique i predstavlja stabilni, versioned test identitet; schema nema repo-defined test-family ključ, pa replacement active unique indeks nije opravdan.
 - Lifecycle contract: postojeći `tests_status_is_active_check` ostaje na snazi — `active` ide sa `is_active=true`, a `draft/archived` sa `is_active=false`.
 - Query audit: jedini production global-single helper sužen je obaveznim slug filterom; standard battery koristi slug listu, a pregledani activation/import tokovi već su target-slug scoped i ne deaktiviraju nepovezane testove.
-- Runtime ograničenje: live schema i test data nisu provjereni; obje migracije, DB dry-run i GD-001 apply ostaju pending.
+- Live preflight je potvrdio da globalni indeks ne postoji, da su IPIP, SAFRAN i MWMS `active/true`, te da RPC postoji kao `SECURITY DEFINER` sa execute pravom samo za `postgres` i `service_role`.
+
+## Post-fixture evidence — GD-001 production scoring audit
+
+- Canonical completion path prvo validira sva required pitanja, zatvara attempt (`completed` + `completed_at`), zatim poziva `persistCompletedAssessmentResults(...)`; report orchestration je zaseban, kasniji eksplicitni poziv u `app/actions/assessment.ts`.
+- `persistCompletedAssessmentResults(...)` nema report/OpenAI import ni side effect. IPIP i SAFRAN koriste shared production scorer; MWMS persistence delegira na `writeMwmsAttemptDimensionScores(...)`.
+- Score persistence upisuje `responses.raw_value`, `responses.scored_value` i test-level `dimension_scores`. IPIP domaini i MWMS composite vrijednosti nisu posebni DB redovi nego read-only derivacije iz persisted dimensions; standard-battery composite je report input/readiness contract, ne numerički score zapis niti assignment lifecycle tranzicija.
+- Kontrolisani operator `scripts/score-gd-001.cjs` koristi production completion validator i production score persister u redoslijedu IPIP → SAFRAN → MWMS, ali ne poziva `orchestrateReportsAfterAttemptCompletion`, report queue/worker ili provider.
+- Granica nije atomska kroz sva tri attempta: svaki attempt transition, response update i dimension replacement su odvojeni Supabase writeovi. Failure može ostaviti `PARTIAL`, koji operator namjerno blokira bez force/repair opcije.
+- Scoring operator nije pokrenut protiv baze. Naredni ljudski korak je review pa eksplicitni read-only dry-run.
 
 
 ## 0. Post-preflight product decisions

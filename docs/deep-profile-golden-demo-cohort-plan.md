@@ -13,9 +13,10 @@ Ovo je kontrolisani sintetički dataset za demonstraciju, report QA i regresiju.
 
 - GD-001 offline dataset (profil, 184 odgovora, očekivani scoreovi i AI kriteriji) je završen.
 - Controlled DB writer foundation je završen; default ostaje read-only dry-run, a apply zahtijeva `--apply --candidate GD-001`.
-- Atomski PostgreSQL RPC `create_golden_demo_gd001_fixture_v1(jsonb)` je implementiran kroz novu, još **neprimijenjenu** migraciju.
-- Prethodni blocker je bio legacy globalni `tests_one_active_test_idx`, koji je dozvoljavao samo jedan `is_active=true` test i bio nespojiv sa trokomponentnim standard batteryjem. Novi contract dopušta više različitih active test slugova; `tests.slug` ostaje globally unique, a `status/is_active` consistency check ostaje na snazi. Forward migracija koja uklanja samo pogrešni globalni indeks još nije primijenjena.
-- Operator execution je pending: prvo finalni migration review i primjena obje migracije, zatim DB dry-run; apply se ne pokreće bez zasebne operator odluke.
+- Migracije za atomski RPC `create_golden_demo_gd001_fixture_v1(jsonb)` i multi-active test contract primijenjene su na live bazu; live preflight je potvrdio tri active standard-battery testa i execute pravo samo za `postgres`/`service_role`.
+- Partner Plus organizacija postoji i aktivna je. GD-001 fixture je kreiran atomskim RPC-om; završni read-only preflight je `EXACT_MATCH` sa 184 odgovora (`120` IPIP, `45` SAFRAN, `19` MWMS), bez scoreova i report artefakata.
+- Production scoring audit potvrdio je odvojenu deterministic scoring granicu: completion akcija eksplicitno poziva score persistence pa zasebno report orchestration. Kontrolisani GD-001 scoring operator je pripremljen kao default read-only dry-run i ne importuje niti poziva report/OpenAI put.
+- Scoring još nije izvršen i report generation nije pokrenut. Naredni ljudski korak je code review, zatim eksplicitni scoring dry-run; apply ostaje zasebna operator odluka.
 
 ## Svrha i poslovna vrijednost
 
@@ -50,7 +51,7 @@ Golden cohort istovremeno služi za:
 - Nacionalna pripadnost nije product podatak, ne unosi se u manifest kandidata, bazu, report, dashboard ili review bundle.
 - Korisnikove tri liste imena služe samo kao offline kontrola ravnoteže: ukupno 8 + 8 + 8, a u svakom timu 2 + 2 + 2.
 - Kohorta je uravnotežena i po spolu: ukupno 12 žena i 12 muškaraca, a u svakom timu 3 žene i 3 muškarca.
-- Buduće demo email adrese moraju koristiti nedostavljivu sintetičku domenu; tačan tehnički namespace i domen zaključavaju se u manifest foundation tasku.
+- Demo email adrese koriste zaključani deterministic namespace `ime.prezime@partnerplus.ba`, lowercase i bez dijakritike.
 - Ne koristiti stvarne telefonske brojeve, adrese, identifikacione dokumente, LinkedIn profile ili fotografije stvarnih osoba.
 
 ## Organizacija i timovi
@@ -160,7 +161,7 @@ Evaluator rezultat najmanje sadrži `PASS`, `PASS WITH NOTES` ili `FAIL`, `demoR
 
 | Candidate ID | Ime | Team | Dev / holdout | Expected profile | Responses | Scores | Single-test reports | Composite / IDP | Evaluator review | Regression | Demo readiness | Napomena |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `GD-001` | Amel Kovačević | `GDT-01` | Development | TBC | Not started | Not started | Not started | Not started | Not started | N/A | Not ready | First end-to-end candidate |
+| `GD-001` | Amel Kovačević | `GDT-01` | Development | Defined | 184 persisted / verified | Not started | Not started | Not started | Not started | N/A | Not ready | DB fixture `EXACT_MATCH`; scoring operator review pending |
 | `GD-002` | Nataša Rapaić | `GDT-01` | Development | TBC | Not started | Not started | Not started | Not started | Not started | N/A | Not ready | — |
 | `GD-003` | Vladimir Lučić | `GDT-01` | Development | TBC | Not started | Not started | Not started | Not started | Not started | N/A | Not ready | — |
 | `GD-004` | Natali Delić | `GDT-01` | Development | TBC | Not started | Not started | Not started | Not started | Not started | N/A | Not ready | — |
