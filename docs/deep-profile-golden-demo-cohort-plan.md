@@ -7,6 +7,8 @@
 - **Technical preflight:** [deep-profile-golden-demo-cohort-preflight.md](./deep-profile-golden-demo-cohort-preflight.md)
 - **Demo organizacija:** **Partner Plus d.o.o. — Mikrokreditna organizacija**
 
+> GDT-01 canonical explicit answers are the future DB writer input; the separately named recipe is provenance-only. The frozen contract has six members, 288 response objects and 324 selections, and remains deterministic-only (`ai_prompt_calibration_allowed=false`). No live DB operation, report or OpenAI call has occurred.
+
 > **Team Dynamics runtime evidence gate (2026-07-17):** lokalni `team_dynamics_assessment_v1` sadržaj je draft/package evidence, ne canonical imported runtime evidence. Prije GDT-01 answers, scoreova ili agregacije operator treba pregledati `node scripts/export-team-dynamics-runtime-contract.cjs --dry-run --verbose`. Exporter je SELECT-only i predlaže shared snapshot `fixtures/golden-demo/contracts/team-dynamics-assessment-v1-runtime.json`; zaseban reviewed `--write-snapshot --contract team_dynamics_assessment_v1` je potreban za lokalni write. Nema Team Fit reporta ili OpenAI poziva u ovoj fazi.
 
 GDT-01 offline Team Dynamics foundation je sada zaključan na exported checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`: šest članova, 48 assessment units po članu, 48 stored response objekata (54 option selections zbog šest SJT best/worst parova), 48 expected member score entries i 8 expected aggregation entries. `GD-019` je dozvoljen samo za deterministic verification; cijeli GDT-01 output ima `ai_prompt_calibration_allowed=false`.

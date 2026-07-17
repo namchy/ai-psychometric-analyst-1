@@ -1,0 +1,17 @@
+{
+  "schema_version": "gdt_01_team_dynamics_answer_recipe_v1",
+  "canonical_persistence_input": false,
+  "db_writer_input_allowed": false,
+  "scoring_verifier_input_allowed": false,
+  "purpose": "provenance_only",
+  "contract_checksum": "375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d",
+  "team_id": "GDT-01",
+  "members": [
+    { "candidate_id": "GD-001", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 3, "outcome_pulse": 3 }, "sjt": { "best_option_order": 1, "worst_option_order": 4 } },
+    { "candidate_id": "GD-002", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 4, "outcome_pulse": 3 }, "sjt": { "best_option_order": 1, "worst_option_order": 4 } },
+    { "candidate_id": "GD-003", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 2, "outcome_pulse": 3 }, "sjt": { "best_option_order": 2, "worst_option_order": 4 } },
+    { "candidate_id": "GD-004", "likert_values": { "tdm-31-V1": 4, "psychological_safety": 3, "outcome_pulse": 4 }, "sjt": { "best_option_order": 1, "worst_option_order": 3 } },
+    { "candidate_id": "GD-005", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 4, "outcome_pulse": 3 }, "sjt": { "best_option_order": 2, "worst_option_order": 4 } },
+    { "candidate_id": "GD-019", "likert_values": { "tdm-31-V1": 2, "psychological_safety": 2, "outcome_pulse": 3 }, "sjt": { "best_option_order": 1, "worst_option_order": 4 } }
+  ]
+}

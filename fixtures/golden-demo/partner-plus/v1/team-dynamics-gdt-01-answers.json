@@ -1,15 +1,2350 @@
 {
-  "schema_version": "gdt_01_team_dynamics_answers_v1",
+  "schema_version": "gdt_01_team_dynamics_explicit_answers_v1",
+  "fixture_identity": "partner-plus:GDT-01:team-dynamics:v1",
   "contract_identity": "team_dynamics_assessment_v1",
+  "contract_version": "v1_content_spec",
   "contract_checksum": "375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d",
   "team_id": "GDT-01",
-  "answer_representation": "canonical_recipe_materialized_against_runtime_snapshot_v1",
+  "deterministic_verification_allowed": true,
+  "ai_prompt_calibration_allowed": false,
+  "holdout_evaluation_only_after_prompt_freeze": true,
+  "canonical_persistence_input": true,
+  "db_writer_input_allowed": true,
+  "recipe_inference_required": false,
   "members": [
-    { "candidate_id": "GD-001", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 3, "outcome_pulse": 3 }, "sjt": { "best_option_order": 1, "worst_option_order": 4 } },
-    { "candidate_id": "GD-002", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 4, "outcome_pulse": 3 }, "sjt": { "best_option_order": 1, "worst_option_order": 4 } },
-    { "candidate_id": "GD-003", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 2, "outcome_pulse": 3 }, "sjt": { "best_option_order": 2, "worst_option_order": 4 } },
-    { "candidate_id": "GD-004", "likert_values": { "tdm-31-V1": 4, "psychological_safety": 3, "outcome_pulse": 4 }, "sjt": { "best_option_order": 1, "worst_option_order": 3 } },
-    { "candidate_id": "GD-005", "likert_values": { "tdm-31-V1": 3, "psychological_safety": 4, "outcome_pulse": 3 }, "sjt": { "best_option_order": 2, "worst_option_order": 4 } },
-    { "candidate_id": "GD-019", "likert_values": { "tdm-31-V1": 2, "psychological_safety": 2, "outcome_pulse": 3 }, "sjt": { "best_option_order": 1, "worst_option_order": 4 } }
+    {
+      "candidate_id": "GD-001",
+      "responses": [
+        {
+          "question_code": "TDM31_01",
+          "question_order": 1,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_01_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_02",
+          "question_order": 2,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_02_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_03",
+          "question_order": 3,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_03_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_04",
+          "question_order": 4,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_04_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_05",
+          "question_order": 5,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_05_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_06",
+          "question_order": 6,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_06_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_07",
+          "question_order": 7,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_07_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_08",
+          "question_order": 8,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_08_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_09",
+          "question_order": 9,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_09_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_10",
+          "question_order": 10,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_10_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_11",
+          "question_order": 11,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_11_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_12",
+          "question_order": 12,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_12_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_13",
+          "question_order": 13,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_13_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_14",
+          "question_order": 14,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_14_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_15",
+          "question_order": 15,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_15_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_16",
+          "question_order": 16,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_16_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_17",
+          "question_order": 17,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_17_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_18",
+          "question_order": 18,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_18_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_19",
+          "question_order": 19,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_19_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_20",
+          "question_order": 20,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_20_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_21",
+          "question_order": 21,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_21_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_22",
+          "question_order": 22,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_22_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_23",
+          "question_order": 23,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_23_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_24",
+          "question_order": 24,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_24_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_25",
+          "question_order": 25,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_25_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_26",
+          "question_order": 26,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_26_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_27",
+          "question_order": 27,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_27_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_28",
+          "question_order": 28,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_28_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_29",
+          "question_order": 29,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_29_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_30",
+          "question_order": 30,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_30_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_31",
+          "question_order": 31,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_31_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_1",
+          "question_order": 32,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_1_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_2",
+          "question_order": 33,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_2_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_3",
+          "question_order": 34,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_3_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_4",
+          "question_order": 35,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_4_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_5",
+          "question_order": 36,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_5_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_6",
+          "question_order": 37,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_6_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_7",
+          "question_order": 38,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_7_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "SJT_TD_01",
+          "question_order": 39,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_01_A",
+          "worst_option_code": "SJT_TD_01_D"
+        },
+        {
+          "question_code": "SJT_TD_02",
+          "question_order": 40,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_02_A",
+          "worst_option_code": "SJT_TD_02_D"
+        },
+        {
+          "question_code": "SJT_TD_03",
+          "question_order": 41,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_03_A",
+          "worst_option_code": "SJT_TD_03_D"
+        },
+        {
+          "question_code": "SJT_TD_04",
+          "question_order": 42,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_04_A",
+          "worst_option_code": "SJT_TD_04_D"
+        },
+        {
+          "question_code": "SJT_TD_05",
+          "question_order": 43,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_05_A",
+          "worst_option_code": "SJT_TD_05_D"
+        },
+        {
+          "question_code": "SJT_TD_06",
+          "question_order": 44,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_06_A",
+          "worst_option_code": "SJT_TD_06_D"
+        },
+        {
+          "question_code": "OUTCOME_1",
+          "question_order": 45,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_1_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_2",
+          "question_order": 46,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_2_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_3",
+          "question_order": 47,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_3_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_4",
+          "question_order": 48,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_4_OPTION_3",
+          "option_value": 3
+        }
+      ]
+    },
+    {
+      "candidate_id": "GD-002",
+      "responses": [
+        {
+          "question_code": "TDM31_01",
+          "question_order": 1,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_01_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_02",
+          "question_order": 2,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_02_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_03",
+          "question_order": 3,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_03_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_04",
+          "question_order": 4,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_04_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_05",
+          "question_order": 5,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_05_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_06",
+          "question_order": 6,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_06_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_07",
+          "question_order": 7,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_07_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_08",
+          "question_order": 8,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_08_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_09",
+          "question_order": 9,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_09_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_10",
+          "question_order": 10,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_10_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_11",
+          "question_order": 11,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_11_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_12",
+          "question_order": 12,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_12_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_13",
+          "question_order": 13,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_13_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_14",
+          "question_order": 14,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_14_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_15",
+          "question_order": 15,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_15_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_16",
+          "question_order": 16,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_16_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_17",
+          "question_order": 17,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_17_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_18",
+          "question_order": 18,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_18_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_19",
+          "question_order": 19,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_19_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_20",
+          "question_order": 20,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_20_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_21",
+          "question_order": 21,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_21_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_22",
+          "question_order": 22,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_22_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_23",
+          "question_order": 23,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_23_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_24",
+          "question_order": 24,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_24_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_25",
+          "question_order": 25,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_25_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_26",
+          "question_order": 26,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_26_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_27",
+          "question_order": 27,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_27_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_28",
+          "question_order": 28,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_28_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_29",
+          "question_order": 29,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_29_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_30",
+          "question_order": 30,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_30_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_31",
+          "question_order": 31,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_31_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_1",
+          "question_order": 32,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_1_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_2",
+          "question_order": 33,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_2_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_3",
+          "question_order": 34,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_3_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_4",
+          "question_order": 35,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_4_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_5",
+          "question_order": 36,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_5_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_6",
+          "question_order": 37,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_6_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_7",
+          "question_order": 38,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_7_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "SJT_TD_01",
+          "question_order": 39,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_01_A",
+          "worst_option_code": "SJT_TD_01_D"
+        },
+        {
+          "question_code": "SJT_TD_02",
+          "question_order": 40,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_02_A",
+          "worst_option_code": "SJT_TD_02_D"
+        },
+        {
+          "question_code": "SJT_TD_03",
+          "question_order": 41,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_03_A",
+          "worst_option_code": "SJT_TD_03_D"
+        },
+        {
+          "question_code": "SJT_TD_04",
+          "question_order": 42,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_04_A",
+          "worst_option_code": "SJT_TD_04_D"
+        },
+        {
+          "question_code": "SJT_TD_05",
+          "question_order": 43,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_05_A",
+          "worst_option_code": "SJT_TD_05_D"
+        },
+        {
+          "question_code": "SJT_TD_06",
+          "question_order": 44,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_06_A",
+          "worst_option_code": "SJT_TD_06_D"
+        },
+        {
+          "question_code": "OUTCOME_1",
+          "question_order": 45,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_1_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_2",
+          "question_order": 46,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_2_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_3",
+          "question_order": 47,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_3_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_4",
+          "question_order": 48,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_4_OPTION_3",
+          "option_value": 3
+        }
+      ]
+    },
+    {
+      "candidate_id": "GD-003",
+      "responses": [
+        {
+          "question_code": "TDM31_01",
+          "question_order": 1,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_01_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_02",
+          "question_order": 2,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_02_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_03",
+          "question_order": 3,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_03_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_04",
+          "question_order": 4,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_04_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_05",
+          "question_order": 5,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_05_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_06",
+          "question_order": 6,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_06_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_07",
+          "question_order": 7,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_07_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_08",
+          "question_order": 8,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_08_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_09",
+          "question_order": 9,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_09_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_10",
+          "question_order": 10,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_10_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_11",
+          "question_order": 11,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_11_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_12",
+          "question_order": 12,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_12_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_13",
+          "question_order": 13,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_13_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_14",
+          "question_order": 14,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_14_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_15",
+          "question_order": 15,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_15_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_16",
+          "question_order": 16,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_16_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_17",
+          "question_order": 17,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_17_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_18",
+          "question_order": 18,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_18_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_19",
+          "question_order": 19,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_19_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_20",
+          "question_order": 20,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_20_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_21",
+          "question_order": 21,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_21_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_22",
+          "question_order": 22,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_22_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_23",
+          "question_order": 23,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_23_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_24",
+          "question_order": 24,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_24_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_25",
+          "question_order": 25,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_25_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_26",
+          "question_order": 26,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_26_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_27",
+          "question_order": 27,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_27_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_28",
+          "question_order": 28,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_28_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_29",
+          "question_order": 29,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_29_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_30",
+          "question_order": 30,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_30_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_31",
+          "question_order": 31,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_31_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_1",
+          "question_order": 32,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_1_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_2",
+          "question_order": 33,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_2_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_3",
+          "question_order": 34,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_3_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_4",
+          "question_order": 35,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_4_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_5",
+          "question_order": 36,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_5_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_6",
+          "question_order": 37,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_6_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_7",
+          "question_order": 38,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_7_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "SJT_TD_01",
+          "question_order": 39,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_01_B",
+          "worst_option_code": "SJT_TD_01_D"
+        },
+        {
+          "question_code": "SJT_TD_02",
+          "question_order": 40,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_02_B",
+          "worst_option_code": "SJT_TD_02_D"
+        },
+        {
+          "question_code": "SJT_TD_03",
+          "question_order": 41,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_03_B",
+          "worst_option_code": "SJT_TD_03_D"
+        },
+        {
+          "question_code": "SJT_TD_04",
+          "question_order": 42,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_04_B",
+          "worst_option_code": "SJT_TD_04_D"
+        },
+        {
+          "question_code": "SJT_TD_05",
+          "question_order": 43,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_05_B",
+          "worst_option_code": "SJT_TD_05_D"
+        },
+        {
+          "question_code": "SJT_TD_06",
+          "question_order": 44,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_06_B",
+          "worst_option_code": "SJT_TD_06_D"
+        },
+        {
+          "question_code": "OUTCOME_1",
+          "question_order": 45,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_1_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_2",
+          "question_order": 46,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_2_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_3",
+          "question_order": 47,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_3_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_4",
+          "question_order": 48,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_4_OPTION_3",
+          "option_value": 3
+        }
+      ]
+    },
+    {
+      "candidate_id": "GD-004",
+      "responses": [
+        {
+          "question_code": "TDM31_01",
+          "question_order": 1,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_01_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_02",
+          "question_order": 2,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_02_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_03",
+          "question_order": 3,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_03_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_04",
+          "question_order": 4,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_04_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_05",
+          "question_order": 5,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_05_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_06",
+          "question_order": 6,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_06_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_07",
+          "question_order": 7,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_07_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_08",
+          "question_order": 8,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_08_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_09",
+          "question_order": 9,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_09_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_10",
+          "question_order": 10,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_10_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_11",
+          "question_order": 11,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_11_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_12",
+          "question_order": 12,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_12_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_13",
+          "question_order": 13,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_13_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_14",
+          "question_order": 14,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_14_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_15",
+          "question_order": 15,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_15_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_16",
+          "question_order": 16,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_16_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_17",
+          "question_order": 17,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_17_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_18",
+          "question_order": 18,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_18_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_19",
+          "question_order": 19,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_19_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_20",
+          "question_order": 20,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_20_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_21",
+          "question_order": 21,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_21_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_22",
+          "question_order": 22,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_22_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_23",
+          "question_order": 23,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_23_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_24",
+          "question_order": 24,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_24_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_25",
+          "question_order": 25,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_25_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_26",
+          "question_order": 26,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_26_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_27",
+          "question_order": 27,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_27_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_28",
+          "question_order": 28,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_28_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_29",
+          "question_order": 29,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_29_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_30",
+          "question_order": 30,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_30_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TDM31_31",
+          "question_order": 31,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_31_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_1",
+          "question_order": 32,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_1_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_2",
+          "question_order": 33,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_2_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_3",
+          "question_order": 34,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_3_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_4",
+          "question_order": 35,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_4_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_5",
+          "question_order": 36,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_5_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_6",
+          "question_order": 37,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_6_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_7",
+          "question_order": 38,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_7_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "SJT_TD_01",
+          "question_order": 39,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_01_A",
+          "worst_option_code": "SJT_TD_01_C"
+        },
+        {
+          "question_code": "SJT_TD_02",
+          "question_order": 40,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_02_A",
+          "worst_option_code": "SJT_TD_02_C"
+        },
+        {
+          "question_code": "SJT_TD_03",
+          "question_order": 41,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_03_A",
+          "worst_option_code": "SJT_TD_03_C"
+        },
+        {
+          "question_code": "SJT_TD_04",
+          "question_order": 42,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_04_A",
+          "worst_option_code": "SJT_TD_04_C"
+        },
+        {
+          "question_code": "SJT_TD_05",
+          "question_order": 43,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_05_A",
+          "worst_option_code": "SJT_TD_05_C"
+        },
+        {
+          "question_code": "SJT_TD_06",
+          "question_order": 44,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_06_A",
+          "worst_option_code": "SJT_TD_06_C"
+        },
+        {
+          "question_code": "OUTCOME_1",
+          "question_order": 45,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_1_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "OUTCOME_2",
+          "question_order": 46,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_2_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "OUTCOME_3",
+          "question_order": 47,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_3_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "OUTCOME_4",
+          "question_order": 48,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_4_OPTION_4",
+          "option_value": 4
+        }
+      ]
+    },
+    {
+      "candidate_id": "GD-005",
+      "responses": [
+        {
+          "question_code": "TDM31_01",
+          "question_order": 1,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_01_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_02",
+          "question_order": 2,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_02_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_03",
+          "question_order": 3,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_03_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_04",
+          "question_order": 4,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_04_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_05",
+          "question_order": 5,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_05_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_06",
+          "question_order": 6,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_06_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_07",
+          "question_order": 7,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_07_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_08",
+          "question_order": 8,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_08_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_09",
+          "question_order": 9,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_09_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_10",
+          "question_order": 10,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_10_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_11",
+          "question_order": 11,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_11_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_12",
+          "question_order": 12,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_12_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_13",
+          "question_order": 13,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_13_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_14",
+          "question_order": 14,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_14_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_15",
+          "question_order": 15,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_15_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_16",
+          "question_order": 16,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_16_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_17",
+          "question_order": 17,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_17_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_18",
+          "question_order": 18,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_18_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_19",
+          "question_order": 19,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_19_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_20",
+          "question_order": 20,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_20_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_21",
+          "question_order": 21,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_21_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_22",
+          "question_order": 22,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_22_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_23",
+          "question_order": 23,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_23_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_24",
+          "question_order": 24,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_24_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_25",
+          "question_order": 25,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_25_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_26",
+          "question_order": 26,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_26_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_27",
+          "question_order": 27,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_27_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_28",
+          "question_order": 28,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_28_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_29",
+          "question_order": 29,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_29_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_30",
+          "question_order": 30,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_30_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TDM31_31",
+          "question_order": 31,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_31_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "TPSDP_1",
+          "question_order": 32,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_1_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_2",
+          "question_order": 33,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_2_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_3",
+          "question_order": 34,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_3_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_4",
+          "question_order": 35,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_4_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_5",
+          "question_order": 36,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_5_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_6",
+          "question_order": 37,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_6_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "TPSDP_7",
+          "question_order": 38,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_7_OPTION_4",
+          "option_value": 4
+        },
+        {
+          "question_code": "SJT_TD_01",
+          "question_order": 39,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_01_B",
+          "worst_option_code": "SJT_TD_01_D"
+        },
+        {
+          "question_code": "SJT_TD_02",
+          "question_order": 40,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_02_B",
+          "worst_option_code": "SJT_TD_02_D"
+        },
+        {
+          "question_code": "SJT_TD_03",
+          "question_order": 41,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_03_B",
+          "worst_option_code": "SJT_TD_03_D"
+        },
+        {
+          "question_code": "SJT_TD_04",
+          "question_order": 42,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_04_B",
+          "worst_option_code": "SJT_TD_04_D"
+        },
+        {
+          "question_code": "SJT_TD_05",
+          "question_order": 43,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_05_B",
+          "worst_option_code": "SJT_TD_05_D"
+        },
+        {
+          "question_code": "SJT_TD_06",
+          "question_order": 44,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_06_B",
+          "worst_option_code": "SJT_TD_06_D"
+        },
+        {
+          "question_code": "OUTCOME_1",
+          "question_order": 45,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_1_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_2",
+          "question_order": 46,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_2_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_3",
+          "question_order": 47,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_3_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_4",
+          "question_order": 48,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_4_OPTION_3",
+          "option_value": 3
+        }
+      ]
+    },
+    {
+      "candidate_id": "GD-019",
+      "responses": [
+        {
+          "question_code": "TDM31_01",
+          "question_order": 1,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_01_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_02",
+          "question_order": 2,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_02_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_03",
+          "question_order": 3,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_03_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_04",
+          "question_order": 4,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_04_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_05",
+          "question_order": 5,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_05_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_06",
+          "question_order": 6,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_06_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_07",
+          "question_order": 7,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_07_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_08",
+          "question_order": 8,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_08_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_09",
+          "question_order": 9,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_09_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_10",
+          "question_order": 10,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_10_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_11",
+          "question_order": 11,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_11_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_12",
+          "question_order": 12,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_12_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_13",
+          "question_order": 13,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_13_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_14",
+          "question_order": 14,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_14_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_15",
+          "question_order": 15,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_15_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_16",
+          "question_order": 16,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_16_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_17",
+          "question_order": 17,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_17_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_18",
+          "question_order": 18,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_18_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_19",
+          "question_order": 19,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_19_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_20",
+          "question_order": 20,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_20_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_21",
+          "question_order": 21,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_21_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_22",
+          "question_order": 22,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_22_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_23",
+          "question_order": 23,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_23_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_24",
+          "question_order": 24,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_24_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_25",
+          "question_order": 25,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_25_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_26",
+          "question_order": 26,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_26_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_27",
+          "question_order": 27,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_27_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_28",
+          "question_order": 28,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_28_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_29",
+          "question_order": 29,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_29_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_30",
+          "question_order": 30,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_30_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TDM31_31",
+          "question_order": 31,
+          "block_code": "tdm-31-V1",
+          "response_type": "likert_single",
+          "option_code": "TDM31_31_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_1",
+          "question_order": 32,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_1_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_2",
+          "question_order": 33,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_2_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_3",
+          "question_order": 34,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_3_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_4",
+          "question_order": 35,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_4_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_5",
+          "question_order": 36,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_5_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_6",
+          "question_order": 37,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_6_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "TPSDP_7",
+          "question_order": 38,
+          "block_code": "psychological_safety",
+          "response_type": "likert_single",
+          "option_code": "TPSDP_7_OPTION_2",
+          "option_value": 2
+        },
+        {
+          "question_code": "SJT_TD_01",
+          "question_order": 39,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_01_A",
+          "worst_option_code": "SJT_TD_01_D"
+        },
+        {
+          "question_code": "SJT_TD_02",
+          "question_order": 40,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_02_A",
+          "worst_option_code": "SJT_TD_02_D"
+        },
+        {
+          "question_code": "SJT_TD_03",
+          "question_order": 41,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_03_A",
+          "worst_option_code": "SJT_TD_03_D"
+        },
+        {
+          "question_code": "SJT_TD_04",
+          "question_order": 42,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_04_A",
+          "worst_option_code": "SJT_TD_04_D"
+        },
+        {
+          "question_code": "SJT_TD_05",
+          "question_order": 43,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_05_A",
+          "worst_option_code": "SJT_TD_05_D"
+        },
+        {
+          "question_code": "SJT_TD_06",
+          "question_order": 44,
+          "block_code": "situational_judgment",
+          "response_type": "sjt_best_worst",
+          "best_option_code": "SJT_TD_06_A",
+          "worst_option_code": "SJT_TD_06_D"
+        },
+        {
+          "question_code": "OUTCOME_1",
+          "question_order": 45,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_1_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_2",
+          "question_order": 46,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_2_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_3",
+          "question_order": 47,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_3_OPTION_3",
+          "option_value": 3
+        },
+        {
+          "question_code": "OUTCOME_4",
+          "question_order": 48,
+          "block_code": "outcome_pulse",
+          "response_type": "likert_single",
+          "option_code": "OUTCOME_4_OPTION_3",
+          "option_value": 3
+        }
+      ]
+    }
   ]
 }

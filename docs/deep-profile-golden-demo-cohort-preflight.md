@@ -2,6 +2,8 @@
 
 **Scope:** read-only statički audit lokalnog repoa, 2026-07-11. Nisu pokrenuti DB-backed smokeovi, OpenAI, worker, seed, cleanup ili report regeneration. Zaključci ispod navode repo dokaz; runtime stanje lokalne baze nije provjeravano.
 
+> GDT-01 explicit answer persistence gate is hardened: recipe provenance is excluded from verifier/writer input; checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, six members, 48/288 response objects, 54/324 option selections, and member/aggregation `EXACT_MATCH`. Inspector, writer/RPC/migration and live scoring/aggregation are pending.
+
 > **Team Dynamics runtime snapshot gate (2026-07-17):** canonical answer identity mora doći iz aktivnog imported runtimea, ne draft packagea. `scripts/export-team-dynamics-runtime-contract.cjs` resolvea jedan active `team_dynamics_assessment_v1` / `mixed_v1` test i čita samo tests, dimensions, questions i options. `scripts/validate-team-dynamics-runtime-contract.cjs` offline validira generated code/value/order/metadata snapshot. Snapshot još nije kreiran niti potvrđen protiv live DB; nema Team Dynamics fixture answers, scoreova, agregacije, reportova ni OpenAI poziva.
 
 > **Update:** snapshot je kreiran i VALID/live EXACT_MATCH (`375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`): 48 required pitanja i 192 options. Offline fixture koristi `buildTeamDynamicsMixedScore` i `loadTeamDynamicsFinalAggregation` nad snapshot-derived adapterom; nema DB writea, live scoringa, agregacije persistencea, Team Fit reporta ili OpenAI poziva.
