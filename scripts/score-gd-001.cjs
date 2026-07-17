@@ -123,6 +123,7 @@ async function loadScoringInspection({ supabase, repository, foundation }) {
     participant &&
       participant.organization_id === resolved.snapshot.organizationId &&
       participant.user_id === null &&
+      participant.full_name.trim() === resolved.candidate.fullName &&
       participant.email.trim().toLowerCase() === resolved.candidate.email &&
       participant.participant_type === "employee" &&
       participant.status === "active" &&
@@ -274,7 +275,9 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   const output = {
     mode: "apply",
     candidateId: "GD-001",
-    fixtureState: inspection.snapshot.fixtureState,
+    fixtureWriterState: inspection.snapshot.fixtureState,
+    fixtureCompatibilityState: classification.fixtureCompatibilityState,
+    scoringState: classification.scoringState,
     ...result,
   };
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);

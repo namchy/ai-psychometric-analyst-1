@@ -14,9 +14,10 @@ Ovo je kontrolisani sintetički dataset za demonstraciju, report QA i regresiju.
 - GD-001 offline dataset (profil, 184 odgovora, očekivani scoreovi i AI kriteriji) je završen.
 - Controlled DB writer foundation je završen; default ostaje read-only dry-run, a apply zahtijeva `--apply --candidate GD-001`.
 - Migracije za atomski RPC `create_golden_demo_gd001_fixture_v1(jsonb)` i multi-active test contract primijenjene su na live bazu; live preflight je potvrdio tri active standard-battery testa i execute pravo samo za `postgres`/`service_role`.
-- Partner Plus organizacija postoji i aktivna je. GD-001 fixture je kreiran atomskim RPC-om; završni read-only preflight je `EXACT_MATCH` sa 184 odgovora (`120` IPIP, `45` SAFRAN, `19` MWMS), bez scoreova i report artefakata.
+- Partner Plus organizacija postoji i aktivna je. GD-001 fixture je kreiran atomskim RPC-om; pre-scoring read-only preflight je bio `EXACT_MATCH` sa 184 odgovora (`120` IPIP, `45` SAFRAN, `19` MWMS).
 - Production scoring audit potvrdio je odvojenu deterministic scoring granicu: completion akcija eksplicitno poziva score persistence pa zasebno report orchestration. Kontrolisani GD-001 scoring operator je pripremljen kao default read-only dry-run i ne importuje niti poziva report/OpenAI put.
-- Scoring još nije izvršen i report generation nije pokrenut. Naredni ljudski korak je code review, zatim eksplicitni scoring dry-run; apply ostaje zasebna operator odluka.
+- GD-001 production scoring je izvršen live: završni scoring state je `SCORED_EXACT`, svih 184 odgovora imaju `raw_value` i `scored_value`, postoji 40 persisted dimensions, a expected-score provjera je `47/47`. Report generation i OpenAI pozivi ostali su `false`.
+- Scoring operator sada razdvaja `fixtureWriterState` (nakon scoringa očekivano `CONFLICT`, što štiti nescorovani seed od ponovnog upisa), `fixtureCompatibilityState` (`EXACT_MATCH` samo uz nezavisnu provjeru dozvoljenih production mutacija) i `scoringState` (`SCORED_EXACT`). Naredni ljudski korak je review report-generation/AI lanea; scoring se ne ponavlja.
 
 ## Svrha i poslovna vrijednost
 

@@ -106,13 +106,18 @@ const unscoredClassification = classifyGd001ScoringState({
   verification: emptyVerification,
 });
 assert.equal(unscoredClassification.state, "UNSCORED_EXACT");
+assert.equal(unscoredClassification.fixtureWriterState, "EXACT_MATCH");
+assert.equal(unscoredClassification.fixtureCompatibilityState, "EXACT_MATCH");
+assert.equal(unscoredClassification.scoringState, "UNSCORED_EXACT");
+const unscoredPlan = buildGd001ScoringPlan({
+  mode: "dry-run",
+  snapshot: unscored,
+  classification: unscoredClassification,
+  verification: emptyVerification,
+});
+assert.deepEqual(unscoredPlan.plannedProductionScoringSteps.map((step) => step.testSlug), slugs);
 assert.equal(
-  buildGd001ScoringPlan({
-    mode: "dry-run",
-    snapshot: unscored,
-    classification: unscoredClassification,
-    verification: emptyVerification,
-  }).scoringExecution,
+  unscoredPlan.scoringExecution,
   false,
 );
 
@@ -151,6 +156,19 @@ const scoredClassification = classifyGd001ScoringState({
   verification: exactVerification,
 });
 assert.equal(scoredClassification.state, "SCORED_EXACT");
+assert.equal(scoredClassification.fixtureWriterState, "CONFLICT");
+assert.equal(scoredClassification.fixtureCompatibilityState, "EXACT_MATCH");
+assert.equal(scoredClassification.scoringState, "SCORED_EXACT");
+assert.deepEqual(scoredClassification.blockers, []);
+const scoredPlan = buildGd001ScoringPlan({
+  mode: "dry-run",
+  snapshot: scored,
+  classification: scoredClassification,
+  verification: exactVerification,
+});
+assert.deepEqual(scoredPlan.plannedProductionScoringSteps, []);
+assert.equal(scoredPlan.fixtureWriterState, "CONFLICT");
+assert.equal(scoredPlan.fixtureCompatibilityState, "EXACT_MATCH");
 
 const mismatchedScores = exactPersistedDimensions();
 mismatchedScores[0] = { ...mismatchedScores[0], rawScore: mismatchedScores[0].rawScore + 1 };
@@ -161,6 +179,36 @@ assert.equal(
   classifyGd001ScoringState({ snapshot: scored, verification: mismatch }).state,
   "CONFLICT",
 );
+{
+  const changedAnswer = scoredSnapshot();
+  changedAnswer.structuralFixtureExact = false;
+  const changedClassification = classifyGd001ScoringState({
+    snapshot: changedAnswer,
+    verification: exactVerification,
+  });
+  assert.equal(changedClassification.fixtureCompatibilityState, "CONFLICT");
+  assert.notEqual(changedClassification.scoringState, "SCORED_EXACT");
+}
+{
+  const missingResponse = scoredSnapshot();
+  missingResponse.responseCounts["ipip-neo-120-v1"] = 119;
+  const missingClassification = classifyGd001ScoringState({
+    snapshot: missingResponse,
+    verification: exactVerification,
+  });
+  assert.ok(["PARTIAL", "CONFLICT"].includes(missingClassification.fixtureCompatibilityState));
+  assert.notEqual(missingClassification.scoringState, "SCORED_EXACT");
+}
+{
+  const reportState = scoredSnapshot();
+  reportState.attemptReportCount = 1;
+  const reportClassification = classifyGd001ScoringState({
+    snapshot: reportState,
+    verification: exactVerification,
+  });
+  assert.equal(reportClassification.fixtureCompatibilityState, "CONFLICT");
+  assert.notEqual(reportClassification.scoringState, "SCORED_EXACT");
+}
 
 (async () => {
   let productionCalls = 0;
@@ -194,6 +242,25 @@ assert.equal(
     },
   });
   assert.equal(noop.writesPerformed, false);
+  assert.equal(productionCalls, 0);
+
+  const changedAnswer = scoredSnapshot();
+  changedAnswer.structuralFixtureExact = false;
+  const changedClassification = classifyGd001ScoringState({
+    snapshot: changedAnswer,
+    verification: exactVerification,
+  });
+  await assert.rejects(
+    executeGd001ScoringApply({
+      snapshot: changedAnswer,
+      classification: changedClassification,
+      runProductionScoring: async () => {
+        productionCalls += 1;
+      },
+      inspectAfter: async () => ({ snapshot: scored, verification: exactVerification }),
+    }),
+    /blocked/,
+  );
   assert.equal(productionCalls, 0);
 
   for (const blocked of [

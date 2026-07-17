@@ -9,7 +9,7 @@
 - Transaction strategy: one PostgreSQL function call, transaction-level advisory lock for `golden-demo:partner-plus:GD-001`, all fixture validation before inserts, and exception rollback for participant, assignment, three attempts, three links and 184 responses.
 - Security model: `SECURITY DEFINER` with `search_path = ''`, schema-qualified objects, public/anon/authenticated execute revoked and `service_role` execute granted only.
 - Write contract: EMPTY-only; no upsert, repair, cleanup, overwrite, scoring or report generation. Existing state remains a Node-side read-only classification boundary (`EXACT_MATCH`, `PARTIAL`, `CONFLICT`).
-- Live evidence: Partner Plus organizacija je active; GD-001 apply je završen atomskim RPC-om, a završni read-only preflight je `EXACT_MATCH` sa tri attempta i 184 odgovora. Scoring, report generation i OpenAI nisu pokrenuti.
+- Live evidence: Partner Plus organizacija je active; GD-001 apply je završen atomskim RPC-om, a pre-scoring read-only preflight je bio `EXACT_MATCH` sa tri attempta i 184 odgovora.
 
 ## Post-review evidence — multi-active assessment test contract
 
@@ -27,7 +27,9 @@
 - Score persistence upisuje `responses.raw_value`, `responses.scored_value` i test-level `dimension_scores`. IPIP domaini i MWMS composite vrijednosti nisu posebni DB redovi nego read-only derivacije iz persisted dimensions; standard-battery composite je report input/readiness contract, ne numerički score zapis niti assignment lifecycle tranzicija.
 - Kontrolisani operator `scripts/score-gd-001.cjs` koristi production completion validator i production score persister u redoslijedu IPIP → SAFRAN → MWMS, ali ne poziva `orchestrateReportsAfterAttemptCompletion`, report queue/worker ili provider.
 - Granica nije atomska kroz sva tri attempta: svaki attempt transition, response update i dimension replacement su odvojeni Supabase writeovi. Failure može ostaviti `PARTIAL`, koji operator namjerno blokira bez force/repair opcije.
-- Scoring operator nije pokrenut protiv baze. Naredni ljudski korak je review pa eksplicitni read-only dry-run.
+- GD-001 production scoring je naknadno izvršen live kroz kontrolisani operator. Završni scoring state je `SCORED_EXACT`: svih 184 odgovora imaju `raw_value` i `scored_value`, postoji 40 persisted dimensions, a expected-score verification je `47/47`. Report generation i OpenAI pozivi ostali su `false`.
+- Scoring operator sada iz istog inspectovanog evidence-a prikazuje tri odvojena stanja: `fixtureWriterState` ostaje `CONFLICT` jer writer contract namjerno opisuje nescorovani seed i mora blokirati reseed/overwrite; `fixtureCompatibilityState` je `EXACT_MATCH` samo kada identitet, originalni response payload, dozvoljene scoring lifecycle mutacije, 184 raw/scored vrijednosti, 40 dimensions, 47/47 score verification i odsustvo report artefakata nezavisno prođu; `scoringState` je `SCORED_EXACT`. Za nescorovani fixture sva tri stanja su `EXACT_MATCH`, `EXACT_MATCH`, `UNSCORED_EXACT`; partial ili stvarni conflict ostaje blokiran.
+- Scoring operator dry-run je read-only i nakon scoringa planira no-op; scoring se ne ponavlja. Sljedeći ljudski korak je odvojeni review report-generation/AI lanea.
 
 
 ## 0. Post-preflight product decisions

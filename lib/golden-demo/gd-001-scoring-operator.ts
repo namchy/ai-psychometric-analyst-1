@@ -17,6 +17,7 @@ export type Gd001ScoringState =
   | "SCORED_EXACT"
   | "PARTIAL"
   | "CONFLICT";
+export type Gd001FixtureCompatibilityState = "EXACT_MATCH" | "PARTIAL" | "CONFLICT";
 
 export type Gd001ScoringCliOptions = {
   mode: Gd001ScoringMode;
@@ -56,6 +57,15 @@ export type PersistedScoreVerification = {
   matched: number;
   expected: number;
   errors: string[];
+};
+
+export type Gd001ScoringClassification = {
+  fixtureWriterState: Gd001FixtureState;
+  fixtureCompatibilityState: Gd001FixtureCompatibilityState;
+  scoringState: Gd001ScoringState;
+  /** Retained as a small compatibility alias for existing callers/tests. */
+  state: Gd001ScoringState;
+  blockers: string[];
 };
 
 const DESTRUCTIVE_FLAGS = new Set([
@@ -197,35 +207,68 @@ export function verifyPersistedGd001Scores(input: {
 export function classifyGd001ScoringState(input: {
   snapshot: Gd001ScoringSnapshot;
   verification: PersistedScoreVerification;
-}): { state: Gd001ScoringState; blockers: string[] } {
+}): Gd001ScoringClassification {
   const { snapshot, verification } = input;
   const blockers: string[] = [];
   const expectedTotal = Object.values(GD_001_EXPECTED_RESPONSE_COUNTS).reduce((sum, count) => sum + count, 0);
   const responseTotal = Object.values(snapshot.responseCounts).reduce((sum, count) => sum + count, 0);
   const rawTotal = Object.values(snapshot.rawValueCounts).reduce((sum, count) => sum + count, 0);
   const scoredTotal = Object.values(snapshot.scoredValueCounts).reduce((sum, count) => sum + count, 0);
+  const hasExpectedResponseCounts = Object.entries(GD_001_EXPECTED_RESPONSE_COUNTS).every(
+    ([testSlug, expectedCount]) => snapshot.responseCounts[testSlug] === expectedCount,
+  );
+  const hasExpectedRawCounts = Object.entries(GD_001_EXPECTED_RESPONSE_COUNTS).every(
+    ([testSlug, expectedCount]) => snapshot.rawValueCounts[testSlug] === expectedCount,
+  );
+  const hasExpectedScoredCounts = Object.entries(GD_001_EXPECTED_RESPONSE_COUNTS).every(
+    ([testSlug, expectedCount]) => snapshot.scoredValueCounts[testSlug] === expectedCount,
+  );
   const completedCount = snapshot.attempts.filter(
     (attempt) => attempt.status === "completed" && Boolean(attempt.completedAt),
   ).length;
   const inProgressCount = snapshot.attempts.filter(
     (attempt) => attempt.status === "in_progress" && attempt.completedAt === null,
   ).length;
+  const allAttemptsUnscored =
+    snapshot.attempts.length === 3 &&
+    snapshot.attempts.every(
+      (attempt) =>
+        attempt.status === "in_progress" &&
+        attempt.completedAt === null &&
+        attempt.scoredStartedAt === null,
+    );
+  const allAttemptsScoredLifecycleValid =
+    snapshot.attempts.length === 3 &&
+    snapshot.attempts.every(
+      (attempt) =>
+        attempt.status === "completed" &&
+        Boolean(attempt.completedAt) &&
+        attempt.scoredStartedAt === null,
+    );
   const hasReports = snapshot.attemptReportCount > 0 || snapshot.assessmentReportCount > 0;
 
-  if (responseTotal !== expectedTotal || snapshot.attempts.length !== 3) {
+  if (!hasExpectedResponseCounts || responseTotal !== expectedTotal || snapshot.attempts.length !== 3) {
     blockers.push("Fixture response or attempt cardinality differs from the locked GD-001 contract.");
   }
   if (hasReports) blockers.push("Report artifacts already exist.");
 
   if (
     snapshot.fixtureState === "EXACT_MATCH" &&
+    snapshot.structuralFixtureExact &&
     blockers.length === 0 &&
     inProgressCount === 3 &&
+    allAttemptsUnscored &&
     rawTotal === 0 &&
     scoredTotal === 0 &&
     snapshot.dimensionScores.length === 0
   ) {
-    return { state: "UNSCORED_EXACT", blockers: [] };
+    return {
+      fixtureWriterState: snapshot.fixtureState,
+      fixtureCompatibilityState: snapshot.structuralFixtureExact ? "EXACT_MATCH" : "CONFLICT",
+      scoringState: "UNSCORED_EXACT",
+      state: "UNSCORED_EXACT",
+      blockers: [],
+    };
   }
 
   if (
@@ -233,27 +276,61 @@ export function classifyGd001ScoringState(input: {
     blockers.length === 0 &&
     snapshot.structuralFixtureExact &&
     completedCount === 3 &&
-    rawTotal === expectedTotal &&
-    scoredTotal === expectedTotal &&
+    allAttemptsScoredLifecycleValid &&
+    hasExpectedRawCounts &&
+    hasExpectedScoredCounts &&
     snapshot.dimensionScores.length === 40
   ) {
-    if (verification.ok) return { state: "SCORED_EXACT", blockers: [] };
-    return { state: "CONFLICT", blockers: verification.errors };
+    if (verification.ok) {
+      return {
+        fixtureWriterState: snapshot.fixtureState,
+        fixtureCompatibilityState: "EXACT_MATCH",
+        scoringState: "SCORED_EXACT",
+        state: "SCORED_EXACT",
+        blockers: [],
+      };
+    }
+    return {
+      fixtureWriterState: snapshot.fixtureState,
+      fixtureCompatibilityState: "CONFLICT",
+      scoringState: "CONFLICT",
+      state: "CONFLICT",
+      blockers: verification.errors,
+    };
   }
 
   const hasAnyScoring =
     completedCount > 0 || rawTotal > 0 || scoredTotal > 0 || snapshot.dimensionScores.length > 0;
   if (hasAnyScoring && !hasReports) {
+    const isPartial =
+      responseTotal < expectedTotal ||
+      !hasExpectedResponseCounts ||
+      completedCount < 3 ||
+      rawTotal < expectedTotal ||
+      scoredTotal < expectedTotal ||
+      !hasExpectedRawCounts ||
+      !hasExpectedScoredCounts ||
+      snapshot.dimensionScores.length < 40;
+    const partialBlockers = blockers.length > 0
+      ? blockers
+      : [isPartial ? "Scoring responses are incomplete." : "Scoring evidence conflicts with the locked fixture contract."];
     return {
-      state: "PARTIAL",
-      blockers: blockers.length > 0 ? blockers : ["Scoring lifecycle is only partially persisted."],
+      fixtureWriterState: snapshot.fixtureState,
+      fixtureCompatibilityState: isPartial ? "PARTIAL" : "CONFLICT",
+      scoringState: isPartial ? "PARTIAL" : "CONFLICT",
+      state: isPartial ? "PARTIAL" : "CONFLICT",
+      blockers: partialBlockers,
     };
   }
+  const conflictBlockers = [...snapshot.fixtureBlockers, ...blockers].length > 0
+    ? [...new Set([...snapshot.fixtureBlockers, ...blockers])]
+    : ["Fixture is not a valid Golden Demo scoring state."];
   return {
+    fixtureWriterState: snapshot.fixtureState,
+    fixtureCompatibilityState: "CONFLICT",
+    scoringState: "CONFLICT",
     state: "CONFLICT",
-    blockers: [...snapshot.fixtureBlockers, ...blockers].length > 0
-      ? [...new Set([...snapshot.fixtureBlockers, ...blockers])]
-      : ["Fixture is not a valid Golden Demo scoring state."],
+    blockers: conflictBlockers,
   };
 }
 
@@ -266,8 +343,9 @@ export function buildGd001ScoringPlan(input: {
   return {
     mode: input.mode,
     candidateId: GD_001_CANDIDATE_ID,
-    fixtureState: input.snapshot.fixtureState,
-    scoringState: input.classification.state,
+    fixtureWriterState: input.classification.fixtureWriterState,
+    fixtureCompatibilityState: input.classification.fixtureCompatibilityState,
+    scoringState: input.classification.scoringState,
     blockers: input.classification.blockers,
     participantId: input.snapshot.participantId,
     assignmentId: input.snapshot.assignmentId,
@@ -281,10 +359,13 @@ export function buildGd001ScoringPlan(input: {
     dimensionScoreCount: input.snapshot.dimensionScores.length,
     assignmentCompositeScoreStatus: "derived_read_only_not_persisted",
     expectedScoreVerification: input.verification,
-    plannedProductionScoringSteps: GD_001_TEST_SLUGS.map((testSlug) => ({
-      testSlug,
-      steps: ["validate_required_responses", "complete_attempt", "persistCompletedAssessmentResults"],
-    })),
+    plannedProductionScoringSteps:
+      input.classification.scoringState === "UNSCORED_EXACT"
+        ? GD_001_TEST_SLUGS.map((testSlug) => ({
+            testSlug,
+            steps: ["validate_required_responses", "complete_attempt", "persistCompletedAssessmentResults"],
+          }))
+        : [],
     scoringExecution: false,
     reportGeneration: false,
     openAiCalls: false,
@@ -301,16 +382,35 @@ export async function executeGd001ScoringApply(input: {
     verification: PersistedScoreVerification;
   }>;
 }) {
-  if (input.classification.state === "SCORED_EXACT") {
-    return { stateBefore: "SCORED_EXACT", stateAfter: "SCORED_EXACT", writesPerformed: false };
+  if (
+    input.classification.fixtureCompatibilityState === "EXACT_MATCH" &&
+    input.classification.scoringState === "SCORED_EXACT"
+  ) {
+    return {
+      stateBefore: "SCORED_EXACT",
+      stateAfter: "SCORED_EXACT",
+      writesPerformed: false,
+      scoringExecution: false,
+      reportGeneration: false,
+      openAiCalls: false,
+    };
   }
-  if (input.classification.state !== "UNSCORED_EXACT" || input.snapshot.fixtureState !== "EXACT_MATCH") {
-    throw new Error(`Scoring apply is blocked in state ${input.classification.state}: ${input.classification.blockers.join("; ")}`);
+  if (
+    input.classification.fixtureCompatibilityState !== "EXACT_MATCH" ||
+    input.classification.scoringState !== "UNSCORED_EXACT" ||
+    input.snapshot.fixtureState !== "EXACT_MATCH"
+  ) {
+    throw new Error(
+      `Scoring apply is blocked in state ${input.classification.scoringState}: ${input.classification.blockers.join("; ")}`,
+    );
   }
   await input.runProductionScoring();
   const after = await input.inspectAfter();
   const afterClassification = classifyGd001ScoringState(after);
-  if (afterClassification.state !== "SCORED_EXACT") {
+  if (
+    afterClassification.fixtureCompatibilityState !== "EXACT_MATCH" ||
+    afterClassification.scoringState !== "SCORED_EXACT"
+  ) {
     throw new Error(`Post-scoring verification requires SCORED_EXACT; received ${afterClassification.state}: ${afterClassification.blockers.join("; ")}`);
   }
   return {
