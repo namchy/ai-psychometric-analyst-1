@@ -15,7 +15,7 @@ The codebase does not contain a canonical **Team Fit test** in `public.tests`. T
 
 This confirms the proposed optional-module semantics: Team Fit is not a fourth standard-battery test, does not add an attempt, question, response, `dimension_scores` row or standard-battery completion requirement, and must not turn an otherwise complete battery into partial/error. It also means that a meaningful first Golden Demo Team Fit slice is a whole team, not an individual Team Fit questionnaire.
 
-The missing foundation is narrow but material: GDT-01 has no Team Dynamics assessment/aggregation fixture yet, there is no Team Fit-specific Golden Demo manifest/validator/verifier, and the report row permits stale source pointers because the database does not enforce source FKs or invalidation. Do not create Team Fit answers for IPIP/SAFRAN/MWMS or invent a `team_fit` test slug.
+The remaining foundation is narrow but material: GDT-01 has a canonical offline explicit fixture and inspector contract, but no applied/live DB Team Dynamics assessment or aggregation fixture yet; there is no Team Fit-specific Golden Demo manifest/validator/verifier, and the report row permits stale source pointers because the database does not enforce source FKs or invalidation. Do not create Team Fit answers for IPIP/SAFRAN/MWMS or invent a `team_fit` test slug.
 
 ## Confirmed contract
 
@@ -158,6 +158,10 @@ For evidence, keep GDT-01 as development/calibration and reserve an entire untou
 | 9 | Add Team Fit evaluator, forbidden contradictions and UI regression fixture. | Expand to another team only after development review and explicit holdout policy. |
 
 ## Open questions
+
+### Current GDT-01 inspector boundary
+
+GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Live DB, Team Dynamics aggregation i Team Fit provider/report flow nisu pokrenuti.
 
 1. Is a future *actual* Team Fit questionnaire desired? Current code only supports Team Fit as a report; adding an instrument requires a separate product and schema decision.
 2. What source-version rule invalidates an existing Team Fit report when a Team Dynamics member, aggregation snapshot or candidate standard battery changes? Current database stores opaque UUID references without automatic invalidation.

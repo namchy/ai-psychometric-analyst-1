@@ -2,13 +2,13 @@
 
 **Scope:** read-only statički audit lokalnog repoa, 2026-07-11. Nisu pokrenuti DB-backed smokeovi, OpenAI, worker, seed, cleanup ili report regeneration. Zaključci ispod navode repo dokaz; runtime stanje lokalne baze nije provjeravano.
 
-> GDT-01 explicit answer persistence gate is hardened: recipe provenance is excluded from verifier/writer input; checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, six members, 48/288 response objects, 54/324 option selections, and member/aggregation `EXACT_MATCH`. Inspector, writer/RPC/migration and live scoring/aggregation are pending.
+> GDT-01 explicit answer persistence gate is hardened: recipe provenance is excluded from verifier/writer input; checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, six members, 48/288 physical response objects, 72 physical SJT selections and 324 logical option selections, and member/aggregation `EXACT_MATCH`. Inspector, writer/RPC/migration and live scoring/aggregation are pending.
 
-> **Team Dynamics runtime snapshot gate (2026-07-17):** canonical answer identity mora doći iz aktivnog imported runtimea, ne draft packagea. `scripts/export-team-dynamics-runtime-contract.cjs` resolvea jedan active `team_dynamics_assessment_v1` / `mixed_v1` test i čita samo tests, dimensions, questions i options. `scripts/validate-team-dynamics-runtime-contract.cjs` offline validira generated code/value/order/metadata snapshot. Snapshot još nije kreiran niti potvrđen protiv live DB; nema Team Dynamics fixture answers, scoreova, agregacije, reportova ni OpenAI poziva.
+> **Historijska pre-inspector runtime bilješka (superseded):** canonical answer identity je zahtijevala active imported runtime; shared snapshot je u međuvremenu kreiran, validiran i zaključan navedenim checksumom. Live DB i dalje nije čitan.
 
 > **Update:** snapshot je kreiran i VALID/live EXACT_MATCH (`375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`): 48 required pitanja i 192 options. Offline fixture koristi `buildTeamDynamicsMixedScore` i `loadTeamDynamicsFinalAggregation` nad snapshot-derived adapterom; nema DB writea, live scoringa, agregacije persistencea, Team Fit reporta ili OpenAI poziva.
 
-> **Writer gate:** `responses`/`response_selections` production contract podržava 48 response objekata i 54 selections po članu, ali trenutni recipe-shaped answers fixture ne sadrži njihove canonical per-question/per-option identitete. Ne uvoditi persistence RPC ili writer dok se taj offline contract ne zamrzne eksplicitno.
+> **Historijski writer gate (superseded):** raniji recipe-shaped fixture nije imao canonical per-question/per-option identitete. Explicit fixture je sada zamrznut; writer/RPC i dalje nisu implementirani i čekaju live-state rezultat.
 
 ## Post-preflight implementation evidence — transaction-safe GD-001 writer
 
@@ -43,8 +43,8 @@
 
 - Aktuelni evidence-based audit je u `docs/deep-profile-golden-demo-team-fit-preflight.md`.
 - Potvrđeno: Team Fit u postojećem repou nije `public.tests` assessment niti četvrti standard-battery attempt. Canonical identitet je HR-interni relacijski report `team_fit_report_v1`, čiji kandidat source je standard-battery Composite deterministic input, a team source verified Team Dynamics aggregation snapshot.
-- Posljedica: odsustvo Team Fita ne blokira IPIP/SAFRAN/MWMS completion, individualni report ili GD-001 state. Prvi meaningful Golden Demo slice mora pokriti cijeli zaključani tim (preporuka `GDT-01`) radi Team Dynamics agregata; ne kreirati fixture ili report prije zasebnog implementacijskog taska.
-- GDT-01 Team Dynamics fixture implementation je naknadno zaustavljen prije data foundationa: lokalni `team_dynamics_assessment_v1` package navodi `status=draft`, `is_active=false` i `import_readiness.status=content_spec_ready_runtime_pending`; shared `options.json` je prazan, dok production mixed option katalozi nastaju kroz import/runtime transform. Bez DB read-a ili versioned exported imported-runtime contracta nema dovoljno dokaza da offline fixture koristi isti production question/option catalog.
+- Posljedica: odsustvo Team Fita ne blokira IPIP/SAFRAN/MWMS completion, individualni report ili GD-001 state. Prvi meaningful Golden Demo slice treba pokriti cijeli zaključani tim (preporuka `GDT-01`) radi Team Dynamics agregata; report ostaje van ovog inspector taska.
+- Historijska pre-inspector bilješka (superseded): lokalni `team_dynamics_assessment_v1` package je ranije bio `status=draft`, `is_active=false` i `import_readiness.status=content_spec_ready_runtime_pending`; versioned imported-runtime snapshot je sada validiran i zaključan, a canonical explicit fixture postoji. Live DB fixture/apply i aggregation fixture još ne postoje u ovom tasku.
 
 
 ## 0. Post-preflight product decisions
@@ -166,6 +166,12 @@ Budući read-only CLI contract: ulaz `--fixture-key` ili org-scoped candidate ke
 Kasnije operator pokreće: manifest dry-run, confirmed seed, read-only score audit, explicit single-test report queue/worker, Composite/IDP queue/processor, read-only bundle export i confirmed cleanup. Sve DB write, OpenAI i smoke komande traže eksplicitni korisnički zahtjev.
 
 ## 9. Rizici, blockeri i otvorene odluke
+
+### Current status — controlled GDT-01 inspector phase
+
+Pure contract/classifier i SELECT-only GDT-01 inspector adapter su implementirani i testirani isključivo offline sa mockovanim persistence graphom. Contract zaključava `team_dynamics_assessment_v1`, checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, `active/invited/in_progress/bs` seed lifecycle i count semantics `288 responses`, `72 physical SJT response_selections`, `324 logical option selections`.
+
+Live inspector nije pokrenut. Nema DB writer-a, RPC-a, migracije, fixture apply-a, completiona, scoringa, aggregation persistencea, report generationa ili OpenAI poziva. Sljedeći operator korak je reviewed SELECT-only live execution; tek nakon njegovog rezultata može se otvoriti writer/RPC implementation task.
 
 ### Potvrđeno iz codebasea
 
