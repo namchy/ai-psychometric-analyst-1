@@ -19,6 +19,14 @@ import {
   type Gdt01ObservedTeamFitReport,
 } from "./team-dynamics-gdt-01-db-contract";
 
+const INSPECTOR_TEST_SLUGS = [
+  GDT_01_PACKAGE_SLUG,
+  GDT_01_LEGACY_PACKAGE_SLUG,
+  "ipip-neo-120-v1",
+  "safran_v1",
+  "mwms_v1",
+] as const;
+
 type QueryResult<T> = {
   data: T[] | null;
   error: { message: string } | null;
@@ -204,6 +212,10 @@ function unique(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }
 
+function normalizedEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function buildObservedRuntime(
   tests: RawTest[],
   dimensions: RawDimension[],
@@ -286,6 +298,7 @@ function mapAssignments(assignments: RawAssignment[]): Gdt01ObservedAssignment[]
 
 export function createGdt01SupabaseReadRepository(
   supabase: Gdt01SupabaseReadClient,
+  contract?: Gdt01DbContract,
 ): Gdt01ReadRepository {
   return {
     async readState(): Promise<Gdt01ObservedState> {
@@ -293,8 +306,10 @@ export function createGdt01SupabaseReadRepository(
         supabase,
         "tests",
         "id, slug, status, is_active, scoring_method, metadata",
-        (query) => query.in("slug", [GDT_01_PACKAGE_SLUG, GDT_01_LEGACY_PACKAGE_SLUG]),
+        (query) => query.in("slug", [...INSPECTOR_TEST_SLUGS]),
       );
+      const testSlugById = new Map(tests.map((test) => [test.id, test.slug]));
+      const canonicalRuntimeTestId = tests.find((test) => test.slug === GDT_01_PACKAGE_SLUG)?.id ?? null;
       const testIds = unique(tests.map((test) => test.id));
       const dimensions = await readByForeignKeys<RawDimension>(
         supabase,
@@ -394,59 +409,90 @@ export function createGdt01SupabaseReadRepository(
         "response_id",
         responseIds,
       );
-      const targetAssignmentIds = allAssignments
-        .filter((assignment) => assignment.package_slug === GDT_01_PACKAGE_SLUG && teams.some((team) => team.id === assignment.team_id && team.name === GDT_01_TEAM_NAME))
+      const targetTeamIds = new Set(teams.filter((team) => team.name === GDT_01_TEAM_NAME).map((team) => team.id));
+      const targetParticipantIds = new Set(
+        contract
+          ? participants
+              .filter((participant) => contract.members.some((member) => normalizedEmail(member.email) === normalizedEmail(participant.email)))
+              .map((participant) => participant.id)
+          : [],
+      );
+      const targetLikeAssignmentIds = allAssignments
+        .filter(
+          (assignment) =>
+            (targetTeamIds.has(assignment.team_id) &&
+              (assignment.package_slug === GDT_01_PACKAGE_SLUG || assignment.package_slug === GDT_01_LEGACY_PACKAGE_SLUG)) ||
+            wrappers.some((wrapper) => wrapper.team_assessment_assignment_id === assignment.id && targetParticipantIds.has(wrapper.participant_id)),
+        )
         .map((assignment) => assignment.id);
-      const targetWrapperIds = wrappers.filter((wrapper) => targetAssignmentIds.includes(wrapper.team_assessment_assignment_id)).map((wrapper) => wrapper.id);
-      const targetAttemptIds = rawAttempts.filter((attempt) => targetWrapperIds.some((wrapperId) => wrappers.find((wrapper) => wrapper.id === wrapperId)?.attempt_id === attempt.id)).map((attempt) => attempt.id);
+      const targetLikeWrapperIds = wrappers
+        .filter(
+          (wrapper) =>
+            targetLikeAssignmentIds.includes(wrapper.team_assessment_assignment_id) ||
+            targetParticipantIds.has(wrapper.participant_id),
+        )
+        .map((wrapper) => wrapper.id);
+      const targetLikeWrapperAttemptIds = wrappers
+        .filter((wrapper) => targetLikeWrapperIds.includes(wrapper.id) && wrapper.attempt_id)
+        .map((wrapper) => wrapper.attempt_id as string);
+      const targetLikeAttemptIds = rawAttempts
+        .filter(
+          (attempt) =>
+            targetLikeWrapperAttemptIds.includes(attempt.id) ||
+            (targetParticipantIds.has(attempt.participant_id ?? "") &&
+              (attempt.test_id === canonicalRuntimeTestId ||
+                testSlugById.get(attempt.test_id) === GDT_01_PACKAGE_SLUG ||
+                testSlugById.get(attempt.test_id) === GDT_01_LEGACY_PACKAGE_SLUG)),
+        )
+        .map((attempt) => attempt.id);
       const scoreRows = await readByForeignKeys<{ id: string }>(
         supabase,
         "team_assessment_participant_scores",
         "id",
         "team_assessment_participant_id",
-        targetWrapperIds,
+        targetLikeWrapperIds,
       );
       const dimensionScoreRows = await readByForeignKeys<{ id: string }>(
         supabase,
         "dimension_scores",
         "id",
         "attempt_id",
-        targetAttemptIds,
+        targetLikeAttemptIds,
       );
       const aggregationRows = await readByForeignKeys<{ id: string }>(
         supabase,
         "team_assessment_aggregation_snapshots",
         "id",
         "team_assessment_assignment_id",
-        targetAssignmentIds,
+        targetLikeAssignmentIds,
       );
       const selectionDraftRows = await readByForeignKeys<{ id: string }>(
         supabase,
         "team_assessment_report_selection_drafts",
         "id",
         "team_assessment_assignment_id",
-        targetAssignmentIds,
+        targetLikeAssignmentIds,
       );
       const selectionMemberRows = await readByForeignKeys<{ id: string }>(
         supabase,
         "team_assessment_report_selection_members",
         "id",
         "team_assessment_participant_id",
-        targetWrapperIds,
+        targetLikeWrapperIds,
       );
       const teamReportRows = await readByForeignKeys<{ id: string }>(
         supabase,
         "team_assessment_reports",
         "id",
         "team_assessment_assignment_id",
-        targetAssignmentIds,
+        targetLikeAssignmentIds,
       );
       const attemptReportRows = await readByForeignKeys<{ id: string }>(
         supabase,
         "attempt_reports",
         "id",
         "attempt_id",
-        targetAttemptIds,
+        targetLikeAttemptIds,
       );
       const teamFitRows = await readByForeignKeys<RawTeamFitReport>(
         supabase,
@@ -455,9 +501,8 @@ export function createGdt01SupabaseReadRepository(
         "organization_id",
         organizationIds,
       );
-      const targetTeamIds = new Set(teams.filter((team) => team.name === GDT_01_TEAM_NAME).map((team) => team.id));
       const targetAggregationIds = new Set(aggregationRows.map((row) => row.id));
-      const targetAttemptIdSet = new Set(targetAttemptIds);
+      const targetAttemptIdSet = new Set(targetLikeAttemptIds);
       const teamFitReports: Gdt01ObservedTeamFitReport[] = teamFitRows.map((report) => ({
         id: report.id,
         organizationId: report.organization_id,
@@ -473,7 +518,6 @@ export function createGdt01SupabaseReadRepository(
             ? "ambient"
             : "unknown",
       }));
-      const testSlugById = new Map(tests.map((test) => [test.id, test.slug]));
       const questionById = new Map(questions.map((question) => [question.id, question]));
       const optionById = new Map(options.map((option) => [option.id, option]));
       const runtime = buildObservedRuntime(tests, dimensions, questions, options);

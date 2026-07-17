@@ -73,6 +73,7 @@ export type Gdt01ExpectedResponse = {
 export type Gdt01ContractFinding = {
   code: string;
   message: string;
+  category?: "foundation" | "runtime" | "target_persistence" | "target_graph";
   entity?: string;
   expected?: unknown;
   observed?: unknown;
@@ -528,6 +529,7 @@ function finding(
   return {
     code,
     message,
+    category: findingCategory(code),
     ...(entity ? { entity } : {}),
     ...(expected !== undefined ? { expected } : {}),
     ...(observed !== undefined ? { observed } : {}),
@@ -546,6 +548,41 @@ function addUnique(target: Gdt01ContractFinding[], item: Gdt01ContractFinding): 
   if (!target.some((existing) => existing.code === item.code && existing.entity === item.entity && existing.message === item.message)) {
     target.push(item);
   }
+}
+
+function findingCategory(code: string): Gdt01ContractFinding["category"] {
+  if (
+    new Set([
+      "organization_missing",
+      "organization_duplicate",
+      "organization_inactive",
+      "team_missing",
+      "team_duplicate",
+      "team_organization_mismatch",
+      "team_archived",
+      "participant_missing",
+      "participant_duplicate",
+      "participant_organization_mismatch",
+      "participant_identity_mismatch",
+      "participant_inactive",
+      "membership_missing",
+      "membership_duplicate",
+      "membership_inactive",
+    ]).has(code)
+  ) {
+    return "foundation";
+  }
+  if (code === "canonical_contract_invalid" || code.startsWith("runtime_")) return "runtime";
+  if (
+    code.startsWith("response") ||
+    code.startsWith("sjt_") ||
+    code.startsWith("orphan_target_") ||
+    code.startsWith("seed_") ||
+    code === "physical_selection_count_mismatch"
+  ) {
+    return "target_persistence";
+  }
+  return "target_graph";
 }
 
 export function classifyGdt01DbState(
@@ -696,8 +733,24 @@ export function classifyGdt01DbState(
     if (attempt.locale !== contract.lifecycle.locale) addUnique(conflicts, finding("attempt_locale_mismatch", `Attempt locale differs for ${candidateId ?? wrapper.id}.`, "attempts", contract.lifecycle.locale, attempt.locale));
     if (attempt.status !== contract.lifecycle.attemptStatus || attempt.completedAt !== null) addUnique(conflicts, finding("attempt_lifecycle_mismatch", `Attempt lifecycle differs for ${candidateId ?? wrapper.id}.`, "attempts", contract.lifecycle.attemptStatus, attempt.status));
   }
+  const targetLikeAttemptIds = new Set(attemptIds);
+  for (const wrapper of observed.wrappers) {
+    if (targetParticipantIds.has(wrapper.participantId) && wrapper.attemptId) {
+      targetLikeAttemptIds.add(wrapper.attemptId);
+    }
+  }
   for (const attempt of observed.attempts) {
-    if (attempt.participantId && targetParticipantIds.has(attempt.participantId) && !attemptIds.has(attempt.id)) addUnique(conflicts, finding("orphan_target_attempt", "Target participant has an attempt not linked to a target wrapper.", "attempts", undefined, attempt.id));
+    if (
+      targetParticipantIds.has(attempt.participantId ?? "") &&
+      (attempt.testId === observed.runtime?.test?.id ||
+        attempt.testSlug === GDT_01_PACKAGE_SLUG ||
+        attempt.testSlug === GDT_01_LEGACY_PACKAGE_SLUG)
+    ) {
+      targetLikeAttemptIds.add(attempt.id);
+    }
+  }
+  for (const attempt of observed.attempts) {
+    if (targetLikeAttemptIds.has(attempt.id) && !attemptIds.has(attempt.id)) addUnique(conflicts, finding("orphan_target_attempt", "Target participant has a Team Dynamics attempt not linked to a target wrapper.", "attempts", undefined, attempt.id));
   }
 
   const questionById = new Map((observed.runtime?.questions ?? []).map((question) => [question.id, question]));
@@ -708,11 +761,6 @@ export function classifyGdt01DbState(
   const selectionsByResponse = new Map<string, Gdt01ObservedSelection[]>();
   for (const selection of observed.selections) selectionsByResponse.set(selection.responseId, [...(selectionsByResponse.get(selection.responseId) ?? []), selection]);
   const targetResponses = observed.responses.filter((response) => attemptIds.has(response.attemptId));
-  const targetLikeAttemptIds = new Set(
-    observed.attempts
-      .filter((attempt) => attempt.participantId && targetParticipantIds.has(attempt.participantId))
-      .map((attempt) => attempt.id),
-  );
   for (const response of observed.responses) {
     if (!attemptIds.has(response.attemptId) && targetLikeAttemptIds.has(response.attemptId)) {
       addUnique(conflicts, finding("orphan_target_response", "Target participant has a response not linked to a canonical target wrapper.", "responses", undefined, response.id));

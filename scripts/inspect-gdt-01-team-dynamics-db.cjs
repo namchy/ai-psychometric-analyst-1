@@ -21,6 +21,7 @@ require.extensions[".ts"] = (module, filename) => {
 const {
   createGdt01SupabaseReadRepository,
   inspectGdt01DbState,
+  loadGdt01ContractFromFiles,
   loadEnvFileIfPresent,
   requireEnvironment,
   redactInspectorError,
@@ -72,9 +73,11 @@ function printSummary(result, verbose) {
 async function runInspector({ argv = process.argv.slice(2), env = process.env, supabase } = {}) {
   const cli = parseCli(argv);
   const client = supabase ?? createSupabaseClient(env);
+  const contract = loadGdt01ContractFromFiles(projectRoot);
   const result = await inspectGdt01DbState({
     projectRoot,
-    repository: createGdt01SupabaseReadRepository(client),
+    contract,
+    repository: createGdt01SupabaseReadRepository(client, contract),
   });
   if (cli.json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   else printSummary(result, cli.verbose);

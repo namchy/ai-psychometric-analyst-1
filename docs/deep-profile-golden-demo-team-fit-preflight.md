@@ -1,6 +1,6 @@
 # Deep Profile Golden Demo — Team Fit preflight
 
-**Scope:** local, read-only code and migration audit. No database, network, provider, scoring, report or fixture command was run. `docs/deep-profile-todo.md` remains the canonical backlog authority.
+**Scope:** local, read-only code and migration audit. This header describes the original audit; a later operator-provided GDT-01 SELECT-only inspector run is documented below. No database write, network/provider, scoring or report generation was performed. `docs/deep-profile-todo.md` remains the canonical backlog authority.
 
 ## Verdict
 
@@ -161,7 +161,7 @@ For evidence, keep GDT-01 as development/calibration and reserve an entire untou
 
 ### Current GDT-01 inspector boundary
 
-GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Live DB, Team Dynamics aggregation i Team Fit provider/report flow nisu pokrenuti.
+GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Prvi reviewed live run je bio SELECT-only i potvrdio je foundation blockere; live rerun, Team Dynamics aggregation i Team Fit provider/report flow nisu pokrenuti.
 
 1. Is a future *actual* Team Fit questionnaire desired? Current code only supports Team Fit as a report; adding an instrument requires a separate product and schema decision.
 2. What source-version rule invalidates an existing Team Fit report when a Team Dynamics member, aggregation snapshot or candidate standard battery changes? Current database stores opaque UUID references without automatic invalidation.

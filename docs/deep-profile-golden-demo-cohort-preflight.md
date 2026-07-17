@@ -1,8 +1,8 @@
 # Deep Profile Golden Demo Cohort — Technical Preflight
 
-**Scope:** read-only statički audit lokalnog repoa, 2026-07-11. Nisu pokrenuti DB-backed smokeovi, OpenAI, worker, seed, cleanup ili report regeneration. Zaključci ispod navode repo dokaz; runtime stanje lokalne baze nije provjeravano.
+**Scope:** read-only statički audit lokalnog repoa, 2026-07-11. Ovo je historijski audit; kasniji operator-provided SELECT-only GDT-01 inspector run je zasebno dokumentovan ispod. Nisu pokrenuti OpenAI, worker, seed, cleanup ili report regeneration.
 
-> GDT-01 explicit answer persistence gate is hardened: recipe provenance is excluded from verifier/writer input; checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, six members, 48/288 physical response objects, 72 physical SJT selections and 324 logical option selections, and member/aggregation `EXACT_MATCH`. Inspector, writer/RPC/migration and live scoring/aggregation are pending.
+> GDT-01 explicit answer persistence gate is hardened: recipe provenance is excluded from verifier/writer input; checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, six members, 48/288 physical response objects, 72 physical SJT selections and 324 logical option selections, and member/aggregation `EXACT_MATCH`. Writer/RPC/migration and live scoring/aggregation remain pending; the first reviewed inspector run was SELECT-only and is documented below.
 
 > **Historijska pre-inspector runtime bilješka (superseded):** canonical answer identity je zahtijevala active imported runtime; shared snapshot je u međuvremenu kreiran, validiran i zaključan navedenim checksumom. Live DB i dalje nije čitan.
 
@@ -171,7 +171,9 @@ Kasnije operator pokreće: manifest dry-run, confirmed seed, read-only score aud
 
 Pure contract/classifier i SELECT-only GDT-01 inspector adapter su implementirani i testirani isključivo offline sa mockovanim persistence graphom. Contract zaključava `team_dynamics_assessment_v1`, checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, `active/invited/in_progress/bs` seed lifecycle i count semantics `288 responses`, `72 physical SJT response_selections`, `324 logical option selections`.
 
-Live inspector nije pokrenut. Nema DB writer-a, RPC-a, migracije, fixture apply-a, completiona, scoringa, aggregation persistencea, report generationa ili OpenAI poziva. Sljedeći operator korak je reviewed SELECT-only live execution; tek nakon njegovog rezultata može se otvoriti writer/RPC implementation task.
+Prvi reviewed SELECT-only live inspector run je izvršen prema operator evidenceu. Vratio je `CONFLICT` i `writerEligible=false`; potvrđeni foundation blockeri su `team_missing`, `participant_missing` za `GD-002`–`GD-005` i `GD-019`, te `membership_missing` za `GD-001`. Nije bilo DB writea, RPC-a, scoringa, aggregation persistencea, report generationa ili OpenAI poziva.
+
+Run je prijavio participant-only orphan nalaze koji nisu imali dokazanu canonical/legacy Team Dynamics ili wrapper/assignment lineage vezu. To je precision bug; correction sada scopa orphan attempts/responses i downstream child queries na target-like Team Dynamics univerzum. Blocking findings sada nose kategorije `foundation`, `target_graph`, `target_persistence` ili `runtime`, dok ambient nalazi ostaju zasebni diagnostics. Live rerun još nije izvršen. Writer ostaje blokiran; sljedeći korak je zaseban identity/team foundation slice, pa tek nakon reruna odluka o writer/RPC tasku.
 
 ### Potvrđeno iz codebasea
 

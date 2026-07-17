@@ -20,6 +20,7 @@ require.extensions[".ts"] = (module, filename) => {
 const projectRoot = path.resolve(__dirname, "..");
 const {
   GDT_01_COUNTS,
+  GDT_01_LEGACY_PACKAGE_SLUG,
   GDT_01_EXPECTED_MEMBER_IDS,
   GDT_01_PACKAGE_SLUG,
   buildEmptyGdt01ObservedState,
@@ -171,6 +172,44 @@ function withMutation(mutator) {
   return state;
 }
 
+function addUnrelatedStandardBatteryData(state) {
+  const standardTests = [
+    ["ipip-neo-120-v1", "test:ipip"],
+    ["safran_v1", "test:safran"],
+    ["mwms_v1", "test:mwms"],
+  ];
+  for (const [testSlug, testId] of standardTests) {
+    const attemptId = `attempt:${testSlug}:GD-001`;
+    state.attempts.push({
+      id: attemptId,
+      testId,
+      testSlug,
+      organizationId: "org:partner-plus",
+      participantId: "participant:GD-001",
+      userId: null,
+      locale: "bs",
+      status: "completed",
+      completedAt: "2026-07-17T00:00:00.000Z",
+    });
+    state.responses.push({
+      id: `response:${testSlug}:GD-001`,
+      attemptId,
+      questionId: `question:${testSlug}:1`,
+      questionCode: `${testSlug}:1`,
+      responseKind: "single_choice",
+      answerOptionId: null,
+      optionCode: null,
+      optionValue: null,
+      optionQuestionId: null,
+      rawValue: 1,
+      scoredValue: 1,
+    });
+  }
+  state.unrelatedDimensionScores = [{ id: "dimension-score:mwms", attempt_id: "attempt:mwms_v1:GD-001" }];
+  state.unrelatedAttemptReports = [{ id: "attempt-report:mwms", attempt_id: "attempt:mwms_v1:GD-001" }];
+  return state;
+}
+
 function createMockSupabaseFromExactState(state) {
   const calls = [];
   const snapshot = contract.runtimeSnapshot;
@@ -185,6 +224,18 @@ function createMockSupabaseFromExactState(state) {
         scoring_method: runtimeTest.scoringMethod,
         metadata: runtimeTest.metadata,
       },
+      ...[
+        ["test:ipip", "ipip-neo-120-v1"],
+        ["test:safran", "safran_v1"],
+        ["test:mwms", "mwms_v1"],
+      ].map(([id, slug]) => ({
+        id,
+        slug,
+        status: "active",
+        is_active: true,
+        scoring_method: "default",
+        metadata: {},
+      })),
     ],
     test_dimensions: snapshot.dimensions.map((dimension) => ({
       test_id: runtimeTest.id,
@@ -280,12 +331,12 @@ function createMockSupabaseFromExactState(state) {
       selection_role: selection.selectionRole,
     })),
     team_assessment_participant_scores: [],
-    dimension_scores: [],
+    dimension_scores: state.unrelatedDimensionScores ?? [],
     team_assessment_aggregation_snapshots: [],
     team_assessment_report_selection_drafts: [],
     team_assessment_report_selection_members: [],
     team_assessment_reports: [],
-    attempt_reports: [],
+    attempt_reports: state.unrelatedAttemptReports ?? [],
     team_fit_reports: [],
   };
   return {
@@ -298,13 +349,16 @@ function createMockSupabaseFromExactState(state) {
             calls.push({ table, operation: "select" });
             return query;
           },
-          eq() {
+          eq(column, value) {
+            currentRows = currentRows.filter((row) => row[column] === value);
             return query;
           },
-          in() {
+          in(column, values) {
+            currentRows = currentRows.filter((row) => values.includes(row[column]));
             return query;
           },
-          is() {
+          is(column, value) {
+            currentRows = currentRows.filter((row) => row[column] === value);
             return query;
           },
           then(resolve, reject) {
@@ -338,12 +392,28 @@ assert.deepEqual(exact.safety, {
 
 const adapterTestPromise = (async () => {
   const mock = createMockSupabaseFromExactState(exactState());
-  const repository = createGdt01SupabaseReadRepository(mock.client);
+  const repository = createGdt01SupabaseReadRepository(mock.client, contract);
   const observed = await repository.readState();
   const adapterResult = classifyGdt01DbState(contract, observed);
   assert.equal(adapterResult.state, "EXACT_MATCH");
   assert.ok(mock.calls.length > 0);
   assert.ok(mock.calls.every((call) => call.operation === "select"));
+})();
+
+const unrelatedStandard = addUnrelatedStandardBatteryData(exactState());
+const unrelatedStandardResult = expectState("unrelated standard battery data", unrelatedStandard, "EXACT_MATCH");
+assert.equal(unrelatedStandardResult.blockingFindings.some((finding) => finding.code.startsWith("orphan_target_")), false);
+assert.equal(unrelatedStandardResult.counts.responsesObserved, GDT_01_COUNTS.totalResponses);
+
+const unrelatedStandardAdapterPromise = (async () => {
+  const mock = createMockSupabaseFromExactState(unrelatedStandard);
+  const repository = createGdt01SupabaseReadRepository(mock.client, contract);
+  const observed = await repository.readState();
+  const result = classifyGdt01DbState(contract, observed);
+  assert.equal(result.state, "EXACT_MATCH");
+  assert.equal(result.blockingFindings.some((finding) => finding.code.startsWith("orphan_target_")), false);
+  assert.deepEqual(observed.dimensionScoreIds, []);
+  assert.deepEqual(observed.attemptReportIds, []);
 })();
 
 expectState("missing wrapper", withMutation((state) => {
@@ -364,6 +434,36 @@ expectState("missing wrapper attempt link", withMutation((state) => {
   state.attempts = state.attempts.filter((attempt) => attempt.id !== wrapper.attemptId);
   wrapper.attemptId = null;
 }), "PARTIAL");
+
+const missingTeam = emptyState();
+missingTeam.teams = [];
+const missingTeamResult = expectState("foundation team missing", missingTeam, "PARTIAL");
+assert.equal(missingTeamResult.writerEligible, false);
+assert.ok(missingTeamResult.blockingFindings.some((finding) => finding.code === "team_missing"));
+assert.ok(missingTeamResult.blockingFindings.filter((finding) => finding.code === "team_missing").every((finding) => finding.category === "foundation"));
+
+const missingParticipants = emptyState();
+missingParticipants.participants = missingParticipants.participants.filter((participant) => participant.id === "participant:GD-001");
+const missingParticipantsResult = expectState("foundation participants missing", missingParticipants, "PARTIAL");
+assert.equal(missingParticipantsResult.writerEligible, false);
+assert.equal(missingParticipantsResult.blockingFindings.filter((finding) => finding.code === "participant_missing").length, 5);
+assert.ok(missingParticipantsResult.blockingFindings.filter((finding) => finding.code === "participant_missing").every((finding) => finding.category === "foundation"));
+
+const missingMembership = emptyState();
+missingMembership.memberships = missingMembership.memberships.filter((membership) => membership.participantId !== "participant:GD-001");
+const missingMembershipResult = expectState("foundation membership missing", missingMembership, "PARTIAL");
+assert.equal(missingMembershipResult.writerEligible, false);
+assert.ok(missingMembershipResult.blockingFindings.some((finding) => finding.code === "membership_missing"));
+assert.ok(missingMembershipResult.blockingFindings.filter((finding) => finding.code === "membership_missing").every((finding) => finding.category === "foundation"));
+
+const foundationWithAmbientStandard = addUnrelatedStandardBatteryData(emptyState());
+foundationWithAmbientStandard.teams = [];
+const foundationWithAmbientStandardResult = expectState("foundation plus unrelated standard battery", foundationWithAmbientStandard, "PARTIAL");
+assert.equal(foundationWithAmbientStandardResult.writerEligible, false);
+assert.deepEqual(
+  foundationWithAmbientStandardResult.blockingFindings.map((finding) => finding.code),
+  ["team_missing"],
+);
 
 expectState("wrong organization", withMutation((state) => { state.teams[0].organizationId = "org:wrong"; }), "CONFLICT");
 expectState("wrong team ownership", withMutation((state) => { state.teams[0].organizationId = "org:wrong"; }), "CONFLICT");
@@ -465,6 +565,53 @@ expectState("orphan response", withMutation((state) => {
   });
   state.responses.push({ ...state.responses[0], id: "response:orphan", attemptId: "attempt:orphan" });
 }), "CONFLICT");
+
+const legacyOrphan = exactState();
+legacyOrphan.attempts.push({
+  id: "attempt:legacy-orphan",
+  testId: "test:team-dynamics-legacy",
+  testSlug: GDT_01_LEGACY_PACKAGE_SLUG,
+  organizationId: "org:partner-plus",
+  participantId: "participant:GD-001",
+  userId: null,
+  locale: "bs",
+  status: "in_progress",
+  completedAt: null,
+});
+const legacyOrphanResult = expectState("legacy Team Dynamics orphan", legacyOrphan, "CONFLICT");
+assert.ok(legacyOrphanResult.blockingFindings.some((finding) => finding.code === "orphan_target_attempt"));
+
+const legacyOrphanResponse = clone(legacyOrphan);
+legacyOrphanResponse.responses.push({
+  id: "response:legacy-orphan",
+  attemptId: "attempt:legacy-orphan",
+  questionId: "question:legacy-orphan",
+  questionCode: "legacy-orphan",
+  responseKind: "single_choice",
+  answerOptionId: null,
+  optionCode: null,
+  optionValue: null,
+  optionQuestionId: null,
+  rawValue: null,
+  scoredValue: null,
+});
+const legacyOrphanResponseResult = expectState("legacy Team Dynamics orphan response", legacyOrphanResponse, "CONFLICT");
+assert.ok(legacyOrphanResponseResult.blockingFindings.some((finding) => finding.code === "orphan_target_response"));
+
+const canonicalOtherParticipant = exactState();
+canonicalOtherParticipant.attempts.push({
+  id: "attempt:team-dynamics-other-participant",
+  testId: canonicalOtherParticipant.runtime.test.id,
+  testSlug: GDT_01_PACKAGE_SLUG,
+  organizationId: "org:partner-plus",
+  participantId: "participant:GD-006",
+  userId: null,
+  locale: "bs",
+  status: "in_progress",
+  completedAt: null,
+});
+const canonicalOtherParticipantResult = expectState("Team Dynamics attempt for unrelated participant", canonicalOtherParticipant, "EXACT_MATCH");
+assert.equal(canonicalOtherParticipantResult.blockingFindings.some((finding) => finding.code.startsWith("orphan_target_")), false);
 
 const diagnostic = exactState();
 diagnostic.teamFitReports.push({
