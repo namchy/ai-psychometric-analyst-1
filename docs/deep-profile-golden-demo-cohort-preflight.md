@@ -36,6 +36,7 @@
 - Aktuelni evidence-based audit je u `docs/deep-profile-golden-demo-team-fit-preflight.md`.
 - Potvrđeno: Team Fit u postojećem repou nije `public.tests` assessment niti četvrti standard-battery attempt. Canonical identitet je HR-interni relacijski report `team_fit_report_v1`, čiji kandidat source je standard-battery Composite deterministic input, a team source verified Team Dynamics aggregation snapshot.
 - Posljedica: odsustvo Team Fita ne blokira IPIP/SAFRAN/MWMS completion, individualni report ili GD-001 state. Prvi meaningful Golden Demo slice mora pokriti cijeli zaključani tim (preporuka `GDT-01`) radi Team Dynamics agregata; ne kreirati fixture ili report prije zasebnog implementacijskog taska.
+- GDT-01 Team Dynamics fixture implementation je naknadno zaustavljen prije data foundationa: lokalni `team_dynamics_assessment_v1` package navodi `status=draft`, `is_active=false` i `import_readiness.status=content_spec_ready_runtime_pending`; shared `options.json` je prazan, dok production mixed option katalozi nastaju kroz import/runtime transform. Bez DB read-a ili versioned exported imported-runtime contracta nema dovoljno dokaza da offline fixture koristi isti production question/option catalog.
 
 
 ## 0. Post-preflight product decisions

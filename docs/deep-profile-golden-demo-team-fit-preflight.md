@@ -163,3 +163,11 @@ For evidence, keep GDT-01 as development/calibration and reserve an entire untou
 2. What source-version rule invalidates an existing Team Fit report when a Team Dynamics member, aggregation snapshot or candidate standard battery changes? Current database stores opaque UUID references without automatic invalidation.
 3. Is access to team member score snapshots by any active organization member acceptable, or should a future privacy decision restrict it to HR/manager roles?
 4. Which report processing mode is approved for the Golden pilot: mock-only first, or a separately approved OpenAI run after deterministic validation?
+
+## GDT-01 Team Dynamics fixture blocker
+
+**Confirmed local evidence:** `assessment-packages/team_dynamics_assessment_v1/test.json` still declares `status: "draft"`, `is_active: false` and `metadata.import_readiness.status: "content_spec_ready_runtime_pending"`. Its shared `options.json` is empty; the mixed per-item option catalog is reconstructed by the custom import/runtime path (`scripts/test-team-dynamics-assessment-v1-package.cjs`, `lib/assessment/team-dynamics-mixed-runtime.ts`).
+
+**Conclusion:** the local package is a strong content specification and the scorer/aggregator are implemented, but it is not sufficient evidence that a new offline GDT-01 fixture matches the currently imported production question/option catalog. Creating answers and expected scores now would risk locking a fixture against a draft/import-transform contract rather than verified production data.
+
+**Smallest safe unblocker:** a separately authorized read-only preflight that resolves the active `team_dynamics_assessment_v1` row and exports a versioned, code-based runtime contract (`tests.slug`, active question codes/order/metadata and option codes/values/metadata). It must not write, score, queue a report or call OpenAI. After that evidence is committed, resume with the offline six-member GDT-01 foundation.

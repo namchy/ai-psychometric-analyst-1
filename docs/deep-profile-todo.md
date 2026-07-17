@@ -1548,6 +1548,8 @@ Dobre ideje koje nisu za sadašnji razvojni sprint.
 
 **Aktivni preflight:** Team Fit Golden Demo audit je otvoren kao zaseban relacijski-module slice. Preliminarni repo dokaz potvrđuje da Team Fit nije `public.tests` instrument niti četvrti standard-battery test: `team_fit_report_v1` je opcionalni HR-interni report nad kandidatovim Composite deterministic inputom i Team Dynamics agregatom. Ne smije blokirati standard battery, individualne izvještaje ni stvarati PARTIAL/error kada nije uključen. Dalja implementacija (GDT-01 team fixture, agregacija, writer/operator/report) zavisi od zaključka u `docs/deep-profile-golden-demo-team-fit-preflight.md`.
 
+**GDT-01 Team Dynamics foundation status:** blokirano prije fixture podataka. Lokalni canonical package `assessment-packages/team_dynamics_assessment_v1/test.json` je još `draft` i `is_active=false`, sa `import_readiness.status=content_spec_ready_runtime_pending`; `options.json` je prazan, dok se per-item mixed option katalozi izvode kroz import/runtime transform. Bez zasebnog read-only DB preflighta ili versioned exported imported-runtime snapshot-a ne može se dokazati da bi offline fixture predstavljao stvarni production question/option contract. Standard battery i GD-001 ostaju nepromijenjeni.
+
 **Granice:** Ne mijenjati GitHub Issues ili GitHub Projects i ne stvarati drugi canonical todo. Cohort plan je execution tracker; ovaj dokument ostaje canonical backlog. Nacionalna pripadnost nije product podatak i ne smije se čuvati niti prikazivati u aplikaciji; korisnikove tri liste imena služe samo kao offline kontrola ravnoteže sintetičke kohorte.
 
 ### P0 — SAFRAN user report content architecture
