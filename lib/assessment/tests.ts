@@ -94,14 +94,14 @@ export function isTestReadyForRun(activeQuestionCount: number): boolean {
   return activeQuestionCount > 0;
 }
 
-export async function getActiveTest(): Promise<ActiveTest | null> {
+export async function getActiveTest(testSlug: string): Promise<ActiveTest | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("tests")
     .select("id, slug, name, description")
+    .eq("slug", testSlug)
+    .eq("status", "active")
     .eq("is_active", true)
-    .order("created_at", { ascending: true })
-    .limit(1)
     .maybeSingle();
 
   if (error) {

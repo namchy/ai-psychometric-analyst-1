@@ -13,8 +13,27 @@ export const GD_001_EXPECTED_RESPONSE_COUNTS = {
   safran_v1: 45,
   mwms_v1: 19,
 } as const;
-export const GD_001_TRANSACTION_BLOCKER =
-  "Atomic apply is unavailable: the repository has no existing RPC that transactionally creates the participant, standard battery assignment, attempts, links, and responses. A separate reviewed migration/RPC task is required before --apply can write.";
+export const GD_001_FIXTURE_RPC = "create_golden_demo_gd001_fixture_v1" as const;
+export const GD_001_FIXTURE_SCHEMA_VERSION = "gd_db_fixture_v1" as const;
+export const GD_001_RPC_NOT_EMPTY_PREFIX = "GD_FIXTURE_NOT_EMPTY" as const;
+
+export function getGd001RpcErrorText(error: unknown): string {
+  const parts: string[] = [];
+  if (error instanceof Error && error.message) parts.push(error.message);
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    for (const field of ["code", "message", "details", "hint"] as const) {
+      const value = record[field];
+      if (typeof value === "string" && value && !parts.includes(value)) parts.push(value);
+    }
+  }
+  if (parts.length > 0) return parts.join(" | ");
+  return String(error);
+}
+
+export function isGd001RpcNotEmptyError(error: unknown): boolean {
+  return getGd001RpcErrorText(error).includes(GD_001_RPC_NOT_EMPTY_PREFIX);
+}
 
 export type Gd001WriterMode = "dry-run" | "apply";
 export type Gd001FixtureState = "EMPTY" | "EXACT_MATCH" | "PARTIAL" | "CONFLICT";
@@ -123,6 +142,56 @@ export type Gd001FixtureRepository = {
   inspect(): Promise<Gd001ResolvedRepositoryState>;
 };
 
+export type Gd001FixtureRpcPayload = {
+  schema_version: typeof GD_001_FIXTURE_SCHEMA_VERSION;
+  candidate_id: typeof GD_001_CANDIDATE_ID;
+  organization_name: typeof GD_001_ORGANIZATION_NAME;
+  participant: {
+    display_name: string;
+    email: string;
+    participant_type: "employee";
+    addressing_form: "masculine";
+  };
+  assignment: { locale: "bs" };
+  tests: Array<{
+    test_slug: (typeof GD_001_TEST_SLUGS)[number];
+    component_order: number;
+  }>;
+  responses: Array<{
+    test_slug: (typeof GD_001_TEST_SLUGS)[number];
+    question_code: string;
+    response_kind: "single_choice" | "text";
+    answer_option_code: string | null;
+    answer_value: string | null;
+  }>;
+};
+
+export type Gd001FixtureRpcResult = {
+  rpcVersion: typeof GD_001_FIXTURE_RPC;
+  stateBefore: "EMPTY";
+  stateAfter: "CREATED";
+  candidateId: typeof GD_001_CANDIDATE_ID;
+  organizationId: string;
+  participantId: string;
+  assignmentId: string;
+  attemptIds: Record<(typeof GD_001_TEST_SLUGS)[number], string>;
+  counts: {
+    participants: 1;
+    assignments: 1;
+    attempts: 3;
+    assignmentAttemptLinks: 3;
+    responses: 184;
+    ipipResponses: 120;
+    safranResponses: 45;
+    mwmsResponses: 19;
+    dimensionScores: 0;
+    attemptReports: 0;
+    assessmentReports: 0;
+  };
+  scoringExecution: false;
+  reportGeneration: false;
+};
+
 export type Gd001StateClassification = {
   state: Gd001FixtureState;
   reasons: string[];
@@ -203,6 +272,142 @@ export function getGd001CandidateContract(foundation: GoldenDemoCsvFoundation) {
     participantType: candidate.values.participant_type,
     addressingForm: candidate.values.addressing_form,
     teamId: candidate.values.team_id,
+  };
+}
+
+export function buildGd001FixtureRpcPayload(
+  foundation: GoldenDemoCsvFoundation,
+): Gd001FixtureRpcPayload {
+  const candidate = getGd001CandidateContract(foundation);
+  if (
+    candidate.fullName !== "Amel Kovačević" ||
+    candidate.email !== "amel.kovacevic@partnerplus.ba" ||
+    candidate.participantType !== "employee" ||
+    candidate.addressingForm !== "masculine"
+  ) {
+    throw new Error("GD-001 candidate CSV contract does not match the locked fixture identity.");
+  }
+
+  const responses = foundation.answers.rows
+    .filter((row) => row.values.candidate_id === GD_001_CANDIDATE_ID)
+    .map((row) => {
+      const responseKind = row.values.response_kind;
+      if (responseKind !== "single_choice" && responseKind !== "text") {
+        throw new Error(`GD-001 RPC payload has unsupported response kind ${responseKind}.`);
+      }
+      if (responseKind === "single_choice") {
+        return {
+          test_slug: row.values.test_slug as (typeof GD_001_TEST_SLUGS)[number],
+          question_code: row.values.question_code,
+          response_kind: "single_choice" as const,
+          answer_option_code: row.values.answer_option_code,
+          answer_value: null,
+        };
+      }
+      return {
+        test_slug: row.values.test_slug as (typeof GD_001_TEST_SLUGS)[number],
+        question_code: row.values.question_code,
+        response_kind: "text" as const,
+        answer_option_code: null,
+        answer_value: row.values.answer_value,
+      };
+    });
+
+  if (responses.length !== 184) {
+    throw new Error(`GD-001 RPC payload requires 184 responses; received ${responses.length}.`);
+  }
+  for (const slug of GD_001_TEST_SLUGS) {
+    const expected = GD_001_EXPECTED_RESPONSE_COUNTS[slug];
+    const actual = responses.filter((response) => response.test_slug === slug).length;
+    if (actual !== expected) {
+      throw new Error(`GD-001 RPC payload requires ${expected} ${slug} responses; received ${actual}.`);
+    }
+  }
+
+  return {
+    schema_version: GD_001_FIXTURE_SCHEMA_VERSION,
+    candidate_id: GD_001_CANDIDATE_ID,
+    organization_name: GD_001_ORGANIZATION_NAME,
+    participant: {
+      display_name: candidate.fullName,
+      email: candidate.email,
+      participant_type: "employee",
+      addressing_form: "masculine",
+    },
+    assignment: { locale: "bs" },
+    tests: GD_001_TEST_SLUGS.map((test_slug, component_order) => ({
+      test_slug,
+      component_order,
+    })),
+    responses,
+  };
+}
+
+function asNonEmptyString(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`GD-001 fixture RPC returned an invalid ${field}.`);
+  }
+  return value;
+}
+
+export function validateGd001FixtureRpcResult(value: unknown): Gd001FixtureRpcResult {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("GD-001 fixture RPC returned an invalid result object.");
+  }
+  const result = value as Record<string, unknown>;
+  if (result.rpcVersion !== GD_001_FIXTURE_RPC) {
+    throw new Error("GD-001 fixture RPC returned an unexpected rpcVersion.");
+  }
+  if (result.stateBefore !== "EMPTY" || result.stateAfter !== "CREATED") {
+    throw new Error("GD-001 fixture RPC did not confirm the EMPTY-to-CREATED transition.");
+  }
+  if (result.candidateId !== GD_001_CANDIDATE_ID) {
+    throw new Error("GD-001 fixture RPC returned an unexpected candidate ID.");
+  }
+  const attemptIds = result.attemptIds as Record<string, unknown> | null;
+  if (!attemptIds || typeof attemptIds !== "object" || Array.isArray(attemptIds)) {
+    throw new Error("GD-001 fixture RPC returned invalid attempt IDs.");
+  }
+  const normalizedAttemptIds = Object.fromEntries(
+    GD_001_TEST_SLUGS.map((slug) => [slug, asNonEmptyString(attemptIds[slug], `attemptIds.${slug}`)]),
+  ) as Gd001FixtureRpcResult["attemptIds"];
+  const counts = result.counts as Record<string, unknown> | null;
+  const expectedCounts = {
+    participants: 1,
+    assignments: 1,
+    attempts: 3,
+    assignmentAttemptLinks: 3,
+    responses: 184,
+    ipipResponses: 120,
+    safranResponses: 45,
+    mwmsResponses: 19,
+    dimensionScores: 0,
+    attemptReports: 0,
+    assessmentReports: 0,
+  } as const;
+  if (!counts || typeof counts !== "object" || Array.isArray(counts)) {
+    throw new Error("GD-001 fixture RPC returned invalid counts.");
+  }
+  for (const [key, expected] of Object.entries(expectedCounts)) {
+    if (counts[key] !== expected) {
+      throw new Error(`GD-001 fixture RPC returned ${key}=${String(counts[key])}; expected ${expected}.`);
+    }
+  }
+  if (result.scoringExecution !== false || result.reportGeneration !== false) {
+    throw new Error("GD-001 fixture RPC must not execute scoring or report generation.");
+  }
+  return {
+    rpcVersion: GD_001_FIXTURE_RPC,
+    stateBefore: "EMPTY",
+    stateAfter: "CREATED",
+    candidateId: GD_001_CANDIDATE_ID,
+    organizationId: asNonEmptyString(result.organizationId, "organizationId"),
+    participantId: asNonEmptyString(result.participantId, "participantId"),
+    assignmentId: asNonEmptyString(result.assignmentId, "assignmentId"),
+    attemptIds: normalizedAttemptIds,
+    counts: expectedCounts,
+    scoringExecution: false,
+    reportGeneration: false,
   };
 }
 
@@ -468,6 +673,93 @@ export function buildGd001ExactMatchApplyNoop(
     scoringExecution: false,
     reportGeneration: false,
   };
+}
+
+export function buildGd001CreatedApplyResult(input: {
+  rpcResult: Gd001FixtureRpcResult;
+  postWritePlan: Awaited<ReturnType<typeof inspectGd001FixtureWithRepository>>;
+}) {
+  if (input.postWritePlan.state !== "EXACT_MATCH") {
+    throw new Error(
+      `GD-001 RPC write requires post-write EXACT_MATCH; received ${input.postWritePlan.state}: ${input.postWritePlan.blockers.join("; ")}`,
+    );
+  }
+  const identityMismatches = [
+    ["organizationId", input.rpcResult.organizationId, input.postWritePlan.organization.id],
+    ["participantId", input.rpcResult.participantId, input.postWritePlan.participant.id],
+    ["assignmentId", input.rpcResult.assignmentId, input.postWritePlan.assignment.id],
+    ...GD_001_TEST_SLUGS.map((slug) => [
+      `attemptIds.${slug}`,
+      input.rpcResult.attemptIds[slug],
+      input.postWritePlan.attemptIds[slug],
+    ]),
+  ].filter(([, rpcValue, inspectedValue]) => rpcValue !== inspectedValue);
+  if (identityMismatches.length > 0) {
+    throw new Error(
+      `GD-001 RPC result IDs do not match the read-only post-write state: ${identityMismatches
+        .map(([field]) => field)
+        .join(", ")}.`,
+    );
+  }
+  return {
+    mode: "apply" as const,
+    candidateId: GD_001_CANDIDATE_ID,
+    stateBefore: "EMPTY" as const,
+    stateAfter: "EXACT_MATCH" as const,
+    rpc: GD_001_FIXTURE_RPC,
+    participantId: input.rpcResult.participantId,
+    assignmentId: input.rpcResult.assignmentId,
+    attemptIds: input.rpcResult.attemptIds,
+    responseCounts: {
+      ...input.postWritePlan.responses.existingByTest,
+      total: 184,
+    },
+    writesPerformed: true,
+    scoringExecution: false,
+    reportGeneration: false,
+  };
+}
+
+export type Gd001ApplyBoundary = {
+  initialPlan: Awaited<ReturnType<typeof inspectGd001FixtureWithRepository>>;
+  payload: Gd001FixtureRpcPayload;
+  invokeRpc: (input: {
+    rpcName: typeof GD_001_FIXTURE_RPC;
+    payload: Gd001FixtureRpcPayload;
+  }) => Promise<unknown>;
+  inspectAfterRpc: () => Promise<Awaited<ReturnType<typeof inspectGd001FixtureWithRepository>>>;
+};
+
+export async function executeGd001ApplyWithRpcBoundary(input: Gd001ApplyBoundary) {
+  if (input.initialPlan.state === "EXACT_MATCH") {
+    return buildGd001ExactMatchApplyNoop(input.initialPlan);
+  }
+  if (input.initialPlan.state !== "EMPTY") {
+    throw new Error(
+      `Apply is blocked because fixture state is ${input.initialPlan.state}: ${input.initialPlan.blockers.join("; ")}`,
+    );
+  }
+
+  try {
+    const rawRpcResult = await input.invokeRpc({
+      rpcName: GD_001_FIXTURE_RPC,
+      payload: input.payload,
+    });
+    const rpcResult = validateGd001FixtureRpcResult(rawRpcResult);
+    const postWritePlan = await input.inspectAfterRpc();
+    return buildGd001CreatedApplyResult({ rpcResult, postWritePlan });
+  } catch (error) {
+    if (!isGd001RpcNotEmptyError(error)) {
+      throw error;
+    }
+    const postRacePlan = await input.inspectAfterRpc();
+    if (postRacePlan.state === "EXACT_MATCH") {
+      return buildGd001ExactMatchApplyNoop(postRacePlan);
+    }
+    throw new Error(
+      `GD-001 RPC reported ${GD_001_RPC_NOT_EMPTY_PREFIX}; read-only recheck found ${postRacePlan.state}: ${postRacePlan.blockers.join("; ")}`,
+    );
+  }
 }
 
 export function verifyGd001FinalCounts(counts: {

@@ -1543,8 +1543,8 @@ Dobre ideje koje nisu za sadašnji razvojni sprint.
 
 **Plan i preflight:** `docs/deep-profile-golden-demo-cohort-plan.md` i `docs/deep-profile-golden-demo-cohort-preflight.md`.
 
-**Trenutni milestone:** Plan, read-only technical preflight, demo organizacija, timovi i registry 24 kandidata su zaključani.
-**Naredni očekivani milestone:** Offline manifest/contracts foundation, manifest validator i dry-run plan artefakt za `GD-001`, bez DB write-a i OpenAI poziva.
+**Trenutni milestone:** GD-001 offline dataset, CSV contract validator, offline score verifier, controlled DB writer foundation i transaction-safe creation RPC su implementirani u repou. Repo-level active-test blocker je riješen forward migracijom `20260717121000_resolve_multi_active_test_contract.sql`: globalni single-active indeks se uklanja, dok globally unique `tests.slug` i postojeći `status/is_active` consistency check ostaju autoritet. Ni RPC ni multi-active migracija nisu primijenjene; DB dry-run i apply nisu izvršeni.
+**Naredni očekivani milestone:** Finalni review obje neprimijenjene migracije, zatim njihova kontrolisana primjena i eksplicitni DB dry-run za `GD-001`. Tek nakon potvrđenog EMPTY plana dolazi zasebno odobren apply.
 
 **Granice:** Ne mijenjati GitHub Issues ili GitHub Projects i ne stvarati drugi canonical todo. Cohort plan je execution tracker; ovaj dokument ostaje canonical backlog. Nacionalna pripadnost nije product podatak i ne smije se čuvati niti prikazivati u aplikaciji; korisnikove tri liste imena služe samo kao offline kontrola ravnoteže sintetičke kohorte.
 

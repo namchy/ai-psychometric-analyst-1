@@ -20,12 +20,18 @@ require.extensions[".ts"] = (module, filename) => {
 const projectRoot = path.resolve(__dirname, "..");
 const { loadGoldenDemoCsvFoundation } = require("../lib/golden-demo/csv-loader.ts");
 const {
+  GD_001_FIXTURE_RPC,
+  GD_001_FIXTURE_SCHEMA_VERSION,
+  GD_001_RPC_NOT_EMPTY_PREFIX,
   GD_001_TEST_SLUGS,
-  GD_001_TRANSACTION_BLOCKER,
+  buildGd001CreatedApplyResult,
   buildGd001ExactMatchApplyNoop,
+  buildGd001FixtureRpcPayload,
   buildResolvedResponseInserts,
   classifyGd001FixtureState,
   compareActualToExpectedResponse,
+  executeGd001ApplyWithRpcBoundary,
+  getGd001RpcErrorText,
   getGd001CandidateContract,
   inspectGd001FixtureWithRepository,
   parseGd001WriterCli,
@@ -155,8 +161,6 @@ assert.equal(
 for (const flag of ["--delete", "--cleanup", "--reset", "--force", "--overwrite"]) {
   assert.throws(() => parseGd001WriterCli([flag]), /separate future operator task/);
 }
-assert.match(GD_001_TRANSACTION_BLOCKER, /no existing RPC/);
-
 assert.equal(classify(baseSnapshot()).state, "EMPTY");
 assert.equal(classify(exactSnapshot()).state, "EXACT_MATCH");
 {
@@ -233,6 +237,29 @@ assert.equal(
   true,
 );
 
+const rpcPayload = buildGd001FixtureRpcPayload(foundation);
+assert.equal(rpcPayload.schema_version, GD_001_FIXTURE_SCHEMA_VERSION);
+assert.equal(rpcPayload.candidate_id, "GD-001");
+assert.equal(rpcPayload.tests.length, 3);
+assert.deepEqual(
+  rpcPayload.tests.map((test) => [test.test_slug, test.component_order]),
+  [
+    ["ipip-neo-120-v1", 0],
+    ["safran_v1", 1],
+    ["mwms_v1", 2],
+  ],
+);
+assert.equal(rpcPayload.responses.length, 184);
+assert.equal(rpcPayload.responses.filter((response) => response.test_slug === "ipip-neo-120-v1").length, 120);
+assert.equal(rpcPayload.responses.filter((response) => response.test_slug === "safran_v1").length, 45);
+assert.equal(rpcPayload.responses.filter((response) => response.test_slug === "mwms_v1").length, 19);
+assert.equal(JSON.stringify(rpcPayload).includes("question_id"), false);
+assert.equal(JSON.stringify(rpcPayload).includes("answer_option_id"), false);
+assert.equal(JSON.stringify(rpcPayload).includes("raw_value"), false);
+assert.equal(JSON.stringify(rpcPayload).includes("scored_value"), false);
+assert.equal(JSON.stringify(rpcPayload).includes("expected_score"), false);
+assert.equal(JSON.stringify(rpcPayload).includes("expected_ai"), false);
+
 assert.deepEqual(
   verifyGd001FinalCounts({
     participant: 1,
@@ -271,9 +298,22 @@ const redacted = redactSecrets(
   secretEnv,
 );
 assert.doesNotMatch(redacted, /secret-project|service-role-super-secret/);
+for (const field of ["code", "message", "details", "hint"]) {
+  assert.match(
+    getGd001RpcErrorText({ [field]: `${GD_001_RPC_NOT_EMPTY_PREFIX}: concurrent write` }),
+    /GD_FIXTURE_NOT_EMPTY/,
+  );
+}
 
 const writerSource = fs.readFileSync(
   path.join(projectRoot, "scripts/write-gd-001-db-fixture.cjs"),
+  "utf8",
+);
+const rpcMigrationSource = fs.readFileSync(
+  path.join(
+    projectRoot,
+    "supabase/migrations/20260717120000_create_golden_demo_gd001_fixture_rpc.sql",
+  ),
   "utf8",
 );
 assert.doesNotMatch(writerSource, /\.insert\s*\(|\.update\s*\(|\.delete\s*\(/);
@@ -281,6 +321,23 @@ assert.doesNotMatch(
   writerSource,
   /persistCompletedAssessmentResults|enqueueCompletedAssessmentReports|processAssessmentReportJobs|OPENAI_API_KEY/,
 );
+assert.match(writerSource, /\.rpc\s*\(/);
+assert.match(writerSource, /supabase\.rpc\(rpcName, \{ p_fixture: payload \}\)/);
+assert.match(rpcMigrationSource, /create_golden_demo_gd001_fixture_v1\(p_fixture jsonb\)/);
+assert.match(rpcMigrationSource, /security definer/i);
+assert.match(rpcMigrationSource, /set search_path = ''/i);
+assert.match(rpcMigrationSource, /pg_advisory_xact_lock/i);
+assert.match(rpcMigrationSource, /GD_FIXTURE_NOT_EMPTY/);
+assert.match(rpcMigrationSource, /revoke all on function[\s\S]*from public/i);
+assert.match(rpcMigrationSource, /revoke all on function[\s\S]*from anon/i);
+assert.match(rpcMigrationSource, /revoke all on function[\s\S]*from authenticated/i);
+assert.match(rpcMigrationSource, /grant execute on function[\s\S]*to service_role/i);
+assert.match(rpcMigrationSource, /response count/i);
+assert.match(rpcMigrationSource, /response question\/test ownership/i);
+assert.match(rpcMigrationSource, /duplicate response identity/i);
+assert.match(rpcMigrationSource, /jsonb_typeof\(v_response -> 'answer_value'\)/i);
+assert.doesNotMatch(rpcMigrationSource, /pg_catalog\.nullif/i);
+assert.doesNotMatch(rpcMigrationSource, /on conflict/i);
 
 Promise.all([emptyPlanPromise, exactPlanPromise]).then(([emptyPlan, exactPlan]) => {
   assert.equal(repositoryInspectCalls, 1);
@@ -299,7 +356,140 @@ Promise.all([emptyPlanPromise, exactPlanPromise]).then(([emptyPlan, exactPlan]) 
   assert.equal(applyNoop.writesPerformed, false);
   assert.equal(applyNoop.responseCounts["ipip-neo-120-v1"], 120);
   assert.throws(() => buildGd001ExactMatchApplyNoop(emptyPlan), /requires EXACT_MATCH/);
-  process.stdout.write(
-    "GD-001 DB fixture writer tests passed (pure CLI, mocked repository, mapping, and state guards).\n",
+  return { emptyPlan, exactPlan };
+}).then(async ({ emptyPlan, exactPlan }) => {
+  const rpcResult = {
+    rpcVersion: GD_001_FIXTURE_RPC,
+    stateBefore: "EMPTY",
+    stateAfter: "CREATED",
+    candidateId: "GD-001",
+    organizationId: "organization:partner-plus",
+    participantId: "participant:gd-001",
+    assignmentId: "assignment:gd-001",
+    attemptIds: attemptIdsBySlug,
+    counts: {
+      participants: 1,
+      assignments: 1,
+      attempts: 3,
+      assignmentAttemptLinks: 3,
+      responses: 184,
+      ipipResponses: 120,
+      safranResponses: 45,
+      mwmsResponses: 19,
+      dimensionScores: 0,
+      attemptReports: 0,
+      assessmentReports: 0,
+    },
+    scoringExecution: false,
+    reportGeneration: false,
+  };
+  let rpcCalls = 0;
+  let rechecks = 0;
+  const created = await executeGd001ApplyWithRpcBoundary({
+    initialPlan: emptyPlan,
+    payload: rpcPayload,
+    async invokeRpc(input) {
+      rpcCalls += 1;
+      assert.equal(input.rpcName, GD_001_FIXTURE_RPC);
+      assert.deepEqual(input.payload, rpcPayload);
+      return rpcResult;
+    },
+    async inspectAfterRpc() {
+      rechecks += 1;
+      return exactPlan;
+    },
+  });
+  assert.equal(rpcCalls, 1);
+  assert.equal(rechecks, 1);
+  assert.equal(created.stateBefore, "EMPTY");
+  assert.equal(created.stateAfter, "EXACT_MATCH");
+  assert.equal(created.writesPerformed, true);
+  assert.equal(created.responseCounts.total, 184);
+
+  await assert.rejects(
+    executeGd001ApplyWithRpcBoundary({
+      initialPlan: emptyPlan,
+      payload: rpcPayload,
+      async invokeRpc() { return rpcResult; },
+      async inspectAfterRpc() {
+        return { ...exactPlan, state: "PARTIAL", blockers: ["missing response"] };
+      },
+    }),
+    /post-write EXACT_MATCH/,
   );
+  await assert.rejects(
+    executeGd001ApplyWithRpcBoundary({
+      initialPlan: emptyPlan,
+      payload: rpcPayload,
+      async invokeRpc() { return rpcResult; },
+      async inspectAfterRpc() {
+        return { ...exactPlan, state: "CONFLICT", blockers: ["different response"] };
+      },
+    }),
+    /post-write EXACT_MATCH/,
+  );
+
+  const raceNoop = await executeGd001ApplyWithRpcBoundary({
+    initialPlan: emptyPlan,
+    payload: rpcPayload,
+    async invokeRpc() { throw new Error(`${GD_001_RPC_NOT_EMPTY_PREFIX}: concurrent write`); },
+    async inspectAfterRpc() { return exactPlan; },
+  });
+  assert.equal(raceNoop.writesPerformed, false);
+  assert.equal(raceNoop.stateAfter, "EXACT_MATCH");
+  for (const field of ["code", "message", "details", "hint"]) {
+    const fieldRaceNoop = await executeGd001ApplyWithRpcBoundary({
+      initialPlan: emptyPlan,
+      payload: rpcPayload,
+      async invokeRpc() {
+        throw { [field]: `${GD_001_RPC_NOT_EMPTY_PREFIX}: concurrent write` };
+      },
+      async inspectAfterRpc() { return exactPlan; },
+    });
+    assert.equal(fieldRaceNoop.writesPerformed, false);
+  }
+  await assert.rejects(
+    executeGd001ApplyWithRpcBoundary({
+      initialPlan: emptyPlan,
+      payload: rpcPayload,
+      async invokeRpc() { throw new Error(`${GD_001_RPC_NOT_EMPTY_PREFIX}: concurrent write`); },
+      async inspectAfterRpc() {
+        return { ...exactPlan, state: "PARTIAL", blockers: ["missing response"] };
+      },
+    }),
+    /read-only recheck found PARTIAL/,
+  );
+  let fallbackWrites = 0;
+  await assert.rejects(
+    executeGd001ApplyWithRpcBoundary({
+      initialPlan: emptyPlan,
+      payload: rpcPayload,
+      async invokeRpc() {
+        fallbackWrites += 1;
+        throw new Error("RPC unavailable");
+      },
+      async inspectAfterRpc() {
+        throw new Error("must not recheck generic RPC errors");
+      },
+    }),
+    /RPC unavailable/,
+  );
+  assert.equal(fallbackWrites, 1);
+  assert.throws(
+    () => buildGd001CreatedApplyResult({ rpcResult, postWritePlan: { ...exactPlan, state: "PARTIAL", blockers: ["missing"] } }),
+    /post-write EXACT_MATCH/,
+  );
+  assert.throws(
+    () => buildGd001CreatedApplyResult({
+      rpcResult: { ...rpcResult, participantId: "participant:different" },
+      postWritePlan: exactPlan,
+    }),
+    /result IDs do not match/,
+  );
+  process.stdout.write(
+    "GD-001 DB fixture writer tests passed (pure CLI, mocked RPC boundary, mapping, and state guards).\n",
+  );
+}).catch((error) => {
+  process.stderr.write(`${error.stack || error.message}\n`);
+  process.exitCode = 1;
 });

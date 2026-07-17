@@ -22,8 +22,10 @@ const {
   GD_001_CANDIDATE_ID,
   GD_001_ORGANIZATION_NAME,
   GD_001_TEST_SLUGS,
-  GD_001_TRANSACTION_BLOCKER,
-  buildGd001ExactMatchApplyNoop,
+  GD_001_FIXTURE_RPC,
+  buildGd001FixtureRpcPayload,
+  executeGd001ApplyWithRpcBoundary,
+  getGd001RpcErrorText,
   getGd001CandidateContract,
   inspectGd001FixtureWithRepository,
   parseGd001WriterCli,
@@ -336,17 +338,23 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   const repository = createReadOnlyRepository({ supabase, foundation, candidate });
   const plan = await inspectGd001FixtureWithRepository(repository);
   if (options.mode === "apply") {
-    if (plan.state === "EXACT_MATCH") {
-      const noopResult = buildGd001ExactMatchApplyNoop(plan);
-      process.stdout.write(`${JSON.stringify(noopResult, null, 2)}\n`);
-      return noopResult;
-    }
-    if (plan.state === "EMPTY") {
-      throw new Error(GD_001_TRANSACTION_BLOCKER);
-    }
-    throw new Error(
-      `Apply is blocked because fixture state is ${plan.state}: ${plan.blockers.join("; ")}`,
-    );
+    const applyResult = await executeGd001ApplyWithRpcBoundary({
+      initialPlan: plan,
+      payload: buildGd001FixtureRpcPayload(foundation),
+      async invokeRpc({ rpcName, payload }) {
+        if (rpcName !== GD_001_FIXTURE_RPC) {
+          throw new Error(`Unexpected fixture RPC: ${rpcName}`);
+        }
+        const { data, error } = await supabase.rpc(rpcName, { p_fixture: payload });
+        if (error) {
+          throw new Error(`GD-001 fixture RPC failed: ${getGd001RpcErrorText(error)}`);
+        }
+        return data;
+      },
+      inspectAfterRpc: () => inspectGd001FixtureWithRepository(repository),
+    });
+    process.stdout.write(`${JSON.stringify(applyResult, null, 2)}\n`);
+    return applyResult;
   }
   if (options.verbose) plan.verbose = { responseIdentitiesResolved: plan.responses.resolved };
   process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);

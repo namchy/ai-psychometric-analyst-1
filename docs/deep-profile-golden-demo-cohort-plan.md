@@ -9,6 +9,14 @@
 
 Ovo je kontrolisani sintetički dataset za demonstraciju, report QA i regresiju. Nije trening niti model fine-tuning. Iterativno se kalibriraju prompt, content contract, schema zahtjevi, input builder i, samo kada je opravdano, validator granice.
 
+## Implementacijski checkpoint — GD-001 database fixture
+
+- GD-001 offline dataset (profil, 184 odgovora, očekivani scoreovi i AI kriteriji) je završen.
+- Controlled DB writer foundation je završen; default ostaje read-only dry-run, a apply zahtijeva `--apply --candidate GD-001`.
+- Atomski PostgreSQL RPC `create_golden_demo_gd001_fixture_v1(jsonb)` je implementiran kroz novu, još **neprimijenjenu** migraciju.
+- Prethodni blocker je bio legacy globalni `tests_one_active_test_idx`, koji je dozvoljavao samo jedan `is_active=true` test i bio nespojiv sa trokomponentnim standard batteryjem. Novi contract dopušta više različitih active test slugova; `tests.slug` ostaje globally unique, a `status/is_active` consistency check ostaje na snazi. Forward migracija koja uklanja samo pogrešni globalni indeks još nije primijenjena.
+- Operator execution je pending: prvo finalni migration review i primjena obje migracije, zatim DB dry-run; apply se ne pokreće bez zasebne operator odluke.
+
 ## Svrha i poslovna vrijednost
 
 Golden cohort istovremeno služi za:

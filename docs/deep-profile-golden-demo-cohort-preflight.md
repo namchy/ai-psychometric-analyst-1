@@ -2,6 +2,24 @@
 
 **Scope:** read-only statički audit lokalnog repoa, 2026-07-11. Nisu pokrenuti DB-backed smokeovi, OpenAI, worker, seed, cleanup ili report regeneration. Zaključci ispod navode repo dokaz; runtime stanje lokalne baze nije provjeravano.
 
+## Post-preflight implementation evidence — transaction-safe GD-001 writer
+
+- RPC: `public.create_golden_demo_gd001_fixture_v1(p_fixture jsonb)`.
+- Migration (not applied): `supabase/migrations/20260717120000_create_golden_demo_gd001_fixture_rpc.sql`.
+- Transaction strategy: one PostgreSQL function call, transaction-level advisory lock for `golden-demo:partner-plus:GD-001`, all fixture validation before inserts, and exception rollback for participant, assignment, three attempts, three links and 184 responses.
+- Security model: `SECURITY DEFINER` with `search_path = ''`, schema-qualified objects, public/anon/authenticated execute revoked and `service_role` execute granted only.
+- Write contract: EMPTY-only; no upsert, repair, cleanup, overwrite, scoring or report generation. Existing state remains a Node-side read-only classification boundary (`EXACT_MATCH`, `PARTIAL`, `CONFLICT`).
+- Non-goals: this migration was not applied and no DB dry-run/apply, scoring, report generation or OpenAI call was executed during implementation.
+
+## Post-review evidence — multi-active assessment test contract
+
+- Legacy blocker: `20260312133500_harden_active_test_contract.sql` kreirao je globalni partial unique indeks `tests_one_active_test_idx`, iako standard battery zahtijeva istovremeno active IPIP, SAFRAN i MWMS testove.
+- Forward migration (not applied): `supabase/migrations/20260717121000_resolve_multi_active_test_contract.sql` uklanja samo taj globalni indeks i ne mijenja test podatke.
+- Uniqueness contract: `tests.slug` ostaje globally unique i predstavlja stabilni, versioned test identitet; schema nema repo-defined test-family ključ, pa replacement active unique indeks nije opravdan.
+- Lifecycle contract: postojeći `tests_status_is_active_check` ostaje na snazi — `active` ide sa `is_active=true`, a `draft/archived` sa `is_active=false`.
+- Query audit: jedini production global-single helper sužen je obaveznim slug filterom; standard battery koristi slug listu, a pregledani activation/import tokovi već su target-slug scoped i ne deaktiviraju nepovezane testove.
+- Runtime ograničenje: live schema i test data nisu provjereni; obje migracije, DB dry-run i GD-001 apply ostaju pending.
+
 
 ## 0. Post-preflight product decisions
 
