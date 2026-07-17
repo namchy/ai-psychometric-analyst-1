@@ -1,0 +1,1129 @@
+{
+  "schema_version": "gdt_01_team_dynamics_expected_v1",
+  "team_id": "GDT-01",
+  "contract_checksum": "375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d",
+  "members": [
+    {
+      "candidate_id": "GD-001",
+      "score": {
+        "status": "scored",
+        "supportedQuestionCount": 48,
+        "scoredQuestionCount": 48,
+        "rawTotal": null,
+        "meanRaw": null,
+        "score0To100": null,
+        "missingQuestionIds": [],
+        "ignoredInvalidAnswerCount": 0,
+        "invalidSavedAnswerCount": 0,
+        "ignoredStaleAnswerCount": 0,
+        "savedLikertAnswerCount": 42,
+        "savedSjtAnswerCount": 6,
+        "scaleMin": null,
+        "scaleMax": null,
+        "scoreValueSource": "mixed_runtime_db_truth",
+        "reason": null,
+        "runtimeWarnings": [],
+        "unsupportedQuestionIds": [],
+        "blocks": [
+          {
+            "blockKey": "tdm-31-V1",
+            "blockType": "likert",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "scoreKeys": [
+              "tdm-31-V1_overall",
+              "tdm_domain_communication",
+              "tdm_domain_roles_and_goals",
+              "tdm_domain_team_primacy",
+              "tdm_domain_cohesion"
+            ]
+          },
+          {
+            "blockKey": "psychological_safety",
+            "blockType": "likert",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "scoreKeys": [
+              "psychological_safety_overall"
+            ]
+          },
+          {
+            "blockKey": "outcome_pulse",
+            "blockType": "likert",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "scoreKeys": [
+              "outcome_pulse_overall"
+            ]
+          },
+          {
+            "blockKey": "situational_judgment",
+            "blockType": "sjt_best_worst",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "scoreKeys": [
+              "situational_judgment_overall"
+            ]
+          }
+        ],
+        "scoreEntries": [
+          {
+            "scoreKey": "tdm-31-V1_overall",
+            "label": "Razvojna zrelost tima",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "rawTotal": 89,
+            "meanRaw": 2.87,
+            "score0To100": 62.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "tdm_domain_communication",
+            "label": "Communication",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 14,
+            "scoredItemCount": 14,
+            "rawTotal": 41,
+            "meanRaw": 2.93,
+            "score0To100": 64.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_roles_and_goals",
+            "label": "Roles and Goals",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 10,
+            "meanRaw": 2.5,
+            "score0To100": 50,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_team_primacy",
+            "label": "Team Primacy",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 2,
+            "scoredItemCount": 2,
+            "rawTotal": 6,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_cohesion",
+            "label": "Cohesion",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "psychological_safety_overall",
+            "label": "Psiholoska sigurnost u timu",
+            "blockKey": "psychological_safety",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "rawTotal": 21,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "outcome_pulse_overall",
+            "label": "Ishod timskog rada",
+            "blockKey": "outcome_pulse",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "situational_judgment_overall",
+            "label": "Timsko prosudjivanje u situacijama",
+            "blockKey": "situational_judgment",
+            "scoreModel": "expert_key_partial_credit_v1",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "rawTotal": 15,
+            "meanRaw": 2.5,
+            "score0To100": 75,
+            "scaleMin": -12,
+            "scaleMax": 24,
+            "metadata": {}
+          }
+        ]
+      }
+    },
+    {
+      "candidate_id": "GD-002",
+      "score": {
+        "status": "scored",
+        "supportedQuestionCount": 48,
+        "scoredQuestionCount": 48,
+        "rawTotal": null,
+        "meanRaw": null,
+        "score0To100": null,
+        "missingQuestionIds": [],
+        "ignoredInvalidAnswerCount": 0,
+        "invalidSavedAnswerCount": 0,
+        "ignoredStaleAnswerCount": 0,
+        "savedLikertAnswerCount": 42,
+        "savedSjtAnswerCount": 6,
+        "scaleMin": null,
+        "scaleMax": null,
+        "scoreValueSource": "mixed_runtime_db_truth",
+        "reason": null,
+        "runtimeWarnings": [],
+        "unsupportedQuestionIds": [],
+        "blocks": [
+          {
+            "blockKey": "tdm-31-V1",
+            "blockType": "likert",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "scoreKeys": [
+              "tdm-31-V1_overall",
+              "tdm_domain_communication",
+              "tdm_domain_roles_and_goals",
+              "tdm_domain_team_primacy",
+              "tdm_domain_cohesion"
+            ]
+          },
+          {
+            "blockKey": "psychological_safety",
+            "blockType": "likert",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "scoreKeys": [
+              "psychological_safety_overall"
+            ]
+          },
+          {
+            "blockKey": "outcome_pulse",
+            "blockType": "likert",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "scoreKeys": [
+              "outcome_pulse_overall"
+            ]
+          },
+          {
+            "blockKey": "situational_judgment",
+            "blockType": "sjt_best_worst",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "scoreKeys": [
+              "situational_judgment_overall"
+            ]
+          }
+        ],
+        "scoreEntries": [
+          {
+            "scoreKey": "tdm-31-V1_overall",
+            "label": "Razvojna zrelost tima",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "rawTotal": 89,
+            "meanRaw": 2.87,
+            "score0To100": 62.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "tdm_domain_communication",
+            "label": "Communication",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 14,
+            "scoredItemCount": 14,
+            "rawTotal": 41,
+            "meanRaw": 2.93,
+            "score0To100": 64.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_roles_and_goals",
+            "label": "Roles and Goals",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 10,
+            "meanRaw": 2.5,
+            "score0To100": 50,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_team_primacy",
+            "label": "Team Primacy",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 2,
+            "scoredItemCount": 2,
+            "rawTotal": 6,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_cohesion",
+            "label": "Cohesion",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "psychological_safety_overall",
+            "label": "Psiholoska sigurnost u timu",
+            "blockKey": "psychological_safety",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "rawTotal": 28,
+            "meanRaw": 4,
+            "score0To100": 100,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "outcome_pulse_overall",
+            "label": "Ishod timskog rada",
+            "blockKey": "outcome_pulse",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "situational_judgment_overall",
+            "label": "Timsko prosudjivanje u situacijama",
+            "blockKey": "situational_judgment",
+            "scoreModel": "expert_key_partial_credit_v1",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "rawTotal": 15,
+            "meanRaw": 2.5,
+            "score0To100": 75,
+            "scaleMin": -12,
+            "scaleMax": 24,
+            "metadata": {}
+          }
+        ]
+      }
+    },
+    {
+      "candidate_id": "GD-003",
+      "score": {
+        "status": "scored",
+        "supportedQuestionCount": 48,
+        "scoredQuestionCount": 48,
+        "rawTotal": null,
+        "meanRaw": null,
+        "score0To100": null,
+        "missingQuestionIds": [],
+        "ignoredInvalidAnswerCount": 0,
+        "invalidSavedAnswerCount": 0,
+        "ignoredStaleAnswerCount": 0,
+        "savedLikertAnswerCount": 42,
+        "savedSjtAnswerCount": 6,
+        "scaleMin": null,
+        "scaleMax": null,
+        "scoreValueSource": "mixed_runtime_db_truth",
+        "reason": null,
+        "runtimeWarnings": [],
+        "unsupportedQuestionIds": [],
+        "blocks": [
+          {
+            "blockKey": "tdm-31-V1",
+            "blockType": "likert",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "scoreKeys": [
+              "tdm-31-V1_overall",
+              "tdm_domain_communication",
+              "tdm_domain_roles_and_goals",
+              "tdm_domain_team_primacy",
+              "tdm_domain_cohesion"
+            ]
+          },
+          {
+            "blockKey": "psychological_safety",
+            "blockType": "likert",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "scoreKeys": [
+              "psychological_safety_overall"
+            ]
+          },
+          {
+            "blockKey": "outcome_pulse",
+            "blockType": "likert",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "scoreKeys": [
+              "outcome_pulse_overall"
+            ]
+          },
+          {
+            "blockKey": "situational_judgment",
+            "blockType": "sjt_best_worst",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "scoreKeys": [
+              "situational_judgment_overall"
+            ]
+          }
+        ],
+        "scoreEntries": [
+          {
+            "scoreKey": "tdm-31-V1_overall",
+            "label": "Razvojna zrelost tima",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "rawTotal": 89,
+            "meanRaw": 2.87,
+            "score0To100": 62.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "tdm_domain_communication",
+            "label": "Communication",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 14,
+            "scoredItemCount": 14,
+            "rawTotal": 41,
+            "meanRaw": 2.93,
+            "score0To100": 64.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_roles_and_goals",
+            "label": "Roles and Goals",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 10,
+            "meanRaw": 2.5,
+            "score0To100": 50,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_team_primacy",
+            "label": "Team Primacy",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 2,
+            "scoredItemCount": 2,
+            "rawTotal": 6,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_cohesion",
+            "label": "Cohesion",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "psychological_safety_overall",
+            "label": "Psiholoska sigurnost u timu",
+            "blockKey": "psychological_safety",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "rawTotal": 14,
+            "meanRaw": 2,
+            "score0To100": 33.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "outcome_pulse_overall",
+            "label": "Ishod timskog rada",
+            "blockKey": "outcome_pulse",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "situational_judgment_overall",
+            "label": "Timsko prosudjivanje u situacijama",
+            "blockKey": "situational_judgment",
+            "scoreModel": "expert_key_partial_credit_v1",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "rawTotal": 7,
+            "meanRaw": 1.17,
+            "score0To100": 52.78,
+            "scaleMin": -12,
+            "scaleMax": 24,
+            "metadata": {}
+          }
+        ]
+      }
+    },
+    {
+      "candidate_id": "GD-004",
+      "score": {
+        "status": "scored",
+        "supportedQuestionCount": 48,
+        "scoredQuestionCount": 48,
+        "rawTotal": null,
+        "meanRaw": null,
+        "score0To100": null,
+        "missingQuestionIds": [],
+        "ignoredInvalidAnswerCount": 0,
+        "invalidSavedAnswerCount": 0,
+        "ignoredStaleAnswerCount": 0,
+        "savedLikertAnswerCount": 42,
+        "savedSjtAnswerCount": 6,
+        "scaleMin": null,
+        "scaleMax": null,
+        "scoreValueSource": "mixed_runtime_db_truth",
+        "reason": null,
+        "runtimeWarnings": [],
+        "unsupportedQuestionIds": [],
+        "blocks": [
+          {
+            "blockKey": "tdm-31-V1",
+            "blockType": "likert",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "scoreKeys": [
+              "tdm-31-V1_overall",
+              "tdm_domain_communication",
+              "tdm_domain_roles_and_goals",
+              "tdm_domain_team_primacy",
+              "tdm_domain_cohesion"
+            ]
+          },
+          {
+            "blockKey": "psychological_safety",
+            "blockType": "likert",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "scoreKeys": [
+              "psychological_safety_overall"
+            ]
+          },
+          {
+            "blockKey": "outcome_pulse",
+            "blockType": "likert",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "scoreKeys": [
+              "outcome_pulse_overall"
+            ]
+          },
+          {
+            "blockKey": "situational_judgment",
+            "blockType": "sjt_best_worst",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "scoreKeys": [
+              "situational_judgment_overall"
+            ]
+          }
+        ],
+        "scoreEntries": [
+          {
+            "scoreKey": "tdm-31-V1_overall",
+            "label": "Razvojna zrelost tima",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "rawTotal": 112,
+            "meanRaw": 3.61,
+            "score0To100": 87,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "tdm_domain_communication",
+            "label": "Communication",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 14,
+            "scoredItemCount": 14,
+            "rawTotal": 53,
+            "meanRaw": 3.79,
+            "score0To100": 93,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_roles_and_goals",
+            "label": "Roles and Goals",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 10,
+            "meanRaw": 2.5,
+            "score0To100": 50,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_team_primacy",
+            "label": "Team Primacy",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 2,
+            "scoredItemCount": 2,
+            "rawTotal": 8,
+            "meanRaw": 4,
+            "score0To100": 100,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_cohesion",
+            "label": "Cohesion",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 16,
+            "meanRaw": 4,
+            "score0To100": 100,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "psychological_safety_overall",
+            "label": "Psiholoska sigurnost u timu",
+            "blockKey": "psychological_safety",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "rawTotal": 21,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "outcome_pulse_overall",
+            "label": "Ishod timskog rada",
+            "blockKey": "outcome_pulse",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 16,
+            "meanRaw": 4,
+            "score0To100": 100,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "situational_judgment_overall",
+            "label": "Timsko prosudjivanje u situacijama",
+            "blockKey": "situational_judgment",
+            "scoreModel": "expert_key_partial_credit_v1",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "rawTotal": 17,
+            "meanRaw": 2.83,
+            "score0To100": 80.56,
+            "scaleMin": -12,
+            "scaleMax": 24,
+            "metadata": {}
+          }
+        ]
+      }
+    },
+    {
+      "candidate_id": "GD-005",
+      "score": {
+        "status": "scored",
+        "supportedQuestionCount": 48,
+        "scoredQuestionCount": 48,
+        "rawTotal": null,
+        "meanRaw": null,
+        "score0To100": null,
+        "missingQuestionIds": [],
+        "ignoredInvalidAnswerCount": 0,
+        "invalidSavedAnswerCount": 0,
+        "ignoredStaleAnswerCount": 0,
+        "savedLikertAnswerCount": 42,
+        "savedSjtAnswerCount": 6,
+        "scaleMin": null,
+        "scaleMax": null,
+        "scoreValueSource": "mixed_runtime_db_truth",
+        "reason": null,
+        "runtimeWarnings": [],
+        "unsupportedQuestionIds": [],
+        "blocks": [
+          {
+            "blockKey": "tdm-31-V1",
+            "blockType": "likert",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "scoreKeys": [
+              "tdm-31-V1_overall",
+              "tdm_domain_communication",
+              "tdm_domain_roles_and_goals",
+              "tdm_domain_team_primacy",
+              "tdm_domain_cohesion"
+            ]
+          },
+          {
+            "blockKey": "psychological_safety",
+            "blockType": "likert",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "scoreKeys": [
+              "psychological_safety_overall"
+            ]
+          },
+          {
+            "blockKey": "outcome_pulse",
+            "blockType": "likert",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "scoreKeys": [
+              "outcome_pulse_overall"
+            ]
+          },
+          {
+            "blockKey": "situational_judgment",
+            "blockType": "sjt_best_worst",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "scoreKeys": [
+              "situational_judgment_overall"
+            ]
+          }
+        ],
+        "scoreEntries": [
+          {
+            "scoreKey": "tdm-31-V1_overall",
+            "label": "Razvojna zrelost tima",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "rawTotal": 89,
+            "meanRaw": 2.87,
+            "score0To100": 62.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "tdm_domain_communication",
+            "label": "Communication",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 14,
+            "scoredItemCount": 14,
+            "rawTotal": 41,
+            "meanRaw": 2.93,
+            "score0To100": 64.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_roles_and_goals",
+            "label": "Roles and Goals",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 10,
+            "meanRaw": 2.5,
+            "score0To100": 50,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_team_primacy",
+            "label": "Team Primacy",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 2,
+            "scoredItemCount": 2,
+            "rawTotal": 6,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_cohesion",
+            "label": "Cohesion",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "psychological_safety_overall",
+            "label": "Psiholoska sigurnost u timu",
+            "blockKey": "psychological_safety",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "rawTotal": 28,
+            "meanRaw": 4,
+            "score0To100": 100,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "outcome_pulse_overall",
+            "label": "Ishod timskog rada",
+            "blockKey": "outcome_pulse",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "situational_judgment_overall",
+            "label": "Timsko prosudjivanje u situacijama",
+            "blockKey": "situational_judgment",
+            "scoreModel": "expert_key_partial_credit_v1",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "rawTotal": 7,
+            "meanRaw": 1.17,
+            "score0To100": 52.78,
+            "scaleMin": -12,
+            "scaleMax": 24,
+            "metadata": {}
+          }
+        ]
+      }
+    },
+    {
+      "candidate_id": "GD-019",
+      "score": {
+        "status": "scored",
+        "supportedQuestionCount": 48,
+        "scoredQuestionCount": 48,
+        "rawTotal": null,
+        "meanRaw": null,
+        "score0To100": null,
+        "missingQuestionIds": [],
+        "ignoredInvalidAnswerCount": 0,
+        "invalidSavedAnswerCount": 0,
+        "ignoredStaleAnswerCount": 0,
+        "savedLikertAnswerCount": 42,
+        "savedSjtAnswerCount": 6,
+        "scaleMin": null,
+        "scaleMax": null,
+        "scoreValueSource": "mixed_runtime_db_truth",
+        "reason": null,
+        "runtimeWarnings": [],
+        "unsupportedQuestionIds": [],
+        "blocks": [
+          {
+            "blockKey": "tdm-31-V1",
+            "blockType": "likert",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "scoreKeys": [
+              "tdm-31-V1_overall",
+              "tdm_domain_communication",
+              "tdm_domain_roles_and_goals",
+              "tdm_domain_team_primacy",
+              "tdm_domain_cohesion"
+            ]
+          },
+          {
+            "blockKey": "psychological_safety",
+            "blockType": "likert",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "scoreKeys": [
+              "psychological_safety_overall"
+            ]
+          },
+          {
+            "blockKey": "outcome_pulse",
+            "blockType": "likert",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "scoreKeys": [
+              "outcome_pulse_overall"
+            ]
+          },
+          {
+            "blockKey": "situational_judgment",
+            "blockType": "sjt_best_worst",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "scoreKeys": [
+              "situational_judgment_overall"
+            ]
+          }
+        ],
+        "scoreEntries": [
+          {
+            "scoreKey": "tdm-31-V1_overall",
+            "label": "Razvojna zrelost tima",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 31,
+            "scoredItemCount": 31,
+            "rawTotal": 66,
+            "meanRaw": 2.13,
+            "score0To100": 37.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "tdm_domain_communication",
+            "label": "Communication",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 14,
+            "scoredItemCount": 14,
+            "rawTotal": 29,
+            "meanRaw": 2.07,
+            "score0To100": 35.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_roles_and_goals",
+            "label": "Roles and Goals",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 10,
+            "meanRaw": 2.5,
+            "score0To100": 50,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_team_primacy",
+            "label": "Team Primacy",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 2,
+            "scoredItemCount": 2,
+            "rawTotal": 4,
+            "meanRaw": 2,
+            "score0To100": 33.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "tdm_domain_cohesion",
+            "label": "Cohesion",
+            "blockKey": "tdm-31-V1",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 8,
+            "meanRaw": 2,
+            "score0To100": 33.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {
+              "scoreRole": "domain"
+            }
+          },
+          {
+            "scoreKey": "psychological_safety_overall",
+            "label": "Psiholoska sigurnost u timu",
+            "blockKey": "psychological_safety",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 7,
+            "scoredItemCount": 7,
+            "rawTotal": 14,
+            "meanRaw": 2,
+            "score0To100": 33.33,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "outcome_pulse_overall",
+            "label": "Ishod timskog rada",
+            "blockKey": "outcome_pulse",
+            "scoreModel": "simple_linear_v1",
+            "itemCount": 4,
+            "scoredItemCount": 4,
+            "rawTotal": 12,
+            "meanRaw": 3,
+            "score0To100": 66.67,
+            "scaleMin": 1,
+            "scaleMax": 4,
+            "metadata": {}
+          },
+          {
+            "scoreKey": "situational_judgment_overall",
+            "label": "Timsko prosudjivanje u situacijama",
+            "blockKey": "situational_judgment",
+            "scoreModel": "expert_key_partial_credit_v1",
+            "itemCount": 6,
+            "scoredItemCount": 6,
+            "rawTotal": 15,
+            "meanRaw": 2.5,
+            "score0To100": 75,
+            "scaleMin": -12,
+            "scaleMax": 24,
+            "metadata": {}
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -4,6 +4,8 @@
 
 > **Team Dynamics runtime snapshot gate (2026-07-17):** canonical answer identity mora doći iz aktivnog imported runtimea, ne draft packagea. `scripts/export-team-dynamics-runtime-contract.cjs` resolvea jedan active `team_dynamics_assessment_v1` / `mixed_v1` test i čita samo tests, dimensions, questions i options. `scripts/validate-team-dynamics-runtime-contract.cjs` offline validira generated code/value/order/metadata snapshot. Snapshot još nije kreiran niti potvrđen protiv live DB; nema Team Dynamics fixture answers, scoreova, agregacije, reportova ni OpenAI poziva.
 
+> **Update:** snapshot je kreiran i VALID/live EXACT_MATCH (`375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`): 48 required pitanja i 192 options. Offline fixture koristi `buildTeamDynamicsMixedScore` i `loadTeamDynamicsFinalAggregation` nad snapshot-derived adapterom; nema DB writea, live scoringa, agregacije persistencea, Team Fit reporta ili OpenAI poziva.
+
 ## Post-preflight implementation evidence — transaction-safe GD-001 writer
 
 - RPC: `public.create_golden_demo_gd001_fixture_v1(p_fixture jsonb)`.

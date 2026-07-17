@@ -1,0 +1,7 @@
+team_id,candidate_id,display_name,job_title,email,development_or_holdout,expected_participation_state,deterministic_verification_allowed,ai_prompt_calibration_allowed
+GDT-01,GD-001,Amel Kovačević,Kreditni službenik za poljoprivredne klijente,amel.kovacevic@partnerplus.ba,development,completed,true,false
+GDT-01,GD-002,Nataša Rapaić,Voditeljica tima kreditnih službenika,natasa.rapaic@partnerplus.ba,development,completed,true,false
+GDT-01,GD-003,Vladimir Lučić,Terenski kreditni službenik,vladimir.lucic@partnerplus.ba,development,completed,true,false
+GDT-01,GD-004,Natali Delić,Kreditna službenica za stanovništvo,natali.delic@partnerplus.ba,development,completed,true,false
+GDT-01,GD-005,Anisa Lojo Bajrić,Savjetnica za klijente i kreditne proizvode,anisa.lojo.bajric@partnerplus.ba,development,completed,true,false
+GDT-01,GD-019,Ivan Bartulović,Kreditni službenik za poslovne klijente,ivan.bartulovic@partnerplus.ba,holdout,completed,true,false
