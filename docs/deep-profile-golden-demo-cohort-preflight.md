@@ -177,6 +177,8 @@ Run je prijavio participant-only orphan nalaze koji nisu imali dokazanu canonica
 
 Drugi reviewed SELECT-only run je potvrdio da participant-only orphan nalazi više ne postoje. Ipak, checksum mismatch i missing option catalog za svih 48 canonical pitanja nisu prihvaćeni kao stvarni runtime drift: adapter je runtime `questions` i `answer_options` query širio i na IPIP/SAFRAN/MWMS. Offline patch sada runtime read ograničava na canonical i legacy Team Dynamics test IDs, a target-like assignment/wrapper lineage zahtijeva canonical/legacy package dokaz. Treći SELECT-only live rerun još nije izvršen. Foundation blockeri ostaju isti; writer, foundation write, RPC i migracija ostaju blokirani do reruna i zasebne identity/team foundation odluke.
 
+Treći reviewed SELECT-only GDT-01 run je prema operator evidenceu potvrdio `PARTIAL` sa validnim runtimeom i bez target persistence artefakata. Preostali foundation nalazi su `team_missing`, `participant_missing` za `GD-002`–`GD-005` i `GD-019`, te `membership_missing` za `GD-001`; `GD-001` participant postoji. Full-cohort foundation inspector je sada implementiran samo offline: canonical contract čita zaključanih 24 kandidata iz fixturea, četiri planirana tima iz plana i 24 očekivana active membershipa. Live full-cohort foundation read, foundation writer/RPC/migracija i Team Dynamics writer nisu pokrenuti niti odobreni.
+
 ### Potvrđeno iz codebasea
 
 - Standard battery ima tri active lanea i Composite zahtijeva sva tri linked completed attempta.

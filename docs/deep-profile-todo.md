@@ -18,6 +18,8 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 
 > **Update — second reviewed live inspector evidence and runtime-query precision correction:** drugi operator-controlled SELECT-only run više nije prijavio participant-only `orphan_target_attempt` ili `orphan_target_response`, ali je prijavio checksum mismatch i missing option katalog nad svih 48 canonical pitanja. Offline audit je dokazao da adapter tada učitava `questions`/`answer_options` za IPIP, SAFRAN i MWMS zajedno s canonical/legacy Team Dynamics runtimeom; checksum nalaz se zato ne prihvata kao stvarni runtime drift. Runtime query i assignment/wrapper lineage su suženi na canonical/legacy Team Dynamics dokaz; treći operator-controlled SELECT-only rerun je obavezan. Foundation blockeri ostaju isti; foundation write, writer, RPC i migracija ostaju blokirani.
 
+> **Update — third reviewed live inspector and full-cohort foundation preflight:** treći operator-controlled SELECT-only GDT-01 run je potvrdio validan runtime i `PARTIAL` samo zbog foundation blockera: nedostaju GDT-01 tim, `GD-002`–`GD-005`, `GD-019` i membership za `GD-001`; nema target assignmenta, wrappera, Team Dynamics attemptova/responses, selections, scoreova, agregacija ili reporta. Ovaj task dodaje offline-only canonical contract/classifier za svih 24 kandidata, četiri tima i 24 membershipa, uz `EMPTY/PARTIAL/EXACT_MATCH/CONFLICT` eligibility model. Live full-cohort foundation inspector još nije izvršen; foundation write nije odobren, a Team Dynamics writer ostaje blokiran.
+
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
 Pravila: 
