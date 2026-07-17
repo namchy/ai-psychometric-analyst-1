@@ -219,7 +219,7 @@ Evaluator rezultat najmanje sadrži `PASS`, `PASS WITH NOTES` ili `FAIL`, `demoR
 | `GDT-01` | Kreditno poslovanje i rad s klijentima | `GD-001`–`GD-005`, `GD-019` | Not started | No | Not started | Not started | Not ready |
 | `GDT-02` | Obrada kreditnih zahtjeva i kreditna administracija | `GD-006`–`GD-010`, `GD-020` | Not started | No | Not started | Not started | Not ready |
 | `GDT-03` | Upravljanje kreditnim rizikom i portfoliom | `GD-011`–`GD-014`, `GD-021`–`GD-022` | Not started | No | Not started | Not started | Not ready |
-| `GDT-04` | Naplata i operativna podrška poslovnicama; jedini lifecycle tim | `GD-015`–`GD-018`, `GD-023`–`GD-024` | Not started | No | Not started | Not started | Not ready |
+| `GDT-04` | Naplata i operativna podrška poslovnicama | `GD-015`–`GD-018`, `GD-023`–`GD-024` | Not started | No | Not started | Not started | Not ready — lifecycle tim |
 
 ## Milestones
 

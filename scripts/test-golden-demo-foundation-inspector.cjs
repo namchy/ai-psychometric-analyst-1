@@ -35,6 +35,7 @@ assert.deepEqual(contract.fixtureValidationErrors, []);
 assert.equal(contract.participants.length, 24);
 assert.equal(contract.teams.length, 4);
 assert.equal(contract.memberships.length, 24);
+assert.equal(GOLDEN_DEMO_TEAM_NAMES["GDT-04"], "Naplata i operativna podrška poslovnicama");
 assert.deepEqual(
   contract.teams.map((team) => team.memberCandidateIds.length),
   [6, 6, 6, 6],

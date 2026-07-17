@@ -24,7 +24,7 @@ export const GOLDEN_DEMO_TEAM_NAMES = {
   "GDT-01": "Kreditno poslovanje i rad s klijentima",
   "GDT-02": "Obrada kreditnih zahtjeva i kreditna administracija",
   "GDT-03": "Upravljanje kreditnim rizikom i portfoliom",
-  "GDT-04": "Naplata i operativna podrška poslovnicama; jedini lifecycle tim",
+  "GDT-04": "Naplata i operativna podrška poslovnicama",
 } as const;
 
 export type GoldenDemoFoundationParticipant = {
