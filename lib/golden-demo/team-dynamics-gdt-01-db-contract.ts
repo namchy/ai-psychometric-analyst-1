@@ -687,8 +687,19 @@ export function classifyGdt01DbState(
 
   const targetParticipantIds = new Set([...targetParticipants.values()].map((participant) => participant.id));
   const targetAssignmentIds = new Set(targetAssignments.map((item) => item.id));
+  const allAssignments = [...observed.assignments, ...observed.ambientAssignments];
+  const targetLikeAssignmentIds = new Set(
+    allAssignments
+      .filter(
+        (candidate) =>
+          (candidate.packageSlug === GDT_01_PACKAGE_SLUG || candidate.packageSlug === GDT_01_LEGACY_PACKAGE_SLUG) &&
+          (candidate.teamId === targetTeamId || observed.wrappers.some((wrapper) => wrapper.assignmentId === candidate.id && targetParticipantIds.has(wrapper.participantId))),
+      )
+      .map((candidate) => candidate.id),
+  );
   const wrappers = observed.wrappers.filter((wrapper) => targetAssignmentIds.has(wrapper.assignmentId));
-  for (const wrapper of observed.wrappers) {
+  const targetLikeWrappers = observed.wrappers.filter((wrapper) => targetLikeAssignmentIds.has(wrapper.assignmentId));
+  for (const wrapper of targetLikeWrappers) {
     if (targetParticipantIds.has(wrapper.participantId) && !targetAssignmentIds.has(wrapper.assignmentId)) {
       addUnique(conflicts, finding("orphan_target_wrapper", "Target participant has a wrapper outside the canonical GDT-01 assignment.", "team_assessment_participants", undefined, wrapper.id));
     }
@@ -734,8 +745,8 @@ export function classifyGdt01DbState(
     if (attempt.status !== contract.lifecycle.attemptStatus || attempt.completedAt !== null) addUnique(conflicts, finding("attempt_lifecycle_mismatch", `Attempt lifecycle differs for ${candidateId ?? wrapper.id}.`, "attempts", contract.lifecycle.attemptStatus, attempt.status));
   }
   const targetLikeAttemptIds = new Set(attemptIds);
-  for (const wrapper of observed.wrappers) {
-    if (targetParticipantIds.has(wrapper.participantId) && wrapper.attemptId) {
+  for (const wrapper of targetLikeWrappers) {
+    if (wrapper.attemptId) {
       targetLikeAttemptIds.add(wrapper.attemptId);
     }
   }

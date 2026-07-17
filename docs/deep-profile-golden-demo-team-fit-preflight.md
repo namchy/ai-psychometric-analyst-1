@@ -161,7 +161,7 @@ For evidence, keep GDT-01 as development/calibration and reserve an entire untou
 
 ### Current GDT-01 inspector boundary
 
-GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Prvi reviewed live run je bio SELECT-only i potvrdio je foundation blockere; live rerun, Team Dynamics aggregation i Team Fit provider/report flow nisu pokrenuti.
+GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Drugi reviewed live run je bio SELECT-only, uklonio je participant-only orphan false positives, ali je otvorio runtime option-query scope correction; treći live rerun, Team Dynamics aggregation i Team Fit provider/report flow nisu pokrenuti. Foundation blockeri ostaju upstream precondition.
 
 1. Is a future *actual* Team Fit questionnaire desired? Current code only supports Team Fit as a report; adding an instrument requires a separate product and schema decision.
 2. What source-version rule invalidates an existing Team Fit report when a Team Dynamics member, aggregation snapshot or candidate standard battery changes? Current database stores opaque UUID references without automatic invalidation.

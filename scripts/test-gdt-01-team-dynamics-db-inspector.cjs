@@ -210,8 +210,69 @@ function addUnrelatedStandardBatteryData(state) {
   return state;
 }
 
+function addLargeUnrelatedRuntimeCatalog(state) {
+  state.unrelatedRuntimeQuestions = [
+    ["test:ipip", "ipip-neo-120-v1"],
+    ["test:safran", "safran_v1"],
+    ["test:mwms", "mwms_v1"],
+  ].map(([testId, slug]) => ({
+    id: `question:${slug}:runtime`,
+    testId,
+    code: `${slug}:runtime`,
+    order: 1,
+    questionType: "single_choice",
+    required: true,
+    isActive: true,
+    metadata: {},
+  }));
+  state.unrelatedRuntimeOptions = Array.from({ length: 600 }, (_, index) => ({
+    id: `option:ambient:${index}`,
+    questionId: state.unrelatedRuntimeQuestions[index % state.unrelatedRuntimeQuestions.length].id,
+    code: `AMBIENT_${index}`,
+    value: index,
+    order: index + 1,
+    metadata: {},
+  }));
+  return state;
+}
+
+function addUnrelatedTeamAssessmentWrapper(state, packageSlug = "other_team_package") {
+  state.assignments.push({
+    id: `assignment:${packageSlug}`,
+    teamId: "team:gdt-01",
+    packageSlug,
+    status: "active",
+  });
+  state.wrappers.push({
+    id: `wrapper:${packageSlug}:GD-001`,
+    assignmentId: `assignment:${packageSlug}`,
+    membershipId: "membership:GD-001",
+    participantId: "participant:GD-001",
+    attemptId: `attempt:${packageSlug}:GD-001`,
+    status: "completed",
+    startedAt: "2026-07-17T00:00:00.000Z",
+    completedAt: "2026-07-17T00:00:00.000Z",
+  });
+  state.attempts.push({
+    id: `attempt:${packageSlug}:GD-001`,
+    testId: "test:ipip",
+    testSlug: "ipip-neo-120-v1",
+    organizationId: "org:partner-plus",
+    participantId: "participant:GD-001",
+    userId: null,
+    locale: "bs",
+    status: "completed",
+    completedAt: "2026-07-17T00:00:00.000Z",
+  });
+  state.unrelatedMemberScores = [{ id: `member-score:${packageSlug}` }];
+  state.unrelatedDimensionScores = [{ id: `dimension-score:${packageSlug}`, attempt_id: `attempt:${packageSlug}:GD-001` }];
+  state.unrelatedAttemptReports = [{ id: `attempt-report:${packageSlug}`, attempt_id: `attempt:${packageSlug}:GD-001` }];
+  return state;
+}
+
 function createMockSupabaseFromExactState(state) {
   const calls = [];
+  const filters = [];
   const snapshot = contract.runtimeSnapshot;
   const runtimeTest = state.runtime.test;
   const rows = {
@@ -225,6 +286,7 @@ function createMockSupabaseFromExactState(state) {
         metadata: runtimeTest.metadata,
       },
       ...[
+        ["test:team-dynamics-legacy", GDT_01_LEGACY_PACKAGE_SLUG],
         ["test:ipip", "ipip-neo-120-v1"],
         ["test:safran", "safran_v1"],
         ["test:mwms", "mwms_v1"],
@@ -244,7 +306,7 @@ function createMockSupabaseFromExactState(state) {
       is_active: true,
       metadata: dimension.metadata,
     })),
-    questions: state.runtime.questions.map((question) => ({
+    questions: [...state.runtime.questions, ...(state.unrelatedRuntimeQuestions ?? [])].map((question) => ({
       id: question.id,
       test_id: question.testId,
       code: question.code,
@@ -254,7 +316,7 @@ function createMockSupabaseFromExactState(state) {
       is_active: question.isActive,
       metadata: question.metadata,
     })),
-    answer_options: state.runtime.options.map((option) => ({
+    answer_options: [...state.runtime.options, ...(state.unrelatedRuntimeOptions ?? [])].map((option) => ({
       id: option.id,
       question_id: option.questionId,
       code: option.code,
@@ -289,7 +351,7 @@ function createMockSupabaseFromExactState(state) {
       is_active: membership.isActive,
       left_at: membership.leftAt,
     })),
-    team_assessment_assignments: state.assignments.map((assignment) => ({
+    team_assessment_assignments: [...state.assignments, ...state.ambientAssignments].map((assignment) => ({
       id: assignment.id,
       team_id: assignment.teamId,
       package_slug: assignment.packageSlug,
@@ -330,7 +392,7 @@ function createMockSupabaseFromExactState(state) {
       answer_option_id: selection.answerOptionId,
       selection_role: selection.selectionRole,
     })),
-    team_assessment_participant_scores: [],
+    team_assessment_participant_scores: state.unrelatedMemberScores ?? [],
     dimension_scores: state.unrelatedDimensionScores ?? [],
     team_assessment_aggregation_snapshots: [],
     team_assessment_report_selection_drafts: [],
@@ -341,6 +403,7 @@ function createMockSupabaseFromExactState(state) {
   };
   return {
     calls,
+    filters,
     client: {
       from(table) {
         let currentRows = rows[table] ?? [];
@@ -350,14 +413,17 @@ function createMockSupabaseFromExactState(state) {
             return query;
           },
           eq(column, value) {
+            filters.push({ table, operation: "eq", column, value });
             currentRows = currentRows.filter((row) => row[column] === value);
             return query;
           },
           in(column, values) {
+            filters.push({ table, operation: "in", column, values: [...values] });
             currentRows = currentRows.filter((row) => values.includes(row[column]));
             return query;
           },
           is(column, value) {
+            filters.push({ table, operation: "is", column, value });
             currentRows = currentRows.filter((row) => row[column] === value);
             return query;
           },
@@ -400,6 +466,46 @@ const adapterTestPromise = (async () => {
   assert.ok(mock.calls.every((call) => call.operation === "select"));
 })();
 
+const runtimeQueryScopePromise = (async () => {
+  const runtimeScopeState = addLargeUnrelatedRuntimeCatalog(exactState());
+  const mock = createMockSupabaseFromExactState(runtimeScopeState);
+  const observed = await createGdt01SupabaseReadRepository(mock.client, contract).readState();
+  const result = classifyGdt01DbState(contract, observed);
+  assert.equal(result.state, "EXACT_MATCH");
+  assert.equal(observed.runtime.questions.length, GDT_01_COUNTS.questionsPerMember);
+  assert.equal(observed.runtime.options.length, contract.runtimeSnapshot.source_summary.option_count);
+  assert.equal(observed.runtime.snapshot.checksum, contract.runtimeSnapshot.checksum);
+  const testSlugFilter = mock.filters.find((filter) => filter.table === "tests" && filter.operation === "in" && filter.column === "slug");
+  assert.deepEqual(testSlugFilter.values, [GDT_01_PACKAGE_SLUG, GDT_01_LEGACY_PACKAGE_SLUG]);
+  const runtimeQuestionFilter = mock.filters.find((filter) => filter.table === "questions" && filter.operation === "in" && filter.column === "test_id");
+  assert.deepEqual(new Set(runtimeQuestionFilter.values), new Set([observed.runtime.test.id, "test:team-dynamics-legacy"]));
+  const optionFilter = mock.filters.find((filter) => filter.table === "answer_options" && filter.operation === "in" && filter.column === "question_id");
+  const standardQuestionIds = new Set(runtimeScopeState.unrelatedRuntimeQuestions.map((question) => question.id));
+  assert.equal(optionFilter.values.some((id) => standardQuestionIds.has(id)), false);
+})();
+
+const missingCanonicalOptionCatalogPromise = (async () => {
+  const state = exactState();
+  const missingQuestionId = state.runtime.questions[0].id;
+  state.runtime.options = state.runtime.options.filter((option) => option.questionId !== missingQuestionId);
+  const mock = createMockSupabaseFromExactState(state);
+  const observed = await createGdt01SupabaseReadRepository(mock.client, contract).readState();
+  const result = classifyGdt01DbState(contract, observed);
+  assert.equal(result.state, "CONFLICT");
+  assert.ok(result.blockingFindings.some((finding) => finding.code === "runtime_contract_invalid"));
+})();
+
+const changedCanonicalOptionPromise = (async () => {
+  const state = exactState();
+  state.runtime.options[0].value = "changed";
+  const mock = createMockSupabaseFromExactState(state);
+  const observed = await createGdt01SupabaseReadRepository(mock.client, contract).readState();
+  const result = classifyGdt01DbState(contract, observed);
+  assert.equal(result.state, "CONFLICT");
+  assert.notEqual(observed.runtime.snapshot.checksum, contract.runtimeSnapshot.checksum);
+  assert.ok(result.blockingFindings.some((finding) => finding.code === "runtime_checksum_mismatch"));
+})();
+
 const unrelatedStandard = addUnrelatedStandardBatteryData(exactState());
 const unrelatedStandardResult = expectState("unrelated standard battery data", unrelatedStandard, "EXACT_MATCH");
 assert.equal(unrelatedStandardResult.blockingFindings.some((finding) => finding.code.startsWith("orphan_target_")), false);
@@ -412,6 +518,20 @@ const unrelatedStandardAdapterPromise = (async () => {
   const result = classifyGdt01DbState(contract, observed);
   assert.equal(result.state, "EXACT_MATCH");
   assert.equal(result.blockingFindings.some((finding) => finding.code.startsWith("orphan_target_")), false);
+  assert.deepEqual(observed.dimensionScoreIds, []);
+  assert.deepEqual(observed.attemptReportIds, []);
+})();
+
+const unrelatedTeamAssessmentAdapterPromise = (async () => {
+  const state = addUnrelatedTeamAssessmentWrapper(exactState());
+  const mock = createMockSupabaseFromExactState(state);
+  const observed = await createGdt01SupabaseReadRepository(mock.client, contract).readState();
+  const result = classifyGdt01DbState(contract, observed);
+  assert.equal(result.state, "CONFLICT");
+  assert.ok(result.blockingFindings.some((finding) => finding.code === "noncanonical_target_assignment"));
+  assert.equal(result.blockingFindings.some((finding) => finding.code === "orphan_target_wrapper"), false);
+  assert.equal(result.blockingFindings.some((finding) => finding.code === "orphan_target_attempt"), false);
+  assert.deepEqual(observed.memberScoreIds, []);
   assert.deepEqual(observed.dimensionScoreIds, []);
   assert.deepEqual(observed.attemptReportIds, []);
 })();
@@ -638,6 +758,71 @@ ambientAssignment.ambientAssignments.push({
 const ambientAssignmentResult = expectState("ambient assignment", ambientAssignment, "EXACT_MATCH");
 assert.ok(ambientAssignmentResult.diagnosticFindings.some((finding) => finding.code === "ambient_team_dynamics_assignment"));
 
+const ambientNonTeamDynamicsWrapper = exactState();
+ambientNonTeamDynamicsWrapper.ambientAssignments.push({
+  id: "assignment:ambient-other-package",
+  teamId: "team:gdt-02",
+  packageSlug: "other_team_package",
+  status: "active",
+});
+ambientNonTeamDynamicsWrapper.wrappers.push({
+  id: "wrapper:ambient-other-package:GD-001",
+  assignmentId: "assignment:ambient-other-package",
+  membershipId: "membership:GD-001",
+  participantId: "participant:GD-001",
+  attemptId: "attempt:ambient-other-package:GD-001",
+  status: "completed",
+  startedAt: "2026-07-17T00:00:00.000Z",
+  completedAt: "2026-07-17T00:00:00.000Z",
+});
+ambientNonTeamDynamicsWrapper.attempts.push({
+  id: "attempt:ambient-other-package:GD-001",
+  testId: "test:ipip",
+  testSlug: "ipip-neo-120-v1",
+  organizationId: "org:partner-plus",
+  participantId: "participant:GD-001",
+  userId: null,
+  locale: "bs",
+  status: "completed",
+  completedAt: "2026-07-17T00:00:00.000Z",
+});
+const ambientNonTeamDynamicsWrapperResult = expectState("ambient non-Team-Dynamics wrapper", ambientNonTeamDynamicsWrapper, "EXACT_MATCH");
+assert.equal(ambientNonTeamDynamicsWrapperResult.blockingFindings.some((finding) => finding.code.startsWith("orphan_target_")), false);
+
+for (const packageSlug of [GDT_01_PACKAGE_SLUG, GDT_01_LEGACY_PACKAGE_SLUG]) {
+  const teamDynamicsWrapperOutsideTarget = exactState();
+  teamDynamicsWrapperOutsideTarget.ambientAssignments.push({
+    id: `assignment:ambient:${packageSlug}`,
+    teamId: "team:gdt-02",
+    packageSlug,
+    status: "active",
+  });
+  teamDynamicsWrapperOutsideTarget.wrappers.push({
+    id: `wrapper:ambient:${packageSlug}:GD-001`,
+    assignmentId: `assignment:ambient:${packageSlug}`,
+    membershipId: "membership:GD-001",
+    participantId: "participant:GD-001",
+    attemptId: `attempt:ambient:${packageSlug}:GD-001`,
+    status: "invited",
+    startedAt: null,
+    completedAt: null,
+  });
+  teamDynamicsWrapperOutsideTarget.attempts.push({
+    id: `attempt:ambient:${packageSlug}:GD-001`,
+    testId: packageSlug === GDT_01_PACKAGE_SLUG ? teamDynamicsWrapperOutsideTarget.runtime.test.id : "test:team-dynamics-legacy",
+    testSlug: packageSlug,
+    organizationId: "org:partner-plus",
+    participantId: "participant:GD-001",
+    userId: null,
+    locale: "bs",
+    status: "in_progress",
+    completedAt: null,
+  });
+  const result = expectState(`${packageSlug} wrapper outside target assignment`, teamDynamicsWrapperOutsideTarget, "CONFLICT");
+  assert.ok(result.blockingFindings.some((finding) => finding.code === "orphan_target_wrapper"));
+  assert.ok(result.blockingFindings.some((finding) => finding.code === "orphan_target_attempt"));
+}
+
 const precedence = withMutation((state) => {
   state.responses.pop();
   state.attempts[0].locale = "hr";
@@ -654,7 +839,14 @@ assert.deepEqual(parseCli([]), { json: false, verbose: false });
 assert.deepEqual(parseCli(["--json", "--verbose"]), { json: true, verbose: true });
 assert.throws(() => parseCli(["--apply"]), /SELECT-only/);
 
-adapterTestPromise
+Promise.all([
+  adapterTestPromise,
+  runtimeQueryScopePromise,
+  missingCanonicalOptionCatalogPromise,
+  changedCanonicalOptionPromise,
+  unrelatedStandardAdapterPromise,
+  unrelatedTeamAssessmentAdapterPromise,
+])
   .then(() => {
     console.log(JSON.stringify({
       stateCases: "PASS",

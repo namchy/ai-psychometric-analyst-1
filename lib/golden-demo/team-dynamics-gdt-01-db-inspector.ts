@@ -19,12 +19,9 @@ import {
   type Gdt01ObservedTeamFitReport,
 } from "./team-dynamics-gdt-01-db-contract";
 
-const INSPECTOR_TEST_SLUGS = [
+const TEAM_DYNAMICS_TEST_SLUGS = [
   GDT_01_PACKAGE_SLUG,
   GDT_01_LEGACY_PACKAGE_SLUG,
-  "ipip-neo-120-v1",
-  "safran_v1",
-  "mwms_v1",
 ] as const;
 
 type QueryResult<T> = {
@@ -306,7 +303,7 @@ export function createGdt01SupabaseReadRepository(
         supabase,
         "tests",
         "id, slug, status, is_active, scoring_method, metadata",
-        (query) => query.in("slug", [...INSPECTOR_TEST_SLUGS]),
+        (query) => query.in("slug", [...TEAM_DYNAMICS_TEST_SLUGS]),
       );
       const testSlugById = new Map(tests.map((test) => [test.id, test.slug]));
       const canonicalRuntimeTestId = tests.find((test) => test.slug === GDT_01_PACKAGE_SLUG)?.id ?? null;
@@ -420,17 +417,13 @@ export function createGdt01SupabaseReadRepository(
       const targetLikeAssignmentIds = allAssignments
         .filter(
           (assignment) =>
-            (targetTeamIds.has(assignment.team_id) &&
-              (assignment.package_slug === GDT_01_PACKAGE_SLUG || assignment.package_slug === GDT_01_LEGACY_PACKAGE_SLUG)) ||
-            wrappers.some((wrapper) => wrapper.team_assessment_assignment_id === assignment.id && targetParticipantIds.has(wrapper.participant_id)),
+            (assignment.package_slug === GDT_01_PACKAGE_SLUG || assignment.package_slug === GDT_01_LEGACY_PACKAGE_SLUG) &&
+            (targetTeamIds.has(assignment.team_id) ||
+              wrappers.some((wrapper) => wrapper.team_assessment_assignment_id === assignment.id && targetParticipantIds.has(wrapper.participant_id))),
         )
         .map((assignment) => assignment.id);
       const targetLikeWrapperIds = wrappers
-        .filter(
-          (wrapper) =>
-            targetLikeAssignmentIds.includes(wrapper.team_assessment_assignment_id) ||
-            targetParticipantIds.has(wrapper.participant_id),
-        )
+        .filter((wrapper) => targetLikeAssignmentIds.includes(wrapper.team_assessment_assignment_id))
         .map((wrapper) => wrapper.id);
       const targetLikeWrapperAttemptIds = wrappers
         .filter((wrapper) => targetLikeWrapperIds.includes(wrapper.id) && wrapper.attempt_id)

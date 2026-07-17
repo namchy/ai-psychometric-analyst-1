@@ -173,7 +173,9 @@ Pure contract/classifier i SELECT-only GDT-01 inspector adapter su implementiran
 
 Prvi reviewed SELECT-only live inspector run je izvršen prema operator evidenceu. Vratio je `CONFLICT` i `writerEligible=false`; potvrđeni foundation blockeri su `team_missing`, `participant_missing` za `GD-002`–`GD-005` i `GD-019`, te `membership_missing` za `GD-001`. Nije bilo DB writea, RPC-a, scoringa, aggregation persistencea, report generationa ili OpenAI poziva.
 
-Run je prijavio participant-only orphan nalaze koji nisu imali dokazanu canonical/legacy Team Dynamics ili wrapper/assignment lineage vezu. To je precision bug; correction sada scopa orphan attempts/responses i downstream child queries na target-like Team Dynamics univerzum. Blocking findings sada nose kategorije `foundation`, `target_graph`, `target_persistence` ili `runtime`, dok ambient nalazi ostaju zasebni diagnostics. Live rerun još nije izvršen. Writer ostaje blokiran; sljedeći korak je zaseban identity/team foundation slice, pa tek nakon reruna odluka o writer/RPC tasku.
+Run je prijavio participant-only orphan nalaze koji nisu imali dokazanu canonical/legacy Team Dynamics ili wrapper/assignment lineage vezu. To je precision bug; correction sada scopa orphan attempts/responses i downstream child queries na target-like Team Dynamics univerzum. Blocking findings sada nose kategorije `foundation`, `target_graph`, `target_persistence` ili `runtime`, dok ambient nalazi ostaju zasebni diagnostics.
+
+Drugi reviewed SELECT-only run je potvrdio da participant-only orphan nalazi više ne postoje. Ipak, checksum mismatch i missing option catalog za svih 48 canonical pitanja nisu prihvaćeni kao stvarni runtime drift: adapter je runtime `questions` i `answer_options` query širio i na IPIP/SAFRAN/MWMS. Offline patch sada runtime read ograničava na canonical i legacy Team Dynamics test IDs, a target-like assignment/wrapper lineage zahtijeva canonical/legacy package dokaz. Treći SELECT-only live rerun još nije izvršen. Foundation blockeri ostaju isti; writer, foundation write, RPC i migracija ostaju blokirani do reruna i zasebne identity/team foundation odluke.
 
 ### Potvrđeno iz codebasea
 
