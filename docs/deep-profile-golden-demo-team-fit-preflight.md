@@ -163,6 +163,8 @@ For evidence, keep GDT-01 as development/calibration and reserve an entire untou
 
 GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Treći reviewed GDT-01 run je SELECT-only potvrdio validan runtime, `PARTIAL` samo zbog foundation blockera i odsustvo target persistence artefakata. Full-cohort foundation inspector je implementiran offline, ali live foundation read, Team Dynamics aggregation i Team Fit provider/report flow nisu pokrenuti. Foundation write ostaje upstream precondition.
 
+Foundation writer implementation ne mijenja Team Fit granicu: njegov RPC scope je isključivo postojeća organization identity/team foundation (`participants`, `teams`, `team_memberships`). Team Dynamics assignment, answers, scoring, aggregation i Team Fit artefakti ostaju out of scope; live apply nije izvršen.
+
 1. Is a future *actual* Team Fit questionnaire desired? Current code only supports Team Fit as a report; adding an instrument requires a separate product and schema decision.
 2. What source-version rule invalidates an existing Team Fit report when a Team Dynamics member, aggregation snapshot or candidate standard battery changes? Current database stores opaque UUID references without automatic invalidation.
 3. Is access to team member score snapshots by any active organization member acceptable, or should a future privacy decision restrict it to HR/manager roles?

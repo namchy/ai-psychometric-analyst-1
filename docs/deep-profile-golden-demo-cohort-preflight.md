@@ -179,6 +179,8 @@ Drugi reviewed SELECT-only run je potvrdio da participant-only orphan nalazi vi�
 
 Treći reviewed SELECT-only GDT-01 run je prema operator evidenceu potvrdio `PARTIAL` sa validnim runtimeom i bez target persistence artefakata. Preostali foundation nalazi su `team_missing`, `participant_missing` za `GD-002`–`GD-005` i `GD-019`, te `membership_missing` za `GD-001`; `GD-001` participant postoji. Full-cohort foundation inspector je sada implementiran samo offline: canonical contract čita zaključanih 24 kandidata iz fixturea, četiri planirana tima iz plana i 24 očekivana active membershipa. Live full-cohort foundation read, foundation writer/RPC/migracija i Team Dynamics writer nisu pokrenuti niti odobreni.
 
+Controlled foundation writer je sada implementiran samo kao offline-reviewable operator surface: atomic `create_golden_demo_foundation_v1()` migration/RPC validira sve canonical preconditions prije prvog inserta, kreira samo missing participants, teams i memberships u postojećoj organizaciji i zahtijeva finalni `EXACT_MATCH`. Default CLI je read-only; apply je moguć samo uz eksplicitne `--apply --confirm GOLDEN_DEMO_FOUNDATION` guards. RPC, live foundation inspector i write nisu pokrenuti, a Team Dynamics assessment writer ostaje blokiran.
+
 ### Potvrđeno iz codebasea
 
 - Standard battery ima tri active lanea i Composite zahtijeva sva tri linked completed attempta.
