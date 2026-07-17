@@ -31,6 +31,12 @@
 - Scoring operator sada iz istog inspectovanog evidence-a prikazuje tri odvojena stanja: `fixtureWriterState` ostaje `CONFLICT` jer writer contract namjerno opisuje nescorovani seed i mora blokirati reseed/overwrite; `fixtureCompatibilityState` je `EXACT_MATCH` samo kada identitet, originalni response payload, dozvoljene scoring lifecycle mutacije, 184 raw/scored vrijednosti, 40 dimensions, 47/47 score verification i odsustvo report artefakata nezavisno prođu; `scoringState` je `SCORED_EXACT`. Za nescorovani fixture sva tri stanja su `EXACT_MATCH`, `EXACT_MATCH`, `UNSCORED_EXACT`; partial ili stvarni conflict ostaje blokiran.
 - Scoring operator dry-run je read-only i nakon scoringa planira no-op; scoring se ne ponavlja. Sljedeći ljudski korak je odvojeni review report-generation/AI lanea.
 
+## Team Fit Golden Demo preflight
+
+- Aktuelni evidence-based audit je u `docs/deep-profile-golden-demo-team-fit-preflight.md`.
+- Potvrđeno: Team Fit u postojećem repou nije `public.tests` assessment niti četvrti standard-battery attempt. Canonical identitet je HR-interni relacijski report `team_fit_report_v1`, čiji kandidat source je standard-battery Composite deterministic input, a team source verified Team Dynamics aggregation snapshot.
+- Posljedica: odsustvo Team Fita ne blokira IPIP/SAFRAN/MWMS completion, individualni report ili GD-001 state. Prvi meaningful Golden Demo slice mora pokriti cijeli zaključani tim (preporuka `GDT-01`) radi Team Dynamics agregata; ne kreirati fixture ili report prije zasebnog implementacijskog taska.
+
 
 ## 0. Post-preflight product decisions
 

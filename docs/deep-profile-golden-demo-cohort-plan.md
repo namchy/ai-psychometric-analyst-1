@@ -18,6 +18,7 @@ Ovo je kontrolisani sintetički dataset za demonstraciju, report QA i regresiju.
 - Production scoring audit potvrdio je odvojenu deterministic scoring granicu: completion akcija eksplicitno poziva score persistence pa zasebno report orchestration. Kontrolisani GD-001 scoring operator je pripremljen kao default read-only dry-run i ne importuje niti poziva report/OpenAI put.
 - GD-001 production scoring je izvršen live: završni scoring state je `SCORED_EXACT`, svih 184 odgovora imaju `raw_value` i `scored_value`, postoji 40 persisted dimensions, a expected-score provjera je `47/47`. Report generation i OpenAI pozivi ostali su `false`.
 - Scoring operator sada razdvaja `fixtureWriterState` (nakon scoringa očekivano `CONFLICT`, što štiti nescorovani seed od ponovnog upisa), `fixtureCompatibilityState` (`EXACT_MATCH` samo uz nezavisnu provjeru dozvoljenih production mutacija) i `scoringState` (`SCORED_EXACT`). Naredni ljudski korak je review report-generation/AI lanea; scoring se ne ponavlja.
+- Team Fit Golden Demo preflight je aktivan. Repo contract ga opisuje kao optional HR-interni relacijski report (`team_fit_report_v1`) nad standard-battery Composite inputom i Team Dynamics agregatom, ne kao četvrti battery test. Prvi potencijalni pilot ostaje zaključani cijeli `GDT-01`, bez promjene članova ili postojećih tri test contracta; implementacija čeka preflight verdict.
 
 ## Svrha i poslovna vrijednost
 
