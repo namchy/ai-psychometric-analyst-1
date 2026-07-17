@@ -1,0 +1,88 @@
+{
+  "profile_version": "gd_expected_profile_v1",
+  "candidate_id": "GD-001",
+  "role_context": {
+    "job_title": "Kreditni službenik za poljoprivredne klijente",
+    "team_id": "GDT-01",
+    "context_summary": "Samostalan terenski i administrativni rad s poljoprivrednim klijentima traži pouzdano praćenje dokumentacije, strpljivu komunikaciju, procjenu rizika i disciplinovano zatvaranje obaveza."
+  },
+  "target_profile_summary": "Pouzdan i disciplinovan kreditni službenik koji gradi korektan odnos s klijentima, radi samostalno na terenu i odluke donosi promišljeno. Topao je i saradljiv bez potrebe da dominira, stabilan je pod uobičajenim pritiskom, dok veći broj paralelnih administrativnih obaveza može tražiti svjesnu prioritizaciju. Motivaciju prvenstveno nalazi u važnosti i zanimljivosti posla; kognitivni učinak je čvrst i uravnotežen, s jačim verbalnim i numeričkim nego figuralnim rezultatom.",
+  "ipip_targets": {
+    "recipe": "Svaki facet ima četiri itema. Ciljana facet suma se deterministički raspoređuje po question_order; reverse-scored item dobija raw vrijednost 6 minus ciljna scored vrijednost.",
+    "facets": {
+      "ANXIETY": { "target_sum": 9, "band": "lower" },
+      "ANGER": { "target_sum": 7, "band": "lower" },
+      "DEPRESSION": { "target_sum": 7, "band": "lower" },
+      "SELF_CONSCIOUSNESS": { "target_sum": 10, "band": "balanced" },
+      "IMMODERATION": { "target_sum": 8, "band": "lower" },
+      "VULNERABILITY": { "target_sum": 10, "band": "balanced" },
+      "FRIENDLINESS": { "target_sum": 16, "band": "higher" },
+      "GREGARIOUSNESS": { "target_sum": 11, "band": "balanced" },
+      "ASSERTIVENESS": { "target_sum": 13, "band": "balanced" },
+      "ACTIVITY_LEVEL": { "target_sum": 15, "band": "higher" },
+      "EXCITEMENT_SEEKING": { "target_sum": 9, "band": "lower" },
+      "CHEERFULNESS": { "target_sum": 15, "band": "higher" },
+      "IMAGINATION": { "target_sum": 12, "band": "balanced" },
+      "ARTISTIC_INTERESTS": { "target_sum": 9, "band": "lower" },
+      "EMOTIONALITY": { "target_sum": 12, "band": "balanced" },
+      "ADVENTUROUSNESS": { "target_sum": 14, "band": "balanced" },
+      "INTELLECT": { "target_sum": 15, "band": "higher" },
+      "LIBERALISM": { "target_sum": 12, "band": "balanced" },
+      "TRUST": { "target_sum": 14, "band": "balanced" },
+      "MORALITY": { "target_sum": 17, "band": "higher" },
+      "ALTRUISM": { "target_sum": 16, "band": "higher" },
+      "COOPERATION": { "target_sum": 17, "band": "higher" },
+      "MODESTY": { "target_sum": 13, "band": "balanced" },
+      "SYMPATHY": { "target_sum": 16, "band": "higher" },
+      "SELF_EFFICACY": { "target_sum": 17, "band": "higher" },
+      "ORDERLINESS": { "target_sum": 16, "band": "higher" },
+      "DUTIFULNESS": { "target_sum": 18, "band": "higher" },
+      "ACHIEVEMENT_STRIVING": { "target_sum": 16, "band": "higher" },
+      "SELF_DISCIPLINE": { "target_sum": 17, "band": "higher" },
+      "CAUTIOUSNESS": { "target_sum": 16, "band": "higher" }
+    },
+    "domains": {
+      "EXTRAVERSION": { "target_average": 3.29, "band": "balanced" },
+      "AGREEABLENESS": { "target_average": 3.88, "band": "higher" },
+      "CONSCIENTIOUSNESS": { "target_average": 4.17, "band": "higher" },
+      "NEUROTICISM": { "target_average": 2.13, "band": "lower" },
+      "OPENNESS_TO_EXPERIENCE": { "target_average": 3.08, "band": "balanced" }
+    }
+  },
+  "mwms_targets": {
+    "amotivation": { "item_values": [1, 1, 2], "expected_mean": 1.33, "band": "lower" },
+    "external_social": { "item_values": [2, 2, 3], "expected_mean": 2.33, "band": "lower" },
+    "external_material": { "item_values": [4, 4, 5], "expected_mean": 4.33, "band": "moderate" },
+    "introjected": { "item_values": [4, 5, 3, 4], "expected_mean": 4, "band": "moderate" },
+    "identified": { "item_values": [6, 7, 6], "expected_mean": 6.33, "band": "higher" },
+    "intrinsic": { "item_values": [6, 5, 6], "expected_mean": 5.67, "band": "higher" },
+    "autonomous_motivation": { "expected_mean": 6, "band": "higher" },
+    "controlled_motivation": { "expected_mean": 3.55, "band": "moderate" }
+  },
+  "safran_targets": {
+    "selection_recipe": "Unutar svakog subtesta tačni su prvi itemi po display_order do ciljne kvote; preostali koriste prvu validnu netačnu opciju ili correct numeric plus 1.",
+    "correct_by_subtest": { "VW": 7, "VA": 7, "FA": 5, "FM": 5, "NZ": 7 },
+    "verbal_score": { "expected_value": 14, "band": "higher_raw" },
+    "figural_score": { "expected_value": 10, "band": "moderate_raw" },
+    "numerical_series_score": { "expected_value": 14, "band": "higher_raw" },
+    "cognitive_composite_v1": { "expected_value": 38, "band": "higher_raw" }
+  },
+  "cross_test_signals": [
+    "Visoka savjesnost i identified motivacija podržavaju pouzdano praćenje kreditne dokumentacije i dogovorenih obaveza.",
+    "Toplina i saradnja, uz umjerenu asertivnost, podržavaju strpljiv odnos s poljoprivrednim klijentima bez dominantnog nastupa.",
+    "Niža emocionalna reaktivnost i oprezno odlučivanje podržavaju stabilan terenski rad, ali ne uklanjaju potrebu za prioritizacijom pri administrativnim vrhuncima.",
+    "Jači verbalni i numerički rezultat od figuralnog odgovara kreditnom radu koji spaja razgovor s klijentom i provjeru finansijskih podataka."
+  ],
+  "forbidden_contradictions": [
+    "Ne opisivati kandidata kao izrazito neorganizovanog, nepouzdanog ili sklonog izbjegavanju obaveza.",
+    "Ne tvrditi da je motivacija dominantno materijalna ili da kandidat ne vidi smisao u poslu.",
+    "Ne opisivati kandidata kao izrazito konfliktan, hladan ili socijalno dominantan.",
+    "Ne tvrditi globalnu kognitivnu superiornost, IQ nivo ili populacijski rang.",
+    "Ne izvoditi dijagnozu niti hire/no-hire zaključak."
+  ],
+  "known_ambiguities": [
+    "Niži Neuroticism opisuje ovaj obrazac odgovora i ne znači odsustvo stresa u svim situacijama.",
+    "Umjeren figuralni rezultat ne određuje praktičnu snalažljivost na terenu niti kvalitet rada s klijentima.",
+    "Visoka savjesnost može pomagati kvalitetu, ali pri velikom broju paralelnih predmeta može povećati potrebu za jasnim prioritetima."
+  ]
+}

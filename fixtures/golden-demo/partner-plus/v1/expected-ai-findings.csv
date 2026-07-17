@@ -1,0 +1,33 @@
+candidate_id,report_lane,finding_key,expectation_type,statement,required,expectation_version
+GD-001,ipip_participant,ipip_participant_reliability,required_signal,"Prepoznaje visoku pouzdanost, disciplinu i odgovornost bez idealizacije.",true,gd_001_ai_expectations_v1
+GD-001,ipip_participant,ipip_participant_warm_stable,required_signal,Prepoznaje srdačan i saradljiv stil uz stabilnost pod uobičajenim pritiskom.,true,gd_001_ai_expectations_v1
+GD-001,ipip_participant,ipip_participant_not_disorganized,forbidden_claim,"Ne opisuje kandidata kao izrazito neorganizovanog, nepouzdanog ili impulsivnog.",true,gd_001_ai_expectations_v1
+GD-001,ipip_participant,ipip_participant_priority_tip,required_recommendation,Preporučuje prioritizaciju kada se paralelne administrativne obaveze nagomilaju.,true,gd_001_ai_expectations_v1
+GD-001,ipip_hr,ipip_hr_credit_reliability,required_signal,Povezuje savjesnost i promišljenost s urednim vođenjem kreditnog predmeta.,true,gd_001_ai_expectations_v1
+GD-001,ipip_hr,ipip_hr_client_style,required_signal,"Povezuje toplinu, saradnju i umjerenu asertivnost s odnosom prema klijentima.",true,gd_001_ai_expectations_v1
+GD-001,ipip_hr,ipip_hr_not_dominant_or_cold,forbidden_claim,"Ne opisuje kandidata kao hladnog, konfliktnog ili socijalno dominantnog.",true,gd_001_ai_expectations_v1
+GD-001,ipip_hr,ipip_hr_workload_recommendation,required_recommendation,Predlaže jasne prioritete i pregled otvorenih predmeta u periodima većeg opterećenja.,true,gd_001_ai_expectations_v1
+GD-001,mwms_participant,mwms_participant_autonomous,required_signal,Prepoznaje dominantnu autonomnu motivaciju zasnovanu na važnosti i zanimljivosti posla.,true,gd_001_ai_expectations_v1
+GD-001,mwms_participant,mwms_participant_material_moderate,required_signal,"Materijalne i sigurnosne motive prikazuje kao prisutne, ali ne dominantne.",true,gd_001_ai_expectations_v1
+GD-001,mwms_participant,mwms_participant_not_amotivated,forbidden_claim,Ne tvrdi da kandidat ne vidi smisao u poslu ili da je amotivisan.,true,gd_001_ai_expectations_v1
+GD-001,mwms_participant,mwms_participant_score_reference,required_score_reference,"Ispravno referencira identified 6.33, intrinsic 5.67 i autonomous motivation 6.00.",true,gd_001_ai_expectations_v1
+GD-001,mwms_hr,mwms_hr_meaningful_effort,required_signal,Prepoznaje da lična važnost posla i interes podržavaju ulaganje truda.,true,gd_001_ai_expectations_v1
+GD-001,mwms_hr,mwms_hr_controlled_moderate,required_signal,Kontrolisanu motivaciju prikazuje kao umjerenu dopunu autonomnoj motivaciji.,true,gd_001_ai_expectations_v1
+GD-001,mwms_hr,mwms_hr_not_materially_driven,forbidden_claim,"Ne opisuje kandidata kao dominantno motivisanog platom, statusom ili pritiskom drugih.",true,gd_001_ai_expectations_v1
+GD-001,mwms_hr,mwms_hr_management_recommendation,required_recommendation,Preporučuje povezivanje ciljeva s korisnošću za klijenta uz jasna očekivanja i priznanje rezultata.,true,gd_001_ai_expectations_v1
+GD-001,safran_participant,safran_participant_pattern,required_signal,Prepoznaje jači verbalni i numerički rezultat od figuralnog.,true,gd_001_ai_expectations_v1
+GD-001,safran_participant,safran_participant_solid_not_perfect,required_signal,"Opisuje čvrst, ali nesavršen učinak u vremenski ograničenoj procjeni.",true,gd_001_ai_expectations_v1
+GD-001,safran_participant,safran_participant_no_superiority,forbidden_claim,"Ne tvrdi globalnu kognitivnu superiornost, IQ ili populacijski rang.",true,gd_001_ai_expectations_v1
+GD-001,safran_participant,safran_participant_score_reference,required_score_reference,"Ispravno referencira 14 verbalno, 10 figuralno, 14 numerički i 38 ukupno.",true,gd_001_ai_expectations_v1
+GD-001,safran_hr,safran_hr_credit_relevance,required_signal,Oprezno povezuje verbalno-numerički učinak s čitanjem dokumentacije i finansijskih podataka.,true,gd_001_ai_expectations_v1
+GD-001,safran_hr,safran_hr_figural_context,required_signal,"Umjeren figuralni rezultat prikazuje kao relativno slabiji dio ovog testa, ne kao opću slabost.",true,gd_001_ai_expectations_v1
+GD-001,safran_hr,safran_hr_no_global_inference,forbidden_claim,"Ne izvodi zaključak o općoj inteligenciji, praktičnoj sposobnosti ili podobnosti za posao.",true,gd_001_ai_expectations_v1
+GD-001,safran_hr,safran_hr_score_reference,required_score_reference,Navodi ukupni rezultat 38/54 i tačne domenske rezultate bez percentila.,true,gd_001_ai_expectations_v1
+GD-001,composite_hr,composite_hr_reliability_motivation,required_signal,Povezuje savjesnost i autonomnu motivaciju s pouzdanim zatvaranjem kreditnih obaveza.,true,gd_001_ai_expectations_v1
+GD-001,composite_hr,composite_hr_field_client_fit,required_signal,"Povezuje saradljivost, samostalan terenski rad i verbalno-numeričke zahtjeve u koherentan radni obrazac.",true,gd_001_ai_expectations_v1
+GD-001,composite_hr,composite_hr_no_idealization,forbidden_claim,"Ne predstavlja profil kao bezrizičan, savršen niti kao dokaz superiornosti ili hiring preporuku.",true,gd_001_ai_expectations_v1
+GD-001,composite_hr,composite_hr_priority_recommendation,required_recommendation,Preporučuje vidljivu prioritizaciju predmeta i kontrolne tačke pri velikom administrativnom opterećenju.,true,gd_001_ai_expectations_v1
+GD-001,individual_development_profile,idp_reliable_client_strength,required_signal,Kao razvojnu snagu prepoznaje disciplinovan rad i strpljiv odnos s klijentima.,true,gd_001_ai_expectations_v1
+GD-001,individual_development_profile,idp_priority_growth,required_signal,Kao razvojnu temu prepoznaje prioritizaciju i fleksibilno upravljanje paralelnim obavezama.,true,gd_001_ai_expectations_v1
+GD-001,individual_development_profile,idp_no_diagnosis_or_decision,forbidden_claim,"Ne koristi dijagnoze, fiksne etikete niti hire/no-hire zaključak.",true,gd_001_ai_expectations_v1
+GD-001,individual_development_profile,idp_priority_habit,required_recommendation,"Predlaže sedmični pregled portfolija, dnevna tri prioriteta i ranu eskalaciju blokada.",true,gd_001_ai_expectations_v1

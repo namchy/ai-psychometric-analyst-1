@@ -1,0 +1,25 @@
+candidate_id,display_name,job_title,team_id,cohort_segment,participant_type,addressing_form,email,data_status
+GD-001,Amel Kovačević,Kreditni službenik za poljoprivredne klijente,GDT-01,development,employee,masculine,amel.kovacevic@partnerplus.ba,answers_ready
+GD-002,Nataša Rapaić,Voditeljica tima kreditnih službenika,GDT-01,development,employee,feminine,natasa.rapaic@partnerplus.ba,identity_only
+GD-003,Vladimir Lučić,Terenski kreditni službenik,GDT-01,development,employee,masculine,vladimir.lucic@partnerplus.ba,identity_only
+GD-004,Natali Delić,Kreditna službenica za stanovništvo,GDT-01,development,employee,feminine,natali.delic@partnerplus.ba,identity_only
+GD-005,Anisa Lojo Bajrić,Savjetnica za klijente i kreditne proizvode,GDT-01,development,employee,feminine,anisa.lojo.bajric@partnerplus.ba,identity_only
+GD-019,Ivan Bartulović,Kreditni službenik za poslovne klijente,GDT-01,holdout,employee,masculine,ivan.bartulovic@partnerplus.ba,identity_only
+GD-006,Marijana Bačić,Referentica za kreditne ugovore i isplate,GDT-02,development,employee,feminine,marijana.bacic@partnerplus.ba,identity_only
+GD-007,Siniša Đuranović,Saradnik za provjeru kreditne dokumentacije,GDT-02,development,employee,masculine,sinisa.duranovic@partnerplus.ba,identity_only
+GD-008,Draško Marković,Voditelj obrade kreditnih zahtjeva,GDT-02,development,employee,masculine,drasko.markovic@partnerplus.ba,identity_only
+GD-009,Haris Lučkin,Saradnik za finansijsku analizu klijenata,GDT-02,development,employee,masculine,haris.luckin@partnerplus.ba,identity_only
+GD-010,Ela Halilhodžić,Referentica za administraciju kreditnih dosjea,GDT-02,development,employee,feminine,ela.halilhodzic@partnerplus.ba,identity_only
+GD-020,Katarina Subotić,Analitičarka kreditnih zahtjeva,GDT-02,holdout,employee,feminine,katarina.subotic@partnerplus.ba,identity_only
+GD-011,Ljiljana Ulemek Šapina,Saradnica za kontrolu kvaliteta kreditnog procesa,GDT-03,development,employee,feminine,ljiljana.umelek.sapina@partnerplus.ba,identity_only
+GD-012,Gordana Trhulj,Specijalistica za upravljanje rizicima,GDT-03,development,employee,feminine,gordana.trhulj@partnerplus.ba,identity_only
+GD-013,Branislav Bošković,Analitičar kreditnog rizika,GDT-03,development,employee,masculine,branislav.boskovic@partnerplus.ba,identity_only
+GD-014,Muamer Durić,Saradnik za praćenje kreditnog portfolija,GDT-03,development,employee,masculine,muamer.duric@partnerplus.ba,identity_only
+GD-021,Davor Doko,Viši analitičar kreditnog portfolija,GDT-03,holdout,employee,masculine,davor.doko@partnerplus.ba,identity_only
+GD-022,Alma Čatović Ademović,Voditeljica upravljanja rizicima i portfoliom,GDT-03,holdout,employee,feminine,alma.catovic.ademovic@partnerplus.ba,identity_only
+GD-015,Jelena Kalinić,Saradnica za korisničku podršku i prigovore,GDT-04,development,employee,feminine,jelena.kalinic@partnerplus.ba,identity_only
+GD-016,Stefan Ječmenić,Saradnik za ranu naplatu potraživanja,GDT-04,development,employee,masculine,stefan.jecmenic@partnerplus.ba,identity_only
+GD-017,Aleksandra Kalman,Referentica za operativnu podršku poslovnicama,GDT-04,development,employee,feminine,aleksandra.kalman@partnerplus.ba,identity_only
+GD-018,Safet Burina,Koordinator naplate i podrške poslovnicama,GDT-04,development,employee,masculine,safet.burina@partnerplus.ba,identity_only
+GD-023,Goran Tasić,Terenski saradnik za naplatu,GDT-04,holdout,employee,masculine,goran.tasic@partnerplus.ba,identity_only
+GD-024,Zenaida Hasić,Saradnica za operativno izvještavanje,GDT-04,holdout,employee,feminine,zenaida.hasic@partnerplus.ba,identity_only
