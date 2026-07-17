@@ -2,6 +2,8 @@
 
 **Scope:** read-only statički audit lokalnog repoa, 2026-07-11. Nisu pokrenuti DB-backed smokeovi, OpenAI, worker, seed, cleanup ili report regeneration. Zaključci ispod navode repo dokaz; runtime stanje lokalne baze nije provjeravano.
 
+> **Team Dynamics runtime snapshot gate (2026-07-17):** canonical answer identity mora doći iz aktivnog imported runtimea, ne draft packagea. `scripts/export-team-dynamics-runtime-contract.cjs` resolvea jedan active `team_dynamics_assessment_v1` / `mixed_v1` test i čita samo tests, dimensions, questions i options. `scripts/validate-team-dynamics-runtime-contract.cjs` offline validira generated code/value/order/metadata snapshot. Snapshot još nije kreiran niti potvrđen protiv live DB; nema Team Dynamics fixture answers, scoreova, agregacije, reportova ni OpenAI poziva.
+
 ## Post-preflight implementation evidence — transaction-safe GD-001 writer
 
 - RPC: `public.create_golden_demo_gd001_fixture_v1(p_fixture jsonb)`.

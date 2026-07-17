@@ -7,6 +7,8 @@
 - **Technical preflight:** [deep-profile-golden-demo-cohort-preflight.md](./deep-profile-golden-demo-cohort-preflight.md)
 - **Demo organizacija:** **Partner Plus d.o.o. — Mikrokreditna organizacija**
 
+> **Team Dynamics runtime evidence gate (2026-07-17):** lokalni `team_dynamics_assessment_v1` sadržaj je draft/package evidence, ne canonical imported runtime evidence. Prije GDT-01 answers, scoreova ili agregacije operator treba pregledati `node scripts/export-team-dynamics-runtime-contract.cjs --dry-run --verbose`. Exporter je SELECT-only i predlaže shared snapshot `fixtures/golden-demo/contracts/team-dynamics-assessment-v1-runtime.json`; zaseban reviewed `--write-snapshot --contract team_dynamics_assessment_v1` je potreban za lokalni write. Nema Team Fit reporta ili OpenAI poziva u ovoj fazi.
+
 Ovo je kontrolisani sintetički dataset za demonstraciju, report QA i regresiju. Nije trening niti model fine-tuning. Iterativno se kalibriraju prompt, content contract, schema zahtjevi, input builder i, samo kada je opravdano, validator granice.
 
 ## Implementacijski checkpoint — GD-001 database fixture

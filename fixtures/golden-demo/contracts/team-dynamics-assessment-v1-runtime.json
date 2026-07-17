@@ -1,0 +1,3724 @@
+{
+  "schema_version": "team_dynamics_runtime_contract_v1",
+  "contract_identity": "team_dynamics_assessment_v1",
+  "test": {
+    "slug": "team_dynamics_assessment_v1",
+    "version": "v1_content_spec",
+    "status": "active",
+    "is_active": true,
+    "scoring_method": "mixed_v1",
+    "metadata": {
+      "aggregation": "team_level",
+      "assessment_key": "team_dynamics_assessment_v1",
+      "assessment_name": "Procjena timske dinamike",
+      "audience": "team_members",
+      "blocks": [
+        "tdm-31-V1",
+        "psychological_safety",
+        "situational_judgment",
+        "outcome_pulse"
+      ],
+      "content_spec": {
+        "assessment": {
+          "aggregation": "team_level",
+          "assessment_key": "team_dynamics_assessment_v1",
+          "audience": "team_members",
+          "blocks": [
+            "tdm-31-V1",
+            "psychological_safety",
+            "situational_judgment",
+            "outcome_pulse"
+          ],
+          "description": "Procjena timske dinamike mjeri kako postojeci tim funkcionise kroz cetiri bloka: razvojnu zrelost tima, psiholosku sigurnost, timsko prosudjivanje u situacijama i kratki outcome pulse.",
+          "display_name": "Procjena timske dinamike",
+          "estimated_duration": "12-15 minuta",
+          "primary_report": "team_dynamics_report",
+          "scoring_mode": "mixed_v1",
+          "unit_counts": {
+            "outcome_pulse_items": 4,
+            "psychological_safety_items": 7,
+            "sjt_scenarios": 6,
+            "tdm_items": 31,
+            "total_assessment_units": 48
+          },
+          "validation_status": "validation_pending"
+        },
+        "blocks": {
+          "outcome_pulse": {
+            "diagnostic_index_role": "excluded_in_v1",
+            "display_name": "Ishod timskog rada",
+            "interpretation": "Outcome pulse is a criterion signal, not a causal diagnostic scale. It shows how the team currently experiences effectiveness, quality, delivery reliability and sustainability.",
+            "item_count": 4,
+            "report_role": "criterion_outcome_signal",
+            "response_scale": "likert_1_4_agreement",
+            "reverse_items": [],
+            "score_formula": "outcome_score_0_100 = ((mean_1_4 - 1) / 3) * 100",
+            "scoring_mode": "simple_linear_v1"
+          },
+          "psychological_safety": {
+            "consensus_metrics_v1": [
+              "SD",
+              "range",
+              "completion_rate"
+            ],
+            "display_name": "Psiholoska sigurnost u timu",
+            "item_count": 7,
+            "model_basis": "TPS7-based / Deep Profile original adaptation",
+            "phase_2_optional_metrics": [
+              "AD_M"
+            ],
+            "report_role": {
+              "enters_tdm_core_score": false,
+              "separate_team_dynamics_layer": true,
+              "use_case": "Shows safety for speaking up about mistakes, risks, help and different ideas."
+            },
+            "response_scale": "likert_1_4_agreement",
+            "reverse_items": [],
+            "score_formula": "score_0_100 = ((mean_1_4 - 1) / 3) * 100",
+            "scoring_mode": "simple_linear_v1"
+          },
+          "situational_judgment": {
+            "best_choice_scoring": {
+              "Acceptable": 1,
+              "Best": 2,
+              "Harmful": -1,
+              "Weak": 0
+            },
+            "dimensions": [
+              {
+                "dimension_key": "constructive_conflict",
+                "user_facing_name": "Konstruktivno rjesavanje konflikta"
+              },
+              {
+                "dimension_key": "ownership",
+                "user_facing_name": "Preuzimanje odgovornosti"
+              },
+              {
+                "dimension_key": "risk_transparency",
+                "user_facing_name": "Pravovremeno otvaranje rizika"
+              },
+              {
+                "dimension_key": "coordination",
+                "user_facing_name": "Koordinacija i razmjena informacija"
+              },
+              {
+                "dimension_key": "adaptability",
+                "user_facing_name": "Prilagodba promjeni prioriteta"
+              }
+            ],
+            "display_name": "Timsko prosudjivanje u situacijama",
+            "future_note": "V1 uses expert-key. Hybrid expert + empirical re-weighting may be considered after pilot data.",
+            "instruction_type": "knowledge_based_should_do",
+            "missing_data": {
+              "fewer_than_4_of_6": "insufficient data / unavailable",
+              "four_or_five_of_6": "pro-rated score with note",
+              "six_of_6": "normal score",
+              "ui_rule": "All 6 scenarios should be required."
+            },
+            "model_basis": "Deep Profile original SJT",
+            "option_levels": [
+              "Best",
+              "Acceptable",
+              "Weak",
+              "Harmful"
+            ],
+            "options_per_scenario": 4,
+            "ranges": {
+              "per_scenario_range": "-2 to +4",
+              "total_raw_range": "-12 to +24"
+            },
+            "report_role": {
+              "dimension_scores_are_indicative": true,
+              "display_as": "structured situational judgment signal",
+              "display_as_correct_incorrect": false,
+              "display_as_iq_for_teamwork": false,
+              "enters_tdm_core_score": false,
+              "separate_team_dynamics_layer": true
+            },
+            "response_format": "best_worst",
+            "scenario_count": 6,
+            "scenario_themes": [
+              "konflikt koji prelazi u personalizaciju",
+              "kasnjenje ili neizvrsenje dogovora",
+              "nejasno vlasnistvo nad zadatkom",
+              "presucivanje rizika ili problema",
+              "promjena prioriteta",
+              "losa razmjena informacija / koordinacijski propust"
+            ],
+            "score_transform": "sjt_score_0_100 = ((raw_total + 12) / 36) * 100",
+            "scoring_model": "expert_key_partial_credit_v1",
+            "worst_choice_scoring": {
+              "Acceptable": 0,
+              "Best": -1,
+              "Harmful": 2,
+              "Weak": 1
+            }
+          },
+          "tdm-31-V1": {
+            "display_name": "Razvojna zrelost tima",
+            "domain_mapping": {
+              "Cohesion": [
+                22,
+                23,
+                25,
+                26
+              ],
+              "Communication": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                14,
+                28,
+                29,
+                30
+              ],
+              "Roles and Goals": [
+                15,
+                16,
+                17,
+                19
+              ],
+              "Team Primacy": [
+                18,
+                20
+              ],
+              "overall_rasch_only": [
+                11,
+                12,
+                13,
+                21,
+                24,
+                27,
+                31
+              ]
+            },
+            "domain_scoring_rules": {
+              "all_31_enter_total": true,
+              "only_24_enter_domain_scores": true,
+              "overall_rasch_only_items_excluded_from_domain_scores": true
+            },
+            "item_count": 31,
+            "response_scale": "likert_1_4_agreement",
+            "reverse_scored_items": [
+              3,
+              15,
+              16,
+              27
+            ],
+            "scoring": {
+              "phase_1": {
+                "method": "simple_linear_v1",
+                "steps": [
+                  "apply reverse scoring first",
+                  "compute mean",
+                  "score_0_100 = ((mean_1_4 - 1) / 3) * 100"
+                ]
+              },
+              "phase_2_note": "Full Rasch scoring ostaje za kasniju fazu kada bude dostupna Rasch conversion tabela ili interna kalibracija."
+            }
+          }
+        },
+        "guardrails": [
+          "Do not create hire/no-hire conclusions.",
+          "Do not label a team as bad, toxic, disfunctional or psychologically unsafe.",
+          "Do not blame leaders or individual team members.",
+          "Do not expose individual answers in team-level report.",
+          "Do not use outcome pulse as causal explanation.",
+          "Do not present SJT as IQ for teamwork.",
+          "Do not present SJT as objective proof of actual behavior.",
+          "Do not present adapted scales as fully validated if validation status is pending.",
+          "Do not use a single score as the main truth.",
+          "Do not implement archetypes in V1.",
+          "Do not show scenario-level SJT scoring key to end users.",
+          "Use development signal, tema za provjeru, situacijsko prosudjivanje, prepoznavanje efikasnih reakcija.",
+          "Avoid tacno/netacno framing for SJT.",
+          "Avoid fit score style deterministic conclusions."
+        ],
+        "pending_work": [
+          "SME review",
+          "pilot validation",
+          "full Rasch scoring",
+          "AD_M Phase 2",
+          "SJT empirical calibration",
+          "AI report layer"
+        ],
+        "response_scales": {
+          "best_worst": {
+            "applies_to": [
+              "situational_judgment"
+            ],
+            "instruction_type": "knowledge_based_should_do",
+            "ui_rule": "Ista opcija ne smije biti oznacena i kao najefikasnija i kao najmanje efikasna.",
+            "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem."
+          },
+          "likert_1_4_agreement": {
+            "applies_to": [
+              "tdm-31-V1",
+              "psychological_safety",
+              "outcome_pulse"
+            ],
+            "labels": {
+              "1": "Uopce se ne slazem",
+              "2": "Uglavnom se ne slazem",
+              "3": "Uglavnom se slazem",
+              "4": "U potpunosti se slazem"
+            },
+            "neutral_option": false,
+            "reverse_formula": "reverse_score = 5 - raw_score",
+            "score_transform": "score_0_100 = ((mean_1_4 - 1) / 3) * 100"
+          }
+        },
+        "shared_scoring_bands": [
+          {
+            "label": "Nizak signal / razvojni rizik",
+            "max": 39,
+            "min": 0
+          },
+          {
+            "label": "Mjesovit ili nestabilan signal",
+            "max": 59,
+            "min": 40
+          },
+          {
+            "label": "Funkcionalan signal",
+            "max": 79,
+            "min": 60
+          },
+          {
+            "label": "Jak signal",
+            "max": 100,
+            "min": 80
+          }
+        ],
+        "team_aggregation": {
+          "completion_rate": "valid_completed / assigned",
+          "report_note": "Average alone is not enough; preserve disagreement and dispersion signal and do not expose individual responses.",
+          "team_range": "max(member_score_0_100) - min(member_score_0_100)",
+          "team_score_0_100": "average(member_score_0_100)",
+          "team_sd": "standard_deviation(member_score_0_100)"
+        }
+      },
+      "content_spec_file": "content-spec.json",
+      "db_category_note": "behavioral is a DB-compatible fallback; team-only semantics remain locked by slug, intended_use and report_family.",
+      "default_locale": "bs",
+      "display_name": "Procjena timske dinamike",
+      "estimated_duration": "12-15 minuta",
+      "import_mode": "mixed_format_content_spec_v1",
+      "import_readiness": {
+        "blocked_by": "shared_options_catalog_constraint",
+        "note": "Current generic package import format assumes one shared options catalog per package and cannot faithfully seed mixed Likert + per-scenario SJT options without importer/runtime extension.",
+        "status": "content_spec_ready_runtime_pending"
+      },
+      "intended_use": "team_assessment",
+      "item_count": 48,
+      "module_name": "Timovi",
+      "primary_report": "team_dynamics_report",
+      "product_status": "content_spec_locked",
+      "report_family": "team_dynamics",
+      "report_name": "Timska dinamika",
+      "response_scales": [
+        "likert_1_4_agreement",
+        "best_worst"
+      ],
+      "scoring_mode": "mixed_v1",
+      "supported_locales": [
+        "bs"
+      ],
+      "validation_status": "validation_pending",
+      "version": "v1_content_spec"
+    }
+  },
+  "dimensions": [
+    {
+      "code": "TDM_CORE_TOTAL",
+      "order": 1,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "score_role": "total",
+        "validation_status": "phase_1_linear_only"
+      }
+    },
+    {
+      "code": "TDM_COMMUNICATION",
+      "order": 2,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "score_role": "domain"
+      }
+    },
+    {
+      "code": "TDM_ROLES_AND_GOALS",
+      "order": 3,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "score_role": "domain"
+      }
+    },
+    {
+      "code": "TDM_COHESION",
+      "order": 4,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "score_role": "domain"
+      }
+    },
+    {
+      "code": "TDM_TEAM_PRIMACY",
+      "order": 5,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "score_role": "domain"
+      }
+    },
+    {
+      "code": "TDM_OVERALL_RASCH_ONLY",
+      "order": 6,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "score_role": "overall_rasch_only"
+      }
+    },
+    {
+      "code": "PSYCHOLOGICAL_SAFETY",
+      "order": 7,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "score_role": "layer"
+      }
+    },
+    {
+      "code": "SJT_TOTAL",
+      "order": 8,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "score_role": "total"
+      }
+    },
+    {
+      "code": "SJT_CONSTRUCTIVE_CONFLICT",
+      "order": 9,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "score_role": "indicative_dimension"
+      }
+    },
+    {
+      "code": "SJT_OWNERSHIP",
+      "order": 10,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "score_role": "indicative_dimension"
+      }
+    },
+    {
+      "code": "SJT_RISK_TRANSPARENCY",
+      "order": 11,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "score_role": "indicative_dimension"
+      }
+    },
+    {
+      "code": "SJT_COORDINATION",
+      "order": 12,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "score_role": "indicative_dimension"
+      }
+    },
+    {
+      "code": "SJT_ADAPTABILITY",
+      "order": 13,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "score_role": "indicative_dimension"
+      }
+    },
+    {
+      "code": "OUTCOME_PULSE",
+      "order": 14,
+      "metadata": {
+        "block_key": "outcome_pulse",
+        "excluded_from_main_diagnostic_index": true,
+        "score_role": "criterion_outcome_signal"
+      }
+    }
+  ],
+  "questions": [
+    {
+      "code": "TDM31_01",
+      "order": 1,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_01_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_01_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_01_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_01_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_02",
+      "order": 2,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_02_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_02_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_02_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_02_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_03",
+      "order": 3,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": true
+      },
+      "options": [
+        {
+          "code": "TDM31_03_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_03_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_03_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_03_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_04",
+      "order": 4,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_04_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_04_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_04_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_04_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_05",
+      "order": 5,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_05_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_05_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_05_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_05_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_06",
+      "order": 6,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_06_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_06_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_06_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_06_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_07",
+      "order": 7,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_07_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_07_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_07_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_07_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_08",
+      "order": 8,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_08_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_08_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_08_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_08_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_09",
+      "order": 9,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_09_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_09_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_09_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_09_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_10",
+      "order": 10,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_10_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_10_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_10_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_10_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_11",
+      "order": 11,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "overall_rasch_only",
+        "domain_scored": false,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_11_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_11_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_11_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_11_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_12",
+      "order": 12,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "overall_rasch_only",
+        "domain_scored": false,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_12_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_12_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_12_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_12_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_13",
+      "order": 13,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "overall_rasch_only",
+        "domain_scored": false,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_13_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_13_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_13_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_13_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_14",
+      "order": 14,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_14_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_14_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_14_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_14_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_15",
+      "order": 15,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Roles and Goals",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": true
+      },
+      "options": [
+        {
+          "code": "TDM31_15_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_15_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_15_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_15_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_16",
+      "order": 16,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Roles and Goals",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": true
+      },
+      "options": [
+        {
+          "code": "TDM31_16_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_16_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_16_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_16_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_17",
+      "order": 17,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Roles and Goals",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_17_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_17_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_17_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_17_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_18",
+      "order": 18,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Team Primacy",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_18_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_18_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_18_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_18_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_19",
+      "order": 19,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Roles and Goals",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_19_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_19_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_19_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_19_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_20",
+      "order": 20,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Team Primacy",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_20_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_20_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_20_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_20_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_21",
+      "order": 21,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "overall_rasch_only",
+        "domain_scored": false,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_21_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_21_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_21_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_21_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_22",
+      "order": 22,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Cohesion",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_22_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_22_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_22_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_22_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_23",
+      "order": 23,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Cohesion",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_23_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_23_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_23_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_23_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_24",
+      "order": 24,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "overall_rasch_only",
+        "domain_scored": false,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_24_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_24_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_24_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_24_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_25",
+      "order": 25,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Cohesion",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_25_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_25_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_25_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_25_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_26",
+      "order": 26,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Cohesion",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_26_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_26_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_26_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_26_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_27",
+      "order": 27,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "overall_rasch_only",
+        "domain_scored": false,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": true
+      },
+      "options": [
+        {
+          "code": "TDM31_27_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_27_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_27_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_27_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_28",
+      "order": 28,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_28_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_28_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_28_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_28_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_29",
+      "order": 29,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_29_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_29_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_29_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_29_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_30",
+      "order": 30,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "Communication",
+        "domain_scored": true,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_30_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_30_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_30_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_30_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TDM31_31",
+      "order": 31,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "tdm-31-V1",
+        "domain_group": "overall_rasch_only",
+        "domain_scored": false,
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TDM31_31_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_31_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_31_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TDM31_31_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "tdm-31-V1",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TPSDP_1",
+      "order": 32,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "construct": "Greske",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TPSDP_1_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_1_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_1_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_1_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TPSDP_2",
+      "order": 33,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "construct": "Problemi i rizici",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TPSDP_2_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_2_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_2_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_2_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TPSDP_3",
+      "order": 34,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "construct": "Drugacije misljenje",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TPSDP_3_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_3_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_3_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_3_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TPSDP_4",
+      "order": 35,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "construct": "Interpersonalni rizik",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TPSDP_4_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_4_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_4_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_4_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TPSDP_5",
+      "order": 36,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "construct": "Trazenje pomoci",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TPSDP_5_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_5_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_5_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_5_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TPSDP_6",
+      "order": 37,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "construct": "Povjerenje u namjere",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TPSDP_6_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_6_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_6_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_6_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "TPSDP_7",
+      "order": 38,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "psychological_safety",
+        "construct": "Vrednovanje doprinosa",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "TPSDP_7_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_7_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_7_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "TPSDP_7_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "psychological_safety",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "SJT_TD_01",
+      "order": 39,
+      "question_type": "multiple_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "instruction_type": "knowledge_based_should_do",
+        "options": [
+          {
+            "option_id": "SJT_TD_01_A",
+            "option_level": "Acceptable",
+            "option_order": 1,
+            "option_text": "Predlozim da se razgovor vrati na konkretan zadatak: sta tacno kasni, sta je blokada i koji je prvi sljedeci korak. Naglasim da licne ocjene ne pomazu rjesavanju problema."
+          },
+          {
+            "option_id": "SJT_TD_01_B",
+            "option_level": "Weak",
+            "option_order": 2,
+            "option_text": "Sacekam da se rasprava sama smiri, jer bi moje ukljucivanje moglo dodatno pojacati tenziju. Nakon sastanka bih mozda pojedinacno pitao/la sta se desilo."
+          },
+          {
+            "option_id": "SJT_TD_01_C",
+            "option_level": "Harmful",
+            "option_order": 3,
+            "option_text": "Kazem da je ocigledno ko je odgovoran za kasnjenje i da tim vise ne moze stalno tolerisati isti obrazac ponasanja."
+          },
+          {
+            "option_id": "SJT_TD_01_D",
+            "option_level": "Best",
+            "option_order": 4,
+            "option_text": "Predlozim kratku pauzu da se smiri ton, pa da razgovor vratimo na cinjenice: sta kasni, kakav je uticaj na rok i koji je sljedeci dogovor."
+          }
+        ],
+        "primary_dimension": "constructive_conflict",
+        "response_format": "best_worst",
+        "scenario_title": "Konflikt koji prelazi u personalizaciju",
+        "user_facing_dimension": "Konstruktivno rjesavanje konflikta",
+        "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem."
+      },
+      "options": [
+        {
+          "code": "SJT_TD_01_A",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "best_choice_points": 1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_01_A",
+            "option_level": "Acceptable",
+            "option_role": "scenario_action",
+            "primary_dimension": "constructive_conflict",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_01",
+            "scenario_title": "Konflikt koji prelazi u personalizaciju",
+            "secondary_dimension": null,
+            "worst_choice_points": 0
+          }
+        },
+        {
+          "code": "SJT_TD_01_B",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "best_choice_points": 0,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_01_B",
+            "option_level": "Weak",
+            "option_role": "scenario_action",
+            "primary_dimension": "constructive_conflict",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_01",
+            "scenario_title": "Konflikt koji prelazi u personalizaciju",
+            "secondary_dimension": null,
+            "worst_choice_points": 1
+          }
+        },
+        {
+          "code": "SJT_TD_01_C",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "best_choice_points": -1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_01_C",
+            "option_level": "Harmful",
+            "option_role": "scenario_action",
+            "primary_dimension": "constructive_conflict",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_01",
+            "scenario_title": "Konflikt koji prelazi u personalizaciju",
+            "secondary_dimension": null,
+            "worst_choice_points": 2
+          }
+        },
+        {
+          "code": "SJT_TD_01_D",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "best_choice_points": 2,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_01_D",
+            "option_level": "Best",
+            "option_role": "scenario_action",
+            "primary_dimension": "constructive_conflict",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_01",
+            "scenario_title": "Konflikt koji prelazi u personalizaciju",
+            "secondary_dimension": null,
+            "worst_choice_points": -1
+          }
+        }
+      ]
+    },
+    {
+      "code": "SJT_TD_02",
+      "order": 40,
+      "question_type": "multiple_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "instruction_type": "knowledge_based_should_do",
+        "options": [
+          {
+            "option_id": "SJT_TD_02_A",
+            "option_level": "Acceptable",
+            "option_order": 1,
+            "option_text": "Direktno razgovaram s clanom tima koji kasni, trazim da jasno kaze sta ga blokira i predlazem da zajedno dogovorimo realan novi rok i sljedeci korak."
+          },
+          {
+            "option_id": "SJT_TD_02_B",
+            "option_level": "Weak",
+            "option_order": 2,
+            "option_text": "Preuzmem njegov dio posla da tim ne bi probio rok, a kasnije cemo razgovarati o tome zasto se ovo desilo."
+          },
+          {
+            "option_id": "SJT_TD_02_C",
+            "option_level": "Harmful",
+            "option_order": 3,
+            "option_text": "Na zajednickom kanalu napisem da cijeli tim kasni zbog jedne osobe, kako bi svima bilo jasno gdje je problem."
+          },
+          {
+            "option_id": "SJT_TD_02_D",
+            "option_level": "Best",
+            "option_order": 4,
+            "option_text": "Predlozim da odmah razjasnimo sta nedostaje, sta blokira ostatak tima, ko moze pomoci i koji je realan novi rok."
+          }
+        ],
+        "primary_dimension": "ownership",
+        "response_format": "best_worst",
+        "scenario_title": "Kasnjenje ili neizvrsenje dogovora",
+        "secondary_dimension": "coordination",
+        "user_facing_dimension": "Preuzimanje odgovornosti",
+        "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem."
+      },
+      "options": [
+        {
+          "code": "SJT_TD_02_A",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "best_choice_points": 1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_02_A",
+            "option_level": "Acceptable",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_02",
+            "scenario_title": "Kasnjenje ili neizvrsenje dogovora",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": 0
+          }
+        },
+        {
+          "code": "SJT_TD_02_B",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "best_choice_points": 0,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_02_B",
+            "option_level": "Weak",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_02",
+            "scenario_title": "Kasnjenje ili neizvrsenje dogovora",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": 1
+          }
+        },
+        {
+          "code": "SJT_TD_02_C",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "best_choice_points": -1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_02_C",
+            "option_level": "Harmful",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_02",
+            "scenario_title": "Kasnjenje ili neizvrsenje dogovora",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": 2
+          }
+        },
+        {
+          "code": "SJT_TD_02_D",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "best_choice_points": 2,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_02_D",
+            "option_level": "Best",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_02",
+            "scenario_title": "Kasnjenje ili neizvrsenje dogovora",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": -1
+          }
+        }
+      ]
+    },
+    {
+      "code": "SJT_TD_03",
+      "order": 41,
+      "question_type": "multiple_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "instruction_type": "knowledge_based_should_do",
+        "options": [
+          {
+            "option_id": "SJT_TD_03_A",
+            "option_level": "Best",
+            "option_order": 1,
+            "option_text": "Predlozim da odmah razjasnimo sta treba zavrsiti, ko daje potrebne informacije i ko privremeno vodi zadatak dok se vlasnistvo ne potvrdi."
+          },
+          {
+            "option_id": "SJT_TD_03_B",
+            "option_level": "Weak",
+            "option_order": 2,
+            "option_text": "Sacekam da voditelj tima odluci kome zadatak pripada, jer nije dobro da clanovi tima sami preuzimaju stvari koje mozda nisu u njihovoj nadleznosti."
+          },
+          {
+            "option_id": "SJT_TD_03_C",
+            "option_level": "Acceptable",
+            "option_order": 3,
+            "option_text": "Preuzmem zadatak sam/a i zavrsim ga sto prije, bez dodatnog razgovora, jer je najvaznije da tim ne izgleda nespremno pred klijentom."
+          },
+          {
+            "option_id": "SJT_TD_03_D",
+            "option_level": "Harmful",
+            "option_order": 4,
+            "option_text": "Napisem u zajednicki kanal da zadatak ocigledno nema vlasnika i da ce biti problem ako ga niko ne preuzme, ali ne predlozim konkretan sljedeci korak."
+          }
+        ],
+        "primary_dimension": "ownership",
+        "response_format": "best_worst",
+        "scenario_title": "Nejasno vlasnistvo nad zadatkom",
+        "secondary_dimension_context": "role_clarity",
+        "user_facing_dimension": "Preuzimanje odgovornosti",
+        "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem."
+      },
+      "options": [
+        {
+          "code": "SJT_TD_03_A",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "best_choice_points": 2,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_03_A",
+            "option_level": "Best",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_03",
+            "scenario_title": "Nejasno vlasnistvo nad zadatkom",
+            "secondary_dimension": null,
+            "worst_choice_points": -1
+          }
+        },
+        {
+          "code": "SJT_TD_03_B",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "best_choice_points": 0,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_03_B",
+            "option_level": "Weak",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_03",
+            "scenario_title": "Nejasno vlasnistvo nad zadatkom",
+            "secondary_dimension": null,
+            "worst_choice_points": 1
+          }
+        },
+        {
+          "code": "SJT_TD_03_C",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "best_choice_points": 1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_03_C",
+            "option_level": "Acceptable",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_03",
+            "scenario_title": "Nejasno vlasnistvo nad zadatkom",
+            "secondary_dimension": null,
+            "worst_choice_points": 0
+          }
+        },
+        {
+          "code": "SJT_TD_03_D",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "best_choice_points": -1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_03_D",
+            "option_level": "Harmful",
+            "option_role": "scenario_action",
+            "primary_dimension": "ownership",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_03",
+            "scenario_title": "Nejasno vlasnistvo nad zadatkom",
+            "secondary_dimension": null,
+            "worst_choice_points": 2
+          }
+        }
+      ]
+    },
+    {
+      "code": "SJT_TD_04",
+      "order": 42,
+      "question_type": "multiple_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "instruction_type": "knowledge_based_should_do",
+        "options": [
+          {
+            "option_id": "SJT_TD_04_A",
+            "option_level": "Best",
+            "option_order": 1,
+            "option_text": "Zabiljezim sta sam primijetio/la, procijenim moguci uticaj i predlozim kratak razgovor o tome da li problem rjesavamo sada ili uvodimo jasnu kontrolu."
+          },
+          {
+            "option_id": "SJT_TD_04_B",
+            "option_level": "Weak",
+            "option_order": 2,
+            "option_text": "Sacekam da vidim hoce li problem stvarno postati ozbiljan, jer je tim vec pod pritiskom i nije korisno otvarati svaku mogucu komplikaciju."
+          },
+          {
+            "option_id": "SJT_TD_04_C",
+            "option_level": "Acceptable",
+            "option_order": 3,
+            "option_text": "Odmah posaljem poruku svima da postoji ozbiljan problem i da trenutni plan vjerovatno nece uspjeti ako se hitno ne promijeni."
+          },
+          {
+            "option_id": "SJT_TD_04_D",
+            "option_level": "Harmful",
+            "option_order": 4,
+            "option_text": "Pokusam sam/a rijesiti problem usput, bez otvaranja teme timu, jer ne zelim dodatno opteretiti druge niti izazvati novu raspravu pred rok."
+          }
+        ],
+        "primary_dimension": "risk_transparency",
+        "response_format": "best_worst",
+        "scenario_title": "Presucivanje rizika ili problema",
+        "secondary_dimension_context": "psychological_safety_in_action",
+        "user_facing_dimension": "Pravovremeno otvaranje rizika",
+        "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem."
+      },
+      "options": [
+        {
+          "code": "SJT_TD_04_A",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "best_choice_points": 2,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_04_A",
+            "option_level": "Best",
+            "option_role": "scenario_action",
+            "primary_dimension": "risk_transparency",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_04",
+            "scenario_title": "Presucivanje rizika ili problema",
+            "secondary_dimension": null,
+            "worst_choice_points": -1
+          }
+        },
+        {
+          "code": "SJT_TD_04_B",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "best_choice_points": 0,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_04_B",
+            "option_level": "Weak",
+            "option_role": "scenario_action",
+            "primary_dimension": "risk_transparency",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_04",
+            "scenario_title": "Presucivanje rizika ili problema",
+            "secondary_dimension": null,
+            "worst_choice_points": 1
+          }
+        },
+        {
+          "code": "SJT_TD_04_C",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "best_choice_points": 1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_04_C",
+            "option_level": "Acceptable",
+            "option_role": "scenario_action",
+            "primary_dimension": "risk_transparency",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_04",
+            "scenario_title": "Presucivanje rizika ili problema",
+            "secondary_dimension": null,
+            "worst_choice_points": 0
+          }
+        },
+        {
+          "code": "SJT_TD_04_D",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "best_choice_points": -1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_04_D",
+            "option_level": "Harmful",
+            "option_role": "scenario_action",
+            "primary_dimension": "risk_transparency",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_04",
+            "scenario_title": "Presucivanje rizika ili problema",
+            "secondary_dimension": null,
+            "worst_choice_points": 2
+          }
+        }
+      ]
+    },
+    {
+      "code": "SJT_TD_05",
+      "order": 43,
+      "question_type": "multiple_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "instruction_type": "knowledge_based_should_do",
+        "options": [
+          {
+            "option_id": "SJT_TD_05_A",
+            "option_level": "Best",
+            "option_order": 1,
+            "option_text": "Predlozim kratak dogovor: sta se zaustavlja, sta se cuva za kasnije, sta prelazi u novi prioritet i koji su prvi koraci za naredna dva dana."
+          },
+          {
+            "option_id": "SJT_TD_05_B",
+            "option_level": "Acceptable",
+            "option_order": 2,
+            "option_text": "Prihvatim novi prioritet i odmah krenem raditi na njemu, jer je najvaznije pokazati fleksibilnost i ne gubiti vrijeme na raspravu o odluci koja je vec donesena."
+          },
+          {
+            "option_id": "SJT_TD_05_C",
+            "option_level": "Weak",
+            "option_order": 3,
+            "option_text": "Kazem da tim ne treba mijenjati plan dok se ne dobije detaljno objasnjenje zasto se raniji rad prekida i ko je odgovoran za promjenu smjera."
+          },
+          {
+            "option_id": "SJT_TD_05_D",
+            "option_level": "Harmful",
+            "option_order": 4,
+            "option_text": "Nastavim raditi po starom planu dok se situacija ne razjasni, jer su ceste promjene prioriteta los signal i ne treba stalno prekidati zapoceti posao."
+          }
+        ],
+        "primary_dimension": "adaptability",
+        "response_format": "best_worst",
+        "scenario_title": "Promjena prioriteta",
+        "secondary_dimension": "coordination",
+        "user_facing_dimension": "Prilagodba promjeni prioriteta",
+        "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem."
+      },
+      "options": [
+        {
+          "code": "SJT_TD_05_A",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "best_choice_points": 2,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_05_A",
+            "option_level": "Best",
+            "option_role": "scenario_action",
+            "primary_dimension": "adaptability",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_05",
+            "scenario_title": "Promjena prioriteta",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": -1
+          }
+        },
+        {
+          "code": "SJT_TD_05_B",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "best_choice_points": 1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_05_B",
+            "option_level": "Acceptable",
+            "option_role": "scenario_action",
+            "primary_dimension": "adaptability",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_05",
+            "scenario_title": "Promjena prioriteta",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": 0
+          }
+        },
+        {
+          "code": "SJT_TD_05_C",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "best_choice_points": 0,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_05_C",
+            "option_level": "Weak",
+            "option_role": "scenario_action",
+            "primary_dimension": "adaptability",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_05",
+            "scenario_title": "Promjena prioriteta",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": 1
+          }
+        },
+        {
+          "code": "SJT_TD_05_D",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "best_choice_points": -1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_05_D",
+            "option_level": "Harmful",
+            "option_role": "scenario_action",
+            "primary_dimension": "adaptability",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_05",
+            "scenario_title": "Promjena prioriteta",
+            "secondary_dimension": "coordination",
+            "worst_choice_points": 2
+          }
+        }
+      ]
+    },
+    {
+      "code": "SJT_TD_06",
+      "order": 44,
+      "question_type": "multiple_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "situational_judgment",
+        "instruction_type": "knowledge_based_should_do",
+        "options": [
+          {
+            "option_id": "SJT_TD_06_A",
+            "option_level": "Best",
+            "option_order": 1,
+            "option_text": "Predlozim da tim prvo spoji korisne dijelove obje analize, a zatim dogovori jedno jasno mjesto za vazne informacije i kratku provjeru zaduzenja prije nastavka rada."
+          },
+          {
+            "option_id": "SJT_TD_06_B",
+            "option_level": "Acceptable",
+            "option_order": 2,
+            "option_text": "Predlozim da se ubuduce sve vazne informacije salju u zajednicki kanal, ali sada nastavim raditi na dijelu koji je meni dodijeljen da ne gubimo dodatno vrijeme."
+          },
+          {
+            "option_id": "SJT_TD_06_C",
+            "option_level": "Harmful",
+            "option_order": 3,
+            "option_text": "Kazem da se ovakve stvari desavaju kada ljudi ne prate komunikaciju i da svako mora preuzeti odgovornost da redovno cita sve poruke."
+          },
+          {
+            "option_id": "SJT_TD_06_D",
+            "option_level": "Weak",
+            "option_order": 4,
+            "option_text": "Predlozim sastanak na kojem bi svako objasnio sta je radio, kako bismo razumjeli gdje je nastao propust prije nego nastavimo dalje."
+          }
+        ],
+        "primary_dimension": "coordination",
+        "response_format": "best_worst",
+        "scenario_title": "Losa razmjena informacija / koordinacijski propust",
+        "secondary_dimension": "ownership",
+        "user_facing_dimension": "Koordinacija i razmjena informacija",
+        "user_instruction": "Odaberi najefikasniju i najmanje efikasnu reakciju u ovoj situaciji. Ne biras sta bi ti licno najvjerovatnije uradio/la, nego sta bi u ovoj situaciji najvise pomoglo timu da konstruktivno rijesi problem."
+      },
+      "options": [
+        {
+          "code": "SJT_TD_06_A",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "best_choice_points": 2,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_06_A",
+            "option_level": "Best",
+            "option_role": "scenario_action",
+            "primary_dimension": "coordination",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_06",
+            "scenario_title": "Losa razmjena informacija / koordinacijski propust",
+            "secondary_dimension": "ownership",
+            "worst_choice_points": -1
+          }
+        },
+        {
+          "code": "SJT_TD_06_B",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "best_choice_points": 1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_06_B",
+            "option_level": "Acceptable",
+            "option_role": "scenario_action",
+            "primary_dimension": "coordination",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_06",
+            "scenario_title": "Losa razmjena informacija / koordinacijski propust",
+            "secondary_dimension": "ownership",
+            "worst_choice_points": 0
+          }
+        },
+        {
+          "code": "SJT_TD_06_C",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "best_choice_points": -1,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_06_C",
+            "option_level": "Harmful",
+            "option_role": "scenario_action",
+            "primary_dimension": "coordination",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_06",
+            "scenario_title": "Losa razmjena informacija / koordinacijski propust",
+            "secondary_dimension": "ownership",
+            "worst_choice_points": 2
+          }
+        },
+        {
+          "code": "SJT_TD_06_D",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "best_choice_points": 0,
+            "block_key": "situational_judgment",
+            "instruction_type": "knowledge_based_should_do",
+            "option_catalog_source": "scenario_level_sjt_options",
+            "option_id": "SJT_TD_06_D",
+            "option_level": "Weak",
+            "option_role": "scenario_action",
+            "primary_dimension": "coordination",
+            "response_format": "best_worst",
+            "scenario_id": "SJT_TD_06",
+            "scenario_title": "Losa razmjena informacija / koordinacijski propust",
+            "secondary_dimension": "ownership",
+            "worst_choice_points": 1
+          }
+        }
+      ]
+    },
+    {
+      "code": "OUTCOME_1",
+      "order": 45,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "outcome_pulse",
+        "construct": "Efektivnost tima",
+        "diagnostic_index_role": "excluded_in_v1",
+        "report_role": "criterion_outcome_signal",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "OUTCOME_1_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_1_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_1_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_1_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "OUTCOME_2",
+      "order": 46,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "outcome_pulse",
+        "construct": "Kvalitet zajednickog rada",
+        "diagnostic_index_role": "excluded_in_v1",
+        "report_role": "criterion_outcome_signal",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "OUTCOME_2_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_2_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_2_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_2_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "OUTCOME_3",
+      "order": 47,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "outcome_pulse",
+        "construct": "Pouzdanost isporuke",
+        "diagnostic_index_role": "excluded_in_v1",
+        "report_role": "criterion_outcome_signal",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "OUTCOME_3_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_3_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_3_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_3_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    },
+    {
+      "code": "OUTCOME_4",
+      "order": 48,
+      "question_type": "single_choice",
+      "required": true,
+      "metadata": {
+        "block_key": "outcome_pulse",
+        "construct": "Odrzivost saradnje",
+        "diagnostic_index_role": "excluded_in_v1",
+        "report_role": "criterion_outcome_signal",
+        "response_format": "single_select_likert",
+        "response_scale": "likert_1_4_agreement",
+        "reverse_scored": false
+      },
+      "options": [
+        {
+          "code": "OUTCOME_4_OPTION_1",
+          "value": 1,
+          "order": 1,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_4_OPTION_2",
+          "value": 2,
+          "order": 2,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_4_OPTION_3",
+          "value": 3,
+          "order": 3,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        },
+        {
+          "code": "OUTCOME_4_OPTION_4",
+          "value": 4,
+          "order": 4,
+          "metadata": {
+            "block_key": "outcome_pulse",
+            "option_catalog_source": "content_spec_response_scale",
+            "response_format": "single_select_likert",
+            "response_scale": "likert_1_4_agreement"
+          }
+        }
+      ]
+    }
+  ],
+  "source_summary": {
+    "question_count": 48,
+    "required_question_count": 48,
+    "option_count": 192,
+    "dimension_count": 14,
+    "runtime_readiness": "active_runtime"
+  },
+  "checksum": "375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d"
+}

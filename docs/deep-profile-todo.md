@@ -4,6 +4,8 @@
 
 Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog stanja.
 
+> **2026-07-17 Team Dynamics runtime evidence gate:** GDT-01 fixture ostaje blokiran dok aktivni imported `team_dynamics_assessment_v1` runtime ne bude potvrđen. Pripremljeni `node scripts/export-team-dynamics-runtime-contract.cjs --dry-run --verbose` čita samo `tests`, `test_dimensions`, `questions` i `answer_options`; ne piše/importuje/scoreuje/generiše report niti poziva OpenAI. Snapshot i Team Dynamics answers/expected scoreovi još ne postoje. GDT-01 uključuje globalnog holdout kandidata `GD-019`; deterministic whole-team verification, AI kalibracija i candidate-level holdout integritet traže zasebnu odluku prije fixture generisanja.
+
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
 Pravila: 

@@ -1,0 +1,9 @@
+const assert = require("node:assert/strict"); const fs = require("node:fs"); const ts = require("typescript");
+require.extensions[".ts"] = (module, filename) => { const output = ts.transpileModule(fs.readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true }, fileName: filename }); module._compile(output.outputText, filename); };
+const { buildRuntimeContractSnapshot, validateRuntimeContractSnapshot } = require("../lib/golden-demo/team-dynamics-runtime-contract.ts");
+const source = { test: { id: "environment-uuid", slug: "team_dynamics_assessment_v1", status: "active", is_active: true, scoring_method: "mixed_v1", metadata: { assessment_key: "team_dynamics_assessment_v1", version: "v1" } }, dimensions: [], questions: [{ id: "q-source", code: "TDM_02", question_order: 2, question_type: "single_choice", is_required: true, is_active: true, metadata: {} }], options: [{ id: "o-source", question_id: "q-source", code: "OPT_A", value: 1, option_order: 1, metadata: {} }] };
+const snapshot = buildRuntimeContractSnapshot(source); assert.equal(validateRuntimeContractSnapshot(snapshot).state, "VALID");
+const reordered = structuredClone(snapshot); reordered.questions[0].order = 0; assert.equal(validateRuntimeContractSnapshot(reordered).state, "INVALID");
+const uuidCode = structuredClone(snapshot); uuidCode.questions[0].code = "123e4567-e89b-12d3-a456-426614174000"; assert.equal(validateRuntimeContractSnapshot(uuidCode).state, "INVALID");
+const secret = structuredClone(snapshot); secret.test.metadata = { assessment_key: "team_dynamics_assessment_v1", secret: "never" }; assert.equal(validateRuntimeContractSnapshot(secret).state, "INVALID");
+console.log("✓ Team Dynamics runtime snapshot validator rejects incomplete or non-canonical snapshots");
