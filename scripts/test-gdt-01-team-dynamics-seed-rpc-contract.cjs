@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -23,8 +24,71 @@ const {
   loadGdt01DbContract,
 } = require("../lib/golden-demo/team-dynamics-gdt-01-db-contract.ts");
 
-const sqlPath = path.join(root, "supabase/migrations/20260721143000_create_gdt01_team_dynamics_seed_rpc.sql");
-const source = fs.readFileSync(sqlPath, "utf8");
+const originalSqlPath = path.join(root, "supabase/migrations/20260721143000_create_gdt01_team_dynamics_seed_rpc.sql");
+const correctiveSqlPath = path.join(root, "supabase/migrations/20260721150000_fix_gdt01_membership_resolution_update.sql");
+const originalSource = fs.readFileSync(originalSqlPath, "utf8");
+const source = fs.readFileSync(correctiveSqlPath, "utf8");
+const ORIGINAL_MIGRATION_SHA256 = "3365e8a79dc9fccd82df33bc5d5801fc3872950fed5bfe2e92f2bb1650e6c918";
+const originalMembershipResolutionUpdate = `update gdt01_members m
+  set membership_id = (
+    select tm.id
+    from public.team_memberships tm
+    where tm.team_id = v_team_id
+      and tm.participant_id = m.participant_id
+      and tm.is_active = true
+      and tm.left_at is null
+  );`;
+const correctedMembershipResolutionUpdate = `update gdt01_members as target
+  set membership_id = resolved.id
+  from public.team_memberships as resolved
+  where target.participant_id = resolved.participant_id
+    and resolved.team_id = v_team_id
+    and resolved.is_active = true
+    and resolved.left_at is null;`;
+
+assert.equal(crypto.createHash("sha256").update(originalSource).digest("hex"), ORIGINAL_MIGRATION_SHA256, "The already-applied GDT-01 migration must remain byte-for-byte unchanged.");
+assert.ok(source.includes("create or replace function public.create_gdt_01_team_dynamics_seed_v1(p_payload jsonb)"), "Corrective migration must replace the existing GDT-01 RPC signature.");
+assert.equal((source.match(/create or replace function public\.create_gdt_01_team_dynamics_seed_v1\(p_payload jsonb\)/gi) ?? []).length, 1, "Corrective migration must define exactly one effective GDT-01 RPC signature.");
+assert.ok(originalSource.includes(originalMembershipResolutionUpdate), "Original migration must preserve the recorded failing membership-resolution UPDATE for forensic continuity.");
+assert.ok(source.includes(correctedMembershipResolutionUpdate), "membership resolution UPDATE must include a row-correlating WHERE clause");
+assert.doesNotMatch(source, /update\s+gdt01_members\s+(?:as\s+)?m\s+set\s+membership_id\s*=\s*\(/i, "Corrective migration must not retain the uncorrelated membership-resolution UPDATE.");
+assert.doesNotMatch(source, /where\s+true\b/i, "Membership resolution must not use a tautological WHERE clause.");
+
+function functionDefinition(text) {
+  const match = text.match(/create or replace function public\.create_gdt_01_team_dynamics_seed_v1\(p_payload jsonb\)[\s\S]*?\n\$\$;/i);
+  assert.ok(match, "GDT-01 RPC definition must be complete.");
+  return match[0];
+}
+
+function normalizeFunctionDefinition(text) {
+  return functionDefinition(text)
+    .replace(originalMembershipResolutionUpdate, "<MEMBERSHIP_RESOLUTION_UPDATE>")
+    .replace(correctedMembershipResolutionUpdate, "<MEMBERSHIP_RESOLUTION_UPDATE>")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .trim();
+}
+
+assert.equal(
+  normalizeFunctionDefinition(source),
+  normalizeFunctionDefinition(originalSource),
+  "Normalized effective RPC definitions may differ only in the row-correlating membership-resolution UPDATE.",
+);
+
+function requireCorrelatedMembershipResolution(text) {
+  assert.match(
+    text,
+    /update\s+gdt01_members\s+as\s+target\s+set\s+membership_id\s*=\s*resolved\.id\s+from\s+public\.team_memberships\s+as\s+resolved\s+where\s+target\.participant_id\s*=\s*resolved\.participant_id\s+and\s+resolved\.team_id\s*=\s*v_team_id\s+and\s+resolved\.is_active\s*=\s*true\s+and\s+resolved\.left_at\s+is\s+null\s*;/is,
+    "membership resolution UPDATE must include a row-correlating WHERE clause",
+  );
+}
+
+requireCorrelatedMembershipResolution(source);
+assert.throws(
+  () => requireCorrelatedMembershipResolution(source.replace(correctedMembershipResolutionUpdate, originalMembershipResolutionUpdate)),
+  /membership resolution UPDATE must include a row-correlating WHERE clause/,
+  "Regression test must fail if membership resolution loses its WHERE clause.",
+);
 const manifestMatch = source.match(/\$gdt01_manifest\$\n([\s\S]*?)\n\$gdt01_manifest\$::jsonb/);
 assert.ok(manifestMatch, "SQL-owned manifest literal must exist.");
 const manifest = JSON.parse(manifestMatch[1]);
