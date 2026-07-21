@@ -1,4 +1,178 @@
-const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");const h=require("./gdt-01-team-dynamics-offline.cjs");const snapshot=h.loadJson(h.SNAPSHOT),canonical=h.loadJson(h.ANSWERS),recipe=h.loadJson(h.RECIPE);const expectedIds=["GD-001","GD-002","GD-003","GD-004","GD-005","GD-019"],checksum="375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d";
-function validate(data){const e=[];if(data.schema_version!=="gdt_01_team_dynamics_explicit_answers_v1"||data.canonical_persistence_input!==true||data.recipe_inference_required!==false)e.push("canonical");if(data.contract_checksum!==checksum)e.push("checksum");if(!Array.isArray(data.members)||data.members.length!==6)e.push("members");const seen=new Set;for(const m of data.members||[]){if(seen.has(m.candidate_id))e.push("duplicate candidate");seen.add(m.candidate_id);if(!expectedIds.includes(m.candidate_id))e.push("unknown candidate");if(!Array.isArray(m.responses)||m.responses.length!==48)e.push("response count");const qs=new Set;for(const r of m.responses||[]){if(qs.has(r.question_code))e.push("duplicate question");qs.add(r.question_code);const q=snapshot.questions.find(x=>x.code===r.question_code);if(!q)e.push("unknown question");else{if(r.question_order!==q.order)e.push("order");if(r.block_code!==q.metadata.block_key)e.push("block");if(r.response_type==="likert_single"){const o=q.options.find(x=>x.code===r.option_code);if(!o||o.value!==r.option_value)e.push("likert option")}else if(r.response_type==="sjt_best_worst"){const b=q.options.find(x=>x.code===r.best_option_code),w=q.options.find(x=>x.code===r.worst_option_code);if(!b||!w||b.code===w.code)e.push("sjt option")}else e.push("response type");}if(/^[0-9a-f]{8}-/i.test(String(r.question_code||""))||Object.values(r).some(v=>/^[0-9a-f]{8}-/i.test(String(v))))e.push("uuid");if("score" in r)e.push("score");if(/team.?fit/i.test(String(r.question_code||"")))e.push("team fit")}}if(seen.size!==6)e.push("roster");return e}
-const passes=[];function pass(n,name,fn){assert.equal(fn(),true,name);passes.push(`PASS ${String(n).padStart(2,"0")} ${name}`)}function bad(mut){const x=structuredClone(canonical);mut(x);return validate(x).length>0}
-pass(1,"recipe_only_canonical_rejected",()=>validate(recipe).length>0);pass(2,"missing_question_rejected",()=>bad(x=>x.members[0].responses.pop()));pass(3,"duplicate_question_rejected",()=>bad(x=>x.members[0].responses[1]=structuredClone(x.members[0].responses[0])));pass(4,"unknown_question_rejected",()=>bad(x=>x.members[0].responses[0].question_code="X"));pass(5,"wrong_question_order_rejected",()=>bad(x=>x.members[0].responses[0].question_order=99));pass(6,"wrong_block_rejected",()=>bad(x=>x.members[0].responses[0].block_code="x"));pass(7,"wrong_response_type_rejected",()=>bad(x=>x.members[0].responses[0].response_type="text"));pass(8,"likert_missing_option_rejected",()=>bad(x=>delete x.members[0].responses[0].option_code));pass(9,"likert_other_question_option_rejected",()=>bad(x=>x.members[0].responses[0].option_code=x.members[0].responses[1].option_code));pass(10,"likert_value_mismatch_rejected",()=>bad(x=>x.members[0].responses[0].option_value=1));const sjtIndex=38;pass(11,"sjt_missing_best_rejected",()=>bad(x=>delete x.members[0].responses[sjtIndex].best_option_code));pass(12,"sjt_missing_worst_rejected",()=>bad(x=>delete x.members[0].responses[sjtIndex].worst_option_code));pass(13,"sjt_same_pair_rejected",()=>bad(x=>x.members[0].responses[sjtIndex].worst_option_code=x.members[0].responses[sjtIndex].best_option_code));pass(14,"sjt_best_other_question_rejected",()=>bad(x=>x.members[0].responses[sjtIndex].best_option_code=x.members[0].responses[sjtIndex+1].best_option_code));pass(15,"sjt_worst_other_question_rejected",()=>bad(x=>x.members[0].responses[sjtIndex].worst_option_code=x.members[0].responses[sjtIndex+1].worst_option_code));pass(16,"option_order_reference_rejected",()=>bad(x=>{delete x.members[0].responses[0].option_code;x.members[0].responses[0].option_order=1}));pass(17,"uuid_identity_rejected",()=>bad(x=>x.members[0].responses[0].question_code="123e4567-e89b-12d3-a456-426614174000"));pass(18,"score_input_rejected",()=>bad(x=>x.members[0].responses[0].score=1));pass(19,"team_fit_pseudo_question_rejected",()=>bad(x=>x.members[0].responses[0].question_code="TEAM_FIT_01"));pass(20,"missing_member_rejected",()=>bad(x=>x.members.pop()));pass(21,"seventh_member_rejected",()=>bad(x=>x.members.push(structuredClone(x.members[0]))));pass(22,"duplicate_candidate_rejected",()=>bad(x=>x.members[1].candidate_id="GD-001"));pass(23,"gd019_development_rejected",()=>recipe.members.find(x=>x.candidate_id==="GD-019")&&true);pass(24,"gd019_calibration_rejected",()=>canonical.ai_prompt_calibration_allowed===false);pass(25,"team_calibration_rejected",()=>canonical.ai_prompt_calibration_allowed===false);pass(26,"checksum_rejected",()=>bad(x=>x.contract_checksum="bad"));pass(27,"materializer_preview_no_write",()=>true);pass(28,"materializer_confirmation_required",()=>true);pass(29,"identical_rebuild_exact_match",()=>true);pass(30,"different_rebuild_drift",()=>true);pass(31,"verifier_does_not_read_recipe",()=>!fs.readFileSync(path.join(__dirname,"gdt-01-team-dynamics-offline.cjs"),"utf8").match(/loadJson\(RECIPE\)/));const baseline=JSON.stringify(h.scores());pass(32,"recipe_mutation_does_not_change_verifier",()=>baseline===JSON.stringify(h.scores()));pass(33,"expected_member_mismatch_detected",()=>true);pass(34,"expected_aggregation_mismatch_detected",()=>true);pass(35,"incomplete_fixture_not_ready",()=>true);console.log(passes.join("\n"));console.log(JSON.stringify({casesRequired:35,casesExecuted:passes.length,casesPassed:passes.length,casesFailed:0},null,2));
+"use strict";
+
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+// This offline helper installs the repository TypeScript/alias loader and builds
+// the real mixed-runtime handoff from the locked runtime snapshot.
+const offline = require("./gdt-01-team-dynamics-offline.cjs");
+const {
+  buildGdt01DbContract,
+  loadGdt01DbContract,
+} = require("../lib/golden-demo/team-dynamics-gdt-01-db-contract.ts");
+const {
+  buildTeamDynamicsMixedSavedAnswerState,
+} = require("../lib/assessment/team-dynamics-mixed-answer-rehydration.ts");
+
+const canonical = offline.loadJson(offline.ANSWERS);
+const recipe = offline.loadJson(offline.RECIPE);
+const canonicalContract = loadGdt01DbContract(offline.root);
+const canonicalMemberRows = canonicalContract.members.map((member) => ({
+  candidate_id: member.candidateId,
+  display_name: member.displayName,
+  job_title: member.jobTitle,
+  email: member.email,
+  development_or_holdout: member.cohortSegment,
+  expected_participation_state: member.expectedParticipationState,
+  deterministic_verification_allowed: String(member.deterministicVerificationAllowed),
+  ai_prompt_calibration_allowed: String(member.aiPromptCalibrationAllowed),
+}));
+
+const passes = [];
+function pass(name, assertion) {
+  assertion();
+  passes.push(`PASS ${String(passes.length + 1).padStart(2, "0")} ${name}`);
+}
+
+function clone(value) {
+  return structuredClone(value);
+}
+
+function validateFixture(fixture) {
+  return buildGdt01DbContract({
+    fixture,
+    memberRows: canonicalMemberRows,
+    runtimeSnapshot: canonicalContract.runtimeSnapshot,
+  });
+}
+
+function expectFixtureInvalid(name, mutate, expectedError) {
+  pass(name, () => {
+    const mutated = clone(canonical);
+    mutate(mutated);
+    const result = validateFixture(mutated);
+    assert.ok(result.fixtureValidationErrors.length > 0, "production fixture validator must reject the mutation");
+    assert.ok(result.fixtureValidationErrors.some((error) => expectedError.test(error)), result.fixtureValidationErrors.join("\n"));
+  });
+}
+
+function fixtureResponseRows(member, handoff) {
+  return member.responses.map((response) => {
+    const item = handoff.items.find((candidate) => candidate.code === response.question_code);
+    assert.ok(item, `runtime handoff must contain ${response.question_code}`);
+    if (response.response_type === "likert_single") {
+      const option = item.options.find((candidate) => candidate.code === response.option_code && candidate.value === response.option_value);
+      return {
+        id: `response:${member.candidate_id}:${response.question_code}`,
+        question_id: item.questionId,
+        response_kind: "single_choice",
+        answer_option_id: option?.optionId ?? `invalid:${response.option_code}`,
+        response_selections: [],
+      };
+    }
+    const best = item.options.find((candidate) => candidate.code === response.best_option_code);
+    const worst = item.options.find((candidate) => candidate.code === response.worst_option_code);
+    return {
+      id: `response:${member.candidate_id}:${response.question_code}`,
+      question_id: item.questionId,
+      response_kind: "best_worst",
+      answer_option_id: null,
+      response_selections: [
+        { question_id: item.questionId, answer_option_id: best?.optionId ?? `invalid:${response.best_option_code}`, selection_role: "best" },
+        { question_id: item.questionId, answer_option_id: worst?.optionId ?? `invalid:${response.worst_option_code}`, selection_role: "worst" },
+      ],
+    };
+  });
+}
+
+function materializeMember(member) {
+  const handoff = offline.runtime();
+  return buildTeamDynamicsMixedSavedAnswerState({
+    context: offline.context(member.candidate_id),
+    runtimeHandoff: handoff,
+    responseRows: fixtureResponseRows(member, handoff),
+  });
+}
+
+pass("canonical_production_loader_and_validator", () => {
+  assert.equal(canonicalContract.runtimeValidationErrors.length, 0);
+  assert.equal(canonicalContract.fixtureValidationErrors.length, 0);
+  assert.equal(canonicalContract.members.length, 6);
+  assert.equal(canonicalContract.responses.length, 288);
+  assert.equal(canonicalContract.responses.filter((response) => response.responseType === "likert_single").length, 252);
+  assert.equal(canonicalContract.responses.filter((response) => response.responseType === "sjt_best_worst").length, 36);
+});
+
+pass("recipe_only_canonical_rejected", () => {
+  assert.ok(validateFixture(recipe).fixtureValidationErrors.length > 0);
+});
+
+expectFixtureInvalid("missing_question_rejected", (fixture) => fixture.members[0].responses.pop(), /48 responses/);
+expectFixtureInvalid("duplicate_question_rejected", (fixture) => { fixture.members[0].responses[1] = clone(fixture.members[0].responses[0]); }, /Duplicate question/);
+expectFixtureInvalid("unknown_question_rejected", (fixture) => { fixture.members[0].responses[0].question_code = "UNKNOWN_QUESTION"; }, /Unknown runtime question/);
+expectFixtureInvalid("likert_missing_option_rejected", (fixture) => { delete fixture.members[0].responses[0].option_code; }, /Invalid canonical Likert option/);
+expectFixtureInvalid("likert_value_mismatch_rejected", (fixture) => { fixture.members[0].responses[0].option_value = 1; }, /Invalid canonical Likert option/);
+expectFixtureInvalid("sjt_missing_best_rejected", (fixture) => { delete fixture.members[0].responses[38].best_option_code; }, /Invalid canonical SJT option/);
+expectFixtureInvalid("sjt_missing_worst_rejected", (fixture) => { delete fixture.members[0].responses[38].worst_option_code; }, /Invalid canonical SJT option/);
+expectFixtureInvalid("sjt_same_pair_rejected", (fixture) => { fixture.members[0].responses[38].worst_option_code = fixture.members[0].responses[38].best_option_code; }, /identical/);
+expectFixtureInvalid("missing_member_rejected", (fixture) => fixture.members.pop(), /member count is not six|Missing GDT-01 member/);
+expectFixtureInvalid("seventh_member_rejected", (fixture) => fixture.members.push(clone(fixture.members[0])), /member count is not six|Duplicate GDT-01 member/);
+expectFixtureInvalid("duplicate_candidate_rejected", (fixture) => { fixture.members[1].candidate_id = fixture.members[0].candidate_id; }, /Duplicate GDT-01 member|Missing GDT-01 member/);
+expectFixtureInvalid("runtime_contract_checksum_rejected", (fixture) => { fixture.contract_checksum = "bad"; }, /checksum differs/);
+
+pass("production_materializer_canonical_projection", () => {
+  const original = clone(canonical);
+  const states = canonical.members.map((member) => materializeMember(member));
+  assert.deepEqual(canonical, original, "materialization must not mutate fixture input");
+  assert.equal(states.length, 6);
+  assert.equal(states.reduce((total, state) => total + state.savedAnswerCount, 0), 288);
+  assert.equal(states.reduce((total, state) => total + Object.keys(state.savedLikertSelectionsByQuestionId).length, 0), 252);
+  assert.equal(states.reduce((total, state) => total + Object.keys(state.savedSjtSelectionsByQuestionId).length, 0), 36);
+  for (const state of states) {
+    assert.equal(state.savedAnswerCount, 48);
+    assert.equal(state.invalidSavedAnswerCount, 0);
+    assert.equal(state.ignoredStaleAnswerCount, 0);
+    assert.equal(Object.keys(state.savedLikertSelectionsByQuestionId).length, 42);
+    assert.equal(Object.keys(state.savedSjtSelectionsByQuestionId).length, 6);
+  }
+});
+
+pass("production_materializer_mutated_option_is_not_canonical", () => {
+  const canonicalOptionCode = canonical.members[0].responses[0].option_code;
+  const mutated = clone(canonical);
+  mutated.members[0].responses[0].option_code = "NOT_A_RUNTIME_OPTION";
+  const canonicalState = materializeMember(canonical.members[0]);
+  const mutatedState = materializeMember(mutated.members[0]);
+  assert.notDeepEqual(mutatedState, canonicalState);
+  assert.equal(mutatedState.savedAnswerCount, 47);
+  assert.equal(mutatedState.ignoredStaleAnswerCount, 1);
+  assert.equal(canonical.members[0].responses[0].option_code, canonicalOptionCode);
+});
+
+pass("independent_rebuilds_are_deep_equal_but_not_same_reference", () => {
+  const firstInput = clone(canonical);
+  const secondInput = clone(canonical);
+  const first = firstInput.members.map((member) => materializeMember(member));
+  const second = secondInput.members.map((member) => materializeMember(member));
+  assert.deepEqual(first, second);
+  assert.notStrictEqual(first, second);
+  assert.notStrictEqual(first[0], second[0]);
+  assert.deepEqual(firstInput, canonical);
+  assert.deepEqual(secondInput, canonical);
+});
+
+pass("mutated_rebuild_drifts_without_mutating_canonical_input", () => {
+  const mutated = clone(canonical);
+  mutated.members[0].responses[38].best_option_code = mutated.members[0].responses[38].worst_option_code;
+  const canonicalBuild = canonical.members.map((member) => materializeMember(member));
+  const mutatedBuild = mutated.members.map((member) => materializeMember(member));
+  assert.notDeepEqual(mutatedBuild, canonicalBuild);
+  assert.equal(mutatedBuild[0].invalidSavedAnswerCount, 1);
+  assert.deepEqual(canonical, offline.loadJson(offline.ANSWERS));
+});
+
+const source = fs.readFileSync(__filename, "utf8");
+assert.doesNotMatch(source, /=>\s*true\b/, "explicit-answer tests must not use trivial true callbacks");
+process.stdout.write(`${passes.join("\n")}\n`);
+process.stdout.write(`${JSON.stringify({ casesExecuted: passes.length, casesPassed: passes.length, casesFailed: 0 }, null, 2)}\n`);
