@@ -451,6 +451,46 @@ async function main() {
     }),
   );
 
+  const previousReasoningEffort = process.env.AI_REPORT_REASONING_EFFORT;
+  process.env.AI_REPORT_REASONING_EFFORT = "medium";
+  try {
+    const gpt56Operations = [];
+    const gpt56Result = await generateIndividualDevelopmentProfileReport(validInput, {
+      config: {
+        ...openAiConfig,
+        model: "gpt-5.6-sol",
+      },
+      runtimeConfig: {
+        modelName: "gpt-5.6-sol",
+        temperature: 0.2,
+      },
+      openAiOptions: {
+        client: {
+          async createChatCompletion(request) {
+            gpt56Operations.push(request);
+            return {
+              content: JSON.stringify(validResult.reportSnapshot),
+            };
+          },
+        },
+      },
+    });
+
+    assert.equal(gpt56Result.ok, true);
+    assert.equal(gpt56Operations.length, 1);
+    assert.equal(gpt56Operations[0].reasoning_effort, "medium");
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(gpt56Operations[0], "temperature"),
+      false,
+    );
+  } finally {
+    if (previousReasoningEffort === undefined) {
+      delete process.env.AI_REPORT_REASONING_EFFORT;
+    } else {
+      process.env.AI_REPORT_REASONING_EFFORT = previousReasoningEffort;
+    }
+  }
+
   const numericTemperatureOperations = [];
   const numericTemperatureResult =
     await generateIndividualDevelopmentProfileReport(validInput, {

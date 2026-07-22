@@ -18,9 +18,9 @@ import {
   type ReportLanguageQualityIssue,
   type ReportLanguageQualityResult,
 } from "@/lib/assessment/report-language-quality";
-import {
-  shouldOmitOpenAiTemperature,
-} from "@/lib/assessment/report-provider-openai";
+import { getAiReportReasoningEffortForModel } from "@/lib/assessment/report-config";
+import { shouldOmitOpenAiTemperature } from "@/lib/assessment/report-provider-openai";
+import type { AiReportReasoningEffort } from "@/lib/assessment/report-config";
 
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER = "openai" as const;
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION = "v1" as const;
@@ -166,6 +166,7 @@ type CompositeHrOpenAiChatCompletionsRequestBody = {
     content: string;
   }>;
   temperature?: number;
+  reasoning_effort?: AiReportReasoningEffort;
 };
 
 export type CompositeHrOpenAiRequestPayload = {
@@ -946,6 +947,12 @@ export function buildCompositeHrOpenAiChatCompletionsRequestBody(
 
   if (!shouldOmitOpenAiTemperature(options.model)) {
     requestBody.temperature = 0.2;
+  }
+
+  const reasoningEffort = getAiReportReasoningEffortForModel(options.model);
+
+  if (reasoningEffort) {
+    requestBody.reasoning_effort = reasoningEffort;
   }
 
   return requestBody;

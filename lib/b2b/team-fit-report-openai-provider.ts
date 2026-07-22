@@ -1,6 +1,9 @@
 import "server-only";
 
 import {
+  getAiReportReasoningEffortForModel,
+} from "@/lib/assessment/report-config";
+import {
   TEAM_FIT_RELATIONSHIP_PATTERNS,
   TEAM_FIT_REPORT_TYPE,
   TEAM_FIT_REPORT_VERSION,
@@ -13,13 +16,15 @@ import type {
   TeamFitReportProviderFailureReason,
   TeamFitReportProviderResult,
 } from "@/lib/b2b/team-fit-report-provider";
+import { shouldOmitOpenAiTemperature } from "@/lib/assessment/report-provider-openai";
 
 export const TEAM_FIT_OPENAI_PROVIDER = "openai" as const;
 export const TEAM_FIT_OPENAI_PROVIDER_VERSION = "v1" as const;
 
 type TeamFitOpenAiClientRequest = {
   model: string;
-  temperature: number;
+  temperature?: number;
+  reasoning_effort?: import("@/lib/assessment/report-config").AiReportReasoningEffort;
   response_format: {
     type: "json_schema";
     json_schema: {
@@ -573,9 +578,8 @@ export async function generateTeamFitReportWithOpenAI(
   let rawContent: string;
 
   try {
-    const response = await client.createChatCompletion({
+    const request: TeamFitOpenAiClientRequest = {
       model: options.model,
-      temperature: 0.2,
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -594,7 +598,19 @@ export async function generateTeamFitReportWithOpenAI(
           content: buildUserPrompt(inputSnapshot),
         },
       ],
-    });
+    };
+
+    if (!shouldOmitOpenAiTemperature(options.model)) {
+      request.temperature = 0.2;
+    }
+
+    const reasoningEffort = getAiReportReasoningEffortForModel(options.model);
+
+    if (reasoningEffort) {
+      request.reasoning_effort = reasoningEffort;
+    }
+
+    const response = await client.createChatCompletion(request);
 
     rawContent = response.content;
   } catch (error) {

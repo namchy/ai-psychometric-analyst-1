@@ -1447,6 +1447,43 @@ async function testCompositeOpenAiTemperatureBehaviorForNonGpt55Model() {
   assert.equal(reviewerRequestBody.temperature, 0.2);
 }
 
+async function testCompositeOpenAiReasoningEffortForGpt56Model() {
+  const previous = process.env.AI_REPORT_REASONING_EFFORT;
+  process.env.AI_REPORT_REASONING_EFFORT = "medium";
+
+  try {
+    const inputSnapshot = buildCompositeInputSnapshotFixture();
+    const capture = buildCapturingFetchResponse(
+      buildOpenAiSnapshotFixture(inputSnapshot),
+      buildReviewerResponseFixture(),
+    );
+
+    await generateOpenAiCompositeHrReport(inputSnapshot, {
+      apiKey: "test-key",
+      model: "gpt-5.6-sol",
+      fetchImpl: capture.fetchImpl,
+      now: () => "2026-05-12T10:15:00.000Z",
+    });
+
+    assert.equal(capture.calls.length, 2);
+
+    for (const call of capture.calls) {
+      const requestBody = JSON.parse(call.body);
+      assert.equal(requestBody.reasoning_effort, "medium");
+      assert.equal(
+        Object.prototype.hasOwnProperty.call(requestBody, "temperature"),
+        false,
+      );
+    }
+  } finally {
+    if (previous === undefined) {
+      delete process.env.AI_REPORT_REASONING_EFFORT;
+    } else {
+      process.env.AI_REPORT_REASONING_EFFORT = previous;
+    }
+  }
+}
+
 async function testFeminineMismatchIsDiagnosticOnly() {
   const inputSnapshot = buildCompositeInputSnapshotFixture({
     addressingForm: "feminine",
@@ -1567,6 +1604,7 @@ async function main() {
   await testValidOutputHasNoForbiddenWords();
   await testPromptGuidanceEnforcesCompositeHrCopyRules();
   await testCompositeOpenAiTemperatureBehaviorForNonGpt55Model();
+  await testCompositeOpenAiReasoningEffortForGpt56Model();
   await testFeminineMismatchIsDiagnosticOnly();
   await testDataOnlyBlockingEvidenceMismatchStillFailsProduction();
   await testFeminineNarrativePassesAndNeutralEvidenceDoesNotTripGuardrail();

@@ -2,9 +2,11 @@ import "server-only";
 
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import {
+  getAiReportReasoningEffortForModel,
   getIpipNeo120ParticipantGenerationMode,
   getIpipNeo120ParticipantReportVersion,
 } from "@/lib/assessment/report-config";
+import type { AiReportReasoningEffort } from "@/lib/assessment/report-config";
 import {
   maybeWriteAiReportDebugDump,
 } from "@/lib/assessment/ai-report-debug-dump";
@@ -118,6 +120,7 @@ type OpenAiChatCompletionsRequestBody = {
     content: string;
   }>;
   temperature?: number;
+  reasoning_effort?: AiReportReasoningEffort;
 };
 
 function isIpipNeo120ParticipantPromptInput(
@@ -214,7 +217,8 @@ function applyIpipNeo120ParticipantV2BhsOutputPolicy<T>(
 }
 
 export function shouldOmitOpenAiTemperature(model: string): boolean {
-  return model.startsWith("gpt-5.5");
+  const normalizedModel = model.toLowerCase();
+  return normalizedModel.startsWith("gpt-5.5") || normalizedModel.startsWith("gpt-5.6");
 }
 
 export function buildOpenAiSchemaName(schemaName: string): string {
@@ -279,6 +283,12 @@ export function buildOpenAiChatCompletionsRequestBody(
 
   if (!shouldOmitOpenAiTemperature(options.model)) {
     body.temperature = 0.2;
+  }
+
+  const reasoningEffort = getAiReportReasoningEffortForModel(options.model);
+
+  if (reasoningEffort) {
+    body.reasoning_effort = reasoningEffort;
   }
 
   return body;

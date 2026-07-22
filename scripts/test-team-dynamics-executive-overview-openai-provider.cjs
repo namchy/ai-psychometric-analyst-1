@@ -193,6 +193,32 @@ async function main() {
   assert.match(validOps[0].messages[1].content, /No Team Fit output/i);
   assert.equal(validateTeamDynamicsExecutiveOverviewSnapshot(validResult.snapshot).ok, true);
 
+  const previousReasoningEffort = process.env.AI_REPORT_REASONING_EFFORT;
+  process.env.AI_REPORT_REASONING_EFFORT = "medium";
+  try {
+    const gpt56Ops = [];
+    const gpt56Result = await generateTeamDynamicsExecutiveOverviewWithOpenAI(
+      inputSnapshot,
+      {
+        apiKey: "test-key",
+        model: "gpt-5.6-sol",
+        client: buildFakeClient(JSON.stringify(validSnapshot), gpt56Ops),
+        now: () => "2026-05-29T10:00:00.500Z",
+      },
+    );
+
+    assert.equal(gpt56Result.ok, true);
+    assert.equal(gpt56Ops.length, 1);
+    assert.equal(gpt56Ops[0].reasoning_effort, "medium");
+    assert.equal(Object.prototype.hasOwnProperty.call(gpt56Ops[0], "temperature"), false);
+  } finally {
+    if (previousReasoningEffort === undefined) {
+      delete process.env.AI_REPORT_REASONING_EFFORT;
+    } else {
+      process.env.AI_REPORT_REASONING_EFFORT = previousReasoningEffort;
+    }
+  }
+
   const invalidJsonResult = await generateTeamDynamicsExecutiveOverviewWithOpenAI(inputSnapshot, {
     apiKey: "test-key",
     model: "gpt-5.1",

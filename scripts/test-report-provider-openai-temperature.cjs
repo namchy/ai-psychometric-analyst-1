@@ -61,6 +61,26 @@ require.extensions[".ts"] = function compileTypeScript(module, filename) {
 const {
   buildOpenAiChatCompletionsRequestBody,
 } = require("../lib/assessment/report-provider-openai.ts");
+const {
+  getAiReportReasoningEffort,
+  getAiReportReasoningEffortForModel,
+  normalizeAiReportReasoningEffort,
+} = require("../lib/assessment/report-config.ts");
+
+function withoutReasoningEffort(callback) {
+  const previous = process.env.AI_REPORT_REASONING_EFFORT;
+  delete process.env.AI_REPORT_REASONING_EFFORT;
+
+  try {
+    return callback();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.AI_REPORT_REASONING_EFFORT;
+    } else {
+      process.env.AI_REPORT_REASONING_EFFORT = previous;
+    }
+  }
+}
 
 function assertTemperatureBehavior(model, expectedTemperaturePresent) {
   const body = buildOpenAiChatCompletionsRequestBody(
@@ -90,9 +110,70 @@ function assertTemperatureBehavior(model, expectedTemperaturePresent) {
 }
 
 function main() {
-  assertTemperatureBehavior("gpt-5.5", false);
-  assertTemperatureBehavior("gpt-5.5-mini", false);
-  assertTemperatureBehavior("gpt-4.1", true);
+  withoutReasoningEffort(() => {
+    assertTemperatureBehavior("gpt-5.5", false);
+    assertTemperatureBehavior("gpt-5.5-mini", false);
+    assertTemperatureBehavior("gpt-4.1", true);
+
+    const unsetBody = buildOpenAiChatCompletionsRequestBody(
+      { apiKey: "test-key", model: "gpt-5.6-sol", timeoutMs: 120000 },
+      {
+        schemaName: "gdt01",
+        schema: { type: "object" },
+        systemPrompt: "system",
+        userPrompt: "user",
+      },
+    );
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(unsetBody, "reasoning_effort"),
+      false,
+    );
+    assert.equal(Object.prototype.hasOwnProperty.call(unsetBody, "temperature"), false);
+    assert.equal(getAiReportReasoningEffort(), null);
+    assert.equal(getAiReportReasoningEffortForModel("gpt-4.1"), null);
+  });
+
+  const previous = process.env.AI_REPORT_REASONING_EFFORT;
+  process.env.AI_REPORT_REASONING_EFFORT = " medium ";
+
+  try {
+    assert.equal(getAiReportReasoningEffort(), "medium");
+    assert.equal(normalizeAiReportReasoningEffort("unsupported"), null);
+    assert.equal(getAiReportReasoningEffortForModel("gpt-5.6-sol"), "medium");
+
+    const gpt56Body = buildOpenAiChatCompletionsRequestBody(
+      { apiKey: "test-key", model: "gpt-5.6-sol", timeoutMs: 120000 },
+      {
+        schemaName: "gdt01",
+        schema: { type: "object" },
+        systemPrompt: "system",
+        userPrompt: "user",
+      },
+    );
+    assert.equal(gpt56Body.reasoning_effort, "medium");
+    assert.equal(Object.prototype.hasOwnProperty.call(gpt56Body, "temperature"), false);
+
+    const earlierModelBody = buildOpenAiChatCompletionsRequestBody(
+      { apiKey: "test-key", model: "gpt-4.1", timeoutMs: 120000 },
+      {
+        schemaName: "gdt01",
+        schema: { type: "object" },
+        systemPrompt: "system",
+        userPrompt: "user",
+      },
+    );
+    assert.equal(earlierModelBody.temperature, 0.2);
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(earlierModelBody, "reasoning_effort"),
+      false,
+    );
+  } finally {
+    if (previous === undefined) {
+      delete process.env.AI_REPORT_REASONING_EFFORT;
+    } else {
+      process.env.AI_REPORT_REASONING_EFFORT = previous;
+    }
+  }
 
   console.log("test-report-provider-openai-temperature: ok");
 }

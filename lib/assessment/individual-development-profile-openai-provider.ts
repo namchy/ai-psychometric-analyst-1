@@ -1,6 +1,10 @@
 import "server-only";
 
+import {
+  getAiReportReasoningEffortForModel,
+} from "@/lib/assessment/report-config";
 import { resolveAiReportLanguagePolicy } from "@/lib/assessment/ai-report-language-policy";
+import { shouldOmitOpenAiTemperature } from "@/lib/assessment/report-provider-openai";
 import {
   INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_AUDIENCE,
   INDIVIDUAL_DEVELOPMENT_PROFILE_REPORT_TYPE,
@@ -21,6 +25,7 @@ export const INDIVIDUAL_DEVELOPMENT_PROFILE_OPENAI_GENERATOR_VERSION =
 export type IndividualDevelopmentProfileOpenAiRequest = {
   model: string;
   temperature?: number;
+  reasoning_effort?: import("@/lib/assessment/report-config").AiReportReasoningEffort;
   response_format: {
     type: "json_schema";
     json_schema: {
@@ -799,8 +804,17 @@ export function buildIndividualDevelopmentProfileOpenAiRequest(input: {
     ],
   };
 
-  if (typeof input.temperature === "number") {
+  if (
+    typeof input.temperature === "number" &&
+    !shouldOmitOpenAiTemperature(input.model)
+  ) {
     request.temperature = input.temperature;
+  }
+
+  const reasoningEffort = getAiReportReasoningEffortForModel(input.model);
+
+  if (reasoningEffort) {
+    request.reasoning_effort = reasoningEffort;
   }
 
   return request;

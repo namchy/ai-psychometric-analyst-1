@@ -5,6 +5,7 @@ import type { ReportGeneratorType } from "@/lib/assessment/report-providers";
 export type AiReportConfig = {
   provider: ReportGeneratorType;
   model: string | null;
+  reasoningEffort: AiReportReasoningEffort | null;
   promptVersion: string;
   ipipNeo120ParticipantReportVersion: IpipNeo120ParticipantReportVersion;
   ipipNeo120ParticipantGenerationMode: IpipNeo120ParticipantGenerationMode;
@@ -13,8 +14,43 @@ export type AiReportConfig = {
   openAiTimeoutMs: number;
 };
 
+export type AiReportReasoningEffort =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
+
 export type IpipNeo120ParticipantReportVersion = "v1" | "v2";
 export type IpipNeo120ParticipantGenerationMode = "single" | "segmented";
+
+export function normalizeAiReportReasoningEffort(
+  value: string | null | undefined,
+): AiReportReasoningEffort | null {
+  const normalized = value?.trim().toLowerCase();
+
+  return normalized === "none" ||
+    normalized === "minimal" ||
+    normalized === "low" ||
+    normalized === "medium" ||
+    normalized === "high" ||
+    normalized === "xhigh"
+    ? normalized
+    : null;
+}
+
+export function getAiReportReasoningEffort(): AiReportReasoningEffort | null {
+  return normalizeAiReportReasoningEffort(process.env.AI_REPORT_REASONING_EFFORT);
+}
+
+export function getAiReportReasoningEffortForModel(
+  model: string,
+): AiReportReasoningEffort | null {
+  return model.toLowerCase().startsWith("gpt-5")
+    ? getAiReportReasoningEffort()
+    : null;
+}
 
 function normalizeBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (!value) {
@@ -80,6 +116,7 @@ export function getAiReportConfig(): AiReportConfig {
   return {
     provider: provider === "openai" ? "openai" : "mock",
     model: normalizeAiReportModel(process.env.AI_REPORT_MODEL ?? null),
+    reasoningEffort: getAiReportReasoningEffort(),
     promptVersion: process.env.AI_REPORT_PROMPT_VERSION ?? "v1",
     ipipNeo120ParticipantReportVersion: getIpipNeo120ParticipantReportVersion(),
     ipipNeo120ParticipantGenerationMode: getIpipNeo120ParticipantGenerationMode(),
