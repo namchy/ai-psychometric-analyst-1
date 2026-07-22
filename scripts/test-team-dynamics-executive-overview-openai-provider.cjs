@@ -189,8 +189,15 @@ async function main() {
   assert.equal(validResult.generatedAt, "2026-05-29T10:00:00.000Z");
   assert.equal(validOps.length, 1);
   assert.equal(validOps[0].response_format.type, "json_schema");
-  assert.match(validOps[0].messages[0].content, /deterministic input_snapshot/i);
-  assert.match(validOps[0].messages[1].content, /No Team Fit output/i);
+  assert.match(validOps[0].messages[0].content, /Kreiraš jedan Team Dynamics Executive Overview/i);
+  assert.match(validOps[0].messages[0].content, /ne smije navesti niti implicirati rezultat bilo kojeg pojedinačnog člana/i);
+  assert.match(validOps[0].messages[0].content, /Statističke pokazatelje koristi selektivno i odmjereno/i);
+  assert.match(validOps[0].messages[0].content, /u korisničkom bosanskom tekstu ne koristi izraze/i);
+  assert.match(validOps[0].messages[1].content, /"audience_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"individual_result_protection_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"statistics_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"outcome_pulse_language_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"section_roles_rule"/i);
   assert.equal(validateTeamDynamicsExecutiveOverviewSnapshot(validResult.snapshot).ok, true);
 
   const previousReasoningEffort = process.env.AI_REPORT_REASONING_EFFORT;

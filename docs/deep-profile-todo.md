@@ -38,6 +38,8 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 
 > **2026-07-22 — GDT-01 Team Dynamics aggregation i Executive Overview završeni. Šest jedinstvenih member scoreova agregirano je u jedan snapshot sa EXACT_8_OF_8 rezultatom. Kreiran je jedan Team Dynamics Executive Overview report, ID fdfab035-d040-4da0-ab19-67a119be6c00, koji je završio kao ready; persisted snapshot prolazi postojeći validator. Runtime je pozvan sa gpt-5.6-sol, reasoning effort medium i bez temperature. Persisted generator_type i model_name su null; to je evidentirano kao audit metadata ograničenje, ali nije blocker za Golden Demo.**
 
+> **2026-07-22 — Team Dynamics Executive Overview prompt v2 je prihvaćen. Prompt je izdvojen u poseban TypeScript modul; poboljšani su HR jezik, evidence disciplina, poslovna interpretacija, konkretne preporuke, zaštita individualnih rezultata i odmjerena upotreba statističkih pokazatelja. Finalni low i medium in-memory previewi prošli su postojeći validator; nijedan preview nije persistiran, nije bilo DB writea i postojeći GDT-01 ready report ostaje nepromijenjen. Produkcijski runtime je openai / gpt-5.6-sol / reasoning low, bez temperature. Medium je tehnički potvrđen, ali nije pokazao dovoljno veći kvalitet da opravda slabiju dokazanu pouzdanost i višu latenciju; ostaje eksperimentalna opcija. Sigurna regeneracija ready reporta zahtijeva zaseban versioned regeneration flow i nije dio ovog taska.**
+
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
 Pravila: 
