@@ -1,19 +1,21 @@
 # GDT-01 Team Dynamics — persistence implementation and hosted rollout preflight
 
-Status: `SOURCE_IMPLEMENTED_AWAITING_FINAL_REVIEW_AND_HOSTED_RUNTIME_VALIDATION` — 21.07.2026.
+Status: `GDT01_CORRECTIVE_MIGRATION_APPLIED_AND_VALIDATED` — 22.07.2026.
 
-`docs/deep-profile-todo.md` remains the canonical source of truth for overall priorities. This document is the technical audit and rollout preflight for the uncommitted GDT-01 persistence package.
+`docs/deep-profile-todo.md` remains the canonical source of truth for overall priorities. This document records the confirmed post-migration GDT-01 persistence state and the narrow seed boundary.
 
 ## 1. Current evidence and scope
 
-The source-level persistence package is implemented:
+The source-level persistence package is implemented and committed; `881d4f45` is the latest source commit:
 
 - the SQL transaction boundary and server-owned manifest are implemented;
 - the application writer/CLI boundary is implemented and hardened against forged inspection/plan input;
 - the read-only inspector and DB contract are the existing production components used by the writer;
 - dedicated offline contract tests pass.
 
-This is **not** a database validation or rollout verdict. No migration, RPC, writer CLI, DB apply, hosted rollout, scoring, completion, aggregation, report generation or OpenAI call has been executed for this package. The package is a candidate for final source review and commit; hosted runtime validation requires a separately authorized task.
+The migrations `20260721143000_create_gdt01_team_dynamics_seed_rpc.sql` and `20260721150000_fix_gdt01_membership_resolution_update.sql` are applied and validated. The corrective migration removed the hosted `pg_safeupdate` error `UPDATE requires a WHERE clause`, and the membership update is correlated through `participant_id`. The security contract remains `SECURITY DEFINER`, empty `search_path`, execute only for `service_role`.
+
+The foundation is `EXACT_MATCH` with 24 participants, 4 teams and 24 active memberships. GDT-01 is `EMPTY`, `writerEligible: true`; assignment, wrappers, attempts, responses, selections, scores, aggregations and reports remain 0. The corrective migration did not seed data.
 
 Locked facts for this slice:
 
@@ -158,39 +160,19 @@ git diff --check
 
 Evidence includes manifest deep equality against the production fixture projection; roster/question/option/SJT mutation cases; SQL security/lock/lineage/result assertions; forged inspection/plan and RPC-result rejection; CLI duplicate/confirmation/initialization guards; inspector state precedence; and 18 production-backed explicit-answer PASS cases without nominal `() => true` callbacks.
 
-## 7. Not yet runtime-validated
+## 7. Confirmed runtime result and remaining seed boundary
 
-The following must not be inferred from source tests:
+The migration, source, ACL and security contract audits are already proven for this status sync and are not repeated. The remaining state transition is intentionally narrow: GDT-01 is still `EMPTY` and no seed has run.
 
-- PostgreSQL parse and complete migration-chain apply;
-- actual function owner, signature and ACL introspection;
-- hosted foundation exact-one resolution and GDT-01 `EMPTY` preflight;
-- RLS/service-role execution behavior;
-- first RPC apply and returned DB result;
-- transaction rollback under runtime failure injection;
-- advisory-lock concurrency;
-- post-apply graph, FK lineage and absence of score/report artifacts;
-- second CLI `EXACT_MATCH` no-op and unchanged canonical graph fingerprint.
+## 8. Next step — lean controlled GDT-01 seed
 
-Local DB validation was not performed because the development environment has no Docker. Docker is not introduced for this workflow. This is an environment constraint, not a source defect; runtime confirmation is a separately authorized, strictly controlled hosted rollout task.
+Run the existing apply command once:
 
-## 8. Hosted rollout gate
+```text
+node scripts/write-gdt-01-team-dynamics-db.cjs --apply --confirm GDT_01_TEAM_DYNAMICS
+```
 
-No hosted write follows automatically from commit. A separately approved hosted task must prove, in order:
-
-1. fresh DB backup and exact hosted environment/project target;
-2. reviewed migration source and error-free migration apply;
-3. RPC signature, owner and ACL introspection;
-4. foundation inspector `EXACT_MATCH`;
-5. GDT-01 inspector `EMPTY`;
-6. explicit operator confirmation;
-7. one validated RPC/CLI success result;
-8. post-apply inspector `EXACT_MATCH`;
-9. exact graph counts and lineage, including no downstream score/report artifacts;
-10. second CLI apply as no-op;
-11. identical pre/post second-run DB fingerprint.
-
-Any failed precondition blocks the write; no cleanup, overwrite or fallback seed is authorized.
+Then perform only a read-only footprint check for `1 assignment / 6 wrappers / 6 attempts / 288 responses / 72 physical selections / 324 logical selections`. Scoring, aggregation, Team Fit, AI and evaluation remain later separate steps. No cleanup, overwrite or fallback seed is authorized.
 
 ## 9. Residual risk
 
@@ -199,4 +181,4 @@ Any failed precondition blocks the write; no cleanup, overwrite or fallback seed
 - A compromised service-role credential is outside this operational guard; credential handling remains an external security responsibility.
 - Hosted rollout requires backup, target proof and read-only preflight before the first write.
 
-No statement in this document claims a DB `EXACT_MATCH`, applied migration, executed RPC or hosted rollout.
+Current statement: migrations are applied and validated; foundation is `EXACT_MATCH`; GDT-01 is `EMPTY` and `writerEligible: true`; the corrective migration did not execute the seed. The next authorized boundary is the single controlled seed apply followed by the read-only footprint check above.

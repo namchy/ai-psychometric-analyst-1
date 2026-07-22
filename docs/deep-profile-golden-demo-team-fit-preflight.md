@@ -2,6 +2,8 @@
 
 **Scope:** local, read-only code and migration audit. This header describes the original audit; a later operator-provided GDT-01 SELECT-only inspector run is documented below. No database write, network/provider, scoring or report generation was performed. `docs/deep-profile-todo.md` remains the canonical backlog authority.
 
+> **Superseding current GDT-01 status:** `GDT01_CORRECTIVE_MIGRATION_APPLIED_AND_VALIDATED`. Commit `881d4f45` is the latest source commit. Migrations `20260721143000_create_gdt01_team_dynamics_seed_rpc.sql` and `20260721150000_fix_gdt01_membership_resolution_update.sql` are applied; the corrective migration removed the hosted `pg_safeupdate` error `UPDATE requires a WHERE clause`, and membership update is correlated via `participant_id`. Security remains `SECURITY DEFINER`, empty `search_path`, execute only for `service_role`. Foundation is `EXACT_MATCH` with 24 participants, 4 teams and 24 active memberships. GDT-01 is `EMPTY`, `writerEligible: true`; assignment, wrappers, attempts, responses, selections, scores, aggregations and reports remain 0. The corrective migration did not seed data. Next is one existing seed apply command and a read-only footprint check for `1 assignment / 6 wrappers / 6 attempts / 288 responses / 72 physical selections / 324 logical selections`; source, ACL and migration audits are not repeated, and scoring, aggregation, Team Fit, AI and evaluation remain later separate steps.
+
 ## Verdict
 
 `TEAM_FIT_GOLDEN_DEMO_NEEDS_FOUNDATION`
@@ -15,7 +17,7 @@ The codebase does not contain a canonical **Team Fit test** in `public.tests`. T
 
 This confirms the proposed optional-module semantics: Team Fit is not a fourth standard-battery test, does not add an attempt, question, response, `dimension_scores` row or standard-battery completion requirement, and must not turn an otherwise complete battery into partial/error. It also means that a meaningful first Golden Demo Team Fit slice is a whole team, not an individual Team Fit questionnaire.
 
-The remaining foundation is narrow but material: GDT-01 has a canonical offline explicit fixture and inspector contract, but no applied/live DB Team Dynamics assessment or aggregation fixture yet; there is no Team Fit-specific Golden Demo manifest/validator/verifier, and the report row permits stale source pointers because the database does not enforce source FKs or invalidation. Do not create Team Fit answers for IPIP/SAFRAN/MWMS or invent a `team_fit` test slug.
+The remaining Team Fit work is narrow but material: GDT-01 corrective persistence migration is applied and validated, but the target graph remains `EMPTY` until the controlled seed; there is no Team Fit-specific Golden Demo manifest/validator/verifier, and the report row permits stale source pointers because the database does not enforce source FKs or invalidation. Do not create Team Fit answers for IPIP/SAFRAN/MWMS or invent a `team_fit` test slug.
 
 ## Confirmed contract
 
@@ -109,7 +111,7 @@ There is no candidate-facing Team Fit UI, no Team Fit question flow, and no dash
 | 4. Deterministic scoring | PARTIAL | Team Dynamics scorer is deterministic; no Team Fit scorer. | Verify six member Team Dynamics scores. |
 | 5. Expected dimensions/bands | PARTIAL | Team Dynamics entry aggregates have values, no Team Fit score/bands. | Define expected aggregation entries/coverage, not fit bands. |
 | 6. Production scoring adapter | READY | Team Dynamics mixed scoring/persistence exists. | Audit/create dedicated offline fixture verifier. |
-| 7. Fixture writer | MISSING | No Golden Demo team writer. | Controlled writer after offline team contract. |
+| 7. Fixture writer | IMPLEMENTED | `lib/golden-demo/team-dynamics-gdt-01-writer.ts` and guarded CLI exist; migration is applied/validated, while GDT-01 remains `EMPTY`. | Run the controlled seed, then verify the expected read-only footprint. |
 | 8. Scoring-state inspector | MISSING | No Golden Demo Team Dynamics state model. | Define unscored/scored/partial/conflict inspector. |
 | 9. Post-scoring verifier | PARTIAL | Aggregation verification/read helper exists. | Add Golden expected snapshot verifier. |
 | 10. Team membership fixture | MISSING | Locked GDT-01 data is not persisted as Team Dynamics fixture. | Add manifest for six members and immutable membership snapshot. |
@@ -161,9 +163,9 @@ For evidence, keep GDT-01 as development/calibration and reserve an entire untou
 
 ### Current GDT-01 inspector boundary
 
-GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Treći reviewed GDT-01 run je SELECT-only potvrdio validan runtime, `PARTIAL` samo zbog foundation blockera i odsustvo target persistence artefakata. Identity/team foundation je nakon toga live potvrđen kao `EXACT_MATCH` sa 24 participants, 4 teams i 24 memberships, bez blocking ili diagnostic findings; ponovljeni read-only run je `EXACT_MATCH_NOOP` sa `rpcAllowed: false`. Team Dynamics assignment/attempt/response writer i Team Fit provider/report flow još nisu pokrenuti.
+GDT-01 read-only inspector faza ostaje upstream persistence/state check i ne proizvodi Team Fit input niti report. Direktno target-lineage Team Fit artefakti su blocking findings za seed inspector; ambient `team_fit_reports` redovi bez dokazive assignment/aggregation lineage veze ostaju diagnostic-only. Foundation je potvrđen kao `EXACT_MATCH` sa 24 participants, 4 teams i 24 memberships; GDT-01 corrective migration je primijenjena i validirana, a current inspector state je `EMPTY` sa `writerEligible: true`. Seed i Team Fit provider/report flow još nisu pokrenuti.
 
-Foundation writer implementation ne mijenja Team Fit granicu: njegov RPC scope je isključivo postojeća organization identity/team foundation (`participants`, `teams`, `team_memberships`). Foundation workstream je završen live `EXACT_MATCH`; Team Dynamics assignment, answers, scoring, aggregation i Team Fit artefakti ostaju out of scope ovog koraka. Sljedeći planirani korak je GDT-01 Team Dynamics assignment/attempt/response writer i inspector.
+Foundation writer implementation ne mijenja Team Fit granicu: njegov RPC scope je isključivo postojeća organization identity/team foundation (`participants`, `teams`, `team_memberships`). Foundation workstream je završen live `EXACT_MATCH`; corrective migration status je validiran, ali Team Dynamics assignment, answers, scoring, aggregation i Team Fit artefakti još nisu kreirani. Sljedeći korak je postojeća GDT-01 seed apply komanda i read-only footprint provjera.
 
 1. Is a future *actual* Team Fit questionnaire desired? Current code only supports Team Fit as a report; adding an instrument requires a separate product and schema decision.
 2. What source-version rule invalidates an existing Team Fit report when a Team Dynamics member, aggregation snapshot or candidate standard battery changes? Current database stores opaque UUID references without automatic invalidation.
@@ -184,7 +186,7 @@ Foundation writer implementation ne mijenja Team Fit granicu: njegov RPC scope j
 
 No snapshot has been created, no Team Dynamics answers/member scores/team aggregation have been generated, and no Team Fit report/OpenAI call has occurred. GDT-01 retains its locked six members including global holdout `GD-019`. Before fixture generation, decide separately whether GD-019 may participate in deterministic whole-team technical verification, whether any GDT-01 output may inform AI Team Fit calibration, and how candidate-level holdout integrity is preserved.
 
-### GDT-01 offline deterministic foundation
+### Historical GDT-01 offline deterministic foundation (superseded current persistence status above)
 
 **Explicit-answer freeze:** provenance recipe is now separate from the canonical persistence fixture. `team-dynamics-gdt-01-answer-recipes.json` is provenance-only and forbidden as scorer/DB-writer input; `team-dynamics-gdt-01-answers.json` contains 48 explicit code-based responses per member (288 total, 324 selections). The offline scorer/verifiers read only the explicit fixture. Live DB, DB inspector/writer/RPC, scoring, aggregation persistence, Team Fit report and OpenAI remain unexecuted.
 
@@ -192,6 +194,6 @@ The active runtime snapshot is now VALID/live EXACT_MATCH at checksum `375a97663
 
 `GD-019` may participate in deterministic answer/scoring/aggregation verification, but not prompt tuning or AI report calibration. The aggregate is marked `deterministic_verification_allowed=true`, `ai_prompt_calibration_allowed=false`, and `holdout_evaluation_only_after_prompt_freeze=true`. No live Team Dynamics attempts/responses, Team Fit report or OpenAI call exists; the next task is the existing `controlled GDT-01 Team Dynamics DB writer and live-state inspector` for assignment/attempt/response persistence.
 
-### DB writer precondition blocker
+### Historical DB writer precondition blocker (superseded by committed writer and applied migration)
 
 The current offline answer fixture is deterministic but recipe-shaped: it stores one Likert value per block and SJT option orders, not the canonical 48 per-member question codes and per-scenario best/worst option codes required by production persistence. A DB writer would have to re-infer selections instead of persisting an authored canonical payload. Therefore no writer/RPC is authorized until an offline-only fixture correction freezes explicit code-based response entries and regenerates expected outputs.

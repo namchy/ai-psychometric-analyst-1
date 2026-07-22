@@ -2,7 +2,9 @@
 
 **Scope:** read-only statički audit lokalnog repoa, 2026-07-11. Ovo je historijski audit; kasniji operator-provided SELECT-only GDT-01 inspector run je zasebno dokumentovan ispod. Nisu pokrenuti OpenAI, worker, seed, cleanup ili report regeneration.
 
-> GDT-01 explicit answer persistence gate is hardened: recipe provenance is excluded from verifier/writer input; checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, six members, 48/288 physical response objects, 72 physical SJT selections and 324 logical option selections, and member/aggregation `EXACT_MATCH`. Writer/RPC/migration and live scoring/aggregation remain pending; the first reviewed inspector run was SELECT-only and is documented below.
+> **Superseding current GDT-01 status:** `GDT01_CORRECTIVE_MIGRATION_APPLIED_AND_VALIDATED`. Commit `881d4f45` je posljednji source commit. Migracije `20260721143000_create_gdt01_team_dynamics_seed_rpc.sql` i `20260721150000_fix_gdt01_membership_resolution_update.sql` su primijenjene; korektivna migracija je uklonila hosted `pg_safeupdate` grešku `UPDATE requires a WHERE clause`, a membership update je korelisan preko `participant_id`. Security contract ostaje `SECURITY DEFINER`, prazan `search_path`, execute samo za `service_role`. Foundation je `EXACT_MATCH` (`24 participants`, `4 teams`, `24 active memberships`); GDT-01 je `EMPTY`, `writerEligible: true`, svi assignment/wrapper/attempt/response/selection/score/aggregation/report countovi su 0, a korektivna migracija nije pokrenula seed. Sljedeći korak je jedna postojeća seed apply komanda i read-only footprint provjera: `1 assignment / 6 wrappers / 6 attempts / 288 responses / 72 physical selections / 324 logical selections`. Source, ACL i migration audit se ne ponavljaju; scoring, aggregation, Team Fit, AI i evaluacija ostaju kasniji odvojeni koraci.
+
+> **Historijska explicit-answer persistence bilješka (superseded):** recipe provenance is excluded from verifier/writer input; checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, six members, 48/288 physical response objects, 72 physical SJT selections and 324 logical option selections, and member/aggregation `EXACT_MATCH`. Raniji writer/RPC/migration pending status i prvi SELECT-only inspector run zadržani su kao audit evidence ispod.
 
 > **Historijska pre-inspector runtime bilješka (superseded):** canonical answer identity je zahtijevala active imported runtime; shared snapshot je u međuvremenu kreiran, validiran i zaključan navedenim checksumom. Live DB i dalje nije čitan.
 
@@ -167,7 +169,7 @@ Kasnije operator pokreće: manifest dry-run, confirmed seed, read-only score aud
 
 ## 9. Rizici, blockeri i otvorene odluke
 
-### Current status — controlled GDT-01 inspector phase
+### Historical status — controlled GDT-01 inspector phase (superseded by current verdict above)
 
 Pure contract/classifier i SELECT-only GDT-01 inspector adapter su implementirani i testirani isključivo offline sa mockovanim persistence graphom. Contract zaključava `team_dynamics_assessment_v1`, checksum `375a97663ed825ff2f8c09f3716d6a39bbea2722d5b45f4a61d60d2be210f48d`, `active/invited/in_progress/bs` seed lifecycle i count semantics `288 responses`, `72 physical SJT response_selections`, `324 logical option selections`.
 
@@ -181,7 +183,7 @@ Treći reviewed SELECT-only GDT-01 run je prema operator evidenceu potvrdio `PAR
 
 Pre-live implementation note (superseded): controlled foundation writer je bio implementiran kao offline-reviewable operator surface. Atomic `create_golden_demo_foundation_v1()` migration/RPC validira sve canonical preconditions prije prvog inserta, kreira samo missing participants, teams i memberships u postojećoj organizaciji i zahtijeva finalni `EXACT_MATCH`. Default CLI je read-only; apply je moguć samo uz eksplicitne `--apply --confirm GOLDEN_DEMO_FOUNDATION` guards. Tada RPC, live foundation inspector i write nisu bili pokrenuti; potvrđeni live status je naveden ispod.
 
-**Superseding live foundation status:** migracija `20260717123000_create_golden_demo_foundation_rpc.sql` je primijenjena na remote bazu i live foundation write je završen. Post-write read-only inspector vraća `EXACT_MATCH`: `24 participants`, `4 teams` i `24 memberships`, bez blocking i diagnostic findings. Ponovljeni read-only run vraća `EXACT_MATCH_NOOP` sa `rpcAllowed: false`. Foundation workstream je završen; sljedeći korak prema postojećem Golden Demo planu je GDT-01 Team Dynamics assignment/attempt/response writer i inspector. Team Dynamics completion, scoring, aggregation i report generation nisu dio ovog završenog foundation koraka.
+**Superseded live foundation evidence:** migracija `20260717123000_create_golden_demo_foundation_rpc.sql` je primijenjena na remote bazu i live foundation write je završen. Post-write read-only inspector vraća `EXACT_MATCH`: `24 participants`, `4 teams` i `24 memberships`, bez blocking i diagnostic findings. Ponovljeni read-only run vraća `EXACT_MATCH_NOOP` sa `rpcAllowed: false`. Foundation workstream je završen; naredni GDT-01 seed korak i footprint očekivanja navedeni su u current statusu iznad. Team Dynamics completion, scoring, aggregation i report generation nisu dio ovog završenog foundation koraka.
 
 ### Potvrđeno iz codebasea
 
