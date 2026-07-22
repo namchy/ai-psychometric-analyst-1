@@ -34,6 +34,8 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 
 > **Current live status — Golden Demo foundation complete:** migracija `20260717123000_create_golden_demo_foundation_rpc.sql` je primijenjena na remote bazu, a live foundation write je završen. Post-write read-only inspector vraća `EXACT_MATCH` sa `24 participants`, `4 teams` i `24 memberships`; nema blocking ni diagnostic findings. Ponovljeni read-only run vraća `EXACT_MATCH_NOOP` sa `rpcAllowed: false`, što potvrđuje idempotentni no-op. Foundation workstream je završen. **Sljedeći aktivni Golden Demo korak:** postojeći planirani `controlled GDT-01 Team Dynamics DB writer and live-state inspector` za assignment/attempt/response persistence; completion, scoring, aggregation i report generation ostaju odvojeni kasniji koraci.
 
+> **2026-07-22 — GPT-5.6 report runtime wiring je završen i commitovan u bafabdd4eaaa80d15ec33c6922fe9e1cfec42bab. AI_REPORT_REASONING_EFFORT se prosljeđuje kao Chat Completions reasoning_effort, a za gpt-5.6-sol se ne šalje temperature. Fokusirani provider testovi, typecheck i git diff --check prolaze. Jedini Team Fit test pad potvrđen je kao postojeći baseline pad na HEAD-u 89334e081ae4ca5e0035ddd02ab223b2f25a9beb. Realni no-write OpenAI smoke ostaje pending jer je DB-backed dry-run stao na fetch grešci prije OpenAI poziva, a standalone CompositeHrInputSnapshot artefakt ne postoji.**
+
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
 Pravila: 
