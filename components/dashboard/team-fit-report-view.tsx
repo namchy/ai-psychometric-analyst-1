@@ -805,6 +805,7 @@ function NotesTab({
 
 function ReadyState({ record }: TeamFitReportViewProps) {
   const snapshot = record.reportSnapshot;
+  const [activeTab, setActiveTab] = useState<TeamFitReportTabId>("pregled");
 
   if (!snapshot) {
     return <NonReadyState record={record} />;
@@ -825,7 +826,6 @@ function ReadyState({ record }: TeamFitReportViewProps) {
   const validationFocus = buildValidationFocus(snapshot);
   const heroSummary = sanitizeHeroFacingText(snapshot.fitOverview.summary);
   const { signalHighlights, validationHighlights } = buildKeyHighlights(snapshot);
-  const [activeTab, setActiveTab] = useState<TeamFitReportTabId>("pregled");
 
   return (
     <ReportShell>
