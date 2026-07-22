@@ -71,7 +71,9 @@ async function main() {
     cli,
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  process.exitCode = result.state === "UNSCORED_EXACT" || result.state === "SCORED_EXACT" ? 0 : 1;
+  process.exitCode = result.state === "UNSCORED_EXACT" ||
+    result.state === "PARTIAL_EXACT_RESUMABLE" ||
+    result.state === "SCORED_EXACT" ? 0 : 1;
 }
 
 if (require.main === module) {

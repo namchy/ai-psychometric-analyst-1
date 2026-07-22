@@ -189,6 +189,46 @@ const reorderKeys = (value) => {
   return value;
 };
 const reorderedScoreRows = scoredRows.map((row) => ({ ...row, score_snapshot: reorderKeys(row.score_snapshot) }));
+
+function resumableSnapshot(existingRows) {
+  const resumable = snapshot(false, existingRows, [
+    { code: "wrapper_lifecycle_mismatch", message: "GD-001 is already completed" },
+    { code: "attempt_lifecycle_mismatch", message: "GD-001 is already completed" },
+    { code: "seed_score_artifact", message: "GD-001 score exists" },
+  ]);
+  resumable.inspection.state = "CONFLICT";
+  resumable.observed.wrappers = resumable.observed.wrappers.map((row) => row.participantId === "participant-GD-001"
+    ? { ...row, status: "completed", startedAt: "2026-07-22T10:00:00.000Z", completedAt: "2026-07-22T10:01:00.000Z" }
+    : row);
+  resumable.observed.attempts = resumable.observed.attempts.map((row) => row.participantId === "participant-GD-001"
+    ? { ...row, status: "completed", completedAt: "2026-07-22T10:01:00.000Z" }
+    : row);
+  resumable.members = resumable.members.map((member) => member.candidateId === "GD-001"
+    ? { ...member, context: context("GD-001", "completed", "completed") }
+    : member);
+  resumable.attemptLifecycle = resumable.attemptLifecycle.map((row) => row.id === "attempt-GD-001"
+    ? { ...row, status: "completed", completed_at: "2026-07-22T10:01:00.000Z" }
+    : row);
+  return resumable;
+}
+
+const resumableState = resumableSnapshot([reorderedScoreRows[0]]);
+const resumableClassification = classifyGdt01MemberScoringState({
+  snapshot: resumableState,
+  expectedScores,
+  previews: previews(),
+});
+assert.equal(resumableClassification.state, "PARTIAL_EXACT_RESUMABLE");
+assert.deepEqual(resumableClassification.existingExactMemberIds, ["GD-001"]);
+assert.deepEqual(resumableClassification.resumableMemberIds, ["GD-002", "GD-003", "GD-004", "GD-005", "GD-019"]);
+const resumablePlan = buildGdt01ScoringPlan({ classification: resumableClassification, mode: "apply" });
+assert.equal(resumablePlan.applyAllowed, true);
+assert.deepEqual(resumablePlan.targetMemberIds, ["GD-002", "GD-003", "GD-004", "GD-005", "GD-019"]);
+assert.deepEqual(resumablePlan.skipMemberIds, ["GD-001"]);
+const resumableReadOnlyPlan = buildGdt01ScoringPlan({ classification: resumableClassification, mode: "read-only" });
+assert.equal(resumableReadOnlyPlan.applyAllowed, false);
+assert.deepEqual(resumableReadOnlyPlan.targetMemberIds, ["GD-002", "GD-003", "GD-004", "GD-005", "GD-019"]);
+
 const scoredClassification = classifyGdt01MemberScoringState({
   snapshot: snapshot(true, reorderedScoreRows, [
     ...GDT_01_EXPECTED_MEMBER_IDS.map(() => ({ code: "wrapper_lifecycle_mismatch", message: "expected scored lifecycle" })),
@@ -253,6 +293,41 @@ assert.equal(buildGdt01ScoringPlan({ classification: scoredClassification, mode:
   assert.equal(persistCalls, 6);
   assert.deepEqual(applyResult.completedMemberIds, GDT_01_EXPECTED_MEMBER_IDS);
 
+  let resumedMarkCalls = 0;
+  let resumedTransitionCalls = 0;
+  let resumedPersistCalls = 0;
+  const resumedApplyResult = await executeGdt01ScoringApply({
+    snapshot: resumableState,
+    classification: resumableClassification,
+    expectedScores,
+    mode: "apply",
+    deps: {
+      markStarted: async ({ teamAssessmentParticipantId }) => {
+        resumedMarkCalls += 1;
+        assert.notEqual(teamAssessmentParticipantId, "w-GD-001");
+        return { status: "started", startedAt: "now", transitioned: true };
+      },
+      transitionCompleted: async ({ context: memberContext }) => {
+        resumedTransitionCalls += 1;
+        assert.notEqual(memberContext.teamAssessmentParticipantId.slice(2), "GD-001");
+        return { ok: true, mode: "completed", wrapperStatus: "completed", attemptStatus: "completed", completedAt: "now" };
+      },
+      persistMemberScore: async ({ context: memberContext }) => {
+        resumedPersistCalls += 1;
+        const candidateId = memberContext.teamAssessmentParticipantId.slice(2);
+        const expected = expectedScores.find((member) => member.candidate_id === candidateId);
+        return { ok: true, mode: "inserted", value: { id: `score-${memberContext.participantId}`, teamAssessmentParticipantId: memberContext.teamAssessmentParticipantId, attemptId: memberContext.attemptId, scoringVersion: "team_dynamics_assessment_v1_mixed_v1", scoringStatus: "scored", calculatedAt: "now", sourceCompletedAt: "now", score: expected.score } };
+      },
+    },
+  });
+  assert.equal(resumedApplyResult.ok, true);
+  assert.equal(resumedApplyResult.writesPerformed, true);
+  assert.equal(resumedMarkCalls, 5);
+  assert.equal(resumedTransitionCalls, 5);
+  assert.equal(resumedPersistCalls, 5);
+  assert.deepEqual(resumedApplyResult.completedMemberIds, ["GD-002", "GD-003", "GD-004", "GD-005", "GD-019"]);
+  assert.deepEqual(resumedApplyResult.skippedMemberIds, ["GD-001"]);
+
   const missingPreviewClassification = classifyGdt01MemberScoringState({ snapshot: unscoredSnapshot, expectedScores, previews: previews(false) });
   assert.notEqual(missingPreviewClassification.state, "UNSCORED_EXACT");
   assert.equal(buildGdt01ScoringPlan({ classification: missingPreviewClassification, mode: "apply" }).applyAllowed, false);
@@ -261,10 +336,10 @@ assert.equal(buildGdt01ScoringPlan({ classification: scoredClassification, mode:
   assert.equal(partialClassification.state, "PARTIAL");
 
   const mismatchedRows = scoredRows.map((row, index) => index === 0 ? { ...row, score_snapshot: { ...row.score_snapshot, scoreEntries: [] } } : row);
-  const mismatchClassification = classifyGdt01MemberScoringState({ snapshot: snapshot(true, mismatchedRows, [{ code: "wrapper_lifecycle_mismatch", message: "expected scored lifecycle" }, { code: "attempt_lifecycle_mismatch", message: "expected scored lifecycle" }, { code: "seed_score_artifact", message: "expected member score rows" }]), expectedScores });
+  const mismatchClassification = classifyGdt01MemberScoringState({ snapshot: resumableSnapshot([mismatchedRows[0]]), expectedScores, previews: previews() });
   assert.equal(mismatchClassification.state, "CONFLICT");
 
-  const duplicateClassification = classifyGdt01MemberScoringState({ snapshot: snapshot(true, [...scoredRows, scoredRows[0]], [{ code: "wrapper_lifecycle_mismatch", message: "expected scored lifecycle" }, { code: "attempt_lifecycle_mismatch", message: "expected scored lifecycle" }, { code: "seed_score_artifact", message: "expected member score rows" }]), expectedScores });
+  const duplicateClassification = classifyGdt01MemberScoringState({ snapshot: resumableSnapshot([reorderedScoreRows[0], reorderedScoreRows[0]]), expectedScores, previews: previews() });
   assert.equal(duplicateClassification.state, "CONFLICT");
 
   let secondRunWrites = 0;
@@ -291,6 +366,8 @@ assert.equal(buildGdt01ScoringPlan({ classification: scoredClassification, mode:
   assert.match(operatorSource, /loadTeamDynamicsMixedScoreForContext/);
   assert.match(operatorSource, /persistTeamDynamicsMixedScoreForContext/);
   assert.doesNotMatch(operatorSource, /persistTeamDynamicsFinalAggregationSnapshot|loadTeamDynamicsFinalAggregation|OpenAI|report orchestration/);
+  const cliSource = fs.readFileSync(path.join(projectRoot, "scripts/score-gdt-01-team-dynamics-members.cjs"), "utf8");
+  assert.match(cliSource, /PARTIAL_EXACT_RESUMABLE/);
 
   assert.equal(GDT_01_COUNTS.members, 6);
   assert.equal(expectedScores.length, 6);
@@ -298,8 +375,10 @@ assert.equal(buildGdt01ScoringPlan({ classification: scoredClassification, mode:
     cli: "PASS",
     unscoredExact: "PASS",
     scoredExact: "PASS",
+    partialExactResumable: "PASS",
     productionScorerPreviewCalls: scorerCalls,
     applyMemberCount: applyResult.completedMemberIds.length,
+    resumeApplyMemberCount: resumedApplyResult.completedMemberIds.length,
     expectedScoreEntries: 48,
     partialAndConflictGuards: "PASS",
     secondRunNoOp: "PASS",

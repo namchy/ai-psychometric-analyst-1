@@ -1,8 +1,8 @@
 # GDT-01 Team Dynamics — persistence implementation and hosted rollout preflight
 
-Status: `GDT01_SEED_APPLIED_AND_EXACT_MATCH_VERIFIED` — 22.07.2026.
+Status: `GDT01_MEMBER_SCORING_COMPLETED_AND_EXACT_MATCH_VERIFIED` — 22.07.2026.
 
-`docs/deep-profile-todo.md` remains the canonical source of truth for overall priorities. This document records the confirmed post-seed GDT-01 persistence state and the narrow member-scoring boundary.
+`docs/deep-profile-todo.md` remains the canonical source of truth for overall priorities. This document records the confirmed post-scoring GDT-01 persistence state and the narrow aggregation boundary.
 
 ## 1. Current evidence and scope
 
@@ -15,7 +15,7 @@ The source-level persistence package is implemented; the validated migration/sou
 
 The migrations `20260721143000_create_gdt01_team_dynamics_seed_rpc.sql` and `20260721150000_fix_gdt01_membership_resolution_update.sql` are applied and validated. The corrective migration removed the hosted `pg_safeupdate` error `UPDATE requires a WHERE clause`, and the membership update is correlated through `participant_id`. The security contract remains `SECURITY DEFINER`, empty `search_path`, execute only for `service_role`.
 
-The foundation is `EXACT_MATCH` with 24 participants, 4 teams and 24 active memberships. The earlier single seed apply produced `EXACT_MATCH` with `writerEligible: false`: 1 assignment, 6 wrappers, 6 attempts, 288 responses, 72 physical `response_selections` rows and 324 logical selections. Member/dimension scores, aggregation snapshots and reports remain 0. The corrective migration itself did not seed data.
+The foundation is `EXACT_MATCH` with 24 participants, 4 teams and 24 active memberships. The earlier single seed apply produced `EXACT_MATCH` with `writerEligible: false`: 1 assignment, 6 wrappers, 6 attempts, 288 responses, 72 physical `response_selections` rows and 324 logical selections. Production member scoring is `SCORED_EXACT` with 6 persisted member score snapshots and 48 verified score entries; dimension scores, aggregation snapshots and reports remain 0. The corrective migration itself did not seed data.
 
 Locked facts for this slice:
 
@@ -162,11 +162,11 @@ Evidence includes manifest deep equality against the production fixture projecti
 
 ## 7. Confirmed runtime result and remaining scoring boundary
 
-The migration, source, ACL and security contract audits are already proven for this status sync and are not repeated. The earlier single seed apply is confirmed by the read-only inspector and writer as `EXACT_MATCH` with the canonical `1 / 6 / 6 / 288 / 72 / 324` footprint. The batched `response_selections` read removed instability from the large unbatched `.in(...)` request; the writer read-only state is an `EXACT_MATCH` no-op and no RPC is allowed.
+The migration, source, ACL and security contract audits are already proven for this status sync and are not repeated. The earlier single seed apply is confirmed with the canonical `1 / 6 / 6 / 288 / 72 / 324` footprint, and the production member scoring operator confirms `SCORED_EXACT` with 6 persisted member score snapshots and 48 verified entries. The batched `response_selections` read removed instability from the large unbatched `.in(...)` request; the scoring operator read-only state is a `SCORED_EXACT` no-op and no further scoring write is allowed.
 
-## 8. Next step — lean controlled production member scoring
+## 8. Next step — lean controlled Team Dynamics aggregation
 
-Run one controlled production member-scoring step against the existing seed, then perform its focused read-only result check. Do not combine aggregation with that scoring step. Team Fit, AI and evaluation remain later separate steps. No second seed apply, cleanup, overwrite or fallback seed is authorized.
+Run one controlled Team Dynamics aggregation step against the six verified member score snapshots, then perform its focused read-only result check. Do not combine Team Fit, report generation or AI with that aggregation step. No second seed apply, scoring rerun, cleanup, overwrite or fallback seed is authorized.
 
 ## 9. Residual risk
 
@@ -175,4 +175,4 @@ Run one controlled production member-scoring step against the existing seed, the
 - A compromised service-role credential is outside this operational guard; credential handling remains an external security responsibility.
 - Any future hosted destructive write requires backup, target proof and read-only preflight before execution.
 
-Current statement: migrations are applied and validated; foundation is `EXACT_MATCH`; the earlier single seed apply is verified as `EXACT_MATCH` with `writerEligible: false` and footprint `1 / 6 / 6 / 288 / 72 / 324`; no scores, aggregations or reports exist. The next authorized boundary is lean controlled production member scoring without aggregation in the same task.
+Current statement: migrations are applied and validated; foundation is `EXACT_MATCH`; the earlier single seed apply is verified with `writerEligible: false` and footprint `1 / 6 / 6 / 288 / 72 / 324`; production member scoring is `SCORED_EXACT` with 6 persisted member score snapshots and 48 verified entries, while aggregation and reports remain 0. The next authorized boundary is lean controlled Team Dynamics aggregation without Team Fit/report/AI work in the same task.

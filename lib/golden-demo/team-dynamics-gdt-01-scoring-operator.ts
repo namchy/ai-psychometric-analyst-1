@@ -42,6 +42,7 @@ export const GDT_01_MEMBER_SCORING_CONFIRMATION = "GDT_01_MEMBER_SCORING" as con
 export type Gdt01MemberScoringState =
   | "UNSCORED_EXACT"
   | "SCORED_EXACT"
+  | "PARTIAL_EXACT_RESUMABLE"
   | "PARTIAL"
   | "CONFLICT";
 
@@ -114,12 +115,15 @@ export type Gdt01ScoringClassification = {
   state: Gdt01MemberScoringState;
   blockers: string[];
   memberScoreVerification: Gdt01MemberScoreVerification;
+  existingExactMemberIds: string[];
+  resumableMemberIds: string[];
 };
 
 export type Gdt01ScoringPlan = {
   stateBefore: Gdt01MemberScoringState;
   scoringVersion: typeof TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION;
   targetMemberIds: readonly string[];
+  skipMemberIds: readonly string[];
   expectedMemberScoreRows: number;
   expectedScoreEntries: number;
   lifecycleTransitions: string[];
@@ -475,6 +479,31 @@ function scoreRowsMatchExpected(
   return buildScoreVerification(rows, expectedScores);
 }
 
+function scoreRowsPresentMatchExpected(
+  snapshot: Gdt01ScoringSnapshot,
+  expectedScores: Gdt01ExpectedMemberScore[],
+): Gdt01MemberScoreVerification {
+  const rows = snapshot.members.flatMap((member) => {
+    const row = snapshot.scoreRows.find((candidate) => candidate.team_assessment_participant_id === member.wrapperId);
+    return row ? [{ candidateId: member.candidateId, score: row.score_snapshot }] : [];
+  });
+  const mismatches: string[] = [];
+  let scoreEntriesVerified = 0;
+  for (const row of rows) {
+    const errors = compareScore(row.candidateId, row.score, expectedScores);
+    mismatches.push(...errors);
+    if (errors.length === 0 && isRecord(row.score) && Array.isArray(row.score.scoreEntries)) {
+      scoreEntriesVerified += row.score.scoreEntries.length;
+    }
+  }
+  return {
+    state: mismatches.length === 0 ? "EXACT_MATCH" : "MISMATCH",
+    membersVerified: mismatches.length === 0 ? rows.length : 0,
+    scoreEntriesVerified,
+    mismatches,
+  };
+}
+
 export function classifyGdt01MemberScoringState(input: {
   snapshot: Gdt01ScoringSnapshot;
   expectedScores: Gdt01ExpectedMemberScore[];
@@ -493,6 +522,7 @@ export function classifyGdt01MemberScoringState(input: {
   const noDownstream = hasNoDownstreamArtifacts(snapshot.observed);
   const scoreIdentityErrors = scoreRowsHaveCanonicalIdentity(snapshot);
   const memberScoreVerification = scoreRowsMatchExpected(snapshot, input.expectedScores);
+  const existingScoreVerification = scoreRowsPresentMatchExpected(snapshot, input.expectedScores);
   const allPreviewsExact = (input.previews ?? []).length === GDT_01_COUNTS.members && input.previews?.every((preview) => preview.status === "scored" && preview.expectedMatch) === true;
 
   if (unexpectedFindings.length > 0) blockers.push(...unexpectedFindings);
@@ -501,6 +531,9 @@ export function classifyGdt01MemberScoringState(input: {
   if (!untouchedResponses) blockers.push("Scoring changed response raw_value or scored_value fields.");
   if (!noDownstream) blockers.push("Downstream score, aggregation, report or Team Fit artifacts exist.");
   if (scoreIdentityErrors.length > 0) blockers.push(...scoreIdentityErrors);
+  if (snapshot.scoreRows.length > 0 && existingScoreVerification.state === "MISMATCH") {
+    blockers.push("Persisted member score snapshots do not match the locked GDT-01 expected scores.");
+  }
 
   const unscoredLifecycle = snapshot.members.every((member) => {
     const wrapper = snapshot.observed.wrappers.find((row) => row.id === member.wrapperId);
@@ -516,16 +549,69 @@ export function classifyGdt01MemberScoringState(input: {
     return wrapper?.status === "completed" && isNonEmptyString(wrapper.completedAt) &&
       attempt?.status === "completed" && isNonEmptyString(attempt.completedAt) && lifecycle?.scored_started_at === null;
   });
+  const existingExactMemberIds = snapshot.members
+    .filter((member) => snapshot.scoreRows.some((row) => row.team_assessment_participant_id === member.wrapperId))
+    .map((member) => member.candidateId);
+  const resumableMemberIds = snapshot.members
+    .filter((member) => !existingExactMemberIds.includes(member.candidateId))
+    .map((member) => member.candidateId);
+  const existingMemberLifecycleExact = snapshot.members.every((member) => {
+    const hasScore = existingExactMemberIds.includes(member.candidateId);
+    const wrapper = snapshot.observed.wrappers.find((row) => row.id === member.wrapperId);
+    const attempt = snapshot.observed.attempts.find((row) => row.id === member.attemptId);
+    const lifecycle = snapshot.attemptLifecycle.find((row) => row.id === member.attemptId);
+    if (hasScore) {
+      return wrapper?.status === "completed" && isNonEmptyString(wrapper.completedAt) &&
+        attempt?.status === "completed" && isNonEmptyString(attempt.completedAt) && lifecycle?.scored_started_at === null;
+    }
+    return wrapper?.status === "invited" && wrapper.startedAt === null && wrapper.completedAt === null &&
+      attempt?.status === "in_progress" && attempt.completedAt === null && lifecycle?.scored_started_at === null;
+  });
+  const existingRowsExact = snapshot.scoreRows.length > 0 &&
+    snapshot.scoreRows.every((row) => row.scoring_status === "scored" &&
+      row.source_response_count === GDT_01_COUNTS.responsesPerMember &&
+      isNonEmptyString(row.source_completed_at)) &&
+    existingScoreVerification.state === "EXACT_MATCH";
+  const canonicalResumeMemberSet = stableJson(existingExactMemberIds) === stableJson(["GD-001"]);
+  const partialExactResumable = snapshot.scoreRows.length > 0 &&
+    snapshot.scoreRows.length < GDT_01_COUNTS.members &&
+    canonicalResumeMemberSet &&
+    existingExactMemberIds.length === snapshot.scoreRows.length &&
+    existingRowsExact &&
+    existingMemberLifecycleExact &&
+    allPreviewsExact;
 
   if (blockers.length === 0 && unscoredLifecycle && snapshot.scoreRows.length === 0 && allPreviewsExact) {
-    return { state: "UNSCORED_EXACT", blockers: [], memberScoreVerification };
+    return {
+      state: "UNSCORED_EXACT",
+      blockers: [],
+      memberScoreVerification,
+      existingExactMemberIds,
+      resumableMemberIds,
+    };
   }
 
   const scoredRowsExact = snapshot.scoreRows.length === GDT_01_COUNTS.members &&
     snapshot.scoreRows.every((row) => row.scoring_status === "scored" && row.source_response_count === GDT_01_COUNTS.responsesPerMember && isNonEmptyString(row.source_completed_at)) &&
     memberScoreVerification.state === "EXACT_MATCH";
   if (blockers.length === 0 && scoredLifecycle && scoredRowsExact) {
-    return { state: "SCORED_EXACT", blockers: [], memberScoreVerification };
+    return {
+      state: "SCORED_EXACT",
+      blockers: [],
+      memberScoreVerification,
+      existingExactMemberIds,
+      resumableMemberIds,
+    };
+  }
+
+  if (blockers.length === 0 && partialExactResumable) {
+    return {
+      state: "PARTIAL_EXACT_RESUMABLE",
+      blockers: [],
+      memberScoreVerification,
+      existingExactMemberIds,
+      resumableMemberIds,
+    };
   }
 
   if (
@@ -538,6 +624,8 @@ export function classifyGdt01MemberScoringState(input: {
       state: "CONFLICT",
       blockers: ["Persisted member score snapshots do not match the locked GDT-01 expected scores."],
       memberScoreVerification,
+      existingExactMemberIds,
+      resumableMemberIds,
     };
   }
 
@@ -546,11 +634,19 @@ export function classifyGdt01MemberScoringState(input: {
       state: "PARTIAL",
       blockers: input.previews && !allPreviewsExact ? ["One or more production member score previews are not exact."] : [],
       memberScoreVerification,
+      existingExactMemberIds,
+      resumableMemberIds,
     };
   }
 
   if (input.previews && !allPreviewsExact) blockers.push("One or more production member score previews are not exact.");
-  return { state: blockers.length > 0 ? "CONFLICT" : "PARTIAL", blockers, memberScoreVerification };
+  return {
+    state: blockers.length > 0 ? "CONFLICT" : "PARTIAL",
+    blockers,
+    memberScoreVerification,
+    existingExactMemberIds,
+    resumableMemberIds,
+  };
 }
 
 export function buildGdt01ScoringPlan(input: {
@@ -558,21 +654,35 @@ export function buildGdt01ScoringPlan(input: {
   mode: "read-only" | "apply";
 }): Gdt01ScoringPlan {
   const noOpEligible = input.classification.state === "SCORED_EXACT";
-  const applyAllowed = input.mode === "apply" && input.classification.state === "UNSCORED_EXACT";
+  const applyAllowed = input.mode === "apply" &&
+    (input.classification.state === "UNSCORED_EXACT" || input.classification.state === "PARTIAL_EXACT_RESUMABLE");
+  const targetMemberIds = input.classification.state === "UNSCORED_EXACT" ||
+    input.classification.state === "PARTIAL_EXACT_RESUMABLE"
+    ? input.classification.resumableMemberIds
+    : [];
   return {
     stateBefore: input.classification.state,
     scoringVersion: TEAM_DYNAMICS_MIXED_SCORE_SCORING_VERSION,
-    targetMemberIds: GDT_01_EXPECTED_MEMBER_IDS,
+    targetMemberIds,
+    skipMemberIds: input.classification.existingExactMemberIds,
     expectedMemberScoreRows: GDT_01_COUNTS.members,
     expectedScoreEntries: GDT_01_COUNTS.members * 8,
     lifecycleTransitions: ["invited → started", "in_progress → completed"],
     applyAllowed,
     noOpEligible,
-    reasonCode: noOpEligible ? "SCORED_EXACT_NOOP" : applyAllowed ? "UNSCORED_EXACT_APPLY" : "SCORING_BLOCKED",
+    reasonCode: noOpEligible
+      ? "SCORED_EXACT_NOOP"
+      : input.classification.state === "PARTIAL_EXACT_RESUMABLE" && applyAllowed
+        ? "PARTIAL_EXACT_RESUMABLE_APPLY"
+        : applyAllowed
+          ? "UNSCORED_EXACT_APPLY"
+          : "SCORING_BLOCKED",
     reason: noOpEligible
       ? "All six canonical GDT-01 member score snapshots already match; no write is allowed."
       : applyAllowed
-        ? "Canonical GDT-01 is unscored and all six production score previews match the locked fixture."
+        ? input.classification.state === "PARTIAL_EXACT_RESUMABLE"
+          ? `Canonical existing member scores are exact; score only the remaining ${targetMemberIds.length} GDT-01 members.`
+          : "Canonical GDT-01 is unscored and all six production score previews match the locked fixture."
         : "GDT-01 member scoring preconditions are not satisfied; no write is allowed.",
     databaseWrites: applyAllowed,
     aggregationCalls: false,
@@ -588,6 +698,7 @@ export type Gdt01ScoringApplyResult =
       writesPerformed: false;
       memberResults: [];
       completedMemberIds: [];
+      skippedMemberIds: string[];
       atomic: false;
       failure: null;
     }
@@ -597,6 +708,7 @@ export type Gdt01ScoringApplyResult =
       writesPerformed: boolean;
       memberResults: Array<{ candidateId: string; mode: "inserted"; scoreStatus: string }>;
       completedMemberIds: string[];
+      skippedMemberIds: string[];
       atomic: false;
       failure: string | null;
     };
@@ -609,15 +721,26 @@ export async function executeGdt01ScoringApply(input: {
   deps?: Gdt01ScoringDependencies;
 }): Promise<Gdt01ScoringApplyResult> {
   if (input.classification.state === "SCORED_EXACT") {
-    return { ok: true, noOp: true, writesPerformed: false, memberResults: [], completedMemberIds: [], atomic: false, failure: null };
+    return {
+      ok: true,
+      noOp: true,
+      writesPerformed: false,
+      memberResults: [],
+      completedMemberIds: [],
+      skippedMemberIds: input.classification.existingExactMemberIds,
+      atomic: false,
+      failure: null,
+    };
   }
-  if (input.mode !== "apply" || input.classification.state !== "UNSCORED_EXACT") {
+  if (input.mode !== "apply" ||
+    (input.classification.state !== "UNSCORED_EXACT" && input.classification.state !== "PARTIAL_EXACT_RESUMABLE")) {
     return {
       ok: false,
       noOp: false,
       writesPerformed: false,
       memberResults: [],
       completedMemberIds: [],
+      skippedMemberIds: input.classification.existingExactMemberIds,
       atomic: false,
       failure: "GDT-01 member scoring is blocked by the current state or apply mode.",
     };
@@ -628,10 +751,11 @@ export async function executeGdt01ScoringApply(input: {
   const transitionCompleted = input.deps?.transitionCompleted ?? transitionTeamAssessmentExecutionToCompleted;
   const persistMemberScore = input.deps?.persistMemberScore ?? persistTeamDynamicsMixedScoreForContext;
   const memberResults: Array<{ candidateId: string; mode: "inserted"; scoreStatus: string }> = [];
+  const membersToScore = input.snapshot.members.filter((member) => input.classification.resumableMemberIds.includes(member.candidateId));
   let writesPerformed = false;
 
   try {
-    for (const member of input.snapshot.members) {
+    for (const member of membersToScore) {
       if (!member.context || !member.wrapperId) throw new Error(`Missing execution target for ${member.candidateId}.`);
       const started = await markStarted({ teamAssessmentParticipantId: member.wrapperId });
       writesPerformed = writesPerformed || started.transitioned;
@@ -671,6 +795,7 @@ export async function executeGdt01ScoringApply(input: {
       writesPerformed,
       memberResults,
       completedMemberIds: memberResults.map((member) => member.candidateId),
+      skippedMemberIds: input.classification.existingExactMemberIds,
       atomic: false,
       failure: error instanceof Error ? error.message : String(error),
     };
@@ -682,6 +807,7 @@ export async function executeGdt01ScoringApply(input: {
     writesPerformed: true,
     memberResults,
     completedMemberIds: memberResults.map((member) => member.candidateId),
+    skippedMemberIds: input.classification.existingExactMemberIds,
     atomic: false,
     failure: null,
   };
@@ -769,6 +895,8 @@ export async function runGdt01MemberScoringOperator(input: {
     plan,
     applyRequested: input.cli.apply,
     applyExecution,
+    scoreTargetMemberIds: plan.targetMemberIds,
+    skippedMemberIds: applyExecution?.skippedMemberIds ?? classificationBefore.existingExactMemberIds,
     safety: {
       databaseWrites: Boolean(applyExecution?.writesPerformed),
       aggregationCalls: false,
