@@ -11,6 +11,7 @@ import {
   type TeamFitReportV1,
 } from "@/lib/b2b/team-fit-report-contract";
 import type { TeamFitReportInputSnapshot } from "@/lib/b2b/team-fit-report-input";
+import { mapTeamFitReportSourceFromInput } from "@/lib/b2b/team-fit-report-output-mapping";
 import type {
   TeamFitReportProvider,
   TeamFitReportProviderFailureReason,
@@ -371,6 +372,12 @@ function buildSystemPrompt(): string {
     "Return JSON only.",
     "Output must match the supplied JSON schema exactly.",
     "Use only the canonical Team Fit input_snapshot provided by the caller.",
+    "Dobijaš validirane determinističke rezultate kandidata i agregirane rezultate tima.",
+    "Samostalno izvedi relacione hipoteze na osnovu scoreova, bandova, definicija konstrukata i timskih agregata.",
+    "Ne tretiraj band label kao gotov behavioral zaključak.",
+    "Očuvaj smjer skale i razlikuj canonical konstrukt od participant-facing invertovanog prikaza.",
+    "Za svaku važnu tvrdnju navedi koje candidate i team evidence činjenice je podržavaju.",
+    "Zaključke formuliraj kao hipoteze za provjeru, ne kao dokazane osobine ili konačnu odluku o podobnosti.",
     "Ground each interpretative section in the specific candidateSignals and teamSignals that are actually present in the input.",
     "If a relevant signal is missing, say that it is a limitation and reduce certainty instead of inventing evidence.",
     "Avoid generic fit language that does not connect a candidate-side signal with a team-side context, friction or support need.",
@@ -666,7 +673,7 @@ export async function generateTeamFitReportWithOpenAI(
   return {
     ok: true,
     code: "success",
-    snapshot: validation.snapshot,
+    snapshot: mapTeamFitReportSourceFromInput(validation.snapshot, inputSnapshot),
     provider: TEAM_FIT_OPENAI_PROVIDER,
     providerVersion: TEAM_FIT_OPENAI_PROVIDER_VERSION,
     modelName: options.model,

@@ -120,6 +120,41 @@ function buildInputSnapshot() {
       summary: {
         developmentTheme: "Potreban je jasan radni okvir.",
       },
+      candidateEvidence: [
+        {
+          sourceTestSlug: "ipip-neo-120-v1",
+          dimensionCode: "NEUROTICISM",
+          dimensionLabel: "Neuroticizam",
+          averageScore: 2.13,
+          scaleMin: 1,
+          scaleMax: 5,
+          band: "lower",
+          bandLabel: "Niže izraženo",
+        },
+        {
+          sourceTestSlug: "safran_v1",
+          dimensionCode: "verbal",
+          dimensionLabel: "Verbal",
+          rawScore: 8,
+          maxScore: 10,
+          band: "higher",
+          bandLabel: "Više izraženo",
+        },
+        {
+          sourceTestSlug: "mwms_v1",
+          dimensionCode: "intrinsic",
+          dimensionLabel: "Intrinsic motivation",
+          rawScore: 5,
+          scaleMin: 1,
+          scaleMax: 7,
+          band: "higher",
+          bandLabel: "Više izraženo",
+        },
+      ],
+      sourceMetadata: {
+        sourceId: "candidate-source-1",
+        sourceTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      },
     },
     teamSignals: {
       sourceStatus: "available",
@@ -172,6 +207,20 @@ async function main() {
   assert.equal(operations[0].response_format.type, "json_schema");
   assert.match(operations[0].messages[0].content, /numeric fit score/i);
   assert.match(operations[0].messages[1].content, /No hire\/no-hire language/i);
+  assert.match(operations[0].messages[0].content, /relational hypotheses/i);
+  assert.match(operations[0].messages[0].content, /relationshipPattern must never read like a score, rank, verdict, decision or recommendation/i);
+  assert.match(operations[0].messages[0].content, /Samostalno izvedi relacione hipoteze/i);
+  assert.match(operations[0].messages[1].content, /No final bad-fit judgment/i);
+  assert.match(operations[0].messages[0].content, /validirane determinističke rezultate kandidata/i);
+  assert.match(operations[0].messages[1].content, /ipip-neo-120-v1/);
+  assert.match(operations[0].messages[1].content, /safran_v1/);
+  assert.match(operations[0].messages[1].content, /mwms_v1/);
+  assert.doesNotMatch(operations[0].messages[1].content, /To upućuje na|snažnije oslanjanje na planiranje|nižu emocionalnu reaktivnost u strukturiranim radnim uslovima|može podržati|kandidat vjerovatno/i);
+  assert.deepEqual(validResult.snapshot.source.candidateSourceTestSlugs, [
+    "ipip-neo-120-v1",
+    "safran_v1",
+    "mwms_v1",
+  ]);
   assert.equal(validateTeamFitReportSnapshot(validResult.snapshot).ok, true);
 
   const previousReasoningEffort = process.env.AI_REPORT_REASONING_EFFORT;
@@ -231,7 +280,7 @@ async function main() {
   );
 
   const forbiddenSnapshot = clone(validSnapshot);
-  forbiddenSnapshot.watchouts = ["Candidate is a poor fit for this team."];
+  forbiddenSnapshot.fitScore = 0.18;
   const forbiddenResult = await generateTeamFitReportWithOpenAI(inputSnapshot, {
     apiKey: "test-key",
     model: "gpt-5.1",
@@ -240,9 +289,10 @@ async function main() {
   });
   assert.equal(forbiddenResult.ok, false);
   if (forbiddenResult.ok) {
-    throw new Error("Expected forbidden wording validation failure.");
+    throw new Error("Expected forbidden structural field validation failure.");
   }
   assert.equal(forbiddenResult.code, "validation_failure");
+  assert.equal(forbiddenResult.validationErrors.some((error) => /fitScore/.test(error)), true);
 
   const configError = await generateTeamFitReportWithOpenAI(inputSnapshot, {
     apiKey: null,

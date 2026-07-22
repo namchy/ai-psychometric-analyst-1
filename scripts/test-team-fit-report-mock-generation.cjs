@@ -22,7 +22,8 @@ assert.doesNotMatch(mockSource, /rawAnswers|teamMemberScores|candidateVisible:\s
 assert.doesNotMatch(processorSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(processorSource, /\.from\("assessment_reports"\)/);
 assert.doesNotMatch(processorSource, /\.from\("team_assessment_reports"\)/);
-assert.doesNotMatch(processorSource, /OpenAI|renderer|worker|scheduler/i);
+assert.match(processorSource, /createTeamFitOpenAiProvider/);
+assert.doesNotMatch(processorSource, /renderer|worker|scheduler/i);
 assert.match(processorSource, /processTeamFitReportWithProvider/);
 assert.match(processorSource, /TEAM_FIT_PROVIDER_VALIDATION_FAILURE/);
 assert.match(processorSource, /claimTeamFitReportForProcessing/);
@@ -122,6 +123,9 @@ function buildInputSnapshot() {
     candidateSignals: {
       sourceStatus: "placeholder_pending_composite_input",
       summary: null,
+      sourceMetadata: {
+        sourceTestSlugs: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+      },
     },
     teamSignals: {
       sourceStatus: "placeholder_pending_team_aggregation_input",
@@ -276,6 +280,12 @@ async function main() {
   assert.equal(mockSnapshot.reportVersion, "v1");
   assert.equal(mockSnapshot.audience, "hr_internal");
   assert.equal(mockSnapshot.sourceType, "candidate_team_relational");
+  assert.deepEqual(mockSnapshot.source.candidateSourceTestSlugs, [
+    "ipip-neo-120-v1",
+    "safran_v1",
+    "mwms_v1",
+  ]);
+  assert.deepEqual(mockSnapshot.source.teamSourceSnapshotIds, ["team-source-1"]);
   assert.match(mockSnapshot.fitOverview.relationshipPattern, /needs_validation|mixed_signal/);
   assert.ok(mockSnapshot.fitOverview);
   assert.ok(mockSnapshot.teamContextSummary);

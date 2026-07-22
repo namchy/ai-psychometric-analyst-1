@@ -197,6 +197,12 @@ require.cache[emptyModulePath] = {
         React.createElement("p", null, value),
       );
     },
+    DpReportCard({ children }) {
+      return React.createElement("article", { "data-report-card": true }, children);
+    },
+    DpReportStateMessage({ children }) {
+      return React.createElement("div", { "data-report-state": true }, children);
+    },
     DpPageHeader({ title, description, badges, meta, backLabel }) {
       return React.createElement(
         "section",
@@ -360,11 +366,9 @@ async function main() {
   assert.doesNotMatch(html, /Čeka rezultate/);
   assert.match(html, /Nije generisano/);
   assert.match(html, /Generiši HR izvještaj/);
-  assert.equal(
-    html.includes(
-      '<div class="mt-6"><div class="flex flex-wrap gap-3"><form><input name="participantId" type="hidden" value="participant-1"/><input name="attemptId" type="hidden" value="attempt-1"/><input name="testSlug" type="hidden" value="ipip-neo-120-v1"/><input name="returnPath" type="hidden" value="/dashboard/participants/participant-1/reports"/><button type="submit">Generiši HR izvještaj</button></form></div></div>',
-    ),
-    true,
+  assert.match(
+    html,
+    /<div class="mt-auto pt-5"><div class="flex flex-wrap gap-3"><form><input name="participantId" type="hidden" value="participant-1"\/><input name="attemptId" type="hidden" value="attempt-1"\/><input name="testSlug" type="hidden" value="ipip-neo-120-v1"\/><input name="returnPath" type="hidden" value="\/dashboard\/participants\/participant-1\/reports"\/><button type="submit">Generiši HR izvještaj<\/button><\/form><\/div><\/div>/,
   );
   assert.match(html, /Nije pripremljen/);
   assert.match(

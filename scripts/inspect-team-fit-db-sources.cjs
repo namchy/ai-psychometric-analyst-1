@@ -13,6 +13,17 @@ const CANDIDATE_ASSIGNMENT_ID_ENV = "TEAM_FIT_CANDIDATE_ASSESSMENT_ASSIGNMENT_ID
 const TEAM_AGGREGATION_SNAPSHOT_ID_ENV = "TEAM_FIT_TEAM_AGGREGATION_SNAPSHOT_ID";
 const TEAM_ID_ENV = "TEAM_FIT_TEAM_ID";
 const PARTICIPANT_ID_ENV = "TEAM_FIT_PARTICIPANT_ID";
+const OUTPUT_PATH_ENV = "TEAM_FIT_DB_SOURCE_AUDIT_OUTPUT_PATH";
+const DEFAULT_OUTPUT_PATH = "/tmp/golden-demo-team-fit-source-audit.json";
+
+const FETCH_DIAGNOSTIC_STAGES = [
+  "organization_read",
+  "candidate_assignment_read",
+  "candidate_source_read",
+  "team_read",
+  "team_aggregation_read",
+  "team_source_read",
+];
 
 const TEAM_FIT_REPORT_TYPE = "team_fit_report_v1";
 const TEAM_FIT_CANDIDATE_SOURCE_TYPE = "composite_deterministic_input_snapshot";
@@ -78,12 +89,156 @@ function normalizeEnvString(value) {
   return isNonEmptyString(value) ? value.trim() : null;
 }
 
+function sanitizeDiagnosticText(value) {
+  return String(value)
+    .replace(/https?:\/\/[^\s?]+\?[^\s]*/gi, "[redacted-url]")
+    .replace(/\bBearer\s+[^\s]+/gi, "[redacted]")
+    .replace(/\b(?:authorization|apikey|service[_-]?role|openai[_-]?api[_-]?key)\s*[:=]?\s*[^\s]+/gi, "[redacted]")
+    .replace(/\b(?:request|response)\s+body\s*[:=]?\s*[^\s]+/gi, "[redacted]");
+}
+
+function serializeFetchError(error, depth = 0, seen = new Set()) {
+  if (depth >= 5) {
+    return {
+      name: "Error",
+      message: "fetch error cause chain truncated",
+    };
+  }
+
+  if (!error || typeof error !== "object") {
+    return {
+      name: "UnknownError",
+      message: sanitizeDiagnosticText(error),
+    };
+  }
+
+  if (seen.has(error)) {
+    return {
+      name: "CircularCause",
+      message: "circular fetch error cause omitted",
+    };
+  }
+
+  seen.add(error);
+  const serialized = {
+    name: error.name ?? null,
+    message: sanitizeDiagnosticText(error.message ?? String(error)),
+    code: error.code ?? null,
+    errno: error.errno ?? null,
+    syscall: error.syscall ?? null,
+    hostname: error.hostname ?? null,
+    address: error.address ?? null,
+    port: error.port ?? null,
+  };
+
+  if (error.cause !== undefined && error.cause !== null) {
+    serialized.cause = serializeFetchError(error.cause, depth + 1, seen);
+  }
+
+  return serialized;
+}
+
+function createFetchDiagnostic(options = {}) {
+  const originalFetch = options.fetchImpl ?? globalThis.fetch;
+  const requests = [];
+  let currentStage = null;
+  let installed = false;
+
+  async function instrumentedFetch(input, init) {
+    const ordinal = requests.length + 1;
+    const startedAt = new Date().toISOString();
+    const started = Date.now();
+    const url = new URL(
+      typeof input === "string" || input instanceof URL ? String(input) : input.url,
+    );
+    const request = {
+      ordinal,
+      method: init?.method ?? (input instanceof Request ? input.method : "GET"),
+      hostname: url.hostname,
+      pathname: url.pathname,
+      startedAt,
+      durationMs: null,
+      status: null,
+      ok: false,
+      failure: null,
+      stage: currentStage,
+    };
+    requests.push(request);
+
+    try {
+      const response = await originalFetch(input, init);
+      request.durationMs = Date.now() - started;
+      request.status = response.status;
+      request.ok = response.ok;
+      return response;
+    } catch (error) {
+      request.durationMs = Date.now() - started;
+      request.failure = serializeFetchError(error);
+      throw error;
+    }
+  }
+
+  return {
+    install() {
+      if (!installed) {
+        globalThis.fetch = instrumentedFetch;
+        installed = true;
+      }
+    },
+    restore() {
+      if (installed) {
+        globalThis.fetch = originalFetch;
+        installed = false;
+      }
+    },
+    setStage(stage) {
+      currentStage = stage;
+    },
+    getStage() {
+      return currentStage;
+    },
+    getRequests() {
+      return requests.map(({ stage, ...request }) => request);
+    },
+    getLastFailure() {
+      const failed = [...requests].reverse().find((request) => request.failure);
+
+      if (!failed) {
+        return null;
+      }
+
+      return {
+        stage: failed.stage ?? currentStage,
+        requestOrdinal: failed.ordinal,
+        error: failed.failure,
+      };
+    },
+  };
+}
+
+async function withDiagnosticStage(diagnostic, stage, callback) {
+  const previousStage = diagnostic?.getStage?.() ?? null;
+  diagnostic?.setStage?.(stage);
+
+  try {
+    return await callback();
+  } finally {
+    diagnostic?.setStage?.(previousStage);
+  }
+}
+
+function writeDiagnosticArtifact(fsImpl, outputPath, artifact) {
+  fsImpl.writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, { mode: 0o600 });
+  fsImpl.chmodSync?.(outputPath, 0o600);
+}
+
 function buildBaseArtifact(inputs = {}) {
   return {
     metadata: {
       inspector: "team_fit_db_source_audit_v1",
       reportType: TEAM_FIT_REPORT_TYPE,
       readOnly: true,
+      databaseReads: false,
       openAiCalled: false,
       databaseWrites: false,
       reportGenerated: false,
@@ -153,6 +308,8 @@ function buildBaseArtifact(inputs = {}) {
     sourceMap: {},
     findings: [],
     recommendedNextStep: null,
+    failure: null,
+    requests: [],
   };
 }
 
@@ -435,30 +592,37 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     );
   }
 
-  installTypeScriptRuntime();
-
-  const { createSupabaseAdminClient } = require(path.join(projectRoot, "lib", "supabase", "admin.ts"));
-  const { buildCompositeHrInputSnapshot } = require(path.join(projectRoot, "lib", "assessment", "composite-input.ts"));
-  const { loadTeamDynamicsFinalAggregationVerification } = require(path.join(projectRoot, "lib", "assessment", "team-dynamics-final-aggregation-read.ts"));
-
-  const supabase = options.supabase ?? createSupabaseAdminClient();
+  const diagnostic = options.fetchDiagnostic ?? createFetchDiagnostic();
+  diagnostic.install();
   const artifact = buildBaseArtifact(inputs);
+  artifact.metadata.databaseReads = true;
   let reportRow = null;
 
-  if (inputs.teamFitReportId) {
-    reportRow = await loadTeamFitReportRow(supabase, inputs.teamFitReportId);
+  try {
+    installTypeScriptRuntime();
 
-    if (!reportRow) {
-      artifact.findings.push({
-        severity: "blocker",
-        category: "team_fit_report",
-        message: "Team Fit report row was not found.",
-      });
-      artifact.recommendedNextStep = "Verify TEAM_FIT_REPORT_ID or use direct source ids.";
-      return artifact;
-    }
+    const { createSupabaseAdminClient } = require(path.join(projectRoot, "lib", "supabase", "admin.ts"));
+    const { buildCompositeHrInputSnapshot } = require(path.join(projectRoot, "lib", "assessment", "composite-input.ts"));
+    const { loadTeamDynamicsFinalAggregationVerification } = require(path.join(projectRoot, "lib", "assessment", "team-dynamics-final-aggregation-read.ts"));
 
-    artifact.sourceMap.teamFitReport = {
+    const supabase = options.supabase ?? createSupabaseAdminClient();
+
+    if (inputs.teamFitReportId) {
+      reportRow = await withDiagnosticStage(diagnostic, "team_fit_report_read", () =>
+        loadTeamFitReportRow(supabase, inputs.teamFitReportId),
+      );
+
+      if (!reportRow) {
+        artifact.findings.push({
+          severity: "blocker",
+          category: "team_fit_report",
+          message: "Team Fit report row was not found.",
+        });
+        artifact.recommendedNextStep = "Verify TEAM_FIT_REPORT_ID or use direct source ids.";
+        return artifact;
+      }
+
+      artifact.sourceMap.teamFitReport = {
       id: reportRow.id,
       reportType: reportRow.report_type,
       reportVersion: reportRow.report_version,
@@ -480,36 +644,38 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     artifact.candidateSource.assessmentAssignmentId = reportRow.candidate_source_id;
     artifact.teamSource.teamId = reportRow.team_id;
 
-    if (reportRow.report_type !== TEAM_FIT_REPORT_TYPE) {
-      artifact.findings.push({
-        severity: "blocker",
-        category: "contract",
-        message: `Unexpected report_type ${reportRow.report_type}.`,
-      });
+      if (reportRow.report_type !== TEAM_FIT_REPORT_TYPE) {
+        artifact.findings.push({
+          severity: "blocker",
+          category: "contract",
+          message: `Unexpected report_type ${reportRow.report_type}.`,
+        });
+      }
+
+      if (reportRow.candidate_source_type !== TEAM_FIT_CANDIDATE_SOURCE_TYPE) {
+        artifact.findings.push({
+          severity: "blocker",
+          category: "candidate_source",
+          message: `Unexpected candidate_source_type ${reportRow.candidate_source_type}.`,
+        });
+      }
+
+      if (reportRow.team_source_type !== TEAM_FIT_TEAM_SOURCE_TYPE) {
+        artifact.findings.push({
+          severity: "blocker",
+          category: "team_source",
+          message: `Unexpected team_source_type ${reportRow.team_source_type}.`,
+        });
+      }
     }
 
-    if (reportRow.candidate_source_type !== TEAM_FIT_CANDIDATE_SOURCE_TYPE) {
-      artifact.findings.push({
-        severity: "blocker",
-        category: "candidate_source",
-        message: `Unexpected candidate_source_type ${reportRow.candidate_source_type}.`,
-      });
-    }
-
-    if (reportRow.team_source_type !== TEAM_FIT_TEAM_SOURCE_TYPE) {
-      artifact.findings.push({
-        severity: "blocker",
-        category: "team_source",
-        message: `Unexpected team_source_type ${reportRow.team_source_type}.`,
-      });
-    }
-  }
-
-  const candidateAssessmentAssignmentId =
-    reportRow?.candidate_source_id ?? inputs.candidateAssessmentAssignmentId;
-  const candidateAssignment = candidateAssessmentAssignmentId
-    ? await loadAssessmentAssignmentRow(supabase, candidateAssessmentAssignmentId)
-    : null;
+    const candidateAssessmentAssignmentId =
+      reportRow?.candidate_source_id ?? inputs.candidateAssessmentAssignmentId;
+    const candidateAssignment = candidateAssessmentAssignmentId
+      ? await withDiagnosticStage(diagnostic, "candidate_assignment_read", () =>
+          loadAssessmentAssignmentRow(supabase, candidateAssessmentAssignmentId),
+        )
+      : null;
 
   if (!candidateAssessmentAssignmentId) {
     artifact.candidateSource.status = "missing_source_id";
@@ -518,10 +684,11 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     artifact.candidateSource.status = "not_found";
     artifact.candidateSource.blockers.push("candidate_assessment_assignment_not_found");
   } else {
-    const compositeReportRows = await loadCompositeReportRows(
-      supabase,
-      candidateAssessmentAssignmentId,
-    );
+      const compositeReportRows = await withDiagnosticStage(
+        diagnostic,
+        "candidate_source_read",
+        () => loadCompositeReportRows(supabase, candidateAssessmentAssignmentId),
+      );
 
     artifact.sourceMap.candidate = {
       assessmentAssignmentId: candidateAssignment.id,
@@ -545,12 +712,17 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     };
 
     try {
-      const compositeSnapshot = await buildCompositeHrInputSnapshot({
-        assessmentAssignmentId: candidateAssignment.id,
-        organizationId: candidateAssignment.organization_id,
-        participantId: candidateAssignment.participant_id,
-        locale: candidateAssignment.locale ?? "bs",
-      });
+        const compositeSnapshot = await withDiagnosticStage(
+          diagnostic,
+          "candidate_source_read",
+          () =>
+            buildCompositeHrInputSnapshot({
+              assessmentAssignmentId: candidateAssignment.id,
+              organizationId: candidateAssignment.organization_id,
+              participantId: candidateAssignment.participant_id,
+              locale: candidateAssignment.locale ?? "bs",
+            }),
+        );
 
       artifact.candidateSource.status = "available";
       artifact.candidateSource.availableSignals = summarizeCandidateSignals(compositeSnapshot);
@@ -590,12 +762,13 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     }
   }
 
-  const teamSourceId =
-    reportRow?.team_source_id ?? inputs.teamAggregationSnapshotId ?? null;
-  const resolvedTeamSource = await resolveTeamSource({
-    supabase,
-    teamSourceId,
-  });
+    const teamSourceId =
+      reportRow?.team_source_id ?? inputs.teamAggregationSnapshotId ?? null;
+    const resolvedTeamSource = await withDiagnosticStage(
+      diagnostic,
+      "team_aggregation_read",
+      () => resolveTeamSource({ supabase, teamSourceId }),
+    );
 
   artifact.inputs.teamAggregationSnapshotId =
     resolvedTeamSource.aggregationSnapshotId ?? inputs.teamAggregationSnapshotId;
@@ -609,10 +782,15 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     artifact.teamSource.status = "not_found";
     artifact.teamSource.blockers.push("team_aggregation_snapshot_or_assignment_not_found");
   } else {
-    const verification = await loadTeamDynamicsFinalAggregationVerification({
-      teamAssessmentAssignmentId: resolvedTeamSource.teamAssessmentAssignmentId,
-      aggregationVersion: resolvedTeamSource.aggregationVersion,
-    });
+      const verification = await withDiagnosticStage(
+        diagnostic,
+        "team_source_read",
+        () =>
+          loadTeamDynamicsFinalAggregationVerification({
+            teamAssessmentAssignmentId: resolvedTeamSource.teamAssessmentAssignmentId,
+            aggregationVersion: resolvedTeamSource.aggregationVersion,
+          }),
+      );
 
     const isFullCoverage =
       verification.status === "ready" &&
@@ -672,22 +850,44 @@ async function buildTeamFitDbSourceAuditArtifact(options = {}) {
     }
   }
 
-  appendCandidateSourceFindings(artifact);
+    appendCandidateSourceFindings(artifact);
 
-  if (artifact.candidateSource.status === "available" && artifact.teamSource.isReady && artifact.teamSource.isFullCoverage) {
+    if (artifact.candidateSource.status === "available" && artifact.teamSource.isReady && artifact.teamSource.isFullCoverage) {
+      artifact.findings.push({
+        severity: "info",
+        category: "source_integrity",
+        message: "Candidate and team primary sources are available for a future real Team Fit input builder/provider path.",
+      });
+      artifact.recommendedNextStep =
+        "Use these sources only in a separate explicit provider/input-builder slice; keep this audit read-only.";
+    } else {
+      artifact.recommendedNextStep =
+        "Resolve source blockers before any real Team Fit provider/input-builder run.";
+    }
+
+    return artifact;
+  } catch (error) {
+    artifact.failure = diagnostic.getLastFailure?.() ?? {
+      stage: diagnostic.getStage?.() ?? null,
+      requestOrdinal: null,
+      error: serializeFetchError(error),
+    };
     artifact.findings.push({
-      severity: "info",
-      category: "source_integrity",
-      message: "Candidate and team primary sources are available for a future real Team Fit input builder/provider path.",
+      severity: "blocker",
+      category: "fetch_diagnostic",
+      message: "Read-only source inspector failed before completing source reconciliation.",
+      stage: artifact.failure.stage,
+      requestOrdinal: artifact.failure.requestOrdinal,
     });
-    artifact.recommendedNextStep =
-      "Use these sources only in a separate explicit provider/input-builder slice; keep this audit read-only.";
-  } else {
-    artifact.recommendedNextStep =
-      "Resolve source blockers before any real Team Fit provider/input-builder run.";
+    artifact.recommendedNextStep = "Inspect the sanitized fetch diagnostic before any retry.";
+    return artifact;
+  } finally {
+    if (!artifact.failure && diagnostic.getLastFailure) {
+      artifact.failure = diagnostic.getLastFailure();
+    }
+    artifact.requests = diagnostic.getRequests?.() ?? [];
+    diagnostic.restore?.();
   }
-
-  return artifact;
 }
 
 async function runTeamFitDbSourceAudit({
@@ -695,6 +895,10 @@ async function runTeamFitDbSourceAudit({
   stdout = process.stdout,
 } = {}) {
   const artifact = await buildTeamFitDbSourceAuditArtifact({ env });
+  if (env[CONFIRM_ENV] === "true" && !artifact.skipped) {
+    const outputPath = normalizeEnvString(env[OUTPUT_PATH_ENV]) ?? DEFAULT_OUTPUT_PATH;
+    writeDiagnosticArtifact(fs, outputPath, artifact);
+  }
   stdout.write(`${JSON.stringify(artifact, null, 2)}\n`);
   return artifact;
 }
@@ -702,6 +906,9 @@ async function runTeamFitDbSourceAudit({
 module.exports = {
   CANDIDATE_ASSIGNMENT_ID_ENV,
   CONFIRM_ENV,
+  DEFAULT_OUTPUT_PATH,
+  FETCH_DIAGNOSTIC_STAGES,
+  OUTPUT_PATH_ENV,
   PARTICIPANT_ID_ENV,
   TEAM_AGGREGATION_SNAPSHOT_ID_ENV,
   TEAM_FIT_REPORT_ID_ENV,
@@ -710,6 +917,9 @@ module.exports = {
   buildBaseArtifact,
   buildSkippedArtifact,
   buildTeamFitDbSourceAuditArtifact,
+  createFetchDiagnostic,
+  serializeFetchError,
+  writeDiagnosticArtifact,
   installTypeScriptRuntime,
   runTeamFitDbSourceAudit,
 };

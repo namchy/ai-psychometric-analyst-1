@@ -62,7 +62,14 @@ type ParticipantRow = {
 type TeamAggregationSnapshotReferenceRow = {
   id: string;
   team_assessment_assignment_id: string;
+  team_id: string | null;
   aggregation_version: string;
+};
+
+type TeamAssessmentAssignmentReferenceRow = {
+  id: string;
+  team_id: string | null;
+  package_slug: string;
 };
 
 export const TEAM_FIT_REPORT_INPUT_TYPE = "team_fit_report_input_v1" as const;
@@ -94,6 +101,20 @@ type TeamFitSummarySignal = {
   signal: string;
 };
 
+type TeamFitCandidateEvidence = {
+  sourceTestSlug: string;
+  dimensionCode: string;
+  dimensionLabel: string;
+  rawScore?: number;
+  averageScore?: number;
+  maxScore?: number;
+  scoreLabel?: string;
+  scaleMin?: number;
+  scaleMax?: number;
+  band?: string;
+  bandLabel?: string;
+};
+
 type TeamFitSourceMetadata = {
   sourceId: string | null;
   contractVersion?: string;
@@ -102,6 +123,7 @@ type TeamFitSourceMetadata = {
   assessmentAssignmentId?: string;
   teamAssessmentAssignmentId?: string;
   aggregationSnapshotId?: string | null;
+  sourceTestSlugs?: string[];
 };
 
 export type TeamFitReportInputSnapshot = {
@@ -139,11 +161,15 @@ export type TeamFitReportInputSnapshot = {
   candidateSignals: {
     sourceStatus: TeamFitSignalStatus;
     summary: Record<string, unknown> | null;
-    collaborationRelevantSignals?: TeamFitSummarySignal[];
+    candidateEvidence?: TeamFitCandidateEvidence[];
     motivationSignals?: {
       dominantDrivers: Array<{ code: string; label: string }>;
       lowerDrivers: Array<{ code: string; label: string }>;
-      cautionFlags: string[];
+      cautionFlags: {
+        elevatedAmotivation: boolean;
+        highControlledRelativeToAutonomous: boolean;
+        mixedProfile: boolean;
+      };
     } | null;
     problemSolvingSignals?: {
       strongestDomain: { code: string; label: string } | null;
@@ -212,6 +238,53 @@ export type BuildTeamFitReportInputSnapshotResult =
         | "unsupported_team_source_type"
         | "invalid_existing_input_snapshot";
       message: string;
+    };
+
+export type BuildTeamFitReportInputSnapshotFromSourcesInput = {
+  ephemeralReportReferenceId: string;
+  organizationId: string;
+  teamId: string;
+  participantId: string;
+  candidateAssessmentAssignmentId: string;
+  teamAggregationSourceId: string;
+  locale: string;
+  generatedAt: string;
+};
+
+export type BuildTeamFitReportInputSnapshotFromSourcesResult =
+  | {
+      ok: true;
+      ephemeralReportReferenceId: string;
+      inputSnapshot: TeamFitReportInputSnapshot;
+      candidateSourceStatus: "available";
+      candidateCoverage: {
+        requiredCount: number;
+        completedCount: number;
+        missingTestSlugs: string[];
+      };
+      teamSourceStatus: "available";
+      teamFullCoverage: true;
+    }
+  | {
+      ok: false;
+      reason:
+        | "invalid_payload"
+        | "organization_not_found"
+        | "organization_mismatch"
+        | "team_not_found"
+        | "team_organization_mismatch"
+        | "participant_not_found"
+        | "participant_organization_mismatch"
+        | "candidate_source_unavailable"
+        | "candidate_source_invalid"
+        | "candidate_source_lineage_mismatch"
+        | "team_source_unavailable"
+        | "team_source_invalid"
+        | "team_source_lineage_mismatch";
+      message: string;
+      candidateSourceStatus: TeamFitSignalStatus | null;
+      teamSourceStatus: TeamFitSignalStatus | null;
+      teamFullCoverage: boolean;
     };
 
 export type PersistTeamFitReportInputSnapshotResult =
@@ -389,15 +462,13 @@ function buildCandidateSummary(
   };
 }
 
-function buildCandidateCollaborationSignals(
-  snapshot: CompositeHrInputSnapshot,
-): TeamFitSummarySignal[] {
+function buildCandidateEvidence(snapshot: CompositeHrInputSnapshot): TeamFitCandidateEvidence[] {
   const collaborationCodes = new Set([
     ...snapshot.summarySignals.personalityHighestDomains.slice(0, 2),
     ...snapshot.summarySignals.personalityLowestDomains.slice(0, 2),
   ]);
 
-  return Array.from(collaborationCodes)
+  const personalityEvidence = Array.from(collaborationCodes)
     .map((domainCode) =>
       snapshot.deterministicInputs.ipip.domains.find((domain) => domain.domainCode === domainCode),
     )
@@ -409,12 +480,45 @@ function buildCandidateCollaborationSignals(
     )
     .slice(0, 4)
     .map((domain) => ({
-      code: domain.domainCode,
-      label: domain.label,
-      signal: toSafeSignalText(
-        `${domain.displayBandLabel} tendency in ${domain.label.toLowerCase()} within structured work settings.`,
-      ),
+      sourceTestSlug: snapshot.deterministicInputs.ipip.testSlug,
+      dimensionCode: domain.domainCode,
+      dimensionLabel: domain.label,
+      rawScore: domain.rawScore,
+      averageScore: domain.averageScore,
+      scaleMin: snapshot.deterministicInputs.ipip.scale.min,
+      scaleMax: snapshot.deterministicInputs.ipip.scale.max,
+      band: domain.band,
+      bandLabel: domain.bandLabel,
     }));
+
+  const safran = snapshot.deterministicInputs.safran;
+  const cognitiveEvidence = (["verbal", "figural", "numeric"] as const).map((code) => {
+    const score = safran[code];
+    return {
+      sourceTestSlug: safran.testSlug,
+      dimensionCode: code,
+      dimensionLabel: toTitleCaseLabel(code),
+      rawScore: score.rawScore,
+      maxScore: score.maxScore,
+      scoreLabel: score.scoreLabel,
+      band: score.band,
+      bandLabel: score.bandLabel,
+    };
+  });
+
+  const mwms = snapshot.deterministicInputs.mwms;
+  const motivationEvidence = mwms.dimensions.map((dimension) => ({
+    sourceTestSlug: mwms.testSlug,
+    dimensionCode: dimension.code,
+    dimensionLabel: dimension.label,
+    rawScore: dimension.rawScore,
+    scaleMin: mwms.scale.min,
+    scaleMax: mwms.scale.max,
+    band: dimension.band,
+    bandLabel: dimension.bandLabel,
+  }));
+
+  return [...personalityEvidence, ...cognitiveEvidence, ...motivationEvidence];
 }
 
 function buildCandidateMotivationSignals(
@@ -424,21 +528,6 @@ function buildCandidateMotivationSignals(
   const resolveDimension = (code: string) =>
     dimensions.find((dimension) => dimension.code === code);
   const cautionFlags = snapshot.deterministicInputs.mwms.summarySignals.cautionFlags;
-  const cautionMessages: string[] = [];
-
-  if (cautionFlags.elevatedAmotivation) {
-    cautionMessages.push("Reduced engagement signal should be validated in interview context.");
-  }
-
-  if (cautionFlags.highControlledRelativeToAutonomous) {
-    cautionMessages.push("External-structure dependence may matter for manager support and onboarding.");
-  }
-
-  if (cautionFlags.mixedProfile) {
-    cautionMessages.push(
-      "Motivation profile is mixed and should be interpreted as a hypothesis, not a conclusion.",
-    );
-  }
 
   return {
     dominantDrivers: snapshot.summarySignals.motivationHighestDrivers.map((code) => {
@@ -449,7 +538,7 @@ function buildCandidateMotivationSignals(
       const dimension = resolveDimension(code);
       return { code, label: dimension?.label ?? code };
     }),
-    cautionFlags: cautionMessages,
+    cautionFlags: { ...cautionFlags },
   };
 }
 
@@ -522,20 +611,10 @@ async function loadCandidateSignals(input: {
       locale: input.locale,
     });
 
-    return {
-      sourceStatus: "available",
-      summary: buildCandidateSummary(compositeSnapshot),
-      collaborationRelevantSignals: buildCandidateCollaborationSignals(compositeSnapshot),
-      motivationSignals: buildCandidateMotivationSignals(compositeSnapshot),
-      problemSolvingSignals: buildCandidateProblemSolvingSignals(compositeSnapshot),
-      interpretationLimits: buildCandidateInterpretationLimits(compositeSnapshot),
-      sourceMetadata: {
-        sourceId: input.reportRow.candidate_source_id,
-        contractVersion: compositeSnapshot.contractVersion,
-        builderVersion: compositeSnapshot.metadata.builderVersion,
-        assessmentAssignmentId: compositeSnapshot.generatedFor.assessmentAssignmentId,
-      },
-    };
+    return buildCandidateSignalsFromSnapshot({
+      snapshot: compositeSnapshot,
+      sourceId: input.reportRow.candidate_source_id,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_candidate_source_error";
 
@@ -553,6 +632,31 @@ async function loadCandidateSignals(input: {
       },
     };
   }
+}
+
+function buildCandidateSignalsFromSnapshot(input: {
+  snapshot: CompositeHrInputSnapshot;
+  sourceId: string;
+}): TeamFitReportInputSnapshot["candidateSignals"] {
+  return {
+    sourceStatus: "available",
+    summary: buildCandidateSummary(input.snapshot),
+    candidateEvidence: buildCandidateEvidence(input.snapshot),
+    motivationSignals: buildCandidateMotivationSignals(input.snapshot),
+    problemSolvingSignals: buildCandidateProblemSolvingSignals(input.snapshot),
+    interpretationLimits: buildCandidateInterpretationLimits(input.snapshot),
+    sourceMetadata: {
+      sourceId: input.sourceId,
+      contractVersion: input.snapshot.contractVersion,
+      builderVersion: input.snapshot.metadata.builderVersion,
+      assessmentAssignmentId: input.snapshot.generatedFor.assessmentAssignmentId,
+      sourceTestSlugs: [
+        input.snapshot.deterministicInputs.ipip.testSlug,
+        input.snapshot.deterministicInputs.safran.testSlug,
+        input.snapshot.deterministicInputs.mwms.testSlug,
+      ],
+    },
+  };
 }
 
 function deriveSignalLevel(label: string): "higher" | "moderate" | "lower" {
@@ -642,7 +746,7 @@ async function resolveTeamAggregationSource(input: {
 
   const { data, error } = await input.supabase
     .from("team_assessment_aggregation_snapshots")
-    .select("id, team_assessment_assignment_id, aggregation_version")
+    .select("id, team_assessment_assignment_id, team_id, aggregation_version")
     .eq("id", input.teamSourceId)
     .maybeSingle();
 
@@ -813,33 +917,7 @@ async function loadTeamSignals(input: {
       };
     }
 
-    return {
-      sourceStatus: resolved.result.status === "ready" ? "available" : "source_invalid",
-      summary: buildTeamSummary(resolved.result),
-      coreSignals: buildTeamCoreSignals(resolved.result),
-      communicationAndCoordinationSignals: buildTeamCommunicationSignals(resolved.result),
-      psychologicalSafetySignal: buildOptionalTeamSignal(
-        resolved.result,
-        "psychological_safety_overall",
-        "Psychological safety",
-      ),
-      situationalJudgmentSignal: buildOptionalTeamSignal(
-        resolved.result,
-        "situational_judgment_overall",
-        "Situational judgment",
-      ),
-      outcomePulseSignal: buildOptionalTeamSignal(
-        resolved.result,
-        "outcome_pulse_overall",
-        "Outcome pulse",
-      ),
-      varianceAndConfidence: buildTeamVarianceAndConfidence(resolved.result),
-      interpretationLimits: buildTeamInterpretationLimits(resolved.result),
-      sourceMetadata: {
-        ...resolved.sourceMetadata,
-        sourceVersion: resolved.result.aggregationVersion,
-      },
-    };
+    return buildTeamSignalsFromResolved(resolved);
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_team_source_error";
 
@@ -855,6 +933,39 @@ async function loadTeamSignals(input: {
       },
     };
   }
+}
+
+function buildTeamSignalsFromResolved(input: {
+  result: TeamDynamicsFinalAggregationReadResult;
+  sourceMetadata: TeamFitSourceMetadata;
+}): TeamFitReportInputSnapshot["teamSignals"] {
+  return {
+    sourceStatus: input.result.status === "ready" ? "available" : "source_invalid",
+    summary: buildTeamSummary(input.result),
+    coreSignals: buildTeamCoreSignals(input.result),
+    communicationAndCoordinationSignals: buildTeamCommunicationSignals(input.result),
+    psychologicalSafetySignal: buildOptionalTeamSignal(
+      input.result,
+      "psychological_safety_overall",
+      "Psychological safety",
+    ),
+    situationalJudgmentSignal: buildOptionalTeamSignal(
+      input.result,
+      "situational_judgment_overall",
+      "Situational judgment",
+    ),
+    outcomePulseSignal: buildOptionalTeamSignal(
+      input.result,
+      "outcome_pulse_overall",
+      "Outcome pulse",
+    ),
+    varianceAndConfidence: buildTeamVarianceAndConfidence(input.result),
+    interpretationLimits: buildTeamInterpretationLimits(input.result),
+    sourceMetadata: {
+      ...input.sourceMetadata,
+      sourceVersion: input.result.aggregationVersion,
+    },
+  };
 }
 
 async function loadReportRow(input: {
@@ -945,6 +1056,63 @@ async function loadParticipantContext(input: {
   }
 
   return { ok: true, participant: data as ParticipantRow };
+}
+
+function buildTeamFitReportInputSnapshotFromValidatedSources(input: {
+  reportReferenceId: string;
+  organization: OrganizationRow;
+  team: TeamRow;
+  participant: ParticipantRow;
+  candidateSourceId: string | null;
+  teamSourceId: string | null;
+  candidateSignals: TeamFitReportInputSnapshot["candidateSignals"];
+  teamSignals: TeamFitReportInputSnapshot["teamSignals"];
+  locale: string;
+  generatedAt: string;
+}): TeamFitReportInputSnapshot {
+  return {
+    inputType: TEAM_FIT_REPORT_INPUT_TYPE,
+    inputVersion: TEAM_FIT_REPORT_INPUT_VERSION,
+    reportType: TEAM_FIT_REPORT_TYPE,
+    reportVersion: TEAM_FIT_REPORT_VERSION,
+    locale: input.locale,
+    generatedAt: input.generatedAt,
+    organizationContext: {
+      organizationId: input.organization.id,
+      organizationName: input.organization.name ?? null,
+    },
+    teamContext: {
+      teamId: input.team.id,
+      teamName: input.team.name ?? null,
+      teamSourceType: TEAM_FIT_TEAM_SOURCE_TYPE,
+      teamSourceId: input.teamSourceId,
+    },
+    candidateContext: {
+      participantId: input.participant.id,
+      displayName: input.participant.full_name ?? null,
+      candidateSourceType: TEAM_FIT_CANDIDATE_SOURCE_TYPE,
+      candidateSourceId: input.candidateSourceId,
+    },
+    sourceReferences: {
+      teamFitReportId: input.reportReferenceId,
+      candidateSourceType: TEAM_FIT_CANDIDATE_SOURCE_TYPE,
+      candidateSourceId: input.candidateSourceId,
+      teamSourceType: TEAM_FIT_TEAM_SOURCE_TYPE,
+      teamSourceId: input.teamSourceId,
+      executiveOverviewContextIncluded: false,
+      roleContextIncluded: false,
+    },
+    candidateSignals: input.candidateSignals,
+    teamSignals: input.teamSignals,
+    interpretationGuardrails: {
+      noNumericFitScore: true,
+      noHireNoHire: true,
+      noRawTeamMemberAnswers: true,
+      noIndividualTeamMemberScoreDisplay: true,
+      noCandidateFacingOutput: true,
+    },
+    relationshipReasoningGuardrails: buildRelationshipReasoningGuardrails(),
+  };
 }
 
 export async function buildTeamFitReportInputSnapshot(
@@ -1066,54 +1234,358 @@ export async function buildTeamFitReportInputSnapshot(
     }),
   ]);
 
-  const snapshot: TeamFitReportInputSnapshot = {
-    inputType: TEAM_FIT_REPORT_INPUT_TYPE,
-    inputVersion: TEAM_FIT_REPORT_INPUT_VERSION,
-    reportType: TEAM_FIT_REPORT_TYPE,
-    reportVersion: TEAM_FIT_REPORT_VERSION,
-    locale,
-    generatedAt: reportRow.created_at,
-    organizationContext: {
-      organizationId: organizationContext.organization.id,
-      organizationName: organizationContext.organization.name ?? null,
-    },
-    teamContext: {
-      teamId: teamContext.team.id,
-      teamName: teamContext.team.name ?? null,
-      teamSourceType: TEAM_FIT_TEAM_SOURCE_TYPE,
-      teamSourceId: reportRow.team_source_id,
-    },
-    candidateContext: {
-      participantId: participantContext.participant.id,
-      displayName: participantContext.participant.full_name ?? null,
-      candidateSourceType: TEAM_FIT_CANDIDATE_SOURCE_TYPE,
-      candidateSourceId: reportRow.candidate_source_id,
-    },
-    sourceReferences: {
-      teamFitReportId: reportRow.id,
-      candidateSourceType: TEAM_FIT_CANDIDATE_SOURCE_TYPE,
-      candidateSourceId: reportRow.candidate_source_id,
-      teamSourceType: TEAM_FIT_TEAM_SOURCE_TYPE,
-      teamSourceId: reportRow.team_source_id,
-      executiveOverviewContextIncluded: false,
-      roleContextIncluded: false,
-    },
+  const snapshot = buildTeamFitReportInputSnapshotFromValidatedSources({
+    reportReferenceId: reportRow.id,
+    organization: organizationContext.organization,
+    team: teamContext.team,
+    participant: participantContext.participant,
+    candidateSourceId: reportRow.candidate_source_id,
+    teamSourceId: reportRow.team_source_id,
     candidateSignals,
     teamSignals,
-    interpretationGuardrails: {
-      noNumericFitScore: true,
-      noHireNoHire: true,
-      noRawTeamMemberAnswers: true,
-      noIndividualTeamMemberScoreDisplay: true,
-      noCandidateFacingOutput: true,
-    },
-    relationshipReasoningGuardrails: buildRelationshipReasoningGuardrails(),
-  };
+    locale,
+    generatedAt: reportRow.created_at,
+  });
 
   return {
     ok: true,
     reportId: reportRow.id,
     inputSnapshot: snapshot,
+  };
+}
+
+function buildSourceDirectFailure(
+  reason: Extract<
+    BuildTeamFitReportInputSnapshotFromSourcesResult,
+    { ok: false }
+  >["reason"],
+  message: string,
+  candidateSourceStatus: TeamFitSignalStatus | null = null,
+  teamSourceStatus: TeamFitSignalStatus | null = null,
+  teamFullCoverage = false,
+): BuildTeamFitReportInputSnapshotFromSourcesResult {
+  return {
+    ok: false,
+    reason,
+    message,
+    candidateSourceStatus,
+    teamSourceStatus,
+    teamFullCoverage,
+  };
+}
+
+function hasExactTeamFitCandidateCoverage(snapshot: CompositeHrInputSnapshot): boolean {
+  const expectedTestSlugs = new Set(["ipip-neo-120-v1", "safran_v1", "mwms_v1"]);
+  const sourceAttempts = snapshot.sourceAttempts ?? [];
+
+  return (
+    snapshot.coverage.requiredCount === 3 &&
+    snapshot.coverage.completedCount === 3 &&
+    snapshot.coverage.missingTestSlugs.length === 0 &&
+    sourceAttempts.length === 3 &&
+    sourceAttempts.every(
+      (attempt) =>
+        attempt.requiredForComposite &&
+        attempt.status === "completed" &&
+        expectedTestSlugs.has(attempt.testSlug),
+    ) &&
+    new Set(sourceAttempts.map((attempt) => attempt.testSlug)).size === expectedTestSlugs.size
+  );
+}
+
+export async function buildTeamFitReportInputSnapshotFromSources(
+  input: BuildTeamFitReportInputSnapshotFromSourcesInput,
+  deps: TeamFitReportInputDependencies = {},
+): Promise<BuildTeamFitReportInputSnapshotFromSourcesResult> {
+  const requiredFields: Array<keyof BuildTeamFitReportInputSnapshotFromSourcesInput> = [
+    "ephemeralReportReferenceId",
+    "organizationId",
+    "teamId",
+    "participantId",
+    "candidateAssessmentAssignmentId",
+    "teamAggregationSourceId",
+    "locale",
+    "generatedAt",
+  ];
+
+  if (requiredFields.some((field) => !isNonEmptyString(input[field]))) {
+    return buildSourceDirectFailure(
+      "invalid_payload",
+      "All source-direct Team Fit input fields are required.",
+    );
+  }
+
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const organizationContext = await loadOrganizationContext({
+    organizationId: input.organizationId,
+    supabase,
+  });
+
+  if (!organizationContext.ok) {
+    return buildSourceDirectFailure("organization_not_found", organizationContext.message);
+  }
+
+  const { data: teamData, error: teamError } = await supabase
+    .from("teams")
+    .select("id, organization_id, name, archived_at")
+    .eq("id", input.teamId)
+    .maybeSingle();
+
+  if (teamError || !teamData) {
+    return buildSourceDirectFailure(
+      "team_not_found",
+      teamError ? `Failed to load Team Fit team context: ${teamError.message}` : "Team Fit team context was not found.",
+    );
+  }
+
+  const team = teamData as TeamRow;
+
+  if (team.organization_id !== input.organizationId) {
+    return buildSourceDirectFailure(
+      "team_organization_mismatch",
+      "Team Fit team does not belong to the requested organization.",
+    );
+  }
+
+  if (team.archived_at) {
+    return buildSourceDirectFailure("team_not_found", "Team Fit team context is archived.");
+  }
+
+  const { data: participantData, error: participantError } = await supabase
+    .from("participants")
+    .select("id, organization_id, full_name")
+    .eq("id", input.participantId)
+    .maybeSingle();
+
+  if (participantError || !participantData) {
+    return buildSourceDirectFailure(
+      "participant_not_found",
+      participantError
+        ? `Failed to load Team Fit participant context: ${participantError.message}`
+        : "Team Fit participant context was not found.",
+    );
+  }
+
+  const participant = participantData as ParticipantRow;
+
+  if (participant.organization_id !== input.organizationId) {
+    return buildSourceDirectFailure(
+      "participant_organization_mismatch",
+      "Team Fit participant does not belong to the requested organization.",
+    );
+  }
+
+  const { data: assignmentData, error: assignmentError } = await supabase
+    .from("assessment_assignments")
+    .select("id, organization_id, participant_id, assignment_type, status, locale, created_at")
+    .eq("id", input.candidateAssessmentAssignmentId)
+    .maybeSingle();
+
+  if (assignmentError || !assignmentData) {
+    return buildSourceDirectFailure(
+      "candidate_source_unavailable",
+      assignmentError
+        ? `Failed to load candidate assessment assignment: ${assignmentError.message}`
+        : "Candidate assessment assignment was not found.",
+      "source_unavailable",
+    );
+  }
+
+  const candidateAssignment = assignmentData as {
+    id: string;
+    organization_id: string;
+    participant_id: string;
+    assignment_type: string;
+    locale: string | null;
+    created_at: string;
+  };
+
+  if (
+    candidateAssignment.organization_id !== input.organizationId ||
+    candidateAssignment.participant_id !== input.participantId
+  ) {
+    return buildSourceDirectFailure(
+      "candidate_source_lineage_mismatch",
+      "Candidate assessment assignment does not belong to the requested organization and participant.",
+      "source_invalid",
+    );
+  }
+
+  if (candidateAssignment.assignment_type !== "standard_battery") {
+    return buildSourceDirectFailure(
+      "candidate_source_invalid",
+      "Candidate assessment assignment is not a standard_battery source.",
+      "source_invalid",
+    );
+  }
+
+  const buildCompositeInputSnapshot =
+    deps.buildCompositeInputSnapshot ?? buildCompositeHrInputSnapshot;
+  let compositeSnapshot: CompositeHrInputSnapshot;
+
+  try {
+    compositeSnapshot = await buildCompositeInputSnapshot({
+      assessmentAssignmentId: candidateAssignment.id,
+      organizationId: input.organizationId,
+      participantId: input.participantId,
+      locale: input.locale,
+    });
+  } catch (error) {
+    return buildSourceDirectFailure(
+      "candidate_source_invalid",
+      error instanceof Error ? error.message : "Candidate composite source could not be built.",
+      "source_invalid",
+    );
+  }
+
+  if (!hasExactTeamFitCandidateCoverage(compositeSnapshot)) {
+    return buildSourceDirectFailure(
+      "candidate_source_invalid",
+      "Candidate composite source does not have exact 3/3 Team Fit coverage with completed deterministic sources.",
+      "source_invalid",
+    );
+  }
+
+  const candidateSignals = buildCandidateSignalsFromSnapshot({
+    snapshot: compositeSnapshot,
+    sourceId: candidateAssignment.id,
+  });
+
+  const { data: aggregationReferenceData, error: aggregationReferenceError } = await supabase
+    .from("team_assessment_aggregation_snapshots")
+    .select("id, team_assessment_assignment_id, team_id, aggregation_version")
+    .eq("id", input.teamAggregationSourceId)
+    .maybeSingle();
+
+  if (aggregationReferenceError || !aggregationReferenceData) {
+    return buildSourceDirectFailure(
+      "team_source_unavailable",
+      aggregationReferenceError
+        ? `Failed to load Team Dynamics aggregation source: ${aggregationReferenceError.message}`
+        : "Team Dynamics aggregation source was not found.",
+      "available",
+      "source_unavailable",
+    );
+  }
+
+  const aggregationReference = aggregationReferenceData as TeamAggregationSnapshotReferenceRow;
+
+  if (aggregationReference.team_id && aggregationReference.team_id !== input.teamId) {
+    return buildSourceDirectFailure(
+      "team_source_lineage_mismatch",
+      "Team Dynamics aggregation snapshot does not belong to the requested team.",
+      "available",
+      "source_invalid",
+    );
+  }
+
+  const { data: teamAssignmentData, error: teamAssignmentError } = await supabase
+    .from("team_assessment_assignments")
+    .select("id, team_id, package_slug")
+    .eq("id", aggregationReference.team_assessment_assignment_id)
+    .maybeSingle();
+
+  if (teamAssignmentError || !teamAssignmentData) {
+    return buildSourceDirectFailure(
+      "team_source_invalid",
+      teamAssignmentError
+        ? `Failed to load Team Dynamics assignment lineage: ${teamAssignmentError.message}`
+        : "Team Dynamics assignment lineage was not found.",
+      "available",
+      "source_invalid",
+    );
+  }
+
+  const teamAssignment = teamAssignmentData as TeamAssessmentAssignmentReferenceRow;
+
+  if (teamAssignment.team_id !== input.teamId) {
+    return buildSourceDirectFailure(
+      "team_source_lineage_mismatch",
+      "Team Dynamics aggregation assignment does not belong to the requested team.",
+      "available",
+      "source_invalid",
+    );
+  }
+
+  const loadTeamAggregationVerification =
+    deps.loadTeamAggregationVerification ?? loadTeamDynamicsFinalAggregationVerification;
+  const verification = await loadTeamAggregationVerification(
+    {
+      teamAssessmentAssignmentId: teamAssignment.id,
+      aggregationVersion: aggregationReference.aggregation_version,
+    },
+    { supabase },
+  );
+  const teamFullCoverage =
+    verification.status === "ready" &&
+    verification.aggregationSnapshotId === aggregationReference.id &&
+    verification.incompleteMemberCount === 0 &&
+    verification.missingScoreCount === 0 &&
+    verification.invalidScoreCount === 0;
+
+  if (verification.status !== "ready") {
+    return buildSourceDirectFailure(
+      "team_source_invalid",
+      `Team Dynamics aggregation verification is ${verification.status}: ${verification.reason ?? "no reason provided"}.`,
+      "available",
+      "source_invalid",
+      false,
+    );
+  }
+
+  if (!teamFullCoverage) {
+    return buildSourceDirectFailure(
+      "team_source_invalid",
+      "Team Dynamics aggregation source is not the requested snapshot or does not have full coverage.",
+      "available",
+      "source_invalid",
+      false,
+    );
+  }
+
+  const teamSignals = buildTeamSignalsFromResolved({
+    result: verification,
+    sourceMetadata: {
+      sourceId: aggregationReference.id,
+      sourceVersion: verification.aggregationVersion,
+      teamAssessmentAssignmentId: teamAssignment.id,
+      aggregationSnapshotId: verification.aggregationSnapshotId,
+    },
+  });
+
+  if (candidateSignals.sourceStatus !== "available" || teamSignals.sourceStatus !== "available") {
+    return buildSourceDirectFailure(
+      "team_source_invalid",
+      "Team Fit source-direct input requires available candidate and team signals.",
+      candidateSignals.sourceStatus,
+      teamSignals.sourceStatus,
+      false,
+    );
+  }
+
+  return {
+    ok: true,
+    ephemeralReportReferenceId: input.ephemeralReportReferenceId,
+    inputSnapshot: buildTeamFitReportInputSnapshotFromValidatedSources({
+      reportReferenceId: input.ephemeralReportReferenceId,
+      organization: organizationContext.organization,
+      team,
+      participant,
+      candidateSourceId: candidateAssignment.id,
+      teamSourceId: aggregationReference.id,
+      candidateSignals,
+      teamSignals,
+      locale: input.locale,
+      generatedAt: input.generatedAt,
+    }),
+    candidateSourceStatus: "available",
+    candidateCoverage: {
+      requiredCount: compositeSnapshot.coverage.requiredCount,
+      completedCount: compositeSnapshot.coverage.completedCount,
+      missingTestSlugs: [...compositeSnapshot.coverage.missingTestSlugs],
+    },
+    teamSourceStatus: "available",
+    teamFullCoverage: true,
   };
 }
 

@@ -166,39 +166,68 @@ function buildCompositeSnapshot() {
       assessmentAssignmentId: "assignment-1",
     },
     sourceAttempts: [
-      { requiredForTeamFit: true, status: "completed", testSlug: "ipip_neo_120" },
+      { requiredForTeamFit: true, status: "completed", testSlug: "ipip-neo-120-v1" },
       { requiredForTeamFit: true, status: "completed", testSlug: "mwms_v1" },
-      { requiredForTeamFit: true, status: "completed", testSlug: "safran_hr_v1" },
+      { requiredForTeamFit: true, status: "completed", testSlug: "safran_v1" },
     ],
     coverage: {
       missingTestSlugs: [],
     },
     deterministicInputs: {
       ipip: {
+        testSlug: "ipip-neo-120-v1",
+        scale: { min: 1, max: 5 },
         domains: [
           {
-            domainCode: "agreeableness",
-            label: "Agreeableness",
+            domainCode: "AGREEABLENESS",
+            label: "Spremnost na saradnju",
+            rawScore: 93,
+            averageScore: 3.88,
+            band: "higher",
+            bandLabel: "Više izraženo",
             displayBandLabel: "Higher",
           },
           {
-            domainCode: "conscientiousness",
-            label: "Conscientiousness",
-            displayBandLabel: "Higher",
+            domainCode: "CONSCIENTIOUSNESS",
+            label: "Savjesnost",
+            rawScore: 100,
+            averageScore: 4.17,
+            band: "higher",
+            bandLabel: "Više izraženo",
+            displayBandLabel: "Nepoznata participant display vrijednost",
           },
           {
-            domainCode: "neuroticism",
-            label: "Neuroticism",
-            displayBandLabel: "Lower",
+            domainCode: "NEUROTICISM",
+            label: "Neuroticizam",
+            rawScore: 51,
+            averageScore: 2.13,
+            band: "lower",
+            bandLabel: "Niže izraženo",
+            displayBand: "higher",
+            displayBandLabel: "Više izraženo",
           },
         ],
       },
+      safran: {
+        testSlug: "safran_v1",
+        overall: { rawScore: 18, maxScore: 30, scoreLabel: "18/30", band: "moderate", bandLabel: "Umjereno" },
+        verbal: { rawScore: 8, maxScore: 10, scoreLabel: "8/10", band: "higher", bandLabel: "Više izraženo" },
+        figural: { rawScore: 4, maxScore: 10, scoreLabel: "4/10", band: "lower", bandLabel: "Niže izraženo" },
+        numeric: { rawScore: 6, maxScore: 10, scoreLabel: "6/10", band: "moderate", bandLabel: "Umjereno" },
+      },
       mwms: {
+        testSlug: "mwms_v1",
+        scale: { min: 1, max: 7 },
         dimensions: [
-          { code: "identified", label: "Identified motivation" },
-          { code: "intrinsic", label: "Intrinsic motivation" },
-          { code: "amotivation", label: "Amotivation" },
+          { code: "identified", label: "Identified motivation", rawScore: 6, band: "higher", bandLabel: "Više izraženo" },
+          { code: "intrinsic", label: "Intrinsic motivation", rawScore: 5, band: "higher", bandLabel: "Više izraženo" },
+          { code: "amotivation", label: "Amotivation", rawScore: 2, band: "lower", bandLabel: "Niže izraženo" },
         ],
+        motivationStructure: {
+          autonomousMotivationScore: 5.5,
+          controlledMotivationScore: 3,
+          amotivationScore: 2,
+        },
         summarySignals: {
           cautionFlags: {
             elevatedAmotivation: false,
@@ -209,8 +238,8 @@ function buildCompositeSnapshot() {
       },
     },
     summarySignals: {
-      personalityHighestDomains: ["agreeableness", "conscientiousness"],
-      personalityLowestDomains: ["neuroticism"],
+      personalityHighestDomains: ["AGREEABLENESS", "CONSCIENTIOUSNESS"],
+      personalityLowestDomains: ["NEUROTICISM"],
       cognitiveStrongestDomain: "verbal",
       cognitiveLowestDomain: "numeric",
       motivationHighestDrivers: ["identified", "intrinsic"],
@@ -390,9 +419,47 @@ async function main() {
   assert.equal(candidateResult.ok, true);
   assert.equal(candidateResult.inputSnapshot.candidateSignals.sourceStatus, "available");
   assert.ok(candidateResult.inputSnapshot.candidateSignals.summary);
-  assert.ok(candidateResult.inputSnapshot.candidateSignals.collaborationRelevantSignals.length >= 1);
+  assert.ok(candidateResult.inputSnapshot.candidateSignals.candidateEvidence.length >= 1);
+  assert.equal(candidateResult.inputSnapshot.candidateSignals.collaborationRelevantSignals, undefined);
   assert.ok(candidateResult.inputSnapshot.candidateSignals.motivationSignals);
   assert.ok(candidateResult.inputSnapshot.candidateSignals.problemSolvingSignals);
+  const candidateEvidence = candidateResult.inputSnapshot.candidateSignals.candidateEvidence;
+  const neuroticismEvidence = candidateEvidence.find(
+    (evidence) => evidence.dimensionCode === "NEUROTICISM",
+  );
+  const conscientiousnessEvidence = candidateEvidence.find(
+    (evidence) => evidence.dimensionCode === "CONSCIENTIOUSNESS",
+  );
+  assert.ok(neuroticismEvidence);
+  assert.equal(neuroticismEvidence.dimensionLabel, "Neuroticizam");
+  assert.equal(neuroticismEvidence.band, "lower");
+  assert.equal(neuroticismEvidence.bandLabel, "Niže izraženo");
+  assert.equal(neuroticismEvidence.sourceTestSlug, "ipip-neo-120-v1");
+  assert.equal(neuroticismEvidence.displayBand, undefined);
+  assert.ok(conscientiousnessEvidence);
+  assert.equal(conscientiousnessEvidence.band, "higher");
+  assert.equal(conscientiousnessEvidence.sourceTestSlug, "ipip-neo-120-v1");
+  assert.equal(candidateEvidence.filter((evidence) => evidence.sourceTestSlug === "safran_v1").length, 3);
+  assert.equal(candidateEvidence.filter((evidence) => evidence.sourceTestSlug === "mwms_v1").length, 3);
+  assert.deepEqual(
+    candidateResult.inputSnapshot.candidateSignals.sourceMetadata.sourceTestSlugs,
+    ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+  );
+  const serializedCandidateSignals = JSON.stringify(candidateResult.inputSnapshot.candidateSignals);
+  for (const forbiddenInterpretation of [
+    "To upućuje na",
+    "snažnije oslanjanje na planiranje",
+    "nižu emocionalnu reaktivnost u strukturiranim radnim uslovima",
+    "može podržati",
+    "kandidat vjerovatno",
+  ]) {
+    assert.doesNotMatch(serializedCandidateSignals, new RegExp(forbiddenInterpretation, "i"));
+  }
+  assert.deepEqual(candidateResult.inputSnapshot.candidateSignals.motivationSignals.cautionFlags, {
+    elevatedAmotivation: false,
+    highControlledRelativeToAutonomous: false,
+    mixedProfile: false,
+  });
   assert.equal(
     JSON.stringify(candidateResult.inputSnapshot.candidateSignals).includes("deterministicInputs"),
     false,

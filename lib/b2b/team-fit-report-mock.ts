@@ -58,7 +58,12 @@ export function buildMockTeamFitReportSnapshot(
     source: {
       candidateCompositeInputVersion: inputSnapshot.inputVersion,
       candidateSourceReportIds: [],
-      candidateSourceTestSlugs: [],
+      candidateSourceTestSlugs:
+        inputSnapshot.candidateSignals.sourceMetadata?.sourceTestSlugs ??
+        inputSnapshot.candidateSignals.candidateEvidence?.map(
+          (evidence) => evidence.sourceTestSlug,
+        ) ??
+        [],
       teamInputVersion: inputSnapshot.inputVersion,
       teamSourceReportIds: [],
       teamSourceSnapshotIds: inputSnapshot.teamContext.teamSourceId
