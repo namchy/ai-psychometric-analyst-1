@@ -24,9 +24,11 @@ const TEAM_DYNAMICS_TEST_SLUGS = [
   GDT_01_LEGACY_PACKAGE_SLUG,
 ] as const;
 
+export const GDT_01_RESPONSE_SELECTION_BATCH_SIZE = 25;
+
 type QueryResult<T> = {
   data: T[] | null;
-  error: { message: string } | null;
+  error: { message: string; cause?: unknown } | null;
 };
 
 type ReadQuery<T> = PromiseLike<QueryResult<T>>;
@@ -176,11 +178,23 @@ async function readRows<T>(
   table: string,
   columns: string,
   configure?: (query: ReadQueryBuilder<T>) => ReadQueryBuilder<T> & ReadQuery<T>,
+  context?: { batchIndex: number; batchCount: number },
 ): Promise<T[]> {
   let query = supabase.from<T>(table).select(columns) as ReadQueryBuilder<T> & ReadQuery<T>;
   if (configure) query = configure(query);
   const result = await query;
-  if (result.error) throw new Error(`Failed to read ${table}: ${result.error.message}`);
+  if (result.error) {
+    const batchContext = context ? ` (batch ${context.batchIndex}/${context.batchCount})` : "";
+    const cause = result.error.cause;
+    const causeDetails = cause && typeof cause === "object"
+      ? [
+          typeof (cause as { code?: unknown }).code === "string" ? `cause.code=${(cause as { code: string }).code}` : null,
+          typeof (cause as { message?: unknown }).message === "string" ? `cause.message=${(cause as { message: string }).message}` : null,
+        ].filter(Boolean).join("; ")
+      : "";
+    const causeSuffix = causeDetails ? ` (${causeDetails})` : "";
+    throw new Error(`Failed to read ${table}${batchContext}: ${result.error.message}${causeSuffix}`);
+  }
   return result.data ?? [];
 }
 
@@ -203,6 +217,30 @@ async function readByForeignKeys<T>(
 ): Promise<T[]> {
   if (ids.length === 0) return [];
   return readRows<T>(supabase, table, columns, (query) => query.in(column, ids));
+}
+
+async function readResponseSelectionsInBatches(
+  supabase: Gdt01SupabaseReadClient,
+  responseIds: string[],
+): Promise<RawSelection[]> {
+  if (responseIds.length === 0) return [];
+  const batchCount = Math.ceil(responseIds.length / GDT_01_RESPONSE_SELECTION_BATCH_SIZE);
+  const selections: RawSelection[] = [];
+  for (let batchIndex = 0; batchIndex < batchCount; batchIndex += 1) {
+    const batchIds = responseIds.slice(
+      batchIndex * GDT_01_RESPONSE_SELECTION_BATCH_SIZE,
+      (batchIndex + 1) * GDT_01_RESPONSE_SELECTION_BATCH_SIZE,
+    );
+    const batchSelections = await readRows<RawSelection>(
+      supabase,
+      "response_selections",
+      "response_id, question_id, answer_option_id, selection_role",
+      (query) => query.in("response_id", batchIds),
+      { batchIndex: batchIndex + 1, batchCount },
+    );
+    selections.push(...batchSelections);
+  }
+  return selections;
 }
 
 function unique(values: string[]): string[] {
@@ -399,13 +437,7 @@ export function createGdt01SupabaseReadRepository(
         attemptIds,
       );
       const responseIds = unique(responses.map((response) => response.id));
-      const selections = await readByForeignKeys<RawSelection>(
-        supabase,
-        "response_selections",
-        "response_id, question_id, answer_option_id, selection_role",
-        "response_id",
-        responseIds,
-      );
+      const selections = await readResponseSelectionsInBatches(supabase, responseIds);
       const targetTeamIds = new Set(teams.filter((team) => team.name === GDT_01_TEAM_NAME).map((team) => team.id));
       const targetParticipantIds = new Set(
         contract

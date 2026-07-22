@@ -1,12 +1,12 @@
 # GDT-01 Team Dynamics — persistence implementation and hosted rollout preflight
 
-Status: `GDT01_CORRECTIVE_MIGRATION_APPLIED_AND_VALIDATED` — 22.07.2026.
+Status: `GDT01_SEED_APPLIED_AND_EXACT_MATCH_VERIFIED` — 22.07.2026.
 
-`docs/deep-profile-todo.md` remains the canonical source of truth for overall priorities. This document records the confirmed post-migration GDT-01 persistence state and the narrow seed boundary.
+`docs/deep-profile-todo.md` remains the canonical source of truth for overall priorities. This document records the confirmed post-seed GDT-01 persistence state and the narrow member-scoring boundary.
 
 ## 1. Current evidence and scope
 
-The source-level persistence package is implemented and committed; `881d4f45` is the latest source commit:
+The source-level persistence package is implemented; the validated migration/source baseline is `881d4f45`:
 
 - the SQL transaction boundary and server-owned manifest are implemented;
 - the application writer/CLI boundary is implemented and hardened against forged inspection/plan input;
@@ -15,7 +15,7 @@ The source-level persistence package is implemented and committed; `881d4f45` is
 
 The migrations `20260721143000_create_gdt01_team_dynamics_seed_rpc.sql` and `20260721150000_fix_gdt01_membership_resolution_update.sql` are applied and validated. The corrective migration removed the hosted `pg_safeupdate` error `UPDATE requires a WHERE clause`, and the membership update is correlated through `participant_id`. The security contract remains `SECURITY DEFINER`, empty `search_path`, execute only for `service_role`.
 
-The foundation is `EXACT_MATCH` with 24 participants, 4 teams and 24 active memberships. GDT-01 is `EMPTY`, `writerEligible: true`; assignment, wrappers, attempts, responses, selections, scores, aggregations and reports remain 0. The corrective migration did not seed data.
+The foundation is `EXACT_MATCH` with 24 participants, 4 teams and 24 active memberships. The earlier single seed apply produced `EXACT_MATCH` with `writerEligible: false`: 1 assignment, 6 wrappers, 6 attempts, 288 responses, 72 physical `response_selections` rows and 324 logical selections. Member/dimension scores, aggregation snapshots and reports remain 0. The corrective migration itself did not seed data.
 
 Locked facts for this slice:
 
@@ -160,25 +160,19 @@ git diff --check
 
 Evidence includes manifest deep equality against the production fixture projection; roster/question/option/SJT mutation cases; SQL security/lock/lineage/result assertions; forged inspection/plan and RPC-result rejection; CLI duplicate/confirmation/initialization guards; inspector state precedence; and 18 production-backed explicit-answer PASS cases without nominal `() => true` callbacks.
 
-## 7. Confirmed runtime result and remaining seed boundary
+## 7. Confirmed runtime result and remaining scoring boundary
 
-The migration, source, ACL and security contract audits are already proven for this status sync and are not repeated. The remaining state transition is intentionally narrow: GDT-01 is still `EMPTY` and no seed has run.
+The migration, source, ACL and security contract audits are already proven for this status sync and are not repeated. The earlier single seed apply is confirmed by the read-only inspector and writer as `EXACT_MATCH` with the canonical `1 / 6 / 6 / 288 / 72 / 324` footprint. The batched `response_selections` read removed instability from the large unbatched `.in(...)` request; the writer read-only state is an `EXACT_MATCH` no-op and no RPC is allowed.
 
-## 8. Next step — lean controlled GDT-01 seed
+## 8. Next step — lean controlled production member scoring
 
-Run the existing apply command once:
-
-```text
-node scripts/write-gdt-01-team-dynamics-db.cjs --apply --confirm GDT_01_TEAM_DYNAMICS
-```
-
-Then perform only a read-only footprint check for `1 assignment / 6 wrappers / 6 attempts / 288 responses / 72 physical selections / 324 logical selections`. Scoring, aggregation, Team Fit, AI and evaluation remain later separate steps. No cleanup, overwrite or fallback seed is authorized.
+Run one controlled production member-scoring step against the existing seed, then perform its focused read-only result check. Do not combine aggregation with that scoring step. Team Fit, AI and evaluation remain later separate steps. No second seed apply, cleanup, overwrite or fallback seed is authorized.
 
 ## 9. Residual risk
 
 - Offline tests cannot establish PostgreSQL runtime semantics, ACL ownership, transaction rollback or concurrent lock behavior.
 - The server-owned manifest deliberately increases migration size to remove caller-controlled authored content.
 - A compromised service-role credential is outside this operational guard; credential handling remains an external security responsibility.
-- Hosted rollout requires backup, target proof and read-only preflight before the first write.
+- Any future hosted destructive write requires backup, target proof and read-only preflight before execution.
 
-Current statement: migrations are applied and validated; foundation is `EXACT_MATCH`; GDT-01 is `EMPTY` and `writerEligible: true`; the corrective migration did not execute the seed. The next authorized boundary is the single controlled seed apply followed by the read-only footprint check above.
+Current statement: migrations are applied and validated; foundation is `EXACT_MATCH`; the earlier single seed apply is verified as `EXACT_MATCH` with `writerEligible: false` and footprint `1 / 6 / 6 / 288 / 72 / 324`; no scores, aggregations or reports exist. The next authorized boundary is lean controlled production member scoring without aggregation in the same task.

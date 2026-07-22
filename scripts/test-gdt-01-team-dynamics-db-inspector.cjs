@@ -29,7 +29,10 @@ const {
   classifyGdt01DbState,
   loadGdt01DbContract,
 } = require("../lib/golden-demo/team-dynamics-gdt-01-db-contract.ts");
-const { createGdt01SupabaseReadRepository } = require("../lib/golden-demo/team-dynamics-gdt-01-db-inspector.ts");
+const {
+  createGdt01SupabaseReadRepository,
+  GDT_01_RESPONSE_SELECTION_BATCH_SIZE,
+} = require("../lib/golden-demo/team-dynamics-gdt-01-db-inspector.ts");
 const { parseCli } = require("./inspect-gdt-01-team-dynamics-db.cjs");
 
 const contract = loadGdt01DbContract(projectRoot);
@@ -270,9 +273,10 @@ function addUnrelatedTeamAssessmentWrapper(state, packageSlug = "other_team_pack
   return state;
 }
 
-function createMockSupabaseFromExactState(state) {
+function createMockSupabaseFromExactState(state, options = {}) {
   const calls = [];
   const filters = [];
+  let responseSelectionQueryCount = 0;
   const snapshot = contract.runtimeSnapshot;
   const runtimeTest = state.runtime.test;
   const rows = {
@@ -404,6 +408,7 @@ function createMockSupabaseFromExactState(state) {
   return {
     calls,
     filters,
+    responseSelectionQueryCount: () => responseSelectionQueryCount,
     client: {
       from(table) {
         let currentRows = rows[table] ?? [];
@@ -428,6 +433,18 @@ function createMockSupabaseFromExactState(state) {
             return query;
           },
           then(resolve, reject) {
+            if (table === "response_selections") {
+              responseSelectionQueryCount += 1;
+              if (responseSelectionQueryCount === options.failResponseSelectionBatch) {
+                return Promise.resolve({
+                  data: null,
+                  error: {
+                    message: "synthetic selection failure",
+                    cause: { code: "UND_ERR_TEST", message: "synthetic cause" },
+                  },
+                }).then(resolve, reject);
+              }
+            }
             return Promise.resolve({ data: currentRows, error: null }).then(resolve, reject);
           },
         };
@@ -457,13 +474,41 @@ assert.deepEqual(exact.safety, {
 });
 
 const adapterTestPromise = (async () => {
-  const mock = createMockSupabaseFromExactState(exactState());
+  const expectedExactState = exactState();
+  const mock = createMockSupabaseFromExactState(expectedExactState);
   const repository = createGdt01SupabaseReadRepository(mock.client, contract);
   const observed = await repository.readState();
   const adapterResult = classifyGdt01DbState(contract, observed);
   assert.equal(adapterResult.state, "EXACT_MATCH");
   assert.ok(mock.calls.length > 0);
   assert.ok(mock.calls.every((call) => call.operation === "select"));
+  const selectionBatchFilters = mock.filters.filter((filter) => filter.table === "response_selections" && filter.operation === "in");
+  assert.equal(selectionBatchFilters.length, Math.ceil(contract.responses.length / GDT_01_RESPONSE_SELECTION_BATCH_SIZE));
+  assert.equal(selectionBatchFilters[0].values.length, GDT_01_RESPONSE_SELECTION_BATCH_SIZE);
+  assert.deepEqual(new Set(selectionBatchFilters.flatMap((filter) => filter.values)), new Set(expectedExactState.responses.map((response) => response.id)));
+  assert.equal(mock.responseSelectionQueryCount(), selectionBatchFilters.length);
+  assert.equal(observed.selections.length, expectedExactState.selections.length);
+  assert.deepEqual(
+    observed.selections.map((selection) => `${selection.responseId}:${selection.selectionRole}:${selection.answerOptionId}`).sort(),
+    expectedExactState.selections.map((selection) => `${selection.responseId}:${selection.selectionRole}:${selection.answerOptionId}`).sort(),
+  );
+})();
+
+const emptySelectionReadPromise = (async () => {
+  const mock = createMockSupabaseFromExactState(emptyState());
+  const observed = await createGdt01SupabaseReadRepository(mock.client, contract).readState();
+  assert.deepEqual(observed.selections, []);
+  assert.equal(mock.filters.filter((filter) => filter.table === "response_selections").length, 0);
+  assert.equal(mock.responseSelectionQueryCount(), 0);
+})();
+
+const batchFailurePromise = (async () => {
+  const mock = createMockSupabaseFromExactState(exactState(), { failResponseSelectionBatch: 2 });
+  await assert.rejects(
+    () => createGdt01SupabaseReadRepository(mock.client, contract).readState(),
+    /Failed to read response_selections \(batch 2\/12\): synthetic selection failure \(cause.code=UND_ERR_TEST; cause.message=synthetic cause\)/,
+  );
+  assert.equal(mock.responseSelectionQueryCount(), 2);
 })();
 
 const runtimeQueryScopePromise = (async () => {
@@ -841,6 +886,8 @@ assert.throws(() => parseCli(["--apply"]), /SELECT-only/);
 
 Promise.all([
   adapterTestPromise,
+  emptySelectionReadPromise,
+  batchFailurePromise,
   runtimeQueryScopePromise,
   missingCanonicalOptionCatalogPromise,
   changedCanonicalOptionPromise,
