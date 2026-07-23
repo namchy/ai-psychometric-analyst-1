@@ -38,6 +38,21 @@ The report should translate individual assessment signals into practical guidanc
 - development planning
 - early risk prevention
 
+### 1.1. Canonical ownership of basic onboarding
+
+IDP is the canonical owner of the basic individual onboarding plan. That plan:
+
+- exists whenever a valid IDP is available, even when Team Fit is unavailable;
+- is based on the person’s individual signals;
+- includes a practical 7/30/60/90-day frame;
+- covers delegation, feedback, motivation, learning support and development;
+- includes manager checkpoints and individual watchouts;
+- does not describe a specific team;
+- does not depend on a Team Dynamics assessment;
+- is not gated by Team Fit.
+
+Team Fit može kasnije dodati smjernice za integraciju u konkretni tim, ali ne posjeduje niti zamjenjuje ovaj osnovni onboarding plan.
+
 ---
 
 ## 2. Product position in Deep Profile
@@ -189,7 +204,7 @@ Should include:
 - main support need or watchpoint
 - short note on how the report should be used
 
-Must be written as a working hypothesis, not a final judgment.
+Must be an evidence-backed professional assessment. It should distinguish evidence, interpretation, assessment and recommendation. Use hypothesis language when the available signal is genuinely limited; do not force every sentence into a working hypothesis or a disclaimer.
 
 It must not sound like:
 
@@ -211,17 +226,21 @@ Should include:
 
 Allowed phrasing:
 
-- “may contribute best when...”
-- “is likely to benefit from...”
-- “HR/manager should test whether...”
-- “this signal suggests a possible preference for...”
+- “may contribute best when..."
+- “is likely to benefit from..."
+- “HR/manager should test whether..."
+- “this signal suggests a possible preference for..."
+- “podaci podržavaju procjenu da...”
+- “u radu s ovom osobom treba...” when the recommendation is directly supported by the individual signals
 
 Forbidden phrasing:
 
-- “will perform best when...”
-- “can only work when...”
-- “must be placed in...”
-- “is not suitable for...”
+- “will perform best when..."
+- “can only work when..."
+- “must be placed in..."
+- “is not suitable for..."
+
+The report may state a clear practical assessment of how to work with the person. It must not turn that assessment into a Team Fit or hiring conclusion.
 
 ### 6.3 What may block development
 
@@ -237,7 +256,7 @@ Should include:
 - communication risks
 - role-fit risks without making role-fit decisions
 
-Must be framed as hypotheses to validate.
+Use evidence-backed watchouts. Frame a point as a hypothesis to validate when the signal is partial, indirect or materially uncertain; do not make continuous hedging the default.
 
 Good pattern:
 
@@ -254,7 +273,7 @@ Must not include:
 - blame
 - fixed labels
 - “red flag” language unless carefully controlled and non-diagnostic
-- “bad fit” conclusions
+- Team Fit ili person-level “bad fit” zaključci
 
 ### 6.4 Communication and feedback guidance
 
@@ -327,6 +346,10 @@ Product decision:
 - the base onboarding plan does not depend on Team Fit
 - Team Fit may later enrich the plan with team-context guidance, but it is not a gatekeeper
 - MVP should not introduce a separate onboarding report lane
+- IDP remains available when Team Fit is unavailable
+- the plan is based on individual signals and includes 7/30/60/90 days, delegation, feedback, motivation, learning support, development, manager checkpoints and individual watchouts
+- the plan does not describe a concrete team and does not depend on Team Dynamics assessment data
+- Team Fit may identify which parts of the base plan need emphasis or adaptation in a specific team, but does not own the base plan
 
 Suggested structure:
 
@@ -393,6 +416,8 @@ Suggested structure:
 The plan should be tailored to the input signals, not generic onboarding boilerplate.
 It must remain HR/manager-facing, not candidate-facing.
 
+The base plan must be useful on its own. Team Fit smjernice za integraciju u konkretni tim su dodatni relacijski sloj, a ne preduslov za individualni onboarding.
+
 ### 6.8 Manager watchpoints
 
 Purpose: identify early signals that a manager should monitor.
@@ -440,10 +465,12 @@ Report tone should be:
 
 - HR-operational
 - development-oriented
-- cautious
+- direct and measured
 - specific
 - practical
 - non-judgmental
+
+Methodological caution should be explicit where it matters, but it must not weaken a conclusion that the individual evidence supports. The report should use simple, natural and business-readable Bosnian: short or medium-length sentences, concrete nouns and verbs, and plain explanations of necessary professional terms.
 
 Report tone should not be:
 
@@ -486,9 +513,9 @@ The report must not include:
 - performance prediction as a fact
 - claim that the report objectively predicts success
 - claim that the person is good/bad
-- “bad fit” conclusion
+- person-level “good/bad fit” or any generic suitability label
 - team-level diagnosis
-- Team Fit conclusion
+- a Team Fit conclusion; relational team assessment belongs in the Team Fit report
 - raw answers by default
 - raw item text by default
 - hidden scoring key by default
@@ -563,6 +590,8 @@ The Individual Development Profile may later provide reduced candidate-side deve
 Team Fit should remain a separate relational report.
 
 Individual Development Profile should not include candidate-team fit conclusions unless explicitly generated through Team Fit.
+
+The ownership boundary is practical: an individual recommendation that would remain the same across teams belongs to IDP; a recommendation that changes because the team, its needs or its current way of working changes belongs to Team Fit. Team Fit may say how the base IDP onboarding plan should be adapted for a concrete team, but it must not repeat the complete plan.
 
 ---
 

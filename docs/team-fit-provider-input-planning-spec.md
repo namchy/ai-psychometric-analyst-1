@@ -37,6 +37,7 @@ Ključna pravila koja provider prompt mora poštovati:
 
 - Team Fit je candidate-vs-team report;
 - report mora biti konkretan, evidence-linked i HR-operativan;
+- report mora dati jasan kvalitativni relacijski zaključak kada ga evidence podržava;
 - nema numeric fit score-a, procentualnog fit-a, hire/no-hire, pass/fail ili rangiranja;
 - nema imenovanja pojedinačnih članova tima u glavnom reportu;
 - svaka bitna tvrdnja mora imati evidence ili jasan interpretativni razlog.
@@ -82,7 +83,7 @@ Budući provider prompt mora proizvoditi HR report koji pomaže HR-u i menadžer
 - gdje kandidat može pojačati konkretan tim;
 - gdje može nastati trenje;
 - koje hipoteze treba provjeriti u razgovoru;
-- kakav onboarding i management pristup ima smisla;
+- kakva integracija u ovaj konkretni tim i kakav management pristup imaju smisla;
 - koje su granice interpretacije.
 
 Prompt ne smije tražiti opšti kandidat report. Team Fit mora ostati relacijski report: kandidat u odnosu na konkretan tim.
@@ -230,7 +231,7 @@ Budući provider prompt mora tražiti:
 - interpretive link između kandidata i tima;
 - provjerljive friction hypotheses;
 - interview probes;
-- onboarding/manager guidance;
+- smjernice za integraciju u konkretni tim i menadžerske smjernice;
 - risk and mitigation mapping;
 - interpretation limits.
 
@@ -280,7 +281,7 @@ Mora dati konkretna pitanja za intervju, rationale i šta HR treba slušati u od
 
 ### `onboardingAndManagerGuidance`
 
-Mora dati operativne smjernice za menadžera i onboarding, sa jasnim ownershipom ili narednim korakom.
+Product značenje ove postojeće planning sekcije je integracija u konkretni tim, a ne kompletan osnovni onboarding plan. Mora navesti šta iz IDP plana treba naglasiti ili prilagoditi u ovom timu, šta tim i menadžer pripremaju prije dolaska osobe, koje dogovore treba eksplicitno potvrditi, šta pratiti u prvim sedmicama i kako smanjiti kandidat-vs-team trenje. Svaka preporuka treba imati jasnog ownera ili naredni korak.
 
 ### `riskAndMitigationMap`
 
@@ -312,6 +313,8 @@ Provider prompt mora eksplicitno zabraniti:
 - tvrdnje da je kandidat idealan za tim;
 - tvrdnje da se kandidat dobro ili loše uklapa bez evidence i granica.
 
+Ove zabrane ne sprečavaju punu, kvalitativnu i evidence-backed procjenu odnosa kandidat-tim. Provider smije napisati da je kandidat snažan ili slabiji izbor za konkretni tim kada navede candidate-side signal, team-side signal i razlog; ne smije donositi person-level ili hire/no-hire zaključak.
+
 Zabranjena su i structural polja koja nose presudu ili score, uključujući:
 
 - `fitScore`;
@@ -331,7 +334,7 @@ Provider prompt mora zabraniti prazne obrasce poput:
 - "kandidat može doprinijeti timu na različite načine";
 - "tim treba obratiti pažnju na komunikaciju";
 - "fit je umjeren";
-- "kandidat se dobro uklapa";
+- "kandidat se dobro uklapa" ili "kandidat je slabiji" bez konkretnog timskog konteksta, evidence-a i razloga;
 - "potrebno je dodatno pratiti dinamiku";
 - bilo koju tvrdnju koja ne kaže šta, zašto, na osnovu čega i šta HR treba uraditi.
 
@@ -464,4 +467,3 @@ Ovaj task ne uključuje:
 - izmjene u `lib/b2b/team-fit-report-contract.ts`;
 - izmjene u `scripts/test-team-fit-report-contract.cjs`;
 - promjenu postojećih provider/input/helper fajlova.
-

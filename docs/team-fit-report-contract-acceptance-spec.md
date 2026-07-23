@@ -31,7 +31,8 @@ Ovaj acceptance spec preuzima sljedeće odluke:
 - Team Fit je candidate-vs-team HR report.
 - Team Fit koristi agregirani timski kontekst, ne individualne prikaze članova tima.
 - Team Fit nema numeric fit score.
-- Team Fit nema hire/no-hire, pass/fail ili sličnu konačnu odluku.
+- Team Fit nema hire/no-hire, pass/fail ili sličnu automatizovanu hiring odluku.
+- Team Fit smije dati jasan kvalitativni zaključak o odnosu kandidata i konkretnog tima kada ga candidate-side evidence, team-side evidence i interpretivna veza podržavaju.
 - Team Fit ne smije imenovati pojedinačne članove tima u glavnom reportu.
 
 ### 3.2. `docs/team-style-collaboration-product-spec.md`
@@ -63,8 +64,9 @@ Report treba pomoći HR-u i menadžeru da razumiju:
 
 - gdje kandidat može pojačati konkretan tim;
 - gdje može nastati trenje;
+- kakav je profesionalni zaključak o ovom candidate-vs-team odnosu;
 - koje hipoteze treba provjeriti u razgovoru;
-- kakav onboarding i management pristup ima smisla;
+- kakva integracija u ovaj konkretan tim ima smisla;
 - koji su limiti interpretacije.
 
 Report mora razlikovati:
@@ -84,6 +86,7 @@ Team Fit report nije:
 - numeric fit score;
 - procentualni fit;
 - rang lista kandidata;
+- procjena vrijednosti ili opšte podobnosti osobe;
 - zamjena za intervju, reference, radni uzorak ili ljudsku odluku;
 - report o pojedinačnim članovima tima;
 - klinička ili dijagnostička procjena;
@@ -130,7 +133,7 @@ Minimalni output mora imati:
 - sectioned report body;
 - evidence references za ključne tvrdnje;
 - interview probes;
-- onboarding and manager guidance;
+- smjernice za integraciju u konkretni tim i menadžerske smjernice;
 - risk and mitigation map;
 - evidence appendix;
 - interpretation limits;
@@ -172,6 +175,7 @@ Svrha: dati HR-u brz, relacijski sažetak najvažnijeg kandidat-vs-team signala.
 Mora sadržavati:
 
 - najvažniji candidate-vs-team obrazac;
+- jasan kvalitativni zaključak o ovom konkretnom odnosu, uz glavne razloge;
 - jednu konkretnu priliku za doprinos;
 - jednu konkretnu tačku opreza;
 - jednu rečenicu o tome šta provjeriti dalje.
@@ -182,10 +186,12 @@ Evidence signal:
 - najmanje jedan team-side aggregation signal;
 - interpretive link koji povezuje ta dva izvora.
 
+Dozvoljeno je reći da je kandidat snažan izbor za ovaj konkretni tim, dobar izbor uz jasno navedene uslove, mješovit odnos ili slabiji izbor za trenutni način rada ovog tima, ako su zaključak i razlozi evidence-backed. Takva procjena mora ostati vezana za konkretan tim i ne smije postati presuda o osobi, numeric score ili hire/no-hire odluka.
+
 Zabranjeno:
 
-- presuda o kandidatu;
-- score-like etiketa;
+- presuda o vrijednosti ili opštoj podobnosti kandidata;
+- goli score-like label kao zamjena za obrazloženje;
 - opšti summary bez timskog konteksta.
 
 Loš generički obrazac:
@@ -214,9 +220,14 @@ Evidence signal:
 
 Zabranjeno:
 
-- "fit je visok/umjeren/nizak";
+- "fit je visok/umjeren/nizak" kao score-like etiketa;
 - procentualni fit;
-- "dobro se uklapa" bez evidence i granica.
+- "dobar fit", "slab fit" ili "dobro se uklapa" bez konkretnih razloga, evidence i granica;
+- bilo koji zaključak o kandidatu izvan odnosa sa ovim timom.
+
+Dozvoljen je direktan relacijski zaključak napisan punom rečenicom, na primjer: "Kandidat je slabiji izbor za ovaj konkretni tim zbog A, B i C." Zaključak mora objasniti candidate-side signal, team-side signal i interpretivni mehanizam; ne smije reći da je kandidat slab kao osoba niti da ga ne treba zaposliti.
+
+„Nedovoljno podataka za pouzdanu procjenu“ dozvoljeno je samo kada candidate-side, team-side ili interpretivni evidence stvarno nije dovoljan za zaključak. Ne smije služiti kao sigurno sklonište modela.
 
 Loš generički obrazac:
 
@@ -345,36 +356,37 @@ Prihvatljiv konkretan obrazac:
 
 - "Opišite situaciju kada ste morali razjasniti odgovornost za odluku koja je ostala između više ljudi. Šta ste uradili prvo, kako ste uključili druge i kako ste znali da ne preuzimate tuđu odluku?"
 
-### 9.7. Onboarding and manager guidance
+### 9.7. Integracija u ovaj konkretan tim
 
-Svrha: pretvoriti report u praktičan plan za prve sedmice rada.
+Svrha: objasniti kako osnovni IDP onboarding plan treba naglasiti ili prilagoditi zbog ovog konkretnog tima. Ova sekcija je sadržaj za integraciju u konkretni tim; ne ponavlja kompletan IDP onboarding plan i nije preduslov za IDP.
 
-Mora sadržavati:
+Mora sadržavati samo:
 
-- šta menadžer treba razjasniti;
-- šta pratiti u prvom periodu;
-- kakav ritam feedbacka ili check-in-a ima smisla;
-- kako smanjiti potencijalno trenje.
+- šta iz osnovnog onboarding plana posebno naglasiti u ovom timu;
+- šta prilagoditi zbog konkretne timske dinamike;
+- šta tim i menadžer trebaju pripremiti prije dolaska osobe;
+- kakve timske dogovore treba učiniti eksplicitnim;
+- šta pratiti tokom prvih sedmica u ovom timu;
+- kako smanjiti kandidat-vs-team trenje;
+- rane znakove uspješne integracije;
+- rane znakove da relacijski rizik postaje stvaran.
 
-Evidence signal:
-
-- kandidat-side način rada;
-- team-side uslovi i napetosti;
-- interpretive link.
+Svaka preporuka treba imati ownera i vrijeme kada je relevantno. Evidence signal mora povezati kandidat-side način rada, team-side uslove ili napetosti i interpretivni link.
 
 Zabranjeno:
 
+- kopirati cijeli IDP plan delegiranja, feedbacka, motivacije ili razvoja;
 - dekorativne preporuke;
 - "pružiti podršku" bez vrste podrške, trenutka i vlasnika;
 - preporuke bez ownera ili sljedećeg koraka.
 
-Loš generički obrazac:
+IDP primjer:
 
-- "Menadžer treba pružiti podršku kandidatu tokom onboardinga."
+- "Jasno objasniti prioritete i standard kvaliteta."
 
-Prihvatljiv konkretan obrazac:
+Team Fit primjer:
 
-- "U prve dvije sedmice menadžer treba eksplicitno dogovoriti ko zaključava odluke i kada se eskaliraju blokade, jer kandidatov stil traži jasan sljedeći korak, a timski signal pokazuje ranije trenje oko prioriteta."
+- "U ovom timu tokom prve dvije sedmice pisano potvrditi prioritete, jer timski snapshot pokazuje neujednačeno vlasništvo nad odlukama, a kandidatov profil traži jasan sljedeći korak."
 
 ### 9.8. Risk and mitigation map
 
@@ -439,7 +451,7 @@ Loš generički obrazac:
 
 Prihvatljiv konkretan obrazac:
 
-- "Kandidat-side: izražen signal strukturiranja obaveza iz HR-safe Deep Profile inputa. Team-side: aggregation snapshot ukazuje na trenje oko vlasništva odluka. Korišteno za executive summary, contribution i onboarding guidance."
+- "Kandidat-side: izražen signal strukturiranja obaveza iz HR-safe Deep Profile inputa. Team-side: aggregation snapshot ukazuje na trenje oko vlasništva odluka. Korišteno za executive summary, contribution i integraciju u konkretni tim."
 
 ### 9.10. Interpretation limits
 
@@ -473,6 +485,24 @@ Prihvatljiv konkretan obrazac:
 
 - "Ovaj report opisuje odnos kandidata i konkretnog timskog snapshot-a; ne daje odluku o zapošljavanju, ne sadrži fit score i ne zamjenjuje intervju. Ako se timski inclusion set promijeni, relacijsko tumačenje treba ponovo provjeriti."
 
+### 9.11. Premium i prodajno važan standard
+
+Puni Team Fit report je jedan od ključnih product selling pointova. Mora biti sadržajno bogat, slojevit i actionable, ali bez ponavljanja iste glavne rečenice kroz više sekcija.
+
+Report treba pružiti:
+
+- jasan executive zaključak i glavne razloge za procjenu;
+- šta kandidat konkretno donosi timu i gdje će ga vjerovatno ojačati;
+- gdje se očekuje trenje i kako se ono može pokazati u svakodnevnom radu;
+- moguće posljedice za kandidata i moguće posljedice za tim;
+- konkretne uslove pod kojima odnos može uspjeti;
+- strukturiran interview plan, šta slušati u odgovorima, pozitivne i zabrinjavajuće signale;
+- preporuke za menadžera i mitigacije sa ownerom i vremenom;
+- rane znakove uspješne integracije i rane znakove problema;
+- jasne naredne korake.
+
+Executive summary daje zaključak. Fit overview objašnjava relacijski obrazac. Risks objašnjavaju trenje i posljedice. Interview provjerava ključne hipoteze. Integracija u konkretni tim pretvara nalaz u pripremu i praćenje za ovaj tim. Svaka sekcija mora imati vlastitu svrhu.
+
 ## 10. Quality gates
 
 Budući contract, provider i validator ne smiju proći acceptance ako report krši bilo koji od ovih gate-ova.
@@ -487,7 +517,10 @@ Quality gates:
 - report mora jasno razlikovati signal, interpretaciju, hipotezu i preporuku;
 - report mora biti HR-operativan, ne akademski esej;
 - report mora ostati candidate-vs-team, ne candidate-vs-individual-member;
-- report mora poštovati no-score/no-decision guardrail.
+- report mora dati jasan kvalitativni relacijski zaključak kada ga evidence podržava, a `needs_validation` koristiti samo kada podaci stvarno nisu dovoljni;
+- report mora poštovati no-score/no-automated-decision guardrail;
+- report mora koristiti jednostavan, prirodan i poslovno razumljiv bosanski jezik;
+- report ne smije ponavljati isti zaključak u executive summaryju, fit overviewu, risks, interview i integration guidance sekcijama.
 
 ## 11. Anti-genericity standard
 
@@ -496,7 +529,7 @@ Zabranjeni obrasci:
 - "kandidat može doprinijeti timu na različite načine" bez konkretizacije;
 - "potrebno je dodatno pratiti dinamiku" bez objašnjenja šta, zašto i kako;
 - "fit je umjeren" ili slične score-like etikete;
-- "kandidat se dobro uklapa" bez evidence i granica;
+- "kandidat se dobro uklapa" ili "kandidat je slabiji" bez evidence, timskog konteksta i obrazloženja;
 - "tim treba obratiti pažnju na komunikaciju" bez konkretnog okidača, ponašanja i intervencije;
 - "menadžer treba pružiti podršku" bez vrste podrške, vlasnika i trenutka;
 - "postoji potencijal za razvoj" bez relacijskog konteksta;
@@ -524,7 +557,7 @@ Strogo zabranjeno:
 - kliničke ili dijagnostičke tvrdnje;
 - sigurnosno/rizično etiketiranje osobe;
 - tvrdnje koje nisu podržane input signalima;
-- tvrdnje da kandidat "pripada" ili "ne pripada" timu;
+- tvrdnje da kandidat "pripada" ili "ne pripada" timu kao opštu presudu;
 - tvrdnje da report samostalno određuje selekcijsku odluku;
 - tvrdnje o zaštićenim karakteristikama ili privatnim podacima koji nisu dio dozvoljenog inputa.
 
@@ -598,7 +631,7 @@ No-score/no-hire guardrails:
 - contract ne smije imati numeric `fitScore`;
 - contract ne smije imati decision enum tipa hire/no-hire/pass/fail;
 - contract ne smije imati rank, percentile fit ili pass threshold;
-- contract mora dozvoliti relationship labels samo kao navigacijske i opisne, ne kao odluku.
+- `relationshipPattern` ostaje navigacijski i opisni label; tekst reporta smije dati jasan evidence-backed relacijski zaključak, ali ne smije postati numeric score ili automatizovana odluka.
 
 Minimum specificity requirements:
 
@@ -612,13 +645,14 @@ Minimum evidence coverage:
 - executive summary: najmanje dva evidence reference-a i jedan interpretive link;
 - fit overview: kandidat-side, team-side i interpretive link;
 - friction points: evidence za trigger i expected behavior;
-- onboarding guidance: evidence za zašto baš ta preporuka;
+- integration guidance: evidence za zašto baš ta preporuka;
 - evidence appendix: reference za sve glavne tvrdnje.
 
 Output language/tone expectations za HR report na bosanskom jeziku:
 
 - bosanski jezik, latinica, ijekavica;
 - HR-operativan ton;
+- jednostavan, prirodan i poslovno razumljiv jezik;
 - konkretne imenice i glagoli umjesto apstraktnih fraza;
 - bez candidate-facing "ti/tvoj";
 - bez tehničkog provider/model jezika;
@@ -640,6 +674,8 @@ Provider output treba proći sljedeće provjere:
 - nema individualnog imenovanja članova tima;
 - output je koristan HR-u bez dodatnog tumača;
 - jasno razlikuje signal, interpretaciju, hipotezu i preporuku;
+- daje direktan, relacijski zaključak kada ga evidence podržava i ne skriva ga iza stalnog ograđivanja;
+- smjernice za integraciju u konkretni tim ne ponavljaju kompletan IDP onboarding plan;
 - ne izmišlja Team Style signal ako taj input nije dostupan;
 - ne koristi Executive Overview kao canonical team source ako nije eksplicitno dozvoljen;
 - ne prikazuje raw individual answers ili privatne timske detalje;
@@ -698,4 +734,4 @@ Ovaj dokument ne radi:
 
 `team_fit_report_v1` mora biti relacijski HR report koji povezuje kandidatov dozvoljeni individualni signal sa konkretnim timskim kontekstom. Prihvatljiv output mora pomoći HR-u i menadžeru da znaju šta kandidat može pojačati, gdje treba provjeriti trenje, šta pitati u razgovoru i kako postaviti onboarding.
 
-Report ne prolazi acceptance ako je generički, score-like, presudan, nepovezan s evidence-om ili ne daje operativan sljedeći korak.
+Report ne prolazi acceptance ako je generički, score-like, presudan u hiring smislu, nepovezan s evidence-om ili ne daje operativan sljedeći korak.

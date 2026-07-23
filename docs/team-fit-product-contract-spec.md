@@ -18,10 +18,11 @@
   * poravnanje
   * komplementarnost
   * potencijalna trenja
-  * onboarding support need
+  * potrebe za integracijom u konkretni tim
   * teme za intervju ili naredni razgovor
 * Report nije presuda o kandidatu.
 * Report nije automatska odluka.
+* Report smije dati jasan kvalitativni zaključak o odnosu kandidat-tim kada ga evidence podržava.
 
 ## 3. Audience and visibility
 
@@ -47,9 +48,11 @@ Ne koristiti kao glavni framing:
 
 * `culture fit`
 * `dobar/loš kandidat`
-* `ne uklapa se`
+* `ne uklapa se` kao opštu etiketu bez konkretnog tima, razloga i evidence-a
 * `hire/no-hire`
 * `konačna preporuka za zapošljavanje`
+
+Dozvoljen je relacijski zaključak poput „kandidat je slabiji izbor za ovaj konkretni tim zbog A, B i C“ kada je vezan za candidate-side signal, team-side signal i interpretivni mehanizam. Nije dozvoljeno reći da je kandidat slab kao osoba ili da ga ne treba zaposliti.
 
 ## 5. MVP input model
 
@@ -98,13 +101,13 @@ Ne koristiti kao glavni framing:
 
 | Section | Purpose | HR value | Guardrail |
 | ------- | ------- | -------- | --------- |
-| `fitOverview` | glavni relacijski sažetak | brzo razumijevanje glavnog signala | bez presude |
+| `fitOverview` | glavni relacijski sažetak | brzo razumijevanje glavnog signala | bez person-level presude ili automatizovane hiring odluke |
 | `teamContextSummary` | relevantni timski obrasci | kontekst za čitanje fit-a | bez imenovanja članova |
 | `candidateSignals` | relevantni kandidat-side obrasci | transparentnije tumačenje fit-a | bez raw detalja |
 | `complementaritySignals` | gdje kandidat dopunjuje tim | praktična vrijednost kandidata | fit nije isto što i sličnost |
 | `frictionRisks` | moguća trenja | rani fokus za mitigaciju | ne etiketirati kandidata/tim |
 | `interviewFocus` | teme za provjeru | bolji intervju razgovor | decision-support, ne decisioning |
-| `onboardingGuidance` | onboarding prioriteti | brža adaptacija kandidata | hipoteze, ne garancije |
+| `onboardingGuidance` | smjernice za integraciju u konkretni tim | bolja integracija kandidata u ovaj tim | ne ponavlja osnovni IDP plan |
 | `managerGuidance` | smjernice za lidera | praktičan rad sa kandidatom | bez uzročnih tvrdnji |
 | `watchouts` | oprezne hipoteze | šta treba pažljivo provjeriti | bez presude |
 | `interpretationLimits` | granice čitanja reporta | metodološka jasnoća | guardrail ostaje eksplicitan |
@@ -117,9 +120,11 @@ Ne koristiti kao glavni framing:
   * alignment
   * complementarity
   * friction risk
-  * onboarding support need
+  * potrebe za integracijom u konkretni tim
 * Koristiti structured relationship narrative + evidence.
-* `relationshipPattern` je samo navigacijski label.
+* `relationshipPattern` je navigacijski label, dok tekst reporta smije dati direktan evidence-backed relacijski zaključak.
+
+Zaključak može reći da je kandidat snažan izbor za konkretni tim, dobar izbor uz jasno navedene uslove, da je odnos mješovit ili da je kandidat slabiji izbor za trenutni način rada tima. `needs_validation` koristiti samo kada podaci stvarno nisu dovoljni, ne kao opšte sklonište od zaključka.
 
 Dozvoljeni enum:
 
@@ -253,7 +258,7 @@ type TeamFitReportV1 = {
 
 * no hire/no-hire recommendation
 * no rejection recommendation
-* no candidate “bad fit” label
+* no generic or person-level candidate “bad fit” label
 * no team “bad/disfunctional” label
 * no individual team member naming as friction source
 * no raw answers

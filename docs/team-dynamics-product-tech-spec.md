@@ -41,15 +41,15 @@ Ovaj report ne smije biti dostupan dok svi uključeni članovi nisu završili pr
 
 ### 2.3. Team Fit kandidata report
 
-Team Fit kandidata report je HR/admin-facing izvještaj koji poredi kandidata sa agregiranim timskim kontekstom.
+Team Fit kandidata report je HR/admin-facing izvještaj koji tumači šta će se vjerovatno dogoditi kada osoba uđe baš u konkretan tim, na osnovu odnosa kandidata i agregiranog timskog konteksta.
 
 Svrha:
 
 - pomoći HR/admin korisniku da razumije kako se kandidatov radni stil može uklopiti u postojeću timsku dinamiku;
-- identifikovati moguće komplementarnosti, napetosti, onboarding potrebe i teme za intervju;
+- identifikovati moguće komplementarnosti, napetosti, potrebe za integracijom u konkretni tim i teme za intervju;
 - podržati ljudsku odluku, ne zamijeniti je.
 
-Team Fit nije hiring decision engine. Ne daje hire/no-hire odluku i ne sadrži numeric fit score.
+Team Fit je candidate-vs-team procjena. Kada evidence to podržava, smije jasno opisati da je kandidat snažniji ili slabiji izbor za konkretni tim i zašto. Ne daje hire/no-hire odluku i ne sadrži numeric fit score; procjena se odnosi na odnos kandidat-tim, ne na vrijednost osobe.
 
 ## 3. MVP scope
 
@@ -107,14 +107,15 @@ Ova pravila se odnose na inclusion set za timsku agregaciju, ne nužno na sve os
 
 ### 5.3. Team Fit bez scoring iluzije
 
-Team Fit ne daje numeric fit score. Report mora koristiti kvalitativni candidate-vs-team framing:
+Team Fit ne daje numeric fit score. Report mora koristiti jasan kvalitativni candidate-vs-team framing:
 
 - gdje kandidat može dopuniti tim;
 - gdje može nastati napetost;
+- kakav je zaključak o ovom konkretnom odnosu kada ga evidence podržava;
 - šta HR treba provjeriti;
-- šta menadžer treba znati za onboarding.
+- šta tim i menadžer trebaju pripremiti za integraciju u ovaj tim.
 
-Report ne smije sadržavati hire/no-hire, pass/fail ili sličnu konačnu odluku.
+Report ne smije sadržavati hire/no-hire, pass/fail ili sličnu automatizovanu odluku. Dozvoljen je evidence-backed zaključak poput „kandidat je slabiji izbor za ovaj konkretni tim zbog A, B i C“, ali nije dozvoljeno reći da je kandidat slab kao osoba ili da ga ne treba zaposliti.
 
 ### 5.4. Privatnost članova tima
 
@@ -416,13 +417,16 @@ Read-only route:
 
 Team Fit report pomaže HR/admin korisniku razumjeti odnos kandidatovog radnog stila i postojećeg timskog konteksta.
 
+To je premium, sadržajno bogat HR report sa jasnim executive zaključkom, razlozima, očekivanim doprinosom, trenjem, posljedicama za kandidata i tim, intervju planom, menadžerskim smjernicama, mitigacijama i smjernicama za integraciju u konkretni tim. Sekcije moraju imati različite svrhe i ne smiju ponavljati isti zaključak.
+
 Report treba podržati:
 
 - pripremu intervjua;
-- onboarding planiranje;
+- planiranje integracije u konkretni tim;
 - razumijevanje potencijalnih komplementarnosti;
 - razumijevanje mogućih trenja;
-- menadžerske smjernice.
+- menadžerske smjernice;
+- integraciju osobe u ovaj konkretni tim.
 
 ### 10.2. Input source
 
@@ -444,13 +448,16 @@ Dozvoljeni obrasci:
 - kandidat može dopuniti tim u određenim obrascima rada;
 - kandidat može trebati podršku u određenom timskom okruženju;
 - timski kontekst može pojačati ili ublažiti određene radne stilove;
+- kandidat je snažniji ili slabiji izbor za ovaj konkretni tim kada candidate-side i team-side evidence to podrže;
 - HR treba provjeriti konkretne teme u intervjuu.
 
 Nedozvoljeni obrasci:
 
 - imenovanje pojedinačnih članova tima;
-- rangiranje kandidata kao boljeg/lošijeg od tima;
-- tvrdnja da kandidat pripada ili ne pripada timu;
+- rangiranje kandidata ili poređenje vrijednosti osobe;
+- tvrdnja da kandidat pripada ili ne pripada timu kao opšta presuda;
+- tvrdnja da je kandidat dobar ili slab kao osoba;
+- neobrazloženi „dobar fit“ ili „slab fit“ label;
 - implicitna hire/no-hire preporuka.
 
 ### 10.4. Bez numeric score-a
@@ -461,7 +468,7 @@ Razlog je product sigurnost: broj bi stvorio lažnu preciznost i mogao bi biti p
 
 ### 10.5. Bez hire/no-hire odluke
 
-Report ne smije koristiti jezik koji direktno ili indirektno daje konačnu odluku.
+Report ne smije koristiti jezik koji direktno ili indirektno daje automatizovanu hiring/selection odluku.
 
 Zabranjeni obrasci:
 
@@ -473,17 +480,21 @@ Zabranjeni obrasci:
 - idealni kandidat;
 - fit score.
 
+Kratki labeli poput „dobar fit“ ili „slab fit“ ne smiju zamijeniti objašnjenje. Puna, kvalitativna i evidence-backed procjena odnosa kandidat-tim je dozvoljena kada je jasno vezana za konkretni tim; ne smije preći u hire/no-hire ili person-level presudu.
+
 ### 10.6. Controlled recommendations
 
 Preporuke moraju biti kontrolisane i operativne:
 
 - teme za intervju;
-- onboarding smjernice;
+- smjernice za integraciju u konkretni tim;
 - pitanja za menadžera;
 - tačke opreza;
 - uslovi pod kojima kandidat može bolje funkcionisati.
 
 Preporuke moraju ostati pomoć HR/admin korisniku, ne automatizovana odluka.
+
+Smjernice za integraciju u konkretni tim ne posjeduju osnovni individualni onboarding. One navode samo šta iz IDP plana treba naglasiti ili prilagoditi u ovom timu, šta tim i menadžer pripremaju prije dolaska, koje dogovore treba eksplicitno potvrditi, šta pratiti u prvim sedmicama, kako smanjiti kandidat-vs-team trenje i koji su rani znaci uspješne integracije ili stvarnog relacijskog rizika.
 
 ### 10.7. Interpretation limits
 

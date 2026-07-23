@@ -335,9 +335,9 @@ Primjer obrasca:
 
 - "Opišite situaciju kada ste morali otvoriti neslaganje u timu koji izbjegava konflikt. Kako ste procijenili trenutak i način razgovora?"
 
-### 7.4. Onboarding i manager guidance
+### 7.4. Integracija u konkretni tim i menadžerske smjernice
 
-Team Fit može koristiti Team Style signale za onboarding/manager guidance.
+Team Fit može koristiti Team Style signale za integraciju u konkretni tim i za menadžerske smjernice. Osnovni individualni onboarding ostaje u vlasništvu IDP-a.
 
 Smjernice moraju biti operativne:
 
@@ -345,7 +345,9 @@ Smjernice moraju biti operativne:
 - kakav ritam check-in razgovora može pomoći;
 - gdje treba postaviti jasne granice odgovornosti;
 - koje timske norme treba eksplicitno objasniti;
-- kako smanjiti rizik pogrešnog čitanja kandidatovog stila.
+- kako smanjiti rizik pogrešnog čitanja kandidatovog stila;
+- koji dio osnovnog IDP plana treba naglasiti ili prilagoditi u ovom timu;
+- koje su rane naznake uspješne integracije ili stvarnog relacijskog rizika.
 
 Smjernice ne smiju biti dekorativne rečenice tipa "pružiti podršku" bez objašnjenja kakvu podršku, zašto i kada.
 

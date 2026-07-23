@@ -40,6 +40,16 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 
 > **2026-07-22 — Team Dynamics Executive Overview prompt v2 je prihvaćen. Prompt je izdvojen u poseban TypeScript modul; poboljšani su HR jezik, evidence disciplina, poslovna interpretacija, konkretne preporuke, zaštita individualnih rezultata i odmjerena upotreba statističkih pokazatelja. Finalni low i medium in-memory previewi prošli su postojeći validator; nijedan preview nije persistiran, nije bilo DB writea i postojeći GDT-01 ready report ostaje nepromijenjen. Produkcijski runtime je openai / gpt-5.6-sol / reasoning low, bez temperature. Medium je tehnički potvrđen, ali nije pokazao dovoljno veći kvalitet da opravda slabiju dokazanu pouzdanost i višu latenciju; ostaje eksperimentalna opcija. Sigurna regeneracija ready reporta zahtijeva zaseban versioned regeneration flow i nije dio ovog taska.**
 
+> **2026-07-23 — Canonical Deep Profile AI report philosophy and scope decision (docs-only):** Globalni princip za sve sadašnje i buduće AI izvještaje je: **„Daj najkorisniju i najpošteniju procjenu koju podaci podržavaju.“** i **„Direktnost bez brutalnosti. Procjena bez presude. Oprez bez paralize.“** Izvještaji moraju zauzeti jasan evidence-backed profesionalni stav, koristiti jednostavan i prirodan poslovni bosanski jezik, razlikovati dokaz, interpretaciju, procjenu i preporuku, te ograničenja navesti u odgovarajućoj sekciji umjesto stalnog ograđivanja. Zabranjeni ostaju numeric/procentualni fit, rangiranje, hire/no-hire, dijagnoze i tvrdnje izvan podataka.
+>
+> Canonical ownership je zaključan: single-test HR report objašnjava svoj izvor i ne pravi kompletan onboarding; Composite Profile opisuje osobu u radnom kontekstu; IDP je vlasnik osnovnog individualnog onboardinga; Team Dynamics opisuje tim; Team Fit objašnjava šta se dešava kada osoba uđe baš u konkretan tim. Pravilo preklapanja je: ako preporuka ostaje ista bez obzira na tim, pripada IDP-u; ako se mijenja promjenom tima, pripada Team Fitu.
+>
+> IDP onboarding postoji bez Team Fita, zasniva se na individualnim signalima i obuhvata 7/30/60/90 plan, delegiranje, feedback, motivaciju, podršku učenju, razvoj, manager checkpoints i individualne watchouts. Team Fit ne posjeduje osnovni onboarding; njegov canonical sadržaj je **integracija u ovaj konkretan tim**.
+>
+> Team Fit smije dati jasan kvalitativni candidate-vs-team zaključak kada ga evidence podržava, uključujući procjenu da je kandidat snažniji izbor, dobar izbor uz uslove, da je odnos mješovit ili da je kandidat slabiji izbor za trenutni način rada konkretnog tima. To nije procjena vrijednosti osobe, numeric fit ili hire/no-hire odluka. Puni Team Fit je premium i prodajno važan report: treba biti bogat, actionable, evidence-linked, slojevit i bez ponavljanja.
+>
+> Real OpenAI Team Fit smoke je funkcionalno uspješan kroz `queued -> processing -> ready`, uz validan persisted output i enriched candidate/team evidence. Trenutni generisani report nije finalni Golden Demo content standard. Uočeni quality gapovi su težak akademski jezik, pretjerano ograđivanje, premalo sadržajne dubine, ponavljanje i nejasna granica IDP onboarding naspram Team Fit integration guidance. Postojeći reporti se u ovom docs-only syncu ne regenerišu.
+
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
 Pravila: 
@@ -102,12 +112,14 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP HR P0 quality krug je zatvoren kroz read-only audit, dev-only OpenAI dry-run inspector, interpretive prompt hardening, successful confirmed dry-run, controlled Amra regeneration i post-regeneration inspector + browser smoke PASS. Frontend ostaje renderer, ne autor interpretacije; scoring/test output ostaje čist i deterministički. | Deep Profile / Report content architecture | Sljedeće: creation standard za report ide kroz prompt/content contract/schema prema velikom AI-ju; structural validator hard-blocka samo invalidan shape/data/source/evidence/contract. Future small-AI reviewer ostaje diagnostic/QA lane, ne current production gate. Ne raditi UI redesign kao quality odgovor i ne otvarati novi broad roadmap item bez zasebne odluke. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. IPIP HR authority lane je dodatno zatvoren P0 quality krugom: prompt/content-quality block, dry-run-only diagnostic inspector, validator-backed confirmed OpenAI dry-run i controlled Amra regeneration na `ready`. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove bez eksplicitnog odobrenja. Dalji quality rad ostaje uski prompt/content-contract + structural validator + future diagnostic reviewer/golden-examples lane; ne ići kroz UI polish, scoring izmjene ili persistence/lifecycle refactor. |
 | P1        | Golden Demo Cohort and AI report calibration | Team Fit structured-evidence slice završen | Demo data / Report QA / Calibration | GD-001 standard battery scoring je potvrđen (`SCORED_EXACT`, 184/184 raw/scored, 40 dimensions, 47/47 expected). Canonical GD-001 × GDT-01 Team Fit dry-run je tehnički validan i produktno prihvaćen; presentation refinement ostaje zaseban backlog. |
+| P1        | AI Report Quality and Scope Refinement | Canonical product decision zaključan; workstream otvoren | AI report quality / Content architecture | Prompt quality, jednostavan jezik, report depth, jasni zaključci, ownership, content contracts, validators, golden examples/reviewer i iterativna kalibracija svih report tipova. |
+| P1        | HR UI and Report Experience Refinement | Odvojen, koordinirani workstream; planiran nakon sadržajnog zaključavanja | HR UI / Report experience | Hijerarhija, navigacija, čitljivost, tipografija, uklanjanje vizuelnog i sadržajnog dupliranja i prikaz bogatih reporta bez zida teksta. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Repo-backed canonical spec v0.1 dokumentovan u `docs/team-dynamics-product-tech-spec.md` | Team module / Product architecture | Koristiti ovaj spec kao product/tech osnovu za buduće Team Dynamics / Team Fit implementation slice-ove; ne otvarati worker/scheduler kao default; naredni Team Fit/Team Dynamics runtime rad traži zasebnu product odluku. |
 | P1        | Team Style & Collaboration product/spec v0.1 | Canonical product/spec v0.1 dokumentovan u `docs/team-style-collaboration-product-spec.md` | Team module / Product architecture | Prije implementacije uraditi zaseban content/spec ili implementation slice; validacijski status ostaje pending; ne kopirati zaštićene/licencirane iteme ili scenarije; ne uvoditi runtime/DB/import package bez zasebne odluke. |
 | P1        | Team Fit provider input planning spec v0.1 | Završeno kroz structured-evidence runtime paket | Relacijski report / Candidate-team fit | Provider input koristi strukturirani evidence za `ipip-neo-120-v1`, `safran_v1`, `mwms_v1` i Team Dynamics aggregation snapshot. Aplikacija je autoritet za score, band, scale direction, provenance i coverage; AI je autoritet za kandidat × tim interpretaciju, hipoteze i praktične HR smjernice. |
 | P1        | Team Fit input bundle helper v0.1 | Završeno i uključeno u structured-evidence runtime paket | Relacijski report / Candidate-team fit | Input bundle i provider input čuvaju canonical source provenance i strukturirane Team Dynamics agregate, bez aplikacijski napisanih behavioral zaključaka. |
 | P1        | Team Fit provider prompt/request skeleton v0.1 | Završeno kroz unified provider seam i structured-evidence runtime | Relacijski report / Candidate-team fit | Prompt/request path zadržava candidate-vs-team framing, evidence linkage i no-score/no-decision guardraile; mock i OpenAI putanje koriste isti relevantni provider contract. |
-| P1        | Team Fit provider JSON schema / structured output helper v0.1 | Završeno kroz strict structured output contract | Relacijski report / Candidate-team fit | `team_fit_report_v1` schema/runtime safety guardovi ostaju aktivni i odbijaju numeric fit score, ranking, hire/no-hire, good-fit/bad-fit presudu, raw odgovore, individualne članove/rezultate i kliničke tvrdnje. |
+| P1        | Team Fit provider JSON schema / structured output helper v0.1 | Završeno kroz strict structured output contract | Relacijski report / Candidate-team fit | `team_fit_report_v1` schema/runtime safety guardovi ostaju aktivni i odbijaju numeric fit score, ranking, hire/no-hire, neobrazložene good-fit/bad-fit etikete ili person-level presude, raw odgovore, individualne članove/rezultate i kliničke tvrdnje. |
 | P1        | Team Fit mock provider fixture v0.1 | Završeno i usklađeno sa aktuelnim structured-evidence contractom | Relacijski report / Candidate-team fit | Legacy mock-generation assertion je usklađen sa unified provider seamom; canonical candidate slugovi i Team Dynamics snapshot provenance su eksplicitno provjereni, uz očuvane contract/safety assertions. |
 | P1        | Team Fit provider request capture inspector v0.1 | Dev-only no-call/no-write inspector za budući `team_fit_report_v1` provider path dokumentovan u `scripts/inspect-team-fit-provider-request.cjs`, uz offline test `scripts/test-inspect-team-fit-provider-request.cjs`; inspector gradi deterministic request capture artefakt iz fixture input bundle-a i postojećih Team Fit helper slojeva | Relacijski report / Candidate-team fit | Inspector gradi complete capture artefakt sa input bundle-om, evidence id mapom, provider prompt inputom, messages, request draftom, response formatom/JSON schema-om, schema name-om i future-provider-like request bodyjem; jasno potvrđuje no-call/no-write stanje, defaultno ispisuje JSON na stdout i podržava optional `/tmp` dump sa `0600` permission. Sljedeći zdravi Team Fit kandidati ostaju zasebne odluke: golden examples/reviewer harness, read-only DB source audit za budući real input builder, mock provider display/read-model compatibility fixture ili eventualno confirmed OpenAI dry-run tek kasnije i samo nakon dodatne odluke. |
 | P1        | Team Fit read-only DB source audit / source-lineage reconciliation | Završeno / operator-only read-only audit | Relacijski report / Candidate-team fit | Zatvoreno nakon dodavanja read-only source audit inspectora i offline guardrail testa; operator audit je potvrdio da su postojeći ready Team Fit artefakti legacy persisted reportovi sa stale source pointerima, a sljedeći korak je novi čist fixture par prije real provider dry-run-a. |
@@ -1026,7 +1038,7 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 - Invalid JSON, invalid contract, provider/config/request greške mapiraju se u controlled failed stanje bez raw provider error prikaza u UI-u.
 - Existing `processTeamFitReportWithMock(...)` / mock-safe behavior ostaje podržan.
 - Prompt guardrails zabranjuju numeric fit score, hire/no-hire jezik, candidate-facing zaključke, individualne team member odgovore/skorove, dijagnoze/etiketiranje i raw test item/answer disclosure.
-- Prompt zahtijeva HR-facing, relacijski i oprezan ton, razvojne hipoteze umjesto presuda, interview/onboarding/manager guidance i interpretation limits.
+- Prompt zahtijeva HR-facing, relacijski i direktan ton sa oprezom tamo gdje ga podaci traže, hipoteze samo za stvarnu neizvjesnost, interview guidance, integraciju u konkretni tim, manager guidance i interpretation limits.
 - Report view route, participant reports list i HR dashboard ne importuju OpenAI provider.
 - Nisu uvedeni worker, scheduler, automatska produkcijska generacija, report generation iz view route-a, candidate-facing output, numeric fit score, hire/no-hire copy, raw provider error prikaz, individualni team member odgovori/skorovi, Team Dynamics izmjene ili DB migracija.
 - Verifikovano:
@@ -1184,10 +1196,11 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
   - konkretna pitanja
   - šta HR treba slušati u odgovoru
   - koji signal ili hipotezu pitanje provjerava
-- Onboarding/manager guidance sada traži:
+- Integracija u konkretni tim i menadžerske smjernice sada traže:
   - praktične prve korake
   - očekivanja koja treba razjasniti
   - konkretne 30–60 day watchpoint-e
+  - šta iz osnovnog IDP plana treba naglasiti ili prilagoditi u ovom timu
 - Prompt dodatno potiskuje generičke fraze bez signalnog uporišta i radne implikacije.
 - Guardrails su očuvani i pojačani:
   - bez numeric fit score-a
@@ -1599,6 +1612,45 @@ Dobre ideje koje nisu za sadašnji razvojni sprint.
 **GDT-01 Team Dynamics persistence status:** identity/team foundation je završen live `EXACT_MATCH` (`24 participants`, `4 teams`, `24 active memberships`). Validated migration/source baseline je `881d4f45`; obje GDT-01 migracije su primijenjene i validirane, uz zadržan `SECURITY DEFINER` / prazan `search_path` / `service_role`-only execute contract. Raniji single apply je potvrđen sa `1 assignment / 6 wrappers / 6 attempts / 288 responses / 72 physical selections / 324 logical selections`, uz `writerEligible: false`. Production member scoring je potvrđen kao `SCORED_EXACT` sa 6 persisted member score snapshotova i 48 verified score entries; agregacija i reporti ostaju 0. Batched `response_selections` read je uklonio nestabilnost velikog `.in(...)` requesta. Sljedeći korak je lean kontrolisana Team Dynamics agregacija; standard battery i GD-001 ostaju nepromijenjeni.
 
 **Granice:** Ne mijenjati GitHub Issues ili GitHub Projects i ne stvarati drugi canonical todo. Cohort plan je execution tracker; ovaj dokument ostaje canonical backlog. Nacionalna pripadnost nije product podatak i ne smije se čuvati niti prikazivati u aplikaciji; korisnikove tri liste imena služe samo kao offline kontrola ravnoteže sintetičke kohorte.
+
+### P1 — AI Report Quality and Scope Refinement
+
+**Status:** Otvoreno / canonical product decision zaključan
+**Kategorija:** AI report quality / Content architecture / Cross-report calibration
+
+**Svrha:** Podignuti kvalitet sadržaja svih report tipova i zaključati vlasništvo nad sadržajem prije narednih implementation slice-ova.
+
+**Obuhvat:**
+- prompt quality;
+- jednostavan, direktan i prirodan poslovni bosanski jezik;
+- report depth bez ponavljanja;
+- jasni profesionalni zaključci kada ih evidence podržava;
+- report ownership i sprečavanje preklapanja između single-test, Composite, IDP, Team Dynamics i Team Fit reporta;
+- content contracts;
+- validators koji čuvaju structural/source/safety granice;
+- golden examples/reviewer za jezik, dubinu, evidence i actionability;
+- iterativna kalibracija svih report tipova.
+
+**Canonical odluke:** IDP je vlasnik osnovnog individualnog onboarding plana. Team Fit je vlasnik relacijske procjene i integration guidance za konkretni tim. Oprez treba označiti stvarne limite, ali ne smije sakriti podržan zaključak iza kontinuiranih hipoteza.
+
+**Granica:** Ovaj workstream ne autorizuje automatsku hiring odluku, numeric fit, prompt/runtime implementaciju, contract/validator implementaciju, regeneraciju postojećih reporta ili OpenAI poziv u ovom syncu.
+
+### P1 — HR UI and Report Experience Refinement
+
+**Status:** Otvoreno / odvojeno i koordinirano sa content workstreamom
+**Kategorija:** HR UI / Report experience / Information architecture
+
+**Obuhvat:**
+- hijerarhija informacija;
+- report navigation;
+- čitljivost i ograničena širina teksta;
+- tipografija;
+- uklanjanje vizuelnog i sadržajnog dupliranja;
+- prikaz bogatih reporta bez pretvaranja stranice u zid teksta.
+
+**Koordinacija:** Workstreami su odvojeni, ali koordinirani. Prvo se zaključavaju sadržajna odgovornost i kvalitet reporta; UI zatim prikazuje taj sadržaj bez stvaranja novih interpretacija.
+
+**Granica:** Ovaj docs-only sync ne mijenja UI, renderere ili report snapshotove. Budući UI rad ne smije preuzeti autorstvo nad interpretacijom niti uvoditi nove zaključke.
 
 ### P0 — SAFRAN user report content architecture
 
@@ -5458,6 +5510,9 @@ Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti or
 - Osnovni Onboarding plan ne zavisi od Team Fit-a.
 - Dostupan je kada postoji validan IDP artefakt.
 - Team Fit može kasnije obogatiti Onboarding plan timskim kontekstom, ali nije gatekeeper.
+- IDP je canonical owner osnovnog individualnog onboardinga: 7/30/60/90 plan, delegiranje, feedback, motivacija, podrška učenju, razvoj, manager checkpoints i individualni watchouts.
+- IDP onboarding postoji i kada Team Fit nije dostupan, ne opisuje konkretan tim i ne zavisi od Team Dynamics assessmenta.
+- Team Fit integration guidance samo naglašava ili prilagođava dijelove IDP plana zbog konkretnog tima; ne preuzima kompletan onboarding.
 - Ne uvoditi poseban onboarding report lane u MVP-u.
 - Preferirani MVP oblik je strukturirana IDP sekcija: 7 / 30 / 60 / 90 dana.
 
@@ -5748,6 +5803,8 @@ Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti or
 **Kratki opis:**  
 Timski fit kandidata je zaseban relacijski report koji kombinuje individualni profil kandidata/osobe i agregirani Team Dynamics profil konkretnog tima. Report odgovara na pitanje kako bi se kandidat mogao uklopiti u konkretan tim, gdje može pojačati tim, gdje mogu nastati frikcije i šta HR/lider treba provjeriti ili podržati tokom onboarding-a.
 
+Team Fit mora dati jasan kvalitativni candidate-vs-team zaključak kada ga evidence podržava. Može reći da je kandidat snažniji izbor, dobar izbor uz uslove, da je odnos mješovit ili da je kandidat slabiji izbor za trenutni način rada konkretnog tima. Ne procjenjuje vrijednost osobe i ne daje numeric fit ili hire/no-hire odluku.
+
 **Terminološka napomena:**  
 `Timski fit kandidata` nije test koji kandidat rješava, nego relacijski report koji koristi više ulaza.
 
@@ -5764,6 +5821,7 @@ Timski fit kandidata je zaseban relacijski report koji kombinuje individualni pr
 - Nema fit score-a.
 - Nema tvrdnje da report predviđa budući uspjeh.
 - Nema identifikovanja “problematičnog člana”.
+- Osnovni onboarding pripada IDP-u; Team Fit posjeduje samo integraciju u konkretni tim.
 
 **Predloženi budući inputi:**
 - kandidatov individualni profil: IPIP, SAFRAN, MWMS, kompozitni profil kandidata
@@ -5777,7 +5835,7 @@ Timski fit kandidata je zaseban relacijski report koji kombinuje individualni pr
 2. Gdje kandidat može pojačati tim
 3. Moguće frikcije
 4. Šta provjeriti u razgovoru
-5. Onboarding preporuke
+5. Integracija u ovaj konkretan tim
 6. Menadžerske smjernice
 7. Ograničenja interpretacije
 
@@ -7617,7 +7675,7 @@ Razlog za sljedeći prioritet:
 * Zaključana su tri odvojena, ali povezana sloja:
   * Individualni modul: `Timski stil saradnje` / `team_style_collaboration_v1` (entitet: kandidat ili postojeći član tima; pitanje: `Kakav je individualni timski potencijal i saradničko prosuđivanje?`)
   * Timski assessment: `Procjena timske dinamike` / `team_dynamics_assessment_v1` (entitet: konkretan tim; pitanje: `Kako tim funkcioniše kao sistem?`)
-  * Relacijski report: `Timski fit kandidata` / `team_fit_report_v1` (entitet: kandidat + konkretan tim; pitanje: `Kako će se kandidat uklopiti u tim?`)
+  * Relacijski report: `Timski fit kandidata` / `team_fit_report_v1` (entitet: kandidat + konkretan tim; pitanje: `Šta će se vjerovatno dogoditi kada ova osoba uđe baš u ovaj tim?`)
 * Produktna odluka:
   * Team Fit se ne tretira kao test.
   * Team Dynamics nije jedini test koji daje cijelu sliku tima.
@@ -9420,7 +9478,7 @@ Završeno:
   * complementarity
   * friction risk
   * onboarding support need
-* Ako se koristi fit label/band, on smije biti samo navigacijski i oprezan, ne presuda.
+* `relationshipPattern` label/band ostaje navigacijski i opisni; to ne sprečava pun, evidence-backed kvalitativni zaključak u tekstu reporta kada je vezan za konkretan tim.
 * Preferirani MVP pristup je structured relationship narrative + evidence, ne score.
 
 #### Contract outline (draft, docs-only; nije final implementation schema)
@@ -9454,7 +9512,7 @@ type TeamFitReportV1 = {
 
 * no hire/no-hire recommendation
 * no rejection recommendation
-* no candidate “bad fit” label
+* no generic or person-level candidate “bad fit” label
 * no team “bad/disfunctional” label
 * no individual team member naming as friction source
 * no raw answers
@@ -10242,7 +10300,7 @@ Završeno:
   * AI input ostaje striktno agregiran deterministički sloj, bez individualnih odgovora članova
 * DUTCH je pozicioniran kao conflict-style sloj, ne kao kompletan team-fit test:
   * može biti input za kandidata, tim i relacijski friction model
-  * može podržati interview/onboarding hipoteze
+  * može dati jasan kvalitativni candidate-vs-team zaključak kada ga evidence podržava, uz interview teme i integraciju u konkretan tim
   * licenca i prava moraju biti provjereni prije direktne upotrebe itema
 * Placeholder/licencni lock:
   * dok se ne zatvore licenca i finalni BHS prevod, u repo ne ulaze stvarni licencirani itemi

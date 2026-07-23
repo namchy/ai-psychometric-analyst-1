@@ -6,6 +6,50 @@ Deep Profile se diferencira kroz hyper-smart AI interpretaciju. AI/provider prom
 
 Ova odluka se retroaktivno primjenjuje na individualne reportove, IDP, participant/HR reportove i buduće report tipove. Team Fit ostaje referentni obrazac za segment-aware pristup, ali nije glavni fokus ovog dokumenta.
 
+### 1.1. Globalni uređivački princip
+
+Svi sadašnji i budući Deep Profile AI izvještaji slijede isti uređivački princip:
+
+> **Daj najkorisniju i najpošteniju procjenu koju podaci podržavaju.**
+
+> **Direktnost bez brutalnosti. Procjena bez presude. Oprez bez paralize.**
+
+To znači:
+
+- izvještaj mora zauzeti jasan, evidence-backed profesionalni stav;
+- izvještaj ne smije samo neutralno prepričavati rezultate;
+- zaključak se ne smije skrivati iza stalnog niza izraza kao što su „možda“, „moguće“, „može ukazivati“, „vrijedi provjeriti“ i „potrebno je dodatno pratiti“;
+- metodološka ograničenja navode se jasno u odgovarajućoj sekciji, a ne ponavljaju u svakoj rečenici;
+- dokaz, interpretacija, procjena i preporuka moraju biti jasno razlikovani;
+- izvještaj mora biti razumljiv HR profesionalcu pri prvom čitanju;
+- koristiti kratke i srednje duge rečenice, jednu glavnu ideju po rečenici, konkretne imenice i glagole;
+- izbjegavati akademski, klinički i birokratski jezik;
+- stručni pojam, kada je potreban, odmah objasniti običnim poslovnim jezikom;
+- dubina sadržaja ne smije proizvoditi težak jezik;
+- dužina treba dolaziti iz korisnih i različitih informacija, ne iz ponavljanja iste ideje.
+
+Za MVP je cilj jednostavan, prirodan bosanski jezik za HR publiku: latinica, ijekavica, konkretne imenice i glagoli, bez nepotrebnog engleskog, akademskog ili birokratskog izražavanja.
+
+Oprez znači precizno označiti stvarnu granicu podataka. Ne znači pretvoriti svaku rečenicu u hipotezu ili disclaimer. Kada evidence podržava procjenu, izvještaj je treba jasno izreći; vjerovatnosni jezik ostaje za stvarnu neizvjesnost.
+
+I dalje su zabranjeni hire/no-hire odluka, automatska odluka o zapošljavanju ili odbijanju, numeric fit score ili procenat, rangiranje kandidata, dijagnoze, tvrdnje koje podaci ne podržavaju i predstavljanje vjerovatnog zaključka kao sigurne činjenice.
+
+### 1.2. Canonical mapa vlasništva nad sadržajem
+
+Svaki report sloj ima jasno pitanje i sadržaj za koji je odgovoran:
+
+- **Single-test HR reports** objašnjavaju implikacije konkretnog izvora, npr. IPIP, SAFRAN ili MWMS. Ne kreiraju tri odvojena potpuna onboarding plana.
+- **Composite Profile** odgovara na pitanje: „Kakva je ova osoba u radnom kontekstu?“
+- **Individual Development Profile** odgovara na pitanje: „Kako ovu osobu uvesti u posao, voditi i razvijati?“
+- **Team Dynamics** odgovara na pitanje: „Kako ovaj tim funkcioniše?“
+- **Team Fit** odgovara na pitanje: „Šta će se vjerovatno dogoditi kada ova osoba uđe baš u ovaj tim?“
+
+Single-test guidance ostaje ograničen na izvor i njegovu praktičnu implikaciju. IDP je vlasnik osnovnog individualnog onboardinga. Team Fit je vlasnik relacijske procjene i integracije u konkretan tim.
+
+Pravilo protiv preklapanja je:
+
+> **Ako bi preporuka ostala ista bez obzira na izabrani tim, pripada IDP-u. Ako se preporuka mijenja kada promijenimo tim, pripada Team Fitu.**
+
 ## 2. Core principle
 
 Za svaki AI-generisani UI tekstualni element mora postojati eksplicitno definisan content contract:
@@ -59,7 +103,7 @@ SAFRAN participant display još uvijek spaja više AI signala u jedan prikaz, a 
 
 ### SAFRAN HR
 
-SAFRAN HR je najbliži segment-aware sadržajnom ugovoru: ima poseban executive summary, cognitive signals, caution points, interview guidance, onboarding guidance i interpretation limits. Rizik je manji nego kod drugih lane-ova, ali i dalje treba strogo držati contract-aware prompt instrukcije i kvalitetne guardraile po segmentu.
+SAFRAN HR je najbliži segment-aware sadržajnom ugovoru: ima poseban executive summary, cognitive signals, caution points, interview guidance, ograničenu source-specific guidance i interpretation limits. Ne treba preuzeti kompletan individualni onboarding plan; taj sadržaj pripada IDP-u.
 
 ### IPIP participant/HR
 
