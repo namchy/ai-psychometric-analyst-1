@@ -121,7 +121,6 @@ export type TeamFitReportV2 = {
   }>;
   teamIntegrationPlan: {
     summary: string;
-    retainFromBaselineOnboarding: string[];
     adaptForThisTeam: Array<{
       action: string;
       owner: TeamFitReportV2ActionOwner;
@@ -598,10 +597,9 @@ function validateOwnedAction(
 }
 
 function validateTeamIntegrationPlan(value: unknown, path: string, context: ValidationContext): void {
-  const keys = ["summary", "retainFromBaselineOnboarding", "adaptForThisTeam", "teamPreparations", "first30Days", "successSignals", "earlyFrictionSignals"];
+  const keys = ["summary", "adaptForThisTeam", "teamPreparations", "first30Days", "successSignals", "earlyFrictionSignals"];
   if (!validateObject(value, path, keys, context)) return;
   validateString(value.summary, `${path}.summary`, context);
-  validateStringArray(value.retainFromBaselineOnboarding, `${path}.retainFromBaselineOnboarding`, { min: 1, max: Number.MAX_SAFE_INTEGER }, context);
   validateArray(value.adaptForThisTeam, `${path}.adaptForThisTeam`, { min: 1, max: 5 }, context, (entry, entryPath, entryContext) => validateOwnedAction(entry, entryPath, entryContext, true));
   validateArray(value.teamPreparations, `${path}.teamPreparations`, { min: 1, max: 5 }, context, (entry, entryPath, entryContext) => validateOwnedAction(entry, entryPath, entryContext, false));
   validateArray(value.first30Days, `${path}.first30Days`, { min: 2, max: 6 }, context, (entry, entryPath, entryContext) => validateOwnedAction(entry, entryPath, entryContext, true));

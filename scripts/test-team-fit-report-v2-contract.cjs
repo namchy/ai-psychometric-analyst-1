@@ -190,7 +190,6 @@ function buildPayload(options = {}) {
     })),
     teamIntegrationPlan: {
       summary: text,
-      retainFromBaselineOnboarding: [text],
       adaptForThisTeam: repeat(counts.adaptForThisTeam, ownedAction),
       teamPreparations: repeat(counts.teamPreparations, () => ({
         action: text,
@@ -352,6 +351,14 @@ function testInvalidCases() {
   unknownNested.managerGuidance[0].summary = "x";
   expectIssue(unknownNested, "managerGuidance[0].summary", "unknown_field");
 
+  const removedBaselineOnboardingField = buildPayload();
+  removedBaselineOnboardingField.teamIntegrationPlan.retainFromBaselineOnboarding = ["x"];
+  expectIssue(
+    removedBaselineOnboardingField,
+    "teamIntegrationPlan.retainFromBaselineOnboarding",
+    "unknown_field",
+  );
+
   const wrongEnum = buildPayload();
   wrongEnum.executiveAssessment.category = "excellent_fit";
   expectIssue(wrongEnum, "executiveAssessment.category", "invalid_enum");
@@ -467,6 +474,36 @@ function testSchemaParity() {
     "interpretationLimits", "metadata",
   ];
   assert.deepEqual([...schema.required].sort(), expectedTopLevel.sort());
+
+  const teamIntegrationPlanSchema = schema.properties.teamIntegrationPlan;
+  const expectedTeamIntegrationPlanKeys = [
+    "summary",
+    "adaptForThisTeam",
+    "teamPreparations",
+    "first30Days",
+    "successSignals",
+    "earlyFrictionSignals",
+  ];
+  assert.deepEqual(
+    Object.keys(teamIntegrationPlanSchema.properties).sort(),
+    [...expectedTeamIntegrationPlanKeys].sort(),
+  );
+  assert.deepEqual(
+    [...teamIntegrationPlanSchema.required].sort(),
+    [...expectedTeamIntegrationPlanKeys].sort(),
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      teamIntegrationPlanSchema.properties,
+      "retainFromBaselineOnboarding",
+    ),
+    false,
+  );
+  assert.equal(
+    teamIntegrationPlanSchema.required.includes("retainFromBaselineOnboarding"),
+    false,
+  );
+  assert.equal(teamIntegrationPlanSchema.additionalProperties, false);
 
   assertLimits(schema, "executiveAssessment.mainReasons", 2, 4);
   assertLimits(schema, "executiveAssessment.mainReasons[].evidenceRefs", 2, 6);

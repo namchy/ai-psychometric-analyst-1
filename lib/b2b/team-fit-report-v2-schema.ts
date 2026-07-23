@@ -182,7 +182,6 @@ export function getTeamFitReportV2JsonSchema(): TeamFitReportV2JsonSchema {
     ),
     teamIntegrationPlan: strictObjectSchema({
       summary: nonEmptyStringSchema(),
-      retainFromBaselineOnboarding: stringArraySchema({ minItems: 1 }),
       adaptForThisTeam: arraySchema(ownedActionSchema(true), {
         minItems: 1,
         maxItems: 5,
