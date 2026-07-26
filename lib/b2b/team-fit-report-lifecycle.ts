@@ -1,9 +1,17 @@
 import "server-only";
 
+import {
+  TEAM_FIT_REPORT_V1_IDENTITY,
+  TEAM_FIT_REPORT_V1_TYPE,
+  TEAM_FIT_REPORT_V1_VERSION,
+  TEAM_FIT_REPORT_V2_IDENTITY,
+  resolveTeamFitReportIdentity,
+  type TeamFitReportIdentity,
+} from "@/lib/b2b/team-fit-report-identity";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export const TEAM_FIT_REPORT_TYPE = "team_fit_report_v1";
-export const TEAM_FIT_REPORT_VERSION = "v1";
+export const TEAM_FIT_REPORT_TYPE = TEAM_FIT_REPORT_V1_TYPE;
+export const TEAM_FIT_REPORT_VERSION = TEAM_FIT_REPORT_V1_VERSION;
 export const TEAM_FIT_REPORT_STATUSES = ["queued", "processing", "ready", "failed"] as const;
 export const TEAM_FIT_CANDIDATE_SOURCE_TYPE = "composite_deterministic_input_snapshot";
 export const TEAM_FIT_TEAM_SOURCE_TYPE = "team_dynamics_aggregation_input_snapshot";
@@ -46,7 +54,7 @@ type ParticipantRow = {
   organization_id: string;
 };
 
-export type TeamFitReportRowSummary = {
+type TeamFitReportRowSummaryBase = {
   id: string;
   organizationId: string;
   teamId: string;
@@ -56,8 +64,6 @@ export type TeamFitReportRowSummary = {
   teamSourceType: string;
   teamSourceId: string | null;
   optionalContext: Record<string, unknown>;
-  reportType: string;
-  reportVersion: string;
   reportStatus: TeamFitReportStatus;
   inputSnapshot: Record<string, unknown> | null;
   reportSnapshot: Record<string, unknown> | null;
@@ -70,6 +76,9 @@ export type TeamFitReportRowSummary = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type TeamFitReportRowSummary = TeamFitReportRowSummaryBase &
+  TeamFitReportIdentity;
 
 export type QueueTeamFitReportShellInput = {
   organizationId: string;
@@ -177,30 +186,55 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function mapRow(row: TeamFitReportRow): TeamFitReportRowSummary {
+type MapTeamFitReportRowResult =
+  | { ok: true; report: TeamFitReportRowSummary }
+  | { ok: false; message: string };
+
+function formatIdentityValue(value: unknown): string {
+  return typeof value === "string" ? JSON.stringify(value) : String(value);
+}
+
+function mapRow(row: TeamFitReportRow): MapTeamFitReportRowResult {
+  const identity = resolveTeamFitReportIdentity(
+    row.report_type,
+    row.report_version,
+  );
+
+  if (!identity) {
+    return {
+      ok: false,
+      message:
+        "Invalid Team Fit report identity: received " +
+        `report_type=${formatIdentityValue(row.report_type)}, ` +
+        `report_version=${formatIdentityValue(row.report_version)}.`,
+    };
+  }
+
   return {
-    id: row.id,
-    organizationId: row.organization_id,
-    teamId: row.team_id,
-    participantId: row.participant_id,
-    candidateSourceType: row.candidate_source_type,
-    candidateSourceId: row.candidate_source_id,
-    teamSourceType: row.team_source_type,
-    teamSourceId: row.team_source_id,
-    optionalContext: isPlainObject(row.optional_context) ? row.optional_context : {},
-    reportType: row.report_type,
-    reportVersion: row.report_version,
-    reportStatus: row.report_status,
-    inputSnapshot: row.input_snapshot,
-    reportSnapshot: row.report_snapshot,
-    errorMessage: row.error_message,
-    queuedAt: row.queued_at,
-    startedAt: row.started_at,
-    completedAt: row.completed_at,
-    failedAt: row.failed_at,
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    ok: true,
+    report: {
+      id: row.id,
+      organizationId: row.organization_id,
+      teamId: row.team_id,
+      participantId: row.participant_id,
+      candidateSourceType: row.candidate_source_type,
+      candidateSourceId: row.candidate_source_id,
+      teamSourceType: row.team_source_type,
+      teamSourceId: row.team_source_id,
+      optionalContext: isPlainObject(row.optional_context) ? row.optional_context : {},
+      ...identity,
+      reportStatus: row.report_status,
+      inputSnapshot: row.input_snapshot,
+      reportSnapshot: row.report_snapshot,
+      errorMessage: row.error_message,
+      queuedAt: row.queued_at,
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      failedAt: row.failed_at,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    },
   };
 }
 
@@ -287,8 +321,9 @@ async function loadParticipantContext(input: {
   return { ok: true, participant: data as ParticipantRow };
 }
 
-export async function queueTeamFitReportShell(
+async function queueTeamFitReportShellForIdentity(
   input: QueueTeamFitReportShellInput,
+  identity: TeamFitReportIdentity,
   deps: TeamFitReportLifecycleDependencies = {},
 ): Promise<QueueTeamFitReportShellResult> {
   if (!isNonEmptyString(input.organizationId)) {
@@ -360,8 +395,8 @@ export async function queueTeamFitReportShell(
     team_source_type: input.teamSourceType,
     team_source_id: input.teamSourceId ?? null,
     optional_context: input.optionalContext ?? {},
-    report_type: TEAM_FIT_REPORT_TYPE,
-    report_version: TEAM_FIT_REPORT_VERSION,
+    report_type: identity.reportType,
+    report_version: identity.reportVersion,
     report_status: "queued",
     queued_at: queuedAt,
     created_by: input.createdBy ?? null,
@@ -381,7 +416,17 @@ export async function queueTeamFitReportShell(
     };
   }
 
-  const report = mapRow(data as TeamFitReportRow);
+  const mapped = mapRow(data as TeamFitReportRow);
+
+  if (!mapped.ok) {
+    return {
+      ok: false,
+      reason: "insert_failed",
+      message: mapped.message,
+    };
+  }
+
+  const report = mapped.report;
 
   return {
     ok: true,
@@ -389,6 +434,28 @@ export async function queueTeamFitReportShell(
     status: report.reportStatus,
     report,
   };
+}
+
+export async function queueTeamFitReportShell(
+  input: QueueTeamFitReportShellInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<QueueTeamFitReportShellResult> {
+  return queueTeamFitReportShellForIdentity(
+    input,
+    TEAM_FIT_REPORT_V1_IDENTITY,
+    deps,
+  );
+}
+
+export async function queueTeamFitReportV2Shell(
+  input: QueueTeamFitReportShellInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<QueueTeamFitReportShellResult> {
+  return queueTeamFitReportShellForIdentity(
+    input,
+    TEAM_FIT_REPORT_V2_IDENTITY,
+    deps,
+  );
 }
 
 export async function claimTeamFitReportForProcessing(
@@ -415,7 +482,17 @@ export async function claimTeamFitReportForProcessing(
     };
   }
 
-  const report = mapRow(reportRow);
+  const mapped = mapRow(reportRow);
+
+  if (!mapped.ok) {
+    return {
+      ok: false,
+      reason: "not_claimable",
+      message: mapped.message,
+    };
+  }
+
+  const report = mapped.report;
 
   if (reportRow.report_status === "processing") {
     return { ok: false, reason: "already_processing", message: "Team Fit report is already processing.", report };
@@ -454,6 +531,8 @@ export async function claimTeamFitReportForProcessing(
     .eq("id", input.teamFitReportId)
     .eq("organization_id", input.organizationId)
     .eq("report_status", "queued")
+    .eq("report_type", report.reportType)
+    .eq("report_version", report.reportVersion)
     .select(TEAM_FIT_REPORT_ROW_SELECT)
     .maybeSingle();
 
@@ -475,7 +554,18 @@ export async function claimTeamFitReportForProcessing(
     };
   }
 
-  const claimed = mapRow(data as TeamFitReportRow);
+  const claimedResult = mapRow(data as TeamFitReportRow);
+
+  if (!claimedResult.ok) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: claimedResult.message,
+      report,
+    };
+  }
+
+  const claimed = claimedResult.report;
 
   return {
     ok: true,
@@ -517,7 +607,17 @@ export async function markTeamFitReportProcessingFailed(
     };
   }
 
-  const report = mapRow(reportRow);
+  const mapped = mapRow(reportRow);
+
+  if (!mapped.ok) {
+    return {
+      ok: false,
+      reason: "not_processing",
+      message: mapped.message,
+    };
+  }
+
+  const report = mapped.report;
 
   if (reportRow.report_status === "ready") {
     return { ok: false, reason: "already_ready", message: "Ready Team Fit reports cannot be failed.", report };
@@ -547,6 +647,8 @@ export async function markTeamFitReportProcessingFailed(
     .eq("id", input.teamFitReportId)
     .eq("organization_id", input.organizationId)
     .eq("report_status", "processing")
+    .eq("report_type", report.reportType)
+    .eq("report_version", report.reportVersion)
     .select(TEAM_FIT_REPORT_ROW_SELECT)
     .maybeSingle();
 
@@ -568,7 +670,18 @@ export async function markTeamFitReportProcessingFailed(
     };
   }
 
-  const failed = mapRow(data as TeamFitReportRow);
+  const failedResult = mapRow(data as TeamFitReportRow);
+
+  if (!failedResult.ok) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: failedResult.message,
+      report,
+    };
+  }
+
+  const failed = failedResult.report;
 
   return {
     ok: true,
@@ -602,7 +715,17 @@ export async function resetFailedTeamFitReportToQueued(
     };
   }
 
-  const report = mapRow(reportRow);
+  const mapped = mapRow(reportRow);
+
+  if (!mapped.ok) {
+    return {
+      ok: false,
+      reason: "not_resettable",
+      message: mapped.message,
+    };
+  }
+
+  const report = mapped.report;
 
   if (reportRow.report_status === "queued") {
     return { ok: false, reason: "already_queued", message: "Team Fit report is already queued.", report };
@@ -649,6 +772,8 @@ export async function resetFailedTeamFitReportToQueued(
     .eq("id", input.teamFitReportId)
     .eq("organization_id", input.organizationId)
     .eq("report_status", "failed")
+    .eq("report_type", report.reportType)
+    .eq("report_version", report.reportVersion)
     .select(TEAM_FIT_REPORT_ROW_SELECT)
     .maybeSingle();
 
@@ -670,7 +795,18 @@ export async function resetFailedTeamFitReportToQueued(
     };
   }
 
-  const reset = mapRow(data as TeamFitReportRow);
+  const resetResult = mapRow(data as TeamFitReportRow);
+
+  if (!resetResult.ok) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: resetResult.message,
+      report,
+    };
+  }
+
+  const reset = resetResult.report;
 
   return {
     ok: true,

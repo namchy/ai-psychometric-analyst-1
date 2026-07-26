@@ -90,10 +90,11 @@ assert.doesNotMatch(migrationSource, /attempt_reports/i);
 assert.doesNotMatch(migrationSource, /public\.assessment_reports/i);
 assert.doesNotMatch(migrationSource, /public\.team_assessment_reports/i);
 
-assert.match(helperSource, /TEAM_FIT_REPORT_TYPE = "team_fit_report_v1"/);
-assert.match(helperSource, /TEAM_FIT_REPORT_VERSION = "v1"/);
+assert.match(helperSource, /TEAM_FIT_REPORT_TYPE = TEAM_FIT_REPORT_V1_TYPE/);
+assert.match(helperSource, /TEAM_FIT_REPORT_VERSION = TEAM_FIT_REPORT_V1_VERSION/);
 assert.match(helperSource, /TEAM_FIT_REPORT_STATUSES = \["queued", "processing", "ready", "failed"\]/);
 assert.match(helperSource, /export async function queueTeamFitReportShell/);
+assert.match(helperSource, /export async function queueTeamFitReportV2Shell/);
 assert.match(helperSource, /export async function claimTeamFitReportForProcessing/);
 assert.match(helperSource, /export async function markTeamFitReportProcessingFailed/);
 assert.match(helperSource, /export async function resetFailedTeamFitReportToQueued/);
@@ -121,8 +122,18 @@ const {
   claimTeamFitReportForProcessing,
   markTeamFitReportProcessingFailed,
   queueTeamFitReportShell,
+  queueTeamFitReportV2Shell,
   resetFailedTeamFitReportToQueued,
 } = require(helperPath);
+const {
+  TEAM_FIT_REPORT_V1_TYPE,
+  TEAM_FIT_REPORT_V1_VERSION,
+  TEAM_FIT_REPORT_V2_TYPE,
+  TEAM_FIT_REPORT_V2_VERSION,
+} = require(path.join(projectRoot, "lib", "b2b", "team-fit-report-identity.ts"));
+
+assert.equal(TEAM_FIT_REPORT_TYPE, TEAM_FIT_REPORT_V1_TYPE);
+assert.equal(TEAM_FIT_REPORT_VERSION, TEAM_FIT_REPORT_V1_VERSION);
 
 function createSupabaseStub(initialState = {}) {
   const state = {
@@ -164,6 +175,7 @@ function createSupabaseStub(initialState = {}) {
         },
         eq(column, value) {
           query.filters.push({ type: "eq", column, value });
+          operations.push({ type: "eq", table, mode: query.mode, column, value });
           return query;
         },
         insert(payload) {
@@ -229,6 +241,64 @@ function createSupabaseStub(initialState = {}) {
   };
 }
 
+function countUpdates(supabase) {
+  return supabase.operations.filter(
+    (entry) => entry.type === "update" && entry.table === "team_fit_reports",
+  ).length;
+}
+
+function assertIdentityCasFilters(supabase, reportType, reportVersion, expectedCount) {
+  const typeFilters = supabase.operations.filter(
+    (entry) =>
+      entry.type === "eq" &&
+      entry.table === "team_fit_reports" &&
+      entry.mode === "update" &&
+      entry.column === "report_type" &&
+      entry.value === reportType,
+  );
+  const versionFilters = supabase.operations.filter(
+    (entry) =>
+      entry.type === "eq" &&
+      entry.table === "team_fit_reports" &&
+      entry.mode === "update" &&
+      entry.column === "report_version" &&
+      entry.value === reportVersion,
+  );
+
+  assert.equal(typeFilters.length, expectedCount);
+  assert.equal(versionFilters.length, expectedCount);
+}
+
+async function assertReadyProtection(row) {
+  const readySupabase = createSupabaseStub(buildBaseState());
+  readySupabase.state.team_fit_reports.push({ ...row, report_status: "ready" });
+  const before = countUpdates(readySupabase);
+  const input = {
+    teamFitReportId: row.id,
+    organizationId: row.organization_id,
+  };
+
+  const claim = await claimTeamFitReportForProcessing(input, {
+    supabase: readySupabase,
+  });
+  const fail = await markTeamFitReportProcessingFailed(
+    { ...input, errorMessage: "MUST_NOT_WRITE" },
+    { supabase: readySupabase },
+  );
+  const reset = await resetFailedTeamFitReportToQueued(input, {
+    supabase: readySupabase,
+  });
+
+  assert.equal(claim.ok, false);
+  assert.equal(claim.reason, "already_ready");
+  assert.equal(fail.ok, false);
+  assert.equal(fail.reason, "already_ready");
+  assert.equal(reset.ok, false);
+  assert.equal(reset.reason, "ready_not_resettable");
+  assert.equal(countUpdates(readySupabase), before);
+  assert.equal(readySupabase.state.team_fit_reports[0].report_status, "ready");
+}
+
 function buildBaseState() {
   return {
     teams: [{ id: "team-1", organization_id: "org-1", archived_at: null }],
@@ -276,6 +346,33 @@ async function main() {
   assert.equal(queued.report.inputSnapshot, null);
   assert.equal(queued.report.reportSnapshot, null);
   assert.equal(queueSupabase.state.team_fit_reports.length, 1);
+
+  const queuedV2 = await queueTeamFitReportV2Shell(
+    {
+      organizationId: "org-1",
+      teamId: "team-1",
+      participantId: "participant-1",
+      candidateSourceType: TEAM_FIT_CANDIDATE_SOURCE_TYPE,
+      candidateSourceId: "candidate-source-1",
+      teamSourceType: TEAM_FIT_TEAM_SOURCE_TYPE,
+      teamSourceId: "team-source-1",
+      optionalContext: { locale: "bs" },
+      createdBy: "user-1",
+    },
+    {
+      supabase: queueSupabase,
+      now: () => "2026-05-30T10:01:00.000Z",
+    },
+  );
+
+  assert.equal(queuedV2.ok, true);
+  assert.equal(queuedV2.report.reportType, TEAM_FIT_REPORT_V2_TYPE);
+  assert.equal(queuedV2.report.reportVersion, TEAM_FIT_REPORT_V2_VERSION);
+  assert.equal(queueSupabase.state.team_fit_reports.length, 2);
+  assert.equal(queueSupabase.state.team_fit_reports[0].report_type, TEAM_FIT_REPORT_V1_TYPE);
+  assert.equal(queueSupabase.state.team_fit_reports[1].report_type, TEAM_FIT_REPORT_V2_TYPE);
+  assert.equal(queueSupabase.state.team_fit_reports[0].team_id, queueSupabase.state.team_fit_reports[1].team_id);
+  assert.equal(queueSupabase.state.team_fit_reports[0].participant_id, queueSupabase.state.team_fit_reports[1].participant_id);
 
   const claimSupabase = createSupabaseStub(buildBaseState());
   claimSupabase.state.team_fit_reports.push({
@@ -368,6 +465,14 @@ async function main() {
   assert.deepEqual(reset.report.reportSnapshot, {
     stale: true,
   });
+  assert.equal(reset.report.reportType, TEAM_FIT_REPORT_V1_TYPE);
+  assert.equal(reset.report.reportVersion, TEAM_FIT_REPORT_V1_VERSION);
+  assertIdentityCasFilters(
+    claimSupabase,
+    TEAM_FIT_REPORT_V1_TYPE,
+    TEAM_FIT_REPORT_V1_VERSION,
+    3,
+  );
 
   claimSupabase.state.team_fit_reports[0].report_status = "queued";
   const alreadyQueuedReset = await resetFailedTeamFitReportToQueued(
@@ -434,6 +539,55 @@ async function main() {
   );
   assert.equal(wrongOrgReset.ok, false);
   assert.equal(wrongOrgReset.reason, "report_not_found");
+
+  const v2Supabase = createSupabaseStub(buildBaseState());
+  v2Supabase.state.team_fit_reports.push({
+    ...queueSupabase.state.team_fit_reports[1],
+    input_snapshot: { inputType: "team_fit_input_v2", persisted: true },
+    report_snapshot: { stale: true },
+  });
+  const v2Id = v2Supabase.state.team_fit_reports[0].id;
+  const v2Claimed = await claimTeamFitReportForProcessing(
+    { teamFitReportId: v2Id, organizationId: "org-1" },
+    { supabase: v2Supabase },
+  );
+  assert.equal(v2Claimed.ok, true);
+  assert.equal(v2Claimed.report.reportType, TEAM_FIT_REPORT_V2_TYPE);
+  assert.equal(v2Claimed.report.reportVersion, TEAM_FIT_REPORT_V2_VERSION);
+
+  const v2Failed = await markTeamFitReportProcessingFailed(
+    {
+      teamFitReportId: v2Id,
+      organizationId: "org-1",
+      errorMessage: "V2_FAILURE",
+    },
+    { supabase: v2Supabase },
+  );
+  assert.equal(v2Failed.ok, true);
+  assert.equal(v2Failed.report.reportType, TEAM_FIT_REPORT_V2_TYPE);
+  assert.equal(v2Failed.report.reportVersion, TEAM_FIT_REPORT_V2_VERSION);
+
+  const v2Reset = await resetFailedTeamFitReportToQueued(
+    { teamFitReportId: v2Id, organizationId: "org-1" },
+    { supabase: v2Supabase },
+  );
+  assert.equal(v2Reset.ok, true);
+  assert.equal(v2Reset.report.reportType, TEAM_FIT_REPORT_V2_TYPE);
+  assert.equal(v2Reset.report.reportVersion, TEAM_FIT_REPORT_V2_VERSION);
+  assert.deepEqual(v2Reset.report.inputSnapshot, {
+    inputType: "team_fit_input_v2",
+    persisted: true,
+  });
+  assert.deepEqual(v2Reset.report.reportSnapshot, { stale: true });
+  assertIdentityCasFilters(
+    v2Supabase,
+    TEAM_FIT_REPORT_V2_TYPE,
+    TEAM_FIT_REPORT_V2_VERSION,
+    3,
+  );
+
+  await assertReadyProtection(queueSupabase.state.team_fit_reports[0]);
+  await assertReadyProtection(queueSupabase.state.team_fit_reports[1]);
 
   assert.equal(
     claimSupabase.operations.some(
