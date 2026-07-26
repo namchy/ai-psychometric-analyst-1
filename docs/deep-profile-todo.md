@@ -111,6 +111,23 @@ Paket uključuje deterministički candidate/team evidence katalog sa key formati
 
 **Isolation boundary — runtime nije aktiviran.** Ovaj završeni paket još nema V2 runtime registraciju, processor ili route/action wiring, lifecycle/persistence wiring, DB promjene, renderer/display wiring, report generation/regeneration niti stvarni OpenAI poziv. V1 runtime putanja nije mijenjana; aktivni Team Fit runtime i dalje ne koristi novi V2 provider.
 
+**Canonical GD-001 × GDT-01 V2 preview — završeno i pushano.** Commit `99bebef` (`Add canonical Team Fit V2 preview inspector`) potvrđuje canonical par iz read-only izvora:
+
+- organizacija: `Partner Plus d.o.o., Mikrokreditna organizacija`
+- kandidat: `GD-001` / Amel Kovačević
+- tim: `GDT-01` / Kreditno poslovanje i rad s klijentima
+- candidate coverage: exact `3/3` za `ipip-neo-120-v1`, `safran_v1` i `mwms_v1`
+- Team Dynamics coverage: exact canonical `6/6/6`; incomplete/missing/invalid `0/0/0`
+- organization, participant, assignment, team i aggregation lineage su potvrđeni; zero-match i ambiguous-match stanja padaju fail-closed
+
+Default no-call preflight je prošao, a confirmed preview je napravio tačno jedan OpenAI poziv sa modelom `gpt-5.6-sol`, `reasoning_effort: high` i bez `temperature`. Korišten je strict schema `team_fit_report_v2`; contract validation i evidence-reference validation su PASS. Katalog je imao 11 candidate i 7 team evidence stavki. DB reads su `true`, DB writes `false`, persistence `false`, postojeći reporti nisu izmijenjeni, a preview nije dio aktivnog runtimea.
+
+**Content verdict:** `TEAM_FIT_V2_CONTENT_READY_FOR_RUNTIME_PLANNING`. Report daje jasan `good_fit_with_conditions` candidate-vs-team zaključak, relacijski koristi candidate i team evidence, te sadrži konkretne contributions, friction risks, interview plan i manager guidance. Team integration ostaje specifičan za GDT-01 i ne preuzima osnovni IDP onboarding. Nema numeric fit scorea, rankinga, pass/fail ili hire/no-hire odluke. Non-blocking polish napomene su riječ `input` u dvije interpretation-limit rečenice i relativno gusta obrada nekoliko centralnih tema kroz više sekcija; zbog toga se ne otvara prompt-refinement task.
+
+**Diagnostic inspector status:** Paket trajno pokriva canonical GD-001/GDT-01 source resolution, exact candidate `3/3`, exact canonical GDT-01 `6/6/6` preko `GDT_01_COUNTS.members`, ambiguity fail-closed, default no-call i explicit single-call gate, single-transport guard bez retryja/fallbacka, model/reasoning/temperature contract, read-only DB boundary, `/tmp` JSON dump sa `0600`, secret redaction i runtime isolation. Fajlovi su `scripts/inspect-team-fit-report-v2-canonical-preview.cjs` i `scripts/test-inspect-team-fit-report-v2-canonical-preview.cjs`.
+
+No-call/no-write formulacija iz foundation statusa iznad odnosi se historijski na commit `ac948e9`; confirmed OpenAI poziv pripada zasebnom diagnostic preview krugu iz `99bebef`. V2 runtime i dalje nije implementiran, aktiviran ni odobren.
+
 ## Kompaktni prioritetni pregled taskova
 
 | Prioritet | Task                                                 | Status      | Kategorija                   | Sljedeći korak                                                                                 |
@@ -132,7 +149,7 @@ Paket uključuje deterministički candidate/team evidence katalog sa key formati
 | P1        | Controlled codebase stabilization & performance refactoring | F02 + F01 završeni / Mandatory stop review | Architecture / Performance / Technical debt | Uraditi obavezni stop review nakon F01: dokumentovati stvarni rezultat, preostale neizvjesnosti i odlučiti da li se refactoring ovdje zaustavlja ili se otvara novi zasebno odobren slice. F05 ostaje conditional i ne otvara se bez mjerenja. |
 | P0        | AI segment-aware report content architecture for individual reports | Završen locale-aware BHS user-facing AI language policy foundation; pilotiran kroz single-test HR/IPIP HR path i proširen adoptionom kroz SAFRAN HR, MWMS HR i candidate-facing participant lanove: MWMS participant, SAFRAN participant i IPIP participant V2 shared BHS output gate. IPIP HR P0 quality krug je zatvoren kroz read-only audit, dev-only OpenAI dry-run inspector, interpretive prompt hardening, successful confirmed dry-run, controlled Amra regeneration i post-regeneration inspector + browser smoke PASS. Frontend ostaje renderer, ne autor interpretacije; scoring/test output ostaje čist i deterministički. | Deep Profile / Report content architecture | Sljedeće: creation standard za report ide kroz prompt/content contract/schema prema velikom AI-ju; structural validator hard-blocka samo invalidan shape/data/source/evidence/contract. Future small-AI reviewer ostaje diagnostic/QA lane, ne current production gate. Ne raditi UI redesign kao quality odgovor i ne otvarati novi broad roadmap item bez zasebne odluke. |
 | P0        | Single-test HR report authority + prompt policy layer | Authority foundation sada uključuje locale-aware language policy router; `bs` koristi BHS user-facing policy, dok `hr/sr/en/null/unknown` vraćaju controlled no-policy/null path. IPIP HR, SAFRAN HR i MWMS HR sada koriste shared BHS output canonicalization/validation za `bs`, family consistency smoke je prošao, a SAFRAN HR i MWMS HR ostaju output-side only bez prompt-side adoptiona. IPIP HR authority lane je dodatno zatvoren P0 quality krugom: prompt/content-quality block, dry-run-only diagnostic inspector, validator-backed confirmed OpenAI dry-run i controlled Amra regeneration na `ready`. | Report architecture / Prompt governance / Terminology | Sljedeće: ne regenerisati postojeće reportove bez eksplicitnog odobrenja. Dalji quality rad ostaje uski prompt/content-contract + structural validator + future diagnostic reviewer/golden-examples lane; ne ići kroz UI polish, scoring izmjene ili persistence/lifecycle refactor. |
-| P1        | Golden Demo Cohort and AI report calibration | Team Fit structured-evidence slice završen | Demo data / Report QA / Calibration | GD-001 standard battery scoring je potvrđen (`SCORED_EXACT`, 184/184 raw/scored, 40 dimensions, 47/47 expected). Canonical GD-001 × GDT-01 Team Fit dry-run je tehnički validan i produktno prihvaćen; presentation refinement ostaje zaseban backlog. |
+| P1        | Golden Demo Cohort and AI report calibration | Team Fit structured-evidence slice i canonical V2 preview završeni | Demo data / Report QA / Calibration | GD-001 standard battery scoring je potvrđen (`SCORED_EXACT`, 184/184 raw/scored, 40 dimensions, 47/47 expected). Canonical GD-001 × GDT-01 V2 preview je tehnički validan i produktno prihvaćen; presentation polish ostaje non-blocking napomena, a runtime planning je zaseban sljedeći slice. |
 | P1        | AI Report Quality and Scope Refinement | Canonical product decision zaključan; workstream otvoren | AI report quality / Content architecture | Prompt quality, jednostavan jezik, report depth, jasni zaključci, ownership, content contracts, validators, golden examples/reviewer i iterativna kalibracija svih report tipova. |
 | P1        | HR UI and Report Experience Refinement | Odvojen, koordinirani workstream; planiran nakon sadržajnog zaključavanja | HR UI / Report experience | Hijerarhija, navigacija, čitljivost, tipografija, uklanjanje vizuelnog i sadržajnog dupliranja i prikaz bogatih reporta bez zida teksta. |
 | P1        | Team Fit & Dynamics Product Spec v0.1 | Repo-backed canonical spec v0.1 dokumentovan u `docs/team-dynamics-product-tech-spec.md` | Team module / Product architecture | Koristiti ovaj spec kao product/tech osnovu za buduće Team Dynamics / Team Fit implementation slice-ove; ne otvarati worker/scheduler kao default; naredni Team Fit/Team Dynamics runtime rad traži zasebnu product odluku. |
@@ -143,9 +160,9 @@ Paket uključuje deterministički candidate/team evidence katalog sa key formati
 | P1        | Team Fit provider JSON schema / structured output helper v0.1 | Završeno kroz strict structured output contract | Relacijski report / Candidate-team fit | `team_fit_report_v1` schema/runtime safety guardovi ostaju aktivni i odbijaju numeric fit score, ranking, hire/no-hire, neobrazložene good-fit/bad-fit etikete ili person-level presude, raw odgovore, individualne članove/rezultate i kliničke tvrdnje. |
 | P1        | Team Fit mock provider fixture v0.1 | Završeno i usklađeno sa aktuelnim structured-evidence contractom | Relacijski report / Candidate-team fit | Legacy mock-generation assertion je usklađen sa unified provider seamom; canonical candidate slugovi i Team Dynamics snapshot provenance su eksplicitno provjereni, uz očuvane contract/safety assertions. |
 | P1        | Team Fit provider request capture inspector v0.1 | Dev-only no-call/no-write inspector za budući `team_fit_report_v1` provider path dokumentovan u `scripts/inspect-team-fit-provider-request.cjs`, uz offline test `scripts/test-inspect-team-fit-provider-request.cjs`; inspector gradi deterministic request capture artefakt iz fixture input bundle-a i postojećih Team Fit helper slojeva | Relacijski report / Candidate-team fit | Inspector gradi complete capture artefakt sa input bundle-om, evidence id mapom, provider prompt inputom, messages, request draftom, response formatom/JSON schema-om, schema name-om i future-provider-like request bodyjem; jasno potvrđuje no-call/no-write stanje, defaultno ispisuje JSON na stdout i podržava optional `/tmp` dump sa `0600` permission. Sljedeći zdravi Team Fit kandidati ostaju zasebne odluke: golden examples/reviewer harness, read-only DB source audit za budući real input builder, mock provider display/read-model compatibility fixture ili eventualno confirmed OpenAI dry-run tek kasnije i samo nakon dodatne odluke. |
-| P1        | Team Fit read-only DB source audit / source-lineage reconciliation | Završeno / operator-only read-only audit | Relacijski report / Candidate-team fit | Zatvoreno nakon dodavanja read-only source audit inspectora i offline guardrail testa; operator audit je potvrdio da su postojeći ready Team Fit artefakti legacy persisted reportovi sa stale source pointerima, a sljedeći korak je novi čist fixture par prije real provider dry-run-a. |
-| P1        | Team Fit clean fixture pair planning slice | Završeno / docs-only clean fixture pair plan; current DB nema clean read-only fixture pair | Relacijski report / Candidate-team fit | Prije real provider dry-run-a pripremiti validan candidate assessment assignment u istoj organizaciji kao validni Team Dynamics aggregation snapshot i potvrditi par kroz read-only inspector. |
-| P1        | Team Fit clean candidate fixture-prep operator script | Završeno za dev-only fixture-prep operator script; confirmed write nije pokrenut | Relacijski report / Candidate-team fit | Ako operator eksplicitno odobri, pokrenuti confirmed clean candidate fixture write za target participant/org/team aggregation, zatim potvrditi par kroz read-only DB source inspector. Ne otvarati Team Fit provider dry-run prije inspector PASS-a. |
+| P1        | Team Fit read-only DB source audit / source-lineage reconciliation | Završeno / operator-only read-only audit; V2 canonical preview potvrđen | Relacijski report / Candidate-team fit | Legacy persisted Team Fit artefakti sa stale source pointerima ostaju diagnostic-only; canonical GD-001 × GDT-01 source lineage sada je potvrđen kroz V2 preview inspector. |
+| P1        | Team Fit clean fixture pair planning slice | Završeno / historical plan superseded canonicalnim GD-001 × GDT-01 previewom | Relacijski report / Candidate-team fit | Ne otvarati novi fixture-prep slice automatski; sljedeći korak je zaseban V2 runtime planning slice. |
+| P1        | Team Fit clean candidate fixture-prep operator script | Završeno za prethodni dev-only operator plan; superseded canonicalnim preview source parom | Relacijski report / Candidate-team fit | Ne pokretati confirmed write po defaultu; canonical preview nije mijenjao DB, a runtime planning zahtijeva zasebnu product/engineering odluku. |
 
 ### Completion note — Team Fit structured-evidence workstream
 
@@ -174,6 +191,15 @@ Paket uključuje deterministički candidate/team evidence katalog sa key formati
 - Trajna regression matrica pokriva exact duplicate collapse, candidate/team evidence integrity, canonical presentation pair slučajeve, arbitrary-code collision i order independence, input/configuration failure prije transporta, strict schema request, envelope overwrite, AI-content preservation i no-call/no-write granice.
 - Validation summary: `node scripts/test-team-fit-report-v2-openai-provider.cjs`, `node scripts/test-team-fit-report-v2-contract.cjs`, `npm run test:team-fit-report-contract`, `node scripts/test-team-fit-report-provider-schema.cjs`, `node scripts/test-team-fit-openai-provider.cjs`, `npm run test:team-fit-report-provider-seam`, `npm run typecheck` i `git diff --check` prolaze.
 - Paket je offline/no-call/no-write foundation: nema DB poziva ili upisa, nema stvarnog OpenAI poziva, nema V2 runtime registracije, persistence/lifecycle, route/action, renderer/display ili report generation/regeneration wiringa, a aktivna V1 Team Fit runtime putanja ostaje nepromijenjena.
+
+### Completion note — Team Fit V2 canonical preview and content acceptance
+
+- Commit `99bebef` dodaje diagnostic inspector `scripts/inspect-team-fit-report-v2-canonical-preview.cjs` i offline regression test `scripts/test-inspect-team-fit-report-v2-canonical-preview.cjs`.
+- Canonical par je GD-001 × GDT-01: candidate coverage je exact `3/3`, Team Dynamics coverage exact `6/6/6`, a organization, participant, assignment, team i aggregation lineage su potvrđeni read-only i ambiguity fail-closed.
+- Default no-call preflight je prošao; confirmed preview je napravio tačno jedan poziv sa `gpt-5.6-sol`, `reasoning_effort: high`, bez `temperature`. Strict `team_fit_report_v2` request, contract validation i evidence-reference validation su PASS.
+- Preview je DB read-only/no-persistence: DB reads `true`, DB writes `false`, postojeći reporti nisu izmijenjeni. Inspector i regression matrica pokrivaju source resolution, single-call gate, transport guard, exact coverage, secret-safe `0600` `/tmp` dump i runtime isolation.
+- Canonical content verdict je `TEAM_FIT_V2_CONTENT_READY_FOR_RUNTIME_PLANNING`: report je relacijski, evidence-linked, GDT-01 specifičan i bez numeric fit scorea, rankinga, pass/fail ili hire/no-hire odluke. Riječ `input` u dvije interpretation-limit rečenice i gušća obrada centralnih tema ostaju non-blocking polish napomene.
+- Ovaj preview ne znači da je V2 runtime otvoren: nema V2 registracije, processor/lifecycle/persistence, route/action, DB schema/migration, renderer/display, produkcijske report generacije, V1 runtime zamjene niti scheduler/worker promjena.
 
 ### Completion note — Team Fit report acceptance spec krug
 
@@ -1371,6 +1397,7 @@ Paket uključuje deterministički candidate/team evidence katalog sa key formati
   - `npm run typecheck`
 
 **Completion note — Team Fit read-only DB source audit**
+- Historijski source-audit nalazi i zaključak da je realni provider dry-run bio blokiran ostaju tačni za tadašnje stanje; superseded su canonicalnim GD-001 × GDT-01 V2 previewom iz commita `99bebef`.
 - Repo je već imao Team Fit upstream source docs/smoke coverage, ali ne operator-only read-only audit artefakt.
 - Dodan je `scripts/inspect-team-fit-db-sources.cjs`.
 - Dodan je `scripts/test-inspect-team-fit-db-sources.cjs`.
@@ -1412,6 +1439,7 @@ Paket uključuje deterministički candidate/team evidence katalog sa key formati
 
 ### Completion note — Team Fit clean fixture pair plan
 
+- Ovaj plan je historical/superseded status: canonical GD-001 × GDT-01 pair je kasnije potvrđen kroz V2 preview inspector u `99bebef`; naredne stavke opisuju raniji DB nalaz i ne predstavljaju trenutni blocker.
 - Dodan je `docs/team-fit-clean-fixture-pair-plan.md`.
 - Slice je docs-only/read-only planning artefakt.
 - Plan dokumentuje acceptance criteria za validan Team Fit clean fixture pair.
@@ -1434,6 +1462,7 @@ Paket uključuje deterministički candidate/team evidence katalog sa key formati
 
 ### Completion note — Team Fit clean candidate fixture-prep operator script
 
+- Ovaj operator-plan je historical/superseded status: canonical V2 preview je izveden read-only nad potvrđenim GD-001 × GDT-01 parom, bez confirmed fixture writea.
 - Dodan je `scripts/prepare-team-fit-clean-candidate-fixture.cjs`.
 - Dodan je `scripts/test-prepare-team-fit-clean-candidate-fixture.cjs`.
 - Script je dev-only operator alat za pripremu candidate-side clean fixture source-a za budući Team Fit clean pair.
@@ -5826,7 +5855,7 @@ Read-only Team Dynamics question loader za `/run` handoff: sigurno pripremiti or
 
 ### P1 — Timski fit kandidata
 
-**Status:** Planirano / Epic zabilježen  
+**Status:** V2 contract/schema, isolated provider foundation i canonical content preview završeni; runtime planning nije otvoren
 **Kategorija:** Relacijski report / Candidate-team fit / Team module
 
 **Kratki opis:**  
@@ -5869,9 +5898,9 @@ Team Fit mora dati jasan kvalitativni candidate-vs-team zaključak kada ga evide
 7. Ograničenja interpretacije
 
 **Preporučeni redoslijed:**
-- Ne implementirati ovaj epic prije osnovnog Team Dynamics flow-a.
-- Prvo završiti Team Dynamics execution, scoring/agregaciju i `Timska dinamika` report.
-- Nakon toga otvoriti zaseban spec task za `Timski fit kandidata product/report contract spec`.
+- V2 contract/schema, isolated provider foundation i canonical GD-001 × GDT-01 content preview su završeni; ne tretirati ih kao aktivnu runtime registraciju.
+- Otvoriti zaseban Team Fit V2 runtime planning slice koji mapira minimalni processor/lifecycle/persistence/display plan, compatibility granice i rollout gateove.
+- Planning ne daje automatsko odobrenje za implementaciju, DB promjene, persistence, renderer/display wiring ili zamjenu aktivnog V1 runtimea.
 
 ---
 
