@@ -90,6 +90,27 @@ Komande:
 
 UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivni UI standard za buduće Deep Profile UI zadatke, a prvi referentni ekran je `/dashboard/participants/[participantId]/reports`.
 
+### Current status — Team Fit V2 foundation (2026-07-26)
+
+**Team Fit V2 contract/schema foundation — završeno i pushano.** Commits `6446ac3` (`feat: add Team Fit v2 contract foundation`) i `e9bc45a` (`fix: keep baseline onboarding outside Team Fit v2`) zaključavaju i validiraju:
+
+- `lib/b2b/team-fit-report-v2-contract.ts`
+- `lib/b2b/team-fit-report-v2-schema.ts`
+- `scripts/test-team-fit-report-v2-contract.cjs`
+
+Team Fit V2 ostaje candidate-vs-team report bez numeric fit scorea, rankinga ili hire/no-hire odluke. Ne sadrži baseline individualni onboarding: osnovni individualni onboarding je canonicalno vlasništvo IDP-a, dok Team Fit sadrži samo integraciju i prilagodbu za konkretni tim.
+
+**Izolovani Team Fit V2 provider foundation — završeno i pushano.** Commit `ac948e9` (`Add isolated Team Fit V2 provider foundation`) uključuje:
+
+- `lib/b2b/team-fit-report-v2-evidence.ts`
+- `lib/b2b/team-fit-report-v2-prompt.ts`
+- `lib/b2b/team-fit-report-v2-openai-provider.ts`
+- `scripts/test-team-fit-report-v2-openai-provider.cjs`
+
+Paket uključuje deterministički candidate/team evidence katalog sa key formatima `candidate:<sourceTestSlug>:<dimensionCode>` i `team:<signalCode>`, fail-closed collision ponašanje prije transporta, exact-duplicate canonical collapse i presentation-only Team Dynamics source priority ograničen isključivo na canonical `tdm_domain_*` codeove. Neidentični `arbitrary_code` parovi padaju kao collision, dok identični ostaju dozvoljeni kroz exact-duplicate pravilo. Prompt razdvaja `application_instructions` i `untrusted_report_data`, traži bosanski jezik, latinicu i ijekavicu, a provider koristi strict canonical Team Fit V2 JSON schema request, autoritativni identity/provenance envelope, neizmijenjen AI-authored sadržaj i structural/evidence-reference validaciju. Configuration/input failure nastaje prije transporta; `gpt-5.6-sol` koristi `reasoning_effort: high` bez `temperature`. Offline testovi ne koriste DB, OpenAI ili stvarni mrežni transport.
+
+**Isolation boundary — runtime nije aktiviran.** Ovaj završeni paket još nema V2 runtime registraciju, processor ili route/action wiring, lifecycle/persistence wiring, DB promjene, renderer/display wiring, report generation/regeneration niti stvarni OpenAI poziv. V1 runtime putanja nije mijenjana; aktivni Team Fit runtime i dalje ne koristi novi V2 provider.
+
 ## Kompaktni prioritetni pregled taskova
 
 | Prioritet | Task                                                 | Status      | Kategorija                   | Sljedeći korak                                                                                 |
@@ -144,7 +165,15 @@ UI taskovi moraju prvo pročitati `docs/deep-profile-ui-system.md`; to je aktivn
 | P1        | Cross-report validator boundary and report ownership audit | Završeno za SAFRAN/MWMS/IPIP current boundary krug; single-test HR lanes closed na data-only production validation; Composite HR observability audit, request capture inspector, boundary diagnostic, data-only shadow comparator, DB-backed auto-discovery smoke i production provider data-only switch su završeni; post-switch real persisted smoke PASS nad `98e89663-5692-45a6-9ca7-1bc60da51a63`; Composite prose/BHS/reviewer/style nalazi su diagnostic-only, dok deterministic source/reference/evidence/contract integrity ostaje production hard-blocking; mutation/rewrite cleanup i renderer/display sanitization ostaju budući zasebni slice-ovi | Report architecture / Validator boundary audit | MWMS HR, SAFRAN HR, IPIP HR i Composite HR current production doctrine je data-only/contract/source/evidence blocking; prose/BHS/style/reviewer/genericity/actionability quality je diagnostic-only ili budući small-AI reviewer lane. Ne uvoditi app-level prose quality blocker po defaultu. Ne vraćati canonicalization/mutation/rewrite kao production default bez zasebne odluke. |
 | P1        | Admin AI prompt/request payload observability | Završeno za dev-only single-test HR request dump foundation za IPIP/SAFRAN/MWMS HR | AI governance / Report quality / Admin tooling | Admin UI/route nije sljedeći default. Composite HR observability ostaje zaseban future adapter jer ne koristi shared request builder. Eventualni admin route zahtijeva posebnu odluku o org-scope autorizaciji i allowed roles. |
 | P1        | Supabase migration history drift — Team Fit remote alias 20260530183640 | Read-only audit završen i dokumentovan u `docs/supabase-team-fit-migration-drift-audit.md`; remote history ima oba markera `20260530110000` i `20260530183640`, oba nose isto ime `20260530110000_add_team_fit_reports`, a read-only SQL je pokazao da `team_fit_reports` runtime schema izgleda usklađeno sa lokalnom migracijom; drift je migration-history alias/duplikat, ne dokaz runtime schema problema. | Infrastructure / Supabase / Migration history | Ne raditi `supabase migration repair`, `db push`, `db reset`, `migration up/down` ili bilo kakav DB write po defaultu; sljedeći mogući korak je zaseban operator-approved repair/mirror decision task; prije repair-a treba odabrati strategiju: lokalni no-op/alias mirror fajl pod remote timestampom, Supabase migration history repair, ili ostaviti stanje ako ne blokira workflow; bilo koji repair zahtijeva backup/parity guardrail i eksplicitno odobrenje. |
-| P1        | Timski fit kandidata product/report contract spec | Repo-backed canonical contract acceptance spec v0.1 dokumentovan je u `docs/team-fit-report-contract-acceptance-spec.md`; uski `team_fit_report_v1` contract shape slice je završen u `lib/b2b/team-fit-report-contract.ts`, uz data-only validator `validateTeamFitReportV1ContractSnapshot` i offline test `scripts/test-team-fit-report-contract.cjs`. Team Fit report mora ostati candidate-vs-team, konkretan, evidence-linked i HR-operativan, bez generičkih rečenica, numeric fit score-a, hire/no-hire, pass/fail, rangiranja kandidata ili imenovanja pojedinačnih članova tima u glavnom reportu. | Relacijski report / Candidate-team fit | Budući Team Fit rad ne treba automatski otvarati provider/runtime; sljedeći zdravi slice zahtijeva zasebnu odluku i može biti provider prompt/input planning, JSON schema adapter, golden examples/reviewer harness, display/read-model mapping, mock fixture ili drugi eksplicitno odobren Team Fit implementation slice. Anti-genericity je prompt/provider creation standard; future reviewer, ako ga bude, ostaje zaseban diagnostic kriterij. |
+| P1        | Timski fit kandidata product/report contract spec | Završeno za V2 contract/schema + isolated provider foundation. Repo-backed V1 acceptance spec i V2 contract/schema sloj ostaju candidate-vs-team, konkretni, evidence-linked i HR-operativni, bez generičkih rečenica, numeric fit score-a, hire/no-hire, pass/fail, rangiranja kandidata ili imenovanja pojedinačnih članova tima u glavnom reportu. | Relacijski report / Candidate-team fit | Novi Team Fit V2 runtime/persistence/display slice ne otvarati automatski. Sljedeći uski task bira se zasebnom product/engineering odlukom. |
+
+### Completion note — Team Fit V2 contract/schema and isolated provider foundation
+
+- Commits `6446ac3`, `e9bc45a` i `ac948e9` zatvaraju V2 contract/schema foundation i izolovani provider foundation bez otvaranja runtime-a.
+- Implementirani slojevi su canonical V2 contract/schema, deterministic candidate/team evidence katalog, prompt instruction/data boundary i strict provider request/response validacija sa authoritative envelopeom. Evidence collision korekcija ograničava presentation-only Team Dynamics priority na `tdm_domain_*`; neidentični `arbitrary_code` parovi fail-closed padaju kao collision.
+- Trajna regression matrica pokriva exact duplicate collapse, candidate/team evidence integrity, canonical presentation pair slučajeve, arbitrary-code collision i order independence, input/configuration failure prije transporta, strict schema request, envelope overwrite, AI-content preservation i no-call/no-write granice.
+- Validation summary: `node scripts/test-team-fit-report-v2-openai-provider.cjs`, `node scripts/test-team-fit-report-v2-contract.cjs`, `npm run test:team-fit-report-contract`, `node scripts/test-team-fit-report-provider-schema.cjs`, `node scripts/test-team-fit-openai-provider.cjs`, `npm run test:team-fit-report-provider-seam`, `npm run typecheck` i `git diff --check` prolaze.
+- Paket je offline/no-call/no-write foundation: nema DB poziva ili upisa, nema stvarnog OpenAI poziva, nema V2 runtime registracije, persistence/lifecycle, route/action, renderer/display ili report generation/regeneration wiringa, a aktivna V1 Team Fit runtime putanja ostaje nepromijenjena.
 
 ### Completion note — Team Fit report acceptance spec krug
 
