@@ -10,14 +10,17 @@ import {
 } from "@/lib/assessment/team-dynamics-final-aggregation-read";
 import {
   TEAM_FIT_CANDIDATE_SOURCE_TYPE,
-  TEAM_FIT_REPORT_TYPE,
-  TEAM_FIT_REPORT_VERSION,
   TEAM_FIT_TEAM_SOURCE_TYPE,
   type TeamFitReportStatus,
 } from "@/lib/b2b/team-fit-report-lifecycle";
+import {
+  TEAM_FIT_REPORT_V1_IDENTITY,
+  resolveTeamFitReportIdentity,
+  type TeamFitReportIdentity,
+} from "@/lib/b2b/team-fit-report-identity";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-type TeamFitReportInputDependencies = {
+export type TeamFitReportInputDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
   buildCompositeInputSnapshot?: typeof buildCompositeHrInputSnapshot;
   loadTeamAggregationVerification?: typeof loadTeamDynamicsFinalAggregationVerification;
@@ -126,11 +129,9 @@ type TeamFitSourceMetadata = {
   sourceTestSlugs?: string[];
 };
 
-export type TeamFitReportInputSnapshot = {
+type TeamFitReportInputSnapshotBase = {
   inputType: typeof TEAM_FIT_REPORT_INPUT_TYPE;
   inputVersion: TeamFitReportInputVersion;
-  reportType: typeof TEAM_FIT_REPORT_TYPE;
-  reportVersion: typeof TEAM_FIT_REPORT_VERSION;
   locale: string;
   generatedAt: string;
   organizationContext: {
@@ -218,6 +219,9 @@ export type TeamFitReportInputSnapshot = {
   };
 };
 
+export type TeamFitReportInputSnapshot = TeamFitReportInputSnapshotBase &
+  TeamFitReportIdentity;
+
 export type BuildTeamFitReportInputSnapshotResult =
   | {
       ok: true;
@@ -249,6 +253,7 @@ export type BuildTeamFitReportInputSnapshotFromSourcesInput = {
   teamAggregationSourceId: string;
   locale: string;
   generatedAt: string;
+  reportIdentity?: TeamFitReportIdentity;
 };
 
 export type BuildTeamFitReportInputSnapshotFromSourcesResult =
@@ -372,12 +377,15 @@ function isTeamFitReportInputSnapshot(value: unknown): value is TeamFitReportInp
 
   const isLegacyVersion = value.inputVersion === TEAM_FIT_REPORT_INPUT_LEGACY_VERSION;
   const isCurrentVersion = value.inputVersion === TEAM_FIT_REPORT_INPUT_VERSION;
+  const identity = resolveTeamFitReportIdentity(
+    value.reportType,
+    value.reportVersion,
+  );
 
   return (
     value.inputType === TEAM_FIT_REPORT_INPUT_TYPE &&
     (isLegacyVersion || isCurrentVersion) &&
-    value.reportType === TEAM_FIT_REPORT_TYPE &&
-    value.reportVersion === TEAM_FIT_REPORT_VERSION &&
+    identity !== null &&
     isNonEmptyString(value.locale) &&
     isNonEmptyString(value.generatedAt) &&
     isRecord(value.organizationContext) &&
@@ -1069,12 +1077,12 @@ function buildTeamFitReportInputSnapshotFromValidatedSources(input: {
   teamSignals: TeamFitReportInputSnapshot["teamSignals"];
   locale: string;
   generatedAt: string;
+  reportIdentity: TeamFitReportIdentity;
 }): TeamFitReportInputSnapshot {
   return {
     inputType: TEAM_FIT_REPORT_INPUT_TYPE,
     inputVersion: TEAM_FIT_REPORT_INPUT_VERSION,
-    reportType: TEAM_FIT_REPORT_TYPE,
-    reportVersion: TEAM_FIT_REPORT_VERSION,
+    ...input.reportIdentity,
     locale: input.locale,
     generatedAt: input.generatedAt,
     organizationContext: {
@@ -1141,13 +1149,15 @@ export async function buildTeamFitReportInputSnapshot(
     return buildFailure("report_not_found", "Team Fit report row was not found.");
   }
 
-  if (
-    reportRow.report_type !== TEAM_FIT_REPORT_TYPE ||
-    reportRow.report_version !== TEAM_FIT_REPORT_VERSION
-  ) {
+  const reportIdentity = resolveTeamFitReportIdentity(
+    reportRow.report_type,
+    reportRow.report_version,
+  );
+
+  if (!reportIdentity) {
     return buildFailure(
       "report_contract_mismatch",
-      "Team Fit report row does not match the expected report type/version contract.",
+      `Team Fit report row has an invalid report identity: ${String(reportRow.report_type)}/${String(reportRow.report_version)}.`,
     );
   }
 
@@ -1166,7 +1176,11 @@ export async function buildTeamFitReportInputSnapshot(
   }
 
   if (reportRow.input_snapshot !== null) {
-    if (isTeamFitReportInputSnapshot(reportRow.input_snapshot)) {
+    if (
+      isTeamFitReportInputSnapshot(reportRow.input_snapshot) &&
+      reportRow.input_snapshot.reportType === reportIdentity.reportType &&
+      reportRow.input_snapshot.reportVersion === reportIdentity.reportVersion
+    ) {
       return {
         ok: true,
         reportId: reportRow.id,
@@ -1176,7 +1190,7 @@ export async function buildTeamFitReportInputSnapshot(
 
     return buildFailure(
       "invalid_existing_input_snapshot",
-      "Team Fit report row contains an invalid persisted input snapshot.",
+      "Team Fit report row contains an invalid or identity-mismatched persisted input snapshot.",
     );
   }
 
@@ -1245,6 +1259,7 @@ export async function buildTeamFitReportInputSnapshot(
     teamSignals,
     locale,
     generatedAt: reportRow.created_at,
+    reportIdentity,
   });
 
   return {
@@ -1297,6 +1312,19 @@ export async function buildTeamFitReportInputSnapshotFromSources(
   input: BuildTeamFitReportInputSnapshotFromSourcesInput,
   deps: TeamFitReportInputDependencies = {},
 ): Promise<BuildTeamFitReportInputSnapshotFromSourcesResult> {
+  const requestedIdentity = input.reportIdentity ?? TEAM_FIT_REPORT_V1_IDENTITY;
+  const reportIdentity = resolveTeamFitReportIdentity(
+    requestedIdentity.reportType,
+    requestedIdentity.reportVersion,
+  );
+
+  if (!reportIdentity) {
+    return buildSourceDirectFailure(
+      "invalid_payload",
+      "Source-direct Team Fit input requires a legal report identity.",
+    );
+  }
+
   const requiredFields: Array<keyof BuildTeamFitReportInputSnapshotFromSourcesInput> = [
     "ephemeralReportReferenceId",
     "organizationId",
@@ -1577,6 +1605,7 @@ export async function buildTeamFitReportInputSnapshotFromSources(
       teamSignals,
       locale: input.locale,
       generatedAt: input.generatedAt,
+      reportIdentity,
     }),
     candidateSourceStatus: "available",
     candidateCoverage: {
@@ -1617,8 +1646,56 @@ export async function persistTeamFitReportInputSnapshot(
     };
   }
 
-  if (isTeamFitReportInputSnapshot(reportRow.input_snapshot)) {
-    return buildResult;
+  const reportIdentity = resolveTeamFitReportIdentity(
+    reportRow.report_type,
+    reportRow.report_version,
+  );
+
+  if (!reportIdentity) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: "Team Fit input snapshot was not persisted because the report identity is invalid.",
+    };
+  }
+
+  if (
+    buildResult.inputSnapshot.reportType !== reportIdentity.reportType ||
+    buildResult.inputSnapshot.reportVersion !== reportIdentity.reportVersion
+  ) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: "Team Fit input snapshot identity no longer matches the report row.",
+    };
+  }
+
+  if (reportRow.input_snapshot !== null) {
+    if (
+      isTeamFitReportInputSnapshot(reportRow.input_snapshot) &&
+      reportRow.input_snapshot.reportType === reportIdentity.reportType &&
+      reportRow.input_snapshot.reportVersion === reportIdentity.reportVersion
+    ) {
+      return {
+        ok: true,
+        reportId: reportRow.id,
+        inputSnapshot: reportRow.input_snapshot,
+      };
+    }
+
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: "Team Fit input snapshot was not persisted because an invalid or identity-mismatched snapshot now exists.",
+    };
+  }
+
+  if (reportRow.report_status !== "queued" && reportRow.report_status !== "processing") {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: "Team Fit input snapshot was not persisted because the report status changed.",
+    };
   }
 
   const { data, error } = await supabase
@@ -1628,6 +1705,9 @@ export async function persistTeamFitReportInputSnapshot(
     })
     .eq("id", input.teamFitReportId)
     .eq("organization_id", input.organizationId)
+    .eq("report_type", reportIdentity.reportType)
+    .eq("report_version", reportIdentity.reportVersion)
+    .eq("report_status", reportRow.report_status)
     .select("id")
     .maybeSingle();
 

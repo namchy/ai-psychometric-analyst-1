@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { TeamFitReportV1 } from "@/lib/b2b/team-fit-report-contract";
 import {
   TEAM_FIT_REPORT_V1_IDENTITY,
   TEAM_FIT_REPORT_V1_TYPE,
@@ -8,6 +9,7 @@ import {
   resolveTeamFitReportIdentity,
   type TeamFitReportIdentity,
 } from "@/lib/b2b/team-fit-report-identity";
+import type { TeamFitReportV2 } from "@/lib/b2b/team-fit-report-v2-contract";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const TEAM_FIT_REPORT_TYPE = TEAM_FIT_REPORT_V1_TYPE;
@@ -108,6 +110,12 @@ export type ResetFailedTeamFitReportToQueuedInput = {
   organizationId: string;
 };
 
+type MarkTeamFitReportReadyInput<TSnapshot> = {
+  teamFitReportId: string;
+  organizationId: string;
+  reportSnapshot: TSnapshot;
+};
+
 type TeamFitReportLifecycleDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
   now?: () => string;
@@ -170,6 +178,21 @@ export type ResetFailedTeamFitReportToQueuedResult =
         | "processing_not_resettable"
         | "ready_not_resettable"
         | "not_resettable"
+        | "update_failed";
+      message: string;
+      report?: TeamFitReportRowSummary;
+    };
+
+export type MarkTeamFitReportReadyResult =
+  | { ok: true; reportId: string; status: "ready"; report: TeamFitReportRowSummary }
+  | {
+      ok: false;
+      reason:
+        | "invalid_payload"
+        | "invalid_report_snapshot"
+        | "report_not_found"
+        | "wrong_report_identity"
+        | "not_processing"
         | "update_failed";
       message: string;
       report?: TeamFitReportRowSummary;
@@ -458,8 +481,9 @@ export async function queueTeamFitReportV2Shell(
   );
 }
 
-export async function claimTeamFitReportForProcessing(
+async function claimTeamFitReportForExpectedIdentity(
   input: ClaimTeamFitReportForProcessingInput,
+  expectedIdentity: TeamFitReportIdentity | null,
   deps: TeamFitReportLifecycleDependencies = {},
 ): Promise<ClaimTeamFitReportForProcessingResult> {
   if (!isNonEmptyString(input.teamFitReportId)) {
@@ -493,6 +517,22 @@ export async function claimTeamFitReportForProcessing(
   }
 
   const report = mapped.report;
+
+  if (
+    expectedIdentity &&
+    (report.reportType !== expectedIdentity.reportType ||
+      report.reportVersion !== expectedIdentity.reportVersion)
+  ) {
+    return {
+      ok: false,
+      reason: "not_claimable",
+      message:
+        `Team Fit processor identity mismatch: expected ` +
+        `${expectedIdentity.reportType}/${expectedIdentity.reportVersion}, received ` +
+        `${report.reportType}/${report.reportVersion}.`,
+      report,
+    };
+  }
 
   if (reportRow.report_status === "processing") {
     return { ok: false, reason: "already_processing", message: "Team Fit report is already processing.", report };
@@ -575,8 +615,188 @@ export async function claimTeamFitReportForProcessing(
   };
 }
 
-export async function markTeamFitReportProcessingFailed(
+export async function claimTeamFitReportForProcessing(
+  input: ClaimTeamFitReportForProcessingInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<ClaimTeamFitReportForProcessingResult> {
+  return claimTeamFitReportForExpectedIdentity(input, null, deps);
+}
+
+export async function claimTeamFitReportV1ForProcessing(
+  input: ClaimTeamFitReportForProcessingInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<ClaimTeamFitReportForProcessingResult> {
+  return claimTeamFitReportForExpectedIdentity(
+    input,
+    TEAM_FIT_REPORT_V1_IDENTITY,
+    deps,
+  );
+}
+
+export async function claimTeamFitReportV2ForProcessing(
+  input: ClaimTeamFitReportForProcessingInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<ClaimTeamFitReportForProcessingResult> {
+  return claimTeamFitReportForExpectedIdentity(
+    input,
+    TEAM_FIT_REPORT_V2_IDENTITY,
+    deps,
+  );
+}
+
+async function markTeamFitReportReadyForIdentity<TSnapshot extends {
+  reportType: string;
+  reportVersion: string;
+}>(
+  input: MarkTeamFitReportReadyInput<TSnapshot>,
+  expectedIdentity: TeamFitReportIdentity,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<MarkTeamFitReportReadyResult> {
+  if (!isNonEmptyString(input.teamFitReportId)) {
+    return { ok: false, reason: "invalid_payload", message: "teamFitReportId is required." };
+  }
+
+  if (!isNonEmptyString(input.organizationId)) {
+    return { ok: false, reason: "invalid_payload", message: "organizationId is required." };
+  }
+
+  if (
+    input.reportSnapshot.reportType !== expectedIdentity.reportType ||
+    input.reportSnapshot.reportVersion !== expectedIdentity.reportVersion
+  ) {
+    return {
+      ok: false,
+      reason: "invalid_report_snapshot",
+      message:
+        `Team Fit ready snapshot identity mismatch: expected ` +
+        `${expectedIdentity.reportType}/${expectedIdentity.reportVersion}, received ` +
+        `${String(input.reportSnapshot.reportType)}/${String(input.reportSnapshot.reportVersion)}.`,
+    };
+  }
+
+  const supabase = deps.supabase ?? createSupabaseAdminClient();
+  const now = deps.now ?? (() => new Date().toISOString());
+  const reportRow = await loadTeamFitReportRowForOrganization({ ...input, supabase });
+
+  if (!reportRow) {
+    return {
+      ok: false,
+      reason: "report_not_found",
+      message: "Team Fit report row was not found for this organization.",
+    };
+  }
+
+  const mapped = mapRow(reportRow);
+
+  if (!mapped.ok) {
+    return { ok: false, reason: "wrong_report_identity", message: mapped.message };
+  }
+
+  const report = mapped.report;
+
+  if (
+    report.reportType !== expectedIdentity.reportType ||
+    report.reportVersion !== expectedIdentity.reportVersion
+  ) {
+    return {
+      ok: false,
+      reason: "wrong_report_identity",
+      message:
+        `Team Fit ready identity mismatch: expected ` +
+        `${expectedIdentity.reportType}/${expectedIdentity.reportVersion}, received ` +
+        `${report.reportType}/${report.reportVersion}.`,
+      report,
+    };
+  }
+
+  if (report.reportStatus !== "processing") {
+    return {
+      ok: false,
+      reason: "not_processing",
+      message: "Only processing Team Fit reports can be marked ready.",
+      report,
+    };
+  }
+
+  const completedAt = now();
+  const { data, error } = await supabase
+    .from("team_fit_reports")
+    .update({
+      report_status: "ready",
+      report_snapshot: input.reportSnapshot,
+      completed_at: completedAt,
+      error_message: null,
+    })
+    .eq("id", input.teamFitReportId)
+    .eq("organization_id", input.organizationId)
+    .eq("report_status", "processing")
+    .eq("report_type", expectedIdentity.reportType)
+    .eq("report_version", expectedIdentity.reportVersion)
+    .select(TEAM_FIT_REPORT_ROW_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: `Failed to mark Team Fit report as ready: ${error.message}`,
+      report,
+    };
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: "Team Fit report could not be marked ready because its status or identity changed.",
+      report,
+    };
+  }
+
+  const readyResult = mapRow(data as TeamFitReportRow);
+
+  if (!readyResult.ok) {
+    return {
+      ok: false,
+      reason: "update_failed",
+      message: readyResult.message,
+      report,
+    };
+  }
+
+  return {
+    ok: true,
+    reportId: readyResult.report.id,
+    status: "ready",
+    report: readyResult.report,
+  };
+}
+
+export async function markTeamFitReportV1Ready(
+  input: MarkTeamFitReportReadyInput<TeamFitReportV1>,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<MarkTeamFitReportReadyResult> {
+  return markTeamFitReportReadyForIdentity(
+    input,
+    TEAM_FIT_REPORT_V1_IDENTITY,
+    deps,
+  );
+}
+
+export async function markTeamFitReportV2Ready(
+  input: MarkTeamFitReportReadyInput<TeamFitReportV2>,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<MarkTeamFitReportReadyResult> {
+  return markTeamFitReportReadyForIdentity(
+    input,
+    TEAM_FIT_REPORT_V2_IDENTITY,
+    deps,
+  );
+}
+
+async function markTeamFitReportProcessingFailedForExpectedIdentity(
   input: MarkTeamFitReportProcessingFailedInput,
+  expectedIdentity: TeamFitReportIdentity | null,
   deps: TeamFitReportLifecycleDependencies = {},
 ): Promise<MarkTeamFitReportProcessingFailedResult> {
   if (!isNonEmptyString(input.teamFitReportId)) {
@@ -618,6 +838,22 @@ export async function markTeamFitReportProcessingFailed(
   }
 
   const report = mapped.report;
+
+  if (
+    expectedIdentity &&
+    (report.reportType !== expectedIdentity.reportType ||
+      report.reportVersion !== expectedIdentity.reportVersion)
+  ) {
+    return {
+      ok: false,
+      reason: "not_processing",
+      message:
+        `Team Fit failure identity mismatch: expected ` +
+        `${expectedIdentity.reportType}/${expectedIdentity.reportVersion}, received ` +
+        `${report.reportType}/${report.reportVersion}.`,
+      report,
+    };
+  }
 
   if (reportRow.report_status === "ready") {
     return { ok: false, reason: "already_ready", message: "Ready Team Fit reports cannot be failed.", report };
@@ -689,6 +925,35 @@ export async function markTeamFitReportProcessingFailed(
     status: "failed",
     report: failed,
   };
+}
+
+export async function markTeamFitReportProcessingFailed(
+  input: MarkTeamFitReportProcessingFailedInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<MarkTeamFitReportProcessingFailedResult> {
+  return markTeamFitReportProcessingFailedForExpectedIdentity(input, null, deps);
+}
+
+export async function markTeamFitReportV1ProcessingFailed(
+  input: MarkTeamFitReportProcessingFailedInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<MarkTeamFitReportProcessingFailedResult> {
+  return markTeamFitReportProcessingFailedForExpectedIdentity(
+    input,
+    TEAM_FIT_REPORT_V1_IDENTITY,
+    deps,
+  );
+}
+
+export async function markTeamFitReportV2ProcessingFailed(
+  input: MarkTeamFitReportProcessingFailedInput,
+  deps: TeamFitReportLifecycleDependencies = {},
+): Promise<MarkTeamFitReportProcessingFailedResult> {
+  return markTeamFitReportProcessingFailedForExpectedIdentity(
+    input,
+    TEAM_FIT_REPORT_V2_IDENTITY,
+    deps,
+  );
 }
 
 export async function resetFailedTeamFitReportToQueued(

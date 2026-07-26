@@ -15,8 +15,9 @@ import {
   type TeamFitOpenAiProviderOptions,
 } from "@/lib/b2b/team-fit-report-openai-provider";
 import {
-  claimTeamFitReportForProcessing,
-  markTeamFitReportProcessingFailed,
+  claimTeamFitReportV1ForProcessing,
+  markTeamFitReportV1Ready,
+  markTeamFitReportV1ProcessingFailed,
   type ClaimTeamFitReportForProcessingResult,
 } from "@/lib/b2b/team-fit-report-lifecycle";
 import { buildMockTeamFitReportSnapshot } from "@/lib/b2b/team-fit-report-mock";
@@ -37,6 +38,8 @@ type TeamFitReportProcessorDependencies = {
   providerMode?: TeamFitReportProviderMode;
   teamFitOpenAiOptions?: TeamFitOpenAiProviderOptions;
   validateSnapshot?: typeof validateTeamFitReportSnapshot;
+  buildInputSnapshot?: typeof buildTeamFitReportInputSnapshot;
+  persistInputSnapshot?: typeof persistTeamFitReportInputSnapshot;
 };
 
 type TeamFitProviderFailureMarker =
@@ -69,22 +72,8 @@ export type ProcessTeamFitReportWithProviderResult =
 
 export type ProcessTeamFitReportWithMockResult = ProcessTeamFitReportWithProviderResult;
 
-type TeamFitReportRow = {
-  id: string;
-  organization_id: string;
-  report_status: string;
-  input_snapshot: Record<string, unknown> | null;
-  report_snapshot: Record<string, unknown> | null;
-  error_message: string | null;
-  completed_at: string | null;
-};
-
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
-}
-
-function getNow(deps: TeamFitReportProcessorDependencies): string {
-  return deps.now ? deps.now() : new Date().toISOString();
 }
 
 function resolveConfiguredProviderMode(
@@ -156,60 +145,6 @@ function mapTeamFitProviderFailure(input: {
   };
 }
 
-async function loadProcessingReportRow(input: {
-  teamFitReportId: string;
-  organizationId: string;
-  supabase: ReturnType<typeof createSupabaseAdminClient>;
-}): Promise<TeamFitReportRow | null> {
-  const { data, error } = await input.supabase
-    .from("team_fit_reports")
-    .select("id, organization_id, report_status, input_snapshot, report_snapshot, error_message, completed_at")
-    .eq("id", input.teamFitReportId)
-    .eq("organization_id", input.organizationId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load Team Fit processing row: ${error.message}`);
-  }
-
-  return (data as TeamFitReportRow | null) ?? null;
-}
-
-async function markTeamFitReportReady(input: {
-  teamFitReportId: string;
-  organizationId: string;
-  reportSnapshot: TeamFitReportV1;
-}, deps: TeamFitReportProcessorDependencies = {}): Promise<
-  | { ok: true }
-  | { ok: false; reason: string }
-> {
-  const supabase = deps.supabase ?? createSupabaseAdminClient();
-  const completedAt = getNow(deps);
-  const { data, error } = await supabase
-    .from("team_fit_reports")
-    .update({
-      report_status: "ready",
-      report_snapshot: input.reportSnapshot,
-      completed_at: completedAt,
-      error_message: null,
-    })
-    .eq("id", input.teamFitReportId)
-    .eq("organization_id", input.organizationId)
-    .eq("report_status", "processing")
-    .select("id")
-    .maybeSingle();
-
-  if (error) {
-    return { ok: false, reason: `Failed to mark Team Fit report as ready: ${error.message}` };
-  }
-
-  if (!data) {
-    return { ok: false, reason: "Team Fit report could not be marked ready because it is no longer processing." };
-  }
-
-  return { ok: true };
-}
-
 async function failClaimedReport(input: {
   teamFitReportId: string;
   organizationId: string;
@@ -218,7 +153,7 @@ async function failClaimedReport(input: {
   | { ok: true }
   | { ok: false; reason: string }
 > {
-  const failed = await markTeamFitReportProcessingFailed(
+  const failed = await markTeamFitReportV1ProcessingFailed(
     {
       teamFitReportId: input.teamFitReportId,
       organizationId: input.organizationId,
@@ -243,7 +178,9 @@ async function ensureInputSnapshot(input: {
   claim: Extract<ClaimTeamFitReportForProcessingResult, { ok: true }>;
 }, deps: TeamFitReportProcessorDependencies) {
   if (input.claim.report.inputSnapshot) {
-    return buildTeamFitReportInputSnapshot(
+    const buildInputSnapshot =
+      deps.buildInputSnapshot ?? buildTeamFitReportInputSnapshot;
+    return buildInputSnapshot(
       {
         teamFitReportId: input.teamFitReportId,
         organizationId: input.organizationId,
@@ -252,7 +189,9 @@ async function ensureInputSnapshot(input: {
     );
   }
 
-  return persistTeamFitReportInputSnapshot(
+  const persistInputSnapshot =
+    deps.persistInputSnapshot ?? persistTeamFitReportInputSnapshot;
+  return persistInputSnapshot(
     {
       teamFitReportId: input.teamFitReportId,
       organizationId: input.organizationId,
@@ -297,7 +236,9 @@ export async function processTeamFitReportWithProvider(input: {
     return { ok: false, reason: "invalid_payload", message: "organizationId is required." };
   }
 
-  const claimResult = await claimTeamFitReportForProcessing(
+  // V1-safe lifecycle replacements for claimTeamFitReportForProcessing,
+  // markTeamFitReportProcessingFailed, and the report_status: "ready" updater.
+  const claimResult = await claimTeamFitReportV1ForProcessing(
     input,
     {
       supabase: deps.supabase,
@@ -416,7 +357,7 @@ export async function processTeamFitReportWithProvider(input: {
     };
   }
 
-  const ready = await markTeamFitReportReady(
+  const ready = await markTeamFitReportV1Ready(
     {
       teamFitReportId: input.teamFitReportId,
       organizationId: input.organizationId,
@@ -430,7 +371,7 @@ export async function processTeamFitReportWithProvider(input: {
       ok: false,
       reason: "ready_update_failed",
       reportId: input.teamFitReportId,
-      message: ready.reason,
+      message: ready.message,
     };
   }
 

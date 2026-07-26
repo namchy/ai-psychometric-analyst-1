@@ -119,7 +119,11 @@ const {
   TEAM_FIT_REPORT_TYPE,
   TEAM_FIT_REPORT_VERSION,
   TEAM_FIT_TEAM_SOURCE_TYPE,
+  claimTeamFitReportV1ForProcessing,
+  claimTeamFitReportV2ForProcessing,
   claimTeamFitReportForProcessing,
+  markTeamFitReportV1Ready,
+  markTeamFitReportV2Ready,
   markTeamFitReportProcessingFailed,
   queueTeamFitReportShell,
   queueTeamFitReportV2Shell,
@@ -473,6 +477,88 @@ async function main() {
     TEAM_FIT_REPORT_V1_VERSION,
     3,
   );
+
+  for (const [identity, claimExpected, claimWrong, markReady] of [
+    [
+      { reportType: TEAM_FIT_REPORT_V1_TYPE, reportVersion: TEAM_FIT_REPORT_V1_VERSION },
+      claimTeamFitReportV1ForProcessing,
+      claimTeamFitReportV2ForProcessing,
+      markTeamFitReportV1Ready,
+    ],
+    [
+      { reportType: TEAM_FIT_REPORT_V2_TYPE, reportVersion: TEAM_FIT_REPORT_V2_VERSION },
+      claimTeamFitReportV2ForProcessing,
+      claimTeamFitReportV1ForProcessing,
+      markTeamFitReportV2Ready,
+    ],
+  ]) {
+    const identitySupabase = createSupabaseStub(buildBaseState());
+    const sourceRow = identity.reportVersion === "v1"
+      ? queueSupabase.state.team_fit_reports[0]
+      : queueSupabase.state.team_fit_reports[1];
+    identitySupabase.state.team_fit_reports.push({ ...sourceRow, report_status: "queued" });
+    const transitionInput = {
+      teamFitReportId: sourceRow.id,
+      organizationId: sourceRow.organization_id,
+    };
+
+    const beforeWrongClaim = countUpdates(identitySupabase);
+    const wrongClaim = await claimWrong(transitionInput, { supabase: identitySupabase });
+    assert.equal(wrongClaim.ok, false);
+    assert.equal(wrongClaim.reason, "not_claimable");
+    assert.match(wrongClaim.message, new RegExp(identity.reportType));
+    assert.equal(countUpdates(identitySupabase), beforeWrongClaim);
+    assert.equal(identitySupabase.state.team_fit_reports[0].report_status, "queued");
+
+    const expectedClaim = await claimExpected(transitionInput, { supabase: identitySupabase });
+    assert.equal(expectedClaim.ok, true);
+    assert.equal(expectedClaim.report.reportType, identity.reportType);
+    assert.equal(expectedClaim.report.reportVersion, identity.reportVersion);
+
+    const ready = await markReady(
+      {
+        ...transitionInput,
+        reportSnapshot: { ...identity },
+      },
+      { supabase: identitySupabase, now: () => "2026-05-30T11:00:00.000Z" },
+    );
+    assert.equal(ready.ok, true);
+    assert.equal(ready.report.reportType, identity.reportType);
+    assert.equal(ready.report.reportVersion, identity.reportVersion);
+    assert.equal(ready.report.reportStatus, "ready");
+    assert.deepEqual(ready.report.reportSnapshot, identity);
+    assertIdentityCasFilters(identitySupabase, identity.reportType, identity.reportVersion, 2);
+
+    const beforeReadyOverwrite = countUpdates(identitySupabase);
+    const readyAgain = await markReady(
+      { ...transitionInput, reportSnapshot: { ...identity } },
+      { supabase: identitySupabase },
+    );
+    assert.equal(readyAgain.ok, false);
+    assert.equal(readyAgain.reason, "not_processing");
+    assert.equal(countUpdates(identitySupabase), beforeReadyOverwrite);
+  }
+
+  const wrongReadySupabase = createSupabaseStub(buildBaseState());
+  wrongReadySupabase.state.team_fit_reports.push({
+    ...queueSupabase.state.team_fit_reports[0],
+    report_status: "processing",
+  });
+  const beforeWrongReady = countUpdates(wrongReadySupabase);
+  const wrongReady = await markTeamFitReportV1Ready(
+    {
+      teamFitReportId: wrongReadySupabase.state.team_fit_reports[0].id,
+      organizationId: "org-1",
+      reportSnapshot: {
+        reportType: TEAM_FIT_REPORT_V2_TYPE,
+        reportVersion: TEAM_FIT_REPORT_V2_VERSION,
+      },
+    },
+    { supabase: wrongReadySupabase },
+  );
+  assert.equal(wrongReady.ok, false);
+  assert.equal(wrongReady.reason, "invalid_report_snapshot");
+  assert.equal(countUpdates(wrongReadySupabase), beforeWrongReady);
 
   claimSupabase.state.team_fit_reports[0].report_status = "queued";
   const alreadyQueuedReset = await resetFailedTeamFitReportToQueued(

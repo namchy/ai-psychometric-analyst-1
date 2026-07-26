@@ -527,6 +527,45 @@ async function main() {
   assert.equal(openAiFailedResult.marker, "TEAM_FIT_PROVIDER_VALIDATION_FAILURE");
   assert.equal(openAiFailedSupabase.state.team_fit_reports[0].report_status, "failed");
 
+  const v2RowSupabase = createSupabaseStub(buildBaseState());
+  v2RowSupabase.state.team_fit_reports[0].report_type = "team_fit_report_v2";
+  v2RowSupabase.state.team_fit_reports[0].report_version = "v2";
+  let wrongVersionInputBuildCount = 0;
+  let wrongVersionInputPersistCount = 0;
+  let wrongVersionProviderCallCount = 0;
+  const wrongVersionResult = await processTeamFitReportWithProvider(
+    {
+      teamFitReportId: "report-1",
+      organizationId: "org-1",
+    },
+    {
+      supabase: v2RowSupabase,
+      buildInputSnapshot: async () => {
+        wrongVersionInputBuildCount += 1;
+        throw new Error("V1 input builder must not run for a V2 row.");
+      },
+      persistInputSnapshot: async () => {
+        wrongVersionInputPersistCount += 1;
+        throw new Error("V1 input persistence must not run for a V2 row.");
+      },
+      provider: {
+        async generate() {
+          wrongVersionProviderCallCount += 1;
+          throw new Error("V1 provider must not run for a V2 row.");
+        },
+      },
+    },
+  );
+  assert.equal(wrongVersionResult.ok, false);
+  assert.equal(wrongVersionResult.reason, "not_claimable");
+  assert.match(wrongVersionResult.message, /team_fit_report_v1\/v1/);
+  assert.match(wrongVersionResult.message, /team_fit_report_v2\/v2/);
+  assert.equal(wrongVersionInputBuildCount, 0);
+  assert.equal(wrongVersionInputPersistCount, 0);
+  assert.equal(wrongVersionProviderCallCount, 0);
+  assert.equal(v2RowSupabase.state.team_fit_reports[0].report_status, "queued");
+  assert.equal(v2RowSupabase.state.team_fit_reports[0].report_snapshot, null);
+
   console.log("test-team-fit-report-provider-seam: ok");
 }
 
