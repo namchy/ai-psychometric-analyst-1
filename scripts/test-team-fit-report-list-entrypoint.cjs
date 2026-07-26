@@ -248,14 +248,22 @@ function render(entries) {
 }
 
 function buildEntry(status, overrides = {}) {
+  const reportType = overrides.reportType ?? "team_fit_report_v2";
+  const legacyReadOnly = reportType === "team_fit_report_v1";
   return {
     id: `report-${status}`,
     organizationId: "org-1",
     teamId: "team-1",
     participantId: "participant-1",
     teamName: "Tim A",
-    reportType: "team_fit_report_v1",
-    reportVersion: "v1",
+    reportType,
+    reportVersion: legacyReadOnly ? "v1" : "v2",
+    legacyReadOnly,
+    versionLabel: legacyReadOnly ? "Legacy V1" : "V2",
+    versionDescription: legacyReadOnly ? "Samo za pregled" : "Aktivni Team Fit",
+    canProcess: !legacyReadOnly && status === "queued",
+    canRetry: !legacyReadOnly && status === "failed",
+    canOpen: status === "ready",
     status,
     statusLabel:
       status === "ready"
@@ -330,6 +338,15 @@ function main() {
   assert.match(processingHtml, /Priprema u toku/);
   assert.doesNotMatch(processingHtml, /Pokušaj ponovo/);
   assert.doesNotMatch(processingHtml, /Pripremi Team Fit izvještaj/);
+
+  const legacyReadyHtml = render([buildEntry("ready", { reportType: "team_fit_report_v1", reportVersion: "v1", legacyReadOnly: true, versionLabel: "Legacy V1", versionDescription: "Samo za pregled", canProcess: false, canRetry: false, canOpen: true })]);
+  assert.match(legacyReadyHtml, /Legacy V1/);
+  assert.match(legacyReadyHtml, /Samo za pregled/);
+  assert.match(legacyReadyHtml, /Otvori Team Fit izvještaj/);
+
+  const legacyFailedHtml = render([buildEntry("failed", { reportType: "team_fit_report_v1", reportVersion: "v1", legacyReadOnly: true, versionLabel: "Legacy V1", versionDescription: "Samo za pregled", canProcess: false, canRetry: false, canOpen: false })]);
+  assert.match(legacyFailedHtml, /Samo za pregled/);
+  assert.doesNotMatch(legacyFailedHtml, /Pokušaj ponovo|Pripremi Team Fit izvještaj|Otvori Team Fit izvještaj/);
 
   assert.doesNotMatch(readyHtml, /Pokušaj ponovo/);
 }

@@ -47,6 +47,9 @@ const viewSource = fs.readFileSync(viewPath, "utf8");
 
 assert.match(routeSource, /loadTeamFitReportDisplayRecord/);
 assert.match(routeSource, /TeamFitReportView/);
+assert.match(routeSource, /TeamFitReportV2View/);
+assert.match(routeSource, /TEAM_FIT_REPORT_V2_TYPE/);
+assert.match(routeSource, /record\.reportType === TEAM_FIT_REPORT_V2_TYPE/);
 assert.match(routeSource, /requireAuthenticatedUser/);
 assert.match(routeSource, /getActiveOrganizationForUser/);
 assert.match(routeSource, /notFound\(\)/);

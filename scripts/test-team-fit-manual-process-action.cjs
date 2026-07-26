@@ -13,10 +13,11 @@ const manualActionSource =
   actionStart >= 0 ? actionSource.slice(actionStart) : actionSource;
 
 assert.match(manualActionSource, /export async function processTeamFitReportAction/);
-assert.match(manualActionSource, /processConfiguredTeamFitReport/);
-assert.match(manualActionSource, /TEAM_FIT_REPORT_TYPE/);
-assert.match(manualActionSource, /TEAM_FIT_REPORT_VERSION/);
-assert.doesNotMatch(manualActionSource, /OpenAI|team-fit-report-provider|real provider/i);
+assert.match(manualActionSource, /processConfiguredTeamFitReportV2/);
+assert.match(manualActionSource, /TEAM_FIT_REPORT_V2_TYPE/);
+assert.match(manualActionSource, /TEAM_FIT_REPORT_V2_VERSION/);
+assert.match(actionSource, /processTeamFitReportV2WithProvider/);
+assert.doesNotMatch(actionSource, /team-fit-report-processor/);
 assert.doesNotMatch(manualActionSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(manualActionSource, /\.from\("assessment_reports"\)/);
 assert.doesNotMatch(manualActionSource, /\.from\("team_assessment_reports"\)/);
@@ -53,8 +54,10 @@ fs.writeFileSync(
   teamFitLifecycleStubPath,
   `
 module.exports = {
-  TEAM_FIT_REPORT_TYPE: "team_fit_report_v1",
-  TEAM_FIT_REPORT_VERSION: "v1",
+  TEAM_FIT_CANDIDATE_SOURCE_TYPE: "composite_deterministic_input_snapshot",
+  TEAM_FIT_TEAM_SOURCE_TYPE: "team_dynamics_aggregation_input_snapshot",
+  queueTeamFitReportV2Shell: async () => { throw new Error("queue must be injected"); },
+  resetFailedTeamFitReportToQueued: async () => { throw new Error("reset must be injected"); },
 };
 `,
 );
@@ -63,7 +66,7 @@ fs.writeFileSync(
   teamFitProcessorStubPath,
   `
 module.exports = {
-  processTeamFitReport: async () => {
+  processTeamFitReportV2WithProvider: async () => {
     throw new Error("processTeamFitReport should be injected in this test.");
   },
 };
@@ -113,7 +116,7 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     return teamFitLifecycleStubPath;
   }
 
-  if (request === "@/lib/b2b/team-fit-report-processor") {
+  if (request === "@/lib/b2b/team-fit-report-v2-processor") {
     return teamFitProcessorStubPath;
   }
 
@@ -142,7 +145,9 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     request === "@/lib/assessment/team-dynamics-mixed-completion-readiness" ||
     request === "@/lib/assessment/team-dynamics-mixed-runtime" ||
     request === "@/lib/assessment/team-dynamics" ||
-    request === "@/lib/supabase/admin"
+    request === "@/lib/supabase/admin" ||
+    request === "@/lib/b2b/team-fit-report-v2-openai-provider" ||
+    request === "@/lib/assessment/report-config"
   ) {
     return emptyModulePath;
   }
@@ -184,8 +189,8 @@ function buildReportContext(overrides = {}) {
     organizationId: "org-1",
     teamId: "team-1",
     participantId: "participant-1",
-    reportType: "team_fit_report_v1",
-    reportVersion: "v1",
+    reportType: "team_fit_report_v2",
+    reportVersion: "v2",
     reportStatus: "queued",
     ...overrides,
   };
@@ -221,6 +226,17 @@ function createHarness(overrides = {}) {
 }
 
 async function main() {
+  {
+    const harness = createHarness({
+      loadReportContext: async () => buildReportContext({ reportType: "team_fit_report_v1", reportVersion: "v1" }),
+    });
+    const result = await processTeamFitReportAction({ teamFitReportId: "team-fit-report-1" }, harness.deps);
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "unsupported_report_kind");
+    assert.match(result.message, /samo za pregled/i);
+    assert.equal(harness.processCalls.length, 0);
+  }
+
   {
     const harness = createHarness();
     const result = await processTeamFitReportAction(
@@ -419,6 +435,22 @@ async function main() {
       marker: "TEAM_FIT_PROVIDER_VALIDATION_FAILURE",
       processorReason: "provider_failed",
     });
+  }
+
+  {
+    const harness = createHarness({
+      processTeamFitReport: async () => ({
+        ok: false,
+        reason: "provider_validation_failed",
+        reportId: "team-fit-report-1",
+        message: "safe failure",
+        marker: "TEAM_FIT_V2_EVIDENCE_VALIDATION_FAILURE",
+      }),
+    });
+    const result = await processTeamFitReportAction({ teamFitReportId: "team-fit-report-1" }, harness.deps);
+    assert.equal(result.status, "failed");
+    assert.equal(result.processorReason, "provider_validation_failed");
+    assert.equal(result.marker, "TEAM_FIT_V2_EVIDENCE_VALIDATION_FAILURE");
   }
 
   {

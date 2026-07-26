@@ -77,6 +77,15 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
                   </DpStatusBadge>
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                  <DpStatusBadge tone={entry.legacyReadOnly ? "neutral" : "info"}>
+                    {entry.versionLabel}
+                  </DpStatusBadge>
+                  <DpStatusBadge tone={entry.legacyReadOnly ? "neutral" : "success"}>
+                    {entry.versionDescription}
+                  </DpStatusBadge>
+                </div>
+
                 <DpReportStateMessage>
                   {entry.safeStatusMessage}
                 </DpReportStateMessage>
@@ -96,24 +105,24 @@ export function TeamFitReportList({ entries }: TeamFitReportListProps) {
               </div>
 
               <div className="mt-auto pt-5">
-                {entry.status === "queued" ? (
+                {entry.canProcess ? (
                   <TeamFitReportProcessAction
                     teamFitReportId={entry.id}
                     teamId={entry.teamId}
                     participantId={entry.participantId}
                   />
                 ) : null}
-                {entry.status === "processing" ? (
+                {!entry.canProcess && !entry.canRetry && !entry.canOpen ? (
                   <DpButton disabled size="sm">
-                    Priprema u toku
+                    {entry.legacyReadOnly ? "Samo za pregled" : entry.status === "processing" ? "Priprema u toku" : "Status nije aktivan"}
                   </DpButton>
                 ) : null}
-                {entry.status === "ready" ? (
+                {entry.canOpen ? (
                   <DpButton href={entry.href} size="sm" variant="primary">
                     Otvori Team Fit izvještaj
                   </DpButton>
                 ) : null}
-                {entry.status === "failed" ? (
+                {entry.canRetry ? (
                   <TeamFitReportRetryAction
                     teamFitReportId={entry.id}
                     teamId={entry.teamId}

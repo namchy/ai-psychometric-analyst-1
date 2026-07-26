@@ -16,11 +16,11 @@ import {
   ReportTabNav,
   ReportTabPanel,
 } from "@/components/dashboard/team-fit-report-ui-primitives";
-import type { TeamFitReportDisplayRecord } from "@/lib/b2b/team-fit-report-display";
+import type { TeamFitReportV1DisplayRecord } from "@/lib/b2b/team-fit-report-display";
 import type { TeamFitRelationshipPattern } from "@/lib/b2b/team-fit-report-contract";
 
 type TeamFitReportViewProps = {
-  record: TeamFitReportDisplayRecord;
+  record: TeamFitReportV1DisplayRecord;
 };
 
 type TeamFitReportTabId =
@@ -167,7 +167,7 @@ function firstOrNull<T>(items: readonly T[] | null | undefined): T | null {
 }
 
 function buildHrMeaning(
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>,
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>,
 ): string {
   const value =
     firstOrNull(snapshot.candidateSignals)?.relevanceToFit ??
@@ -178,7 +178,7 @@ function buildHrMeaning(
 }
 
 function buildRelationshipPatternContext(
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>,
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>,
 ): string | null {
   const firstRisk = firstOrNull(snapshot.frictionRisks);
 
@@ -188,7 +188,7 @@ function buildRelationshipPatternContext(
 }
 
 function buildValidationFocus(
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>,
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>,
 ): string | null {
   const value =
     firstOrNull(snapshot.frictionRisks)?.mitigationFocus ??
@@ -291,7 +291,7 @@ function NonReadyState({ record }: TeamFitReportViewProps) {
   );
 }
 
-function buildKeyHighlights(snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>) {
+function buildKeyHighlights(snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>) {
   const teamPattern = firstOrNull(snapshot.teamContextSummary.relevantTeamPatterns);
   const candidateSignal = firstOrNull(snapshot.candidateSignals);
   const complementaritySignal = firstOrNull(snapshot.complementaritySignals);
@@ -357,7 +357,7 @@ function OverviewTab({
   hrMeaning,
   validationFocus,
 }: {
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>;
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>;
   relationshipLabel: string;
   relationshipGlossary: string;
   relationshipContext: string | null;
@@ -472,7 +472,7 @@ function OverviewTab({
 function FitSignalsTab({
   snapshot,
 }: {
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>;
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>;
 }) {
   return (
     <div className="space-y-4">
@@ -570,7 +570,7 @@ function FitSignalsTab({
 function RisksValidationTab({
   snapshot,
 }: {
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>;
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>;
 }) {
   return (
     <div className="space-y-4">
@@ -648,7 +648,7 @@ function RisksValidationTab({
 function InterviewTab({
   snapshot,
 }: {
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>;
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>;
 }) {
   return (
     <ReportSection
@@ -690,7 +690,7 @@ function InterviewTab({
 function OnboardingTab({
   snapshot,
 }: {
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>;
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>;
 }) {
   return (
     <div className="grid gap-4 xl:grid-cols-2">
@@ -778,7 +778,7 @@ function OnboardingTab({
 function NotesTab({
   snapshot,
 }: {
-  snapshot: NonNullable<TeamFitReportDisplayRecord["reportSnapshot"]>;
+  snapshot: NonNullable<TeamFitReportV1DisplayRecord["reportSnapshot"]>;
 }) {
   return (
     <div className="space-y-4">

@@ -18,8 +18,10 @@ const originalResolveFilename = Module._resolveFilename;
 const displaySource = fs.readFileSync(displayPath, "utf8");
 
 assert.match(displaySource, /export async function loadTeamFitReportDisplayRecord/);
-assert.match(displaySource, /TEAM_FIT_REPORT_TYPE/);
-assert.match(displaySource, /TEAM_FIT_REPORT_VERSION/);
+assert.match(displaySource, /resolveTeamFitReportIdentity/);
+assert.match(displaySource, /validateTeamFitReportV2/);
+assert.doesNotMatch(displaySource, /\.eq\("report_type"/);
+assert.doesNotMatch(displaySource, /\.eq\("report_version"/);
 assert.match(displaySource, /Izvještaj je pripremljen za obradu/);
 assert.match(displaySource, /Izvještaj je trenutno u obradi/);
 assert.match(displaySource, /Izvještaj trenutno nije uspješno kreiran/);
@@ -458,6 +460,55 @@ async function main() {
     { supabase: invalidReadySupabase },
   );
   assert.equal(invalidReadyResult, null);
+
+  const v2Snapshot = { reportType: "team_fit_report_v2", reportVersion: "v2", marker: "v2" };
+  const v2Supabase = createSupabaseStub({
+    ...buildBaseState(),
+    team_fit_reports: [{
+      id: "report-v2", organization_id: "org-1", team_id: "team-1",
+      participant_id: "participant-1", report_type: "team_fit_report_v2",
+      report_version: "v2", report_status: "ready", input_snapshot: { inputType: "team_fit_input_snapshot" },
+      report_snapshot: v2Snapshot, queued_at: "2026-07-26T10:00:00.000Z",
+      started_at: "2026-07-26T10:01:00.000Z", completed_at: "2026-07-26T10:02:00.000Z",
+      failed_at: null, created_at: "2026-07-26T10:00:00.000Z", updated_at: "2026-07-26T10:02:00.000Z",
+    }],
+  });
+  let v1ValidationCalls = 0;
+  let v2ValidationCalls = 0;
+  const v2Ready = await loadTeamFitReportDisplayRecord(
+    { organizationId: "org-1", teamId: "team-1", participantId: "participant-1", teamFitReportId: "report-v2" },
+    {
+      supabase: v2Supabase,
+      validateV1Snapshot: () => { v1ValidationCalls += 1; return { ok: false, errors: ["wrong validator"] }; },
+      validateV2Snapshot: (value) => { v2ValidationCalls += 1; return { ok: true, complete: true, value, issues: [] }; },
+    },
+  );
+  assert.equal(v2Ready.reportType, "team_fit_report_v2");
+  assert.equal(v2Ready.reportVersion, "v2");
+  assert.equal(v2Ready.legacyReadOnly, false);
+  assert.equal(v2Ready.reportSnapshot, v2Snapshot);
+  assert.equal(v1ValidationCalls, 0);
+  assert.equal(v2ValidationCalls, 1);
+
+  for (const [reportType, reportVersion] of [["team_fit_report_v1", "v2"], ["unknown", "v9"]]) {
+    v2Supabase.state.team_fit_reports[0].report_type = reportType;
+    v2Supabase.state.team_fit_reports[0].report_version = reportVersion;
+    assert.equal(await loadTeamFitReportDisplayRecord(
+      { organizationId: "org-1", teamId: "team-1", participantId: "participant-1", teamFitReportId: "report-v2" },
+      { supabase: v2Supabase },
+    ), null);
+  }
+
+  v2Supabase.state.team_fit_reports[0].report_type = "team_fit_report_v2";
+  v2Supabase.state.team_fit_reports[0].report_version = "v2";
+  v2Supabase.state.team_fit_reports[0].report_status = "queued";
+  v2Supabase.state.team_fit_reports[0].report_snapshot = null;
+  const v2Queued = await loadTeamFitReportDisplayRecord(
+    { organizationId: "org-1", teamId: "team-1", participantId: "participant-1", teamFitReportId: "report-v2" },
+    { supabase: v2Supabase },
+  );
+  assert.equal(v2Queued.reportType, "team_fit_report_v2");
+  assert.equal(v2Queued.reportSnapshot, null);
 
   const refreshedTodoSource = fs.readFileSync(todoPath, "utf8");
   assert.match(refreshedTodoSource, /Completion note — Team Fit read-only display helper shell/);

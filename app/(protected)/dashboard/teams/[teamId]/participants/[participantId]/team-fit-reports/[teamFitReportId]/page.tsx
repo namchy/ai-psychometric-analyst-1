@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { AuthenticatedAppMainContent } from "@/components/app/authenticated-app-chrome";
 import { TeamFitReportView } from "@/components/dashboard/team-fit-report-view";
+import { TeamFitReportV2View } from "@/components/dashboard/team-fit-report-v2-view";
 import { PageNavigation } from "@/components/dashboard/primitives";
 import { requireAuthenticatedUser } from "@/lib/auth/session";
 import { loadTeamFitReportDisplayRecord } from "@/lib/b2b/team-fit-report-display";
+import { TEAM_FIT_REPORT_V2_TYPE } from "@/lib/b2b/team-fit-report-identity";
 import { getActiveOrganizationForUser } from "@/lib/b2b/organizations";
 
 type TeamFitReportPageProps = {
@@ -49,7 +51,11 @@ export default async function TeamFitReportPage({
           contextLabel="Team Fit izvještaj"
           backLinkVariant="subtle"
         />
-        <TeamFitReportView record={record} />
+        {record.reportType === TEAM_FIT_REPORT_V2_TYPE ? (
+          <TeamFitReportV2View record={record} />
+        ) : (
+          <TeamFitReportView record={record} />
+        )}
       </div>
     </AuthenticatedAppMainContent>
   );

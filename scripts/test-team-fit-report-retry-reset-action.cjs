@@ -9,7 +9,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const actionPath = path.join(projectRoot, "app", "actions", "team-assessments.ts");
 const actionSource = fs.readFileSync(actionPath, "utf8");
 const actionStart = actionSource.indexOf("export async function resetTeamFitReportAction");
-const actionEnd = actionSource.indexOf("export async function processTeamFitReportAction");
+const actionEnd = actionSource.indexOf("async function processConfiguredTeamFitReportV2");
 const resetActionSource =
   actionStart >= 0 && actionEnd > actionStart
     ? actionSource.slice(actionStart, actionEnd)
@@ -17,8 +17,8 @@ const resetActionSource =
 
 assert.match(resetActionSource, /export async function resetTeamFitReportAction/);
 assert.match(resetActionSource, /resetFailedTeamFitReportToQueued/);
-assert.match(resetActionSource, /TEAM_FIT_REPORT_TYPE/);
-assert.match(resetActionSource, /TEAM_FIT_REPORT_VERSION/);
+assert.match(resetActionSource, /TEAM_FIT_REPORT_V2_TYPE/);
+assert.match(resetActionSource, /TEAM_FIT_REPORT_V2_VERSION/);
 assert.doesNotMatch(resetActionSource, /processTeamFitReportWithMock|provider|OpenAI/i);
 assert.doesNotMatch(resetActionSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(resetActionSource, /\.from\("assessment_reports"\)/);
@@ -56,8 +56,9 @@ fs.writeFileSync(
   teamFitLifecycleStubPath,
   `
 module.exports = {
-  TEAM_FIT_REPORT_TYPE: "team_fit_report_v1",
-  TEAM_FIT_REPORT_VERSION: "v1",
+  TEAM_FIT_CANDIDATE_SOURCE_TYPE: "composite_deterministic_input_snapshot",
+  TEAM_FIT_TEAM_SOURCE_TYPE: "team_dynamics_aggregation_input_snapshot",
+  queueTeamFitReportV2Shell: async () => { throw new Error("queue must be injected"); },
   resetFailedTeamFitReportToQueued: async () => {
     throw new Error("resetFailedTeamFitReportToQueued should be injected in this test.");
   },
@@ -119,7 +120,7 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     return teamFitLifecycleStubPath;
   }
 
-  if (request === "@/lib/b2b/team-fit-report-processor") {
+  if (request === "@/lib/b2b/team-fit-report-v2-processor") {
     return teamFitProcessorStubPath;
   }
 
@@ -148,7 +149,9 @@ Module._resolveFilename = function resolveFilename(request, parent, isMain, opti
     request === "@/lib/assessment/team-dynamics-mixed-completion-readiness" ||
     request === "@/lib/assessment/team-dynamics-mixed-runtime" ||
     request === "@/lib/assessment/team-dynamics" ||
-    request === "@/lib/supabase/admin"
+    request === "@/lib/supabase/admin" ||
+    request === "@/lib/b2b/team-fit-report-v2-openai-provider" ||
+    request === "@/lib/assessment/report-config"
   ) {
     return emptyModulePath;
   }
@@ -190,8 +193,8 @@ function buildReportContext(overrides = {}) {
     organizationId: "org-1",
     teamId: "team-1",
     participantId: "participant-1",
-    reportType: "team_fit_report_v1",
-    reportVersion: "v1",
+    reportType: "team_fit_report_v2",
+    reportVersion: "v2",
     reportStatus: "failed",
     ...overrides,
   };
@@ -231,6 +234,17 @@ function createHarness(overrides = {}) {
 }
 
 async function main() {
+  {
+    const harness = createHarness({
+      loadReportContext: async () => buildReportContext({ reportType: "team_fit_report_v1", reportVersion: "v1" }),
+    });
+    const result = await resetTeamFitReportAction({ teamFitReportId: "team-fit-report-1" }, harness.deps);
+    assert.equal(result.ok, false);
+    assert.equal(result.status, "unsupported_report_kind");
+    assert.match(result.message, /samo za pregled/i);
+    assert.equal(harness.resetCalls.length, 0);
+  }
+
   {
     const harness = createHarness();
     const result = await resetTeamFitReportAction(

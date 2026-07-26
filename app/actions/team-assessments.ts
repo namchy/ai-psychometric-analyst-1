@@ -53,14 +53,22 @@ import {
   type TeamDynamicsReportStatus,
 } from "@/lib/b2b/team-dynamics-report-lifecycle";
 import {
-  processTeamFitReport as processConfiguredTeamFitReport,
-} from "@/lib/b2b/team-fit-report-processor";
-import {
+  queueTeamFitReportV2Shell,
   resetFailedTeamFitReportToQueued,
-  TEAM_FIT_REPORT_TYPE,
-  TEAM_FIT_REPORT_VERSION,
+  TEAM_FIT_CANDIDATE_SOURCE_TYPE,
+  TEAM_FIT_TEAM_SOURCE_TYPE,
   type TeamFitReportStatus,
 } from "@/lib/b2b/team-fit-report-lifecycle";
+import {
+  TEAM_FIT_REPORT_V2_TYPE,
+  TEAM_FIT_REPORT_V2_VERSION,
+} from "@/lib/b2b/team-fit-report-identity";
+import {
+  processTeamFitReportV2WithProvider,
+  type ProcessTeamFitReportV2WithProviderResult,
+} from "@/lib/b2b/team-fit-report-v2-processor";
+import { generateTeamFitReportV2WithOpenAI } from "@/lib/b2b/team-fit-report-v2-openai-provider";
+import { getAiReportConfig } from "@/lib/assessment/report-config";
 import {
   persistValidatedTeamDynamicsMixedAnswer,
   type TeamDynamicsMixedAnswerPersistenceResult,
@@ -551,7 +559,29 @@ type ProcessTeamFitReportActionDependencies = {
   loadReportContext?: (input: {
     teamFitReportId: string;
   }) => Promise<TeamFitReportActionContext | null>;
-  processTeamFitReport?: typeof processConfiguredTeamFitReport;
+  processTeamFitReport?: (input: {
+    teamFitReportId: string;
+    organizationId: string;
+  }) => Promise<ProcessTeamFitReportV2WithProviderResult>;
+  revalidate?: typeof revalidatePath;
+};
+
+export type QueueTeamFitReportV2ActionInput = {
+  teamId: string;
+  participantId: string;
+  candidateSourceId: string;
+  teamSourceId: string;
+  optionalContext?: Record<string, unknown>;
+};
+
+export type QueueTeamFitReportV2ActionResult =
+  | { ok: true; status: "queued"; message: string; reportId: string; teamId: string; participantId: string }
+  | { ok: false; status: "unauthorized" | "invalid_payload" | "error"; message: string; reportId: null; teamId: string | null; participantId: string | null };
+
+type QueueTeamFitReportV2ActionDependencies = {
+  requireUser?: typeof requireAuthenticatedUserForAction;
+  getActiveOrganization?: typeof getActiveOrganizationForUser;
+  queueReportShell?: typeof queueTeamFitReportV2Shell;
   revalidate?: typeof revalidatePath;
 };
 
@@ -1639,13 +1669,13 @@ export async function resetTeamFitReportAction(
     }
 
     if (
-      reportContext.reportType !== TEAM_FIT_REPORT_TYPE ||
-      reportContext.reportVersion !== TEAM_FIT_REPORT_VERSION
+      reportContext.reportType !== TEAM_FIT_REPORT_V2_TYPE ||
+      reportContext.reportVersion !== TEAM_FIT_REPORT_V2_VERSION
     ) {
       return {
         ok: false,
         status: "unsupported_report_kind",
-        message: "Ovaj zapis nije podržan za Team Fit retry/reset.",
+        message: "Postojeći V1 Team Fit izvještaj dostupan je samo za pregled.",
         reportId: reportContext.id,
         teamId: reportContext.teamId,
         participantId: reportContext.participantId,
@@ -1778,6 +1808,25 @@ export async function resetTeamFitReportAction(
   }
 }
 
+async function processConfiguredTeamFitReportV2(input: {
+  teamFitReportId: string;
+  organizationId: string;
+}): Promise<ProcessTeamFitReportV2WithProviderResult> {
+  const config = getAiReportConfig();
+
+  return processTeamFitReportV2WithProvider(input, {
+    provider: {
+      generate: (inputSnapshot) =>
+        generateTeamFitReportV2WithOpenAI(inputSnapshot, {
+          apiKey: config.openAiApiKey,
+          model: config.model,
+          reasoningEffort: config.reasoningEffort,
+          timeoutMs: config.openAiTimeoutMs,
+        }),
+    },
+  });
+}
+
 export async function processTeamFitReportAction(
   input: ProcessTeamFitReportActionInput,
   deps: ProcessTeamFitReportActionDependencies = {},
@@ -1798,7 +1847,7 @@ export async function processTeamFitReportAction(
     deps.getActiveOrganization ?? getActiveOrganizationForUser;
   const loadReportContext = deps.loadReportContext ?? loadTeamFitReportActionContext;
   const processTeamFitReport =
-    deps.processTeamFitReport ?? processConfiguredTeamFitReport;
+    deps.processTeamFitReport ?? processConfiguredTeamFitReportV2;
   const revalidate = deps.revalidate ?? revalidatePath;
 
   try {
@@ -1857,13 +1906,13 @@ export async function processTeamFitReportAction(
     }
 
     if (
-      reportContext.reportType !== TEAM_FIT_REPORT_TYPE ||
-      reportContext.reportVersion !== TEAM_FIT_REPORT_VERSION
+      reportContext.reportType !== TEAM_FIT_REPORT_V2_TYPE ||
+      reportContext.reportVersion !== TEAM_FIT_REPORT_V2_VERSION
     ) {
       return {
         ok: false,
         status: "unsupported_report_kind",
-        message: "Ovaj zapis nije podržan za manualnu Team Fit pripremu.",
+        message: "Postojeći V1 Team Fit izvještaj dostupan je samo za pregled.",
         reportId: reportContext.id,
         teamId: reportContext.teamId,
         participantId: reportContext.participantId,
@@ -1893,7 +1942,7 @@ export async function processTeamFitReportAction(
         return {
           ok: false,
           status: "failed_not_processable",
-          message: "Neuspješan Team Fit izvještaj se u ovom slice-u ne može ponovo pripremiti.",
+          message: "Neuspješan Team Fit izvještaj prvo treba vratiti u red za pripremu.",
           reportId: reportContext.id,
           teamId: reportContext.teamId,
           participantId: reportContext.participantId,
@@ -1904,20 +1953,17 @@ export async function processTeamFitReportAction(
         return {
           ok: false,
           status: "not_queued",
-          message: "Team Fit izvještaj trenutno nije u stanju za manualnu pripremu.",
+          message: "Team Fit izvještaj trenutno nije spreman za ručnu pripremu.",
           reportId: reportContext.id,
           teamId: reportContext.teamId,
           participantId: reportContext.participantId,
         };
     }
 
-    const result = await processTeamFitReport(
-      {
-        teamFitReportId: input.teamFitReportId,
-        organizationId: organization.id,
-      },
-      {},
-    );
+    const result = await processTeamFitReport({
+      teamFitReportId: input.teamFitReportId,
+      organizationId: organization.id,
+    });
 
     if (!result.ok) {
       if (result.reason === "already_processing") {
@@ -1948,7 +1994,7 @@ export async function processTeamFitReportAction(
         return {
           ok: false,
           status: "failed_not_processable",
-          message: "Neuspješan Team Fit izvještaj se u ovom slice-u ne može ponovo pripremiti.",
+          message: "Neuspješan Team Fit izvještaj prvo treba vratiti u red za pripremu.",
           reportId: reportContext.id,
           teamId: reportContext.teamId,
           participantId: reportContext.participantId,
@@ -1960,7 +2006,7 @@ export async function processTeamFitReportAction(
         return {
           ok: false,
           status: "not_queued",
-          message: "Team Fit izvještaj trenutno nije u stanju za manualnu pripremu.",
+          message: "Team Fit izvještaj trenutno nije spreman za ručnu pripremu.",
           reportId: reportContext.id,
           teamId: reportContext.teamId,
           participantId: reportContext.participantId,
@@ -1968,10 +2014,7 @@ export async function processTeamFitReportAction(
         };
       }
 
-      if (
-        result.reason === "input_snapshot_failed" ||
-        result.reason === "provider_failed"
-      ) {
+      if (result.reason === "input_snapshot_failed" || result.reason === "provider_failed" || result.reason === "provider_validation_failed") {
         return {
           ok: false,
           status: "failed",
@@ -2029,6 +2072,69 @@ export async function processTeamFitReportAction(
       teamId: isNonEmptyString(input.teamId) ? input.teamId : null,
       participantId: isNonEmptyString(input.participantId) ? input.participantId : null,
     };
+  }
+}
+
+export async function queueTeamFitReportV2Action(
+  input: QueueTeamFitReportV2ActionInput,
+  deps: QueueTeamFitReportV2ActionDependencies = {},
+): Promise<QueueTeamFitReportV2ActionResult> {
+  if (
+    !isNonEmptyString(input.teamId) ||
+    !isNonEmptyString(input.participantId) ||
+    !isNonEmptyString(input.candidateSourceId) ||
+    !isNonEmptyString(input.teamSourceId) ||
+    (input.optionalContext !== undefined &&
+      (input.optionalContext === null ||
+        typeof input.optionalContext !== "object" ||
+        Array.isArray(input.optionalContext)))
+  ) {
+    return {
+      ok: false,
+      status: "invalid_payload",
+      message: "Team Fit V2 red za pripremu zahtijeva tim, kandidata i oba potrebna izvorna identifikatora.",
+      reportId: null,
+      teamId: isNonEmptyString(input.teamId) ? input.teamId : null,
+      participantId: isNonEmptyString(input.participantId) ? input.participantId : null,
+    };
+  }
+
+  const requireUser = deps.requireUser ?? requireAuthenticatedUserForAction;
+  const getActiveOrganization = deps.getActiveOrganization ?? getActiveOrganizationForUser;
+  const queueReportShell = deps.queueReportShell ?? queueTeamFitReportV2Shell;
+  const revalidate = deps.revalidate ?? revalidatePath;
+
+  try {
+    const user = await requireUser();
+    const organization = await getActiveOrganization(user.id);
+    if (!organization) {
+      return { ok: false, status: "unauthorized", message: "Team Fit izvještaj nije dostupan u aktivnom HR kontekstu.", reportId: null, teamId: input.teamId, participantId: input.participantId };
+    }
+
+    const result = await queueReportShell({
+      organizationId: organization.id,
+      teamId: input.teamId,
+      participantId: input.participantId,
+      candidateSourceType: TEAM_FIT_CANDIDATE_SOURCE_TYPE,
+      candidateSourceId: input.candidateSourceId,
+      teamSourceType: TEAM_FIT_TEAM_SOURCE_TYPE,
+      teamSourceId: input.teamSourceId,
+      optionalContext: input.optionalContext,
+      createdBy: user.id,
+    });
+
+    if (!result.ok) {
+      const unauthorized = result.reason === "team_not_found" || result.reason === "participant_not_found" || result.reason === "team_organization_mismatch" || result.reason === "participant_organization_mismatch";
+      return { ok: false, status: unauthorized ? "unauthorized" : result.reason === "invalid_payload" ? "invalid_payload" : "error", message: unauthorized ? "Team Fit kontekst nije dostupan u aktivnoj organizaciji." : "Team Fit V2 izvještaj nije moguće staviti u red.", reportId: null, teamId: input.teamId, participantId: input.participantId };
+    }
+
+    revalidate(`/dashboard/participants/${input.participantId}/reports`);
+    return { ok: true, status: "queued", message: "Team Fit V2 izvještaj je stavljen u red za pripremu.", reportId: result.reportId, teamId: input.teamId, participantId: input.participantId };
+  } catch (error) {
+    if (error instanceof AuthenticationRequiredError) {
+      return { ok: false, status: "unauthorized", message: "Authentication required.", reportId: null, teamId: input.teamId, participantId: input.participantId };
+    }
+    return { ok: false, status: "error", message: "Team Fit V2 izvještaj nije moguće staviti u red.", reportId: null, teamId: input.teamId, participantId: input.participantId };
   }
 }
 
