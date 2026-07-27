@@ -50,6 +50,45 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 >
 > Real OpenAI Team Fit smoke je funkcionalno uspješan kroz `queued -> processing -> ready`, uz validan persisted output i enriched candidate/team evidence. Trenutni generisani report nije finalni Golden Demo content standard. Uočeni quality gapovi su težak akademski jezik, pretjerano ograđivanje, premalo sadržajne dubine, ponavljanje i nejasna granica IDP onboarding naspram Team Fit integration guidance. Postojeći reporti se u ovom docs-only syncu ne regenerišu.
 
+> ## **Current priority — Golden Demo demo-first mode (2026-07-27)**
+>
+> Trenutni P0 cilj je što prije imati ispravan, uvjerljiv i vizuelno pristojan Golden Demo koji management može pokazati klijentima. Golden Demo readiness ima prednost nad dovršavanjem pune buduće arhitekture proizvoda.
+>
+> Demo putanja mora stabilno pokazati:
+>
+> `Partner Plus → GDT-01 → članovi tima → GD-001 / Amel Kovačević → individualni rezultati → Team Dynamics → Team Fit V2`
+>
+> Demo mora imati tačne Golden Cohort podatke, validne i otvorive reportove, stabilnu navigaciju, dovoljno uređen frontend i nijednu vidljivu grešku, mrtav link, placeholder ili pogrešnu legacy putanju.
+>
+> **Demo-first execution rule:** nijedan arhitektonski ili refaktorski task nema prioritet osim kada uklanja dokazani demo blocker, sigurnosni problem, netačan rezultat ili kvar osnovne demo putanje. Preferirani redoslijed je: `prompt/config korekcija → mala postojeća funkcijska izmjena → mali adapter → arhitektonska izmjena samo uz dokazanu potrebu`. Svaki aktivni task mora završiti vidljivim ili neposredno demonstrabilnim rezultatom.
+>
+> Prioritetne klase:
+>
+> - `P0` — blokira demo
+> - `P1` — direktno poboljšava vrijednost ili izgled demoa
+> - `P2` — buduća arhitektura, generalizacija i nevidljivi polish
+>
+> P2 se odgađa dok hero demo putanja ne bude spremna.
+>
+> **Team Fit V2 prompt v2 status:** `team_fit_report_v2_prompt_v2` je prihvaćen nakon dva no-write canonical previewa. Finalni preview je prošao contract, evidence i lineage validaciju; OpenAI transport bio je tačno jedan poziv bez retryja, a DB writes i persistence bili su `0`. Prompt quality refinement je commitovan i pushan u `bc49655` (`Refine Team Fit V2 report quality prompt`). Content verdict je `TEAM_FIT_V2_PROMPT_V2_ACCEPTED`. Ne otvarati novi prompt, contract ili schema refinement task bez novog konkretnog quality problema. Preview rezultat nije persistiran.
+>
+> **Jedini aktivni sljedeći implementacijski task:** `Golden Demo hero path: make the accepted GD-001 × GDT-01 Team Fit V2 report ready and verify the complete browser journey`
+>
+> Definition of done:
+>
+> - prihvaćeni Team Fit V2 sadržaj postoji kao canonical `ready` report;
+> - report se otvara kroz postojeći browser URL;
+> - V2 renderer prikazuje puni sadržaj bez runtime greške;
+> - nema user-facing V1 kreiranja ili pogrešnog legacy dispatcha;
+> - ručno je provjerena hero putanja od dashboarda do Team Fit reporta;
+> - evidentirani su samo stvarni UI/demo blockeri za sljedeći korak.
+>
+> Ovaj task koristi najmanji postojeći sigurni persistence/runtime put. Ne otvarati novi architecture foundation prije browser provjere.
+>
+> Nakon hero putanje, kao sekvencijalni (ne paralelni) naredni koraci slijede: (1) popraviti samo vidljive UI/demo blockere na hero putanji, (2) dodati jedan kontrastni kandidat/report primjer, (3) pripremiti demo account, URL-ove i kratki demo script, pa (4) nastaviti širi Golden Cohort rollout.
+>
+> Ovaj current-priority blok nadjačava ranije aktivne formulacije o Team Fit V2 active runtime cutoveru, migration activationu, canonical persisted smokeu, Team Dynamics worker/production-readiness nastavku i codebase refactoring next taskovima. Ti navodi ostaju historijska ili planirana evidencija; jedini aktivni sljedeći task je hero putanja iznad. Ne mijenjaju se niti brišu historijski zapisi.
+
 Plan nije fiksan. Deep Profile razvoj radi agile: prioriteti se mogu promijeniti čim naučimo nešto novo, donesemo bolju product odluku ili otkrijemo veći rizik.
 
 Pravila: 
