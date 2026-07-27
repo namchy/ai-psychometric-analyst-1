@@ -2,9 +2,10 @@ import "server-only";
 
 import { TEAM_DYNAMICS_FINAL_ASSESSMENT_SLUG } from "@/lib/assessment/team-dynamics";
 import {
-  loadTeamAssessmentAggregationVerification,
-  type TeamAssessmentAggregationReadVerificationResult,
-} from "@/lib/assessment/team-assessment-aggregation-read";
+  loadTeamDynamicsFinalAggregationVerification,
+  type TeamDynamicsFinalAggregationReadResult,
+} from "@/lib/assessment/team-dynamics-final-aggregation-read";
+import { TEAM_DYNAMICS_FINAL_AGGREGATION_VERSION } from "@/lib/assessment/team-dynamics-final-aggregation";
 import {
   validateTeamDynamicsExecutiveOverviewSnapshot,
   type TeamDynamicsExecutiveOverviewSnapshot,
@@ -71,7 +72,7 @@ type TeamAssessmentReportRow = {
 
 type TeamDynamicsReportLifecycleDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
-  loadAggregationVerification?: typeof loadTeamAssessmentAggregationVerification;
+  loadAggregationVerification?: typeof loadTeamDynamicsFinalAggregationVerification;
   persistInputSnapshot?: typeof persistTeamDynamicsReportInputSnapshot;
   claimReportForProcessing?: typeof claimTeamDynamicsReportForProcessing;
   markReportProcessingFailed?: typeof markTeamDynamicsReportProcessingFailed;
@@ -125,7 +126,7 @@ export type QueueTeamDynamicsReportShellResult =
   | {
       ok: true;
       report: TeamDynamicsReportRowSummary;
-      aggregationVerification: TeamAssessmentAggregationReadVerificationResult;
+      aggregationVerification: TeamDynamicsFinalAggregationReadResult;
     }
   | {
       ok: false;
@@ -138,7 +139,7 @@ export type QueueTeamDynamicsReportShellResult =
         | "aggregation_not_ready"
         | "insert_failed";
       reason: string;
-      aggregationVerification?: TeamAssessmentAggregationReadVerificationResult;
+      aggregationVerification?: TeamDynamicsFinalAggregationReadResult;
     };
 
 export type ClaimTeamDynamicsReportForProcessingResult =
@@ -312,6 +313,10 @@ export type ResetFailedTeamDynamicsReportToQueuedResult =
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && Array.isArray(value) === false;
 }
 
 function toStringArray(value: unknown): string[] {
@@ -1636,7 +1641,7 @@ export async function queueTeamDynamicsReportShell(input: {
 
   const supabase = deps.supabase ?? createSupabaseAdminClient();
   const loadAggregationVerification =
-    deps.loadAggregationVerification ?? loadTeamAssessmentAggregationVerification;
+    deps.loadAggregationVerification ?? loadTeamDynamicsFinalAggregationVerification;
 
   const context = await loadTeamAndAssignment({
     organizationId: input.organizationId,
@@ -1674,9 +1679,17 @@ export async function queueTeamDynamicsReportShell(input: {
     },
   );
 
+  const aggregationTeamId = isRecord(aggregationVerification.aggregationSnapshot)
+    ? aggregationVerification.aggregationSnapshot.teamId
+    : null;
+
   if (
-    aggregationVerification.verificationStatus !== "verified" ||
-    aggregationVerification.aggregationStatus !== "ready" ||
+    aggregationVerification.status !== "ready" ||
+    aggregationVerification.aggregationVersion !==
+      TEAM_DYNAMICS_FINAL_AGGREGATION_VERSION ||
+    aggregationVerification.teamAssessmentAssignmentId !==
+      input.teamAssessmentAssignmentId ||
+    aggregationTeamId !== input.teamId ||
     !isNonEmptyString(aggregationVerification.aggregationSnapshotId)
   ) {
     return {

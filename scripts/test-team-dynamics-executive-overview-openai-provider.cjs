@@ -193,11 +193,23 @@ async function main() {
   assert.match(validOps[0].messages[0].content, /ne smije navesti niti implicirati rezultat bilo kojeg pojedinačnog člana/i);
   assert.match(validOps[0].messages[0].content, /Statističke pokazatelje koristi selektivno i odmjereno/i);
   assert.match(validOps[0].messages[0].content, /u korisničkom bosanskom tekstu ne koristi izraze/i);
+  assert.match(validOps[0].messages[0].content, /1\.200–1\.500 riječi user-facing sadržaja/i);
+  assert.match(validOps[0].messages[0].content, /Tačne skorove i raspone primarno navedi samo u kratkom odjeljku dimensionOverview/i);
+  assert.match(validOps[0].messages[0].content, /Ne koristi izraze "razvojna zrelost"/i);
+  assert.match(validOps[0].messages[0].content, /najviše četiri prioritetna/i);
+  assert.match(validOps[0].messages[0].content, /najviše tri konkretna moguća poslovna efekta/i);
+  assert.match(validOps[0].messages[0].content, /najviše četiri konsolidovane akcije/i);
+  assert.match(validOps[0].messages[0].content, /Kreditno poslovanje i rad s klijentima/i);
   assert.match(validOps[0].messages[1].content, /"audience_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"length_rule"/i);
   assert.match(validOps[0].messages[1].content, /"individual_result_protection_rule"/i);
   assert.match(validOps[0].messages[1].content, /"statistics_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"exact_score_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"maturity_language_rule"/i);
+  assert.match(validOps[0].messages[1].content, /"topic_repetition_rule"/i);
   assert.match(validOps[0].messages[1].content, /"outcome_pulse_language_rule"/i);
   assert.match(validOps[0].messages[1].content, /"section_roles_rule"/i);
+  assert.doesNotMatch(`${validOps[0].messages[0].content}\n${validOps[0].messages[1].content}`, /prompt[_ -]?v3/i);
   assert.equal(validateTeamDynamicsExecutiveOverviewSnapshot(validResult.snapshot).ok, true);
 
   const previousReasoningEffort = process.env.AI_REPORT_REASONING_EFFORT;

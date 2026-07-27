@@ -152,8 +152,10 @@ assert.match(helperSource, /export async function listTeamDynamicsReportRowsForA
 assert.match(helperSource, /export async function queueTeamDynamicsReportShell/);
 assert.match(helperSource, /included_member_ids_snapshot: includedMemberIdsSnapshot/);
 assert.match(helperSource, /selectionDraftId is required\./);
-assert.match(helperSource, /aggregationVerification\.verificationStatus !== "verified"/);
-assert.match(helperSource, /aggregationVerification\.aggregationStatus !== "ready"/);
+assert.match(helperSource, /loadTeamDynamicsFinalAggregationVerification/);
+assert.match(helperSource, /TEAM_DYNAMICS_FINAL_AGGREGATION_VERSION/);
+assert.match(helperSource, /aggregationVerification\.status !== "ready"/);
+assert.doesNotMatch(helperSource, /loadTeamAssessmentAggregationVerification/);
 assert.doesNotMatch(helperSource, /attempt_reports/);
 assert.doesNotMatch(helperSource, /public\.assessment_reports/);
 assert.doesNotMatch(helperSource, /refreshTeamAssessmentAggregationSnapshot/);
@@ -339,27 +341,29 @@ async function main() {
     {
       supabase,
       loadAggregationVerification: async () => ({
+        status: "ready",
         teamAssessmentAssignmentId: "assignment-1",
-        aggregationVersion: "team_dynamics_minimal_aggregation_v1",
-        exists: true,
+        testSlug: "team_dynamics_assessment_v1",
+        aggregationVersion: "team_dynamics_assessment_v1_mixed_aggregation_v1",
         aggregationSnapshotId: "agg-1",
-        teamId: "team-1",
-        aggregationStatus: "ready",
-        sourceScoringVersion: "team_dynamics_assessment_v1_mixed_v1",
-        participantCount: 4,
-        completedParticipantCount: 4,
-        includedScoreCount: 4,
-        excludedScoreCount: 0,
-        missingCompletedScoreParticipantIds: [],
-        sourceScoreSnapshotIds: [],
-        meanScore0To100: 50,
-        minScore0To100: 25,
-        maxScore0To100: 75,
-        rangeScore0To100: 50,
+        aggregationSnapshot: { teamId: "team-1" },
+        scoreEntryAggregations: [],
+        hasUnifiedOverallTeamScore: true,
+        hasTdmBlockAggregation: true,
+        hasTdmDomainAggregations: true,
+        hasPsychologicalSafetyAggregation: true,
+        hasSjtAggregation: true,
+        hasOutcomePulseAggregation: true,
+        includedMemberCount: 4,
+        completedMemberCount: 4,
+        readyScoredMemberCount: 4,
+        incompleteMemberCount: 0,
+        missingScoreCount: 0,
+        invalidScoreCount: 0,
         calculatedAt: "2026-05-28T11:00:00.000Z",
         updatedAt: "2026-05-28T11:00:00.000Z",
-        verificationStatus: "verified",
-        reasons: [],
+        createdAt: "2026-05-28T11:00:00.000Z",
+        reason: null,
       }),
     },
   );
@@ -407,27 +411,29 @@ async function main() {
     {
       supabase,
       loadAggregationVerification: async () => ({
+        status: "not_ready",
         teamAssessmentAssignmentId: "assignment-1",
-        aggregationVersion: "team_dynamics_minimal_aggregation_v1",
-        exists: true,
+        testSlug: "team_dynamics_assessment_v1",
+        aggregationVersion: "team_dynamics_assessment_v1_mixed_aggregation_v1",
         aggregationSnapshotId: null,
-        teamId: "team-1",
-        aggregationStatus: "not_ready",
-        sourceScoringVersion: "team_dynamics_assessment_v1_mixed_v1",
-        participantCount: 4,
-        completedParticipantCount: 3,
-        includedScoreCount: 3,
-        excludedScoreCount: 0,
-        missingCompletedScoreParticipantIds: ["tap-3"],
-        sourceScoreSnapshotIds: [],
-        meanScore0To100: null,
-        minScore0To100: null,
-        maxScore0To100: null,
-        rangeScore0To100: null,
+        aggregationSnapshot: null,
+        scoreEntryAggregations: [],
+        hasUnifiedOverallTeamScore: false,
+        hasTdmBlockAggregation: false,
+        hasTdmDomainAggregations: false,
+        hasPsychologicalSafetyAggregation: false,
+        hasSjtAggregation: false,
+        hasOutcomePulseAggregation: false,
+        includedMemberCount: 4,
+        completedMemberCount: 3,
+        readyScoredMemberCount: 3,
+        incompleteMemberCount: 1,
+        missingScoreCount: 1,
+        invalidScoreCount: 0,
         calculatedAt: "2026-05-28T11:00:00.000Z",
         updatedAt: "2026-05-28T11:00:00.000Z",
-        verificationStatus: "invalid",
-        reasons: ["aggregation_snapshot_not_ready"],
+        createdAt: "2026-05-28T11:00:00.000Z",
+        reason: "aggregation_snapshot_not_ready",
       }),
     },
   );
