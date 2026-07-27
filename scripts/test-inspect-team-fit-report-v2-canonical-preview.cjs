@@ -255,7 +255,7 @@ function buildDependencies(overrides = {}) {
   const deps = {
     skipDefaultDependencies: true,
     providerVersion: "team_fit_report_v2_openai_provider_v1",
-    promptVersion: "team_fit_report_v2_prompt_v1",
+    promptVersion: "team_fit_report_v2_prompt_v2",
     schemaName: "team_fit_report_v2",
     now: () => "2026-07-26T10:00:00.000Z",
     randomUUID: () => "ephemeral-1",
@@ -299,7 +299,7 @@ function buildDependencies(overrides = {}) {
         snapshot: reportSnapshot,
         rawContent: JSON.stringify(reportSnapshot),
         model: CANONICAL_MODEL,
-        promptVersion: "team_fit_report_v2_prompt_v1",
+        promptVersion: "team_fit_report_v2_prompt_v2",
         provider: "openai",
         providerVersion: "team_fit_report_v2_openai_provider_v1",
         evidenceCatalog: buildEvidenceCatalog(),

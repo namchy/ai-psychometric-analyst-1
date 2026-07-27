@@ -76,7 +76,10 @@ const {
   TeamFitReportV2EvidenceCatalogCollisionError,
   validateTeamFitReportV2EvidenceReferences,
 } = require(evidencePath);
-const { buildTeamFitReportV2Prompt } = require(promptPath);
+const {
+  TEAM_FIT_REPORT_V2_PROMPT_VERSION,
+  buildTeamFitReportV2Prompt,
+} = require(promptPath);
 const {
   TEAM_FIT_REPORT_V2_OPENAI_PROVIDER,
   TEAM_FIT_REPORT_V2_OPENAI_PROVIDER_VERSION,
@@ -563,6 +566,8 @@ function testEvidenceCatalogAndPrompt() {
   const combinedPrompt = `${prompt.systemPrompt}\n${prompt.userPrompt}`;
   const userPayload = JSON.parse(prompt.userPrompt);
 
+  assert.equal(TEAM_FIT_REPORT_V2_PROMPT_VERSION, "team_fit_report_v2_prompt_v2");
+  assert.equal(prompt.promptVersion, "team_fit_report_v2_prompt_v2");
   assert.deepEqual(Object.keys(userPayload).sort(), [
     "application_instructions",
     "untrusted_report_data",
@@ -596,7 +601,11 @@ function testEvidenceCatalogAndPrompt() {
     Object.values(entry.value)
       .filter((value) => typeof value === "string" && value.length > 0)
       .forEach((value) => {
-        assert.equal(serializedApplicationInstructions.includes(value), false);
+        assert.equal(
+          serializedApplicationInstructions.includes(value),
+          false,
+          `Application instructions must not contain fixture value: ${value}`,
+        );
       });
   });
   const requiredSections = [
@@ -630,6 +639,47 @@ function testEvidenceCatalogAndPrompt() {
   assert.match(combinedPrompt, /rang kandidata/i);
   assert.match(combinedPrompt, /confidence percentage/i);
   assert.match(combinedPrompt, /ostala ista bez obzira na izabrani tim/i);
+  assert.match(combinedPrompt, /jedan uvid.*jedno primarno mjesto/i);
+  assert.match(combinedPrompt, /mainReasons.*tačno 2/i);
+  assert.match(combinedPrompt, /keySignals.*tačno 3/i);
+  assert.match(combinedPrompt, /likelyContributions.*tačno 2/i);
+  assert.match(combinedPrompt, /successConditions.*tačno 2/i);
+  assert.match(combinedPrompt, /frictionRisks.*2–3/i);
+  assert.match(combinedPrompt, /interviewPlan.*tačno 3/i);
+  assert.match(combinedPrompt, /1–2 adaptForThisTeam/i);
+  assert.match(combinedPrompt, /tačno 1 teamPreparations/i);
+  assert.match(combinedPrompt, /tačno 2 first30Days/i);
+  assert.match(combinedPrompt, /managerGuidance.*tačno 3/i);
+  assert.match(combinedPrompt, /1\.600–2\.100 riječi/i);
+  assert.match(combinedPrompt, /dokaz, interpretaciju i hipotezu za provjeru/i);
+  assert.match(combinedPrompt, /naziv tima nije dokaz konkretnog procesa/i);
+  assert.match(combinedPrompt, /ne izmišljaj radne tokove, KPI-jeve/i);
+  assert.match(combinedPrompt, /prirodnom HR jeziku nad psihometrijskim žargonom/i);
+  assert.match(combinedPrompt, /motivacija zasnovana na smislu i interesu za rad/i);
+  assert.match(combinedPrompt, /veća emocionalna stabilnost/i);
+  assert.match(combinedPrompt, /motivacija manje zavisna od odobravanja okoline/i);
+  assert.match(combinedPrompt, /nazive testova, bandova i konstrukata ne ističi/i);
+  assert.match(combinedPrompt, /relativno slabiji ili umjereniji kandidatov signal.*ne smije postati ključna tema/i);
+  assert.match(combinedPrompt, /razlika između jezičkog, brojčanog i slikovnog zaključivanja.*ne smije proizvesti intervju pitanje/i);
+  assert.match(combinedPrompt, /najviše tri funkcionalna pojavljivanja/i);
+  assert.match(combinedPrompt, /otvoreno neslaganje i psihološka sigurnost.*ne smiju dominirati/i);
+  assert.match(combinedPrompt, /headline je jedna kratka, prirodna HR rečenica/i);
+  assert.match(combinedPrompt, /ne nabraja dvije ili tri dimenzije/i);
+  assert.match(combinedPrompt, /tačno 3 različite i prioritetne hipoteze/i);
+  assert.match(combinedPrompt, /ne ponavljaj isti konflikt u dva pitanja/i);
+  assert.match(combinedPrompt, /pretvaranje analize i visokih standarda.*pravovremenu akciju/i);
+  assert.match(combinedPrompt, /odobravanje okoline nije obavezna tema/i);
+  assert.match(combinedPrompt, /ne uključuj ga samo zato što evidence postoji/i);
+  assert.match(combinedPrompt, /najviše jednom u user-facing analizi/i);
+  assert.match(combinedPrompt, /intervju pitanja ne smiju sadržavati poželjan odgovor/i);
+  assert.match(combinedPrompt, /konkretan prošli primjer/i);
+  assert.match(combinedPrompt, /candidate accountability i team support moraju biti uravnoteženi/i);
+  assert.match(combinedPrompt, /vizuelne tokove rada.*pisani redoslijed.*kanale obrade/i);
+  assert.equal(TEAM_FIT_REPORT_V2_SCHEMA_NAME, "team_fit_report_v2");
+  assert.equal(
+    TEAM_FIT_REPORT_V2_OPENAI_PROVIDER_VERSION,
+    "team_fit_report_v2_openai_provider_v1",
+  );
   firstCatalog.candidate.concat(firstCatalog.team).forEach((entry) =>
     assert.match(combinedPrompt, new RegExp(entry.key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))),
   );
@@ -640,6 +690,7 @@ function testEvidenceCatalogAndPrompt() {
   assert.doesNotMatch(combinedPrompt, /SENTINEL_RAW_ANSWER/);
   assert.doesNotMatch(combinedPrompt, /SENTINEL_MEMBER_ANSWER/);
   assert.doesNotMatch(combinedPrompt, /SENTINEL_BASELINE_ONBOARDING/);
+  assert.doesNotMatch(combinedPrompt, /\bAmel\b|\bGD-001\b|\bGDT-01\b/);
 }
 
 function testPromptInstructionDataBoundary() {
