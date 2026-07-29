@@ -110,6 +110,11 @@ for (const [anchor, label] of [
   ["kratke, samostalne nominalne formulacije koje opisuju HR signal ili temu", "nominal HR title contract"],
   ["naredbu modelu, uredničku napomenu, opis zadatka ili nastavak prompt instrukcije", "title instruction exclusion"],
   ["Instrukcije i sadržaj izvještaja moraju ostati strogo razdvojeni", "instruction/report separation"],
+  ["JSON sintaksa pripada isključivo strukturi odgovora", "JSON structure boundary"],
+  ["Fragmenti JSON strukture, schema ključeva ili druge tehničke notacije", "technical fragment exclusion"],
+  ["dovršena i čitljiva kao samostalan prirodan tekst", "complete standalone narrative strings"],
+  ["čiste, kratke nominalne formulacije HR signala ili teme", "clean nominal titles"],
+  ["narativne vrijednosti ne sadrže instrukcije, tehničke fragmente, JSON sintaksu ili nedovršene rečenice", "narrative output hygiene"],
 ]) {
   assertPromptIncludes(promptText, anchor, label);
 }
