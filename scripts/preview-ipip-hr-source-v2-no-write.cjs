@@ -59,8 +59,8 @@ const DEFAULT_ARTIFACT_DIR = path.join(
 );
 const EXPECTED_SHA256 = Object.freeze({
   input: "020851d3589a07ae514bdd1863cc7766d9ab65df5100e2d15aa44bf5e4654f98",
-  prompt: "c272fdd902bd53618c3c802a2f8f3c989e1ba2b1c5cbdca079ac12d2811c4150",
-  request: "19e96696cc4536d0be2fb3c9b3f9788623f977ed518b539d2f4ee2d914da1ded",
+  prompt: "32317c24962953c511885ed6a4f5e6a10abcae2202c2dc5ce4cd07252934040c",
+  request: "2ddb756c5c5a3f0508eadd1d89ac35362cde33facaef975d290fe72040c5dbc1",
 });
 
 function resolveWithExtensions(candidatePath) {

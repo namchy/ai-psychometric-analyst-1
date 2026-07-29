@@ -103,6 +103,17 @@ for (const [anchor, label] of [
   assertPromptIncludes(promptText, anchor, label);
 }
 
+for (const [anchor, label] of [
+  ["Modelske, operativne i uredničke instrukcije", "instruction-only boundary"],
+  ["formulacija se ne smije prenositi u bilo koju JSON vrijednost namijenjenu HR korisniku", "no instruction leakage into user JSON"],
+  ["Narativni izlaz smije sadržavati samo sadržaj izvještaja izveden iz dostavljenih rezultata", "narrative source boundary"],
+  ["kratke, samostalne nominalne formulacije koje opisuju HR signal ili temu", "nominal HR title contract"],
+  ["naredbu modelu, uredničku napomenu, opis zadatka ili nastavak prompt instrukcije", "title instruction exclusion"],
+  ["Instrukcije i sadržaj izvještaja moraju ostati strogo razdvojeni", "instruction/report separation"],
+]) {
+  assertPromptIncludes(promptText, anchor, label);
+}
+
 for (const [key, roleAnchor] of [
   ["key_hr_signals", "ključne HR signale"],
   ["key_hr_signals", "uporište u rezultatima"],
