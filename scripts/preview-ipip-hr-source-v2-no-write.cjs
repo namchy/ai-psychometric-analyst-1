@@ -36,6 +36,22 @@ const PREVIEW_PROVIDER_PLAN = Object.freeze({
   retryCount: 0,
   fallback: false,
 });
+const DEFAULT_PROVIDER_TIMEOUT_MS = PREVIEW_PROVIDER_PLAN.timeoutMs;
+const MIN_PROVIDER_TIMEOUT_MS = 30000;
+const MAX_PROVIDER_TIMEOUT_MS = 600000;
+const PROVIDER_OUTCOMES = Object.freeze({
+  NOT_ATTEMPTED: "NOT_ATTEMPTED",
+  AVAILABLE_AND_VALID: "PROVIDER_RESULT_AVAILABLE_AND_VALID",
+  TIMEOUT: "PROVIDER_TIMEOUT",
+  ERROR: "PROVIDER_ERROR",
+  INVALID: "PROVIDER_RESULT_INVALID",
+  NORMALIZATION_FAILED: "PROVIDER_RESULT_NORMALIZATION_FAILED",
+});
+const DB_OUTCOMES = Object.freeze({
+  UNCHANGED: "DB_WRITES_ZERO_AND_EXISTING_REPORT_UNCHANGED",
+  CHANGED: "DB_STATE_CHANGED",
+  CAPTURE_FAILED: "DB_AFTER_STATE_CAPTURE_FAILED",
+});
 const DEFAULT_ARTIFACT_DIR = path.join(
   os.tmpdir(),
   "deep-profile",
@@ -107,6 +123,24 @@ function invariant(condition, message) {
   if (!condition) {
     fail(message);
   }
+}
+
+function parseProviderTimeoutMs(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const rawValue = String(value).trim();
+  invariant(/^\d+$/.test(rawValue), "--provider-timeout-ms must be an integer");
+
+  const timeoutMs = Number(rawValue);
+  invariant(Number.isSafeInteger(timeoutMs), "--provider-timeout-ms must be a safe integer");
+  invariant(
+    timeoutMs >= MIN_PROVIDER_TIMEOUT_MS && timeoutMs <= MAX_PROVIDER_TIMEOUT_MS,
+    `--provider-timeout-ms must be between ${MIN_PROVIDER_TIMEOUT_MS} and ${MAX_PROVIDER_TIMEOUT_MS}`,
+  );
+
+  return timeoutMs;
 }
 
 function canonicalJson(value) {
@@ -420,18 +454,27 @@ function loadRuntimeDependencies() {
   };
 }
 
-function resolvePreviewRuntimeConfig(dependencies) {
+function resolvePreviewRuntimeConfig(
+  dependencies,
+  { executeProvider = false, providerTimeoutMs = null } = {},
+) {
   const aiConfig = dependencies.getAiReportConfig();
   invariant(aiConfig.provider === PREVIEW_PROVIDER_PLAN.provider, "preview provider must be OpenAI");
   invariant(aiConfig.fallbackToMock === false, "preview fallback must be disabled");
 
   invariant(
-    aiConfig.openAiTimeoutMs === PREVIEW_PROVIDER_PLAN.timeoutMs,
-    `preview timeout must be ${PREVIEW_PROVIDER_PLAN.timeoutMs}, received ${aiConfig.openAiTimeoutMs}`,
+    aiConfig.openAiTimeoutMs === DEFAULT_PROVIDER_TIMEOUT_MS,
+    `preview default timeout must be ${DEFAULT_PROVIDER_TIMEOUT_MS}, received ${aiConfig.openAiTimeoutMs}`,
   );
+
+  const requestedTimeoutMs = parseProviderTimeoutMs(providerTimeoutMs);
+  const plannedTimeoutMs = requestedTimeoutMs ?? DEFAULT_PROVIDER_TIMEOUT_MS;
+  const timeoutMs = executeProvider ? plannedTimeoutMs : DEFAULT_PROVIDER_TIMEOUT_MS;
 
   return {
     ...PREVIEW_PROVIDER_PLAN,
+    timeoutMs,
+    plannedTimeoutMs,
     apiKey: aiConfig.openAiApiKey ?? null,
   };
 }
@@ -471,6 +514,100 @@ function buildPreviewRequest(preparedInput, dependencies, runtimeConfig) {
   };
 }
 
+function buildDbVerification({ beforeState, afterState, providerOutcome, captureError = null }) {
+  if (!afterState) {
+    return {
+      provider_verdict: providerOutcome,
+      db_verdict: DB_OUTCOMES.CAPTURE_FAILED,
+      database_writes_zero: null,
+      existing_report_unchanged: null,
+      before_state_sha256: beforeState.state_sha256,
+      after_state_sha256: null,
+      report_row_count_unchanged: null,
+      queued_count_unchanged: null,
+      processing_count_unchanged: null,
+      capture_error_type: captureError?.name ?? "Error",
+      capture_error_message: captureError?.message ?? "after-state capture failed",
+      status: DB_OUTCOMES.CAPTURE_FAILED,
+    };
+  }
+
+  const existingReportUnchanged =
+    canonicalJson(stripStateSha(beforeState)) === canonicalJson(stripStateSha(afterState));
+  const reportRowCountUnchanged = beforeState.counts.report_rows === afterState.counts.report_rows;
+  const queuedCountUnchanged = beforeState.counts.queued === afterState.counts.queued;
+  const processingCountUnchanged = beforeState.counts.processing === afterState.counts.processing;
+  const exactMatch =
+    existingReportUnchanged &&
+    reportRowCountUnchanged &&
+    queuedCountUnchanged &&
+    processingCountUnchanged;
+
+  return {
+    provider_verdict: providerOutcome,
+    db_verdict: exactMatch ? DB_OUTCOMES.UNCHANGED : DB_OUTCOMES.CHANGED,
+    database_writes_zero: exactMatch,
+    existing_report_unchanged: existingReportUnchanged,
+    before_state_sha256: beforeState.state_sha256,
+    after_state_sha256: afterState.state_sha256,
+    report_row_count_unchanged: reportRowCountUnchanged,
+    queued_count_unchanged: queuedCountUnchanged,
+    processing_count_unchanged: processingCountUnchanged,
+    capture_error_type: null,
+    capture_error_message: null,
+    status: exactMatch ? DB_OUTCOMES.UNCHANGED : DB_OUTCOMES.CHANGED,
+  };
+}
+
+function classifyProviderError(error) {
+  if (error?.previewProviderOutcome && Object.values(PROVIDER_OUTCOMES).includes(error.previewProviderOutcome)) {
+    return error.previewProviderOutcome;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return error?.name === "TimeoutError" || /timeout|timed out/i.test(message)
+    ? PROVIDER_OUTCOMES.TIMEOUT
+    : PROVIDER_OUTCOMES.ERROR;
+}
+
+function providerErrorType(providerOutcome) {
+  return {
+    [PROVIDER_OUTCOMES.TIMEOUT]: "TimeoutError",
+    [PROVIDER_OUTCOMES.ERROR]: "ProviderError",
+    [PROVIDER_OUTCOMES.INVALID]: "ValidationError",
+    [PROVIDER_OUTCOMES.NORMALIZATION_FAILED]: "NormalizationError",
+  }[providerOutcome] ?? null;
+}
+
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function buildFinalStatus({ providerOutcome, dbOutcome }) {
+  if (providerOutcome === PROVIDER_OUTCOMES.AVAILABLE_AND_VALID && dbOutcome === DB_OUTCOMES.UNCHANGED) {
+    return DB_OUTCOMES.UNCHANGED;
+  }
+
+  if (dbOutcome === DB_OUTCOMES.CAPTURE_FAILED) {
+    return `SOURCE_V2_PREVIEW_${providerOutcome}_DB_AFTER_STATE_CAPTURE_FAILED`;
+  }
+
+  if (dbOutcome === DB_OUTCOMES.CHANGED) {
+    return `SOURCE_V2_PREVIEW_${providerOutcome}_DB_CHANGED`;
+  }
+
+  const statusSuffix = {
+    [PROVIDER_OUTCOMES.TIMEOUT]: "PROVIDER_TIMEOUT_DB_UNCHANGED",
+    [PROVIDER_OUTCOMES.ERROR]: "PROVIDER_ERROR_DB_UNCHANGED",
+    [PROVIDER_OUTCOMES.INVALID]: "RESULT_INVALID_DB_UNCHANGED",
+    [PROVIDER_OUTCOMES.NORMALIZATION_FAILED]: "RESULT_NORMALIZATION_FAILED_DB_UNCHANGED",
+  }[providerOutcome];
+
+  return statusSuffix
+    ? `SOURCE_V2_PREVIEW_${statusSuffix}`
+    : `SOURCE_V2_PREVIEW_${providerOutcome}_DB_UNCHANGED`;
+}
+
 function buildManifest({
   mode,
   finalStatus,
@@ -482,6 +619,11 @@ function buildManifest({
   providerCallCount,
   artifactDirectory,
   validationStatus,
+  providerOutcome,
+  providerError,
+  afterState,
+  verification,
+  artifactErrors,
 }) {
   return {
     mode,
@@ -498,17 +640,33 @@ function buildManifest({
       model: runtimeConfig.model,
       reasoningEffort: runtimeConfig.reasoningEffort,
       temperature: runtimeConfig.temperature,
+      temperature_status: runtimeConfig.temperature === null ? "omitted" : "present",
       timeoutMs: runtimeConfig.timeoutMs,
+      plannedTimeoutMs: runtimeConfig.plannedTimeoutMs,
       maxProviderCalls: runtimeConfig.maxProviderCalls,
       retryCount: runtimeConfig.retryCount,
       fallback: runtimeConfig.fallback,
     },
     provider_call_count: providerCallCount,
+    provider_outcome: providerOutcome,
+    provider_error_type: providerError ? providerErrorType(providerOutcome) : null,
+    provider_error_message: providerError ? errorMessage(providerError) : null,
+    provider_timeout_ms: runtimeConfig.plannedTimeoutMs,
     retry_count: 0,
     fallback_used: false,
     validation_status: validationStatus,
     hashes,
+    input_sha256: hashes.input_sha256,
+    prompt_sha256: hashes.prompt_sha256,
+    request_sha256: hashes.request_sha256,
+    raw_result_sha256: hashes.raw_result_sha256 ?? null,
+    normalized_result_sha256: hashes.normalized_result_sha256 ?? null,
     db_before_state_sha256: dbBeforeState.state_sha256,
+    db_after_state_sha256: afterState?.state_sha256 ?? null,
+    db_state_exact_match:
+      verification == null ? null : verification.db_verdict === DB_OUTCOMES.UNCHANGED,
+    db_verdict: verification?.db_verdict ?? null,
+    artifact_errors: artifactErrors,
     database_writes: false,
     queue_used: false,
     worker_used: false,
@@ -533,6 +691,7 @@ async function runPreview({
   identity = TARGET,
   executeProvider = false,
   confirmationToken = null,
+  providerTimeoutMs = null,
   artifactDirectory = DEFAULT_ARTIFACT_DIR,
   dependencies = null,
   provider = null,
@@ -551,7 +710,10 @@ async function runPreview({
   });
   assertCanonicalReadiness(beforeState);
 
-  const runtimeConfig = await resolvePreviewRuntimeConfig(resolvedDependencies);
+  const runtimeConfig = await resolvePreviewRuntimeConfig(resolvedDependencies, {
+    executeProvider,
+    providerTimeoutMs,
+  });
   const request = await resolvedDependencies.buildCompletedAssessmentReportRequest(
     beforeState.attempt.test_id,
     identity.attemptId,
@@ -573,6 +735,7 @@ async function runPreview({
     input_sha256: sha256(promptInput),
     prompt_sha256: source.promptSha256,
     request_sha256: sha256(requestPayload.requestBody),
+    raw_result_sha256: null,
     normalized_result_sha256: null,
   };
 
@@ -609,6 +772,7 @@ async function runPreview({
       user_prompt: requestPayload.userPrompt,
       request_body: requestPayload.requestBody,
       timeout_ms: runtimeConfig.timeoutMs,
+      planned_timeout_ms: runtimeConfig.plannedTimeoutMs,
       max_provider_calls: 1,
       retry_count: 0,
       fallback: false,
@@ -625,8 +789,15 @@ async function runPreview({
   let validationStatus = "not_run_prepare_only";
   let afterState = null;
   let verification = null;
+  let providerOutcome = PROVIDER_OUTCOMES.NOT_ATTEMPTED;
+  let providerError = null;
+  let rawResult = null;
+  let normalizedResult = null;
+  const artifactErrors = [];
+  const authorizedProviderAttempt =
+    executeProvider && confirmationToken === CONFIRMATION_TOKEN;
 
-  if (executeProvider && confirmationToken === CONFIRMATION_TOKEN) {
+  if (authorizedProviderAttempt) {
     const providerAdapter = provider ?? (async ({ preparedInput }) => {
       const adapter = resolvedDependencies.createOpenAiReportProvider({
         apiKey: runtimeConfig.apiKey,
@@ -641,55 +812,85 @@ async function runPreview({
     }
 
     providerCallCount += 1;
-    const rawProviderResult = await providerAdapter({
-      preparedInput,
-      requestPayload,
-      callNumber: providerCallCount,
-    });
-    const rawResult = resolveProviderResult(rawProviderResult);
-    invariant(rawResult != null, "provider returned an empty result");
-    const normalizedResult = resolvedDependencies.validateStructuredReport(rawResult, preparedInput);
-    hashes.normalized_result_sha256 = sha256(normalizedResult);
-    validationStatus = "validated_and_normalized_in_memory";
+    try {
+      const rawProviderResult = await providerAdapter({
+        preparedInput,
+        requestPayload,
+        callNumber: providerCallCount,
+      });
+      rawResult = resolveProviderResult(rawProviderResult);
+      invariant(rawResult != null, "provider returned an empty result");
+      hashes.raw_result_sha256 = sha256(rawResult);
 
-    afterState = await (resolvedDependencies.loadDbState ?? loadReadOnlyDbState)({
-      createSupabaseAdminClient: resolvedDependencies.createSupabaseAdminClient,
-      attemptId: identity.attemptId,
-    });
-    verification = {
-      database_writes_zero: true,
-      existing_report_unchanged:
-        canonicalJson(stripStateSha(beforeState)) === canonicalJson(stripStateSha(afterState)),
-      before_state_sha256: beforeState.state_sha256,
-      after_state_sha256: afterState.state_sha256,
-      report_row_count_unchanged: beforeState.counts.report_rows === afterState.counts.report_rows,
-      queued_count_unchanged: beforeState.counts.queued === afterState.counts.queued,
-      processing_count_unchanged:
-        beforeState.counts.processing === afterState.counts.processing,
-      status: null,
+      try {
+        normalizedResult = resolvedDependencies.validateStructuredReport(rawResult, preparedInput);
+      } catch (error) {
+        const validationError = new Error(errorMessage(error));
+        validationError.previewProviderOutcome = error?.previewProviderOutcome ?? PROVIDER_OUTCOMES.INVALID;
+        throw validationError;
+      }
+
+      hashes.normalized_result_sha256 = sha256(normalizedResult);
+      validationStatus = "validated_and_normalized_in_memory";
+      providerOutcome = PROVIDER_OUTCOMES.AVAILABLE_AND_VALID;
+    } catch (error) {
+      providerError = error;
+      providerOutcome = classifyProviderError(error);
+      validationStatus = providerOutcome.toLowerCase();
+    } finally {
+      try {
+        afterState = await (resolvedDependencies.loadDbState ?? loadReadOnlyDbState)({
+          createSupabaseAdminClient: resolvedDependencies.createSupabaseAdminClient,
+          attemptId: identity.attemptId,
+        });
+        verification = buildDbVerification({
+          beforeState,
+          afterState,
+          providerOutcome,
+        });
+      } catch (error) {
+        verification = buildDbVerification({
+          beforeState,
+          afterState: null,
+          providerOutcome,
+          captureError: error,
+        });
+      }
+    }
+
+    const writeFailureArtifact = (fileName, value) => {
+      try {
+        writeJsonFile(path.join(artifactDir, fileName), value);
+      } catch (error) {
+        artifactErrors.push({
+          file: fileName,
+          error_type: error.name ?? "Error",
+          error_message: errorMessage(error),
+        });
+      }
     };
-    verification.status =
-      verification.database_writes_zero &&
-      verification.existing_report_unchanged &&
-      verification.report_row_count_unchanged &&
-      verification.queued_count_unchanged &&
-      verification.processing_count_unchanged
-        ? "DB_WRITES_ZERO_AND_EXISTING_REPORT_UNCHANGED"
-        : "DB_WRITE_PROOF_FAILED";
-    invariant(
-      verification.status === "DB_WRITES_ZERO_AND_EXISTING_REPORT_UNCHANGED",
-      "after-state did not exactly match before-state",
-    );
 
-    writeJsonFile(path.join(artifactDir, "raw-provider-result.json"), rawResult);
-    writeJsonFile(path.join(artifactDir, "normalized-preview.json"), normalizedResult);
-    writeJsonFile(path.join(artifactDir, "db-after-state.json"), afterState);
-    writeJsonFile(path.join(artifactDir, "verification.json"), verification);
-    finalStatus = verification.status;
+    if (rawResult !== null) {
+      writeFailureArtifact("raw-provider-result.json", rawResult);
+    }
+    if (normalizedResult !== null) {
+      writeFailureArtifact("normalized-preview.json", normalizedResult);
+    }
+    if (afterState) {
+      writeFailureArtifact("db-after-state.json", afterState);
+    }
+    if (verification) {
+      writeFailureArtifact("verification.json", verification);
+    }
+
+    finalStatus = buildFinalStatus({
+      providerOutcome,
+      dbOutcome: verification?.db_verdict ?? DB_OUTCOMES.CAPTURE_FAILED,
+    });
   }
 
   const manifest = buildManifest({
-    mode: executeProvider && confirmationToken === CONFIRMATION_TOKEN ? "execute" : "prepare-only",
+    mode: authorizedProviderAttempt ? "execute" : "prepare-only",
     finalStatus,
     identity: identityMetadata,
     source: source.sourcePrompt,
@@ -699,27 +900,23 @@ async function runPreview({
     providerCallCount,
     artifactDirectory: artifactDir,
     validationStatus,
+    providerOutcome,
+    providerError,
+    afterState,
+    verification,
+    artifactErrors,
   });
   manifest.created_at = now();
-  if (afterState) {
-    manifest.db_after_state_sha256 = afterState.state_sha256;
-  }
-  if (verification) {
-    manifest.verification_status = verification.status;
-  }
+  manifest.verification_status = verification?.status ?? null;
   writeJsonFile(path.join(artifactDir, "manifest.json"), manifest);
 
   return {
     ...manifest,
     artifactFiles: Object.keys(prepareArtifacts).concat(
-      afterState
-        ? [
-            "raw-provider-result.json",
-            "normalized-preview.json",
-            "db-after-state.json",
-            "verification.json",
-          ]
-        : [],
+      rawResult !== null ? ["raw-provider-result.json"] : [],
+      normalizedResult !== null ? ["normalized-preview.json"] : [],
+      afterState ? ["db-after-state.json"] : [],
+      verification ? ["verification.json"] : [],
       "manifest.json",
     ),
     preparedInput,
@@ -735,6 +932,7 @@ function parseCliArgs(argv) {
     executeProvider: false,
     confirmationToken: null,
     artifactDirectory: DEFAULT_ARTIFACT_DIR,
+    providerTimeoutMs: null,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -759,6 +957,12 @@ function parseCliArgs(argv) {
     if (name === "--artifact-dir") {
       if (inlineValue === null) index += 1;
       values.artifactDirectory = nextValue ?? DEFAULT_ARTIFACT_DIR;
+      continue;
+    }
+
+    if (name === "--provider-timeout-ms") {
+      if (inlineValue === null) index += 1;
+      values.providerTimeoutMs = parseProviderTimeoutMs(nextValue);
       continue;
     }
 
@@ -794,6 +998,7 @@ function parseCliArgs(argv) {
     executeProvider: values.executeProvider,
     confirmationToken: values.confirmationToken,
     artifactDirectory: values.artifactDirectory,
+    providerTimeoutMs: values.providerTimeoutMs,
   };
 }
 
@@ -811,6 +1016,7 @@ async function main() {
     },
     executeProvider: cli.executeProvider,
     confirmationToken: cli.confirmationToken,
+    providerTimeoutMs: cli.providerTimeoutMs,
     artifactDirectory: cli.artifactDirectory,
   });
 
@@ -828,8 +1034,14 @@ async function main() {
         temperature: result.provider.temperature,
         timeout_ms: result.provider.timeoutMs,
         provider_call_count: result.provider_call_count,
+        provider_outcome: result.provider_outcome,
+        provider_error_type: result.provider_error_type,
+        provider_error_message: result.provider_error_message,
         hashes: result.hashes,
         db_before_state_sha256: result.db_before_state_sha256,
+        db_after_state_sha256: result.db_after_state_sha256,
+        db_state_exact_match: result.db_state_exact_match,
+        db_verdict: result.db_verdict,
         validation_status: result.validation_status,
         artifact_directory: result.artifact_directory,
         final_status: result.final_status,
@@ -838,6 +1050,10 @@ async function main() {
       2,
     ),
   );
+
+  if (result.mode === "execute" && result.final_status !== DB_OUTCOMES.UNCHANGED) {
+    process.exitCode = 1;
+  }
 }
 
 if (require.main === module) {
@@ -852,6 +1068,7 @@ module.exports = {
   TARGET,
   installTypeScriptRuntime,
   parseCliArgs,
+  parseProviderTimeoutMs,
   resolveSourcePrompt,
   runPreview,
   sha256,

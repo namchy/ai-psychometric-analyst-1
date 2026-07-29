@@ -215,6 +215,46 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function canonicalCliArgs(extra = []) {
+  return [
+    "--attempt",
+    TARGET.attemptId,
+    "--report",
+    TARGET.reportId,
+    "--prompt-key",
+    TARGET.promptKey,
+    "--prompt-version",
+    TARGET.promptVersion,
+    ...extra,
+  ];
+}
+
+function assertFailureArtifacts(result, { raw, normalized }) {
+  for (const fileName of [
+    "manifest.json",
+    "canonical-input.json",
+    "source-prompt.json",
+    "provider-request.json",
+    "db-before-state.json",
+    "db-after-state.json",
+    "verification.json",
+  ]) {
+    assert.equal(fs.existsSync(path.join(result.artifact_directory, fileName)), true);
+  }
+
+  assert.equal(
+    fs.existsSync(path.join(result.artifact_directory, "raw-provider-result.json")),
+    raw,
+  );
+  assert.equal(
+    fs.existsSync(path.join(result.artifact_directory, "normalized-preview.json")),
+    normalized,
+  );
+  assert.equal(result.verification.db_verdict, "DB_WRITES_ZERO_AND_EXISTING_REPORT_UNCHANGED");
+  assert.equal(result.verification.provider_verdict, result.provider_outcome);
+  assert.equal(result.db_state_exact_match, true);
+}
+
 async function main() {
   const previousReasoning = process.env.AI_REPORT_REASONING_EFFORT;
   process.env.AI_REPORT_REASONING_EFFORT = "low";
@@ -244,27 +284,25 @@ async function main() {
       'preview seam must not contain Supabase persistence mutations',
     );
 
-    const parsed = preview.parseCliArgs([
-      "--attempt",
-      TARGET.attemptId,
-      "--report",
-      TARGET.reportId,
-      "--prompt-key",
-      TARGET.promptKey,
-      "--prompt-version",
-      TARGET.promptVersion,
-    ]);
+    const parsed = preview.parseCliArgs(canonicalCliArgs());
     assert.equal(parsed.executeProvider, false);
     assert.equal(parsed.confirmationToken, null);
+    assert.equal(parsed.providerTimeoutMs, null);
+    assert.equal(
+      preview.parseCliArgs(canonicalCliArgs(["--provider-timeout-ms", "60000"]))
+        .providerTimeoutMs,
+      60000,
+    );
+    for (const invalidTimeout of ["29999", "600001", "not-an-integer"]) {
+      assert.throws(
+        () => preview.parseCliArgs(canonicalCliArgs(["--provider-timeout-ms", invalidTimeout])),
+        /--provider-timeout-ms/,
+      );
+    }
     assert.throws(
       () =>
         preview.parseCliArgs([
-          "--attempt",
-          TARGET.attemptId,
-          "--report",
-          TARGET.reportId,
-          "--prompt-key",
-          TARGET.promptKey,
+          ...canonicalCliArgs(),
           "--prompt-version",
           "wrong-version",
         ]),
@@ -287,6 +325,7 @@ async function main() {
     const request = buildRequest();
     const state = buildDbState();
     const callCounter = { provider: 0, dbReads: 0 };
+    assert.equal(callCounter.provider, 0);
     const dependencies = buildDependencies(request, state, callCounter);
     const prepareDirectory = fs.mkdtempSync(
       path.join(os.tmpdir(), "ipip-hr-source-v2-prepare-test-"),
@@ -314,6 +353,19 @@ async function main() {
     ]) {
       assert.equal(fs.existsSync(path.join(prepareDirectory, fileName)), true);
     }
+
+    const plannedPrepare = await preview.runPreview({
+      identity: TARGET,
+      artifactDirectory: fs.mkdtempSync(path.join(os.tmpdir(), "ipip-hr-source-v2-planned-timeout-test-")),
+      dependencies,
+      env: { NODE_ENV: "test" },
+      providerTimeoutMs: 60000,
+      assertExpectedShas: false,
+    });
+    assert.equal(plannedPrepare.provider_call_count, 0);
+    assert.equal(plannedPrepare.provider.timeoutMs, 120000);
+    assert.equal(plannedPrepare.provider.plannedTimeoutMs, 60000);
+    assert.equal(plannedPrepare.provider_timeout_ms, 60000);
 
     const unauthorized = await preview.runPreview({
       identity: TARGET,
@@ -346,6 +398,77 @@ async function main() {
     assert.equal(callCounter.provider, 0);
 
     const fakeReport = buildFakeReport(prepareResult.preparedInput.promptInput);
+
+    callCounter.provider = 0;
+    const timeoutResult = await preview.runPreview({
+      identity: TARGET,
+      artifactDirectory: fs.mkdtempSync(path.join(os.tmpdir(), "ipip-hr-source-v2-timeout-test-")),
+      dependencies,
+      env: { NODE_ENV: "test" },
+      executeProvider: true,
+      confirmationToken: CONFIRMATION_TOKEN,
+      providerTimeoutMs: 60000,
+      provider: async () => {
+        callCounter.provider += 1;
+        const error = new Error("provider timed out after 60000ms");
+        error.name = "TimeoutError";
+        throw error;
+      },
+      assertExpectedShas: false,
+    });
+    assert.equal(callCounter.provider, 1);
+    assert.equal(timeoutResult.provider_call_count, 1);
+    assert.equal(timeoutResult.provider_outcome, "PROVIDER_TIMEOUT");
+    assert.equal(timeoutResult.provider_error_type, "TimeoutError");
+    assert.equal(timeoutResult.provider_timeout_ms, 60000);
+    assert.equal(timeoutResult.final_status, "SOURCE_V2_PREVIEW_PROVIDER_TIMEOUT_DB_UNCHANGED");
+    assert.equal(timeoutResult.hashes.raw_result_sha256, null);
+    assert.equal(timeoutResult.hashes.normalized_result_sha256, null);
+    assertFailureArtifacts(timeoutResult, { raw: false, normalized: false });
+
+    callCounter.provider = 0;
+    const providerErrorResult = await preview.runPreview({
+      identity: TARGET,
+      artifactDirectory: fs.mkdtempSync(path.join(os.tmpdir(), "ipip-hr-source-v2-provider-error-test-")),
+      dependencies,
+      env: { NODE_ENV: "test" },
+      executeProvider: true,
+      confirmationToken: CONFIRMATION_TOKEN,
+      provider: async () => {
+        callCounter.provider += 1;
+        throw new Error("synthetic provider failure");
+      },
+      assertExpectedShas: false,
+    });
+    assert.equal(callCounter.provider, 1);
+    assert.equal(providerErrorResult.provider_outcome, "PROVIDER_ERROR");
+    assert.equal(providerErrorResult.provider_error_type, "ProviderError");
+    assert.equal(providerErrorResult.final_status, "SOURCE_V2_PREVIEW_PROVIDER_ERROR_DB_UNCHANGED");
+    assertFailureArtifacts(providerErrorResult, { raw: false, normalized: false });
+
+    callCounter.provider = 0;
+    const validationErrorResult = await preview.runPreview({
+      identity: TARGET,
+      artifactDirectory: fs.mkdtempSync(path.join(os.tmpdir(), "ipip-hr-source-v2-validation-error-test-")),
+      dependencies,
+      env: { NODE_ENV: "test" },
+      executeProvider: true,
+      confirmationToken: CONFIRMATION_TOKEN,
+      provider: async () => {
+        callCounter.provider += 1;
+        return { invalid: "structured report" };
+      },
+      assertExpectedShas: false,
+    });
+    assert.equal(callCounter.provider, 1);
+    assert.equal(validationErrorResult.provider_outcome, "PROVIDER_RESULT_INVALID");
+    assert.equal(validationErrorResult.provider_error_type, "ValidationError");
+    assert.equal(validationErrorResult.final_status, "SOURCE_V2_PREVIEW_RESULT_INVALID_DB_UNCHANGED");
+    assert.ok(validationErrorResult.hashes.raw_result_sha256);
+    assert.equal(validationErrorResult.hashes.normalized_result_sha256, null);
+    assertFailureArtifacts(validationErrorResult, { raw: true, normalized: false });
+
+    callCounter.provider = 0;
     let seenRequest = null;
     const executeResult = await preview.runPreview({
       identity: TARGET,
@@ -368,6 +491,8 @@ async function main() {
     assert.equal(executeResult.provider_call_count, 1);
     assert.equal(executeResult.final_status, "DB_WRITES_ZERO_AND_EXISTING_REPORT_UNCHANGED");
     assert.equal(executeResult.validation_status, "validated_and_normalized_in_memory");
+    assert.equal(executeResult.provider_outcome, "PROVIDER_RESULT_AVAILABLE_AND_VALID");
+    assert.equal(executeResult.verification.db_verdict, "DB_WRITES_ZERO_AND_EXISTING_REPORT_UNCHANGED");
     assert.ok(executeResult.hashes.normalized_result_sha256);
     assert.equal(seenRequest.requestBody.model, "gpt-5.5");
     assert.equal(seenRequest.requestBody.reasoning_effort, "low");
