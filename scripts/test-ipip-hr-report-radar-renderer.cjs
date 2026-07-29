@@ -11,6 +11,10 @@ const reportRendererSource = fs.readFileSync(
   path.join(projectRoot, "components/assessment/completed-assessment-summary.tsx"),
   "utf8",
 );
+const radarChartSource = fs.readFileSync(
+  path.join(projectRoot, "components/assessment/personality-radar-chart.tsx"),
+  "utf8",
+);
 
 function extractFunctionBody(source, functionName) {
   const startToken = `function ${functionName}`;
@@ -112,6 +116,11 @@ assert.equal(
   reportRendererSource.includes("shouldRenderRadar ?"),
   true,
   "Expected IPIP HR renderer to omit the radar panel when deterministic score domains are unavailable.",
+);
+assert.equal(
+  radarChartSource.includes('initialDimension={{ width: 320, height: 300 }}'),
+  true,
+  "Expected the shared radar ResponsiveContainer to have positive SSR dimensions.",
 );
 
 console.log("IPIP HR report radar renderer tests passed.");

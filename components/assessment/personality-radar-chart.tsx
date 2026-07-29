@@ -107,7 +107,11 @@ export function PersonalityRadarChart({
 
   return (
     <div className={["h-[300px] w-full", className].filter(Boolean).join(" ")}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        initialDimension={{ width: 320, height: 300 }}
+      >
         <RadarChart data={chartData} margin={{ top: 8, right: 42, bottom: 18, left: 42 }}>
           <PolarGrid gridType="polygon" stroke={GRID_STROKE} strokeWidth={1} />
           <PolarAngleAxis
