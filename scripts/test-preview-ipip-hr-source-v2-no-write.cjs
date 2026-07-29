@@ -20,7 +20,7 @@ const {
   validateStructuredReport,
 } = require("../lib/assessment/report-provider-openai.ts");
 
-const { TARGET, CONFIRMATION_TOKEN } = preview;
+const { CONFIRMATION_TOKEN, EXPECTED_SHA256, TARGET } = preview;
 
 function buildRequest() {
   const dimensions = [];
@@ -195,8 +195,8 @@ function buildDependencies(request, state, callCounter) {
     validateStructuredReport,
     getAiReportConfig: () => ({
       provider: "openai",
-      model: "gpt-5.5",
-      reasoningEffort: "low",
+      model: "gpt-5.6-sol",
+      reasoningEffort: "medium",
       fallbackToMock: false,
       openAiApiKey: null,
       openAiTimeoutMs: 120000,
@@ -257,9 +257,14 @@ function assertFailureArtifacts(result, { raw, normalized }) {
 
 async function main() {
   const previousReasoning = process.env.AI_REPORT_REASONING_EFFORT;
-  process.env.AI_REPORT_REASONING_EFFORT = "low";
+  process.env.AI_REPORT_REASONING_EFFORT = "medium";
 
   try {
+    assert.deepEqual(EXPECTED_SHA256, {
+      input: "020851d3589a07ae514bdd1863cc7766d9ab65df5100e2d15aa44bf5e4654f98",
+      prompt: "2a6d322fe02e8c5072d068fdaa9115d77d468ea0bd96a1df9bc2a54a3ee11525",
+      request: "b45fa540f5fe2d3b00b25f330484fa62cc4862e8a6f781df4b447124fb5b4a35",
+    });
     const source = preview.resolveSourcePrompt();
     assert.equal(source.sourcePrompt.authority, "source_prompt_version");
     assert.equal(source.sourcePrompt.prompt_key, TARGET.promptKey);
@@ -340,6 +345,8 @@ async function main() {
 
     assert.equal(prepareResult.final_status, "READY_FOR_EXPLICIT_ONE_CALL_APPROVAL");
     assert.equal(prepareResult.provider_call_count, 0);
+    assert.equal(prepareResult.provider.model, "gpt-5.6-sol");
+    assert.equal(prepareResult.provider.reasoningEffort, "medium");
     assert.equal(prepareResult.validation_status, "not_run_prepare_only");
     assert.equal(callCounter.provider, 0);
     assert.equal(callCounter.dbReads, 1);
@@ -494,8 +501,8 @@ async function main() {
     assert.equal(executeResult.provider_outcome, "PROVIDER_RESULT_AVAILABLE_AND_VALID");
     assert.equal(executeResult.verification.db_verdict, "DB_WRITES_ZERO_AND_EXISTING_REPORT_UNCHANGED");
     assert.ok(executeResult.hashes.normalized_result_sha256);
-    assert.equal(seenRequest.requestBody.model, "gpt-5.5");
-    assert.equal(seenRequest.requestBody.reasoning_effort, "low");
+    assert.equal(seenRequest.requestBody.model, "gpt-5.6-sol");
+    assert.equal(seenRequest.requestBody.reasoning_effort, "medium");
     assert.equal(Object.hasOwn(seenRequest.requestBody, "temperature"), false);
     assert.deepEqual(executeResult.beforeState, executeResult.afterState);
     assert.equal(

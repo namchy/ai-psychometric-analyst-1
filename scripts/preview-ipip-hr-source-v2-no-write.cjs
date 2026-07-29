@@ -28,8 +28,8 @@ const SOURCE_AUTHORITY = "source_prompt_version";
 const CONFIRMATION_TOKEN = "EXACT_SOURCE_V2_ONE_CALL";
 const PREVIEW_PROVIDER_PLAN = Object.freeze({
   provider: "openai",
-  model: "gpt-5.5",
-  reasoningEffort: "low",
+  model: "gpt-5.6-sol",
+  reasoningEffort: "medium",
   temperature: null,
   timeoutMs: 120000,
   maxProviderCalls: 1,
@@ -60,7 +60,7 @@ const DEFAULT_ARTIFACT_DIR = path.join(
 const EXPECTED_SHA256 = Object.freeze({
   input: "020851d3589a07ae514bdd1863cc7766d9ab65df5100e2d15aa44bf5e4654f98",
   prompt: "2a6d322fe02e8c5072d068fdaa9115d77d468ea0bd96a1df9bc2a54a3ee11525",
-  request: "cc2094e353b6c2ae9e95d22d06bfd80f7e75054ee61cffc0b15214dd425e7587",
+  request: "b45fa540f5fe2d3b00b25f330484fa62cc4862e8a6f781df4b447124fb5b4a35",
 });
 
 function resolveWithExtensions(candidatePath) {
@@ -488,15 +488,28 @@ function buildPreviewPromptInput(preparedInput) {
 }
 
 function buildPreviewRequest(preparedInput, dependencies, runtimeConfig) {
-  const payload = dependencies.buildOpenAiStructuredRequestPayload(preparedInput, {
-    apiKey: null,
-    model: runtimeConfig.model,
-    timeoutMs: runtimeConfig.timeoutMs,
-  });
+  const previousReasoningEffort = process.env.AI_REPORT_REASONING_EFFORT;
+  process.env.AI_REPORT_REASONING_EFFORT = runtimeConfig.reasoningEffort;
+
+  let payload;
+  try {
+    payload = dependencies.buildOpenAiStructuredRequestPayload(preparedInput, {
+      apiKey: null,
+      model: runtimeConfig.model,
+      timeoutMs: runtimeConfig.timeoutMs,
+    });
+  } finally {
+    if (previousReasoningEffort === undefined) {
+      delete process.env.AI_REPORT_REASONING_EFFORT;
+    } else {
+      process.env.AI_REPORT_REASONING_EFFORT = previousReasoningEffort;
+    }
+  }
+
   const requestBody = payload.requestBody;
 
-  invariant(requestBody.model === "gpt-5.5", "request model must be gpt-5.5");
-  invariant(requestBody.reasoning_effort === "low", "request reasoning_effort must be low");
+  invariant(requestBody.model === "gpt-5.6-sol", "request model must be gpt-5.6-sol");
+  invariant(requestBody.reasoning_effort === "medium", "request reasoning_effort must be medium");
   invariant(!Object.prototype.hasOwnProperty.call(requestBody, "temperature"), "request must omit temperature");
   invariant(requestBody.response_format.type === "json_schema", "request must use json_schema");
   invariant(
@@ -1065,6 +1078,7 @@ if (require.main === module) {
 
 module.exports = {
   CONFIRMATION_TOKEN,
+  EXPECTED_SHA256,
   TARGET,
   installTypeScriptRuntime,
   parseCliArgs,
