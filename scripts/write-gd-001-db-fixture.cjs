@@ -23,9 +23,11 @@ const {
   GD_001_ORGANIZATION_NAME,
   GD_001_TEST_SLUGS,
   GD_001_FIXTURE_RPC,
+  GOLDEN_DEMO_FIXTURE_RPC,
   getGoldenDemoCandidateContract,
   buildGoldenDemoFixtureRpcPayload,
   executeGd001ApplyWithRpcBoundary,
+  executeGoldenDemoApplyWithRpcBoundary,
   getGd001RpcErrorText,
   inspectGd001FixtureWithRepository,
   parseGd001WriterCli,
@@ -339,27 +341,39 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   });
   const repository = createReadOnlyRepository({ supabase, foundation, candidate });
   const plan = await inspectGd001FixtureWithRepository(repository);
-  if (options.mode === "apply" && candidate.candidateId !== GD_001_CANDIDATE_ID) {
-    throw new Error(
-      "GD-002 apply is blocked: the installed GD-001 RPC is not a candidate-aware persistence seam. Run the read-only plan only until a candidate-specific RPC is explicitly approved.",
-    );
-  }
   if (options.mode === "apply") {
-    const applyResult = await executeGd001ApplyWithRpcBoundary({
-      initialPlan: plan,
-      payload: buildGoldenDemoFixtureRpcPayload(foundation, candidate.candidateId),
-      async invokeRpc({ rpcName, payload }) {
-        if (rpcName !== GD_001_FIXTURE_RPC) {
-          throw new Error(`Unexpected fixture RPC: ${rpcName}`);
-        }
-        const { data, error } = await supabase.rpc(rpcName, { p_fixture: payload });
-        if (error) {
-          throw new Error(`GD-001 fixture RPC failed: ${getGd001RpcErrorText(error)}`);
-        }
-        return data;
-      },
-      inspectAfterRpc: () => inspectGd001FixtureWithRepository(repository),
-    });
+    const applyResult = candidate.candidateId === GD_001_CANDIDATE_ID
+      ? await executeGd001ApplyWithRpcBoundary({
+          initialPlan: plan,
+          payload: buildGoldenDemoFixtureRpcPayload(foundation, candidate.candidateId),
+          async invokeRpc({ rpcName, payload }) {
+            if (rpcName !== GD_001_FIXTURE_RPC) {
+              throw new Error(`Unexpected fixture RPC: ${rpcName}`);
+            }
+            const { data, error } = await supabase.rpc(rpcName, { p_fixture: payload });
+            if (error) {
+              throw new Error(`GD-001 fixture RPC failed: ${getGd001RpcErrorText(error)}`);
+            }
+            return data;
+          },
+          inspectAfterRpc: () => inspectGd001FixtureWithRepository(repository),
+        })
+      : await executeGoldenDemoApplyWithRpcBoundary({
+          candidateId: candidate.candidateId,
+          initialPlan: plan,
+          payload: buildGoldenDemoFixtureRpcPayload(foundation, candidate.candidateId),
+          async invokeRpc({ rpcName, payload }) {
+            if (rpcName !== GOLDEN_DEMO_FIXTURE_RPC) {
+              throw new Error(`Unexpected fixture RPC: ${rpcName}`);
+            }
+            const { data, error } = await supabase.rpc(rpcName, { p_fixture: payload });
+            if (error) {
+              throw new Error(`Golden Demo fixture RPC failed: ${getGd001RpcErrorText(error)}`);
+            }
+            return data;
+          },
+          inspectAfterRpc: () => inspectGd001FixtureWithRepository(repository),
+        });
     process.stdout.write(`${JSON.stringify(applyResult, null, 2)}\n`);
     return applyResult;
   }

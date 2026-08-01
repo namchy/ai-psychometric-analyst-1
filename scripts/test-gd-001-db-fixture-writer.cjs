@@ -400,7 +400,7 @@ assert.doesNotMatch(
 assert.match(writerSource, /\.rpc\s*\(/);
 assert.match(writerSource, /supabase\.rpc\(rpcName, \{ p_fixture: payload \}\)/);
 assert.match(writerSource, /\.in\("test_id", Object\.values\(testIdsBySlug\)\)/);
-assert.match(writerSource, /GD-002 apply is blocked/);
+assert.match(writerSource, /GOLDEN_DEMO_FIXTURE_RPC/);
 assert.match(rpcMigrationSource, /create_golden_demo_gd001_fixture_v1\(p_fixture jsonb\)/);
 assert.match(rpcMigrationSource, /security definer/i);
 assert.match(rpcMigrationSource, /set search_path = ''/i);

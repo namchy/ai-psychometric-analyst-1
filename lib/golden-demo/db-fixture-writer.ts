@@ -20,6 +20,8 @@ export const GD_001_ORGANIZATION_NAME = GOLDEN_DEMO_ORGANIZATION_NAME;
 export const GD_001_TEST_SLUGS = GOLDEN_DEMO_TEST_SLUGS;
 export const GD_001_EXPECTED_RESPONSE_COUNTS = GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS;
 export const GD_001_FIXTURE_RPC = "create_golden_demo_gd001_fixture_v1" as const;
+export const GOLDEN_DEMO_FIXTURE_RPC =
+  "create_golden_demo_standard_battery_fixture_v2" as const;
 export const GD_001_FIXTURE_SCHEMA_VERSION = "gd_db_fixture_v1" as const;
 export const GD_001_RPC_NOT_EMPTY_PREFIX = "GD_FIXTURE_NOT_EMPTY" as const;
 
@@ -192,6 +194,33 @@ export type Gd001FixtureRpcResult = {
   participantId: string;
   assignmentId: string;
   attemptIds: Record<(typeof GD_001_TEST_SLUGS)[number], string>;
+  counts: {
+    participants: 1;
+    assignments: 1;
+    attempts: 3;
+    assignmentAttemptLinks: 3;
+    responses: 184;
+    ipipResponses: 120;
+    safranResponses: 45;
+    mwmsResponses: 19;
+    dimensionScores: 0;
+    attemptReports: 0;
+    assessmentReports: 0;
+  };
+  scoringExecution: false;
+  reportGeneration: false;
+};
+
+export type GoldenDemoFixtureRpcResult = {
+  rpcVersion: typeof GOLDEN_DEMO_FIXTURE_RPC;
+  stateBefore: "EMPTY";
+  stateAfter: "CREATED";
+  candidateId: GoldenDemoCandidateId;
+  participantCreated: boolean;
+  organizationId: string;
+  participantId: string;
+  assignmentId: string;
+  attemptIds: Record<(typeof GOLDEN_DEMO_TEST_SLUGS)[number], string>;
   counts: {
     participants: 1;
     assignments: 1;
@@ -441,6 +470,84 @@ export function validateGd001FixtureRpcResult(value: unknown): Gd001FixtureRpcRe
     stateBefore: "EMPTY",
     stateAfter: "CREATED",
     candidateId: GD_001_CANDIDATE_ID,
+    organizationId: asNonEmptyString(result.organizationId, "organizationId"),
+    participantId: asNonEmptyString(result.participantId, "participantId"),
+    assignmentId: asNonEmptyString(result.assignmentId, "assignmentId"),
+    attemptIds: normalizedAttemptIds,
+    counts: expectedCounts,
+    scoringExecution: false,
+    reportGeneration: false,
+  };
+}
+
+export function validateGoldenDemoFixtureRpcResult(
+  value: unknown,
+  expectedCandidateId?: GoldenDemoCandidateId,
+): GoldenDemoFixtureRpcResult {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Golden Demo fixture RPC returned an invalid result object.");
+  }
+  const result = value as Record<string, unknown>;
+  if (result.rpcVersion !== GOLDEN_DEMO_FIXTURE_RPC) {
+    throw new Error("Golden Demo fixture RPC returned an unexpected rpcVersion.");
+  }
+  if (result.stateBefore !== "EMPTY" || result.stateAfter !== "CREATED") {
+    throw new Error("Golden Demo fixture RPC did not confirm the EMPTY-to-CREATED transition.");
+  }
+  if (
+    typeof result.candidateId !== "string" ||
+    !GOLDEN_DEMO_CANDIDATE_IDS.includes(result.candidateId as GoldenDemoCandidateId)
+  ) {
+    throw new Error("Golden Demo fixture RPC returned an unsupported candidate ID.");
+  }
+  if (expectedCandidateId && result.candidateId !== expectedCandidateId) {
+    throw new Error(
+      `Golden Demo fixture RPC returned ${String(result.candidateId)}; expected ${expectedCandidateId}.`,
+    );
+  }
+  if (typeof result.participantCreated !== "boolean") {
+    throw new Error("Golden Demo fixture RPC returned an invalid participantCreated flag.");
+  }
+  const attemptIds = result.attemptIds as Record<string, unknown> | null;
+  if (!attemptIds || typeof attemptIds !== "object" || Array.isArray(attemptIds)) {
+    throw new Error("Golden Demo fixture RPC returned invalid attempt IDs.");
+  }
+  const normalizedAttemptIds = Object.fromEntries(
+    GOLDEN_DEMO_TEST_SLUGS.map((slug) => [slug, asNonEmptyString(attemptIds[slug], `attemptIds.${slug}`)]),
+  ) as GoldenDemoFixtureRpcResult["attemptIds"];
+  const counts = result.counts as Record<string, unknown> | null;
+  const expectedCounts = {
+    participants: 1,
+    assignments: 1,
+    attempts: 3,
+    assignmentAttemptLinks: 3,
+    responses: 184,
+    ipipResponses: 120,
+    safranResponses: 45,
+    mwmsResponses: 19,
+    dimensionScores: 0,
+    attemptReports: 0,
+    assessmentReports: 0,
+  } as const;
+  if (!counts || typeof counts !== "object" || Array.isArray(counts)) {
+    throw new Error("Golden Demo fixture RPC returned invalid counts.");
+  }
+  for (const [key, expected] of Object.entries(expectedCounts)) {
+    if (counts[key] !== expected) {
+      throw new Error(
+        `Golden Demo fixture RPC returned ${key}=${String(counts[key])}; expected ${expected}.`,
+      );
+    }
+  }
+  if (result.scoringExecution !== false || result.reportGeneration !== false) {
+    throw new Error("Golden Demo fixture RPC must not execute scoring or report generation.");
+  }
+  return {
+    rpcVersion: GOLDEN_DEMO_FIXTURE_RPC,
+    stateBefore: "EMPTY",
+    stateAfter: "CREATED",
+    candidateId: result.candidateId as GoldenDemoCandidateId,
+    participantCreated: result.participantCreated,
     organizationId: asNonEmptyString(result.organizationId, "organizationId"),
     participantId: asNonEmptyString(result.participantId, "participantId"),
     assignmentId: asNonEmptyString(result.assignmentId, "assignmentId"),
@@ -826,6 +933,110 @@ export async function executeGd001ApplyWithRpcBoundary(input: Gd001ApplyBoundary
     }
     throw new Error(
       `GD-001 RPC reported ${GD_001_RPC_NOT_EMPTY_PREFIX}; read-only recheck found ${postRacePlan.state}: ${postRacePlan.blockers.join("; ")}`,
+    );
+  }
+}
+
+export type GoldenDemoApplyBoundary = {
+  candidateId: GoldenDemoCandidateId;
+  initialPlan: Awaited<ReturnType<typeof inspectGd001FixtureWithRepository>>;
+  payload: Gd001FixtureRpcPayload;
+  invokeRpc: (input: {
+    rpcName: typeof GOLDEN_DEMO_FIXTURE_RPC;
+    payload: Gd001FixtureRpcPayload;
+  }) => Promise<unknown>;
+  inspectAfterRpc: () => Promise<Awaited<ReturnType<typeof inspectGd001FixtureWithRepository>>>;
+};
+
+export async function executeGoldenDemoApplyWithRpcBoundary(input: GoldenDemoApplyBoundary) {
+  if (input.initialPlan.state === "EXACT_MATCH") {
+    return {
+      mode: "apply" as const,
+      candidateId: input.candidateId,
+      stateBefore: "EXACT_MATCH" as const,
+      stateAfter: "EXACT_MATCH" as const,
+      participantId: input.initialPlan.participant.id,
+      assignmentId: input.initialPlan.assignment.id,
+      attemptIds: input.initialPlan.attemptIds,
+      responseCounts: input.initialPlan.responses.existingByTest,
+      writesPerformed: false,
+      scoringExecution: false,
+      reportGeneration: false,
+    };
+  }
+  if (input.initialPlan.state !== "EMPTY") {
+    throw new Error(
+      `Apply is blocked because fixture state is ${input.initialPlan.state}: ${input.initialPlan.blockers.join("; ")}`,
+    );
+  }
+
+  try {
+    const rawRpcResult = await input.invokeRpc({
+      rpcName: GOLDEN_DEMO_FIXTURE_RPC,
+      payload: input.payload,
+    });
+    const rpcResult = validateGoldenDemoFixtureRpcResult(rawRpcResult, input.candidateId);
+    const postWritePlan = await input.inspectAfterRpc();
+    if (postWritePlan.state !== "EXACT_MATCH") {
+      throw new Error(
+        `Golden Demo RPC write requires post-write EXACT_MATCH; received ${postWritePlan.state}: ${postWritePlan.blockers.join("; ")}`,
+      );
+    }
+    const identityMismatches = [
+      ["organizationId", rpcResult.organizationId, postWritePlan.organization.id],
+      ["participantId", rpcResult.participantId, postWritePlan.participant.id],
+      ["assignmentId", rpcResult.assignmentId, postWritePlan.assignment.id],
+      ...GOLDEN_DEMO_TEST_SLUGS.map((slug) => [
+        `attemptIds.${slug}`,
+        rpcResult.attemptIds[slug],
+        postWritePlan.attemptIds[slug],
+      ]),
+    ].filter(([, rpcValue, inspectedValue]) => rpcValue !== inspectedValue);
+    if (identityMismatches.length > 0) {
+      throw new Error(
+        `Golden Demo RPC result IDs do not match the read-only post-write state: ${identityMismatches
+          .map(([field]) => field)
+          .join(", ")}.`,
+      );
+    }
+    return {
+      mode: "apply" as const,
+      candidateId: input.candidateId,
+      stateBefore: "EMPTY" as const,
+      stateAfter: "EXACT_MATCH" as const,
+      rpc: GOLDEN_DEMO_FIXTURE_RPC,
+      participantCreated: rpcResult.participantCreated,
+      participantId: rpcResult.participantId,
+      assignmentId: rpcResult.assignmentId,
+      attemptIds: rpcResult.attemptIds,
+      responseCounts: {
+        ...postWritePlan.responses.existingByTest,
+        total: 184,
+      },
+      writesPerformed: true,
+      scoringExecution: false,
+      reportGeneration: false,
+    };
+  } catch (error) {
+    if (!isGd001RpcNotEmptyError(error)) throw error;
+    const postRacePlan = await input.inspectAfterRpc();
+    if (postRacePlan.state === "EXACT_MATCH") {
+      return {
+        mode: "apply" as const,
+        candidateId: input.candidateId,
+        stateBefore: "EXACT_MATCH" as const,
+        stateAfter: "EXACT_MATCH" as const,
+        participantId: postRacePlan.participant.id,
+        assignmentId: postRacePlan.assignment.id,
+        attemptIds: postRacePlan.attemptIds,
+        responseCounts: postRacePlan.responses.existingByTest,
+        writesPerformed: false,
+        scoringExecution: false,
+        reportGeneration: false,
+      };
+    }
+    throw new Error(
+      `Golden Demo RPC reported ${GD_001_RPC_NOT_EMPTY_PREFIX}; read-only recheck found ${postRacePlan.state}: ${postRacePlan.blockers.join("; ")}`,
     );
   }
 }
