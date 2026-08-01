@@ -11,6 +11,7 @@ export function createSelectedReportProvider(config: AiReportConfig = getAiRepor
     return createOpenAiReportProvider({
       apiKey: config.openAiApiKey,
       model: config.model,
+      reasoningEffort: config.reasoningEffort,
       timeoutMs: config.openAiTimeoutMs,
     });
   }

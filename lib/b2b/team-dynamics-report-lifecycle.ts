@@ -18,6 +18,7 @@ import {
   generateTeamDynamicsExecutiveOverviewWithOpenAI,
   type GenerateTeamDynamicsExecutiveOverviewWithOpenAIResult,
 } from "@/lib/b2b/team-dynamics-executive-overview-openai";
+import { getAiReportConfig } from "@/lib/assessment/report-config";
 import {
   persistTeamDynamicsReportInputSnapshot,
   type TeamDynamicsReportInputSnapshot,
@@ -1354,11 +1355,17 @@ export async function processTeamDynamicsExecutiveOverviewWithOpenAI(input: {
 
   const providerResult = await generateExecutiveOverviewWithOpenAI(
     persistedInputSnapshot,
-    deps.executiveOverviewOpenAiOptions ?? {
-      apiKey: process.env.OPENAI_API_KEY ?? null,
-      model: process.env.AI_REPORT_MODEL ?? null,
+    deps.executiveOverviewOpenAiOptions ?? (() => {
+      const config = getAiReportConfig();
+
+      return {
+      apiKey: config.openAiApiKey,
+      model: config.model,
+      reasoningEffort: config.reasoningEffort,
+      timeoutMs: config.openAiTimeoutMs,
       now: deps.now,
-    },
+      };
+    })(),
   );
 
   if (!providerResult.ok) {

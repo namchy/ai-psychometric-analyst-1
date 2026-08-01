@@ -18,9 +18,12 @@ import {
   type ReportLanguageQualityIssue,
   type ReportLanguageQualityResult,
 } from "@/lib/assessment/report-language-quality";
-import { getAiReportReasoningEffortForModel } from "@/lib/assessment/report-config";
 import { shouldOmitOpenAiTemperature } from "@/lib/assessment/report-provider-openai";
-import type { AiReportReasoningEffort } from "@/lib/assessment/report-config";
+import {
+  getAiReportConfig,
+  getAiReportReasoningEffortForModel,
+  type AiReportReasoningEffort,
+} from "@/lib/assessment/report-config";
 
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER = "openai" as const;
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION = "v1" as const;
@@ -28,6 +31,7 @@ export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION = "v1" as const;
 type OpenAiCompositeHrProviderOptions = {
   apiKey: string | null;
   model: string | null;
+  reasoningEffort?: AiReportReasoningEffort | null;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   now?: () => string;
@@ -917,7 +921,7 @@ export function buildOpenAiCompositeHrReportRequestPayload(
 
 export function buildCompositeHrOpenAiChatCompletionsRequestBody(
   payload: CompositeHrOpenAiRequestPayload,
-  options: Pick<OpenAiCompositeHrProviderOptions, "model">,
+  options: Pick<OpenAiCompositeHrProviderOptions, "model" | "reasoningEffort">,
 ): CompositeHrOpenAiChatCompletionsRequestBody {
   if (!options.model) {
     throw new Error("Missing required env var: AI_REPORT_MODEL");
@@ -949,7 +953,10 @@ export function buildCompositeHrOpenAiChatCompletionsRequestBody(
     requestBody.temperature = 0.2;
   }
 
-  const reasoningEffort = getAiReportReasoningEffortForModel(options.model);
+  const reasoningEffort = getAiReportReasoningEffortForModel(
+    options.model,
+    options.reasoningEffort ?? getAiReportConfig().reasoningEffort,
+  );
 
   if (reasoningEffort) {
     requestBody.reasoning_effort = reasoningEffort;

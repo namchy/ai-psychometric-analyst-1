@@ -17,7 +17,6 @@ import { mockReportProvider } from "@/lib/assessment/report-provider-mock";
 import { createSelectedReportProvider } from "@/lib/assessment/report-provider-registry";
 import { isMwmsTestSlug } from "@/lib/assessment/mwms-report-contract";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
-import { getActiveReportRuntimeConfig } from "@/lib/assessment/report-runtime-config";
 import type {
   AttemptReportStatus,
   CompletedAssessmentReportRequest,
@@ -110,7 +109,13 @@ type ReportGenerationResult =
 export type ReportGenerationOverrides = Partial<
   Pick<
     AiReportConfig,
-    "provider" | "model" | "promptVersion" | "fallbackToMock" | "openAiApiKey" | "openAiTimeoutMs"
+    | "provider"
+    | "model"
+    | "reasoningEffort"
+    | "promptVersion"
+    | "fallbackToMock"
+    | "openAiApiKey"
+    | "openAiTimeoutMs"
   >
 > & {
   promptVersionId?: string | null;
@@ -654,40 +659,6 @@ export function buildHrAttemptReportQueueInsertPayload(input: {
   };
 }
 
-async function loadDefaultRuntimeConfigForLane(input: {
-  reportType: string;
-  audience: ReportAudience;
-  sourceType: string;
-}): Promise<{
-  generatorType: ReportGeneratorType;
-  modelName: string | null;
-}> {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("report_runtime_configs")
-    .select("generator_type, model_name")
-    .eq("report_type", input.reportType)
-    .eq("audience", input.audience)
-    .eq("source_type", input.sourceType)
-    .eq("is_active", true)
-    .order("updated_at", { ascending: false })
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load default runtime config for report lane: ${error.message}`);
-  }
-
-  const row = data as { generator_type: ReportGeneratorType; model_name: string | null } | null;
-
-  return {
-    generatorType: row?.generator_type ?? "mock",
-    modelName: row?.model_name ?? null,
-  };
-}
-
 async function deleteQueuedInactiveLane(attemptId: string, audience: ReportAudience): Promise<void> {
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase
@@ -1041,16 +1012,12 @@ export async function recoverHrAttemptReport(attemptId: string): Promise<HrRepor
     };
   }
 
-  const runtimeConfig = await loadDefaultRuntimeConfigForLane({
-    reportType: HR_REPORT_TYPE,
-    audience: HR_REPORT_AUDIENCE,
-    sourceType: HR_REPORT_SOURCE_TYPE,
-  });
+  const config = getAiReportConfig();
   const insertPayload = buildHrAttemptReportQueueInsertPayload({
     attemptId,
     testSlug,
-    generatorType: runtimeConfig.generatorType,
-    modelName: runtimeConfig.modelName,
+    generatorType: config.provider,
+    modelName: config.model,
   });
   const { data: insertedRow, error } = await supabase
     .from("attempt_reports")
@@ -1157,14 +1124,9 @@ export async function enqueueCompletedAssessmentReports(
     }
   }
 
-  const runtimeConfig = await getActiveReportRuntimeConfig({
-    reportType: PARTICIPANT_REPORT_TYPE,
-    audience: PARTICIPANT_REPORT_AUDIENCE,
-    sourceType: PARTICIPANT_REPORT_SOURCE_TYPE,
-    generatorType: "openai",
-  });
+  const config = getAiReportConfig();
 
-  if (!runtimeConfig?.modelName) {
+  if (config.provider !== "openai" || !config.model) {
     return {
       testSlug,
       plan,
@@ -1174,7 +1136,7 @@ export async function enqueueCompletedAssessmentReports(
   const { error: freezeError } = await supabase
     .from("attempt_reports")
     .update({
-      model_name: runtimeConfig.modelName,
+      model_name: config.model,
     })
     .eq("attempt_id", attemptId)
     .eq("report_type", PARTICIPANT_REPORT_TYPE)

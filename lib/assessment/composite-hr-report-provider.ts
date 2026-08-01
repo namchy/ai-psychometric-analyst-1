@@ -16,7 +16,7 @@ import {
 
 type CompositeHrProviderConfig = Pick<
   AiReportConfig,
-  "provider" | "model" | "openAiApiKey" | "openAiTimeoutMs"
+  "provider" | "model" | "reasoningEffort" | "openAiApiKey" | "openAiTimeoutMs"
 >;
 
 export type CompositeHrReportGenerationResult = {
@@ -38,6 +38,7 @@ export function getCompositeHrReportProviderConfig(
   return {
     provider: config.provider === "openai" ? "openai" : "mock",
     model: config.model ?? null,
+    reasoningEffort: config.reasoningEffort ?? null,
     openAiApiKey: config.openAiApiKey ?? null,
     openAiTimeoutMs: config.openAiTimeoutMs,
   };
@@ -56,6 +57,7 @@ export async function generateCompositeHrReportSnapshot(
       snapshot: await generateOpenAiReport(input, {
         apiKey: config.openAiApiKey,
         model: config.model,
+        reasoningEffort: config.reasoningEffort,
         timeoutMs: config.openAiTimeoutMs,
       }),
       generatorType: COMPOSITE_HR_REPORT_OPENAI_PROVIDER,

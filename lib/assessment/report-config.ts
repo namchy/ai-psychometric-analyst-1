@@ -46,9 +46,10 @@ export function getAiReportReasoningEffort(): AiReportReasoningEffort | null {
 
 export function getAiReportReasoningEffortForModel(
   model: string,
+  configuredReasoningEffort: AiReportReasoningEffort | null = getAiReportReasoningEffort(),
 ): AiReportReasoningEffort | null {
   return model.toLowerCase().startsWith("gpt-5")
-    ? getAiReportReasoningEffort()
+    ? configuredReasoningEffort
     : null;
 }
 

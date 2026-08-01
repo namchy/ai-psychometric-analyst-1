@@ -1350,13 +1350,16 @@ export async function processTeamDynamicsExecutiveOverviewReportAction(
       };
     }
 
+    const config = getAiReportConfig();
     const result = await processExecutiveOverviewReport({
       teamAssessmentReportId: input.teamAssessmentReportId,
       organizationId: organization.id,
     }, {
       executiveOverviewOpenAiOptions: {
-        apiKey: process.env.OPENAI_API_KEY ?? null,
-        model: process.env.AI_REPORT_MODEL ?? null,
+        apiKey: config.openAiApiKey,
+        model: config.model,
+        reasoningEffort: config.reasoningEffort,
+        timeoutMs: config.openAiTimeoutMs,
       },
     });
 

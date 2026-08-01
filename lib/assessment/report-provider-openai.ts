@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
 import {
+  getAiReportConfig,
   getAiReportReasoningEffortForModel,
   getIpipNeo120ParticipantGenerationMode,
   getIpipNeo120ParticipantReportVersion,
@@ -97,6 +98,7 @@ import {
 type OpenAiProviderOptions = {
   apiKey: string | null;
   model: string | null;
+  reasoningEffort?: AiReportReasoningEffort | null;
   timeoutMs?: number;
 };
 
@@ -285,7 +287,10 @@ export function buildOpenAiChatCompletionsRequestBody(
     body.temperature = 0.2;
   }
 
-  const reasoningEffort = getAiReportReasoningEffortForModel(options.model);
+  const reasoningEffort = getAiReportReasoningEffortForModel(
+    options.model,
+    options.reasoningEffort ?? getAiReportConfig().reasoningEffort,
+  );
 
   if (reasoningEffort) {
     body.reasoning_effort = reasoningEffort;

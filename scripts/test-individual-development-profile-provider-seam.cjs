@@ -117,6 +117,7 @@ const mockConfig = {
 const openAiConfig = {
   provider: "openai",
   model: "gpt-5.1",
+  reasoningEffort: "medium",
   openAiApiKey: "test-key",
   openAiTimeoutMs: 45000,
 };
@@ -281,6 +282,7 @@ async function main() {
     buildIndividualDevelopmentProfileOpenAiRequest({
       inputSnapshot: validInput,
       model: "gpt-5.1",
+      reasoningEffort: "medium",
       temperature: 0.2,
     }),
   );
@@ -447,6 +449,7 @@ async function main() {
     buildIndividualDevelopmentProfileOpenAiRequest({
       inputSnapshot: validInput,
       model: "gpt-5.5",
+      reasoningEffort: "medium",
       temperature: null,
     }),
   );
@@ -516,7 +519,7 @@ async function main() {
   assert.equal(numericTemperatureResult.ok, true);
   assert.equal(numericTemperatureOperations.length, 1);
   assert.equal(numericTemperatureOperations[0].model, "gpt-4.1");
-  assert.equal(numericTemperatureOperations[0].temperature, 0.35);
+  assert.equal(numericTemperatureOperations[0].temperature, 0.2);
 
   const runtimeConfigLoads = [];
   const forwardedOptions = [];
@@ -548,9 +551,10 @@ async function main() {
       generatorType: "openai",
     },
   ]);
-  assert.equal(forwardedOptions[0].model, "gpt-5.5");
+  assert.equal(forwardedOptions[0].model, "gpt-5.1");
   assert.equal(forwardedOptions[0].timeoutMs, 45000);
-  assert.equal(forwardedOptions[0].temperature, null);
+  assert.equal(forwardedOptions[0].reasoningEffort, "medium");
+  assert.equal(forwardedOptions[0].temperature, 0.2);
 
   const directPrompt = buildIndividualDevelopmentProfileOpenAiSystemPrompt();
   assert.equal(directPrompt, systemPrompt);

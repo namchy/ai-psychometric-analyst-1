@@ -15,6 +15,7 @@ import {
   getActiveReportRuntimeConfig,
   type ActiveReportRuntimeConfig,
 } from "@/lib/assessment/report-runtime-config";
+import { shouldOmitOpenAiTemperature } from "@/lib/assessment/report-provider-openai";
 
 export { INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI };
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK = "mock" as const;
@@ -46,7 +47,7 @@ export type IndividualDevelopmentProfileProviderSeamResult =
 
 type IndividualDevelopmentProfileProviderConfig = Pick<
   AiReportConfig,
-  "provider" | "model" | "openAiApiKey" | "openAiTimeoutMs"
+  "provider" | "model" | "reasoningEffort" | "openAiApiKey" | "openAiTimeoutMs"
 >;
 
 type IndividualDevelopmentProfileProviderDependencies = {
@@ -101,9 +102,11 @@ export async function generateIndividualDevelopmentProfileReport(
       deps.generateOpenAi ?? generateIndividualDevelopmentProfileWithOpenAi
     )(inputSnapshot, {
       apiKey: config.openAiApiKey,
-      model: runtimeConfig?.modelName ?? config.model,
+      model: config.model,
+      reasoningEffort: config.reasoningEffort,
       timeoutMs: config.openAiTimeoutMs,
-      temperature: runtimeConfig?.temperature ?? null,
+      temperature:
+        config.model && !shouldOmitOpenAiTemperature(config.model) ? 0.2 : null,
       ...deps.openAiOptions,
     });
 

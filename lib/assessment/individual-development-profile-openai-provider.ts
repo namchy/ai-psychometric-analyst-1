@@ -1,7 +1,9 @@
 import "server-only";
 
 import {
+  getAiReportConfig,
   getAiReportReasoningEffortForModel,
+  type AiReportReasoningEffort,
 } from "@/lib/assessment/report-config";
 import { resolveAiReportLanguagePolicy } from "@/lib/assessment/ai-report-language-policy";
 import { shouldOmitOpenAiTemperature } from "@/lib/assessment/report-provider-openai";
@@ -49,6 +51,7 @@ export type IndividualDevelopmentProfileOpenAiClient = {
 export type IndividualDevelopmentProfileOpenAiProviderOptions = {
   apiKey: string | null;
   model: string | null;
+  reasoningEffort?: AiReportReasoningEffort | null;
   timeoutMs?: number;
   temperature?: number | null;
   fetchImpl?: typeof fetch;
@@ -780,6 +783,7 @@ export function buildIndividualDevelopmentProfileOpenAiUserPrompt(
 export function buildIndividualDevelopmentProfileOpenAiRequest(input: {
   inputSnapshot: IndividualDevelopmentProfileInputSnapshot;
   model: string;
+  reasoningEffort?: AiReportReasoningEffort | null;
   temperature?: number | null;
 }): IndividualDevelopmentProfileOpenAiRequest {
   const request: IndividualDevelopmentProfileOpenAiRequest = {
@@ -811,7 +815,10 @@ export function buildIndividualDevelopmentProfileOpenAiRequest(input: {
     request.temperature = input.temperature;
   }
 
-  const reasoningEffort = getAiReportReasoningEffortForModel(input.model);
+  const reasoningEffort = getAiReportReasoningEffortForModel(
+    input.model,
+    input.reasoningEffort ?? getAiReportConfig().reasoningEffort,
+  );
 
   if (reasoningEffort) {
     request.reasoning_effort = reasoningEffort;
@@ -917,6 +924,7 @@ export async function generateIndividualDevelopmentProfileWithOpenAi(
     const request = buildIndividualDevelopmentProfileOpenAiRequest({
       inputSnapshot,
       model: options.model,
+      reasoningEffort: options.reasoningEffort,
       temperature: options.temperature,
     });
 

@@ -1,7 +1,9 @@
 import "server-only";
 
 import {
+  getAiReportConfig,
   getAiReportReasoningEffortForModel,
+  type AiReportReasoningEffort,
 } from "@/lib/assessment/report-config";
 import {
   shouldOmitOpenAiTemperature,
@@ -48,6 +50,7 @@ export type TeamDynamicsExecutiveOverviewOpenAiClient = {
 type OpenAiProviderOptions = {
   apiKey: string | null;
   model: string | null;
+  reasoningEffort?: AiReportReasoningEffort | null;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   client?: TeamDynamicsExecutiveOverviewOpenAiClient;
@@ -398,7 +401,10 @@ export async function generateTeamDynamicsExecutiveOverviewWithOpenAI(
       request.temperature = 0.2;
     }
 
-    const reasoningEffort = getAiReportReasoningEffortForModel(options.model);
+    const reasoningEffort = getAiReportReasoningEffortForModel(
+      options.model,
+      options.reasoningEffort ?? getAiReportConfig().reasoningEffort,
+    );
 
     if (reasoningEffort) {
       request.reasoning_effort = reasoningEffort;

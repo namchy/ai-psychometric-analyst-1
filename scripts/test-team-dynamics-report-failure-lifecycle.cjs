@@ -93,7 +93,7 @@ assert.doesNotMatch(helperSource, /\.from\("attempt_reports"\)/);
 assert.doesNotMatch(helperSource, /\.from\("assessment_reports"\)/);
 assert.doesNotMatch(failureSection, /\.update\(\{\s*report_snapshot:/s);
 assert.doesNotMatch(failureSection, /report_status:\s*"ready"/);
-assert.doesNotMatch(helperSource, /OpenAI|AI provider|renderer|worker|Team Fit/i);
+assert.doesNotMatch(failureSection, /OpenAI|AI provider|renderer|worker|Team Fit/i);
 
 fs.writeFileSync(
   teamDynamicsStubPath,

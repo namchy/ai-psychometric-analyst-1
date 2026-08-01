@@ -51,7 +51,7 @@ import {
   generateCompletedAssessmentReport,
   type ReportGenerationOverrides,
 } from "@/lib/assessment/reports";
-import { getAiReportConfig, normalizeAiReportModel } from "@/lib/assessment/report-config";
+import { getAiReportConfig } from "@/lib/assessment/report-config";
 import {
   toLegacyAssessmentLocale,
   type AssessmentLocale,
@@ -60,7 +60,6 @@ import {
   getActivePromptVersion,
   type ActivePromptVersion,
 } from "@/lib/assessment/prompt-version";
-import { getActiveReportRuntimeConfig } from "@/lib/assessment/report-runtime-config";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type ReportJobAudience = "participant" | "hr";
@@ -420,39 +419,28 @@ async function loadAttemptContext(attemptId: string): Promise<{
   };
 }
 
-function getGenerationOverrides(
-  job: ClaimedReportJob,
+export function buildStandardReportGenerationOverrides(
   promptVersion: string,
-  resolvedModelName: string | null,
   options?: {
     promptVersionId?: string | null;
     promptTemplate?: ActivePromptVersion | null;
     participantDataOnlyQa?: boolean;
   },
 ): ReportGenerationOverrides {
+  const config = getAiReportConfig();
+
   return {
-    provider: job.generator_type,
+    provider: config.provider,
+    model: config.model,
+    reasoningEffort: config.reasoningEffort,
+    fallbackToMock: config.fallbackToMock,
+    openAiApiKey: config.openAiApiKey,
+    openAiTimeoutMs: config.openAiTimeoutMs,
     promptVersion,
     promptVersionId: options?.promptVersionId ?? null,
     promptTemplate: options?.promptTemplate ?? null,
     participantDataOnlyQa: options?.participantDataOnlyQa,
-    ...(resolvedModelName ? { model: resolvedModelName } : {}),
   };
-}
-
-function resolveReportModelName(
-  job: ClaimedReportJob,
-  runtimeConfigModelName: string | null,
-): string | null {
-  if (job.generator_type !== "openai") {
-    return null;
-  }
-
-  return normalizeAiReportModel(
-    job.model_name ??
-      runtimeConfigModelName ??
-      getAiReportConfig().model,
-  );
 }
 
 async function loadPromptVersionForJob(
@@ -460,7 +448,9 @@ async function loadPromptVersionForJob(
   testId: string,
   locale: AssessmentLocale,
 ): Promise<ActivePromptVersion | null> {
-  if (job.generator_type !== "openai") {
+  const config = getAiReportConfig();
+
+  if (config.provider !== "openai") {
     return null;
   }
 
@@ -487,7 +477,7 @@ async function loadPromptVersionForJob(
       reportType: job.report_type,
       audience: job.audience,
       sourceType: job.source_type,
-      generatorType: job.generator_type,
+      generatorType: config.provider,
       promptKey,
     }, {
       locale,
@@ -617,23 +607,6 @@ async function failReportJob(reportId: string, failure: ReportJobFailure): Promi
   }
 }
 
-async function loadRuntimeConfigForJob(job: ClaimedReportJob) {
-  try {
-    return await getActiveReportRuntimeConfig({
-      reportType: job.report_type,
-      audience: job.audience,
-      sourceType: job.source_type,
-      generatorType: job.generator_type,
-    });
-  } catch (error) {
-    throw new ReportJobError(
-      "CONFIG_ERROR",
-      error instanceof Error ? error.message : "Failed to load active report runtime config.",
-      { cause: error },
-    );
-  }
-}
-
 async function buildReportSnapshot(
   job: ClaimedReportJob,
   options?: { participantDataOnlyQa?: boolean },
@@ -642,13 +615,13 @@ async function buildReportSnapshot(
   modelName: string | null;
 }> {
   const attemptContext = await loadAttemptContext(job.attempt_id);
-  const [runtimeConfig, activePromptVersion] = await Promise.all([
-    loadRuntimeConfigForJob(job),
-    loadPromptVersionForJob(job, attemptContext.testId, attemptContext.locale),
-  ]);
-  const resolvedModelName = resolveReportModelName(job, runtimeConfig?.modelName ?? null);
+  const activePromptVersion = await loadPromptVersionForJob(
+    job,
+    attemptContext.testId,
+    attemptContext.locale,
+  );
   const promptVersion = activePromptVersion?.version ?? getAiReportConfig().promptVersion;
-  const overrides = getGenerationOverrides(job, promptVersion, resolvedModelName, {
+  const overrides = buildStandardReportGenerationOverrides(promptVersion, {
     promptVersionId: activePromptVersion?.id ?? job.prompt_version_id,
     promptTemplate: activePromptVersion,
     participantDataOnlyQa: options?.participantDataOnlyQa,
@@ -674,7 +647,7 @@ async function buildReportSnapshot(
 
   await freezeProcessingReportMetadata(job.id, {
     promptVersionId: activePromptVersion?.id,
-    modelName: resolvedModelName,
+    modelName: overrides.model ?? null,
     inputSnapshot: job.input_snapshot ?? preparedInput.promptInput,
   });
 
@@ -683,7 +656,7 @@ async function buildReportSnapshot(
     attemptId: job.attempt_id,
     audience: job.audience,
     provider: overrides.provider,
-    model: resolvedModelName,
+    model: overrides.model ?? null,
     promptVersion,
     promptVersionId: activePromptVersion?.id ?? null,
   });
@@ -856,7 +829,7 @@ async function buildReportSnapshot(
 
   return {
     snapshot: validationResult.value,
-    modelName: resolvedModelName,
+    modelName: overrides.model ?? null,
   };
 }
 
@@ -897,7 +870,7 @@ export async function processClaimedReportJob(
     const { snapshot, modelName } = await buildReportSnapshot(job, options);
 
     await completeReportJob(job.id, snapshot, {
-      modelName: job.generator_type === "openai" ? modelName : null,
+      modelName,
       generatorVersion: job.generator_version ?? "v1",
     });
 
