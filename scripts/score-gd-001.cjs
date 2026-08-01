@@ -265,12 +265,6 @@ async function run(argv = process.argv.slice(2), env = process.env) {
     return plan;
   }
 
-  if (candidate.candidateId !== "GD-001") {
-    throw new Error(
-      "GD-002 apply is blocked: the production scoring operator requires a candidate-aware persistence/apply seam that is not enabled in this task.",
-    );
-  }
-
   const result = await executeGd001ScoringApply({
     snapshot: inspection.snapshot,
     classification,

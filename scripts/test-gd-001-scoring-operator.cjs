@@ -176,6 +176,43 @@ assert.equal(scoredClassification.fixtureWriterState, "CONFLICT");
 assert.equal(scoredClassification.fixtureCompatibilityState, "EXACT_MATCH");
 assert.equal(scoredClassification.scoringState, "SCORED_EXACT");
 assert.deepEqual(scoredClassification.blockers, []);
+
+const gd002AttemptIds = {
+  "ipip-neo-120-v1": "3608daff-684c-42e1-b83f-6cc5a9b27d23",
+  safran_v1: "8b6fb680-550a-4a4f-b795-8f1aed31e5c8",
+  mwms_v1: "e2986bb4-3b13-4797-a120-5e6e6a0c778f",
+};
+const gd002Unscored = {
+  ...unscoredSnapshot(),
+  participantId: "1bbeff4d-e77d-4442-b69d-5d30bb4f608e",
+  assignmentId: "45cf751d-08ae-4dc0-ba7e-73533e348d31",
+  attemptIds: gd002AttemptIds,
+};
+const gd002UnscoredClassification = classifyGd001ScoringState({
+  snapshot: gd002Unscored,
+  verification: verifyPersistedGd001Scores({
+    foundation,
+    dimensionScores: [],
+    candidateId: "GD-002",
+  }),
+  candidateId: "GD-002",
+});
+assert.equal(gd002UnscoredClassification.state, "UNSCORED_EXACT");
+
+const gd002Scored = {
+  ...scoredSnapshot(),
+  participantId: gd002Unscored.participantId,
+  assignmentId: gd002Unscored.assignmentId,
+  attemptIds: gd002AttemptIds,
+  dimensionScores: gd002ExactScores,
+};
+const gd002ScoredClassification = classifyGd001ScoringState({
+  snapshot: gd002Scored,
+  verification: gd002ExactVerification,
+  candidateId: "GD-002",
+});
+assert.equal(gd002ScoredClassification.state, "SCORED_EXACT");
+
 const scoredPlan = buildGd001ScoringPlan({
   mode: "dry-run",
   snapshot: scored,
@@ -241,6 +278,8 @@ assert.equal(
     },
   });
   assert.equal(result.stateAfter, "SCORED_EXACT");
+  assert.equal(result.writesPerformed, true);
+  assert.equal(result.scoringExecution, true);
   assert.equal(productionCalls, 1);
   assert.equal(postChecks, 1);
   assert.equal(result.reportGeneration, false);
@@ -259,6 +298,93 @@ assert.equal(
   });
   assert.equal(noop.writesPerformed, false);
   assert.equal(productionCalls, 0);
+
+  let gd002ProductionCalls = 0;
+  let gd002PostChecks = 0;
+  const gd002Result = await executeGd001ScoringApply({
+    snapshot: gd002Unscored,
+    classification: gd002UnscoredClassification,
+    runProductionScoring: async () => {
+      gd002ProductionCalls += 1;
+    },
+    inspectAfter: async () => {
+      gd002PostChecks += 1;
+      return { snapshot: gd002Scored, verification: gd002ExactVerification };
+    },
+  });
+  assert.equal(gd002Result.stateBefore, "UNSCORED_EXACT");
+  assert.equal(gd002Result.stateAfter, "SCORED_EXACT");
+  assert.equal(gd002Result.participantId, gd002Unscored.participantId);
+  assert.equal(gd002Result.assignmentId, gd002Unscored.assignmentId);
+  assert.deepEqual(gd002Result.attemptIds, gd002AttemptIds);
+  assert.equal(gd002Result.expectedScoreVerification.matched, 47);
+  assert.equal(gd002Result.writesPerformed, true);
+  assert.equal(gd002Result.scoringExecution, true);
+  assert.equal(gd002Result.reportGeneration, false);
+  assert.equal(gd002Result.openAiCalls, false);
+  assert.equal(gd002ProductionCalls, 1);
+  assert.equal(gd002PostChecks, 1);
+
+  const gd002Partial = {
+    ...gd002Unscored,
+    attempts: gd002Unscored.attempts.map((attempt, index) =>
+      index === 0
+        ? { ...attempt, status: "completed", completedAt: "2026-08-01T00:00:00.000Z" }
+        : attempt,
+    ),
+    rawValueCounts: { ...gd002Unscored.rawValueCounts, "ipip-neo-120-v1": 120 },
+    scoredValueCounts: { ...gd002Unscored.scoredValueCounts, "ipip-neo-120-v1": 120 },
+  };
+  const gd002PartialClassification = classifyGd001ScoringState({
+    snapshot: gd002Partial,
+    verification: gd002UnscoredClassification.verification,
+    candidateId: "GD-002",
+  });
+  assert.equal(gd002PartialClassification.state, "PARTIAL");
+  await assert.rejects(
+    executeGd001ScoringApply({
+      snapshot: gd002Partial,
+      classification: gd002PartialClassification,
+      runProductionScoring: async () => {
+        gd002ProductionCalls += 1;
+      },
+      inspectAfter: async () => ({ snapshot: gd002Scored, verification: gd002ExactVerification }),
+    }),
+    /blocked/,
+  );
+  assert.equal(gd002ProductionCalls, 1);
+
+  const gd002ReportState = { ...gd002Unscored, attemptReportCount: 1 };
+  const gd002ReportClassification = classifyGd001ScoringState({
+    snapshot: gd002ReportState,
+    verification: gd002UnscoredClassification.verification,
+    candidateId: "GD-002",
+  });
+  await assert.rejects(
+    executeGd001ScoringApply({
+      snapshot: gd002ReportState,
+      classification: gd002ReportClassification,
+      runProductionScoring: async () => {
+        gd002ProductionCalls += 1;
+      },
+      inspectAfter: async () => ({ snapshot: gd002Scored, verification: gd002ExactVerification }),
+    }),
+    /blocked/,
+  );
+  assert.equal(gd002ProductionCalls, 1);
+
+  await assert.rejects(
+    executeGd001ScoringApply({
+      snapshot: gd002Unscored,
+      classification: gd002UnscoredClassification,
+      runProductionScoring: async () => {
+        gd002ProductionCalls += 1;
+      },
+      inspectAfter: async () => ({ snapshot: gd002Unscored, verification: gd002UnscoredClassification.verification }),
+    }),
+    /Post-scoring verification requires SCORED_EXACT/,
+  );
+  assert.equal(gd002ProductionCalls, 2);
 
   const changedAnswer = scoredSnapshot();
   changedAnswer.structuralFixtureExact = false;
