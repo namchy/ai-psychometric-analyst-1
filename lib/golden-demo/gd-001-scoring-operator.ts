@@ -5,9 +5,11 @@ import {
 import { MWMS_COMPOSITE_DIMENSIONS } from "../assessment/mwms-scoring";
 import type { GoldenDemoCsvFoundation } from "./csv-contract";
 import {
+  GOLDEN_DEMO_CANDIDATE_IDS,
+  GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS,
   GD_001_CANDIDATE_ID,
-  GD_001_EXPECTED_RESPONSE_COUNTS,
   GD_001_TEST_SLUGS,
+  type GoldenDemoCandidateId,
   type Gd001FixtureState,
 } from "./db-fixture-writer";
 
@@ -21,7 +23,7 @@ export type Gd001FixtureCompatibilityState = "EXACT_MATCH" | "PARTIAL" | "CONFLI
 
 export type Gd001ScoringCliOptions = {
   mode: Gd001ScoringMode;
-  candidateId: typeof GD_001_CANDIDATE_ID;
+  candidateId: GoldenDemoCandidateId;
   verbose: boolean;
 };
 
@@ -94,7 +96,11 @@ export function parseGd001ScoringCli(args: string[]): Gd001ScoringCliOptions {
     } else if (argument === "--apply") {
       mode = "apply";
     } else if (argument === "--candidate") {
-      candidateId = args[index + 1] ?? null;
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("--candidate requires an explicit GD-001 or GD-002 value.");
+      }
+      candidateId = value;
       index += 1;
     } else if (argument === "--verbose") {
       verbose = true;
@@ -103,13 +109,13 @@ export function parseGd001ScoringCli(args: string[]): Gd001ScoringCliOptions {
     }
   }
 
-  if (mode === "apply" && candidateId !== GD_001_CANDIDATE_ID) {
-    throw new Error("--apply requires the exact confirmation --candidate GD-001.");
+  if (mode === "apply" && !candidateId) {
+    throw new Error("--apply requires an explicit --candidate GD-001 or --candidate GD-002 confirmation.");
   }
-  if (candidateId && candidateId !== GD_001_CANDIDATE_ID) {
-    throw new Error(`Unsupported candidate ID: ${candidateId}. Only GD-001 is allowed.`);
+  if (candidateId && !GOLDEN_DEMO_CANDIDATE_IDS.includes(candidateId as GoldenDemoCandidateId)) {
+    throw new Error(`Unsupported candidate ID: ${candidateId}. Only GD-001 and GD-002 are allowed.`);
   }
-  return { mode, candidateId: GD_001_CANDIDATE_ID, verbose };
+  return { mode, candidateId: (candidateId ?? GD_001_CANDIDATE_ID) as GoldenDemoCandidateId, verbose };
 }
 
 function round2(value: number): number {
@@ -130,7 +136,9 @@ function bandFor(testSlug: string, scoreKey: string, value: number): string {
 export function verifyPersistedGd001Scores(input: {
   foundation: GoldenDemoCsvFoundation;
   dimensionScores: PersistedDimensionScore[];
+  candidateId?: GoldenDemoCandidateId;
 }): PersistedScoreVerification {
+  const candidateId = input.candidateId ?? GD_001_CANDIDATE_ID;
   const projected = new Map<string, { value: number; band: string }>();
   for (const score of input.dimensionScores) {
     const key = `${score.testSlug}\u0000persisted_dimension\u0000${score.dimension}`;
@@ -177,7 +185,7 @@ export function verifyPersistedGd001Scores(input: {
   }
 
   const expectedRows = input.foundation.expectedScores.rows.filter(
-    (row) => row.values.candidate_id === GD_001_CANDIDATE_ID,
+    (row) => row.values.candidate_id === candidateId,
   );
   const errors: string[] = [];
   let matched = 0;
@@ -207,20 +215,23 @@ export function verifyPersistedGd001Scores(input: {
 export function classifyGd001ScoringState(input: {
   snapshot: Gd001ScoringSnapshot;
   verification: PersistedScoreVerification;
+  candidateId?: GoldenDemoCandidateId;
+  expectedResponseCounts?: Record<string, number>;
 }): Gd001ScoringClassification {
   const { snapshot, verification } = input;
+  const expectedResponseCounts = input.expectedResponseCounts ?? GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS;
   const blockers: string[] = [];
-  const expectedTotal = Object.values(GD_001_EXPECTED_RESPONSE_COUNTS).reduce((sum, count) => sum + count, 0);
+  const expectedTotal = Object.values(expectedResponseCounts).reduce((sum, count) => sum + count, 0);
   const responseTotal = Object.values(snapshot.responseCounts).reduce((sum, count) => sum + count, 0);
   const rawTotal = Object.values(snapshot.rawValueCounts).reduce((sum, count) => sum + count, 0);
   const scoredTotal = Object.values(snapshot.scoredValueCounts).reduce((sum, count) => sum + count, 0);
-  const hasExpectedResponseCounts = Object.entries(GD_001_EXPECTED_RESPONSE_COUNTS).every(
+  const hasExpectedResponseCounts = Object.entries(expectedResponseCounts).every(
     ([testSlug, expectedCount]) => snapshot.responseCounts[testSlug] === expectedCount,
   );
-  const hasExpectedRawCounts = Object.entries(GD_001_EXPECTED_RESPONSE_COUNTS).every(
+  const hasExpectedRawCounts = Object.entries(expectedResponseCounts).every(
     ([testSlug, expectedCount]) => snapshot.rawValueCounts[testSlug] === expectedCount,
   );
-  const hasExpectedScoredCounts = Object.entries(GD_001_EXPECTED_RESPONSE_COUNTS).every(
+  const hasExpectedScoredCounts = Object.entries(expectedResponseCounts).every(
     ([testSlug, expectedCount]) => snapshot.scoredValueCounts[testSlug] === expectedCount,
   );
   const completedCount = snapshot.attempts.filter(
@@ -339,10 +350,14 @@ export function buildGd001ScoringPlan(input: {
   snapshot: Gd001ScoringSnapshot;
   classification: ReturnType<typeof classifyGd001ScoringState>;
   verification: PersistedScoreVerification;
+  candidateId?: GoldenDemoCandidateId;
+  expectedResponseCounts?: Record<string, number>;
 }) {
+  const candidateId = input.candidateId ?? GD_001_CANDIDATE_ID;
+  const expectedResponseCounts = input.expectedResponseCounts ?? GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS;
   return {
     mode: input.mode,
-    candidateId: GD_001_CANDIDATE_ID,
+    candidateId,
     fixtureWriterState: input.classification.fixtureWriterState,
     fixtureCompatibilityState: input.classification.fixtureCompatibilityState,
     scoringState: input.classification.scoringState,
@@ -351,7 +366,7 @@ export function buildGd001ScoringPlan(input: {
     assignmentId: input.snapshot.assignmentId,
     attemptIds: input.snapshot.attemptIds,
     responses: {
-      expectedByTest: { ...GD_001_EXPECTED_RESPONSE_COUNTS },
+      expectedByTest: { ...expectedResponseCounts },
       existingByTest: input.snapshot.responseCounts,
       rawValueCountsByTest: input.snapshot.rawValueCounts,
       scoredValueCountsByTest: input.snapshot.scoredValueCounts,

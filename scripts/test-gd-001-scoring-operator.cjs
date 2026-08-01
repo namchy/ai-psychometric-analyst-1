@@ -57,9 +57,13 @@ function unscoredSnapshot() {
   };
 }
 
-function exactPersistedDimensions() {
+function exactPersistedDimensions(candidateId = "GD-001") {
   return foundation.expectedScores.rows
-    .filter((row) => row.values.score_scope === "persisted_dimension")
+    .filter(
+      (row) =>
+        row.values.candidate_id === candidateId &&
+        row.values.score_scope === "persisted_dimension",
+    )
     .map((row) => ({
       testSlug: row.values.test_slug,
       dimension: row.values.score_key,
@@ -90,11 +94,14 @@ assert.deepEqual(parseGd001ScoringCli([]), {
   verbose: false,
 });
 assert.equal(parseGd001ScoringCli(["--dry-run", "--verbose"]).verbose, true);
-assert.throws(() => parseGd001ScoringCli(["--apply"]), /--candidate GD-001/);
-assert.throws(
-  () => parseGd001ScoringCli(["--apply", "--candidate", "GD-002"]),
-  /GD-001/,
-);
+assert.throws(() => parseGd001ScoringCli(["--apply"]), /explicit --candidate/);
+assert.throws(() => parseGd001ScoringCli(["--candidate"]), /requires an explicit/);
+assert.deepEqual(parseGd001ScoringCli(["--candidate", "GD-002"]), {
+  mode: "dry-run",
+  candidateId: "GD-002",
+  verbose: false,
+});
+assert.throws(() => parseGd001ScoringCli(["--candidate", "GD-003"]), /Only GD-001 and GD-002/);
 for (const flag of ["--delete", "--cleanup", "--reset", "--force", "--overwrite"]) {
   assert.throws(() => parseGd001ScoringCli([flag]), /separate operator task/);
 }
@@ -150,6 +157,15 @@ const exactVerification = verifyPersistedGd001Scores({
 });
 assert.equal(exactVerification.ok, true);
 assert.equal(exactVerification.matched, 47);
+const gd002ExactScores = exactPersistedDimensions("GD-002");
+assert.equal(gd002ExactScores.length, 40);
+const gd002ExactVerification = verifyPersistedGd001Scores({
+  foundation,
+  dimensionScores: gd002ExactScores,
+  candidateId: "GD-002",
+});
+assert.equal(gd002ExactVerification.ok, true);
+assert.equal(gd002ExactVerification.matched, 47);
 const scored = scoredSnapshot();
 const scoredClassification = classifyGd001ScoringState({
   snapshot: scored,
@@ -290,6 +306,8 @@ assert.equal(
   assert.doesNotMatch(operatorSource, /orchestrateReportsAfterAttemptCompletion\s*\(/);
   assert.doesNotMatch(operatorSource, /enqueueCompletedAssessmentReports\s*\(/);
   assert.doesNotMatch(operatorSource, /OpenAI\s*\(/);
+  assert.match(operatorSource, /getGoldenDemoCandidateContract/);
+  assert.match(operatorSource, /candidateId: candidate\.candidateId/);
   for (const forbidden of ["raw_value:", "scored_value:", "dimension_scores\")\.insert"] ) {
     assert.equal(operatorSource.includes(forbidden), false, `operator must not directly write ${forbidden}`);
   }

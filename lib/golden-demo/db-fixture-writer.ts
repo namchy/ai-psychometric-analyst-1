@@ -1,21 +1,38 @@
 import type { GoldenDemoCsvFoundation } from "./csv-contract";
 
-export const GD_001_CANDIDATE_ID = "GD-001" as const;
-export const GD_001_ORGANIZATION_NAME =
-  "Partner Plus d.o.o., Mikrokreditna organizacija";
-export const GD_001_TEST_SLUGS = [
+export const GOLDEN_DEMO_CANDIDATE_IDS = ["GD-001", "GD-002"] as const;
+export type GoldenDemoCandidateId = (typeof GOLDEN_DEMO_CANDIDATE_IDS)[number];
+export const GOLDEN_DEMO_ORGANIZATION_NAME =
+  "Partner Plus d.o.o., Mikrokreditna organizacija" as const;
+export const GOLDEN_DEMO_TEST_SLUGS = [
   "ipip-neo-120-v1",
   "safran_v1",
   "mwms_v1",
 ] as const;
-export const GD_001_EXPECTED_RESPONSE_COUNTS = {
+export const GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS = {
   "ipip-neo-120-v1": 120,
   safran_v1: 45,
   mwms_v1: 19,
 } as const;
+
+export const GD_001_CANDIDATE_ID = "GD-001" as const;
+export const GD_001_ORGANIZATION_NAME = GOLDEN_DEMO_ORGANIZATION_NAME;
+export const GD_001_TEST_SLUGS = GOLDEN_DEMO_TEST_SLUGS;
+export const GD_001_EXPECTED_RESPONSE_COUNTS = GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS;
 export const GD_001_FIXTURE_RPC = "create_golden_demo_gd001_fixture_v1" as const;
 export const GD_001_FIXTURE_SCHEMA_VERSION = "gd_db_fixture_v1" as const;
 export const GD_001_RPC_NOT_EMPTY_PREFIX = "GD_FIXTURE_NOT_EMPTY" as const;
+
+const LOCKED_CANDIDATE_IDENTITIES: Record<GoldenDemoCandidateId, { fullName: string; email: string }> = {
+  "GD-001": {
+    fullName: "Amel Kovačević",
+    email: "amel.kovacevic@partnerplus.ba",
+  },
+  "GD-002": {
+    fullName: "Nataša Rapaić",
+    email: "natasa.rapaic@partnerplus.ba",
+  },
+};
 
 export function getGd001RpcErrorText(error: unknown): string {
   const parts: string[] = [];
@@ -40,7 +57,7 @@ export type Gd001FixtureState = "EMPTY" | "EXACT_MATCH" | "PARTIAL" | "CONFLICT"
 
 export type Gd001CliOptions = {
   mode: Gd001WriterMode;
-  candidateId: typeof GD_001_CANDIDATE_ID;
+  candidateId: GoldenDemoCandidateId;
   verbose: boolean;
 };
 
@@ -144,21 +161,21 @@ export type Gd001FixtureRepository = {
 
 export type Gd001FixtureRpcPayload = {
   schema_version: typeof GD_001_FIXTURE_SCHEMA_VERSION;
-  candidate_id: typeof GD_001_CANDIDATE_ID;
-  organization_name: typeof GD_001_ORGANIZATION_NAME;
+  candidate_id: GoldenDemoCandidateId;
+  organization_name: typeof GOLDEN_DEMO_ORGANIZATION_NAME;
   participant: {
     display_name: string;
     email: string;
     participant_type: "employee";
-    addressing_form: "masculine";
+    addressing_form: "masculine" | "feminine";
   };
   assignment: { locale: "bs" };
   tests: Array<{
-    test_slug: (typeof GD_001_TEST_SLUGS)[number];
+    test_slug: (typeof GOLDEN_DEMO_TEST_SLUGS)[number];
     component_order: number;
   }>;
   responses: Array<{
-    test_slug: (typeof GD_001_TEST_SLUGS)[number];
+    test_slug: (typeof GOLDEN_DEMO_TEST_SLUGS)[number];
     question_code: string;
     response_kind: "single_choice" | "text";
     answer_option_code: string | null;
@@ -231,7 +248,11 @@ export function parseGd001WriterCli(args: string[]): Gd001CliOptions {
       continue;
     }
     if (argument === "--candidate") {
-      candidateId = args[index + 1] ?? null;
+      const value = args[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("--candidate requires an explicit GD-001 or GD-002 value.");
+      }
+      candidateId = value;
       index += 1;
       continue;
     }
@@ -242,14 +263,14 @@ export function parseGd001WriterCli(args: string[]): Gd001CliOptions {
     throw new Error(`Unknown argument: ${argument}`);
   }
 
-  if (mode === "apply" && candidateId !== GD_001_CANDIDATE_ID) {
-    throw new Error("--apply requires the exact confirmation --candidate GD-001.");
+  if (mode === "apply" && !candidateId) {
+    throw new Error("--apply requires an explicit --candidate GD-001 or --candidate GD-002 confirmation.");
   }
-  if (candidateId && candidateId !== GD_001_CANDIDATE_ID) {
-    throw new Error(`Unsupported candidate ID: ${candidateId}. Only GD-001 is allowed.`);
+  if (candidateId && !GOLDEN_DEMO_CANDIDATE_IDS.includes(candidateId as GoldenDemoCandidateId)) {
+    throw new Error(`Unsupported candidate ID: ${candidateId}. Only GD-001 and GD-002 are allowed.`);
   }
 
-  return { mode, candidateId: GD_001_CANDIDATE_ID, verbose };
+  return { mode, candidateId: (candidateId ?? GD_001_CANDIDATE_ID) as GoldenDemoCandidateId, verbose };
 }
 
 export function normalizeEmail(value: string): string {
@@ -260,36 +281,45 @@ export function normalizeIdentityText(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("bs");
 }
 
-export function getGd001CandidateContract(foundation: GoldenDemoCsvFoundation) {
+export function getGoldenDemoCandidateContract(
+  foundation: GoldenDemoCsvFoundation,
+  candidateId: GoldenDemoCandidateId,
+) {
   const candidate = foundation.candidates.rows.find(
-    (row) => row.values.candidate_id === GD_001_CANDIDATE_ID,
+    (row) => row.values.candidate_id === candidateId,
   );
-  if (!candidate) throw new Error("Golden Demo candidates.csv is missing GD-001.");
+  if (!candidate) throw new Error(`Golden Demo candidates.csv is missing ${candidateId}.`);
+  const lockedIdentity = LOCKED_CANDIDATE_IDENTITIES[candidateId];
+  const fullName = candidate.values.display_name;
+  const email = normalizeEmail(candidate.values.email);
+  if (fullName !== lockedIdentity.fullName || email !== lockedIdentity.email) {
+    throw new Error(`${candidateId} candidate CSV contract does not match the locked fixture identity.`);
+  }
   return {
-    candidateId: GD_001_CANDIDATE_ID,
+    candidateId,
     fullName: candidate.values.display_name,
-    email: normalizeEmail(candidate.values.email),
+    email,
     participantType: candidate.values.participant_type,
     addressingForm: candidate.values.addressing_form,
     teamId: candidate.values.team_id,
   };
 }
 
-export function buildGd001FixtureRpcPayload(
+export function getGd001CandidateContract(foundation: GoldenDemoCsvFoundation) {
+  return getGoldenDemoCandidateContract(foundation, GD_001_CANDIDATE_ID);
+}
+
+export function buildGoldenDemoFixtureRpcPayload(
   foundation: GoldenDemoCsvFoundation,
+  candidateId: GoldenDemoCandidateId,
 ): Gd001FixtureRpcPayload {
-  const candidate = getGd001CandidateContract(foundation);
-  if (
-    candidate.fullName !== "Amel Kovačević" ||
-    candidate.email !== "amel.kovacevic@partnerplus.ba" ||
-    candidate.participantType !== "employee" ||
-    candidate.addressingForm !== "masculine"
-  ) {
-    throw new Error("GD-001 candidate CSV contract does not match the locked fixture identity.");
+  const candidate = getGoldenDemoCandidateContract(foundation, candidateId);
+  if (candidate.participantType !== "employee" || !["masculine", "feminine"].includes(candidate.addressingForm)) {
+    throw new Error(`${candidateId} candidate CSV contract has an unsupported participant contract.`);
   }
 
   const responses = foundation.answers.rows
-    .filter((row) => row.values.candidate_id === GD_001_CANDIDATE_ID)
+    .filter((row) => row.values.candidate_id === candidateId)
     .map((row) => {
       const responseKind = row.values.response_kind;
       if (responseKind !== "single_choice" && responseKind !== "text") {
@@ -313,34 +343,44 @@ export function buildGd001FixtureRpcPayload(
       };
     });
 
-  if (responses.length !== 184) {
-    throw new Error(`GD-001 RPC payload requires 184 responses; received ${responses.length}.`);
+  const expectedResponseCount = Object.values(GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
+  if (responses.length !== expectedResponseCount) {
+    throw new Error(`${candidateId} RPC payload requires ${expectedResponseCount} responses; received ${responses.length}.`);
   }
-  for (const slug of GD_001_TEST_SLUGS) {
-    const expected = GD_001_EXPECTED_RESPONSE_COUNTS[slug];
+  for (const slug of GOLDEN_DEMO_TEST_SLUGS) {
+    const expected = GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS[slug];
     const actual = responses.filter((response) => response.test_slug === slug).length;
     if (actual !== expected) {
-      throw new Error(`GD-001 RPC payload requires ${expected} ${slug} responses; received ${actual}.`);
+      throw new Error(`${candidateId} RPC payload requires ${expected} ${slug} responses; received ${actual}.`);
     }
   }
 
   return {
     schema_version: GD_001_FIXTURE_SCHEMA_VERSION,
-    candidate_id: GD_001_CANDIDATE_ID,
-    organization_name: GD_001_ORGANIZATION_NAME,
+    candidate_id: candidateId,
+    organization_name: GOLDEN_DEMO_ORGANIZATION_NAME,
     participant: {
       display_name: candidate.fullName,
       email: candidate.email,
       participant_type: "employee",
-      addressing_form: "masculine",
+      addressing_form: candidate.addressingForm as "masculine" | "feminine",
     },
     assignment: { locale: "bs" },
-    tests: GD_001_TEST_SLUGS.map((test_slug, component_order) => ({
+    tests: GOLDEN_DEMO_TEST_SLUGS.map((test_slug, component_order) => ({
       test_slug,
       component_order,
     })),
     responses,
   };
+}
+
+export function buildGd001FixtureRpcPayload(
+  foundation: GoldenDemoCsvFoundation,
+): Gd001FixtureRpcPayload {
+  return buildGoldenDemoFixtureRpcPayload(foundation, GD_001_CANDIDATE_ID);
 }
 
 function asNonEmptyString(value: unknown, field: string): string {
@@ -501,7 +541,26 @@ export function classifyGd001FixtureState(input: {
   if (participant.participant_type !== "employee") conflictReasons.push("Participant type differs.");
   if (participant.status !== "active") conflictReasons.push("Participant lifecycle status is not active.");
   if (participant.user_id !== null) conflictReasons.push("Participant has a linked auth user requiring operator review.");
-  if (participant.addressing_form !== candidate.addressingForm) conflictReasons.push("Participant addressing form differs.");
+  const addressingFormMatches =
+    participant.addressing_form === candidate.addressingForm ||
+    (candidate.candidateId === "GD-002" && participant.addressing_form === null);
+  if (!addressingFormMatches) conflictReasons.push("Participant addressing form differs.");
+
+  const hasStandardBatteryState =
+    snapshot.assignments.length > 0 ||
+    snapshot.attempts.length > 0 ||
+    snapshot.links.length > 0 ||
+    snapshot.responses.length > 0 ||
+    snapshot.dimensionScoreCount > 0 ||
+    snapshot.attemptReportCount > 0 ||
+    snapshot.assessmentReportCount > 0;
+  if (!hasStandardBatteryState && conflictReasons.length === 0) {
+    return {
+      state: "EMPTY",
+      reasons: [],
+      responseCountsByTest,
+    };
+  }
 
   if (snapshot.assignments.length > 1) conflictReasons.push("Multiple assessment assignments exist.");
   const assignment = snapshot.assignments[0];
@@ -606,25 +665,33 @@ export function buildGd001DryRunPlan(input: {
   assignmentId: string | null;
   attemptIdsBySlug: Record<string, string | null>;
   resolvedResponseCount: number;
+  candidateId?: GoldenDemoCandidateId;
 }) {
   const create = input.classification.state === "EMPTY";
   const noop = input.classification.state === "EXACT_MATCH";
+  const candidateId = input.candidateId ?? GD_001_CANDIDATE_ID;
+  const participantExists = input.participantId !== null;
+  const expectedByTest = { ...GOLDEN_DEMO_EXPECTED_RESPONSE_COUNTS };
+  const expectedTotal = Object.values(expectedByTest).reduce((sum, count) => sum + count, 0);
   return {
     mode: "dry-run" as const,
-    candidateId: GD_001_CANDIDATE_ID,
+    candidateId,
     organization: { matched: true, id: input.organizationId },
     state: input.classification.state,
     blockers: input.classification.reasons,
-    participant: { action: create ? "create" : noop ? "reuse" : "blocked", id: input.participantId },
+    participant: {
+      action: participantExists ? "reuse" : create ? "create" : noop ? "reuse" : "blocked",
+      id: input.participantId,
+    },
     assignment: { action: create ? "create" : noop ? "reuse" : "blocked", id: input.assignmentId },
     attempts: Object.fromEntries(
-      GD_001_TEST_SLUGS.map((slug) => [slug, create ? "create" : noop ? "reuse" : "blocked"]),
+      GOLDEN_DEMO_TEST_SLUGS.map((slug) => [slug, create ? "create" : noop ? "reuse" : "blocked"]),
     ),
     attemptIds: input.attemptIdsBySlug,
     responses: {
-      expected: 184,
+      expected: expectedTotal,
       resolved: input.resolvedResponseCount,
-      insert: create ? 184 : 0,
+      insert: create ? expectedTotal : 0,
       existingByTest: input.classification.responseCountsByTest,
     },
     scoringExecution: false,
@@ -652,6 +719,7 @@ export async function inspectGd001FixtureWithRepository(
     assignmentId: assignment?.id ?? null,
     attemptIdsBySlug,
     resolvedResponseCount: resolved.expectedResponses.length,
+    candidateId: resolved.candidate.candidateId,
   });
 }
 

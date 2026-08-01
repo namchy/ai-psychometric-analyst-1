@@ -23,10 +23,10 @@ const {
   GD_001_ORGANIZATION_NAME,
   GD_001_TEST_SLUGS,
   GD_001_FIXTURE_RPC,
-  buildGd001FixtureRpcPayload,
+  getGoldenDemoCandidateContract,
+  buildGoldenDemoFixtureRpcPayload,
   executeGd001ApplyWithRpcBoundary,
   getGd001RpcErrorText,
-  getGd001CandidateContract,
   inspectGd001FixtureWithRepository,
   parseGd001WriterCli,
 } = require("../lib/golden-demo/db-fixture-writer.ts");
@@ -127,7 +127,9 @@ function createReadOnlyRepository({ supabase, foundation, candidate }) {
         "Failed to resolve Golden Demo questions",
       );
       const questionByIdentity = new Map();
-      for (const row of foundation.answers.rows) {
+      for (const row of foundation.answers.rows.filter(
+        (answer) => answer.values.candidate_id === candidate.candidateId,
+      )) {
         const slug = row.values.test_slug;
         const code = row.values.question_code;
         const matches = questions.filter(
@@ -195,12 +197,13 @@ function createReadOnlyRepository({ supabase, foundation, candidate }) {
         );
         const attemptRows = requireQuery(
           await supabase
-            .from("attempts")
+          .from("attempts")
             .select(
               "id, test_id, organization_id, participant_id, user_id, status, locale, addressing_form_snapshot, completed_at, scored_started_at",
             )
             .eq("organization_id", organization.id)
-            .eq("participant_id", participant.id),
+            .eq("participant_id", participant.id)
+            .in("test_id", Object.values(testIdsBySlug)),
           "Failed to load participant attempts",
         );
         const slugByTestId = new Map(Object.entries(testIdsBySlug).map(([slug, id]) => [id, slug]));
@@ -258,7 +261,9 @@ function createReadOnlyRepository({ supabase, foundation, candidate }) {
           attempts.find((attempt) => attempt.test_slug === slug)?.id ?? `planned:${slug}`,
         ]),
       );
-      const expectedResponses = foundation.answers.rows.map((row) => {
+      const expectedResponses = foundation.answers.rows
+        .filter((row) => row.values.candidate_id === candidate.candidateId)
+        .map((row) => {
         const slug = row.values.test_slug;
         const question = questionByIdentity.get(`${slug}\u0000${row.values.question_code}`);
         let answerOptionId = null;
@@ -287,7 +292,7 @@ function createReadOnlyRepository({ supabase, foundation, candidate }) {
           answerOptionId,
           textValue,
         };
-      });
+        });
       if (expectedResponses.length !== 184) {
         throw new Error(`Expected 184 resolved responses; received ${expectedResponses.length}.`);
       }
@@ -326,10 +331,7 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   if (!validation.ok) {
     throw new Error(`Golden Demo CSV validation failed with ${validation.errors.length} error(s).`);
   }
-  const candidate = getGd001CandidateContract(foundation);
-  if (candidate.candidateId !== GD_001_CANDIDATE_ID) {
-    throw new Error("Resolved fixture candidate does not match GD-001.");
-  }
+  const candidate = getGoldenDemoCandidateContract(foundation, options.candidateId);
 
   const { createClient } = require("@supabase/supabase-js");
   const supabase = createClient(url, serviceRoleKey, {
@@ -337,10 +339,15 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   });
   const repository = createReadOnlyRepository({ supabase, foundation, candidate });
   const plan = await inspectGd001FixtureWithRepository(repository);
+  if (options.mode === "apply" && candidate.candidateId !== GD_001_CANDIDATE_ID) {
+    throw new Error(
+      "GD-002 apply is blocked: the installed GD-001 RPC is not a candidate-aware persistence seam. Run the read-only plan only until a candidate-specific RPC is explicitly approved.",
+    );
+  }
   if (options.mode === "apply") {
     const applyResult = await executeGd001ApplyWithRpcBoundary({
       initialPlan: plan,
-      payload: buildGd001FixtureRpcPayload(foundation),
+      payload: buildGoldenDemoFixtureRpcPayload(foundation, candidate.candidateId),
       async invokeRpc({ rpcName, payload }) {
         if (rpcName !== GD_001_FIXTURE_RPC) {
           throw new Error(`Unexpected fixture RPC: ${rpcName}`);

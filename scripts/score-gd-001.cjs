@@ -50,8 +50,8 @@ installTypeScriptRuntime();
 
 const {
   GD_001_TEST_SLUGS,
+  getGoldenDemoCandidateContract,
   classifyGd001FixtureState,
-  getGd001CandidateContract,
 } = require("../lib/golden-demo/db-fixture-writer.ts");
 const {
   buildGd001ScoringPlan,
@@ -127,7 +127,8 @@ async function loadScoringInspection({ supabase, repository, foundation }) {
       participant.email.trim().toLowerCase() === resolved.candidate.email &&
       participant.participant_type === "employee" &&
       participant.status === "active" &&
-      participant.addressing_form === resolved.candidate.addressingForm &&
+      (participant.addressing_form === resolved.candidate.addressingForm ||
+        (resolved.candidate.candidateId === "GD-002" && participant.addressing_form === null)) &&
       resolved.snapshot.assignments.length === 1 &&
       assignment?.organization_id === resolved.snapshot.organizationId &&
       assignment?.participant_id === participant.id &&
@@ -186,7 +187,11 @@ async function loadScoringInspection({ supabase, repository, foundation }) {
     attemptReportCount: resolved.snapshot.attemptReportCount,
     assessmentReportCount: resolved.snapshot.assessmentReportCount,
   };
-  const verification = verifyPersistedGd001Scores({ foundation, dimensionScores });
+  const verification = verifyPersistedGd001Scores({
+    foundation,
+    dimensionScores,
+    candidateId: resolved.candidate.candidateId,
+  });
   return { resolved, snapshot, verification };
 }
 
@@ -234,14 +239,7 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   if (!validation.ok) {
     throw new Error(`Golden Demo CSV validation failed with ${validation.errors.length} error(s).`);
   }
-  const candidate = getGd001CandidateContract(foundation);
-  if (
-    candidate.candidateId !== "GD-001" ||
-    candidate.email !== "amel.kovacevic@partnerplus.ba" ||
-    candidate.fullName !== "Amel Kovačević"
-  ) {
-    throw new Error("Locked GD-001 identity validation failed.");
-  }
+  const candidate = getGoldenDemoCandidateContract(foundation, options.candidateId);
 
   const { createClient } = require("@supabase/supabase-js");
   const supabase = createClient(url, serviceRoleKey, {
@@ -249,18 +247,28 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   });
   const repository = createReadOnlyRepository({ supabase, foundation, candidate });
   const inspection = await loadScoringInspection({ supabase, repository, foundation });
-  const classification = classifyGd001ScoringState(inspection);
+  const classification = classifyGd001ScoringState({
+    ...inspection,
+    candidateId: candidate.candidateId,
+  });
   const plan = buildGd001ScoringPlan({
     mode: options.mode,
     snapshot: inspection.snapshot,
     classification,
     verification: inspection.verification,
+    candidateId: candidate.candidateId,
   });
 
   if (options.mode === "dry-run") {
     if (options.verbose) plan.verbose = { fixtureBlockers: inspection.snapshot.fixtureBlockers };
     process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
     return plan;
+  }
+
+  if (candidate.candidateId !== "GD-001") {
+    throw new Error(
+      "GD-002 apply is blocked: the production scoring operator requires a candidate-aware persistence/apply seam that is not enabled in this task.",
+    );
   }
 
   const result = await executeGd001ScoringApply({
@@ -274,7 +282,7 @@ async function run(argv = process.argv.slice(2), env = process.env) {
   });
   const output = {
     mode: "apply",
-    candidateId: "GD-001",
+    candidateId: candidate.candidateId,
     fixtureWriterState: inspection.snapshot.fixtureState,
     fixtureCompatibilityState: classification.fixtureCompatibilityState,
     scoringState: classification.scoringState,

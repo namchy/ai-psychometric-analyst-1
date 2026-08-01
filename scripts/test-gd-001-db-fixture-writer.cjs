@@ -24,6 +24,7 @@ const {
   GD_001_FIXTURE_SCHEMA_VERSION,
   GD_001_RPC_NOT_EMPTY_PREFIX,
   GD_001_TEST_SLUGS,
+  buildGoldenDemoFixtureRpcPayload,
   buildGd001CreatedApplyResult,
   buildGd001ExactMatchApplyNoop,
   buildGd001FixtureRpcPayload,
@@ -32,6 +33,7 @@ const {
   compareActualToExpectedResponse,
   executeGd001ApplyWithRpcBoundary,
   getGd001RpcErrorText,
+  getGoldenDemoCandidateContract,
   getGd001CandidateContract,
   inspectGd001FixtureWithRepository,
   parseGd001WriterCli,
@@ -47,7 +49,9 @@ const testIdsBySlug = Object.fromEntries(
 const attemptIdsBySlug = Object.fromEntries(
   GD_001_TEST_SLUGS.map((slug) => [slug, `attempt:${slug}`]),
 );
-const expectedResponses = foundation.answers.rows.map((row) => ({
+const expectedResponses = foundation.answers.rows
+  .filter((row) => row.values.candidate_id === "GD-001")
+  .map((row) => ({
   testSlug: row.values.test_slug,
   questionCode: row.values.question_code,
   attemptId: attemptIdsBySlug[row.values.test_slug],
@@ -58,8 +62,24 @@ const expectedResponses = foundation.answers.rows.map((row) => ({
       ? `option:${row.values.test_slug}:${row.values.question_code}:${row.values.answer_option_code}`
       : null,
   textValue: row.values.response_kind === "text" ? row.values.answer_value : null,
-}));
+  }));
 assert.equal(expectedResponses.length, 184);
+const gd002Candidate = getGoldenDemoCandidateContract(foundation, "GD-002");
+const gd002ExpectedResponses = foundation.answers.rows
+  .filter((row) => row.values.candidate_id === "GD-002")
+  .map((row) => ({
+    testSlug: row.values.test_slug,
+    questionCode: row.values.question_code,
+    attemptId: `planned:${row.values.test_slug}`,
+    questionId: `question:${row.values.test_slug}:${row.values.question_code}`,
+    responseKind: row.values.response_kind,
+    answerOptionId:
+      row.values.response_kind === "single_choice"
+        ? `option:${row.values.test_slug}:${row.values.question_code}:${row.values.answer_option_code}`
+        : null,
+    textValue: row.values.response_kind === "text" ? row.values.answer_value : null,
+  }));
+assert.equal(gd002ExpectedResponses.length, 184);
 
 function baseSnapshot() {
   return {
@@ -149,11 +169,19 @@ assert.deepEqual(parseGd001WriterCli([]), {
   verbose: false,
 });
 assert.equal(parseGd001WriterCli(["--dry-run"]).mode, "dry-run");
-assert.throws(() => parseGd001WriterCli(["--apply"]), /--candidate GD-001/);
-assert.throws(
-  () => parseGd001WriterCli(["--apply", "--candidate", "GD-002"]),
-  /GD-001/,
-);
+assert.throws(() => parseGd001WriterCli(["--apply"]), /explicit --candidate/);
+assert.throws(() => parseGd001WriterCli(["--candidate"]), /requires an explicit/);
+assert.deepEqual(parseGd001WriterCli(["--candidate", "GD-002"]), {
+  mode: "dry-run",
+  candidateId: "GD-002",
+  verbose: false,
+});
+assert.deepEqual(parseGd001WriterCli(["--apply", "--candidate", "GD-002"]), {
+  mode: "apply",
+  candidateId: "GD-002",
+  verbose: false,
+});
+assert.throws(() => parseGd001WriterCli(["--candidate", "GD-003"]), /Only GD-001 and GD-002/);
 assert.equal(
   parseGd001WriterCli(["--apply", "--candidate", "GD-001"]).mode,
   "apply",
@@ -163,6 +191,22 @@ for (const flag of ["--delete", "--cleanup", "--reset", "--force", "--overwrite"
 }
 assert.equal(classify(baseSnapshot()).state, "EMPTY");
 assert.equal(classify(exactSnapshot()).state, "EXACT_MATCH");
+{
+  const participantOnly = baseSnapshot();
+  participantOnly.participant = {
+    id: "participant:gd-001",
+    organization_id: participantOnly.organizationId,
+    user_id: null,
+    email: candidate.email,
+    full_name: candidate.fullName,
+    participant_type: "employee",
+    status: "active",
+    addressing_form: candidate.addressingForm,
+  };
+  const participantOnlyClassification = classify(participantOnly);
+  assert.equal(participantOnlyClassification.state, "EMPTY");
+  assert.deepEqual(participantOnlyClassification.reasons, []);
+}
 {
   const partial = exactSnapshot();
   partial.responses.pop();
@@ -180,6 +224,11 @@ assert.equal(classify(exactSnapshot()).state, "EXACT_MATCH");
 {
   const conflict = exactSnapshot();
   conflict.responses[0].answer_option_id = "option:different";
+  assert.equal(classify(conflict).state, "CONFLICT");
+}
+{
+  const conflict = exactSnapshot();
+  conflict.participant.email = "other@example.com";
   assert.equal(classify(conflict).state, "CONFLICT");
 }
 {
@@ -260,6 +309,33 @@ assert.equal(JSON.stringify(rpcPayload).includes("scored_value"), false);
 assert.equal(JSON.stringify(rpcPayload).includes("expected_score"), false);
 assert.equal(JSON.stringify(rpcPayload).includes("expected_ai"), false);
 
+const gd002Payload = buildGoldenDemoFixtureRpcPayload(foundation, "GD-002");
+assert.equal(gd002Payload.candidate_id, "GD-002");
+assert.equal(gd002Payload.participant.display_name, gd002Candidate.fullName);
+assert.equal(gd002Payload.participant.email, gd002Candidate.email);
+assert.equal(gd002Payload.responses.length, 184);
+assert.equal(
+  gd002Payload.responses.every((response) =>
+    foundation.answers.rows.some(
+      (row) =>
+        row.values.candidate_id === "GD-002" &&
+        row.values.test_slug === response.test_slug &&
+        row.values.question_code === response.question_code,
+    ),
+  ),
+  true,
+);
+{
+  const incompleteFoundation = structuredClone(foundation);
+  incompleteFoundation.answers.rows = incompleteFoundation.answers.rows.filter(
+    (row) => !(row.values.candidate_id === "GD-002" && row.values.test_slug === "mwms_v1" && row.values.question_code === "MWMS_19"),
+  );
+  assert.throws(
+    () => buildGoldenDemoFixtureRpcPayload(incompleteFoundation, "GD-002"),
+    /GD-002 RPC payload requires 184 responses/,
+  );
+}
+
 assert.deepEqual(
   verifyGd001FinalCounts({
     participant: 1,
@@ -323,6 +399,8 @@ assert.doesNotMatch(
 );
 assert.match(writerSource, /\.rpc\s*\(/);
 assert.match(writerSource, /supabase\.rpc\(rpcName, \{ p_fixture: payload \}\)/);
+assert.match(writerSource, /\.in\("test_id", Object\.values\(testIdsBySlug\)\)/);
+assert.match(writerSource, /GD-002 apply is blocked/);
 assert.match(rpcMigrationSource, /create_golden_demo_gd001_fixture_v1\(p_fixture jsonb\)/);
 assert.match(rpcMigrationSource, /security definer/i);
 assert.match(rpcMigrationSource, /set search_path = ''/i);
