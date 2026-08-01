@@ -108,14 +108,14 @@ function buildSafranResults() {
   };
 }
 
-function buildPreparedInput(audience) {
+function buildPreparedInput(audience, locale = "bs") {
   return buildPreparedReportGenerationInput(
     {
       attemptId: `attempt-safran-${audience}-openai-provider`,
       testId: "test-safran",
       testSlug: "safran_v1",
       audience,
-      locale: "bs",
+      locale,
       scoringMethod: "correct_answers",
       promptVersion: "v1",
       testName: "SAFRAN",
@@ -154,6 +154,7 @@ function buildPromptTemplateOverride(audience) {
 
 function main() {
   const hrInput = buildPreparedInput("hr");
+  const alternateLocaleHrInput = buildPreparedInput("hr", "hr");
   const participantInput = buildPreparedInput("participant");
   const hrPromptInputBefore = clone(hrInput.promptInput);
 
@@ -231,8 +232,16 @@ function main() {
   );
   assert.match(hrFinalPrompt, /SAFRAN HR mandatory guardrails/);
   assert.match(
+    hrFinalPrompt,
+    /generatedLanguage must equal input\.test\.locale exactly\. Copy that locale code verbatim; do not translate it or return a human-readable language name\./,
+  );
+  assert.match(
     mandatoryGuardrails,
     /scoreReferences must copy input\.scores exactly.*rawScore.*bandLabel/i,
+  );
+  assert.match(
+    mandatoryGuardrails,
+    /generatedLanguage must equal input\.test\.locale exactly\. Copy that locale code verbatim; do not translate it or return a human-readable language name\./,
   );
   assert.match(mandatoryGuardrails, /executiveSummary\.summary/);
   assert.match(mandatoryGuardrails, /opreznu HR hipotezu/i);
@@ -305,6 +314,15 @@ function main() {
   assert.doesNotMatch(participantPrompt.instructions.output_contract, /safran_hr_report_v1/);
 
   const validHrReport = buildMockSafranHrReportV1(hrInput.promptInput);
+  const alternateLocaleHrPrompt = buildUserPrompt(alternateLocaleHrInput);
+  assert.match(alternateLocaleHrPrompt, /"locale":"hr"/);
+  assert.equal(alternateLocaleHrInput.promptInput.test.locale, "hr");
+  const alternateLocaleHrReport = buildMockSafranHrReportV1(alternateLocaleHrInput.promptInput);
+  assert.equal(alternateLocaleHrReport.generatedLanguage, "hr");
+  assert.equal(
+    validateStructuredReport(alternateLocaleHrReport, alternateLocaleHrInput).generatedLanguage,
+    "hr",
+  );
   validHrReport.interpretationLimits = [
     "SAFRAN rezultat treba čitati samo u okviru ovog seta zadataka i čitati zajedno sa iskustvom, intervjuom i kontekstom uloge.",
     "Izvještaj nije odluka o zapošljavanju i ne treba ga koristiti za rangiranje osobe u odnosu na druge.",
@@ -478,6 +496,13 @@ function main() {
   languageMismatchReport.generatedLanguage = "en";
   assert.throws(
     () => validateStructuredReport(languageMismatchReport, hrInput),
+    /generatedLanguage/i,
+  );
+
+  const humanReadableLanguageReport = clone(validHrReport);
+  humanReadableLanguageReport.generatedLanguage = "Bosnian";
+  assert.throws(
+    () => validateStructuredReport(humanReadableLanguageReport, hrInput),
     /generatedLanguage/i,
   );
 

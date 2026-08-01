@@ -382,6 +382,7 @@ export function buildSafranHrMandatoryPromptGuardrails(): string {
   return [
     "SAFRAN HR mandatory guardrails:",
     "scoreReferences must copy input.scores exactly for overall, verbal, figural and numeric, including key, rawScore, maxScore, scoreLabel, band and bandLabel; do not recalculate, translate or rewrite these values.",
+    "generatedLanguage must equal input.test.locale exactly. Copy that locale code verbatim; do not translate it or return a human-readable language name.",
     "executiveSummary.summary must be a cautious HR hypothesis, not a conclusion, verdict or selection decision.",
     'executiveSummary.summary must explicitly use hypothesis wording such as "Ovaj rezultat može ukazivati...", "Ovo treba čitati kao hipotezu za provjeru..." or "Signal treba provjeriti kroz intervju, iskustvo i kontekst uloge."',
     'executiveSummary.summary must already in the first or second sentence use an explicit cautious HR hypothesis frame such as "Ovaj rezultat treba čitati kao opreznu HR hipotezu...", "Ovaj sažetak treba koristiti kao hipotezu za provjeru..." or "Ovi signali mogu pomoći HR-u da formira hipoteze koje treba provjeriti...".',
