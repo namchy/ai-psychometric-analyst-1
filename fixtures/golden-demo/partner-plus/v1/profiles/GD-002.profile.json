@@ -1,0 +1,125 @@
+{
+  "profile_version": "gd_expected_profile_v1",
+  "candidate_id": "GD-002",
+  "authoring_status": {
+    "status": "authored_profile_only",
+    "raw_answers_created": false,
+    "expected_scores_created": false,
+    "next_step": "Iz ovog profila izvesti deterministicne odgovore i offline validirati ih prije bilo kakvog persistencea."
+  },
+  "role_context": {
+    "job_title": "Voditeljica tima kreditnih službenika",
+    "team_id": "GDT-01",
+    "context_summary": "Vođenje operativnog kreditnog tima traži strukturisanje prioriteta, rano iznošenje rizika, otvorenu koordinaciju i održavanje kvaliteta dokumentacije i odnosa s klijentima kada se terenski prioriteti i administrativni zastoji pojave istovremeno."
+  },
+  "target_profile_summary": "Koordinirajuća i odgovorna voditeljica kreditnog tima koja članovima daje strukturu, podstiče rano iznošenje rizika i održava otvorenu raspravu. Nastupa pristupačno, ali dovoljno asertivno da uskladi rokove i odluke; ne traži uzbuđenje radi uzbuđenja, već stabilan napredak tima. Motivaciju prvenstveno nalazi u smislu odgovornosti, kvalitetu rada i uticaju na razvoj ljudi, uz umjeren unutrašnji pritisak da sve bude pod kontrolom. Razvojni izazov je delegiranje i razlikovanje stvarno kritičnih rizika od pitanja koja tim može riješiti bez njenog stalnog nadzora.",
+  "ipip_targets": {
+    "targeting_method": "Ciljevi su relativne namjere za naredni offline authoring; ne predstavljaju raw item odgovore niti persisted scoreove. Facet obrazac treba zadržati višu savjesnost i saradnju, asertivno vođenje bez socijalne dominacije, te uravnoteženu emocionalnu reaktivnost sa svjesnošću pritiska.",
+    "facets": {
+      "ANXIETY": { "relative_level": "balanced", "rationale": "Svjesna je otvorenih rizika i rokova, ali cilj nije hronična zabrinutost." },
+      "ANGER": { "relative_level": "lower", "rationale": "Rizik treba iznositi direktno i konstruktivno, bez reaktivne eskalacije." },
+      "DEPRESSION": { "relative_level": "lower" },
+      "SELF_CONSCIOUSNESS": { "relative_level": "higher", "rationale": "Odgovornost za tim pojačava samoprovjeru; to može pomoći kvalitetu, ali i usporiti delegiranje." },
+      "IMMODERATION": { "relative_level": "lower" },
+      "VULNERABILITY": { "relative_level": "balanced", "rationale": "Može priznati neizvjesnost i tražiti doprinos, ali zadržava radnu stabilnost." },
+      "FRIENDLINESS": { "relative_level": "higher", "rationale": "Pristupačnost olakšava otvorenu koordinaciju i razgovor o problemima." },
+      "GREGARIOUSNESS": { "relative_level": "balanced" },
+      "ASSERTIVENESS": { "relative_level": "higher", "rationale": "Voditeljska uloga traži jasno usklađivanje rokova, prioriteta i odgovornosti." },
+      "ACTIVITY_LEVEL": { "relative_level": "higher" },
+      "EXCITEMENT_SEEKING": { "relative_level": "lower", "rationale": "Prednost daje pouzdanom napretku i kontrolisanom odlučivanju, ne intenzitetu radi intenziteta." },
+      "CHEERFULNESS": { "relative_level": "balanced" },
+      "IMAGINATION": { "relative_level": "balanced" },
+      "ARTISTIC_INTERESTS": { "relative_level": "balanced" },
+      "EMOTIONALITY": { "relative_level": "balanced", "rationale": "Osjetljivost prema ljudima treba podržati vođenje, ali ne zamijeniti procjenu poslovnog rizika." },
+      "ADVENTUROUSNESS": { "relative_level": "balanced" },
+      "INTELLECT": { "relative_level": "higher", "rationale": "Pomaže povezivanju informacija, prioriteta i posljedica u složenijem timskom kontekstu." },
+      "LIBERALISM": { "relative_level": "balanced" },
+      "TRUST": { "relative_level": "balanced", "rationale": "Otvorena je za doprinos članova, ali zadržava provjeru dokaza i odgovornosti." },
+      "MORALITY": { "relative_level": "higher" },
+      "ALTRUISM": { "relative_level": "higher" },
+      "COOPERATION": { "relative_level": "higher", "rationale": "Uspjeh se gradi kroz uključivanje članova i dijeljenje odgovornosti, ne kroz solo kontrolu." },
+      "MODESTY": { "relative_level": "balanced" },
+      "SYMPATHY": { "relative_level": "higher", "rationale": "Pomaže da se pritisak i greške članova tretiraju kao tema za razgovor i razvoj." },
+      "SELF_EFFICACY": { "relative_level": "higher" },
+      "ORDERLINESS": { "relative_level": "higher", "rationale": "Struktura pomaže koordinaciji dokumentacije, rokova i otvorenih rizika." },
+      "DUTIFULNESS": { "relative_level": "higher", "rationale": "Preuzima ozbiljno odgovornost prema timu, klijentima i kvalitetu procesa." },
+      "ACHIEVEMENT_STRIVING": { "relative_level": "higher" },
+      "SELF_DISCIPLINE": { "relative_level": "higher" },
+      "CAUTIOUSNESS": { "relative_level": "higher", "rationale": "Provjerava posljedice odluka, uz razvojnu potrebu da oprez ne preraste u mikroupravljanje." }
+    },
+    "domains": {
+      "EXTRAVERSION": { "relative_level": "higher", "rationale": "Viša asertivnost i aktivnost podržavaju vođenje, dok uravnotežena gregarnost sprečava karikiranu društvenu dominaciju." },
+      "AGREEABLENESS": { "relative_level": "higher", "rationale": "Saradnja, simpatija i altruizam podržavaju sigurnost za otvorenu timsku raspravu, uz uravnoteženo povjerenje." },
+      "CONSCIENTIOUSNESS": { "relative_level": "higher", "rationale": "Urednost, dužnost, samodisciplina i oprez podržavaju pouzdanu koordinaciju; razvojni tradeoff je preuzimanje previše kontrole." },
+      "NEUROTICISM": { "relative_level": "balanced", "rationale": "Niža ljutnja i depresivnost daju stabilnost, dok viša samoprovjera i uravnotežena anksioznost čuvaju pažnju prema riziku bez tvrdnje o odsustvu stresa." },
+      "OPENNESS_TO_EXPERIENCE": { "relative_level": "balanced", "rationale": "Intellect je jači, ali ostali aspekti ostaju praktični i uravnoteženi; promjena se prihvata kada poboljšava rad, ne radi novine same." }
+    }
+  },
+  "safran_targets": {
+    "targeting_method": "Relativni ciljevi opisuju obrazac sposobnosti za naredni offline authoring. Ne predstavljaju exact scoreove, procenat, IQ ili globalnu mjeru inteligencije.",
+    "verbal_score": { "relative_level": "higher", "rationale": "Vođenje tima, rano iznošenje rizika i usklađivanje različitih perspektiva traže jasno verbalno povezivanje informacija." },
+    "figural_score": { "relative_level": "balanced", "rationale": "Profil ne treba izmišljati posebnu figuralnu prednost za funkciju koja je prvenstveno koordinacijska i operativna." },
+    "numerical_series_score": { "relative_level": "balanced", "rationale": "Rad sa rokovima, portfoliom i kreditnim podacima traži pouzdan numerički učinak, ali ne nameće se izuzetnost." },
+    "cognitive_composite_v1": { "relative_level": "balanced", "rationale": "Verbalna prednost uz uravnotežen figuralni i numerički učinak daje stabilan, ne globalizovan composite obrazac." },
+    "coherence_rule": "Composite treba ostati kompatibilan sa odnosom viši verbalni signal + uravnoteženi figuralni i numerički signali; ne koristiti ga kao zaključak o opštoj sposobnosti."
+  },
+  "mwms_targets": {
+    "amotivation": { "relative_level": "lower", "rationale": "Jasna uloga i odgovornost prema timu daju smisao svakodnevnom radu." },
+    "external_social": { "relative_level": "moderate", "rationale": "Povjerenje i priznanje tima imaju vrijednost, ali nisu glavni razlog vođenja." },
+    "external_material": { "relative_level": "moderate", "rationale": "Praktična sigurnost i nagrada su relevantne, ali ne nose cijeli radni obrazac." },
+    "introjected": { "relative_level": "moderate", "rationale": "Unutrašnji standardi i osjećaj odgovornosti mogu povećati pritisak kada više stvari ostane otvoreno." },
+    "identified": { "relative_level": "higher", "rationale": "Motivišu je važnost kvalitetne koordinacije, razvoja ljudi i odgovornog kreditnog rada." },
+    "intrinsic": { "relative_level": "higher", "rationale": "Uživanje u rješavanju složenih koordinacijskih problema podržava angažman i u zahtjevnim situacijama." },
+    "autonomous_motivation": { "relative_level": "higher", "rationale": "Identified i intrinsic motivacija treba da budu dominantne." },
+    "controlled_motivation": { "relative_level": "moderate", "rationale": "Unutrašnji standardi i odgovornost postoje, ali ne smiju nadjačati smisao i izbor." },
+    "motivation_pattern": "Autonomno dominantan obrazac sa umjerenim pritiskom odgovornosti: pokreću je smisao i kvalitet, dok kontrolisana motivacija može pojačati potrebu da sve bude pod nadzorom."
+  },
+  "cross_test_signals": [
+    "Viša savjesnost, identified motivacija i verbalni SAFRAN signal podržavaju jasno strukturisanje prioriteta i rano imenovanje rizika.",
+    "Viša saradnja i simpatija, uz višu asertivnost, podržavaju otvorenu raspravu bez odustajanja od odluke i odgovornosti.",
+    "Uravnotežen Neuroticism obrazac dopušta pažnju prema pritisku, ali ne opravdava tvrdnju da je osoba uvijek mirna ili otporna na stres.",
+    "Viša autonomna motivacija podržava vođenje zbog smisla i razvoja tima; umjerena kontrolisana motivacija objašnjava zašto nejasni standardi mogu povećati samoprovjeru.",
+    "Uravnotežen SAFRAN composite treba čitati kroz jači verbalni signal i stabilne, ali ne izuzetne ostale komponente, bez zaključka o opštoj inteligenciji."
+  ],
+  "strengths": [
+    "Strukturisanje prioriteta, rokova i odgovornosti u timu.",
+    "Otvaranje prostora da se rizik, zastoj i potreba za pomoći iznesu ranije.",
+    "Kombinovanje saradnje i jasnog vođenja bez oslanjanja na status ili dominaciju."
+  ],
+  "risks": [
+    "Preuzimanje previše koordinacijskih odluka umjesto svjesnog delegiranja.",
+    "Pretjerana samoprovjera kada su rizici i očekivanja nejasni.",
+    "Moguće zadržavanje na kontroli procesa kada bi timu koristio brži eksperiment ili dovoljno dobra odluka."
+  ],
+  "development_themes": [
+    "Delegirati vlasništvo nad zadacima uz jasne kontrolne tačke, umjesto stalnog nadzora.",
+    "Razlikovati kritične rizike od pitanja koja se mogu riješiti na nivou člana ili podtima.",
+    "Održati otvoren razgovor pod pritiskom i zatim jasno zaključiti odluku, rok i vlasnika narednog koraka."
+  ],
+  "team_dynamics_coherence": {
+    "existing_pattern": "Team Dynamics izvor GD-002 opisuje veću sigurnost za koordinaciju i otvorenu raspravu, uz stabilan rutinski timski obrazac i različit SJT signal.",
+    "profile_connection": "Profil povezuje višu saradnju, simpatiju i asertivnost sa ranijim iznošenjem rizika i strukturisanjem razgovora; ne kopira Team Dynamics odgovore niti iz njih izvodi standard-battery scoreove.",
+    "boundary": "Team Dynamics je kontekstualni coherence constraint, a ne direktna mjera IPIP, SAFRAN ili MWMS konstrukata."
+  },
+  "differentiation_from_gd001": {
+    "comparison_reference": "GD-001",
+    "interpersonal_style": "Nataša je koordinirajuća voditeljica koja usklađuje grupu i otvara raspravu; Amel je topliji, saradljiv individualni terenski radnik koji gradi odnos s klijentom bez potrebe da vodi tim.",
+    "structure_flexibility": "Nataša koristi strukturu kao alat za raspodjelu i koordinaciju rada, dok Amel strukturu prvenstveno koristi za lično praćenje dokumentacije i zatvaranje obaveza.",
+    "decision_style": "Nataša prvo uključuje relevantne perspektive i imenuje rizik pa zaključuje odluku; Amel promišljeno procjenjuje pojedinačni klijentski slučaj i administrativnu obavezu.",
+    "motivation": "Natašu prvenstveno pokreću smisao odgovornosti, razvoj ljudi i kvalitet koordinacije; Amelov authored obrazac više naglašava važnost i zanimljivost konkretnog posla i pouzdano izvršenje.",
+    "cognitive_profile": "Natašin cilj je verbalno jači, ali ukupno uravnoteženiji SAFRAN obrazac; Amel ima jači verbalni i numerički obrazac uz umjereniji figuralni dio i viši composite intent.",
+    "pressure_response": "Nataša pod pritiskom treba ranije otvoriti rizik i raspodijeliti odgovornost, ali paziti da samoprovjera ne postane mikroupravljanje; Amel ostaje stabilan u samostalnom radu, uz potrebu za prioritizacijom kada se nagomilaju predmeti.",
+    "team_contribution": "Nataša je koordinacijska tačka i čuvarica otvorene rasprave; Amel donosi pouzdanu terensku i klijentsku perspektivu."
+  },
+  "forbidden_contradictions": [
+    "Ne opisivati Natašu kao pasivnu, socijalno izolovanu ili nesposobnu da donese odluku.",
+    "Ne opisivati je kao bezrizičnu, uvijek mirnu, savršeno organizovanu ili dominantnu u svakoj situaciji.",
+    "Ne tvrditi globalnu kognitivnu superiornost, IQ, populacijski rang ili opštu inteligenciju iz SAFRAN obrasca.",
+    "Ne izvoditi dijagnozu niti hire/no-hire zaključak."
+  ],
+  "known_uncertainties": [
+    "Team Dynamics opisuje kontekstualnu timsku perspektivu i ne određuje exact IPIP facet, SAFRAN ili MWMS vrijednosti.",
+    "Relativni ciljevi još nisu prevedeni u 120, 45 i 19 raw odgovora niti u expected score redove.",
+    "Nema biografskih događaja ili individualnih radnih epizoda u sourceu; narativ ostaje funkcionalna authored namjera za sintetički Golden Demo profil."
+  ]
+}
