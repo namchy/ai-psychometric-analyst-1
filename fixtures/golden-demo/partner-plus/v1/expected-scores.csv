@@ -85,3 +85,11 @@ GD-002,safran_v1,persisted_dimension,verbal_score,14,0,higher_raw,true,gd_002_ex
 GD-002,safran_v1,persisted_dimension,figural_score,10,0,moderate_raw,true,gd_002_expected_scores_v1
 GD-002,safran_v1,persisted_dimension,numerical_series_score,10,0,moderate_raw,true,gd_002_expected_scores_v1
 GD-002,safran_v1,persisted_dimension,cognitive_composite_v1,34,0,moderate_raw,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,persisted_dimension,amotivation,1.67,0.01,lower,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,persisted_dimension,external_social,3.33,0.01,moderate,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,persisted_dimension,external_material,4.67,0.01,moderate,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,persisted_dimension,introjected,4,0.01,moderate,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,persisted_dimension,identified,6,0.01,higher,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,persisted_dimension,intrinsic,6,0.01,higher,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,derived_composite,autonomous_motivation,6,0.01,higher,true,gd_002_expected_scores_v1
+GD-002,mwms_v1,derived_composite,controlled_motivation,4,0.01,moderate,true,gd_002_expected_scores_v1
