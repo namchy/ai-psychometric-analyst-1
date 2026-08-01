@@ -78,6 +78,25 @@ export type Gd001OfflineScoreVerification = {
   scores: GoldenDemoComputedScore[];
 };
 
+export type GoldenDemoCandidateOfflineScoreVerification = {
+  ok: boolean;
+  candidateId: string;
+  assessments: GoldenDemoTestSlug[];
+  errors: Gd001VerificationError[];
+  answers: {
+    total: number;
+    byTest: Record<GoldenDemoTestSlug, number>;
+    expectedByTest: Record<GoldenDemoTestSlug, number>;
+    completeByTest: Record<GoldenDemoTestSlug, boolean>;
+  };
+  expectedScores: {
+    total: number;
+    matched: number;
+    byTestAndScope: Record<string, number>;
+  };
+  scores: GoldenDemoComputedScore[];
+};
+
 function readJson<T>(filePath: string): T {
   return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
 }
@@ -119,12 +138,13 @@ function pushError(
 
 function requireUniqueAnswers(
   foundation: GoldenDemoCsvFoundation,
+  candidateId: string,
   testSlug: GoldenDemoTestSlug,
   expectedCodes: string[],
   errors: Gd001VerificationError[],
 ): Map<string, Record<string, string>> {
   const answers = foundation.answers.rows.filter(
-    (row) => row.values.candidate_id === "GD-001" && row.values.test_slug === testSlug,
+    (row) => row.values.candidate_id === candidateId && row.values.test_slug === testSlug,
   );
   const answerByQuestion = new Map<string, Record<string, string>>();
 
@@ -158,6 +178,7 @@ function requireUniqueAnswers(
 }
 
 function computeIpipScores(
+  candidateId: string,
   items: PackageItem[],
   options: PackageOption[],
   answerByQuestion: Map<string, Record<string, string>>,
@@ -189,7 +210,7 @@ function computeIpipScores(
       const value = facetSums.get(facet) ?? 0;
       const count = facetCounts.get(facet) ?? 0;
       return {
-        candidateId: "GD-001",
+        candidateId,
         testSlug: "ipip-neo-120-v1",
         scoreScope: "persisted_dimension",
         scoreKey: facet,
@@ -204,7 +225,7 @@ function computeIpipScores(
     const total = facets.reduce((sum, facet) => sum + (facetsByKey.get(facet) ?? 0), 0);
     const value = roundScore(total / (facets.length * 4));
     return {
-      candidateId: "GD-001",
+      candidateId,
       testSlug: "ipip-neo-120-v1",
       scoreScope: "derived_domain",
       scoreKey: domain,
@@ -217,6 +238,7 @@ function computeIpipScores(
 }
 
 function computeMwmsScores(
+  candidateId: string,
   options: PackageOption[],
   answerByQuestion: Map<string, Record<string, string>>,
   errors: Gd001VerificationError[],
@@ -236,7 +258,7 @@ function computeMwmsScores(
 
   const dimensions = Object.entries(result.dimensions).map<GoldenDemoComputedScore>(
     ([scoreKey, dimension]) => ({
-      candidateId: "GD-001",
+      candidateId,
       testSlug: "mwms_v1",
       scoreScope: "persisted_dimension",
       scoreKey,
@@ -246,7 +268,7 @@ function computeMwmsScores(
   );
   const composites = Object.entries(result.composites).map<GoldenDemoComputedScore>(
     ([scoreKey, composite]) => ({
-      candidateId: "GD-001",
+      candidateId,
       testSlug: "mwms_v1",
       scoreScope: "derived_composite",
       scoreKey,
@@ -258,6 +280,7 @@ function computeMwmsScores(
 }
 
 function computeSafranScores(
+  candidateId: string,
   items: SafranItem[],
   answerByQuestion: Map<string, Record<string, string>>,
   errors: Gd001VerificationError[],
@@ -303,7 +326,7 @@ function computeSafranScores(
   };
 
   return Object.entries(values).map<GoldenDemoComputedScore>(([scoreKey, value]) => ({
-    candidateId: "GD-001",
+    candidateId,
     testSlug: "safran_v1",
     scoreScope: "persisted_dimension",
     scoreKey,
@@ -314,11 +337,15 @@ function computeSafranScores(
 
 function compareExpectedScores(
   foundation: GoldenDemoCsvFoundation,
+  candidateId: string,
+  assessments: readonly GoldenDemoTestSlug[],
   scores: GoldenDemoComputedScore[],
   errors: Gd001VerificationError[],
 ): number {
   const expectedRows = foundation.expectedScores.rows.filter(
-    (row) => row.values.candidate_id === "GD-001",
+    (row) =>
+      row.values.candidate_id === candidateId &&
+      assessments.includes(row.values.test_slug as GoldenDemoTestSlug),
   );
   const actualByIdentity = new Map(
     scores.map((score) => [
@@ -373,21 +400,182 @@ function compareExpectedScores(
   return matched;
 }
 
+function buildEmptyTestCounts(): Record<GoldenDemoTestSlug, number> {
+  return Object.fromEntries(GOLDEN_DEMO_TEST_SLUGS.map((slug) => [slug, 0])) as Record<
+    GoldenDemoTestSlug,
+    number
+  >;
+}
+
+export function verifyGoldenDemoExpectedScores(input: {
+  foundation: GoldenDemoCsvFoundation;
+  candidateId: string;
+  assessments: readonly GoldenDemoTestSlug[];
+  projectRoot?: string;
+}): GoldenDemoCandidateOfflineScoreVerification {
+  const projectRoot = input.projectRoot ?? process.cwd();
+  const errors: Gd001VerificationError[] = [];
+  const assessments = [...new Set(input.assessments)];
+  const byTest = buildEmptyTestCounts();
+  const expectedByTest = buildEmptyTestCounts();
+
+  if (
+    !input.foundation.candidates.rows.some(
+      (row) => row.values.candidate_id === input.candidateId,
+    )
+  ) {
+    pushError(
+      errors,
+      "unknown_candidate",
+      `Unknown Golden Demo candidate ${input.candidateId}.`,
+    );
+  }
+
+  const invalidAssessments = assessments.filter(
+    (assessment) => !GOLDEN_DEMO_TEST_SLUGS.includes(assessment),
+  );
+  for (const assessment of invalidAssessments) {
+    pushError(errors, "unknown_assessment", `Unknown Golden Demo assessment ${assessment}.`);
+  }
+
+  const requestedAssessments = assessments.filter(
+    (assessment): assessment is GoldenDemoTestSlug =>
+      GOLDEN_DEMO_TEST_SLUGS.includes(assessment),
+  );
+  if (requestedAssessments.length === 0) {
+    pushError(errors, "missing_assessment_scope", "At least one assessment scope is required.");
+  }
+
+  const ipipItems = requestedAssessments.includes("ipip-neo-120-v1")
+    ? readJson<PackageItem[]>(
+        path.join(projectRoot, "assessment-packages/ipip-neo-120-v1/items.json"),
+      )
+    : [];
+  const ipipOptions = requestedAssessments.includes("ipip-neo-120-v1")
+    ? readJson<PackageOption[]>(
+        path.join(projectRoot, "assessment-packages/ipip-neo-120-v1/options.json"),
+      )
+    : [];
+  const mwmsItems = requestedAssessments.includes("mwms_v1")
+    ? readJson<PackageItem[]>(path.join(projectRoot, "assessment-packages/mwms_v1/items.json"))
+    : [];
+  const mwmsOptions = requestedAssessments.includes("mwms_v1")
+    ? readJson<PackageOption[]>(path.join(projectRoot, "assessment-packages/mwms_v1/options.json"))
+    : [];
+  const safranItems = requestedAssessments.includes("safran_v1")
+    ? readJson<{ items: SafranItem[] }>(path.join(projectRoot, "safran_v1_seed.json")).items
+    : [];
+
+  const ipipAnswers = requestedAssessments.includes("ipip-neo-120-v1")
+    ? requireUniqueAnswers(
+        input.foundation,
+        input.candidateId,
+        "ipip-neo-120-v1",
+        ipipItems.map((item) => item.code),
+        errors,
+      )
+    : new Map<string, Record<string, string>>();
+  const mwmsAnswers = requestedAssessments.includes("mwms_v1")
+    ? requireUniqueAnswers(
+        input.foundation,
+        input.candidateId,
+        "mwms_v1",
+        mwmsItems.map((item) => item.code),
+        errors,
+      )
+    : new Map<string, Record<string, string>>();
+  const safranAnswers = requestedAssessments.includes("safran_v1")
+    ? requireUniqueAnswers(
+        input.foundation,
+        input.candidateId,
+        "safran_v1",
+        safranItems.map((item) => item.item_id),
+        errors,
+      )
+    : new Map<string, Record<string, string>>();
+
+  const scores = [
+    ...(requestedAssessments.includes("ipip-neo-120-v1")
+      ? computeIpipScores(input.candidateId, ipipItems, ipipOptions, ipipAnswers, errors)
+      : []),
+    ...(requestedAssessments.includes("mwms_v1")
+      ? computeMwmsScores(input.candidateId, mwmsOptions, mwmsAnswers, errors)
+      : []),
+    ...(requestedAssessments.includes("safran_v1")
+      ? computeSafranScores(input.candidateId, safranItems, safranAnswers, errors)
+      : []),
+  ];
+  const matched = compareExpectedScores(
+    input.foundation,
+    input.candidateId,
+    requestedAssessments,
+    scores,
+    errors,
+  );
+
+  const expectedQuestionCounts: Record<GoldenDemoTestSlug, number> = {
+    "ipip-neo-120-v1": ipipItems.length,
+    mwms_v1: mwmsItems.length,
+    safran_v1: safranItems.length,
+  };
+  for (const slug of GOLDEN_DEMO_TEST_SLUGS) {
+    byTest[slug] = input.foundation.answers.rows.filter(
+      (row) => row.values.candidate_id === input.candidateId && row.values.test_slug === slug,
+    ).length;
+    if (requestedAssessments.includes(slug)) {
+      expectedByTest[slug] = expectedQuestionCounts[slug];
+    }
+  }
+  const completeByTest = Object.fromEntries(
+    GOLDEN_DEMO_TEST_SLUGS.map((slug) => [
+      slug,
+      !requestedAssessments.includes(slug) || byTest[slug] === expectedByTest[slug],
+    ]),
+  ) as Record<GoldenDemoTestSlug, boolean>;
+
+  const expectedRows = input.foundation.expectedScores.rows.filter(
+    (row) =>
+      row.values.candidate_id === input.candidateId &&
+      requestedAssessments.includes(row.values.test_slug as GoldenDemoTestSlug),
+  );
+  const byTestAndScope: Record<string, number> = {};
+  for (const row of expectedRows) {
+    const key = `${row.values.test_slug}/${row.values.score_scope}`;
+    byTestAndScope[key] = (byTestAndScope[key] ?? 0) + 1;
+  }
+
+  return {
+    ok: errors.length === 0,
+    candidateId: input.candidateId,
+    assessments: requestedAssessments,
+    errors,
+    answers: {
+      total: Object.values(byTest).reduce((sum, count) => sum + count, 0),
+      byTest,
+      expectedByTest,
+      completeByTest,
+    },
+    expectedScores: {
+      total: expectedRows.length,
+      matched,
+      byTestAndScope,
+    },
+    scores,
+  };
+}
+
 export function verifyGd001ExpectedScores(input: {
   foundation: GoldenDemoCsvFoundation;
   projectRoot?: string;
 }): Gd001OfflineScoreVerification {
   const projectRoot = input.projectRoot ?? process.cwd();
-  const errors: Gd001VerificationError[] = [];
-  const ipipRoot = path.join(projectRoot, "assessment-packages/ipip-neo-120-v1");
-  const mwmsRoot = path.join(projectRoot, "assessment-packages/mwms_v1");
-  const ipipItems = readJson<PackageItem[]>(path.join(ipipRoot, "items.json"));
-  const ipipOptions = readJson<PackageOption[]>(path.join(ipipRoot, "options.json"));
-  const mwmsItems = readJson<PackageItem[]>(path.join(mwmsRoot, "items.json"));
-  const mwmsOptions = readJson<PackageOption[]>(path.join(mwmsRoot, "options.json"));
-  const safranItems = readJson<{ items: SafranItem[] }>(
-    path.join(projectRoot, "safran_v1_seed.json"),
-  ).items;
+  const scoped = verifyGoldenDemoExpectedScores({
+    foundation: input.foundation,
+    candidateId: "GD-001",
+    assessments: GOLDEN_DEMO_TEST_SLUGS,
+    projectRoot,
+  });
+  const errors = [...scoped.errors];
   const profile = readJson<{ target_profile_summary: string }>(
     path.join(
       projectRoot,
@@ -395,39 +583,6 @@ export function verifyGd001ExpectedScores(input: {
       "profiles/GD-001.profile.json",
     ),
   );
-
-  const otherCandidateAnswers = input.foundation.answers.rows.filter(
-    (row) => row.values.candidate_id !== "GD-001",
-  );
-  if (otherCandidateAnswers.length > 0) {
-    pushError(errors, "unexpected_candidate_answer", "answers.csv may currently contain only GD-001 rows.");
-  }
-
-  const ipipAnswers = requireUniqueAnswers(
-    input.foundation,
-    "ipip-neo-120-v1",
-    ipipItems.map((item) => item.code),
-    errors,
-  );
-  const mwmsAnswers = requireUniqueAnswers(
-    input.foundation,
-    "mwms_v1",
-    mwmsItems.map((item) => item.code),
-    errors,
-  );
-  const safranAnswers = requireUniqueAnswers(
-    input.foundation,
-    "safran_v1",
-    safranItems.map((item) => item.item_id),
-    errors,
-  );
-
-  const scores = [
-    ...computeIpipScores(ipipItems, ipipOptions, ipipAnswers, errors),
-    ...computeMwmsScores(mwmsOptions, mwmsAnswers, errors),
-    ...computeSafranScores(safranItems, safranAnswers, errors),
-  ];
-  const matched = compareExpectedScores(input.foundation, scores, errors);
 
   const gd001 = input.foundation.candidates.rows.find(
     (row) => row.values.candidate_id === "GD-001",
@@ -437,7 +592,11 @@ export function verifyGd001ExpectedScores(input: {
   }
   for (const row of input.foundation.candidates.rows) {
     if (row.values.candidate_id !== "GD-001" && row.values.data_status !== "identity_only") {
-      pushError(errors, "invalid_other_candidate_status", `${row.values.candidate_id} must remain identity_only.`);
+      pushError(
+        errors,
+        "invalid_other_candidate_status",
+        `${row.values.candidate_id} must remain identity_only.`,
+      );
     }
   }
 
@@ -461,46 +620,17 @@ export function verifyGd001ExpectedScores(input: {
     }
   }
 
-  const byTest = Object.fromEntries(
-    GOLDEN_DEMO_TEST_SLUGS.map((slug) => [
-      slug,
-      input.foundation.answers.rows.filter(
-        (row) => row.values.candidate_id === "GD-001" && row.values.test_slug === slug,
-      ).length,
-    ]),
-  ) as Record<GoldenDemoTestSlug, number>;
-  const completeByTest = Object.fromEntries(
-    GOLDEN_DEMO_TEST_SLUGS.map((slug) => [
-      slug,
-      byTest[slug] === GD_001_EXPECTED_QUESTION_COUNTS[slug],
-    ]),
-  ) as Record<GoldenDemoTestSlug, boolean>;
-  const expectedRows = input.foundation.expectedScores.rows.filter(
-    (row) => row.values.candidate_id === "GD-001",
-  );
-  const byTestAndScope: Record<string, number> = {};
-  for (const row of expectedRows) {
-    const key = `${row.values.test_slug}/${row.values.score_scope}`;
-    byTestAndScope[key] = (byTestAndScope[key] ?? 0) + 1;
-  }
-
   return {
     ok: errors.length === 0,
     candidateId: "GD-001",
     errors,
     targetProfileSummary: profile.target_profile_summary,
     answers: {
-      total: Object.values(byTest).reduce((sum, count) => sum + count, 0),
-      byTest,
+      ...scoped.answers,
       expectedByTest: { ...GD_001_EXPECTED_QUESTION_COUNTS },
-      completeByTest,
     },
-    expectedScores: {
-      total: expectedRows.length,
-      matched,
-      byTestAndScope,
-    },
+    expectedScores: scoped.expectedScores,
     expectedAiFindingsByLane,
-    scores,
+    scores: scoped.scores,
   };
 }

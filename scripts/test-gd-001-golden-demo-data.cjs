@@ -28,7 +28,10 @@ const { validateGoldenDemoCsvFoundation } = require(
 const { buildGd001AnswerRecipe } = require(
   "../lib/golden-demo/gd-001-answer-recipe.ts",
 );
-const { verifyGd001ExpectedScores } = require(
+const {
+  verifyGd001ExpectedScores,
+  verifyGoldenDemoExpectedScores,
+} = require(
   "../lib/golden-demo/offline-score-verifier.ts",
 );
 
@@ -60,6 +63,20 @@ function cloneFoundation(foundation) {
 function expectVerifierError(foundation, code) {
   const result = verifyGd001ExpectedScores({ foundation, projectRoot });
   assert.equal(result.ok, false, `Expected verifier error ${code}`);
+  assert.ok(
+    result.errors.some((error) => error.code === code),
+    `Expected ${code}; received ${result.errors.map((error) => error.code).join(", ")}`,
+  );
+}
+
+function expectCandidateVerifierError(foundation, candidateId, assessments, code) {
+  const result = verifyGoldenDemoExpectedScores({
+    foundation,
+    projectRoot,
+    candidateId,
+    assessments,
+  });
+  assert.equal(result.ok, false, `Expected candidate verifier error ${code}`);
   assert.ok(
     result.errors.some((error) => error.code === code),
     `Expected ${code}; received ${result.errors.map((error) => error.code).join(", ")}`,
@@ -151,6 +168,21 @@ assert.ok(verification.scores.every((score) => score.band.length > 0));
 assert.ok(
   Object.values(verification.expectedAiFindingsByLane).every((count) => count === 4),
 );
+
+const gd002IpipVerification = verifyGoldenDemoExpectedScores({
+  foundation,
+  projectRoot,
+  candidateId: "GD-002",
+  assessments: ["ipip-neo-120-v1"],
+});
+assert.equal(gd002IpipVerification.ok, true);
+assert.equal(gd002IpipVerification.answers.byTest["ipip-neo-120-v1"], 120);
+assert.equal(gd002IpipVerification.answers.expectedByTest["ipip-neo-120-v1"], 120);
+assert.equal(gd002IpipVerification.expectedScores.total, 35);
+assert.equal(gd002IpipVerification.expectedScores.matched, 35);
+assert.equal(gd002IpipVerification.scores.length, 35);
+assert.equal(gd002IpipVerification.answers.expectedByTest.mwms_v1, 0);
+assert.equal(gd002IpipVerification.answers.expectedByTest.safran_v1, 0);
 
 const gd001 = foundation.candidates.rows.find(
   (row) => row.values.candidate_id === "GD-001",
@@ -269,7 +301,57 @@ for (const lane of [
     columnCount: source.columnCount,
     values: { ...source.values, candidate_id: "GD-002" },
   });
-  expectVerifierError(mutated, "unexpected_candidate_answer");
+  const result = verifyGd001ExpectedScores({ foundation: mutated, projectRoot });
+  assert.equal(result.ok, true);
+  assert.equal(
+    result.errors.some((error) => error.code === "unexpected_candidate_answer"),
+    false,
+  );
+}
+
+expectCandidateVerifierError(
+  foundation,
+  "GD-999",
+  ["ipip-neo-120-v1"],
+  "unknown_candidate",
+);
+expectCandidateVerifierError(
+  foundation,
+  "GD-002",
+  ["mwms_v1"],
+  "missing_answer",
+);
+{
+  const mutated = cloneFoundation(foundation);
+  const source = mutated.answers.rows.find(
+    (row) => row.values.candidate_id === "GD-002" && row.values.test_slug === "ipip-neo-120-v1",
+  );
+  assert.ok(source);
+  mutated.answers.rows.push({
+    rowNumber: mutated.answers.rows.length + 2,
+    columnCount: source.columnCount,
+    values: { ...source.values },
+  });
+  expectCandidateVerifierError(
+    mutated,
+    "GD-002",
+    ["ipip-neo-120-v1"],
+    "duplicate_answer",
+  );
+}
+{
+  const mutated = cloneFoundation(foundation);
+  const score = mutated.expectedScores.rows.find(
+    (row) => row.values.candidate_id === "GD-002" && row.values.score_key === "MORALITY",
+  );
+  assert.ok(score);
+  score.values.expected_value = String(Number(score.values.expected_value) - 1);
+  expectCandidateVerifierError(
+    mutated,
+    "GD-002",
+    ["ipip-neo-120-v1"],
+    "expected_score_mismatch",
+  );
 }
 {
   const mutated = cloneFoundation(foundation);
@@ -283,5 +365,5 @@ for (const lane of [
 }
 
 process.stdout.write(
-  "GD-001 Golden Demo data tests passed (deterministic happy path and 11 negative mutations).\n",
+  "Golden Demo offline verifier tests passed (GD-001 compatibility, GD-002 IPIP scope, and negative cases).\n",
 );
