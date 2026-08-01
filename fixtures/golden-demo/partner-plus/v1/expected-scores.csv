@@ -81,3 +81,7 @@ GD-001,safran_v1,persisted_dimension,verbal_score,14,0,higher_raw,true,gd_001_ex
 GD-001,safran_v1,persisted_dimension,figural_score,10,0,moderate_raw,true,gd_001_expected_scores_v1
 GD-001,safran_v1,persisted_dimension,numerical_series_score,14,0,higher_raw,true,gd_001_expected_scores_v1
 GD-001,safran_v1,persisted_dimension,cognitive_composite_v1,38,0,higher_raw,true,gd_001_expected_scores_v1
+GD-002,safran_v1,persisted_dimension,verbal_score,14,0,higher_raw,true,gd_002_expected_scores_v1
+GD-002,safran_v1,persisted_dimension,figural_score,10,0,moderate_raw,true,gd_002_expected_scores_v1
+GD-002,safran_v1,persisted_dimension,numerical_series_score,10,0,moderate_raw,true,gd_002_expected_scores_v1
+GD-002,safran_v1,persisted_dimension,cognitive_composite_v1,34,0,moderate_raw,true,gd_002_expected_scores_v1
