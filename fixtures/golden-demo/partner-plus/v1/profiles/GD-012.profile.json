@@ -1,0 +1,421 @@
+{
+  "profile_version": "gd_expected_profile_v1",
+  "candidate_id": "GD-012",
+  "display_name": "Gordana Trhulj",
+  "email": "gordana.trhulj@partnerplus.ba",
+  "addressing_form": "feminine",
+  "authoring_status": {
+    "status": "offline_battery_ready",
+    "raw_answers_created": true,
+    "expected_scores_created": true,
+    "next_step": "Controlled live cohort execution nakon read-only provjere i odobrenog backupa."
+  },
+  "role_context": {
+    "job_title": "Specijalistica za upravljanje rizicima",
+    "team_id": "GDT-03",
+    "context_summary": "Upravljanje rizicima traži sistemsko povezivanje činjenica, numeričku provjeru i jasno razlikovanje prihvatljivog rizika od nepoznanice koja traži dodatni dokaz."
+  },
+  "target_profile_summary": "Sistemska i oprezna specijalistica za rizik. Viši intellect, opreznost i numerički signal podržavaju procjenu rizika, uz razvojni rizik pretjerane konzervativnosti kada su informacije nepotpune.",
+  "ipip_targets": {
+    "targeting_method": "Relativni ciljevi su namjera za deterministički offline authoring; ne predstavljaju dijagnozu, raw odgovore niti garanciju radnog učinka.",
+    "recipe": "Svaki IPIP facet ima četiri itema; target_sum se deterministički raspoređuje po question_order, a reverse-scored item dobija raw vrijednost 6 minus ciljna scored vrijednost.",
+    "facets": {
+      "ANXIETY": {
+        "target_sum": 8,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ANGER": {
+        "target_sum": 7,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "DEPRESSION": {
+        "target_sum": 7,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "SELF_CONSCIOUSNESS": {
+        "target_sum": 12,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "IMMODERATION": {
+        "target_sum": 6,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "VULNERABILITY": {
+        "target_sum": 9,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "FRIENDLINESS": {
+        "target_sum": 10,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "GREGARIOUSNESS": {
+        "target_sum": 8,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ASSERTIVENESS": {
+        "target_sum": 10,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ACTIVITY_LEVEL": {
+        "target_sum": 9,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "EXCITEMENT_SEEKING": {
+        "target_sum": 6,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "CHEERFULNESS": {
+        "target_sum": 9,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "IMAGINATION": {
+        "target_sum": 15,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ARTISTIC_INTERESTS": {
+        "target_sum": 12,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "EMOTIONALITY": {
+        "target_sum": 10,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ADVENTUROUSNESS": {
+        "target_sum": 11,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "INTELLECT": {
+        "target_sum": 19,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "LIBERALISM": {
+        "target_sum": 15,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "TRUST": {
+        "target_sum": 9,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "MORALITY": {
+        "target_sum": 18,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ALTRUISM": {
+        "target_sum": 10,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "COOPERATION": {
+        "target_sum": 12,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "MODESTY": {
+        "target_sum": 14,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "SYMPATHY": {
+        "target_sum": 10,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "SELF_EFFICACY": {
+        "target_sum": 17,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ORDERLINESS": {
+        "target_sum": 17,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "DUTIFULNESS": {
+        "target_sum": 18,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "ACHIEVEMENT_STRIVING": {
+        "target_sum": 15,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "SELF_DISCIPLINE": {
+        "target_sum": 17,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      },
+      "CAUTIOUSNESS": {
+        "target_sum": 19,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Cilj podržava specijalistica za upravljanje rizicima bez zaključka izvan assessment podataka."
+      }
+    },
+    "domains": {
+      "EXTRAVERSION": {
+        "target_average": 2.17,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Domen je izveden iz zaključanih facet targeta i služi kao offline consistency signal."
+      },
+      "AGREEABLENESS": {
+        "target_average": 3.04,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Domen je izveden iz zaključanih facet targeta i služi kao offline consistency signal."
+      },
+      "CONSCIENTIOUSNESS": {
+        "target_average": 4.29,
+        "band": "higher",
+        "relative_level": "higher",
+        "rationale": "Domen je izveden iz zaključanih facet targeta i služi kao offline consistency signal."
+      },
+      "NEUROTICISM": {
+        "target_average": 2.04,
+        "band": "lower",
+        "relative_level": "lower",
+        "rationale": "Domen je izveden iz zaključanih facet targeta i služi kao offline consistency signal."
+      },
+      "OPENNESS_TO_EXPERIENCE": {
+        "target_average": 3.42,
+        "band": "balanced",
+        "relative_level": "balanced",
+        "rationale": "Domen je izveden iz zaključanih facet targeta i služi kao offline consistency signal."
+      }
+    }
+  },
+  "safran_targets": {
+    "targeting_method": "Relativni ciljevi opisuju obrazac za offline authoring; ne predstavljaju IQ, procenat ili globalnu mjeru sposobnosti.",
+    "selection_recipe": "Unutar svakog subtesta tačni su prvi itemi po display_order do ciljne kvote; preostali koriste prvu validnu netačnu opciju ili deterministički pomjeren numerički odgovor.",
+    "correct_by_subtest": {
+      "VW": 6,
+      "VA": 6,
+      "FA": 6,
+      "FM": 5,
+      "NZ": 8
+    },
+    "verbal_score": {
+      "expected_value": 12,
+      "band": "moderate_raw"
+    },
+    "figural_score": {
+      "expected_value": 11,
+      "band": "moderate_raw"
+    },
+    "numerical_series_score": {
+      "expected_value": 16,
+      "band": "higher_raw"
+    },
+    "cognitive_composite_v1": {
+      "expected_value": 39,
+      "band": "higher_raw"
+    },
+    "coherence_rule": "SAFRAN se čita kao podrška razumijevanju i provjeri zadataka; ne kao IQ, opšta inteligencija ili vrijednost osobe."
+  },
+  "mwms_targets": {
+    "targeting_method": "Vrijednosti su deterministički offline authoring obrazac motivacijskih signala; ne predstavljaju dijagnozu niti garanciju radnog učinka.",
+    "amotivation": {
+      "item_values": [
+        1,
+        1,
+        1
+      ],
+      "expected_mean": 1,
+      "band": "lower",
+      "relative_level": "lower"
+    },
+    "external_social": {
+      "item_values": [
+        2,
+        2,
+        3
+      ],
+      "expected_mean": 2.33,
+      "band": "lower",
+      "relative_level": "lower"
+    },
+    "external_material": {
+      "item_values": [
+        4,
+        5,
+        4
+      ],
+      "expected_mean": 4.33,
+      "band": "moderate",
+      "relative_level": "moderate"
+    },
+    "introjected": {
+      "item_values": [
+        3,
+        4,
+        4,
+        3
+      ],
+      "expected_mean": 3.5,
+      "band": "moderate",
+      "relative_level": "moderate"
+    },
+    "identified": {
+      "item_values": [
+        6,
+        6,
+        7
+      ],
+      "expected_mean": 6.33,
+      "band": "higher",
+      "relative_level": "higher"
+    },
+    "intrinsic": {
+      "item_values": [
+        5,
+        6,
+        5
+      ],
+      "expected_mean": 5.33,
+      "band": "higher",
+      "relative_level": "higher"
+    },
+    "autonomous_motivation": {
+      "expected_mean": 5.83,
+      "band": "higher",
+      "relative_level": "higher"
+    },
+    "controlled_motivation": {
+      "expected_mean": 3.39,
+      "band": "moderate",
+      "relative_level": "moderate"
+    },
+    "motivation_pattern": "Autonomni i kontrolisani signali su razdvojeni radi čitljivog razvojno-profesionalnog konteksta; nijedan rezultat nije samostalan sud o osobi."
+  },
+  "cross_test_signals": [
+    "Viši intellect, opreznost i numerički signal podržavaju sistemsku procjenu rizika.",
+    "Niža do uravnotežena ekstraverzija čuva koncentraciju, uz potrebu za jasnim prenošenjem nalaza.",
+    "Autonomna motivacija podržava odgovorno upravljanje neizvjesnošću.",
+    "Razvojna napetost je između rigorozne provjere i pravovremene odluke."
+  ],
+  "strengths": [
+    "Sistemsko sagledavanje rizika i pretpostavki.",
+    "Pažljiva numerička provjera i rad sa dokazima.",
+    "Prepoznavanje posljedica prije preporuke.",
+    "Stabilno dokumentovanje rizika i ograničenja."
+  ],
+  "risks": [
+    "Nepotpune informacije mogu dovesti do pretjerano konzervativnog stava.",
+    "Složenije obrazloženje može otežati brzo poslovno razumijevanje.",
+    "Može tražiti još podataka i kada je odluka moguća uz jasno ograničenje."
+  ],
+  "development_themes": [
+    "Razlikovati nepoznat rizik od rizika koji je prihvatljiv uz kontrolu.",
+    "Uz svaku rezervu navesti prag za odluku ili eskalaciju.",
+    "Sažeti analizu u ključnu činjenicu, scenarij i preporučeni korak.",
+    "Rano podijeliti pretpostavke kako bi ih tim mogao osporiti ili dopuniti."
+  ],
+  "team_dynamics_coherence": {
+    "existing_pattern": "Team-level podaci su zaseban kontekstualni izvor i ne određuju individualne odgovore.",
+    "profile_connection": "Ona individualni obrazac povezuje ulogu, psihometrijske signale i razvojni fokus bez izvođenja timske procjene.",
+    "boundary": "Team Dynamics ne predstavlja direktnu mjeru IPIP, SAFRAN ili MWMS konstrukata."
+  },
+  "differentiation_from_gd001": {
+    "comparison_reference": "GD-001",
+    "interpersonal_style": "Gordana Trhulj donosi obrazac prilagođen ulozi specijalistica za upravljanje rizicima, a ne terensku samostalnost GD-001.",
+    "decision_style": "Zaključivanje je usmjereno na vlastiti role context i ne treba ga tumačiti kao rangiranje kandidata.",
+    "motivation": "Motivacijski obrazac razlikuje se kroz kombinaciju korisnosti uloge, odgovornosti i razvoja opisanog u profilu.",
+    "cognitive_profile": "SAFRAN je opisan kao ograničen signal za razumijevanje zadataka, ne kao IQ ili globalna kognitivna procjena.",
+    "team_contribution": "Doprinos je vezan za specijalistica za upravljanje rizicima, bez zaključka o hire/no-hire odluci."
+  },
+  "differentiation_from_gd002": {
+    "comparison_reference": "GD-002",
+    "interpersonal_style": "Gordana Trhulj nije opisana kao voditeljica osim ako to nije njen canonical role context; profil ostaje vezan za vlastitu ulogu.",
+    "structure_flexibility": "Struktura i fleksibilnost čitaju se kroz konkretan razvojni rizik, ne kao opšti sud o vrijednosti osobe.",
+    "decision_style": "Profil ne rangira kandidata; razlikuje samo role-specific evidence i razvojne teme.",
+    "motivation": "Motivacijski signali su kandidat-specifični i nisu kopija GD-002 obrasca.",
+    "team_contribution": "Team contribution je ograničen na ulogu i ne zamjenjuje Team Dynamics ili Team Fit."
+  },
+  "differentiation_from_gd003": {
+    "comparison_reference": "GD-003",
+    "distinction": "Ovaj profile batch koristi zaseban role context, target vektor i development risk; nije kopija opreznog terenskog obrasca."
+  },
+  "differentiation_from_gd004": {
+    "comparison_reference": "GD-004",
+    "distinction": "Ovaj kandidat ima zaseban role context i target vektor; nije kopija proceduralne službenice za stanovništvo."
+  },
+  "differentiation_from_gd005": {
+    "comparison_reference": "GD-005",
+    "distinction": "Ovaj kandidat ima zaseban role context i target vektor; nije kopija proaktivne savjetnice za proizvode."
+  },
+  "forbidden_contradictions": [
+    "Ne izvoditi dijagnozu, IQ tvrdnju, numeric/procentualni fit ili hire/no-hire zaključak.",
+    "Ne izmišljati biografske događaje, rezultate ili iskustvo izvan zaključanog role konteksta.",
+    "Ne koristiti SAFRAN kao globalnu mjeru sposobnosti niti Team Dynamics kao individualni score.",
+    "Ne opisivati Gordana Trhulj izvan canonical uloge Specijalistica za upravljanje rizicima."
+  ],
+  "known_uncertainties": [
+    "Offline odgovori i expected scores su deterministički authoring artefakti, a ne klinička mjerenja.",
+    "Role context ne dokazuje stvarni radni učinak niti zamjenjuje profesionalni sud.",
+    "Team-level kontekst ne određuje individualne IPIP, SAFRAN ili MWMS vrijednosti."
+  ],
+  "known_ambiguities": [
+    "Relativni targeti služe provjeri koherentnosti source batcha, ne populacijskom rangiranju.",
+    "Svaki pojedinačni signal treba čitati uz ostale izvore i ograničenja izvještaja."
+  ],
+  "authoring_references": {
+    "distinct_from": [
+      "GD-001",
+      "GD-002",
+      "GD-003",
+      "GD-004",
+      "GD-005"
+    ],
+    "source_scope": "golden_demo_development_offline_batch_v1"
+  }
+}

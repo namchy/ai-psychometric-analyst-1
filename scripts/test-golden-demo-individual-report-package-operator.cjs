@@ -277,9 +277,11 @@ assert.deepEqual(cli.parseCli(["--candidate", "GD-003"]), { mode: "dry-run", can
 assert.deepEqual(cli.parseCli(["--candidate=GD-002", "--apply", "--verbose"]), { mode: "apply", candidateId: "GD-002", verbose: true });
 assert.deepEqual(cli.parseCli(["--candidate", "GD-004"]), { mode: "dry-run", candidateId: "GD-004", verbose: false });
 assert.deepEqual(cli.parseCli(["--candidate", "GD-005", "--apply"]), { mode: "apply", candidateId: "GD-005", verbose: false });
+assert.deepEqual(cli.parseCli(["--candidate", "GD-006"]), { mode: "dry-run", candidateId: "GD-006", verbose: false });
+assert.deepEqual(cli.parseCli(["--candidate", "GD-018", "--apply"]), { mode: "apply", candidateId: "GD-018", verbose: false });
 assert.throws(() => cli.parseCli(["--candidate", "GD-003", "--dry-run", "--apply"]), /cannot be combined/);
 assert.throws(() => cli.parseCli(["--candidate", "GD-003", "--unknown"]), /Unknown argument/);
-assert.throws(() => cli.parseCli(["--candidate", "GD-019"]), /Only GD-001, GD-002, GD-003, GD-004, GD-005/);
+assert.throws(() => cli.parseCli(["--candidate", "GD-019"]), /Only GD-001, GD-002, GD-003, GD-004, GD-005, GD-006, GD-007, GD-008, GD-009, GD-010, GD-011, GD-012, GD-013, GD-014, GD-015, GD-016, GD-017, GD-018/);
 for (const flag of ["--delete", "--cleanup", "--reset", "--retry", "--force", "--overwrite", "--regenerate", "--parallel"]) {
   assert.throws(() => cli.parseCli(["--candidate", "GD-003", flag]), /separate operator task/);
 }

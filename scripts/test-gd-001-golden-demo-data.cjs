@@ -196,15 +196,13 @@ function assertFullBatteryVerification(candidateId) {
   return verification;
 }
 
-const gd002FullBatteryVerification = assertFullBatteryVerification("GD-002");
-const gd003FullBatteryVerification = assertFullBatteryVerification("GD-003");
-const gd004FullBatteryVerification = assertFullBatteryVerification("GD-004");
-const gd005FullBatteryVerification = assertFullBatteryVerification("GD-005");
+for (const candidateId of Array.from({ length: 17 }, (_, index) => `GD-${String(index + 2).padStart(3, "0")}`)) {
+  assertFullBatteryVerification(candidateId);
+}
 
-for (const [candidateId, displayName, email] of [
-  ["GD-004", "Natali Delić", "natali.delic@partnerplus.ba"],
-  ["GD-005", "Anisa Lojo Bajrić", "anisa.lojo.bajric@partnerplus.ba"],
-]) {
+for (const candidateId of Array.from({ length: 13 }, (_, index) => `GD-${String(index + 6).padStart(3, "0")}`)) {
+  const candidate = foundation.candidates.rows.find((row) => row.values.candidate_id === candidateId)?.values;
+  assert.ok(candidate, `Missing candidate row ${candidateId}`);
   const profile = JSON.parse(
     fs.readFileSync(
       path.join(projectRoot, `fixtures/golden-demo/partner-plus/v1/profiles/${candidateId}.profile.json`),
@@ -213,12 +211,28 @@ for (const [candidateId, displayName, email] of [
   );
   assert.equal(profile.profile_version, "gd_expected_profile_v1");
   assert.equal(profile.candidate_id, candidateId);
-  assert.equal(profile.display_name, displayName);
-  assert.equal(profile.email, email);
-  assert.equal(profile.addressing_form, "feminine");
+  assert.equal(profile.display_name, candidate.display_name);
+  assert.equal(profile.email, candidate.email);
+  assert.equal(profile.addressing_form, candidate.addressing_form);
   assert.equal(profile.authoring_status.raw_answers_created, true);
   assert.equal(profile.authoring_status.expected_scores_created, true);
 }
+
+const scoreVectors = new Set();
+for (const candidateId of Array.from({ length: 18 }, (_, index) => `GD-${String(index + 1).padStart(3, "0")}`)) {
+  const verification = verifyGoldenDemoExpectedScores({
+    foundation,
+    projectRoot,
+    candidateId,
+    assessments: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+  });
+  const vector = verification.scores
+    .map((score) => `${score.testSlug}/${score.scoreScope}/${score.scoreKey}=${score.value}/${score.band}`)
+    .join("|");
+  assert.equal(scoreVectors.has(vector), false, `Duplicate complete score vector: ${candidateId}`);
+  scoreVectors.add(vector);
+}
+assert.equal(scoreVectors.size, 18);
 
 const gd001 = foundation.candidates.rows.find(
   (row) => row.values.candidate_id === "GD-001",
@@ -411,5 +425,5 @@ expectCandidateVerifierError(
 }
 
 process.stdout.write(
-  "Golden Demo offline verifier tests passed (GD-001 compatibility, GD-002/GD-003/GD-004/GD-005 full batteries, and negative cases).\n",
+  "Golden Demo offline verifier tests passed (GD-001 compatibility, GD-002–GD-018 full batteries, unique vectors, and negative cases).\n",
 );

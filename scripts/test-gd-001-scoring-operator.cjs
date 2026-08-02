@@ -121,7 +121,17 @@ assert.deepEqual(parseGd001ScoringCli(["--apply", "--candidate", "GD-005"]), {
   candidateId: "GD-005",
   verbose: false,
 });
-assert.throws(() => parseGd001ScoringCli(["--candidate", "GD-019"]), /Only GD-001, GD-002, GD-003, GD-004, GD-005/);
+assert.deepEqual(parseGd001ScoringCli(["--candidate", "GD-006"]), {
+  mode: "dry-run",
+  candidateId: "GD-006",
+  verbose: false,
+});
+assert.deepEqual(parseGd001ScoringCli(["--apply", "--candidate", "GD-018"]), {
+  mode: "apply",
+  candidateId: "GD-018",
+  verbose: false,
+});
+assert.throws(() => parseGd001ScoringCli(["--candidate", "GD-019"]), /Only GD-001, GD-002, GD-003, GD-004, GD-005, GD-006, GD-007, GD-008, GD-009, GD-010, GD-011, GD-012, GD-013, GD-014, GD-015, GD-016, GD-017, GD-018/);
 for (const flag of ["--delete", "--cleanup", "--reset", "--force", "--overwrite"]) {
   assert.throws(() => parseGd001ScoringCli([flag]), /separate operator task/);
 }

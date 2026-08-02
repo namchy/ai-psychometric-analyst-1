@@ -181,8 +181,8 @@ assert.deepEqual(result.summary.teamCounts, {
   "GDT-03": 6,
   "GDT-04": 6,
 });
-assert.equal(result.summary.answerCount, 920);
-assert.equal(result.summary.expectedScoreCount, 235);
+assert.equal(result.summary.answerCount, 3312);
+assert.equal(result.summary.expectedScoreCount, 846);
 assert.equal(result.summary.expectedAiFindingCount, 32);
 
 const expectedEmails = {
@@ -211,6 +211,15 @@ assertCompleteCandidateInspection("GD-002");
 assertCompleteCandidateInspection("GD-003");
 assertCompleteCandidateInspection("GD-004");
 assertCompleteCandidateInspection("GD-005");
+for (const candidateId of Array.from({ length: 13 }, (_, index) => `GD-${String(index + 6).padStart(3, "0")}`)) {
+  assertCompleteCandidateInspection(candidateId);
+}
+for (const candidateId of ["GD-019", "GD-020", "GD-021", "GD-022", "GD-023", "GD-024"]) {
+  const holdoutInspection = inspectGoldenDemoCandidate(foundation, candidateId);
+  assert.equal(Object.values(holdoutInspection.answerCountByTest).reduce((sum, count) => sum + count, 0), 0);
+  assert.equal(Object.values(holdoutInspection.expectedScoreCountByTest).reduce((sum, count) => sum + count, 0), 0);
+  assert.equal(fs.existsSync(path.join(projectRoot, `fixtures/golden-demo/partner-plus/v1/profiles/${candidateId}.profile.json`)), false);
+}
 assert.equal(inspectGoldenDemoCandidate(foundation, "GD-999"), null);
 
 expectInvalid(

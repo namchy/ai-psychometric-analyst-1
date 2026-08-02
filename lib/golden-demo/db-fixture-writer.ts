@@ -6,6 +6,19 @@ export const GOLDEN_DEMO_CANDIDATE_IDS = [
   "GD-003",
   "GD-004",
   "GD-005",
+  "GD-006",
+  "GD-007",
+  "GD-008",
+  "GD-009",
+  "GD-010",
+  "GD-011",
+  "GD-012",
+  "GD-013",
+  "GD-014",
+  "GD-015",
+  "GD-016",
+  "GD-017",
+  "GD-018",
 ] as const;
 export type GoldenDemoCandidateId = (typeof GOLDEN_DEMO_CANDIDATE_IDS)[number];
 export const GOLDEN_DEMO_ORGANIZATION_NAME =
@@ -51,6 +64,58 @@ const LOCKED_CANDIDATE_IDENTITIES: Record<GoldenDemoCandidateId, { fullName: str
   "GD-005": {
     fullName: "Anisa Lojo Bajrić",
     email: "anisa.lojo.bajric@partnerplus.ba",
+  },
+  "GD-006": {
+    fullName: "Marijana Bačić",
+    email: "marijana.bacic@partnerplus.ba",
+  },
+  "GD-007": {
+    fullName: "Siniša Đuranović",
+    email: "sinisa.duranovic@partnerplus.ba",
+  },
+  "GD-008": {
+    fullName: "Draško Marković",
+    email: "drasko.markovic@partnerplus.ba",
+  },
+  "GD-009": {
+    fullName: "Haris Lučkin",
+    email: "haris.luckin@partnerplus.ba",
+  },
+  "GD-010": {
+    fullName: "Ela Halilhodžić",
+    email: "ela.halilhodzic@partnerplus.ba",
+  },
+  "GD-011": {
+    fullName: "Ljiljana Ulemek Šapina",
+    email: "ljiljana.umelek.sapina@partnerplus.ba",
+  },
+  "GD-012": {
+    fullName: "Gordana Trhulj",
+    email: "gordana.trhulj@partnerplus.ba",
+  },
+  "GD-013": {
+    fullName: "Branislav Bošković",
+    email: "branislav.boskovic@partnerplus.ba",
+  },
+  "GD-014": {
+    fullName: "Muamer Durić",
+    email: "muamer.duric@partnerplus.ba",
+  },
+  "GD-015": {
+    fullName: "Jelena Kalinić",
+    email: "jelena.kalinic@partnerplus.ba",
+  },
+  "GD-016": {
+    fullName: "Stefan Ječmenić",
+    email: "stefan.jecmenic@partnerplus.ba",
+  },
+  "GD-017": {
+    fullName: "Aleksandra Kalman",
+    email: "aleksandra.kalman@partnerplus.ba",
+  },
+  "GD-018": {
+    fullName: "Safet Burina",
+    email: "safet.burina@partnerplus.ba",
   },
 };
 
