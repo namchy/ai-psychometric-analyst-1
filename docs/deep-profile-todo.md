@@ -102,9 +102,9 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 >
 > Prvi GD-003 report package apply završio je kontrolisano parcijalno nakon tri single-test faze. IPIP HR `1dbec6a4-1207-4372-b9b3-8a1313dea6f2`, SAFRAN HR `5d16938b-f4ed-408d-a93d-0251456d0c73` i MWMS HR `81e4884f-0aa7-4aca-ae0e-276577b7e372` su `READY_VALID`; Composite HR i IDP nisu kreirani. Operator se zaustavio prije Composite queuea zbog adapter buga koji je gubio canonical organization identity; bug je popravljen bez dodatnih DB writeova ili OpenAI poziva.
 >
-> Post-fix GD-003 live dry-run sada vraća organization `e392aae0-564e-4741-90a6-731bc28b0572`, `SCORED_EXACT`, `READY_TO_APPLY`, tri `READY_VALID` artefakta, dva `MISSING` artefakta i `plannedOpenAiCalls=2`; siguran resume redoslijed je Composite HR pa IDP. Sljedeći aktivni korak je novi pre-resume backup i jedan controlled GD-003 resume apply.
+> Post-fix GD-003 resume apply je izvršen tačno jednom nakon novog validnog backup-a `/home/naima/db-backups/deep-profile/20260802T101938Z-pre-gd003-report-resume/`. Composite HR `a9a0021a-f9c2-4576-9a07-f5ad2992a509` i IDP `b79576ec-a2cb-46b2-9ac7-bf482a13cfa0` su `READY_VALID`; zajedno sa postojeća tri single-test reporta paket ima svih `5/5 READY_VALID`. Resume je imao `2` queue/processor faze, `providerProcessingStagesInvoked=2`, `expectedOpenAiCalls=2`, runtime `openai / gpt-5.6-sol / medium / 600000`, `fallback=false`, a participant reportovi su `0`. GD-001, GD-002, Team Dynamics i Team Fit nisu mijenjani. Sljedeći aktivni korak je `GD-003 package completeness verification`.
 >
-> **GDT-01 cohort status:** `GD-001: complete hero package`; `GD-002: complete individual package`; `GD-003: authored profile + complete offline fixture + controlled persistence + production scoring SCORED_EXACT, individual report package next`; `GD-004: pending`; `GD-005: pending`; `GD-019: pending`. Team Dynamics lane ostaje završen i ne mijenja se ovim handoffom.
+> **GDT-01 cohort status:** `GD-001: complete hero package`; `GD-002: complete individual package`; `GD-003: complete individual report package, package completeness verification next`; `GD-004: pending`; `GD-005: pending`; `GD-019: pending`. Team Dynamics lane ostaje završen i ne mijenja se ovim handoffom.
 >
 > **Canonical demo-first sequence:**
 >
@@ -116,14 +116,14 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 > 6. GD-003: offline expected-score exact verification — završeno (`47/47 exact`); GD-001 i GD-002 regression PASS.
 > 7. GD-003: controlled persistence — završeno (`20260802100000`, participant reuse, `EXACT_MATCH`, `184/184`).
 > 8. GD-003: production scoring — završeno (`SCORED_EXACT`, `184/184`, `40` persisted dimensions, `47/47 exact`).
-> 9. GD-003: kompletan individualni report paket — sljedeći aktivni korak.
-> 10. GD-003: package completeness verification.
+> 9. GD-003: kompletan individualni report paket — završeno (`5/5 READY_VALID`, prvi apply + jedan resume apply).
+> 10. GD-003: package completeness verification — sljedeći aktivni korak.
 > 11. Tek zatim nastaviti na GD-004, GD-005 i GD-019 prema istom provjerenom obrascu, pa otvoriti uski Golden Demo UI sprint.
 >
 > Candidate self-service auth linkage i persisted participant AI reportovi nisu trenutni P0 osim ako kasnije postanu dokazani blocker HR demo putanje. Team Fit V1 ostaje neaktivan.
 >
 >
-> Ovaj current-priority blok nadjačava ranije aktivne formulacije o Team Fit V2 active runtime cutoveru, migration activationu, canonical persisted smokeu, Team Dynamics worker/production-readiness nastavku, GD-001 report-content reviewu, GD-002 source/completeness radu i codebase refactoring next taskovima. Ti navodi ostaju historijska ili planirana evidencija; jedini aktivni sljedeći task je `GD-003 complete individual report package`. Ne mijenjaju se niti brišu historijski zapisi.
+> Ovaj current-priority blok nadjačava ranije aktivne formulacije o Team Fit V2 active runtime cutoveru, migration activationu, canonical persisted smokeu, Team Dynamics worker/production-readiness nastavku, GD-001 report-content reviewu, GD-002 source/completeness radu i codebase refactoring next taskovima. Ti navodi ostaju historijska ili planirana evidencija; jedini aktivni sljedeći task je `GD-003 package completeness verification`. Ne mijenjaju se niti brišu historijski zapisi.
 >
 > **Odgođeni P2/UI-sprint nalazi:** Team Dynamics headline line-height je zbijen; badge `B5` nema korisničko objašnjenje; pojedini gridovi ostavljaju prazan prostor; dugim reportima kasnije može koristiti sadržajna navigacija, collapsible sekcije ili print/PDF polish. Širi dashboard, lijevi meni, tablični prikazi članova i standardizacija ekrana pripadaju zasebnom UI sprintu. Ovi nalazi ne blokiraju Golden Demo i ne otvaraju novi prompt ili renderer task.
 
