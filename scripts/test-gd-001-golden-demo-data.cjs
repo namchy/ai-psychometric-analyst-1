@@ -198,6 +198,27 @@ function assertFullBatteryVerification(candidateId) {
 
 const gd002FullBatteryVerification = assertFullBatteryVerification("GD-002");
 const gd003FullBatteryVerification = assertFullBatteryVerification("GD-003");
+const gd004FullBatteryVerification = assertFullBatteryVerification("GD-004");
+const gd005FullBatteryVerification = assertFullBatteryVerification("GD-005");
+
+for (const [candidateId, displayName, email] of [
+  ["GD-004", "Natali Delić", "natali.delic@partnerplus.ba"],
+  ["GD-005", "Anisa Lojo Bajrić", "anisa.lojo.bajric@partnerplus.ba"],
+]) {
+  const profile = JSON.parse(
+    fs.readFileSync(
+      path.join(projectRoot, `fixtures/golden-demo/partner-plus/v1/profiles/${candidateId}.profile.json`),
+      "utf8",
+    ),
+  );
+  assert.equal(profile.profile_version, "gd_expected_profile_v1");
+  assert.equal(profile.candidate_id, candidateId);
+  assert.equal(profile.display_name, displayName);
+  assert.equal(profile.email, email);
+  assert.equal(profile.addressing_form, "feminine");
+  assert.equal(profile.authoring_status.raw_answers_created, true);
+  assert.equal(profile.authoring_status.expected_scores_created, true);
+}
 
 const gd001 = foundation.candidates.rows.find(
   (row) => row.values.candidate_id === "GD-001",
@@ -390,5 +411,5 @@ expectCandidateVerifierError(
 }
 
 process.stdout.write(
-  "Golden Demo offline verifier tests passed (GD-001 compatibility, GD-002 full battery, GD-003 full battery, and negative cases).\n",
+  "Golden Demo offline verifier tests passed (GD-001 compatibility, GD-002/GD-003/GD-004/GD-005 full batteries, and negative cases).\n",
 );

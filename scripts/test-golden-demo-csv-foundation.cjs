@@ -181,8 +181,8 @@ assert.deepEqual(result.summary.teamCounts, {
   "GDT-03": 6,
   "GDT-04": 6,
 });
-assert.equal(result.summary.answerCount, 552);
-assert.equal(result.summary.expectedScoreCount, 141);
+assert.equal(result.summary.answerCount, 920);
+assert.equal(result.summary.expectedScoreCount, 235);
 assert.equal(result.summary.expectedAiFindingCount, 32);
 
 const expectedEmails = {
@@ -209,6 +209,8 @@ assert.ok(
 );
 assertCompleteCandidateInspection("GD-002");
 assertCompleteCandidateInspection("GD-003");
+assertCompleteCandidateInspection("GD-004");
+assertCompleteCandidateInspection("GD-005");
 assert.equal(inspectGoldenDemoCandidate(foundation, "GD-999"), null);
 
 expectInvalid(

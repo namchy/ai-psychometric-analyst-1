@@ -1,0 +1,135 @@
+{
+  "profile_version": "gd_expected_profile_v1",
+  "candidate_id": "GD-005",
+  "display_name": "Anisa Lojo Bajrić",
+  "email": "anisa.lojo.bajric@partnerplus.ba",
+  "addressing_form": "feminine",
+  "authoring_status": {
+    "status": "offline_battery_ready",
+    "raw_answers_created": true,
+    "expected_scores_created": true,
+    "next_step": "Controlled live execution nakon read-only provjere i odobrenog backupa."
+  },
+  "role_context": {
+    "job_title": "Savjetnica za klijente i kreditne proizvode",
+    "team_id": "GDT-01",
+    "context_summary": "Savjetodavni rad traži brzo razumijevanje klijentske potrebe, jasno predstavljanje opcija i povezivanje odgovarajućeg proizvoda s urednom dokumentacijom i risk/compliance provjerom."
+  },
+  "target_profile_summary": "Proaktivna savjetnica koja brzo razumije klijentsku potrebu i povezuje je s odgovarajućim kreditnim proizvodom. Doprinosi savjetodavnim razgovorom, prepoznavanjem mogućnosti, jasnim predstavljanjem opcija i energijom u odnosu s klijentom. Otvorenija je, verbalno snažnija i inicijativnija od GD-004; razvojni izazov je usporiti prije obećanja i dosljedno zatvoriti dokumentacijske i risk/compliance provjere.",
+  "ipip_targets": {
+    "targeting_method": "Relativni ciljevi su namjera za deterministički offline authoring; ne predstavljaju dijagnozu, raw odgovore niti garanciju radnog učinka.",
+    "facets": {
+      "ANXIETY": { "relative_level": "balanced" },
+      "ANGER": { "relative_level": "lower" },
+      "DEPRESSION": { "relative_level": "lower" },
+      "SELF_CONSCIOUSNESS": { "relative_level": "balanced" },
+      "IMMODERATION": { "relative_level": "lower" },
+      "VULNERABILITY": { "relative_level": "balanced" },
+      "FRIENDLINESS": { "relative_level": "higher", "rationale": "Otvorenost i toplina podržavaju savjetodavni odnos i istraživanje klijentske potrebe." },
+      "GREGARIOUSNESS": { "relative_level": "higher", "rationale": "Prirodno održava energiju u razgovoru i lakše ulazi u širu razmjenu." },
+      "ASSERTIVENESS": { "relative_level": "higher", "rationale": "Jasno preporučuje opciju i vodi razgovor, uz razvojni fokus da preporuka ne postane obećanje." },
+      "ACTIVITY_LEVEL": { "relative_level": "higher" },
+      "EXCITEMENT_SEEKING": { "relative_level": "balanced" },
+      "CHEERFULNESS": { "relative_level": "higher" },
+      "IMAGINATION": { "relative_level": "higher", "rationale": "Lakše generiše alternative i povezuje potrebe s mogućim rješenjima." },
+      "ARTISTIC_INTERESTS": { "relative_level": "balanced" },
+      "EMOTIONALITY": { "relative_level": "balanced" },
+      "ADVENTUROUSNESS": { "relative_level": "balanced-to-higher" },
+      "INTELLECT": { "relative_level": "higher", "rationale": "Brzo povezuje informacije, opcije i posljedice u savjetodavnom razgovoru." },
+      "LIBERALISM": { "relative_level": "balanced" },
+      "TRUST": { "relative_level": "balanced", "rationale": "Otvorena je za klijentsku priču, ali treba održati provjeru prije obećanja." },
+      "MORALITY": { "relative_level": "higher" },
+      "ALTRUISM": { "relative_level": "higher" },
+      "COOPERATION": { "relative_level": "balanced-to-higher" },
+      "MODESTY": { "relative_level": "balanced" },
+      "SYMPATHY": { "relative_level": "higher" },
+      "SELF_EFFICACY": { "relative_level": "higher" },
+      "ORDERLINESS": { "relative_level": "balanced" },
+      "DUTIFULNESS": { "relative_level": "higher" },
+      "ACHIEVEMENT_STRIVING": { "relative_level": "higher" },
+      "SELF_DISCIPLINE": { "relative_level": "balanced-to-higher" },
+      "CAUTIOUSNESS": { "relative_level": "balanced", "rationale": "Provjeru može održati, ali pod pritiskom razvojno mora usporiti prije obećanja i zaključiti rizik." }
+    },
+    "domains": {
+      "EXTRAVERSION": { "relative_level": "higher", "rationale": "Viša aktivnost, asertivnost, toplina i vedrina podržavaju inicijativan savjetodavni razgovor." },
+      "AGREEABLENESS": { "relative_level": "higher", "rationale": "Altruizam, simpatija i saradnja podržavaju interes za stvarnu potrebu klijenta." },
+      "CONSCIENTIOUSNESS": { "relative_level": "balanced-to-higher", "rationale": "Samopouzdanje i postignuće su jači, dok je razvojni tradeoff dosljedno zatvaranje provjera i dokumentacije." },
+      "NEUROTICISM": { "relative_level": "balanced", "rationale": "Stabilnost ne znači odsustvo pritiska; ubrzanje pod opterećenjem traži svjesno usporavanje." },
+      "OPENNESS_TO_EXPERIENCE": { "relative_level": "higher", "rationale": "Intellect, imaginacija i avanturistička otvorenost podržavaju povezivanje alternativa, uz potrebu za provjerom posljedica." }
+    }
+  },
+  "safran_targets": {
+    "targeting_method": "Relativni ciljevi opisuju obrazac za offline authoring; ne predstavljaju IQ, procenat ili globalnu mjeru sposobnosti.",
+    "verbal_score": { "relative_level": "higher", "rationale": "Savjetovanje i jasno predstavljanje opcija traže snažno verbalno povezivanje." },
+    "figural_score": { "relative_level": "balanced" },
+    "numerical_series_score": { "relative_level": "balanced" },
+    "cognitive_composite_v1": { "relative_level": "balanced-to-higher", "rationale": "Verbalna prednost uz stabilne figuralne i numeričke komponente podržava praktično savjetovanje, ne globalni zaključak." },
+    "coherence_rule": "SAFRAN se čita kao podrška razumijevanju i provjeri zadataka; ne kao IQ, opšta inteligencija ili vrijednost osobe."
+  },
+  "mwms_targets": {
+    "amotivation": { "relative_level": "lower" },
+    "external_social": { "relative_level": "moderate" },
+    "external_material": { "relative_level": "moderate" },
+    "introjected": { "relative_level": "moderate" },
+    "identified": { "relative_level": "higher", "rationale": "Važni su joj korisnost savjeta, rješenje za klijenta i smisao dobro obavljenog razgovora." },
+    "intrinsic": { "relative_level": "higher", "rationale": "Pokreće je istraživanje mogućnosti i povezivanje potreba s dobrim rješenjem." },
+    "autonomous_motivation": { "relative_level": "higher" },
+    "controlled_motivation": { "relative_level": "moderate" },
+    "motivation_pattern": "Autonomno dominantan obrazac: pokreću je korisnost, preporuka i rješavanje klijentske potrebe, uz umjeren uticaj priznanja i profesionalnog pritiska."
+  },
+  "cross_test_signals": [
+    "Viša ekstraverzija, verbalni signal i autonomna motivacija podržavaju energičan savjetodavni razgovor.",
+    "Viša otvorenost i inicijativa pomažu istraživanju alternativa, ali povećavaju potrebu da se pretpostavke dokumentuju prije obećanja.",
+    "Viša simpatija i altruizam podržavaju stvarni interes za klijenta, bez napuštanja risk/compliance granica.",
+    "Razvojni fokus je usporiti, potvrditi ograničenja i jasno odvojiti preporuku od obećanja o tempu ili ishodu."
+  ],
+  "strengths": [
+    "Brzo prepoznavanje klijentske potrebe i relevantne opcije.",
+    "Jasno verbalno predstavljanje proizvoda i alternativa.",
+    "Energija, inicijativa i prirodan savjetodavni kontakt.",
+    "Spremnost da poveže korisnu preporuku s konkretnim sljedećim korakom."
+  ],
+  "risks": [
+    "Entuzijazam za rješenje može prerano zvučati kao obećanje tempa ili ishoda.",
+    "Ubrzanje komunikacije pod pritiskom može preskočiti provjeru dokumentacije i rizika.",
+    "Širina alternativa može otežati jasno zatvaranje pretpostavki i odgovornosti."
+  ],
+  "development_themes": [
+    "Razdvojiti preporuku proizvoda od obećanja o odobrenju, roku ili jednostavnosti.",
+    "Uvesti obaveznu pauzu za potvrdu dokumentacije, rizika i ograničenja prije zaključka.",
+    "Dokumentovati pretpostavke i jasno ih saopštiti klijentu i timu.",
+    "Zadržati energiju razgovora uz sporiji i vidljiviji compliance završetak."
+  ],
+  "team_dynamics_coherence": {
+    "existing_pattern": "Team-level podaci su zaseban kontekstualni izvor i ne određuju individualne odgovore.",
+    "profile_connection": "Profil povezuje inicijativu i otvorenu komunikaciju s razvojnim fokusom usporavanja prije obećanja.",
+    "boundary": "Team Dynamics ne predstavlja direktnu mjeru IPIP, SAFRAN ili MWMS konstrukata."
+  },
+  "differentiation_from_gd001": {
+    "comparison_reference": "GD-001",
+    "interpersonal_style": "Anisa je otvorenija, inicijativnija i savjetodavno usmjerena, dok Amel više naglašava samostalnu terensku provjeru i zatvaranje konkretnog slučaja.",
+    "decision_style": "Anisa brzo povezuje potrebu i opciju, uz razvojni fokus provjere prije obećanja; Amel duže provjerava činjenice prije praktičnog zaključka.",
+    "motivation": "Anisu pokreću preporuka, alternativa i korisno rješenje; Amelov obrazac više naglašava samostalnost, pouzdanost i praktično izvršenje.",
+    "cognitive_profile": "Anisa cilja višu verbalnu, otvorenu i inicijativnu komponentu uz stabilan ostatak; Amelov profil je rezervisaniji i evidence-oriented.",
+    "team_contribution": "Anisa donosi energiju savjetovanja i povezivanje opcija, a ne voditeljsku koordinaciju ili opreznu terensku samostalnost."
+  },
+  "differentiation_from_gd002": {
+    "comparison_reference": "GD-002",
+    "interpersonal_style": "Anisa je proaktivna savjetnica koja vodi klijentski razgovor prema opciji; Nataša koordinira ljude, rokove i timsku odgovornost.",
+    "structure_flexibility": "Anisa koristi fleksibilnost da istraži alternative, dok Nataša koristi strukturu za raspodjelu prioriteta i vlasništva u timu.",
+    "decision_style": "Anisa brzo preporučuje rješenje i razvojno mora potvrditi rizike prije obećanja; Nataša prvo usklađuje perspektive i zatim zaključuje koordinacijsku odluku.",
+    "motivation": "Anisu pokreću korisnost savjeta i energija rješavanja klijentske potrebe; Natašu više pokreću odgovornost, kvalitet koordinacije i razvoj ljudi.",
+    "team_contribution": "Anisa je izvor klijentske inicijative i jasnog predstavljanja opcija, ne koordinacijska tačka tima."
+  },
+  "forbidden_contradictions": [
+    "Ne opisivati Anisu kao voditeljicu ili osobu koja raspoređuje rad drugih.",
+    "Ne opisivati je kao neodgovornu, nepažljivu ili nesposobnu za proceduru.",
+    "Ne tvrditi globalnu kognitivnu superiornost, IQ ili automatsku prodajnu uspješnost.",
+    "Ne izvoditi dijagnozu niti hire/no-hire zaključak."
+  ],
+  "known_uncertainties": [
+    "Offline odgovori i expected scores su deterministički authoring artefakti, a ne klinička mjerenja.",
+    "Energičan savjetodavni stil ne garantuje ishod i mora ostati vezan za provjeru dokumentacije i rizika.",
+    "Profil nema biografske događaje niti individualne radne epizode izvan zaključanog role konteksta."
+  ]
+}

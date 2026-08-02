@@ -99,9 +99,19 @@ assert.equal(
   ),
   true,
 );
+assert.deepEqual(parseGd001WriterCli(["--candidate", "GD-004"]), {
+  mode: "dry-run",
+  candidateId: "GD-004",
+  verbose: false,
+});
+assert.deepEqual(parseGd001WriterCli(["--apply", "--candidate", "GD-005"]), {
+  mode: "apply",
+  candidateId: "GD-005",
+  verbose: false,
+});
 assert.throws(
-  () => parseGd001WriterCli(["--candidate", "GD-004"]),
-  /Only GD-001, GD-002, GD-003/,
+  () => parseGd001WriterCli(["--candidate", "GD-019"]),
+  /Only GD-001, GD-002, GD-003, GD-004, GD-005/,
 );
 assert.throws(() => parseGd001WriterCli(["--apply"]), /explicit --candidate/);
 

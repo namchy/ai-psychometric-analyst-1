@@ -66,6 +66,22 @@ const expectedResponses = foundation.answers.rows
 assert.equal(expectedResponses.length, 184);
 const gd002Candidate = getGoldenDemoCandidateContract(foundation, "GD-002");
 const gd003Candidate = getGoldenDemoCandidateContract(foundation, "GD-003");
+assert.deepEqual(getGoldenDemoCandidateContract(foundation, "GD-004"), {
+  candidateId: "GD-004",
+  fullName: "Natali Delić",
+  email: "natali.delic@partnerplus.ba",
+  participantType: "employee",
+  addressingForm: "feminine",
+  teamId: "GDT-01",
+});
+assert.deepEqual(getGoldenDemoCandidateContract(foundation, "GD-005"), {
+  candidateId: "GD-005",
+  fullName: "Anisa Lojo Bajrić",
+  email: "anisa.lojo.bajric@partnerplus.ba",
+  participantType: "employee",
+  addressingForm: "feminine",
+  teamId: "GDT-01",
+});
 const gd002ExpectedResponses = foundation.answers.rows
   .filter((row) => row.values.candidate_id === "GD-002")
   .map((row) => ({
@@ -224,7 +240,17 @@ assert.deepEqual(parseGd001WriterCli(["--apply", "--candidate", "GD-003"]), {
   candidateId: "GD-003",
   verbose: false,
 });
-assert.throws(() => parseGd001WriterCli(["--candidate", "GD-004"]), /Only GD-001, GD-002, GD-003/);
+assert.deepEqual(parseGd001WriterCli(["--candidate", "GD-004"]), {
+  mode: "dry-run",
+  candidateId: "GD-004",
+  verbose: false,
+});
+assert.deepEqual(parseGd001WriterCli(["--apply", "--candidate", "GD-005"]), {
+  mode: "apply",
+  candidateId: "GD-005",
+  verbose: false,
+});
+assert.throws(() => parseGd001WriterCli(["--candidate", "GD-019"]), /Only GD-001, GD-002, GD-003, GD-004, GD-005/);
 assert.equal(
   parseGd001WriterCli(["--apply", "--candidate", "GD-001"]).mode,
   "apply",

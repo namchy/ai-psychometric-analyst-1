@@ -1,6 +1,12 @@
 import type { GoldenDemoCsvFoundation } from "./csv-contract";
 
-export const GOLDEN_DEMO_CANDIDATE_IDS = ["GD-001", "GD-002", "GD-003"] as const;
+export const GOLDEN_DEMO_CANDIDATE_IDS = [
+  "GD-001",
+  "GD-002",
+  "GD-003",
+  "GD-004",
+  "GD-005",
+] as const;
 export type GoldenDemoCandidateId = (typeof GOLDEN_DEMO_CANDIDATE_IDS)[number];
 export const GOLDEN_DEMO_ORGANIZATION_NAME =
   "Partner Plus d.o.o., Mikrokreditna organizacija" as const;
@@ -37,6 +43,14 @@ const LOCKED_CANDIDATE_IDENTITIES: Record<GoldenDemoCandidateId, { fullName: str
   "GD-003": {
     fullName: "Vladimir Lučić",
     email: "vladimir.lucic@partnerplus.ba",
+  },
+  "GD-004": {
+    fullName: "Natali Delić",
+    email: "natali.delic@partnerplus.ba",
+  },
+  "GD-005": {
+    fullName: "Anisa Lojo Bajrić",
+    email: "anisa.lojo.bajric@partnerplus.ba",
   },
 };
 
