@@ -24,17 +24,27 @@ import {
   getAiReportReasoningEffortForModel,
   type AiReportReasoningEffort,
 } from "@/lib/assessment/report-config";
+import {
+  AiProviderTransportError,
+  AiUsageInstrumentationError,
+  runInstrumentedAiProviderCall,
+  type AiUsageCallPurpose,
+  type AiUsageContext,
+  type AiUsageRecorder,
+} from "@/lib/assessment/ai-usage-accounting";
 
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER = "openai" as const;
 export const COMPOSITE_HR_REPORT_OPENAI_PROVIDER_VERSION = "v1" as const;
 
-type OpenAiCompositeHrProviderOptions = {
+export type OpenAiCompositeHrProviderOptions = {
   apiKey: string | null;
   model: string | null;
   reasoningEffort?: AiReportReasoningEffort | null;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   now?: () => string;
+  usageRecorder?: AiUsageRecorder;
+  usageContext?: AiUsageContext;
 };
 
 type ErrorWithCause = Error & {
@@ -1058,6 +1068,7 @@ export async function reviewOpenAiCompositeHrReportForDiagnostic(
     schema: compositeHrReviewOpenAiSchema as Record<string, unknown>,
     systemPrompt: buildCompositeHrReviewerSystemPrompt(),
     userPrompt: buildCompositeHrReviewerUserPrompt(input, snapshot),
+    callPurpose: "composite_hr_diagnostic_review",
   });
 
   return validateCompositeHrReviewResult(rawReview);
@@ -1245,6 +1256,7 @@ async function requestOpenAiStructuredJson(
     schema: Record<string, unknown>;
     systemPrompt: string;
     userPrompt: string;
+    callPurpose?: AiUsageCallPurpose;
   },
 ): Promise<unknown> {
   if (!options.apiKey) {
@@ -1269,31 +1281,74 @@ async function requestOpenAiStructuredJson(
   try {
     const requestBody = buildCompositeHrOpenAiChatCompletionsRequestBody(payload, options);
 
-    const response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${options.apiKey}`,
+    const responsePayload = await runInstrumentedAiProviderCall({
+      recorder: options.usageRecorder,
+      context: options.usageContext
+        ? {
+            ...options.usageContext,
+            callPurpose: payload.callPurpose ?? options.usageContext.callPurpose,
+          }
+        : undefined,
+      request: {
+        requestedModel: requestBody.model,
+        reasoningEffort: requestBody.reasoning_effort ?? null,
+        provider: "openai",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+        serviceTier: options.usageContext?.serviceTier,
       },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-      cache: "no-store",
-    });
+      execute: async () => {
+        const response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${options.apiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        const providerRequestId = response.headers?.get?.("x-request-id") ?? null;
+        const processingHeader = response.headers?.get?.("openai-processing-ms") ?? null;
+        const providerProcessingMs = processingHeader ? Number(processingHeader) : null;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `OpenAI composite HR report request failed with status ${response.status}: ${errorText}`,
-      );
-    }
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new AiProviderTransportError(
+            `OpenAI composite HR report request failed with status ${response.status}: ${errorText}`,
+            {
+              httpStatus: response.status,
+              providerRequestId,
+              providerProcessingMs: Number.isFinite(providerProcessingMs)
+                ? providerProcessingMs
+                : null,
+            },
+          );
+        }
 
-    const responsePayload = (await response.json()) as {
-      choices?: Array<{
-        message?: {
-          content?: string;
+        const responsePayload = (await response.json()) as {
+          model?: string;
+          usage?: unknown;
+          choices?: Array<{
+            message?: {
+              content?: string;
+            };
+          }>;
         };
-      }>;
-    };
+
+        return {
+          value: responsePayload,
+          telemetry: {
+            httpStatus: response.status,
+            responseModel: responsePayload.model ?? null,
+            usage: responsePayload.usage,
+            providerRequestId,
+            providerProcessingMs: Number.isFinite(providerProcessingMs)
+              ? providerProcessingMs
+              : null,
+          },
+        };
+      },
+    });
 
     const content = responsePayload.choices?.[0]?.message?.content;
 
@@ -1303,6 +1358,10 @@ async function requestOpenAiStructuredJson(
 
     return parseStructuredContent(content);
   } catch (error) {
+    if (error instanceof AiUsageInstrumentationError) {
+      throw error;
+    }
+
     const normalizedError = error instanceof Error ? (error as ErrorWithCause) : null;
     throw new Error(
       `OpenAI ${payload.label} failed: ${normalizedError?.message ?? String(error)}`,
@@ -1363,7 +1422,10 @@ export async function requestOpenAiCompositeHrReportRaw(
   input: CompositeHrInputSnapshot,
   options: OpenAiCompositeHrProviderOptions,
 ): Promise<unknown> {
-  return requestOpenAiStructuredJson(options, buildOpenAiCompositeHrReportRequestPayload(input));
+  return requestOpenAiStructuredJson(options, {
+    ...buildOpenAiCompositeHrReportRequestPayload(input),
+    callPurpose: "composite_hr_generation",
+  });
 }
 
 function formatDiagnosticError(error: unknown): string {

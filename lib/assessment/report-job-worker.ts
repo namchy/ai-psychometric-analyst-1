@@ -61,6 +61,10 @@ import {
   type ActivePromptVersion,
 } from "@/lib/assessment/prompt-version";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  createSupabaseAiUsageRecorder,
+  type AiUsageContext,
+} from "@/lib/assessment/ai-usage-accounting";
 
 type ReportJobAudience = "participant" | "hr";
 type ReportGenerator = "mock" | "openai";
@@ -93,6 +97,8 @@ export type ClaimedReportJob = {
 type AttemptTestRecord = {
   test_id: string;
   locale: AssessmentLocale | null;
+  organization_id: string | null;
+  participant_id: string | null;
 };
 
 function isSafranParticipantInput(value: unknown): value is SafranAiReportInput {
@@ -384,13 +390,15 @@ async function claimReportJobCandidate(
 async function loadAttemptContext(attemptId: string): Promise<{
   testId: string;
   locale: AssessmentLocale;
+  organizationId: string | null;
+  participantId: string | null;
 }> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await executeSupabaseOperation(
     async () =>
       await supabase
         .from("attempts")
-        .select("test_id, locale")
+        .select("test_id, locale, organization_id, participant_id")
         .eq("id", attemptId)
         .maybeSingle(),
     "loadAttemptContext",
@@ -416,6 +424,8 @@ async function loadAttemptContext(attemptId: string): Promise<{
   return {
     testId: attempt.test_id,
     locale: toLegacyAssessmentLocale(attempt.locale),
+    organizationId: attempt.organization_id,
+    participantId: attempt.participant_id,
   };
 }
 
@@ -425,6 +435,8 @@ export function buildStandardReportGenerationOverrides(
     promptVersionId?: string | null;
     promptTemplate?: ActivePromptVersion | null;
     participantDataOnlyQa?: boolean;
+    aiUsageRecorder?: ReportGenerationOverrides["aiUsageRecorder"];
+    aiUsageContext?: AiUsageContext;
   },
 ): ReportGenerationOverrides {
   const config = getAiReportConfig();
@@ -440,6 +452,8 @@ export function buildStandardReportGenerationOverrides(
     promptVersionId: options?.promptVersionId ?? null,
     promptTemplate: options?.promptTemplate ?? null,
     participantDataOnlyQa: options?.participantDataOnlyQa,
+    aiUsageRecorder: options?.aiUsageRecorder,
+    aiUsageContext: options?.aiUsageContext,
   };
 }
 
@@ -621,10 +635,27 @@ async function buildReportSnapshot(
     attemptContext.locale,
   );
   const promptVersion = activePromptVersion?.version ?? getAiReportConfig().promptVersion;
+  const aiUsageContext: AiUsageContext | undefined =
+    attemptContext.organizationId && attemptContext.participantId
+      ? {
+          organizationId: attemptContext.organizationId,
+          participantId: attemptContext.participantId,
+          attemptId: job.attempt_id,
+          attemptReportId: job.id,
+          reportType: job.report_type ?? "individual",
+          callPurpose:
+            job.audience === "hr"
+              ? "single_test_hr_generation"
+              : "single_test_participant_generation",
+        }
+      : undefined;
   const overrides = buildStandardReportGenerationOverrides(promptVersion, {
     promptVersionId: activePromptVersion?.id ?? job.prompt_version_id,
     promptTemplate: activePromptVersion,
     participantDataOnlyQa: options?.participantDataOnlyQa,
+    aiUsageRecorder:
+      getAiReportConfig().provider === "openai" ? createSupabaseAiUsageRecorder() : undefined,
+    aiUsageContext,
   });
   const request = await buildCompletedAssessmentReportRequest(attemptContext.testId, job.attempt_id, {
     audience: job.audience,
@@ -643,6 +674,7 @@ async function buildReportSnapshot(
     promptVersionId: activePromptVersion?.id ?? job.prompt_version_id,
     promptTemplate: activePromptVersion,
     participantDataOnlyQa: options?.participantDataOnlyQa,
+    aiUsageContext,
   });
 
   await freezeProcessingReportMetadata(job.id, {

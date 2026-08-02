@@ -46,6 +46,7 @@ import {
 } from "@/lib/assessment/safran-participant-ai-report-v1";
 export { formatDimensionLabel } from "@/lib/assessment/result-display";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
+import type { AiUsageContext } from "@/lib/assessment/ai-usage-accounting";
 import type {
   AiReportPromptInput,
   CompletedAssessmentReportRequest,
@@ -490,6 +491,7 @@ export function buildPreparedReportGenerationInput(
     promptVersionId?: string | null;
     promptTemplate?: ActivePromptVersion | null;
     participantDataOnlyQa?: boolean;
+    aiUsageContext?: AiUsageContext;
   },
 ): PreparedReportGenerationInput {
   return {
@@ -502,6 +504,7 @@ export function buildPreparedReportGenerationInput(
     promptTemplate: options?.promptTemplate ?? null,
     promptInput: buildReportPromptInput(input),
     reportContract: resolveReportContract(input.testSlug, input.audience),
+    aiUsageContext: options?.aiUsageContext,
   };
 }
 

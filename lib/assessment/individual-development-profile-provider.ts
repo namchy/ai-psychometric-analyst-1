@@ -16,6 +16,7 @@ import {
   type ActiveReportRuntimeConfig,
 } from "@/lib/assessment/report-runtime-config";
 import { shouldOmitOpenAiTemperature } from "@/lib/assessment/report-provider-openai";
+import type { AiUsageContext, AiUsageRecorder } from "@/lib/assessment/ai-usage-accounting";
 
 export { INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI };
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_MOCK = "mock" as const;
@@ -63,6 +64,8 @@ type IndividualDevelopmentProfileProviderDependencies = {
     IndividualDevelopmentProfileOpenAiProviderOptions,
     "client" | "fetchImpl" | "now"
   >;
+  aiUsageRecorder?: AiUsageRecorder;
+  aiUsageContext?: AiUsageContext;
 };
 
 export async function generateIndividualDevelopmentProfileReport(
@@ -98,9 +101,7 @@ export async function generateIndividualDevelopmentProfileReport(
       }
     }
 
-    const result = await (
-      deps.generateOpenAi ?? generateIndividualDevelopmentProfileWithOpenAi
-    )(inputSnapshot, {
+    const openAiOptions = {
       apiKey: config.openAiApiKey,
       model: config.model,
       reasoningEffort: config.reasoningEffort,
@@ -108,7 +109,12 @@ export async function generateIndividualDevelopmentProfileReport(
       temperature:
         config.model && !shouldOmitOpenAiTemperature(config.model) ? 0.2 : null,
       ...deps.openAiOptions,
-    });
+      ...(deps.aiUsageRecorder ? { usageRecorder: deps.aiUsageRecorder } : {}),
+      ...(deps.aiUsageContext ? { usageContext: deps.aiUsageContext } : {}),
+    };
+    const result = await (
+      deps.generateOpenAi ?? generateIndividualDevelopmentProfileWithOpenAi
+    )(inputSnapshot, openAiOptions);
 
     if (!result.ok) {
       return {

@@ -4,6 +4,7 @@ import {
   buildCompositeHrInputSnapshot,
   type CompositeHrInputSnapshot,
 } from "@/lib/assessment/composite-input";
+import { getAiReportConfig } from "@/lib/assessment/report-config";
 import {
   COMPOSITE_HR_REPORT_CONTRACT_VERSION,
   formatCompositeHrReportValidationErrors,
@@ -16,6 +17,10 @@ import {
 } from "@/lib/assessment/composite-hr-report-provider";
 import type { AssessmentReportRecord } from "@/lib/assessment/assessment-reports";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  createSupabaseAiUsageRecorder,
+  type AiUsageRecorder,
+} from "@/lib/assessment/ai-usage-accounting";
 
 type AssessmentReportRow = AssessmentReportRecord;
 
@@ -28,6 +33,7 @@ type AssessmentReportWorkerDependencies = {
   buildCompositeInputSnapshot?: typeof buildCompositeHrInputSnapshot;
   generateCompositeHrReport?: typeof generateCompositeHrReportSnapshot;
   validateCompositeHrReport?: typeof validateCompositeHrReportSnapshot;
+  aiUsageRecorder?: AiUsageRecorder;
   now?: () => string;
   logger?: Pick<Console, "info" | "warn" | "error">;
 };
@@ -404,7 +410,26 @@ export async function processClaimedAssessmentReportJob(
     contractVersion: inputSnapshot.targetReportContractVersion,
   });
 
-  const generateReport = deps?.generateCompositeHrReport ?? generateCompositeHrReportSnapshot;
+  const generateReport =
+    deps?.generateCompositeHrReport ??
+    ((snapshot: CompositeHrInputSnapshot) => {
+      const usageRecorder =
+        getAiReportConfig().provider === "openai"
+          ? deps?.aiUsageRecorder ?? createSupabaseAiUsageRecorder()
+          : undefined;
+
+      return generateCompositeHrReportSnapshot(snapshot, {
+        aiUsageRecorder: usageRecorder,
+        aiUsageContext: {
+          organizationId: job.organization_id,
+          participantId: job.participant_id,
+          assessmentAssignmentId: job.assessment_assignment_id,
+          assessmentReportId: job.id,
+          reportType: job.report_type,
+          callPurpose: "composite_hr_generation",
+        },
+      });
+    });
   const validateReport = deps?.validateCompositeHrReport ?? validateCompositeHrReportSnapshot;
   let generatedReport: CompositeHrReportGenerationResult;
 

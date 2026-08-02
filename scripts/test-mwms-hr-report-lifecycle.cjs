@@ -126,6 +126,10 @@ function hasSupabaseEnv() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+function hasExplicitRemoteDbTestOptIn() {
+  return process.env.DEEP_PROFILE_ALLOW_REMOTE_DB_TESTS === "true";
+}
+
 function parseCliOptions(argv) {
   const options = {
     attemptId: null,
@@ -302,6 +306,16 @@ async function runProviderLifecycle({ supabase, attempt, provider, force }) {
     CompletedAssessmentSummary,
   } = require("../components/assessment/completed-assessment-summary.tsx");
 
+  console.log(JSON.stringify({
+    remote_db_test: "enabled",
+    warning: "This test will queue and process a report in the remote database.",
+    target: {
+      attempt_id: attempt.id,
+      test_slug: attempt.testSlug,
+      provider,
+    },
+  }, null, 2));
+
   const { before, queued } = await ensureQueuedHrReport({
     supabase,
     attemptId: attempt.id,
@@ -417,6 +431,16 @@ async function main() {
     SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
     OPENAI_API_KEY: Boolean(process.env.OPENAI_API_KEY),
   };
+
+  if (!hasExplicitRemoteDbTestOptIn()) {
+    console.log(JSON.stringify({
+      ok: true,
+      db: "skipped",
+      reason: "Remote DB lifecycle test requires DEEP_PROFILE_ALLOW_REMOTE_DB_TESTS=true.",
+      env: Object.fromEntries(Object.entries(envStatus).map(([key, present]) => [key, present ? "present" : "missing"])),
+    }, null, 2));
+    return;
+  }
 
   if (!hasSupabaseEnv()) {
     console.log(JSON.stringify({

@@ -19,6 +19,13 @@ import {
   INDIVIDUAL_DEVELOPMENT_PROFILE_INPUT_VERSION,
   type IndividualDevelopmentProfileInputSnapshot,
 } from "@/lib/assessment/individual-development-profile-input";
+import {
+  AiProviderTransportError,
+  AiUsageInstrumentationError,
+  runInstrumentedAiProviderCall,
+  type AiUsageContext,
+  type AiUsageRecorder,
+} from "@/lib/assessment/ai-usage-accounting";
 
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_PROVIDER_OPENAI = "openai" as const;
 export const INDIVIDUAL_DEVELOPMENT_PROFILE_OPENAI_GENERATOR_VERSION =
@@ -45,7 +52,14 @@ export type IndividualDevelopmentProfileOpenAiRequest = {
 export type IndividualDevelopmentProfileOpenAiClient = {
   createChatCompletion: (
     request: IndividualDevelopmentProfileOpenAiRequest,
-  ) => Promise<{ content: string }>;
+  ) => Promise<{
+    content: string;
+    usage?: unknown;
+    responseModel?: string | null;
+    providerRequestId?: string | null;
+    providerProcessingMs?: number | null;
+    httpStatus?: number | null;
+  }>;
 };
 
 export type IndividualDevelopmentProfileOpenAiProviderOptions = {
@@ -57,6 +71,8 @@ export type IndividualDevelopmentProfileOpenAiProviderOptions = {
   fetchImpl?: typeof fetch;
   client?: IndividualDevelopmentProfileOpenAiClient;
   now?: () => string;
+  usageRecorder?: AiUsageRecorder;
+  usageContext?: AiUsageContext;
 };
 
 export type IndividualDevelopmentProfileOpenAiProviderResult =
@@ -860,13 +876,26 @@ function createFetchClient(
           },
         );
 
+        const providerRequestId = response.headers?.get?.("x-request-id") ?? null;
+        const processingHeader = response.headers?.get?.("openai-processing-ms") ?? null;
+        const providerProcessingMs = processingHeader ? Number(processingHeader) : null;
+
         if (!response.ok) {
-          throw new Error(
+          throw new AiProviderTransportError(
             `OpenAI IDP request failed with status ${response.status}: ${await response.text()}`,
+            {
+              httpStatus: response.status,
+              providerRequestId,
+              providerProcessingMs: Number.isFinite(providerProcessingMs)
+                ? providerProcessingMs
+                : null,
+            },
           );
         }
 
         const payload = (await response.json()) as {
+          model?: string;
+          usage?: unknown;
           choices?: Array<{ message?: { content?: string } }>;
         };
         const content = payload.choices?.[0]?.message?.content;
@@ -875,7 +904,16 @@ function createFetchClient(
           throw new Error("OpenAI IDP response did not contain structured content.");
         }
 
-        return { content };
+        return {
+          content,
+          usage: payload.usage,
+          responseModel: payload.model ?? null,
+          providerRequestId,
+          providerProcessingMs: Number.isFinite(providerProcessingMs)
+            ? providerProcessingMs
+            : null,
+          httpStatus: response.status,
+        };
       } finally {
         clearTimeout(timeout);
       }
@@ -928,9 +966,40 @@ export async function generateIndividualDevelopmentProfileWithOpenAi(
       temperature: options.temperature,
     });
 
-    const response = await client.createChatCompletion(request);
+    const response = await runInstrumentedAiProviderCall({
+      recorder: options.usageRecorder,
+      context: options.usageContext,
+      request: {
+        requestedModel: request.model,
+        reasoningEffort: request.reasoning_effort ?? null,
+        provider: "openai",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+        serviceTier: options.usageContext?.serviceTier,
+      },
+      execute: async () => {
+        const response = await client.createChatCompletion(request);
+        return {
+          value: response,
+          telemetry: {
+            usage: response.usage,
+            responseModel: response.responseModel ?? options.model,
+            providerRequestId: response.providerRequestId,
+            providerProcessingMs: response.providerProcessingMs,
+            httpStatus: response.httpStatus,
+          },
+        };
+      },
+    });
     rawContent = response.content;
   } catch (error) {
+    if (error instanceof AiUsageInstrumentationError) {
+      return {
+        ok: false,
+        reason: "provider_error",
+        errors: [error.message],
+        modelName: options.model,
+      };
+    }
     return {
       ok: false,
       reason: "provider_error",

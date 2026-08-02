@@ -498,6 +498,49 @@ async function testOpenAiPathReturnsValidSnapshot() {
   assert.equal(validateCompositeHrReportSnapshot(result.snapshot).ok, true);
 }
 
+async function testCompositeGenerationAndReviewerHaveSeparateUsageEvents() {
+  const inputSnapshot = buildCompositeInputSnapshotFixture();
+  const reportSnapshot = buildOpenAiSnapshotFixture(inputSnapshot);
+  const starts = [];
+  const completions = [];
+  let nextEventId = 1;
+  const usageRecorder = {
+    async start(input) {
+      starts.push(input);
+      return { eventId: `event-${nextEventId++}`, startedAt: input.startedAt };
+    },
+    async succeed(eventId, input) {
+      completions.push({ eventId, input });
+    },
+    async fail() {
+      throw new Error("unexpected composite usage failure");
+    },
+  };
+
+  await generateOpenAiCompositeHrReport(inputSnapshot, {
+    apiKey: "test-key",
+    model: "gpt-5.6-sol",
+    usageRecorder,
+    usageContext: {
+      organizationId: "org-1",
+      participantId: "participant-1",
+      assessmentAssignmentId: "assignment-1",
+      assessmentReportId: "assessment-report-1",
+      reportType: "composite",
+      callPurpose: "composite_hr_generation",
+    },
+    fetchImpl: buildFetchResponse(reportSnapshot, buildReviewerResponseFixture()),
+  });
+
+  assert.equal(starts.length, 2);
+  assert.deepEqual(
+    starts.map((entry) => entry.context.callPurpose),
+    ["composite_hr_generation", "composite_hr_diagnostic_review"],
+  );
+  assert.equal(completions.length, 2);
+  assert.notEqual(completions[0].eventId, completions[1].eventId);
+}
+
 async function testOpenAiInvalidOutputFailsValidation() {
   const inputSnapshot = buildCompositeInputSnapshotFixture();
   const invalidSnapshot = buildOpenAiSnapshotFixture(inputSnapshot, {
@@ -1578,6 +1621,7 @@ async function testFeminineNarrativePassesAndNeutralEvidenceDoesNotTripGuardrail
 async function main() {
   await testProviderSelectorDefaultUsesMock();
   await testOpenAiPathReturnsValidSnapshot();
+  await testCompositeGenerationAndReviewerHaveSeparateUsageEvents();
   await testOpenAiInvalidOutputFailsValidation();
   await testOpenAiMissingRequiredTextFailsValidation();
   await testWrongReportMetadataFailsValidation();

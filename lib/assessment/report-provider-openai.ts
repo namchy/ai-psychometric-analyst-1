@@ -9,6 +9,13 @@ import {
 } from "@/lib/assessment/report-config";
 import type { AiReportReasoningEffort } from "@/lib/assessment/report-config";
 import {
+  AiProviderTransportError,
+  AiUsageInstrumentationError,
+  runInstrumentedAiProviderCall,
+  type AiUsageCallPurpose,
+  type AiUsageRecorder,
+} from "@/lib/assessment/ai-usage-accounting";
+import {
   maybeWriteAiReportDebugDump,
 } from "@/lib/assessment/ai-report-debug-dump";
 import {
@@ -100,6 +107,7 @@ type OpenAiProviderOptions = {
   model: string | null;
   reasoningEffort?: AiReportReasoningEffort | null;
   timeoutMs?: number;
+  usageRecorder?: AiUsageRecorder;
 };
 
 type ErrorWithCause = Error & {
@@ -1270,6 +1278,7 @@ async function requestOpenAiStructuredJson(
     systemPrompt: string;
     userPrompt: string;
     authorityMetadata?: SingleTestHrPromptAuthorityMetadata | null;
+    callPurpose?: AiUsageCallPurpose;
   },
 ): Promise<unknown> {
   if (!options.apiKey) {
@@ -1279,6 +1288,8 @@ async function requestOpenAiStructuredJson(
   if (!options.model) {
     throw new Error("Missing required env var: AI_REPORT_MODEL");
   }
+
+  const apiKey = options.apiKey;
 
   const timeoutMs = options.timeoutMs ?? 120000;
   const controller = new AbortController();
@@ -1314,28 +1325,73 @@ async function requestOpenAiStructuredJson(
       },
     );
 
-    const response = await transport.fetchImpl(
-      "https://api.openai.com/v1/chat/completions",
-      buildOpenAiFetchRequestInit({
-        apiKey: options.apiKey,
-        requestBody,
-        signal: controller.signal,
-        dispatcher: transport.dispatcher,
-      }),
-    );
+    const responsePayload = await runInstrumentedAiProviderCall({
+      recorder: options.usageRecorder,
+      context: input.aiUsageContext
+        ? {
+            ...input.aiUsageContext,
+            callPurpose: payload.callPurpose ?? input.aiUsageContext.callPurpose,
+          }
+        : undefined,
+      request: {
+        requestedModel: requestBody.model,
+        reasoningEffort: requestBody.reasoning_effort ?? null,
+        provider: "openai",
+        endpoint: "https://api.openai.com/v1/chat/completions",
+        serviceTier: input.aiUsageContext?.serviceTier,
+      },
+      execute: async () => {
+        const response = await transport.fetchImpl(
+          "https://api.openai.com/v1/chat/completions",
+          buildOpenAiFetchRequestInit({
+            apiKey,
+            requestBody,
+            signal: controller.signal,
+            dispatcher: transport.dispatcher,
+          }),
+        );
+        const providerRequestId = response.headers?.get?.("x-request-id") ?? null;
+        const processingHeader = response.headers?.get?.("openai-processing-ms") ?? null;
+        const providerProcessingMs = processingHeader ? Number(processingHeader) : null;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI ${payload.label} request failed with status ${response.status}: ${errorText}`);
-    }
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new AiProviderTransportError(
+            `OpenAI ${payload.label} request failed with status ${response.status}: ${errorText}`,
+            {
+              httpStatus: response.status,
+              providerRequestId,
+              providerProcessingMs: Number.isFinite(providerProcessingMs)
+                ? providerProcessingMs
+                : null,
+            },
+          );
+        }
 
-    const responsePayload = (await response.json()) as {
-      choices?: Array<{
-        message?: {
-          content?: string;
+        const responsePayload = (await response.json()) as {
+          model?: string;
+          usage?: unknown;
+          choices?: Array<{
+            message?: {
+              content?: string;
+            };
+          }>;
         };
-      }>;
-    };
+
+        return {
+          value: responsePayload,
+          telemetry: {
+            httpStatus: response.status,
+            responseModel: responsePayload.model ?? null,
+            usage: responsePayload.usage,
+            providerRequestId,
+            providerProcessingMs: Number.isFinite(providerProcessingMs)
+              ? providerProcessingMs
+              : null,
+          },
+        };
+      },
+    });
 
     const content = responsePayload.choices?.[0]?.message?.content;
 
@@ -1345,6 +1401,14 @@ async function requestOpenAiStructuredJson(
 
     return parseStructuredContent(content);
   } catch (error) {
+    if (error instanceof AiUsageInstrumentationError) {
+      throw error;
+    }
+
+    if (error instanceof AiProviderTransportError) {
+      throw new Error(`OpenAI ${payload.label} failed: ${error.message}`);
+    }
+
     if (error instanceof Error) {
       throw new Error(`OpenAI ${payload.label} failed: ${error.message}`);
     }
@@ -1853,6 +1917,10 @@ export function createOpenAiReportProvider(options: OpenAiProviderOptions): Repo
           report,
         };
       } catch (error) {
+        if (error instanceof AiUsageInstrumentationError) {
+          throw error;
+        }
+
         return {
           ok: false,
           reason: error instanceof Error ? error.message : "Unknown OpenAI provider error.",

@@ -237,8 +237,29 @@ async function main() {
   assert.equal(invalidResult.errors.length > 0, true);
 
   const openAiOperations = [];
+  const idpUsageEvents = [];
   const openAiResult = await generateIndividualDevelopmentProfileReport(validInput, {
     config: openAiConfig,
+    aiUsageContext: {
+      organizationId: "org-1",
+      participantId: "participant-1",
+      assessmentAssignmentId: "assignment-1",
+      assessmentReportId: "assessment-report-1",
+      reportType: "individual_development_profile",
+      callPurpose: "individual_development_profile_generation",
+    },
+    aiUsageRecorder: {
+      async start(input) {
+        idpUsageEvents.push({ type: "started", input });
+        return { eventId: "idp-event-1", startedAt: input.startedAt };
+      },
+      async succeed(eventId, input) {
+        idpUsageEvents.push({ type: "succeeded", eventId, input });
+      },
+      async fail() {
+        throw new Error("unexpected IDP usage failure");
+      },
+    },
     runtimeConfig: {
       modelName: "gpt-5.1",
       temperature: 0.2,
@@ -269,6 +290,11 @@ async function main() {
     "individual_development_profile_openai_v1",
   );
   assert.equal(openAiOperations.length, 1);
+  assert.deepEqual(idpUsageEvents.map((event) => event.type), ["started", "succeeded"]);
+  assert.equal(
+    idpUsageEvents[0].input.context.callPurpose,
+    "individual_development_profile_generation",
+  );
   assert.equal(openAiOperations[0].model, "gpt-5.1");
   assert.equal(openAiOperations[0].temperature, 0.2);
   assert.equal(openAiOperations[0].response_format.type, "json_schema");

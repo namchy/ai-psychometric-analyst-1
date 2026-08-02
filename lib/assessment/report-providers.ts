@@ -73,6 +73,7 @@ import {
 } from "@/lib/assessment/ipc-report-v1";
 import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ActivePromptVersion } from "@/lib/assessment/prompt-version";
+import type { AiUsageContext } from "@/lib/assessment/ai-usage-accounting";
 import type { ScoringMethod } from "@/lib/assessment/types";
 import { getIpipNeo120ParticipantReportVersion } from "@/lib/assessment/report-config";
 import {
@@ -182,6 +183,7 @@ export type PreparedReportGenerationInput = {
   promptTemplate: ActivePromptVersion | null;
   promptInput: ReportPromptInput;
   reportContract: ReportContractDescriptor;
+  aiUsageContext?: AiUsageContext;
 };
 
 export type SingleTestHrPromptAuthorityLayer =

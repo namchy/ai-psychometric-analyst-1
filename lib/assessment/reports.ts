@@ -36,6 +36,7 @@ import type { CompletedAssessmentResults } from "@/lib/assessment/scoring";
 import { calculateCompletedAssessmentResults } from "@/lib/assessment/scoring";
 import type { ScoringMethod } from "@/lib/assessment/types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import type { AiUsageContext, AiUsageRecorder } from "@/lib/assessment/ai-usage-accounting";
 
 type AttemptReportRow = {
   id: string;
@@ -121,6 +122,8 @@ export type ReportGenerationOverrides = Partial<
   promptVersionId?: string | null;
   promptTemplate?: ActivePromptVersion | null;
   participantDataOnlyQa?: boolean;
+  aiUsageRecorder?: AiUsageRecorder;
+  aiUsageContext?: AiUsageContext;
 };
 
 export type EnqueueCompletedAssessmentReportsSummary = {
@@ -215,11 +218,14 @@ async function generateReportWithFallback(
   overrides?: ReportGenerationOverrides,
 ): Promise<ReportGenerationResult> {
   const config = resolveAiReportConfig(overrides);
-  const selectedProvider = createSelectedReportProvider(config);
+  const selectedProvider = createSelectedReportProvider(config, {
+    aiUsageRecorder: overrides?.aiUsageRecorder,
+  });
   const preparedInput = buildPreparedReportGenerationInput(input, {
     promptVersionId: overrides?.promptVersionId ?? null,
     promptTemplate: overrides?.promptTemplate ?? null,
     participantDataOnlyQa: overrides?.participantDataOnlyQa,
+    aiUsageContext: overrides?.aiUsageContext,
   });
   const primaryResult = await selectedProvider.generateReport(preparedInput);
 

@@ -21,11 +21,17 @@ import {
   type IndividualDevelopmentProfileProviderSeamResult,
 } from "@/lib/assessment/individual-development-profile-provider";
 import { resolveReportLocale } from "@/lib/assessment/locale";
+import { getAiReportConfig } from "@/lib/assessment/report-config";
 import {
   formatReportLanguageQualityIssues,
   validateReportLanguageQuality,
 } from "@/lib/assessment/report-language-quality";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  createSupabaseAiUsageRecorder,
+  type AiUsageContext,
+  type AiUsageRecorder,
+} from "@/lib/assessment/ai-usage-accounting";
 
 type IndividualDevelopmentProfileProcessorDependencies = {
   supabase?: ReturnType<typeof createSupabaseAdminClient>;
@@ -36,6 +42,7 @@ type IndividualDevelopmentProfileProcessorDependencies = {
   claimReportForProcessing?: typeof claimIndividualDevelopmentProfileAssessmentReportForProcessing;
   markReportReady?: typeof markIndividualDevelopmentProfileAssessmentReportReady;
   markReportFailed?: typeof markIndividualDevelopmentProfileAssessmentReportFailed;
+  aiUsageRecorder?: AiUsageRecorder;
 };
 
 export type ProcessIndividualDevelopmentProfileAssessmentReportResult =
@@ -77,12 +84,6 @@ function getBuildInputSnapshot(
   deps: IndividualDevelopmentProfileProcessorDependencies,
 ) {
   return deps.buildInputSnapshot ?? buildIndividualDevelopmentProfileInputSnapshot;
-}
-
-function getGenerateReport(
-  deps: IndividualDevelopmentProfileProcessorDependencies,
-) {
-  return deps.generateReport ?? generateIndividualDevelopmentProfileReport;
 }
 
 function getValidateSnapshot(
@@ -299,7 +300,26 @@ export async function processIndividualDevelopmentProfileAssessmentReport(input:
     };
   }
 
-  const providerResult = await getGenerateReport(deps)(inputResult.inputSnapshot);
+  const providerResult = deps.generateReport
+    ? await deps.generateReport(inputResult.inputSnapshot)
+    : await (() => {
+        const usageRecorder =
+          getAiReportConfig().provider === "openai"
+            ? deps.aiUsageRecorder ?? createSupabaseAiUsageRecorder()
+            : undefined;
+
+        return generateIndividualDevelopmentProfileReport(inputResult.inputSnapshot, {
+          ...(usageRecorder ? { aiUsageRecorder: usageRecorder } : {}),
+          aiUsageContext: {
+            organizationId: claimResult.report.organization_id,
+            participantId: claimResult.report.participant_id,
+            assessmentAssignmentId: claimResult.report.assessment_assignment_id,
+            assessmentReportId: claimResult.report.id,
+            reportType: "individual_development_profile",
+            callPurpose: "individual_development_profile_generation",
+          } satisfies AiUsageContext,
+        });
+      })();
 
   if (!providerResult.ok) {
     const failed = await failClaimedReport(
