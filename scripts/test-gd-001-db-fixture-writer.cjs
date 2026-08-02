@@ -65,6 +65,7 @@ const expectedResponses = foundation.answers.rows
   }));
 assert.equal(expectedResponses.length, 184);
 const gd002Candidate = getGoldenDemoCandidateContract(foundation, "GD-002");
+const gd003Candidate = getGoldenDemoCandidateContract(foundation, "GD-003");
 const gd002ExpectedResponses = foundation.answers.rows
   .filter((row) => row.values.candidate_id === "GD-002")
   .map((row) => ({
@@ -181,7 +182,25 @@ assert.deepEqual(parseGd001WriterCli(["--apply", "--candidate", "GD-002"]), {
   candidateId: "GD-002",
   verbose: false,
 });
-assert.throws(() => parseGd001WriterCli(["--candidate", "GD-003"]), /Only GD-001 and GD-002/);
+assert.deepEqual(gd003Candidate, {
+  candidateId: "GD-003",
+  fullName: "Vladimir Lučić",
+  email: "vladimir.lucic@partnerplus.ba",
+  participantType: "employee",
+  addressingForm: "masculine",
+  teamId: "GDT-01",
+});
+assert.deepEqual(parseGd001WriterCli(["--candidate", "GD-003"]), {
+  mode: "dry-run",
+  candidateId: "GD-003",
+  verbose: false,
+});
+assert.deepEqual(parseGd001WriterCli(["--apply", "--candidate", "GD-003"]), {
+  mode: "apply",
+  candidateId: "GD-003",
+  verbose: false,
+});
+assert.throws(() => parseGd001WriterCli(["--candidate", "GD-004"]), /Only GD-001, GD-002, GD-003/);
 assert.equal(
   parseGd001WriterCli(["--apply", "--candidate", "GD-001"]).mode,
   "apply",
@@ -333,6 +352,31 @@ assert.equal(
   assert.throws(
     () => buildGoldenDemoFixtureRpcPayload(incompleteFoundation, "GD-002"),
     /GD-002 RPC payload requires 184 responses/,
+  );
+}
+const gd003Payload = buildGoldenDemoFixtureRpcPayload(foundation, "GD-003");
+assert.equal(gd003Payload.candidate_id, "GD-003");
+assert.equal(gd003Payload.participant.display_name, "Vladimir Lučić");
+assert.equal(gd003Payload.participant.email, "vladimir.lucic@partnerplus.ba");
+assert.equal(gd003Payload.participant.addressing_form, "masculine");
+assert.equal(gd003Payload.responses.length, 184);
+assert.deepEqual(
+  Object.fromEntries(
+    ["ipip-neo-120-v1", "safran_v1", "mwms_v1"].map((slug) => [
+      slug,
+      gd003Payload.responses.filter((response) => response.test_slug === slug).length,
+    ]),
+  ),
+  { "ipip-neo-120-v1": 120, safran_v1: 45, mwms_v1: 19 },
+);
+{
+  const incompleteFoundation = structuredClone(foundation);
+  incompleteFoundation.answers.rows = incompleteFoundation.answers.rows.filter(
+    (row) => !(row.values.candidate_id === "GD-003" && row.values.test_slug === "mwms_v1" && row.values.question_code === "MWMS_19"),
+  );
+  assert.throws(
+    () => buildGoldenDemoFixtureRpcPayload(incompleteFoundation, "GD-003"),
+    /GD-003 RPC payload requires 184 responses/,
   );
 }
 

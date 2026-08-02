@@ -21,7 +21,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const migration = fs.readFileSync(
   path.join(
     projectRoot,
-    "supabase/migrations/20260801120000_create_golden_demo_standard_battery_fixture_v2_rpc.sql",
+    "supabase/migrations/20260802100000_extend_golden_demo_standard_battery_fixture_v2_gd003.sql",
   ),
   "utf8",
 );
@@ -41,10 +41,16 @@ assert.match(migration, /security definer/i);
 assert.match(migration, /set search_path = ''/i);
 assert.match(migration, /pg_catalog\.pg_advisory_xact_lock/);
 assert.match(migration, /golden-demo:partner-plus:' \|\| v_candidate_id/);
-assert.match(migration, /v_candidate_id not in \('GD-001', 'GD-002'\)/);
+assert.match(migration, /v_candidate_id not in \('GD-001', 'GD-002', 'GD-003'\)/);
 assert.match(migration, /amel\.kovacevic@partnerplus\.ba/);
 assert.match(migration, /natasa\.rapaic@partnerplus\.ba/);
 assert.match(migration, /Nataša Rapaić/);
+assert.match(migration, /vladimir\.lucic@partnerplus\.ba/);
+assert.match(migration, /Vladimir Lučić/);
+assert.match(migration, /v_expected_addressing_form := 'masculine'/);
+assert.match(migration, /elsif v_candidate_id = 'GD-003' then/);
+assert.match(migration, /elsif v_candidate_id in \('GD-002', 'GD-003'\) then[\s\S]*requires an existing canonical participant/);
+assert.match(migration, /if v_participant_id is null then[\s\S]*insert into public\.participants/);
 assert.match(migration, /v_test_slug not in \('ipip-neo-120-v1', 'safran_v1', 'mwms_v1'\)/);
 assert.match(migration, /jsonb_array_length\(p_fixture -> 'responses'\) <> 184/);
 assert.match(migration, /v_ipip_response_count <> 120 or v_safran_response_count <> 45 or v_mwms_response_count <> 19/);
@@ -84,10 +90,23 @@ assert.equal(
   true,
 );
 assert.throws(
-  () => parseGd001WriterCli(["--candidate", "GD-003"]),
-  /Only GD-001 and GD-002/,
+  () => parseGd001WriterCli(["--candidate", "GD-004"]),
+  /Only GD-001, GD-002, GD-003/,
 );
 assert.throws(() => parseGd001WriterCli(["--apply"]), /explicit --candidate/);
+
+const gd003Candidate = getGoldenDemoCandidateContract(foundation, "GD-003");
+const gd003Payload = buildGoldenDemoFixtureRpcPayload(foundation, "GD-003");
+assert.deepEqual(gd003Candidate, {
+  candidateId: "GD-003",
+  fullName: "Vladimir Lučić",
+  email: "vladimir.lucic@partnerplus.ba",
+  participantType: "employee",
+  addressingForm: "masculine",
+  teamId: "GDT-01",
+});
+assert.equal(gd003Payload.candidate_id, "GD-003");
+assert.equal(gd003Payload.responses.length, 184);
 
 const attemptIds = Object.fromEntries(
   GOLDEN_DEMO_TEST_SLUGS.map((slug) => [slug, `attempt:${slug}`]),
@@ -180,7 +199,59 @@ assert.throws(
   assert.equal(result.scoringExecution, false);
   assert.equal(result.reportGeneration, false);
 
-  process.stdout.write("Golden Demo standard-battery RPC contract tests passed (SQL source, payload, validator, and mocked apply boundary).\n");
+  const gd003AttemptIds = Object.fromEntries(
+    GOLDEN_DEMO_TEST_SLUGS.map((slug) => [slug, `attempt:gd-003:${slug}`]),
+  );
+  const gd003EmptyPlan = {
+    ...emptyPlan,
+    candidateId: "GD-003",
+    participant: { action: "reuse", id: "participant:gd-003" },
+    assignment: { action: "create", id: null },
+    attemptIds: Object.fromEntries(GOLDEN_DEMO_TEST_SLUGS.map((slug) => [slug, null])),
+  };
+  const gd003ExactPlan = {
+    ...gd003EmptyPlan,
+    state: "EXACT_MATCH",
+    assignment: { action: "reuse", id: "assignment:gd-003" },
+    attemptIds: gd003AttemptIds,
+    responses: {
+      expected: 184,
+      resolved: 184,
+      insert: 0,
+      existingByTest: { "ipip-neo-120-v1": 120, safran_v1: 45, mwms_v1: 19 },
+    },
+  };
+  const gd003RpcResult = {
+    ...rpcResult,
+    candidateId: "GD-003",
+    participantId: "participant:gd-003",
+    assignmentId: "assignment:gd-003",
+    attemptIds: gd003AttemptIds,
+  };
+  let gd003InvokeCount = 0;
+  const gd003Result = await executeGoldenDemoApplyWithRpcBoundary({
+    candidateId: "GD-003",
+    initialPlan: gd003EmptyPlan,
+    payload: gd003Payload,
+    async invokeRpc({ rpcName, payload: invokedPayload }) {
+      gd003InvokeCount += 1;
+      assert.equal(rpcName, GOLDEN_DEMO_FIXTURE_RPC);
+      assert.equal(invokedPayload.candidate_id, "GD-003");
+      assert.equal(invokedPayload.responses.length, 184);
+      return gd003RpcResult;
+    },
+    async inspectAfterRpc() {
+      return gd003ExactPlan;
+    },
+  });
+  assert.equal(gd003InvokeCount, 1);
+  assert.equal(gd003Result.candidateId, "GD-003");
+  assert.equal(gd003Result.participantCreated, false);
+  assert.equal(gd003Result.writesPerformed, true);
+  assert.equal(gd003Result.scoringExecution, false);
+  assert.equal(gd003Result.reportGeneration, false);
+
+  process.stdout.write("Golden Demo standard-battery RPC contract tests passed (GD-002 regression, GD-003 payload/apply boundary, SQL source, validator, and mocked apply boundary).\n");
 })().catch((error) => {
   process.stderr.write(`${error.stack ?? error.message}\n`);
   process.exitCode = 1;

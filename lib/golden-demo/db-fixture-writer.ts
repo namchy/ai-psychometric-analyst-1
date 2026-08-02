@@ -1,6 +1,6 @@
 import type { GoldenDemoCsvFoundation } from "./csv-contract";
 
-export const GOLDEN_DEMO_CANDIDATE_IDS = ["GD-001", "GD-002"] as const;
+export const GOLDEN_DEMO_CANDIDATE_IDS = ["GD-001", "GD-002", "GD-003"] as const;
 export type GoldenDemoCandidateId = (typeof GOLDEN_DEMO_CANDIDATE_IDS)[number];
 export const GOLDEN_DEMO_ORGANIZATION_NAME =
   "Partner Plus d.o.o., Mikrokreditna organizacija" as const;
@@ -34,7 +34,13 @@ const LOCKED_CANDIDATE_IDENTITIES: Record<GoldenDemoCandidateId, { fullName: str
     fullName: "Nataša Rapaić",
     email: "natasa.rapaic@partnerplus.ba",
   },
+  "GD-003": {
+    fullName: "Vladimir Lučić",
+    email: "vladimir.lucic@partnerplus.ba",
+  },
 };
+
+const GOLDEN_DEMO_CANDIDATE_LABEL = GOLDEN_DEMO_CANDIDATE_IDS.join(", ");
 
 export function getGd001RpcErrorText(error: unknown): string {
   const parts: string[] = [];
@@ -279,7 +285,7 @@ export function parseGd001WriterCli(args: string[]): Gd001CliOptions {
     if (argument === "--candidate") {
       const value = args[index + 1];
       if (!value || value.startsWith("--")) {
-        throw new Error("--candidate requires an explicit GD-001 or GD-002 value.");
+        throw new Error(`--candidate requires an explicit ${GOLDEN_DEMO_CANDIDATE_LABEL} value.`);
       }
       candidateId = value;
       index += 1;
@@ -293,10 +299,12 @@ export function parseGd001WriterCli(args: string[]): Gd001CliOptions {
   }
 
   if (mode === "apply" && !candidateId) {
-    throw new Error("--apply requires an explicit --candidate GD-001 or --candidate GD-002 confirmation.");
+    throw new Error(
+      `--apply requires an explicit --candidate from ${GOLDEN_DEMO_CANDIDATE_LABEL} confirmation.`,
+    );
   }
   if (candidateId && !GOLDEN_DEMO_CANDIDATE_IDS.includes(candidateId as GoldenDemoCandidateId)) {
-    throw new Error(`Unsupported candidate ID: ${candidateId}. Only GD-001 and GD-002 are allowed.`);
+    throw new Error(`Unsupported candidate ID: ${candidateId}. Only ${GOLDEN_DEMO_CANDIDATE_LABEL} are allowed.`);
   }
 
   return { mode, candidateId: (candidateId ?? GD_001_CANDIDATE_ID) as GoldenDemoCandidateId, verbose };
