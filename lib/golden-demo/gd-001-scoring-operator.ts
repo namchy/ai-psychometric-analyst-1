@@ -77,6 +77,7 @@ const DESTRUCTIVE_FLAGS = new Set([
   "--force",
   "--overwrite",
 ]);
+const GOLDEN_DEMO_SCORING_CANDIDATE_LABEL = GOLDEN_DEMO_CANDIDATE_IDS.join(", ");
 
 export function parseGd001ScoringCli(args: string[]): Gd001ScoringCliOptions {
   for (const argument of args) {
@@ -98,7 +99,7 @@ export function parseGd001ScoringCli(args: string[]): Gd001ScoringCliOptions {
     } else if (argument === "--candidate") {
       const value = args[index + 1];
       if (!value || value.startsWith("--")) {
-        throw new Error("--candidate requires an explicit GD-001 or GD-002 value.");
+        throw new Error(`--candidate requires an explicit ${GOLDEN_DEMO_SCORING_CANDIDATE_LABEL} value.`);
       }
       candidateId = value;
       index += 1;
@@ -110,10 +111,12 @@ export function parseGd001ScoringCli(args: string[]): Gd001ScoringCliOptions {
   }
 
   if (mode === "apply" && !candidateId) {
-    throw new Error("--apply requires an explicit --candidate GD-001 or --candidate GD-002 confirmation.");
+    throw new Error(
+      `--apply requires an explicit --candidate from ${GOLDEN_DEMO_SCORING_CANDIDATE_LABEL} confirmation.`,
+    );
   }
   if (candidateId && !GOLDEN_DEMO_CANDIDATE_IDS.includes(candidateId as GoldenDemoCandidateId)) {
-    throw new Error(`Unsupported candidate ID: ${candidateId}. Only GD-001 and GD-002 are allowed.`);
+    throw new Error(`Unsupported candidate ID: ${candidateId}. Only ${GOLDEN_DEMO_SCORING_CANDIDATE_LABEL} are allowed.`);
   }
   return { mode, candidateId: (candidateId ?? GD_001_CANDIDATE_ID) as GoldenDemoCandidateId, verbose };
 }

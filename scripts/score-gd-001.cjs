@@ -128,7 +128,7 @@ async function loadScoringInspection({ supabase, repository, foundation }) {
       participant.participant_type === "employee" &&
       participant.status === "active" &&
       (participant.addressing_form === resolved.candidate.addressingForm ||
-        (resolved.candidate.candidateId === "GD-002" && participant.addressing_form === null)) &&
+        (["GD-002", "GD-003"].includes(resolved.candidate.candidateId) && participant.addressing_form === null)) &&
       resolved.snapshot.assignments.length === 1 &&
       assignment?.organization_id === resolved.snapshot.organizationId &&
       assignment?.participant_id === participant.id &&

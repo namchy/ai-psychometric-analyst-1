@@ -101,7 +101,17 @@ assert.deepEqual(parseGd001ScoringCli(["--candidate", "GD-002"]), {
   candidateId: "GD-002",
   verbose: false,
 });
-assert.throws(() => parseGd001ScoringCli(["--candidate", "GD-003"]), /Only GD-001 and GD-002/);
+assert.deepEqual(parseGd001ScoringCli(["--candidate", "GD-003"]), {
+  mode: "dry-run",
+  candidateId: "GD-003",
+  verbose: false,
+});
+assert.deepEqual(parseGd001ScoringCli(["--apply", "--candidate", "GD-003"]), {
+  mode: "apply",
+  candidateId: "GD-003",
+  verbose: false,
+});
+assert.throws(() => parseGd001ScoringCli(["--candidate", "GD-004"]), /Only GD-001, GD-002, GD-003/);
 for (const flag of ["--delete", "--cleanup", "--reset", "--force", "--overwrite"]) {
   assert.throws(() => parseGd001ScoringCli([flag]), /separate operator task/);
 }
@@ -212,6 +222,81 @@ const gd002ScoredClassification = classifyGd001ScoringState({
   candidateId: "GD-002",
 });
 assert.equal(gd002ScoredClassification.state, "SCORED_EXACT");
+
+const gd003AttemptIds = {
+  "ipip-neo-120-v1": "423ecf59-c3a2-498b-8cb7-1dd82a867b5f",
+  safran_v1: "374a4ce8-1531-4d1d-8c76-58613d025b0d",
+  mwms_v1: "ee81a3ea-4163-49fc-8234-f71882a5716f",
+};
+const gd003Unscored = {
+  ...unscoredSnapshot(),
+  participantId: "a7b7f687-0daf-42ce-95c1-ee9053f35056",
+  assignmentId: "d0b23f90-cb71-4c0d-bcd3-dc21d282e9d2",
+  attemptIds: gd003AttemptIds,
+};
+assert.equal(gd003Unscored.fixtureState, "EXACT_MATCH");
+assert.equal(gd003Unscored.structuralFixtureExact, true);
+assert.deepEqual(gd003Unscored.attemptIds, gd003AttemptIds);
+assert.equal(gd003Unscored.attempts.length, 3);
+assert.equal(Object.values(gd003Unscored.responseCounts).reduce((sum, count) => sum + count, 0), 184);
+assert.equal(Object.values(gd003Unscored.rawValueCounts).reduce((sum, count) => sum + count, 0), 0);
+assert.equal(Object.values(gd003Unscored.scoredValueCounts).reduce((sum, count) => sum + count, 0), 0);
+assert.equal(gd003Unscored.dimensionScores.length, 0);
+assert.equal(gd003Unscored.attemptReportCount, 0);
+assert.equal(gd003Unscored.assessmentReportCount, 0);
+const gd003UnscoredVerification = verifyPersistedGd001Scores({
+  foundation,
+  dimensionScores: [],
+  candidateId: "GD-003",
+});
+assert.equal(gd003UnscoredVerification.ok, false);
+assert.equal(gd003UnscoredVerification.matched, 0);
+assert.equal(gd003UnscoredVerification.expected, 47);
+const gd003UnscoredClassification = classifyGd001ScoringState({
+  snapshot: gd003Unscored,
+  verification: gd003UnscoredVerification,
+  candidateId: "GD-003",
+});
+assert.equal(gd003UnscoredClassification.fixtureWriterState, "EXACT_MATCH");
+assert.equal(gd003UnscoredClassification.fixtureCompatibilityState, "EXACT_MATCH");
+assert.equal(gd003UnscoredClassification.scoringState, "UNSCORED_EXACT");
+assert.equal(gd003UnscoredClassification.state, "UNSCORED_EXACT");
+assert.deepEqual(gd003UnscoredClassification.blockers, []);
+
+const gd003ExactScores = exactPersistedDimensions("GD-003");
+assert.equal(gd003ExactScores.length, 40);
+const gd003ExactVerification = verifyPersistedGd001Scores({
+  foundation,
+  dimensionScores: gd003ExactScores,
+  candidateId: "GD-003",
+});
+assert.equal(gd003ExactVerification.ok, true);
+assert.equal(gd003ExactVerification.matched, 47);
+assert.equal(gd003ExactVerification.expected, 47);
+assert.deepEqual(gd003ExactVerification.errors, []);
+const gd003Scored = {
+  ...scoredSnapshot(),
+  participantId: gd003Unscored.participantId,
+  assignmentId: gd003Unscored.assignmentId,
+  attemptIds: gd003AttemptIds,
+  dimensionScores: gd003ExactScores,
+};
+assert.equal(gd003Scored.attempts.length, 3);
+assert.equal(Object.values(gd003Scored.rawValueCounts).reduce((sum, count) => sum + count, 0), 184);
+assert.equal(Object.values(gd003Scored.scoredValueCounts).reduce((sum, count) => sum + count, 0), 184);
+assert.equal(gd003Scored.dimensionScores.length, 40);
+assert.equal(gd003Scored.attemptReportCount, 0);
+assert.equal(gd003Scored.assessmentReportCount, 0);
+const gd003ScoredClassification = classifyGd001ScoringState({
+  snapshot: gd003Scored,
+  verification: gd003ExactVerification,
+  candidateId: "GD-003",
+});
+assert.equal(gd003ScoredClassification.fixtureWriterState, "CONFLICT");
+assert.equal(gd003ScoredClassification.fixtureCompatibilityState, "EXACT_MATCH");
+assert.equal(gd003ScoredClassification.scoringState, "SCORED_EXACT");
+assert.equal(gd003ScoredClassification.state, "SCORED_EXACT");
+assert.deepEqual(gd003ScoredClassification.blockers, []);
 
 const scoredPlan = buildGd001ScoringPlan({
   mode: "dry-run",
@@ -325,6 +410,32 @@ assert.equal(
   assert.equal(gd002ProductionCalls, 1);
   assert.equal(gd002PostChecks, 1);
 
+  let gd003ProductionCalls = 0;
+  let gd003PostChecks = 0;
+  const gd003Result = await executeGd001ScoringApply({
+    snapshot: gd003Unscored,
+    classification: gd003UnscoredClassification,
+    runProductionScoring: async () => {
+      gd003ProductionCalls += 1;
+    },
+    inspectAfter: async () => {
+      gd003PostChecks += 1;
+      return { snapshot: gd003Scored, verification: gd003ExactVerification };
+    },
+  });
+  assert.equal(gd003Result.stateBefore, "UNSCORED_EXACT");
+  assert.equal(gd003Result.stateAfter, "SCORED_EXACT");
+  assert.equal(gd003Result.participantId, gd003Unscored.participantId);
+  assert.equal(gd003Result.assignmentId, gd003Unscored.assignmentId);
+  assert.deepEqual(gd003Result.attemptIds, gd003AttemptIds);
+  assert.equal(gd003Result.writesPerformed, true);
+  assert.equal(gd003Result.scoringExecution, true);
+  assert.equal(gd003Result.reportGeneration, false);
+  assert.equal(gd003Result.openAiCalls, false);
+  assert.equal(gd003Result.expectedScoreVerification.matched, 47);
+  assert.equal(gd003ProductionCalls, 1);
+  assert.equal(gd003PostChecks, 1);
+
   const gd002Partial = {
     ...gd002Unscored,
     attempts: gd002Unscored.attempts.map((attempt, index) =>
@@ -434,6 +545,9 @@ assert.equal(
   assert.doesNotMatch(operatorSource, /OpenAI\s*\(/);
   assert.match(operatorSource, /getGoldenDemoCandidateContract/);
   assert.match(operatorSource, /candidateId: candidate\.candidateId/);
+  assert.match(operatorSource, /\["GD-002", "GD-003"\]\.includes\(resolved\.candidate\.candidateId\)/);
+  assert.match(operatorSource, /attempt\.addressing_form_snapshot === resolved\.candidate\.addressingForm/);
+  assert.doesNotMatch(operatorSource, /resolved\.candidate\.candidateId === "GD-002"\s*&&\s*participant\.addressing_form === null/);
   for (const forbidden of ["raw_value:", "scored_value:", "dimension_scores\")\.insert"] ) {
     assert.equal(operatorSource.includes(forbidden), false, `operator must not directly write ${forbidden}`);
   }
