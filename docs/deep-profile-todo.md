@@ -94,19 +94,19 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 >
 > **Browser smoke napomena:** svih šest canonical ruta je dosegnuto na lokalnom serveru, ali ih je auth middleware preusmjerio na `/login` jer HR sesija nije bila dostupna. Nije zabilježen 404, 500, React, hydration, loader ili network failure; stvarni rendered content pregled nije izvršen. Ovo je `manual visual verification pending`, ali nije blocker za nastavak cohort completeness rada.
 >
-> **Current P0 — GD-003 individual data and report completeness (2026-08-01):** GD-002 više nije aktivni pending kandidat. Jedini aktivni sljedeći kandidat je `GD-003`; ne tretirati ga kao započetog ili završenog prije izvršenja navedenih koraka. Ne generisati nasumične odgovore i ne raditi DB write prije provjere canonical fixturea.
+> **Current P0 — GD-003 individual data and report completeness (2026-08-02):** GD-003 read-only source/profile/fixture audit i authored profil su završeni. Standard-battery fixture je kompletan sa `184/184` odgovora (`120` IPIP, `45` SAFRAN, `19` MWMS), a expected scoreovi su `47/47`; exact offline verification je PASS. GD-001 i GD-002 full-battery offline regression su PASS. U ovom koraku nije bilo DB writeova niti OpenAI poziva. GD-003 ostaje jedini aktivni kandidat, sada u `controlled persistence` fazi; ne raditi persistence prije zasebne controlled provjere.
 >
-> **GDT-01 cohort status:** `GD-001: complete hero package`; `GD-002: complete individual package`; `GD-003: active next candidate`; `GD-004: pending`; `GD-005: pending`; `GD-019: pending`. Team Dynamics lane ostaje završen i ne mijenja se ovim handoffom.
+> **GDT-01 cohort status:** `GD-001: complete hero package`; `GD-002: complete individual package`; `GD-003: authored profile + complete offline fixture, controlled persistence next`; `GD-004: pending`; `GD-005: pending`; `GD-019: pending`. Team Dynamics lane ostaje završen i ne mijenja se ovim handoffom.
 >
 > **Canonical demo-first sequence:**
 >
 > 1. GD-001 hero report paket — završeno.
 > 2. GD-002 individualni report paket — završeno.
-> 3. GD-003: read-only source/profile/fixture audit.
-> 4. GD-003: potvrda authored profila.
-> 5. GD-003: IPIP, SAFRAN i MWMS fixture completeness.
-> 6. GD-003: offline expected-score exact verification.
-> 7. GD-003: controlled persistence.
+> 3. GD-003: read-only source/profile/fixture audit — završeno.
+> 4. GD-003: potvrda authored profila — završeno.
+> 5. GD-003: IPIP, SAFRAN i MWMS fixture completeness — završeno (`184/184`).
+> 6. GD-003: offline expected-score exact verification — završeno (`47/47 exact`); GD-001 i GD-002 regression PASS.
+> 7. GD-003: controlled persistence — sljedeći aktivni korak.
 > 8. GD-003: production scoring.
 > 9. GD-003: kompletan individualni report paket.
 > 10. GD-003: package completeness verification.
@@ -115,7 +115,7 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 > Candidate self-service auth linkage i persisted participant AI reportovi nisu trenutni P0 osim ako kasnije postanu dokazani blocker HR demo putanje. Team Fit V1 ostaje neaktivan.
 >
 >
-> Ovaj current-priority blok nadjačava ranije aktivne formulacije o Team Fit V2 active runtime cutoveru, migration activationu, canonical persisted smokeu, Team Dynamics worker/production-readiness nastavku, GD-001 report-content reviewu, GD-002 source/completeness radu i codebase refactoring next taskovima. Ti navodi ostaju historijska ili planirana evidencija; jedini aktivni sljedeći task je read-only source/profile/fixture audit za GD-003. Ne mijenjaju se niti brišu historijski zapisi.
+> Ovaj current-priority blok nadjačava ranije aktivne formulacije o Team Fit V2 active runtime cutoveru, migration activationu, canonical persisted smokeu, Team Dynamics worker/production-readiness nastavku, GD-001 report-content reviewu, GD-002 source/completeness radu i codebase refactoring next taskovima. Ti navodi ostaju historijska ili planirana evidencija; jedini aktivni sljedeći task je controlled persistence za GD-003. Ne mijenjaju se niti brišu historijski zapisi.
 >
 > **Odgođeni P2/UI-sprint nalazi:** Team Dynamics headline line-height je zbijen; badge `B5` nema korisničko objašnjenje; pojedini gridovi ostavljaju prazan prostor; dugim reportima kasnije može koristiti sadržajna navigacija, collapsible sekcije ili print/PDF polish. Širi dashboard, lijevi meni, tablični prikazi članova i standardizacija ekrana pripadaju zasebnom UI sprintu. Ovi nalazi ne blokiraju Golden Demo i ne otvaraju novi prompt ili renderer task.
 
@@ -1777,7 +1777,7 @@ Dobre ideje koje nisu za sadašnji razvojni sprint.
 
 ### P0 — Golden Team individual data and report completeness
 
-**Status:** Active — GD-001 hero paket i GD-002 individualni paket završeni; GD-003 je jedini sljedeći kandidat
+**Status:** Active — GD-001 hero paket i GD-002 individualni paket završeni; GD-003 authored profil, `184/184` fixture i `47/47` exact offline verification završeni; GD-003 je u controlled-persistence fazi
 **Kategorija:** Demo data / Report completeness / Calibration
 
 **Cilj:** Izgraditi 24 Golden Demo kandidata u četiri sintetička tima kao realističan, kontrolisan dataset za scoring provjeru, individualne i timske reportove, semantičku evaluator QA, ciljanu prompt/content-contract kalibraciju, razvoj novog HR dashboarda i mogući klijentski web demo. Demo organizacija je **Partner Plus d.o.o. — Mikrokreditna organizacija**. Kohorta ima 18 development/calibration i 6 holdout kandidata, ljudski čitljiva sintetička imena i funkcije te odvojene stabilne interne fixture ključeve. Workstream je odvojen od novog HR dashboard UI workstreama, ali mu obezbjeđuje realistične podatke i potvrđuje kvalitet reporta. Nije zaključeno da svih 24 kandidata mora biti završeno prije bilo kakvog UI rada.
@@ -1785,9 +1785,9 @@ Dobre ideje koje nisu za sadašnji razvojni sprint.
 **Plan i preflight:** `docs/deep-profile-golden-demo-cohort-plan.md` i `docs/deep-profile-golden-demo-cohort-preflight.md`.
 
 **Trenutni milestone:** Partner Plus organizacija, Golden Demo foundation i GDT-01 runtime su spremni. GD-001 / Amel Kovačević ima ready i validan hero paket, a GD-002 / Nataša Rapaić ima ready i validan individualni paket: IPIP HR (`7039caad-f2f2-44de-ba54-392690cf9d9d`), SAFRAN HR (`55187b60-0152-44d3-9da9-0c6782cd1e92`), MWMS HR (`1ad45845-a747-49f8-aaa6-31972600964c`), Composite HR (`31689377-7450-4e9d-a9a8-30ba21f86363`) i IDP (`f2ef6a26-5f45-4107-8fd2-430696f495d6`). Team Dynamics Executive Overview za GDT-01 i canonical Team Fit V2 ostaju ready i otvorivi. Svi artefakti koriste potvrđene produkcijske validatore/loadere; GD-002 ima `184/184` odgovora, `40` persisted dimension score redova, `7` derived read-only entryja i `47/47 exact` expected scoreova.
-**Naredni očekivani milestone:** GD-003 je jedini aktivni sljedeći kandidat. Redoslijed je: read-only source/profile/fixture audit, authored profile confirmation, IPIP/SAFRAN/MWMS fixture completeness, offline expected-score exact verification, controlled persistence, production scoring, kompletan individualni report paket i package completeness verification. Ne generisati nasumične odgovore i ne raditi DB write prije provjere canonical fixturea.
+**Naredni očekivani milestone:** GD-003 controlled persistence je jedini aktivni sljedeći korak. Read-only source/profile/fixture audit, authored profile confirmation, IPIP/SAFRAN/MWMS fixture completeness (`184/184`) i offline expected-score exact verification (`47/47`) su završeni; GD-001 i GD-002 regression je PASS. Nakon persistencea slijede production scoring, kompletan individualni report paket i package completeness verification. Ne generisati nove odgovore niti raditi persistence izvan controlled patha.
 
-**Aktivni preflight:** Team Fit ostaje zaseban relacijski report lane i V1 ostaje neaktivan. Canonical GD-001 i GD-002 individualni paketi, GD-001 × GDT-01 Team Fit V2, Team Dynamics Executive Overview, Composite HR i IDP artefakti su spremni; ne otvarati novi prompt/runtime task bez konkretnog problema. Aktivni Golden Demo preflight sada je isključivo GD-003 source/profile/fixture audit. GD-004, GD-005 i GD-019 ostaju pending i nisu aktivni kandidati.
+**Aktivni preflight:** Team Fit ostaje zaseban relacijski report lane i V1 ostaje neaktivan. Canonical GD-001 i GD-002 individualni paketi, GD-003 offline fixture, GD-001 × GDT-01 Team Fit V2, Team Dynamics Executive Overview, Composite HR i IDP artefakti su spremni; ne otvarati novi prompt/runtime task bez konkretnog problema. Aktivni Golden Demo preflight sada je GD-003 controlled persistence. GD-004, GD-005 i GD-019 ostaju pending i nisu aktivni kandidati.
 
 **GDT-01 Team Dynamics persistence status:** identity/team foundation je završen live `EXACT_MATCH` (`24 participants`, `4 teams`, `24 active memberships`). GDT-01 assignment/attempt/response persistence, production member scoring, aggregation i Executive Overview report su završeni; canonical ready report je `c4fad3cf-1ced-46ea-83d3-d6323db6d0d5`, a raniji ready report `fdfab035-d040-4da0-ab19-67a119be6c00` ostaje neizmijenjen. Privacy, contract, lineage i browser route provjera su PASS. Standard battery i GD-001 individualni source artefakti ostaju odvojeni i ne mijenjaju se kroz cohort audit.
 

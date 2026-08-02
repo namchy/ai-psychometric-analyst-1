@@ -169,20 +169,35 @@ assert.ok(
   Object.values(verification.expectedAiFindingsByLane).every((count) => count === 4),
 );
 
-const gd002IpipVerification = verifyGoldenDemoExpectedScores({
-  foundation,
-  projectRoot,
-  candidateId: "GD-002",
-  assessments: ["ipip-neo-120-v1"],
-});
-assert.equal(gd002IpipVerification.ok, true);
-assert.equal(gd002IpipVerification.answers.byTest["ipip-neo-120-v1"], 120);
-assert.equal(gd002IpipVerification.answers.expectedByTest["ipip-neo-120-v1"], 120);
-assert.equal(gd002IpipVerification.expectedScores.total, 35);
-assert.equal(gd002IpipVerification.expectedScores.matched, 35);
-assert.equal(gd002IpipVerification.scores.length, 35);
-assert.equal(gd002IpipVerification.answers.expectedByTest.mwms_v1, 0);
-assert.equal(gd002IpipVerification.answers.expectedByTest.safran_v1, 0);
+function assertFullBatteryVerification(candidateId) {
+  const verification = verifyGoldenDemoExpectedScores({
+    foundation,
+    projectRoot,
+    candidateId,
+    assessments: ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+  });
+  assert.equal(verification.ok, true);
+  assert.deepEqual(verification.errors, []);
+  assert.equal(verification.answers.total, 184);
+  assert.deepEqual(verification.answers.byTest, {
+    "ipip-neo-120-v1": 120,
+    mwms_v1: 19,
+    safran_v1: 45,
+  });
+  assert.deepEqual(verification.answers.expectedByTest, {
+    "ipip-neo-120-v1": 120,
+    mwms_v1: 19,
+    safran_v1: 45,
+  });
+  assert.ok(Object.values(verification.answers.completeByTest).every(Boolean));
+  assert.equal(verification.expectedScores.total, 47);
+  assert.equal(verification.expectedScores.matched, 47);
+  assert.equal(verification.scores.length, 47);
+  return verification;
+}
+
+const gd002FullBatteryVerification = assertFullBatteryVerification("GD-002");
+const gd003FullBatteryVerification = assertFullBatteryVerification("GD-003");
 
 const gd001 = foundation.candidates.rows.find(
   (row) => row.values.candidate_id === "GD-001",
@@ -315,12 +330,22 @@ expectCandidateVerifierError(
   ["ipip-neo-120-v1"],
   "unknown_candidate",
 );
-expectCandidateVerifierError(
-  foundation,
-  "GD-002",
-  ["mwms_v1"],
-  "missing_answer",
-);
+{
+  const mutated = cloneFoundation(foundation);
+  const index = mutated.answers.rows.findIndex(
+    (row) =>
+      row.values.candidate_id === "GD-003" &&
+      row.values.test_slug === "mwms_v1",
+  );
+  assert.ok(index >= 0);
+  mutated.answers.rows.splice(index, 1);
+  expectCandidateVerifierError(
+    mutated,
+    "GD-003",
+    ["ipip-neo-120-v1", "safran_v1", "mwms_v1"],
+    "missing_answer",
+  );
+}
 {
   const mutated = cloneFoundation(foundation);
   const source = mutated.answers.rows.find(
@@ -365,5 +390,5 @@ expectCandidateVerifierError(
 }
 
 process.stdout.write(
-  "Golden Demo offline verifier tests passed (GD-001 compatibility, GD-002 IPIP scope, and negative cases).\n",
+  "Golden Demo offline verifier tests passed (GD-001 compatibility, GD-002 full battery, GD-003 full battery, and negative cases).\n",
 );

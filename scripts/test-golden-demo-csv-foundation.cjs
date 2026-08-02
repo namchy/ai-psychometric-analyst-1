@@ -138,6 +138,30 @@ function validAiFinding(overrides = {}) {
   };
 }
 
+function assertCompleteCandidateInspection(candidateId) {
+  const inspection = inspectGoldenDemoCandidate(foundation, candidateId);
+  assert.ok(inspection);
+  assert.deepEqual(inspection.answerCountByTest, {
+    "ipip-neo-120-v1": 120,
+    mwms_v1: 19,
+    safran_v1: 45,
+  });
+  assert.deepEqual(inspection.expectedScoreCountByTest, {
+    "ipip-neo-120-v1": 35,
+    mwms_v1: 8,
+    safran_v1: 4,
+  });
+  assert.equal(
+    Object.values(inspection.answerCountByTest).reduce((sum, count) => sum + count, 0),
+    184,
+  );
+  assert.equal(
+    Object.values(inspection.expectedScoreCountByTest).reduce((sum, count) => sum + count, 0),
+    47,
+  );
+  return inspection;
+}
+
 const parsedQuotedCsv = parseGoldenDemoCsv(
   'first,second\n"value, with comma","quoted ""value"""\n',
   "quoted-test.csv",
@@ -157,8 +181,8 @@ assert.deepEqual(result.summary.teamCounts, {
   "GDT-03": 6,
   "GDT-04": 6,
 });
-assert.equal(result.summary.answerCount, 184);
-assert.equal(result.summary.expectedScoreCount, 47);
+assert.equal(result.summary.answerCount, 552);
+assert.equal(result.summary.expectedScoreCount, 141);
 assert.equal(result.summary.expectedAiFindingCount, 32);
 
 const expectedEmails = {
@@ -175,25 +199,16 @@ for (const [displayName, email] of Object.entries(expectedEmails)) {
   assert.equal(row?.values.email, email);
 }
 
-const gd001 = inspectGoldenDemoCandidate(foundation, "GD-001");
-assert.ok(gd001);
+const gd001 = assertCompleteCandidateInspection("GD-001");
 assert.equal(gd001.candidate.email, "amel.kovacevic@partnerplus.ba");
 assert.equal(gd001.candidate.dataStatus, "answers_ready");
-assert.deepEqual(gd001.answerCountByTest, {
-  "ipip-neo-120-v1": 120,
-  mwms_v1: 19,
-  safran_v1: 45,
-});
-assert.deepEqual(gd001.expectedScoreCountByTest, {
-  "ipip-neo-120-v1": 35,
-  mwms_v1: 8,
-  safran_v1: 4,
-});
 assert.ok(
   Object.values(gd001.expectedAiFindingCountByReportLane).every(
     (count) => count === 4,
   ),
 );
+assertCompleteCandidateInspection("GD-002");
+assertCompleteCandidateInspection("GD-003");
 assert.equal(inspectGoldenDemoCandidate(foundation, "GD-999"), null);
 
 expectInvalid(

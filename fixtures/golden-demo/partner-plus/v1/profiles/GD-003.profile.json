@@ -1,0 +1,149 @@
+{
+  "profile_version": "gd_expected_profile_v1",
+  "candidate_id": "GD-003",
+  "display_name": "Vladimir Lučić",
+  "email": "vladimir.lucic@partnerplus.ba",
+  "addressing_form": "masculine",
+  "authoring_status": {
+    "status": "authored_profile_only",
+    "raw_answers_created": false,
+    "expected_scores_created": false,
+    "next_step": "Iz ovog profila izvesti 184 deterministička odgovora i offline validirati ih prije bilo kakvog persistencea."
+  },
+  "role_context": {
+    "job_title": "Terenski kreditni službenik",
+    "team_id": "GDT-01",
+    "context_summary": "Terenski kreditni rad traži neposredno razumijevanje klijenta, provjeru činjenica i dokumentacije, praktičnu procjenu rizika te pouzdano zatvaranje konkretnih slučajeva. Samostalnost je važna, ali kvalitet rada zavisi i od pravovremenog dijeljenja sumnji i potreba za pomoći s timom."
+  },
+  "target_profile_summary": "Praktičan, samostalan i oprezan terenski kreditni službenik koji gradi povjerenje kroz dosljednost, direktan kontakt i ispunjena obećanja. Najbolje radi kada može razumjeti klijenta, provjeriti činjenice i držati konkretan slučaj pod kontrolom; pouzdan je u individualnom radu, praćenju dokumentacije i zatvaranju obaveza. Aktivan je i funkcionalan na terenu, ali rezervisaniji u široj grupnoj raspravi i ne traži priznanje grupe kao glavni izvor motivacije. Razvojni izazov je ranije iznijeti nepotpunu sumnju ili rizik i zatražiti pomoć prije nego što samostalno rješavanje predugo potraje.",
+  "ipip_targets": {
+    "targeting_method": "Ciljevi su relativne namjere za naredni offline authoring; ne predstavljaju raw item odgovore niti persisted scoreove. Obrazac treba razlikovati praktičnu samostalnost i oprez od socijalne dominacije, emocionalne eskalacije ili tvrdnje da kandidat nema stres.",
+    "facets": {
+      "ANXIETY": { "relative_level": "balanced", "rationale": "Pritisak registruje kroz unutrašnju provjeru i oprez, a ne kroz stalnu zabrinutost ili emocionalnu eskalaciju." },
+      "ANGER": { "relative_level": "lower", "rationale": "Profesionalno neslaganje i rizik treba iznijeti mirno, bez reaktivne ljutnje." },
+      "DEPRESSION": { "relative_level": "lower" },
+      "SELF_CONSCIOUSNESS": { "relative_level": "balanced", "rationale": "Samoprovjera je prisutna kada procjenjuje da li ima dovoljno činjenica, ali ne treba prerasti u trajnu nesigurnost." },
+      "IMMODERATION": { "relative_level": "lower" },
+      "VULNERABILITY": { "relative_level": "balanced", "rationale": "Može ostati funkcionalan pod pritiskom, ali mu je razvojno važno da ranije prizna neizvjesnost i traži podršku." },
+      "FRIENDLINESS": { "relative_level": "higher", "rationale": "Topliji je i otvoreniji u razgovoru jedan-na-jedan, posebno kada povjerenje gradi kroz direktan kontakt s klijentom." },
+      "GREGARIOUSNESS": { "relative_level": "lower", "rationale": "Ne treba mu široka grupa ni stalna socijalna razmjena da bi bio angažovan i pouzdan." },
+      "ASSERTIVENESS": { "relative_level": "balanced", "rationale": "Može jasno zastupati profesionalnu procjenu, ali ne nastupa kao koordinator niti pokušava voditi grupnu raspravu." },
+      "ACTIVITY_LEVEL": { "relative_level": "higher", "rationale": "Terenski rad, obilazak klijenata i praćenje više konkretnih obaveza traže energičan i operativan ritam." },
+      "EXCITEMENT_SEEKING": { "relative_level": "lower", "rationale": "Prednost daje provjerenom i kontrolisanom napretku, ne novini ili intenzitetu radi samog intenziteta." },
+      "CHEERFULNESS": { "relative_level": "balanced" },
+      "IMAGINATION": { "relative_level": "balanced" },
+      "ARTISTIC_INTERESTS": { "relative_level": "lower" },
+      "EMOTIONALITY": { "relative_level": "balanced", "rationale": "Može razumjeti klijentsku situaciju bez toga da emocionalni utisak zamijeni provjeru činjenica i rizika." },
+      "ADVENTUROUSNESS": { "relative_level": "lower", "rationale": "Promjenu i nova rješenja prihvata kada su praktično objašnjeni i provjereni, ne radi novine same." },
+      "INTELLECT": { "relative_level": "higher", "rationale": "Pomaže mu da poveže dokumentaciju, klijentski kontekst i praktične posljedice prije zaključka." },
+      "LIBERALISM": { "relative_level": "balanced" },
+      "TRUST": { "relative_level": "balanced", "rationale": "Otvoren je za klijenta i saradnju, ali povjerenje gradi postepeno i zadržava provjeru dokaza." },
+      "MORALITY": { "relative_level": "higher", "rationale": "Korektnost, diskrecija i odgovorno postupanje s kreditnim rizikom važni su mu u svakom slučaju." },
+      "ALTRUISM": { "relative_level": "higher", "rationale": "Spreman je uložiti dodatni trud kada to klijentu pomaže da razumije obaveze i riješi praktičnu prepreku." },
+      "COOPERATION": { "relative_level": "higher", "rationale": "Saradljiv je i pouzdan u zajedničkom radu, uz potrebu da nedoumice ne zadržava predugo kod sebe." },
+      "MODESTY": { "relative_level": "higher", "rationale": "Ne traži da bude društveni ili stručni centar grupe; doprinos pokazuje kroz konkretan rad i ispunjene obaveze." },
+      "SYMPATHY": { "relative_level": "higher", "rationale": "Pažljiv je prema klijentskim okolnostima, ali zadržava profesionalnu distancu i provjeru rizika." },
+      "SELF_EFFICACY": { "relative_level": "higher", "rationale": "Pouzdano drži individualni slučaj pod kontrolom i ustraje u rješavanju praktičnih prepreka." },
+      "ORDERLINESS": { "relative_level": "higher", "rationale": "Jasne obaveze, checkliste, rokovi i uredna dokumentacija pomažu mu da slučaj završi kvalitetno." },
+      "DUTIFULNESS": { "relative_level": "higher", "rationale": "Ozbiljno shvata obećanja, diskreciju, dokumentaciju i odgovornost prema klijentu i organizaciji." },
+      "ACHIEVEMENT_STRIVING": { "relative_level": "balanced", "rationale": "Usmjeren je na zatvaranje konkretnog slučaja i kvalitet izvršenja, ne na status, takmičenje ili vođenje drugih." },
+      "SELF_DISCIPLINE": { "relative_level": "higher", "rationale": "Može održati radni ritam i pratiti obaveze i kada nema neposrednog nadzora." },
+      "CAUTIOUSNESS": { "relative_level": "higher", "rationale": "Prije zaključka provjerava činjenice, dokumentaciju i moguće posljedice; razvojni tradeoff je kasnije iznošenje nepotpunog rizika." }
+    },
+    "domains": {
+      "EXTRAVERSION": { "relative_level": "balanced", "rationale": "Viša aktivnost i toplina u direktnom kontaktu uravnotežene su nižom gregarnosti, nižim traženjem uzbuđenja i umjerenom asertivnošću." },
+      "AGREEABLENESS": { "relative_level": "higher", "rationale": "Korektan je, saradljiv i klijentski orijentisan, ali uravnoteženo povjerenje sprečava naivno prihvatanje neprovjerenih tvrdnji." },
+      "CONSCIENTIOUSNESS": { "relative_level": "higher", "rationale": "Samodisciplina, urednost, dužnost i oprez podržavaju pouzdano praćenje dokumentacije i zatvaranje slučajeva; rizik je nepotrebna izolacija." },
+      "NEUROTICISM": { "relative_level": "balanced", "rationale": "Niža ljutnja i depresivnost daju radnu stabilnost, dok uravnotežena anksioznost, samoprovjera i ranjivost ostavljaju prostor za realnu osjetljivost na pritisak." },
+      "OPENNESS_TO_EXPERIENCE": { "relative_level": "balanced", "rationale": "Intellect je relativno jači, ali praktična orijentacija, niža avanturističnost i niži interes za novinu znače da promjenu prihvata kroz dokaz i jasnu operativnu korist." }
+    }
+  },
+  "safran_targets": {
+    "targeting_method": "Relativni ciljevi opisuju obrazac sposobnosti za naredni offline authoring. Ne predstavljaju exact scoreove, procenat, IQ ili globalnu mjeru inteligencije.",
+    "verbal_score": { "relative_level": "balanced", "rationale": "Treba biti dovoljan za kvalitetan individualni rad, razumijevanje klijenta i jasno objašnjenje obaveza, bez izmišljanja voditeljske verbalne prednosti." },
+    "figural_score": { "relative_level": "higher", "rationale": "Jači signal podržava praktično prepoznavanje obrazaca u dokumentaciji i terenskim situacijama." },
+    "numerical_series_score": { "relative_level": "higher", "rationale": "Jači numerički signal odgovara provjeri finansijskih odnosa, rokova, iznosa i posljedica u kreditnom slučaju." },
+    "cognitive_composite_v1": { "relative_level": "higher", "rationale": "Composite treba odražavati jače figuralne i numeričke signale uz dovoljan verbalni učinak; ne smije se predstavljati kao IQ ili opšta inteligencija." },
+    "coherence_rule": "SAFRAN obrazac treba čitati kao praktičnu kombinaciju provjere obrazaca i numeričkih odnosa. Viši composite nije globalna mjera ljudske vrijednosti, opšte inteligencije ili radne uspješnosti."
+  },
+  "mwms_targets": {
+    "amotivation": { "relative_level": "lower", "rationale": "Konkretan slučaj, korisnost za klijenta i osjećaj da je posao urađen ispravno daju mu jasan smisao rada." },
+    "external_social": { "relative_level": "lower", "rationale": "Priznanje grupe i socijalna vidljivost nisu glavni razlog njegovog angažmana." },
+    "external_material": { "relative_level": "moderate", "rationale": "Materijalna sigurnost i nagrada imaju praktičnu vrijednost, ali ne nose cijeli motivacijski obrazac." },
+    "introjected": { "relative_level": "moderate", "rationale": "Unutrašnji standardi odgovornosti mogu ga podstaći da završi posao, ali i pojačati sklonost da problem predugo drži kod sebe." },
+    "identified": { "relative_level": "higher", "rationale": "Važni su mu korisnost posla, odgovorno kreditiranje i konkretna pomoć klijentu kroz dobro obavljen slučaj." },
+    "intrinsic": { "relative_level": "higher", "rationale": "Angažuje ga neposredno razumijevanje situacije, provjera činjenica i praktično rješavanje problema." },
+    "autonomous_motivation": { "relative_level": "higher", "rationale": "Identified i intrinsic motivacija čine dominantan obrazac: samostalnost i konkretan smisao rada važniji su od grupnog priznanja." },
+    "controlled_motivation": { "relative_level": "moderate", "rationale": "Odgovornost i profesionalni standardi postoje, ali ne treba da potisnu autonomiju i praktični smisao rada." },
+    "motivation_pattern": "Autonomno dominantan obrazac sa umjerenim pritiskom odgovornosti: pokreću ga samostalno držanje slučaja pod kontrolom, korisnost za klijenta i ispravno zatvaranje obaveze, dok priznanje grupe ostaje sporedno."
+  },
+  "cross_test_signals": [
+    "Viša savjesnost, self-efficacy i autonomna motivacija podržavaju pouzdano vođenje konkretnog slučaja od terenske provjere do zatvaranja obaveze.",
+    "Viši figuralni i numerički SAFRAN ciljevi dopunjuju praktičan obrazac provjere dokumentacije, obrazaca, iznosa i mogućih posljedica; composite se ne čita kao IQ ili opšta inteligencija.",
+    "Viša moralnost, saradnja i simpatija uz uravnoteženo povjerenje podržavaju korektan odnos s klijentom bez naivnog prihvatanja neprovjerenih informacija.",
+    "Uravnotežen Neuroticism obrazac ne znači odsustvo stresa: pod pritiskom pažnju sužava na činjenice i dokumentaciju, postaje rezervisaniji i više provjerava prije javne procjene.",
+    "Niža gregariousness i niža external-social motivacija objašnjavaju zašto nije grupno dominantan i ne traži status, dok viša aktivnost podržava funkcionalan terenski ritam.",
+    "Team Dynamics signal opreznije otvorenosti pod pritiskom koherentan je s višom opreznošću i potrebom za dokazima, ali ne određuje njegove IPIP, SAFRAN ili MWMS rezultate."
+  ],
+  "strengths": [
+    "Smireno posmatranje i provjera činjenica prije zaključka.",
+    "Praktična procjena klijenta, dokumentacije i terenskog konteksta.",
+    "Upornost u zatvaranju slučaja i praćenju konkretnih obaveza.",
+    "Odgovornost, diskrecija i oprez prema kreditnom riziku.",
+    "Dobar individualni odnos s klijentima bez potrebe da bude društveni centar grupe."
+  ],
+  "risks": [
+    "Samostalnost može prerasti u predugo pokušavanje da problem riješi bez uključivanja drugih.",
+    "Sumnju, rizik ili potrebu za pomoći može iznijeti kasnije nego što je optimalno kada još nema potpun dokaz.",
+    "Oprez može usporiti odluku kada bi timu koristila rana, nepotpuna informacija i zajednička procjena.",
+    "Fokus na činjenice i dokumentaciju može suziti pažnju na širi klijentski ili timski kontekst pod pritiskom.",
+    "Može profesionalno neslaganje zadržati u sebi umjesto da ga kratko i jasno iznese."
+  ],
+  "development_themes": [
+    "Ranije imenovati rizik i kada zaključak još nije potpun, uz jasno odvajanje činjenica, nepoznanica i pretpostavki.",
+    "Razlikovati odgovornu samostalnost od nepotrebne izolacije i tražiti pomoć prije nego što problem postane hitan.",
+    "Koristiti kratke strukturisane updatee: činjenice, nepoznanice, rizik i potrebna odluka.",
+    "Jasnije iznositi profesionalno neslaganje u timu, bez čekanja da sva neizvjesnost nestane.",
+    "Zadržati praktičnu strukturu kroz checkliste, rokove i urednu dokumentaciju, uz izbjegavanje administracije bez vidljive operativne svrhe."
+  ],
+  "team_dynamics_coherence": {
+    "existing_pattern": "Team Dynamics izvor GD-003 opisuje oprezniju procjenu otvorenosti pod pritiskom, uz niži signal psihološke sigurnosti i različit SJT izbor u odnosu na koordinacijsku ulogu voditeljice.",
+    "profile_connection": "Profil povezuje višu opreznost, savjesnost i uravnoteženu emocionalnu reaktivnost s ranijim razvojnim ciljem eskalacije: Vladimir prvo provjerava činjenice i pokušava stabilizovati situaciju, pa tek onda otvara sumnju ili traži pomoć.",
+    "boundary": "Team Dynamics je kontekstualni coherence constraint, a ne direktna mjera IPIP, SAFRAN ili MWMS konstrukata; ovaj profil iz njega ne izvodi targete ni odgovore."
+  },
+  "differentiation_from_gd001": {
+    "comparison_reference": "GD-001",
+    "interpersonal_style": "Amel je topliji i stabilno saradnički individualni terenski radnik koji otvorenije gradi odnos s klijentom; Vladimir je rezervisaniji u široj grupi, povjerenje gradi postepeno i više se oslanja na direktnu provjeru činjenica.",
+    "structure_flexibility": "Amel koristi strukturu za pouzdano praćenje dokumentacije uz razvojnu potrebu za prioritizacijom; Vladimir je strožije evidence-oriented i strukturu koristi da sam drži konkretan slučaj pod kontrolom, uz veći rizik kasne eskalacije.",
+    "decision_style": "Amel promišljeno procjenjuje klijentski slučaj i administrativnu obavezu uz stabilnu saradnju; Vladimir duže provjerava praktične činjenice i moguće posljedice prije nego što javno iznese sumnju.",
+    "motivation": "Amelov obrazac više naglašava važnost i zanimljivost posla uz topliji odnos; Vladimira prvenstveno pokreću samostalnost, korisnost za klijenta i osjećaj da je konkretan slučaj urađen ispravno, dok mu grupno priznanje nije glavni motivator.",
+    "cognitive_profile": "Amel je authored s jačim verbalnim i numeričkim signalom uz umjereniji figuralni dio; Vladimir cilja viši figuralni i numerički signal uz uravnotežen verbalni učinak, bez zaključka o opštoj inteligenciji.",
+    "pressure_response": "Amel ostaje stabilniji u saradničkom individualnom radu uz potrebu za prioritizacijom; Vladimir pod pritiskom sužava pažnju na činjenice, postaje rezervisaniji i može kasnije eskalirati zbog potrebe za dokazima.",
+    "team_contribution": "Amel donosi otvoreniju toplinu i pouzdanu klijentsku perspektivu; Vladimir donosi rezervisaniju terensku provjeru, praktično uočavanje rizika i dosljedno praćenje slučaja."
+  },
+  "differentiation_from_gd002": {
+    "comparison_reference": "GD-002",
+    "interpersonal_style": "Nataša je koordinirajuća voditeljica koja ranije otvara raspravu, usklađuje perspektive i preuzima grupnu odgovornost; Vladimir je individualni izvršilac koji je topliji jedan-na-jedan nego u široj grupi i ne koristi strukturu za raspoređivanje rada drugih.",
+    "structure_flexibility": "Nataša koristi strukturu da rasporedi prioritete, rokove i vlasništvo u timu; Vladimir je koristi da samostalno drži slučaj, dokumentaciju i rokove pod kontrolom.",
+    "decision_style": "Nataša prvo koordinira razgovor i ranije imenuje rizik, pa zaključuje odluku; Vladimir prvo potvrđuje problem na terenu i može odgoditi eskalaciju dok ne osjeti da ima dovoljno jasan dokaz.",
+    "motivation": "Natašu pokreću smisao odgovornosti, kvalitet koordinacije i razvoj ljudi; Vladimira pokreću samostalno rješavanje konkretnog slučaja, korisnost za klijenta i ispravno izvršenje, uz nižu potrebu za socijalnim priznanjem.",
+    "cognitive_profile": "Natašin cilj je verbalno jači i ukupno uravnoteženiji; Vladimir cilja uravnotežen verbalni učinak i više figuralne i numeričke signale koji podržavaju praktičnu provjeru obrazaca i finansijskih odnosa.",
+    "pressure_response": "Nataša pod pritiskom treba koordinirati rano iznošenje rizika i raspodjelu odgovornosti; Vladimir ostaje funkcionalan i uporan, ali se povlači u činjenice i dokumentaciju i manje aktivno traži podršku.",
+    "team_contribution": "Nataša je koordinacijska tačka i čuvarica otvorene rasprave; Vladimir je pouzdan terenski izvor praktičnih informacija, rizika i statusa pojedinačnih klijentskih slučajeva."
+  },
+  "forbidden_contradictions": [
+    "Ne opisivati Vladimira kao voditelja, koordinatora ili osobu koja raspoređuje rad drugih.",
+    "Ne opisivati ga kao pasivnog, neodgovornog, socijalno hladnog ili nesposobnog za saradnju.",
+    "Ne tvrditi da je bez stresa; pritisak se više vidi kroz oprez, provjeru i rezervisaniju komunikaciju nego kroz emocionalnu eskalaciju.",
+    "Ne tvrditi globalnu kognitivnu superiornost, IQ, populacijski rang ili opštu inteligenciju iz SAFRAN obrasca.",
+    "Ne tvrditi da je naivan, slijepo povjerljiv ili dominantno motivisan novcem, statusom ili priznanjem grupe.",
+    "Ne izvoditi dijagnozu niti hire/no-hire zaključak."
+  ],
+  "known_uncertainties": [
+    "Relativni ciljevi još nisu prevedeni u 120 IPIP, 45 SAFRAN i 19 MWMS raw odgovora niti u expected score redove.",
+    "Team Dynamics opisuje kontekstualnu procjenu otvorenosti pod pritiskom i ne određuje exact IPIP facet, SAFRAN ili MWMS vrijednosti.",
+    "Viši figuralni i numerički SAFRAN cilj podržava praktično prepoznavanje obrazaca i finansijskih odnosa, ali ne predstavlja IQ, opštu inteligenciju ili garanciju radnog učinka.",
+    "Uravnotežen Neuroticism obrazac opisuje ciljanu konfiguraciju odgovora i ne znači odsustvo stresa u svim situacijama.",
+    "Profil nema biografske događaje niti individualne radne epizode u sourceu; narativ je funkcionalna authored namjera za sintetički Golden Demo profil."
+  ]
+}
