@@ -214,8 +214,8 @@ function mapAssessmentReportRow(row) {
   return { ...mapped, snapshotValidation: row.report_type === "composite" || row.report_type === "individual_development_profile" ? validateReadySnapshot(mapped) : null };
 }
 
-async function buildDefaultInspection(context) {
-  const { loadScoringInspection } = require("./score-gd-001.cjs");
+async function buildDefaultInspection(context, inspectionDependencies = {}) {
+  const loadScoringInspection = inspectionDependencies.loadScoringInspection ?? require("./score-gd-001.cjs").loadScoringInspection;
   const scoringInspection = await loadScoringInspection({
     supabase: context.supabase,
     repository: context.repository,
@@ -240,7 +240,7 @@ async function buildDefaultInspection(context) {
   const mappedAssessmentReports = (assessmentRows ?? []).map(mapAssessmentReportRow);
   return {
     candidateId: context.candidate.candidateId,
-    organizationId: snapshot.organizationId ?? null,
+    organizationId: scoringInspection.resolved.snapshot.organizationId ?? null,
     participantId: snapshot.participantId ?? null,
     assignmentId: snapshot.assignmentId ?? null,
     attemptIds,
@@ -315,6 +315,7 @@ async function run(argv = process.argv.slice(2), dependencies = {}) {
     const output = {
       mode: "dry-run",
       candidateId: plan.candidateId,
+      organizationId: initialInspection.organizationId,
       participantId: plan.participantId,
       assignmentId: plan.assignmentId,
       attemptIds: plan.attemptIds,

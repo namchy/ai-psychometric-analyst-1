@@ -138,6 +138,46 @@ function addArtifactRow(inspection, key, status) {
   else inspection.attemptReports.push(row);
 }
 
+async function testDefaultInspectionOrganizationMapping() {
+  const scoringInspection = {
+    resolved: { snapshot: { organizationId: "org-123" } },
+    snapshot: {
+      structuralFixtureExact: true,
+      participantId,
+      assignmentId,
+      attemptIds: { ...attemptIds },
+      attempts: slugs.map((testSlug) => ({
+        testSlug,
+        status: "completed",
+        completedAt: "2026-08-02T10:00:00.000Z",
+        scoredStartedAt: null,
+      })),
+      responseCounts: counts(120, 45, 19),
+      rawValueCounts: counts(120, 45, 19),
+      scoredValueCounts: counts(120, 45, 19),
+      dimensionScores: Array.from({ length: 40 }, () => ({})),
+      assignmentId,
+    },
+    verification: { ok: true, matched: 47, expected: 47, errors: [] },
+  };
+  const query = {
+    select() { return this; },
+    in() { return this; },
+    eq() { return this; },
+    then(resolve, reject) { return Promise.resolve({ data: [], error: null }).then(resolve, reject); },
+  };
+  const inspection = await cli.buildDefaultInspection(
+    {
+      candidate: { candidateId: "GD-003" },
+      foundation: {},
+      repository: {},
+      supabase: { from: () => query },
+    },
+    { loadScoringInspection: async () => scoringInspection },
+  );
+  assert.equal(inspection.organizationId, "org-123");
+}
+
 function makeApplyDependencies(initialInspection, config = {}) {
   const current = structuredClone(initialInspection);
   const calls = { inspect: 0, queue: [], claim: [], process: [], forbidden: [] };
@@ -247,6 +287,13 @@ assert.equal(plan.packageState, "READY_TO_APPLY");
 assert.equal(plan.plannedOpenAiCalls, 5);
 assert.deepEqual(plan.orderedActions.map((action) => action.action), ["queue_and_process", "queue_and_process", "queue_and_process", "queue_and_process", "queue_and_process"]);
 
+const missingOrganization = emptyInspection();
+missingOrganization.organizationId = null;
+const missingOrganizationPlan = buildGoldenDemoReportPackagePlan(missingOrganization);
+assert.equal(missingOrganizationPlan.packageState, "BLOCKED");
+assert.equal(missingOrganizationPlan.plannedOpenAiCalls, 0);
+assert.match(missingOrganizationPlan.blockers.join(" "), /Organization identity is missing/);
+
 plan = buildGoldenDemoReportPackagePlan(emptyInspection({ ipip_hr: "READY_VALID", safran_hr: "READY_VALID", mwms_hr: "READY_VALID" }));
 assert.equal(plan.packageState, "READY_TO_APPLY");
 assert.equal(plan.plannedOpenAiCalls, 2);
@@ -303,7 +350,16 @@ async function assertSuccessfulApply(initial, config = {}) {
   assert.equal(execution.result.stateAfter, "COMPLETE");
   assert.deepEqual(execution.deps.calls.queue.map((call) => call.kind), ["composite"]);
   assert.deepEqual(execution.deps.calls.process.map((call) => call.kind), ["composite", "idp"]);
+  assert.equal(execution.deps.calls.claim.some((call) => call.kind === "single"), false);
   assert.equal(execution.result.queueCalls.idp, 0);
+
+  const blockedDeps = makeApplyDependencies(missingOrganization);
+  const blockedApply = await executeGoldenDemoReportPackageApply(missingOrganization, blockedDeps);
+  assert.equal(blockedApply.writesPerformed, false);
+  assert.equal(blockedApply.queueCalls.total, 0);
+  assert.equal(blockedApply.singleTestProcessorCalls, 0);
+  assert.equal(blockedApply.compositeProcessorCalls, 0);
+  assert.equal(blockedApply.idpProcessorCalls, 0);
 
   execution = await assertSuccessfulApply(emptyInspection({ ipip_hr: "READY_VALID", safran_hr: "READY_VALID", mwms_hr: "READY_VALID", composite_hr: "READY_VALID", individual_development_profile: "READY_VALID" }));
   assert.equal(execution.result.stateAfter, "COMPLETE");
@@ -345,6 +401,7 @@ async function assertSuccessfulApply(initial, config = {}) {
     assert.equal(result.steps.some((step) => step.key === "safran_hr"), false);
   }
 
+  await testDefaultInspectionOrganizationMapping();
   console.log("Golden Demo individual report package operator tests passed");
 })().catch((error) => {
   console.error(error);

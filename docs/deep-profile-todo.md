@@ -100,7 +100,9 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 >
 > Source-only Golden Demo individual report package operator je implementiran i offline testiran. Podržava canonical candidate contract, dry-run/apply, resume ponašanje, postojeće candidate-scoped single-test/composite/IDP lifecycle funkcije, sekvencijalni redoslijed i fail-closed stop bez retry/reset/regeneracije. U ovom tasku nije bilo DB readova, DB writeova, queue/process operacija niti OpenAI poziva; GD-003 report paket još nije generisan.
 >
-> Sljedeći aktivni korak je controlled GD-003 operator dry-run, operator-approved backup i apply.
+> Prvi GD-003 report package apply završio je kontrolisano parcijalno nakon tri single-test faze. IPIP HR `1dbec6a4-1207-4372-b9b3-8a1313dea6f2`, SAFRAN HR `5d16938b-f4ed-408d-a93d-0251456d0c73` i MWMS HR `81e4884f-0aa7-4aca-ae0e-276577b7e372` su `READY_VALID`; Composite HR i IDP nisu kreirani. Operator se zaustavio prije Composite queuea zbog adapter buga koji je gubio canonical organization identity; bug je popravljen bez dodatnih DB writeova ili OpenAI poziva.
+>
+> Post-fix GD-003 live dry-run sada vraća organization `e392aae0-564e-4741-90a6-731bc28b0572`, `SCORED_EXACT`, `READY_TO_APPLY`, tri `READY_VALID` artefakta, dva `MISSING` artefakta i `plannedOpenAiCalls=2`; siguran resume redoslijed je Composite HR pa IDP. Sljedeći aktivni korak je novi pre-resume backup i jedan controlled GD-003 resume apply.
 >
 > **GDT-01 cohort status:** `GD-001: complete hero package`; `GD-002: complete individual package`; `GD-003: authored profile + complete offline fixture + controlled persistence + production scoring SCORED_EXACT, individual report package next`; `GD-004: pending`; `GD-005: pending`; `GD-019: pending`. Team Dynamics lane ostaje završen i ne mijenja se ovim handoffom.
 >

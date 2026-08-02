@@ -420,6 +420,9 @@ export function buildGoldenDemoReportPackagePlan(
   const source = classifyScoredGoldenDemoSource(inspection.source);
   const artifactStates = classifyGoldenDemoReportPackage(inspection);
   const blockers = [...source.blockers];
+  if (!inspection.organizationId) {
+    blockers.push("Organization identity is missing.");
+  }
   const blockingArtifactStates = artifactStates.filter((artifact) =>
     ["PROCESSING", "FAILED", "READY_INVALID", "CONFLICT"].includes(artifact.status),
   );
@@ -430,8 +433,10 @@ export function buildGoldenDemoReportPackagePlan(
 
   const uniqueBlockers = unique(blockers);
   const hasBlockingSource = source.state !== "SCORED_EXACT";
+  const hasBlockingOrganization = !inspection.organizationId;
   const allReady = artifactStates.every((artifact) => artifact.status === "READY_VALID");
   const packageState: GoldenDemoReportPackageState = hasBlockingSource || blockingArtifactStates.length > 0
+    || hasBlockingOrganization
     ? "BLOCKED"
     : allReady
       ? "COMPLETE"
