@@ -52,6 +52,7 @@ const {
   GD_001_TEST_SLUGS,
   getGoldenDemoCandidateContract,
   classifyGd001FixtureState,
+  isGoldenDemoParticipantAddressingCompatible,
 } = require("../lib/golden-demo/db-fixture-writer.ts");
 const {
   buildGd001ScoringPlan,
@@ -127,8 +128,10 @@ async function loadScoringInspection({ supabase, repository, foundation }) {
       participant.email.trim().toLowerCase() === resolved.candidate.email &&
       participant.participant_type === "employee" &&
       participant.status === "active" &&
-      (participant.addressing_form === resolved.candidate.addressingForm ||
-        (["GD-002", "GD-003"].includes(resolved.candidate.candidateId) && participant.addressing_form === null)) &&
+      isGoldenDemoParticipantAddressingCompatible(
+        resolved.candidate,
+        participant.addressing_form,
+      ) &&
       resolved.snapshot.assignments.length === 1 &&
       assignment?.organization_id === resolved.snapshot.organizationId &&
       assignment?.participant_id === participant.id &&

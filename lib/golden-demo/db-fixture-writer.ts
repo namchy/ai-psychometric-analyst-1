@@ -55,7 +55,16 @@ const LOCKED_CANDIDATE_IDENTITIES: Record<GoldenDemoCandidateId, { fullName: str
 };
 
 const GOLDEN_DEMO_CANDIDATE_LABEL = GOLDEN_DEMO_CANDIDATE_IDS.join(", ");
-const LEGACY_NULL_ADDRESSING_CANDIDATE_IDS: readonly GoldenDemoCandidateId[] = ["GD-002", "GD-003"];
+
+export function isGoldenDemoParticipantAddressingCompatible(
+  candidate: { candidateId: string; addressingForm: string },
+  participantAddressingForm: string | null,
+): boolean {
+  return (
+    GOLDEN_DEMO_CANDIDATE_IDS.includes(candidate.candidateId as GoldenDemoCandidateId) &&
+    (participantAddressingForm === null || participantAddressingForm === candidate.addressingForm)
+  );
+}
 
 export function getGd001RpcErrorText(error: unknown): string {
   const parts: string[] = [];
@@ -671,10 +680,10 @@ export function classifyGd001FixtureState(input: {
   if (participant.participant_type !== "employee") conflictReasons.push("Participant type differs.");
   if (participant.status !== "active") conflictReasons.push("Participant lifecycle status is not active.");
   if (participant.user_id !== null) conflictReasons.push("Participant has a linked auth user requiring operator review.");
-  const addressingFormMatches =
-    participant.addressing_form === candidate.addressingForm ||
-    (LEGACY_NULL_ADDRESSING_CANDIDATE_IDS.includes(candidate.candidateId) &&
-      participant.addressing_form === null);
+  const addressingFormMatches = isGoldenDemoParticipantAddressingCompatible(
+    candidate,
+    participant.addressing_form,
+  );
   if (!addressingFormMatches) conflictReasons.push("Participant addressing form differs.");
 
   const hasStandardBatteryState =

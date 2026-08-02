@@ -21,7 +21,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const migration = fs.readFileSync(
   path.join(
     projectRoot,
-    "supabase/migrations/20260802100000_extend_golden_demo_standard_battery_fixture_v2_gd003.sql",
+    "supabase/migrations/20260802123000_generalize_golden_demo_legacy_addressing.sql",
   ),
   "utf8",
 );
@@ -41,22 +41,26 @@ assert.match(migration, /security definer/i);
 assert.match(migration, /set search_path = ''/i);
 assert.match(migration, /pg_catalog\.pg_advisory_xact_lock/);
 assert.match(migration, /golden-demo:partner-plus:' \|\| v_candidate_id/);
-assert.match(migration, /v_candidate_id not in \('GD-001', 'GD-002', 'GD-003'\)/);
+assert.match(migration, /v_candidate_id not in \('GD-001', 'GD-002', 'GD-003', 'GD-004', 'GD-005'\)/);
 assert.match(migration, /amel\.kovacevic@partnerplus\.ba/);
 assert.match(migration, /natasa\.rapaic@partnerplus\.ba/);
 assert.match(migration, /Nataša Rapaić/);
 assert.match(migration, /vladimir\.lucic@partnerplus\.ba/);
 assert.match(migration, /Vladimir Lučić/);
+assert.match(migration, /natali\.delic@partnerplus\.ba/);
+assert.match(migration, /Natali Delić/);
+assert.match(migration, /anisa\.lojo\.bajric@partnerplus\.ba/);
+assert.match(migration, /Anisa Lojo Bajrić/);
 assert.match(migration, /v_expected_addressing_form := 'masculine'/);
 assert.match(migration, /elsif v_candidate_id = 'GD-003' then/);
-assert.match(migration, /elsif v_candidate_id in \('GD-002', 'GD-003'\) then[\s\S]*requires an existing canonical participant/);
+assert.match(migration, /elsif v_candidate_id in \('GD-002', 'GD-003', 'GD-004', 'GD-005'\) then[\s\S]*requires an existing canonical participant/);
 assert.match(
   migration,
-  /v_existing_addressing_form is distinct from v_expected_addressing_form[\s\S]*v_candidate_id in \('GD-002', 'GD-003'\)[\s\S]*v_existing_addressing_form is null/,
+  /v_existing_addressing_form is not null[\s\S]*v_existing_addressing_form is distinct from v_expected_addressing_form/,
 );
 assert.doesNotMatch(
   migration,
-  /v_candidate_id = 'GD-002' and v_existing_addressing_form is null/,
+  /v_candidate_id in \('GD-002', 'GD-003'\)[\s\S]*v_existing_addressing_form is null/,
 );
 assert.match(migration, /if v_participant_id is null then[\s\S]*insert into public\.participants/);
 assert.doesNotMatch(migration, /update\s+public\.participants/i);

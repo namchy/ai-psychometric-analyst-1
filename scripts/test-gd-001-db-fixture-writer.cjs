@@ -35,6 +35,7 @@ const {
   getGd001RpcErrorText,
   getGoldenDemoCandidateContract,
   getGd001CandidateContract,
+  isGoldenDemoParticipantAddressingCompatible,
   inspectGd001FixtureWithRepository,
   parseGd001WriterCli,
   verifyGd001FinalCounts,
@@ -66,6 +67,8 @@ const expectedResponses = foundation.answers.rows
 assert.equal(expectedResponses.length, 184);
 const gd002Candidate = getGoldenDemoCandidateContract(foundation, "GD-002");
 const gd003Candidate = getGoldenDemoCandidateContract(foundation, "GD-003");
+const gd004Candidate = getGoldenDemoCandidateContract(foundation, "GD-004");
+const gd005Candidate = getGoldenDemoCandidateContract(foundation, "GD-005");
 assert.deepEqual(getGoldenDemoCandidateContract(foundation, "GD-004"), {
   candidateId: "GD-004",
   fullName: "Natali Delić",
@@ -288,10 +291,43 @@ for (const legacyNullCandidate of [gd002Candidate, gd003Candidate]) {
   );
   assert.equal(classifyCandidate(wrongAddressing, legacyNullCandidate).state, "CONFLICT");
 }
+for (const feminineNullCandidate of [gd004Candidate, gd005Candidate]) {
+  const participantOnly = participantOnlySnapshot(feminineNullCandidate, null);
+  const participantOnlyClassification = classifyCandidate(participantOnly, feminineNullCandidate);
+  assert.equal(participantOnlyClassification.state, "EMPTY");
+  assert.deepEqual(participantOnlyClassification.reasons, []);
+
+  const wrongAddressing = participantOnlySnapshot(feminineNullCandidate, "masculine");
+  assert.equal(classifyCandidate(wrongAddressing, feminineNullCandidate).state, "CONFLICT");
+}
 assert.equal(
   classifyCandidate(participantOnlySnapshot(candidate, null), candidate).state,
+  "EMPTY",
+);
+assert.equal(
+  classifyCandidate(participantOnlySnapshot(candidate, "feminine"), candidate).state,
   "CONFLICT",
 );
+assert.equal(
+  isGoldenDemoParticipantAddressingCompatible(gd004Candidate, null),
+  true,
+);
+assert.equal(
+  isGoldenDemoParticipantAddressingCompatible(gd005Candidate, "feminine"),
+  true,
+);
+assert.equal(
+  isGoldenDemoParticipantAddressingCompatible(gd004Candidate, "masculine"),
+  false,
+);
+assert.equal(
+  isGoldenDemoParticipantAddressingCompatible({ candidateId: "GD-019", addressingForm: "masculine" }, null),
+  false,
+);
+for (const candidateId of ["GD-004", "GD-005"]) {
+  const payload = buildGoldenDemoFixtureRpcPayload(foundation, candidateId);
+  assert.equal(payload.participant.addressing_form, "feminine");
+}
 {
   const partial = exactSnapshot();
   partial.responses.pop();

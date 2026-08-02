@@ -555,7 +555,8 @@ assert.equal(
   assert.doesNotMatch(operatorSource, /OpenAI\s*\(/);
   assert.match(operatorSource, /getGoldenDemoCandidateContract/);
   assert.match(operatorSource, /candidateId: candidate\.candidateId/);
-  assert.match(operatorSource, /\["GD-002", "GD-003"\]\.includes\(resolved\.candidate\.candidateId\)/);
+  assert.match(operatorSource, /isGoldenDemoParticipantAddressingCompatible\(/);
+  assert.doesNotMatch(operatorSource, /LEGACY_NULL_ADDRESSING_CANDIDATE_IDS/);
   assert.match(operatorSource, /attempt\.addressing_form_snapshot === resolved\.candidate\.addressingForm/);
   assert.doesNotMatch(operatorSource, /resolved\.candidate\.candidateId === "GD-002"\s*&&\s*participant\.addressing_form === null/);
   for (const forbidden of ["raw_value:", "scored_value:", "dimension_scores\")\.insert"] ) {
