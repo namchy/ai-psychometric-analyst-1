@@ -137,11 +137,9 @@ function parseJsonOutput(stdout, context) {
   try {
     return JSON.parse(text);
   } catch {
-    const first = text.indexOf("{");
-    const last = text.lastIndexOf("}");
-    if (first >= 0 && last > first) {
+    for (let position = text.lastIndexOf("{"); position >= 0; position = text.lastIndexOf("{", position - 1)) {
       try {
-        return JSON.parse(text.slice(first, last + 1));
+        return JSON.parse(text.slice(position).trim());
       } catch {
         // Fall through to the contextual error below.
       }
@@ -461,6 +459,17 @@ async function runReportCandidate(candidateId, options, dependencies) {
     { ...options, candidateId, apply: false },
     dependencies,
   );
+  if (preflight?.packageState === "COMPLETE") {
+    assertReportComplete(preflight, candidateId);
+    return {
+      candidateId,
+      action: "skip_ready",
+      preflight,
+      apply: null,
+      after: preflight,
+      durationMs: 0,
+    };
+  }
   assertReportReadyToApply(preflight, candidateId);
   const startedAt = Date.now();
   const apply = await invokeScript(
@@ -476,7 +485,7 @@ async function runReportCandidate(candidateId, options, dependencies) {
     dependencies,
   );
   assertReportComplete(after, candidateId);
-  return { candidateId, preflight, apply, after, durationMs: Date.now() - startedAt };
+  return { candidateId, action: "apply", preflight, apply, after, durationMs: Date.now() - startedAt };
 }
 
 async function runReports(options, dependencies = {}) {
@@ -614,6 +623,7 @@ module.exports = {
   REMOTE_WRITE_OPT_IN,
   assertRemoteWriteAuthorization,
   parseCli,
+  parseJsonOutput,
   assertScoringDryRun,
   inspectFoundationResumeState,
   run,
