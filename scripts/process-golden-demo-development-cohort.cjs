@@ -481,18 +481,6 @@ async function runReportCandidate(candidateId, options, dependencies) {
 
 async function runReports(options, dependencies = {}) {
   assertRemoteWriteAuthorization(options, dependencies.env ?? process.env);
-  const initial = [];
-  for (const candidateId of DEVELOPMENT_CANDIDATE_IDS) {
-    const dryRun = await invokeScript(
-      REPORT_SCRIPT,
-      ["--candidate", candidateId, "--dry-run", "--verbose"],
-      { ...options, candidateId, apply: false },
-      dependencies,
-    );
-    assertReportReadyToApply(dryRun, candidateId);
-    initial.push(dryRun);
-  }
-
   const pairs = [];
   for (const pair of DEVELOPMENT_CANDIDATE_PAIRS) {
     const settled = await Promise.allSettled(

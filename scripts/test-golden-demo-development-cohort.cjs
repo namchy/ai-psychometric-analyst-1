@@ -66,7 +66,7 @@ assert.match(
   /v_existing_addressing_form is not null/,
 );
 
-function buildRunner({ failCandidate = null, initialStates = {} } = {}) {
+function buildRunner({ failCandidate = null, preflightFailCandidate = null, initialStates = {} } = {}) {
   const calls = [];
   const fixtureApplied = new Set();
   const scored = new Set();
@@ -208,16 +208,17 @@ function buildRunner({ failCandidate = null, initialStates = {} } = {}) {
     if (scriptName === "process-golden-demo-individual-report-package.cjs") {
       if (!isApply) {
         const complete = reportsComplete.has(candidateId);
+        const preflightFailed = candidateId === preflightFailCandidate;
         return {
           exitCode: 0,
           stdout: JSON.stringify({
             sourceState: "SCORED_EXACT",
-            packageState: complete ? "COMPLETE" : "READY_TO_APPLY",
-            plannedOpenAiCalls: complete ? 0 : 5,
+            packageState: preflightFailed ? "BLOCKED" : complete ? "COMPLETE" : "READY_TO_APPLY",
+            plannedOpenAiCalls: preflightFailed || complete ? 0 : 5,
             artifactStates: cohort.DEVELOPMENT_CANDIDATE_IDS.slice(0, 0).concat([
               "ipip_hr", "safran_hr", "mwms_hr", "composite_hr", "individual_development_profile",
             ]).map((key) => ({ key, status: complete ? "READY_VALID" : "MISSING" })),
-            blockers: [],
+            blockers: preflightFailed ? ["simulated report preflight failure"] : [],
             participantId: `participant-${candidateId}`,
             writesPerformed: false,
           }),
@@ -362,6 +363,25 @@ async function main() {
     .filter((call) => call.scriptName === "process-golden-demo-individual-report-package.cjs" && call.operatorArgs.includes("--apply"))
     .map((call) => call.candidateId);
   assert.deepEqual(reportApplyOrder, cohort.DEVELOPMENT_CANDIDATE_PAIRS.flat());
+  const reportCalls = reports.calls.filter((call) => call.scriptName === "process-golden-demo-individual-report-package.cjs");
+  const reportDryRuns = reportCalls.filter((call) => !call.operatorArgs.includes("--apply"));
+  assert.equal(reportDryRuns.length, cohort.DEVELOPMENT_CANDIDATE_IDS.length * 2);
+  for (const candidateId of cohort.DEVELOPMENT_CANDIDATE_IDS) {
+    const candidateCalls = reportCalls.filter((call) => call.candidateId === candidateId);
+    assert.equal(candidateCalls.filter((call) => !call.operatorArgs.includes("--apply")).length, 2);
+    assert.equal(candidateCalls.filter((call) => call.operatorArgs.includes("--apply")).length, 1);
+    assert.ok(candidateCalls.findIndex((call) => call.operatorArgs.includes("--apply")) > 0);
+  }
+  const firstReportApplyIndex = reports.calls.findIndex(
+    (call) => call.scriptName === "process-golden-demo-individual-report-package.cjs" && call.operatorArgs.includes("--apply"),
+  );
+  const preApplyCandidates = new Set(
+    reports.calls
+      .slice(0, firstReportApplyIndex)
+      .filter((call) => call.scriptName === "process-golden-demo-individual-report-package.cjs")
+      .map((call) => call.candidateId),
+  );
+  assert.ok([...preApplyCandidates].every((candidateId) => cohort.DEVELOPMENT_CANDIDATE_PAIRS[0].includes(candidateId)));
 
   const failedPair = buildRunner({ failCandidate: "GD-008" });
   await assert.rejects(
@@ -376,6 +396,20 @@ async function main() {
     .map((call) => call.candidateId);
   assert.deepEqual(failedPairApplyCandidates, ["GD-006", "GD-007", "GD-008", "GD-009"]);
   assert.equal(failedPair.calls.some((call) => ["GD-010", "GD-011", "GD-012", "GD-013", "GD-014", "GD-015", "GD-016", "GD-017", "GD-018"].includes(call.candidateId) && call.operatorArgs.includes("--apply")), false);
+
+  const failedPreflightPair = buildRunner({ preflightFailCandidate: "GD-008" });
+  await assert.rejects(
+    cohort.run(
+      ["--phase", "reports", "--apply"],
+      { runner: failedPreflightPair.runner, env: { DEEP_PROFILE_ALLOW_REMOTE_DB_WRITES: "true" } },
+    ),
+    /GD-008/,
+  );
+  const failedPreflightApplyCandidates = failedPreflightPair.calls
+    .filter((call) => call.scriptName === "process-golden-demo-individual-report-package.cjs" && call.operatorArgs.includes("--apply"))
+    .map((call) => call.candidateId);
+  assert.equal(failedPreflightApplyCandidates.includes("GD-008"), false);
+  assert.equal(failedPreflightApplyCandidates.some((candidateId) => ["GD-010", "GD-011", "GD-012", "GD-013", "GD-014", "GD-015", "GD-016", "GD-017", "GD-018"].includes(candidateId)), false);
 
   const noOptIn = buildRunner();
   await assert.rejects(
