@@ -98,6 +98,10 @@ Ovaj dokument je canonical snapshot trenutno važećeg Deep Profile todo/backlog
 >
 > GD-003 production scoring je završen kroz tačno jedan controlled apply nakon validnog backup-a `/home/naima/db-backups/deep-profile/20260802T084027Z-pre-gd003-scoring/`: sva tri attempta su `completed`, `184/184` raw vrijednosti, `184/184` scored vrijednosti, `40` persisted dimension scoreova (`30` IPIP, `4` SAFRAN, `6` MWMS) i `47/47 exact` expected-score verification. `fixtureWriterState=CONFLICT` je očekivan nakon lifecycle promjene, dok su `fixtureCompatibilityState=EXACT_MATCH` i `scoringState=SCORED_EXACT`; reportovi su `0`, nije bilo OpenAI poziva, a GD-001, GD-002 i Team Dynamics nisu mijenjani. Sljedeći aktivni korak je `GD-003 complete individual report package`.
 >
+> Source-only Golden Demo individual report package operator je implementiran i offline testiran. Podržava canonical candidate contract, dry-run/apply, resume ponašanje, postojeće candidate-scoped single-test/composite/IDP lifecycle funkcije, sekvencijalni redoslijed i fail-closed stop bez retry/reset/regeneracije. U ovom tasku nije bilo DB readova, DB writeova, queue/process operacija niti OpenAI poziva; GD-003 report paket još nije generisan.
+>
+> Sljedeći aktivni korak je controlled GD-003 operator dry-run, operator-approved backup i apply.
+>
 > **GDT-01 cohort status:** `GD-001: complete hero package`; `GD-002: complete individual package`; `GD-003: authored profile + complete offline fixture + controlled persistence + production scoring SCORED_EXACT, individual report package next`; `GD-004: pending`; `GD-005: pending`; `GD-019: pending`. Team Dynamics lane ostaje završen i ne mijenja se ovim handoffom.
 >
 > **Canonical demo-first sequence:**
