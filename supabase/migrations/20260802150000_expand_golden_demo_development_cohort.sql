@@ -102,8 +102,8 @@ begin
   );
 
   if v_definition = v_original_definition
-    or pg_catalog.position('GD-018' in v_definition) = 0
-    or pg_catalog.position('GD-019' in v_definition) > 0
+    or pg_catalog.strpos(v_definition, 'GD-018') = 0
+    or pg_catalog.strpos(v_definition, 'GD-019') > 0
   then
     raise exception 'GD_FIXTURE_MIGRATION_INVALID: expected development-candidate identity expansion was not applied.';
   end if;
