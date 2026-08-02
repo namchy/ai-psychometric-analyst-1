@@ -406,7 +406,10 @@ begin
       or v_existing_status is distinct from 'active'
       or (
         v_existing_addressing_form is distinct from v_expected_addressing_form
-        and not (v_candidate_id = 'GD-002' and v_existing_addressing_form is null)
+        and not (
+          v_candidate_id in ('GD-002', 'GD-003')
+          and v_existing_addressing_form is null
+        )
       )
     then
       raise exception 'GD_FIXTURE_INVALID: existing participant identity does not match the locked candidate contract.';

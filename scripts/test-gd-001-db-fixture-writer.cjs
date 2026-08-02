@@ -164,6 +164,30 @@ function classify(snapshot, responses = expectedResponses) {
   });
 }
 
+function classifyCandidate(snapshot, candidateToClassify, responses = expectedResponses) {
+  return classifyGd001FixtureState({
+    snapshot,
+    expectedResponses: responses,
+    candidate: candidateToClassify,
+    testIdsBySlug,
+  });
+}
+
+function participantOnlySnapshot(candidateToClassify, addressingForm) {
+  const snapshot = baseSnapshot();
+  snapshot.participant = {
+    id: `participant:${candidateToClassify.candidateId.toLowerCase()}`,
+    organization_id: snapshot.organizationId,
+    user_id: null,
+    email: candidateToClassify.email,
+    full_name: candidateToClassify.fullName,
+    participant_type: candidateToClassify.participantType,
+    status: "active",
+    addressing_form: addressingForm,
+  };
+  return snapshot;
+}
+
 assert.deepEqual(parseGd001WriterCli([]), {
   mode: "dry-run",
   candidateId: "GD-001",
@@ -226,6 +250,22 @@ assert.equal(classify(exactSnapshot()).state, "EXACT_MATCH");
   assert.equal(participantOnlyClassification.state, "EMPTY");
   assert.deepEqual(participantOnlyClassification.reasons, []);
 }
+for (const legacyNullCandidate of [gd002Candidate, gd003Candidate]) {
+  const participantOnly = participantOnlySnapshot(legacyNullCandidate, null);
+  const participantOnlyClassification = classifyCandidate(participantOnly, legacyNullCandidate);
+  assert.equal(participantOnlyClassification.state, "EMPTY");
+  assert.deepEqual(participantOnlyClassification.reasons, []);
+
+  const wrongAddressing = participantOnlySnapshot(
+    legacyNullCandidate,
+    legacyNullCandidate.addressingForm === "masculine" ? "feminine" : "masculine",
+  );
+  assert.equal(classifyCandidate(wrongAddressing, legacyNullCandidate).state, "CONFLICT");
+}
+assert.equal(
+  classifyCandidate(participantOnlySnapshot(candidate, null), candidate).state,
+  "CONFLICT",
+);
 {
   const partial = exactSnapshot();
   partial.responses.pop();

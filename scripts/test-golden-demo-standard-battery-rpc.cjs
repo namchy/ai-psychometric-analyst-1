@@ -50,7 +50,17 @@ assert.match(migration, /Vladimir Lučić/);
 assert.match(migration, /v_expected_addressing_form := 'masculine'/);
 assert.match(migration, /elsif v_candidate_id = 'GD-003' then/);
 assert.match(migration, /elsif v_candidate_id in \('GD-002', 'GD-003'\) then[\s\S]*requires an existing canonical participant/);
+assert.match(
+  migration,
+  /v_existing_addressing_form is distinct from v_expected_addressing_form[\s\S]*v_candidate_id in \('GD-002', 'GD-003'\)[\s\S]*v_existing_addressing_form is null/,
+);
+assert.doesNotMatch(
+  migration,
+  /v_candidate_id = 'GD-002' and v_existing_addressing_form is null/,
+);
 assert.match(migration, /if v_participant_id is null then[\s\S]*insert into public\.participants/);
+assert.doesNotMatch(migration, /update\s+public\.participants/i);
+assert.match(migration, /addressing_form_snapshot[\s\S]*v_expected_addressing_form/);
 assert.match(migration, /v_test_slug not in \('ipip-neo-120-v1', 'safran_v1', 'mwms_v1'\)/);
 assert.match(migration, /jsonb_array_length\(p_fixture -> 'responses'\) <> 184/);
 assert.match(migration, /v_ipip_response_count <> 120 or v_safran_response_count <> 45 or v_mwms_response_count <> 19/);

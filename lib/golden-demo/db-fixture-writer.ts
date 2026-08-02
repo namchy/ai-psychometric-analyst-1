@@ -41,6 +41,7 @@ const LOCKED_CANDIDATE_IDENTITIES: Record<GoldenDemoCandidateId, { fullName: str
 };
 
 const GOLDEN_DEMO_CANDIDATE_LABEL = GOLDEN_DEMO_CANDIDATE_IDS.join(", ");
+const LEGACY_NULL_ADDRESSING_CANDIDATE_IDS: readonly GoldenDemoCandidateId[] = ["GD-002", "GD-003"];
 
 export function getGd001RpcErrorText(error: unknown): string {
   const parts: string[] = [];
@@ -658,7 +659,8 @@ export function classifyGd001FixtureState(input: {
   if (participant.user_id !== null) conflictReasons.push("Participant has a linked auth user requiring operator review.");
   const addressingFormMatches =
     participant.addressing_form === candidate.addressingForm ||
-    (candidate.candidateId === "GD-002" && participant.addressing_form === null);
+    (LEGACY_NULL_ADDRESSING_CANDIDATE_IDS.includes(candidate.candidateId) &&
+      participant.addressing_form === null);
   if (!addressingFormMatches) conflictReasons.push("Participant addressing form differs.");
 
   const hasStandardBatteryState =
