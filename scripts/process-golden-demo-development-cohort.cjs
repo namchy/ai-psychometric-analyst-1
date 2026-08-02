@@ -41,6 +41,7 @@ function parseCli(argv = []) {
   let phase = null;
   let apply = false;
   let verbose = false;
+  let resume = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -61,6 +62,10 @@ function parseCli(argv = []) {
       verbose = true;
       continue;
     }
+    if (argument === "--resume") {
+      resume = true;
+      continue;
+    }
     throw new Error(`Unknown argument: ${argument}`);
   }
 
@@ -74,8 +79,11 @@ function parseCli(argv = []) {
   if ((phase === "foundation" || phase === "reports") && !apply) {
     throw new Error(`The ${phase} phase requires --apply.`);
   }
+  if (resume && (phase !== "foundation" || !apply)) {
+    throw new Error("--resume is only allowed with --phase foundation --apply.");
+  }
 
-  return { phase, apply, verbose };
+  return { phase, apply, resume, verbose };
 }
 
 function assertRemoteWriteAuthorization(options, env = process.env) {
@@ -223,42 +231,143 @@ function assertFoundationDryRun(result, candidateId, expectedState) {
 }
 
 function assertScoringDryRun(result, candidateId, expectedState) {
-  if (
-    result?.scoringState !== expectedState ||
-    result?.writesPerformed !== false ||
-    result?.expectedScoreVerification?.ok !== true ||
-    result?.expectedScoreVerification?.matched !== 47 ||
-    result?.expectedScoreVerification?.expected !== 47
-  ) {
+  const verification = result?.expectedScoreVerification;
+  const baseValid = result?.scoringState === expectedState && result?.writesPerformed === false;
+  const unscoredValid =
+    expectedState === "UNSCORED_EXACT" &&
+    verification?.ok === false &&
+    verification?.matched === 0 &&
+    verification?.expected === 47;
+  const scoredValid =
+    expectedState === "SCORED_EXACT" &&
+    verification?.ok === true &&
+    verification?.matched === 47 &&
+    verification?.expected === 47 &&
+    Array.isArray(verification?.errors) &&
+    verification.errors.length === 0;
+  if (!baseValid || !(unscoredValid || scoredValid)) {
     throw new Error(`Scoring ${expectedState} verification failed for ${candidateId}.`);
   }
 }
 
-async function runFoundationCandidate(candidateId, options, dependencies) {
-  const startedAt = Date.now();
-  const fixtureApply = await invokeScript(
-    FIXTURE_SCRIPT,
-    ["--candidate", candidateId, "--apply"],
-    { ...options, candidateId, apply: true },
-    dependencies,
+function assertResumeFixtureState(result, candidateId, expectedState) {
+  const responseCounts = result?.responses?.existingByTest ?? {};
+  const expectedResponseCounts = {
+    "ipip-neo-120-v1": 120,
+    safran_v1: 45,
+    mwms_v1: 19,
+  };
+  const hasExpectedResponses = Object.entries(expectedResponseCounts).every(
+    ([slug, expected]) => responseCounts[slug] === expected,
   );
-  if (fixtureApply.stateAfter !== "EXACT_MATCH" || fixtureApply.writesPerformed !== true) {
-    throw new Error(`Fixture apply did not finish EXACT_MATCH for ${candidateId}.`);
+  const createActions = Object.values(result?.attempts ?? {}).every((action) => action === "create");
+  const reuseActions = Object.values(result?.attempts ?? {}).every((action) => action === "reuse");
+  const expected = expectedState === "EMPTY"
+    ? result?.state === "EMPTY" &&
+      result?.assignment?.action === "create" &&
+      createActions &&
+      result?.responses?.insert === 184 &&
+      Object.values(responseCounts).every((count) => count === 0)
+    : result?.state === "EXACT_MATCH" &&
+      result?.assignment?.action === "reuse" &&
+      reuseActions &&
+      result?.responses?.insert === 0 &&
+      hasExpectedResponses;
+  if (!expected || result?.writesPerformed !== false || (result?.blockers ?? []).length !== 0) {
+    throw new Error(`Fixture ${expectedState} resume verification failed for ${candidateId}.`);
   }
-  const fixtureAfter = await invokeScript(
+}
+
+async function inspectFoundationResumeState(candidateId, options, dependencies) {
+  const fixture = await invokeScript(
     FIXTURE_SCRIPT,
     ["--candidate", candidateId, "--dry-run", "--verbose"],
     { ...options, candidateId, apply: false },
     dependencies,
   );
-  assertFoundationDryRun(fixtureAfter, candidateId, "EXACT_MATCH");
-
-  const scoringBefore = await invokeScript(
+  const scoring = await invokeScript(
     SCORING_SCRIPT,
     ["--candidate", candidateId, "--dry-run", "--verbose"],
     { ...options, candidateId, apply: false },
     dependencies,
   );
+
+  if (fixture.state === "EMPTY") {
+    assertResumeFixtureState(fixture, candidateId, "EMPTY");
+    return { state: "EMPTY", fixture, scoring };
+  }
+  if (
+    fixture.state === "EXACT_MATCH" &&
+    scoring.fixtureCompatibilityState === "EXACT_MATCH" &&
+    scoring.scoringState === "UNSCORED_EXACT"
+  ) {
+    assertResumeFixtureState(fixture, candidateId, "EXACT_MATCH");
+    assertScoringDryRun(scoring, candidateId, "UNSCORED_EXACT");
+    return { state: "UNSCORED_EXACT", fixture, scoring };
+  }
+  if (
+    scoring.fixtureCompatibilityState === "EXACT_MATCH" &&
+    scoring.scoringState === "SCORED_EXACT"
+  ) {
+    assertScoringDryRun(scoring, candidateId, "SCORED_EXACT");
+    return { state: "SCORED_EXACT", fixture, scoring };
+  }
+  throw new Error(
+    `Foundation resume is blocked for ${candidateId}: fixture=${fixture.state}, ` +
+      `fixtureCompatibility=${scoring.fixtureCompatibilityState ?? "unknown"}, ` +
+      `scoring=${scoring.scoringState ?? "unknown"}.`,
+  );
+}
+
+async function runFoundationCandidate(candidateId, options, dependencies) {
+  const startedAt = Date.now();
+  const resumeState = options.resume
+    ? await inspectFoundationResumeState(candidateId, options, dependencies)
+    : { state: "EMPTY", fixture: null, scoring: null };
+  if (resumeState.state === "SCORED_EXACT") {
+    return {
+      candidateId,
+      foundationStateBefore: resumeState.state,
+      fixtureAction: "skip_exact_match",
+      scoringAction: "skip_exact_match",
+      fixtureApply: null,
+      fixtureAfter: resumeState.fixture,
+      scoringBefore: resumeState.scoring,
+      scoringApply: null,
+      scoringAfter: resumeState.scoring,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+
+  let fixtureApply = null;
+  let fixtureAfter = resumeState.fixture;
+  if (resumeState.state === "EMPTY") {
+    fixtureApply = await invokeScript(
+      FIXTURE_SCRIPT,
+      ["--candidate", candidateId, "--apply"],
+      { ...options, candidateId, apply: true },
+      dependencies,
+    );
+    if (fixtureApply.stateAfter !== "EXACT_MATCH" || fixtureApply.writesPerformed !== true) {
+      throw new Error(`Fixture apply did not finish EXACT_MATCH for ${candidateId}.`);
+    }
+    fixtureAfter = await invokeScript(
+      FIXTURE_SCRIPT,
+      ["--candidate", candidateId, "--dry-run", "--verbose"],
+      { ...options, candidateId, apply: false },
+      dependencies,
+    );
+    assertFoundationDryRun(fixtureAfter, candidateId, "EXACT_MATCH");
+  }
+
+  const scoringBefore = resumeState.state === "UNSCORED_EXACT"
+    ? resumeState.scoring
+    : await invokeScript(
+        SCORING_SCRIPT,
+        ["--candidate", candidateId, "--dry-run", "--verbose"],
+        { ...options, candidateId, apply: false },
+        dependencies,
+      );
   assertScoringDryRun(scoringBefore, candidateId, "UNSCORED_EXACT");
 
   const scoringApply = await invokeScript(
@@ -284,13 +393,16 @@ async function runFoundationCandidate(candidateId, options, dependencies) {
     scoringBefore,
     scoringApply,
     scoringAfter,
+    foundationStateBefore: resumeState.state,
+    fixtureAction: resumeState.state === "EMPTY" ? "apply" : "skip_exact_match",
+    scoringAction: "apply",
     durationMs: Date.now() - startedAt,
   };
 }
 
 async function runFoundation(options, dependencies = {}) {
   assertRemoteWriteAuthorization(options, dependencies.env ?? process.env);
-  const preflight = await runPreflight(options, dependencies);
+  const preflight = options.resume ? null : await runPreflight(options, dependencies);
   const candidates = [];
   for (const candidateId of DEVELOPMENT_CANDIDATE_IDS) {
     candidates.push(await runFoundationCandidate(candidateId, options, dependencies));
@@ -307,7 +419,9 @@ async function runFoundation(options, dependencies = {}) {
     expectedScoreChecks: candidates.length * 47,
     scoredExactCandidates: candidates.length,
     reports: 0,
-    writesPerformed: true,
+    writesPerformed: candidates.some(
+      (candidate) => candidate.fixtureApply?.writesPerformed === true || candidate.scoringApply?.writesPerformed === true,
+    ),
   };
 }
 
@@ -512,6 +626,8 @@ module.exports = {
   REMOTE_WRITE_OPT_IN,
   assertRemoteWriteAuthorization,
   parseCli,
+  assertScoringDryRun,
+  inspectFoundationResumeState,
   run,
   runChildProcess,
   runPreflight,
